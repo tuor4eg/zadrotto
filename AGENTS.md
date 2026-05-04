@@ -64,6 +64,15 @@ Prefer simple, reversible decisions while the project is still early and may cha
 
 Respond to the user in Russian unless asked otherwise.
 
+## Skills
+
+Before implementation, check `.codex/skills` and use relevant existing skills.
+
+## DB changes
+
+At this point we have no production db, just local. So, do not create new migration, but change existing and clear DB.
+I will change this rule after first production deploy.
+
 <!-- BEGIN:nextjs-agent-rules -->
 # This is NOT the Next.js you know
 

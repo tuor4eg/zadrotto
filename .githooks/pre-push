@@ -1,0 +1,6 @@
+#!/bin/sh
+
+set -e
+
+echo "Running lint before push..."
+npm run lint
