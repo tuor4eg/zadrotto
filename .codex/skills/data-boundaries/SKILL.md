@@ -17,3 +17,4 @@ Keep data access, data shaping, and UI rendering separated.
 - Keep nullable handling explicit.
 - Store ratings as integers and format them for display through a helper.
 - Handle empty states deliberately.
+- When changing database schema or queries, briefly state whether indexes/constraints are needed for the expected filters, joins, sorting, and uniqueness rules.

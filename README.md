@@ -1,36 +1,71 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Zadrotto
 
-## Getting Started
+Локальный Next.js-проект для ранней картотеки культурных тайтлов.
 
-First, run the development server:
+## Локальный запуск
+
+1. Подними PostgreSQL и укажи подключение в `.env`.
+2. Установи зависимости:
+
+```bash
+npm install
+```
+
+3. Накати локальную схему:
+
+```bash
+npm run db:migrate
+```
+
+4. Запусти dev-сервер:
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Приложение будет доступно на http://localhost:3000.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## MinIO для обложек
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+UI загрузки пока нет. Поле `media_items.cover_url` уже достаточно: в нем можно хранить либо полный публичный URL, либо object key внутри S3-бакета, например `covers/dune.jpg`.
 
-## Learn More
+Для локального S3-compatible storage можно поднять MinIO:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+docker run --rm \
+  --name zadrotto-minio \
+  -p 9000:9000 \
+  -p 9001:9001 \
+  -e MINIO_ROOT_USER=minioadmin \
+  -e MINIO_ROOT_PASSWORD=minioadmin \
+  -v zadrotto-minio-data:/data \
+  quay.io/minio/minio server /data --console-address ":9001"
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+После запуска:
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. Открой http://localhost:9001.
+2. Войди с `minioadmin` / `minioadmin`.
+3. Создай bucket `zadrotto-covers`.
+4. Сделай bucket публичным для чтения объектов.
+5. Загружай будущие обложки, например в префикс `covers/`.
 
-## Deploy on Vercel
+Минимальная локальная env-конфигурация:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```env
+S3_ENDPOINT=http://127.0.0.1:9000
+S3_REGION=us-east-1
+S3_BUCKET=zadrotto-covers
+S3_ACCESS_KEY_ID=minioadmin
+S3_SECRET_ACCESS_KEY=minioadmin
+S3_FORCE_PATH_STYLE=true
+S3_PUBLIC_BASE_URL=http://127.0.0.1:9000/zadrotto-covers
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Если `cover_url` равен `covers/dune.jpg`, приложение покажет обложку по публичному URL:
+
+```txt
+http://127.0.0.1:9000/zadrotto-covers/covers/dune.jpg
+```
+
+Если `cover_url` уже содержит `https://...` или `http://...`, он используется без изменений.

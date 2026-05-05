@@ -127,6 +127,7 @@
 - PostgreSQL
 - Drizzle ORM
 - Tailwind CSS
+- S3 minio storage
 - простая самописная админка
 
 Возможные будущие дополнения:

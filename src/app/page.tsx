@@ -1,12 +1,13 @@
 import { connection } from "next/server";
 
-import { getCatalogMediaItems } from "@/db/queries/media-items";
+import { getArchiveStats, getCatalogMediaItems } from "@/db/queries/media-items";
+import { ArchiveStats } from "./archive-stats";
 import { MediaItemsCatalog } from "./media-items-catalog";
 
 export default async function Home() {
   await connection();
 
-  const items = await getCatalogMediaItems();
+  const [items, stats] = await Promise.all([getCatalogMediaItems(), getArchiveStats()]);
 
   return (
     <main className="min-h-screen bg-zinc-100 px-4 py-6 text-zinc-950 sm:px-6 lg:px-10">
@@ -19,6 +20,8 @@ export default async function Home() {
             Журнал, которого не было
           </h1>
         </header>
+
+        <ArchiveStats stats={stats} />
 
         <MediaItemsCatalog items={items} />
       </div>

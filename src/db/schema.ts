@@ -8,15 +8,9 @@ import {
   unique,
 } from "drizzle-orm/pg-core";
 
-export const mediaTypeEnum = pgEnum("media_type", [
-  "game",
-  "film",
-  "series",
-  "book",
-  "comic",
-  "anime",
-  "other",
-]);
+import { MEDIA_TYPES } from "@/lib/media-types";
+
+export const mediaTypeEnum = pgEnum("media_type", MEDIA_TYPES);
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -25,8 +19,10 @@ const timestamps = () => ({
 
 export const franchises = pgTable("franchises", {
   id: serial("id").primaryKey(),
-  code: text("code").notNull(),
+  code: text("code").notNull().unique(),
   title: text("title").notNull(),
+  originalTitle: text("original_title"),
+  description: text("description"),
   ...timestamps(),
 });
 
@@ -42,10 +38,9 @@ export const mediaItems = pgTable("media_items", {
   code: text("code").notNull().unique(),
   title: text("title").notNull(),
   originalTitle: text("original_title"),
+  description: text("description"),
   mediaType: mediaTypeEnum("media_type").notNull(),
-  franchiseId: integer("franchise_id")
-    .notNull()
-    .references(() => franchises.id),
+  franchiseId: integer("franchise_id").references(() => franchises.id),
   releaseYear: integer("release_year"),
   coverUrl: text("cover_url"),
   ...timestamps(),

@@ -12,8 +12,11 @@ CREATE TABLE "franchises" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"code" text NOT NULL,
 	"title" text NOT NULL,
+	"original_title" text,
+	"description" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	"updated_at" timestamp with time zone DEFAULT now() NOT NULL
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	CONSTRAINT "franchises_code_unique" UNIQUE("code")
 );
 --> statement-breakpoint
 CREATE TABLE "media_items" (
@@ -21,8 +24,9 @@ CREATE TABLE "media_items" (
 	"code" text NOT NULL,
 	"title" text NOT NULL,
 	"original_title" text,
+	"description" text,
 	"media_type" "media_type" NOT NULL,
-	"franchise_id" integer NOT NULL,
+	"franchise_id" integer,
 	"release_year" integer,
 	"cover_url" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
@@ -43,14 +47,11 @@ CREATE TABLE "ratings" (
 ALTER TABLE "media_items" ADD CONSTRAINT "media_items_franchise_id_franchises_id_fk" FOREIGN KEY ("franchise_id") REFERENCES "public"."franchises"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_media_item_id_media_items_id_fk" FOREIGN KEY ("media_item_id") REFERENCES "public"."media_items"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
-INSERT INTO "franchises" ("code", "title") VALUES
-	('half-life', 'Half-Life'),
-	('the-matrix', 'The Matrix'),
-	('twin-peaks', 'Twin Peaks'),
-	('dune', 'Dune'),
-	('watchmen', 'Watchmen'),
-	('evangelion', 'Evangelion'),
-	('standalone', 'Standalone');--> statement-breakpoint
+INSERT INTO "franchises" ("code", "title", "original_title", "description") VALUES
+	('half-life', 'Half-Life', NULL, 'Игры о научном эксперименте, который распахнул дверь в чужой мир и изменил шутеры.'),
+	('the-matrix', 'The Matrix', NULL, 'Киберпанковская история о реальности, симуляции и выборе красной таблетки.'),
+	('twin-peaks', 'Twin Peaks', NULL, 'Телевизионная загадка маленького города, где бытовое быстро становится потусторонним.'),
+	('dune', 'Dune', NULL, 'Пустынная сага о власти, пророчествах, специи и цене имперских амбиций.');--> statement-breakpoint
 INSERT INTO "authors" ("code", "name") VALUES
 	('pasha', 'Паша'),
 	('sasha', 'Саша');--> statement-breakpoint
@@ -58,6 +59,7 @@ INSERT INTO "media_items" (
 	"code",
 	"title",
 	"original_title",
+	"description",
 	"media_type",
 	"franchise_id",
 	"release_year",
@@ -67,6 +69,7 @@ INSERT INTO "media_items" (
 		'half-life-2',
 		'Half-Life 2',
 		NULL,
+		'Побег через оккупированный город, где физика впервые ощущалась почти магией.',
 		'game',
 		(SELECT "id" FROM "franchises" WHERE "code" = 'half-life'),
 		2004,
@@ -76,6 +79,7 @@ INSERT INTO "media_items" (
 		'the-matrix',
 		'The Matrix',
 		NULL,
+		'Боевик о пробуждении из симуляции, который превратил философию в стильный экшен.',
 		'film',
 		(SELECT "id" FROM "franchises" WHERE "code" = 'the-matrix'),
 		1999,
@@ -85,6 +89,7 @@ INSERT INTO "media_items" (
 		'twin-peaks-season-1',
 		'Twin Peaks: Season 1',
 		NULL,
+		'Расследование смерти Лоры Палмер открывает странную душу тихого северного городка.',
 		'series',
 		(SELECT "id" FROM "franchises" WHERE "code" = 'twin-peaks'),
 		1990,
@@ -94,17 +99,29 @@ INSERT INTO "media_items" (
 		'dune',
 		'Dune',
 		NULL,
+		'Роман о песчаной планете Арракис, где религия и политика сплетаются вокруг специи.',
 		'book',
 		(SELECT "id" FROM "franchises" WHERE "code" = 'dune'),
 		1965,
 		NULL
 	),
 	(
+		'dune-part-one',
+		'Dune: Part One',
+		NULL,
+		'Первая часть новой экранизации: падение дома Атрейдесов и путь Пола в пустыню.',
+		'film',
+		(SELECT "id" FROM "franchises" WHERE "code" = 'dune'),
+		2021,
+		NULL
+	),
+	(
 		'watchmen',
 		'Watchmen',
 		NULL,
+		'Деконструкция супергероев, где маски не спасают мир от человеческих слабостей.',
 		'comic',
-		(SELECT "id" FROM "franchises" WHERE "code" = 'watchmen'),
+		NULL,
 		1986,
 		NULL
 	),
@@ -112,8 +129,9 @@ INSERT INTO "media_items" (
 		'neon-genesis-evangelion',
 		'Neon Genesis Evangelion',
 		'Shin Seiki Evangelion',
+		'Подростки управляют гигантскими Евангелионами, пока конец света смотрит им в лицо.',
 		'anime',
-		(SELECT "id" FROM "franchises" WHERE "code" = 'evangelion'),
+		NULL,
 		1995,
 		NULL
 	),
@@ -121,9 +139,40 @@ INSERT INTO "media_items" (
 		'zadrotto-demo-disc',
 		'Zadrotto Demo Disc',
 		NULL,
+		'Воображаемый демо-диск архива: место для будущих проб, находок и странных связей.',
 		'other',
-		(SELECT "id" FROM "franchises" WHERE "code" = 'standalone'),
 		NULL,
+		NULL,
+		NULL
+	),
+	(
+		'half-life',
+		'Half-Life',
+		NULL,
+		'Катастрофа в Черной Мезе, рассказанная почти без катсцен и привычных остановок.',
+		'game',
+		(SELECT "id" FROM "franchises" WHERE "code" = 'half-life'),
+		1998,
+		NULL
+	),
+	(
+		'the-matrix-reloaded',
+		'The Matrix Reloaded',
+		NULL,
+		'Продолжение, где мифология Матрицы расширяется через погони, выбор и архитекторов.',
+		'film',
+		(SELECT "id" FROM "franchises" WHERE "code" = 'the-matrix'),
+		2003,
+		NULL
+	),
+	(
+		'twin-peaks-the-return',
+		'Twin Peaks: The Return',
+		NULL,
+		'Позднее возвращение в Твин Пикс, больше похожее на сон о времени и телевидении.',
+		'series',
+		(SELECT "id" FROM "franchises" WHERE "code" = 'twin-peaks'),
+		2017,
 		NULL
 	);--> statement-breakpoint
 INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
@@ -196,4 +245,44 @@ INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
 		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-season-1'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
 		91
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
+		94
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
+		89
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'the-matrix-reloaded'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
+		82
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'the-matrix-reloaded'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
+		80
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'dune-part-one'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
+		84
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'dune-part-one'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
+		88
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-the-return'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
+		93
+	),
+	(
+		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-the-return'),
+		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
+		95
 	);

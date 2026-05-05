@@ -9,6 +9,7 @@ Use these existing agents for meaningful work:
 - `architect` — architecture, data model, product structure, feature boundaries
 - `implementer` — code implementation
 - `reviewer` — review, regressions, edge cases, data integrity
+- `tester` — test strategy, unit/component tests, checking important scenarios
 
 Do not generate new temporary agents for these roles.
 
@@ -18,7 +19,8 @@ For every meaningful feature, run the task through all three agents:
 
 1. `architect` — clarify the approach and boundaries
 2. `implementer` — implement the change
-3. `reviewer` — review the result before considering it done
+3. `tester` — add or update useful tests when the change has testable behavior
+4. `reviewer` — review the result before considering it done
 
 This applies to changes that affect:
 
@@ -32,6 +34,16 @@ This applies to changes that affect:
 - project structure
 - integrations
 - non-trivial UI behavior
+
+Use `tester` especially for changes that affect:
+
+- data formatting
+- filtering
+- search
+- helpers
+- data mapping
+- database-related behavior
+- user-visible logic
 
 ## Small changes
 
