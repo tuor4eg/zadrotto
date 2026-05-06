@@ -17,13 +17,40 @@ npm install
 npm run db:migrate
 ```
 
-4. Запусти dev-сервер:
+4. Создай первого admin user:
+
+```bash
+npm run db:seed:admin
+```
+
+Seed читает `ADMIN_LOGIN` и `ADMIN_PASSWORD` из `.env`, хранит только hash пароля и пропускает создание, если admin user уже существует.
+
+5. Запусти dev-сервер:
 
 ```bash
 npm run dev
 ```
 
 Приложение будет доступно на http://localhost:3000.
+
+## Admin
+
+Для пустой админки и авторского входа нужны env-переменные:
+
+```env
+ADMIN_LOGIN=admin
+ADMIN_PASSWORD=change-me
+ADMIN_SESSION_SECRET=change-this-to-a-long-random-secret
+AUTHOR_SESSION_SECRET=change-this-to-another-long-random-secret
+```
+
+`ADMIN_PASSWORD` используется только seed-скриптом. В базе хранится `password_hash`.
+
+После seed админка доступна на http://localhost:3000/admin. Сессия хранится только в `httpOnly` cookie `admin_session`; `localStorage` и bearer token не используются.
+
+## Author
+
+Авторский вход доступен на http://localhost:3000/author/login. Он принимает одноразово показанный в админке access token, сверяет только hash из таблицы `author_access_tokens` и создает `httpOnly` cookie `author_session`. Исходный access token не хранится ни в базе, ни во фронтенде.
 
 ## MinIO для обложек
 

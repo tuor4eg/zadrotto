@@ -3,7 +3,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Журнал, которого не было",
-  description: "Архив культурных тайтлов и оценок.",
+  description: "Архив культурных записей и оценок.",
 };
 
 export default function RootLayout({

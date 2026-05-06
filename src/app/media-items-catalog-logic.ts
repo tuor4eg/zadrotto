@@ -1,6 +1,7 @@
 import { MEDIA_TYPES, type MediaType } from "../lib/media-types";
 
 export type MediaTypeFilter = MediaType | "all";
+export type AuthorRatingFilter = "all" | "rated" | "unrated";
 
 export const CATALOG_SORTS = [
   "title",
@@ -19,6 +20,7 @@ export type CatalogFilterItem = {
   originalTitle: string | null;
   code: string | null;
   mediaType: MediaType;
+  currentAuthorScore: number | null;
 };
 
 export type CatalogSortItem = {
@@ -28,30 +30,6 @@ export type CatalogSortItem = {
   averageScore: number | null;
   ratingsCount: number;
 };
-
-export function formatScore(score: number | null) {
-  return score === null ? "\u2014" : (score / 10).toFixed(1);
-}
-
-export function formatRatingsCount(count: number) {
-  const lastTwoDigits = count % 100;
-
-  if (lastTwoDigits >= 11 && lastTwoDigits <= 14) {
-    return `${count} оценок`;
-  }
-
-  const lastDigit = count % 10;
-
-  if (lastDigit === 1) {
-    return `${count} оценка`;
-  }
-
-  if (lastDigit >= 2 && lastDigit <= 4) {
-    return `${count} оценки`;
-  }
-
-  return `${count} оценок`;
-}
 
 export function matchesSearch(item: CatalogFilterItem, normalizedSearchQuery: string) {
   if (!normalizedSearchQuery) {
@@ -67,12 +45,16 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
   items: TItem[],
   searchQuery: string,
   mediaTypeFilter: MediaTypeFilter,
+  authorRatingFilter: AuthorRatingFilter,
 ) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
   return items.filter(
     (item) =>
       (mediaTypeFilter === "all" || item.mediaType === mediaTypeFilter) &&
+      (authorRatingFilter === "all" ||
+        (authorRatingFilter === "rated" && item.currentAuthorScore !== null) ||
+        (authorRatingFilter === "unrated" && item.currentAuthorScore === null)) &&
       matchesSearch(item, normalizedSearchQuery),
   );
 }
@@ -81,6 +63,10 @@ export function parseMediaTypeFilter(mediaType: string | null): MediaTypeFilter 
   return MEDIA_TYPES.some((availableMediaType) => availableMediaType === mediaType)
     ? (mediaType as MediaType)
     : "all";
+}
+
+export function parseAuthorRatingFilter(filter: string | null): AuthorRatingFilter {
+  return filter === "rated" || filter === "unrated" ? filter : "all";
 }
 
 export function parseCatalogSort(sort: string | null): CatalogSort {

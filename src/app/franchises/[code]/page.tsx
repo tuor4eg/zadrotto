@@ -1,9 +1,9 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { formatRatingsCount, formatScore } from "@/app/media-items-catalog-logic";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 
 type FranchisePageProps = {
   params: Promise<{
@@ -53,12 +53,12 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
         <section className="border border-zinc-300 bg-white">
           <div className="border-b border-zinc-200 px-4 py-3">
             <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-              Тайтлы
+              Записи архива
             </h2>
           </div>
 
           {items.length === 0 ? (
-            <div className="p-5 text-sm text-zinc-500">В этой франшизе пока нет тайтлов.</div>
+            <div className="p-5 text-sm text-zinc-500">В этой франшизе пока нет записей.</div>
           ) : (
             <div className="divide-y divide-zinc-200">
               {items.map((item) => (

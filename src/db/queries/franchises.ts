@@ -1,7 +1,13 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, exists, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { franchises, mediaItems, ratings } from "@/db/schema";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
+
+const publishedMediaItemCondition = eq(
+  mediaItems.publicationStatus,
+  PUBLISHED_PUBLICATION_STATUS,
+);
 
 export async function getFranchiseByCode(code: string) {
   const [franchise] = await db
@@ -13,10 +19,41 @@ export async function getFranchiseByCode(code: string) {
       description: franchises.description,
     })
     .from(franchises)
-    .where(eq(franchises.code, code))
+    .where(
+      and(
+        eq(franchises.code, code),
+        exists(
+          db
+            .select({ id: mediaItems.id })
+            .from(mediaItems)
+            .where(and(eq(mediaItems.franchiseId, franchises.id), publishedMediaItemCondition)),
+        ),
+      ),
+    )
     .limit(1);
 
   return franchise ?? null;
+}
+
+export async function getFranchiseOptions() {
+  return db
+    .select({
+      id: franchises.id,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+    })
+    .from(franchises)
+    .orderBy(asc(franchises.title));
+}
+
+export async function franchiseExistsById(id: number) {
+  const [franchise] = await db
+    .select({ id: franchises.id })
+    .from(franchises)
+    .where(eq(franchises.id, id))
+    .limit(1);
+
+  return Boolean(franchise);
 }
 
 export async function getMediaItemsByFranchiseId(franchiseId: number) {
@@ -34,7 +71,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number) {
     })
     .from(mediaItems)
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(eq(mediaItems.franchiseId, franchiseId))
+    .where(and(eq(mediaItems.franchiseId, franchiseId), publishedMediaItemCondition))
     .groupBy(
       mediaItems.id,
       mediaItems.code,

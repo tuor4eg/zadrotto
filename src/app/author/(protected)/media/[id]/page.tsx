@@ -1,0 +1,88 @@
+import Link from "next/link";
+import { notFound, redirect } from "next/navigation";
+
+import { AuthorRatingForm } from "@/app/author-rating-form";
+import { MediaItemDetails } from "@/app/media-item-details";
+import { getAuthorMediaItemForView } from "@/db/queries/media-items";
+import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
+import { canAuthorRequestPublication } from "@/lib/author-media-publication";
+import { requireAuthor } from "@/lib/author-auth";
+import {
+  PUBLICATION_STATUS_VALUE_LABELS,
+  PUBLISHED_PUBLICATION_STATUS,
+} from "@/lib/publication-status";
+import { publishAuthorMediaItemAction } from "../actions";
+
+type AuthorMediaViewPageProps = {
+  params: Promise<{
+    id: string;
+  }>;
+};
+
+export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPageProps) {
+  const [{ id }, author] = await Promise.all([params, requireAuthor()]);
+  const mediaItemId = Number(id);
+
+  if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+    notFound();
+  }
+
+  const item = await getAuthorMediaItemForView(author.id, mediaItemId);
+
+  if (!item) {
+    notFound();
+  }
+
+  if (item.publicationStatus === PUBLISHED_PUBLICATION_STATUS) {
+    redirect(`/media/${item.code}`);
+  }
+
+  const isEditable = isAuthorEditablePublicationStatus(item.publicationStatus);
+  const canRequestPublication = canAuthorRequestPublication(item.publicationStatus);
+
+  return (
+    <MediaItemDetails
+      item={item}
+      backLink={{ href: "/author/media", label: "Назад к картотеке" }}
+      meta={<span>{PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}</span>}
+      actions={
+        <>
+          {isEditable ? (
+            <Link
+              href={`/author/media/${item.id}/edit`}
+              className="w-fit border border-zinc-950 bg-zinc-950 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-zinc-950"
+            >
+              Править
+            </Link>
+          ) : null}
+          {canRequestPublication ? (
+            <form action={publishAuthorMediaItemAction}>
+              <input type="hidden" name="mediaItemId" value={item.id} />
+              <button
+                type="submit"
+                className="w-fit border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-emerald-700"
+              >
+                Опубликовать
+              </button>
+            </form>
+          ) : null}
+        </>
+      }
+      noteSlot={
+        <>
+          <AuthorRatingForm
+            mediaItemCode={item.code}
+            franchiseCode={item.franchiseCode}
+            currentAuthor={{ name: author.name, code: author.code }}
+            currentAuthorScore={item.currentAuthorScore}
+          />
+          {item.adminNote ? (
+            <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-6 text-zinc-600">
+              {item.adminNote}
+            </div>
+          ) : null}
+        </>
+      }
+    />
+  );
+}

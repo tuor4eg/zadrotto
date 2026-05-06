@@ -6,19 +6,25 @@ import { useMemo, useState } from "react";
 
 import {
   filterCatalogItems,
-  formatRatingsCount,
-  formatScore,
+  parseAuthorRatingFilter,
   parseCatalogSort,
   parseMediaTypeFilter,
   sortCatalogItems,
+  type AuthorRatingFilter,
   type CatalogSort,
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
+import { AuthorRatingForm } from "@/app/author-rating-form";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
+import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 
 type MediaItemsCatalogProps = {
   items: CatalogMediaItem[];
+  currentAuthor: {
+    name: string;
+    code: string;
+  } | null;
 };
 
 const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
@@ -29,11 +35,27 @@ const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   ratings_count: "Количество оценок",
 };
 
+const AUTHOR_RATING_FILTER_LABELS: Record<AuthorRatingFilter, string> = {
+  all: "Все",
+  rated: "С моей оценкой",
+  unrated: "Без моей оценки",
+};
+
+const AUTHOR_RATING_FILTER_ICONS: Record<AuthorRatingFilter, string> = {
+  all: "≡",
+  rated: "✓",
+  unrated: "×",
+};
+
 function getSortTooltip(sort: CatalogSort) {
   return `Сортировка: ${CATALOG_SORT_LABELS[sort].toLowerCase()}`;
 }
 
-export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
+function getAuthorRatingFilterTooltip(filter: AuthorRatingFilter) {
+  return `Фильтр: ${AUTHOR_RATING_FILTER_LABELS[filter].toLowerCase()}`;
+}
+
+export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -59,9 +81,12 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
     parsedMediaTypeFilter === "all" || availableMediaTypes.includes(parsedMediaTypeFilter)
       ? parsedMediaTypeFilter
       : "all";
+  const authorRatingFilter = currentAuthor
+    ? parseAuthorRatingFilter(searchParams.get("mine"))
+    : "all";
   const filteredItems = useMemo(
-    () => filterCatalogItems(items, search, mediaTypeFilter),
-    [items, mediaTypeFilter, search],
+    () => filterCatalogItems(items, search, mediaTypeFilter, authorRatingFilter),
+    [authorRatingFilter, items, mediaTypeFilter, search],
   );
   const sortedItems = useMemo(
     () => sortCatalogItems(filteredItems, catalogSort),
@@ -75,6 +100,19 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
   function handleSortChange(sort: CatalogSort) {
     const nextSearchParams = new URLSearchParams(searchParams.toString());
     nextSearchParams.set("sort", sort);
+
+    const queryString = nextSearchParams.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }
+
+  function handleAuthorRatingFilterChange(nextAuthorRatingFilter: AuthorRatingFilter) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+    if (nextAuthorRatingFilter === "all") {
+      nextSearchParams.delete("mine");
+    } else {
+      nextSearchParams.set("mine", nextAuthorRatingFilter);
+    }
 
     const queryString = nextSearchParams.toString();
     router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
@@ -96,7 +134,7 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
   if (items.length === 0) {
     return (
       <div className="border border-zinc-300 bg-white p-5 text-sm text-zinc-500">
-        Пока в архиве нет тайтлов.
+        Пока в архиве нет записей.
       </div>
     );
   }
@@ -166,7 +204,11 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
               Картотека
             </h2>
           </div>
-          <div className="grid grid-cols-[minmax(0,1fr)_auto] gap-2 border-b border-zinc-200 p-3">
+          <div
+            className={`grid gap-2 border-b border-zinc-200 p-3 ${
+              currentAuthor ? "grid-cols-[minmax(0,1fr)_auto_auto]" : "grid-cols-[minmax(0,1fr)_auto]"
+            }`}
+          >
             <label className="sr-only" htmlFor="media-catalog-search">
               Поиск
             </label>
@@ -178,6 +220,38 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
               className="h-9 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none placeholder:text-zinc-400 focus:border-zinc-950"
               placeholder="Название, оригинальное название, код"
             />
+            {currentAuthor ? (
+              <div
+                className="relative h-9 w-9 border border-zinc-300 bg-white text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                title={getAuthorRatingFilterTooltip(authorRatingFilter)}
+              >
+                <span
+                  aria-hidden="true"
+                  className="pointer-events-none flex h-full w-full items-center justify-center font-mono text-base leading-none"
+                >
+                  {AUTHOR_RATING_FILTER_ICONS[authorRatingFilter]}
+                </span>
+                <label className="sr-only" htmlFor="media-catalog-author-rating-filter">
+                  Фильтр моих оценок
+                </label>
+                <select
+                  id="media-catalog-author-rating-filter"
+                  value={authorRatingFilter}
+                  onChange={(event) =>
+                    handleAuthorRatingFilterChange(event.target.value as AuthorRatingFilter)
+                  }
+                  aria-label={getAuthorRatingFilterTooltip(authorRatingFilter)}
+                  title={getAuthorRatingFilterTooltip(authorRatingFilter)}
+                  className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+                >
+                  {Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([filter, label]) => (
+                    <option key={filter} value={filter}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            ) : null}
             <div
               className="relative h-9 w-9 border border-zinc-300 bg-white text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
               title={getSortTooltip(catalogSort)}
@@ -262,11 +336,11 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
                     alt={`Обложка: ${selectedItem.title}`}
                     className="h-full w-full object-cover"
                   />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#e4e4e7,#fafafa)] px-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                    No cover
-                  </div>
-                )}
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#e4e4e7,#fafafa)] px-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                    Без обложки
+                    </div>
+                  )}
               </div>
 
               <div className="flex min-h-[320px] flex-col justify-between gap-8 p-5 sm:p-6">
@@ -313,6 +387,14 @@ export function MediaItemsCatalog({ items }: MediaItemsCatalogProps) {
                       {formatRatingsCount(selectedItem.ratingsCount)}
                     </span>
                   </div>
+
+                  <AuthorRatingForm
+                    mediaItemCode={selectedItem.code}
+                    franchiseCode={selectedItem.franchiseCode}
+                    currentAuthor={currentAuthor}
+                    currentAuthorScore={selectedItem.currentAuthorScore}
+                    compact
+                  />
                 </div>
 
                 <div className="border-t border-zinc-200 pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">

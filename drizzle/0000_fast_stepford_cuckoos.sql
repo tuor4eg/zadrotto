@@ -1,4 +1,6 @@
 CREATE TYPE "public"."media_type" AS ENUM('game', 'film', 'series', 'book', 'comic', 'anime', 'other');--> statement-breakpoint
+CREATE TYPE "public"."publication_status" AS ENUM('private', 'submitted', 'published', 'rejected');--> statement-breakpoint
+CREATE TYPE "public"."author_permission" AS ENUM('publish_media_without_review');--> statement-breakpoint
 CREATE TABLE "authors" (
 	"id" serial PRIMARY KEY NOT NULL,
 	"code" text NOT NULL,
@@ -6,6 +8,37 @@ CREATE TABLE "authors" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "authors_code_unique" UNIQUE("code")
+);
+--> statement-breakpoint
+CREATE TABLE "admin_users" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"login" text NOT NULL,
+	"password_hash" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"last_login_at" timestamp with time zone,
+	CONSTRAINT "admin_users_login_unique" UNIQUE("login")
+);
+--> statement-breakpoint
+CREATE TABLE "author_access_tokens" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"author_id" integer NOT NULL,
+	"token_hash" text NOT NULL,
+	"label" text NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_by_admin_id" integer NOT NULL,
+	"last_used_at" timestamp with time zone,
+	"revoked_at" timestamp with time zone,
+	CONSTRAINT "author_access_tokens_token_hash_unique" UNIQUE("token_hash")
+);
+--> statement-breakpoint
+CREATE TABLE "author_permissions" (
+	"id" serial PRIMARY KEY NOT NULL,
+	"author_id" integer NOT NULL,
+	"permission" "author_permission" NOT NULL,
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"created_by_admin_id" integer,
+	CONSTRAINT "author_permissions_author_id_permission_unique" UNIQUE("author_id","permission")
 );
 --> statement-breakpoint
 CREATE TABLE "franchises" (
@@ -29,6 +62,12 @@ CREATE TABLE "media_items" (
 	"franchise_id" integer,
 	"release_year" integer,
 	"cover_url" text,
+	"created_by_author_id" integer,
+	"publication_status" "publication_status" DEFAULT 'published' NOT NULL,
+	"submitted_at" timestamp with time zone,
+	"reviewed_by_admin_id" integer,
+	"reviewed_at" timestamp with time zone,
+	"admin_note" text,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "media_items_code_unique" UNIQUE("code")
@@ -41,12 +80,25 @@ CREATE TABLE "ratings" (
 	"score" integer NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "ratings_media_item_id_author_id_unique" UNIQUE("media_item_id","author_id")
+	CONSTRAINT "ratings_media_item_id_author_id_unique" UNIQUE("media_item_id","author_id"),
+	CONSTRAINT "ratings_score_whole_1_to_10_check" CHECK ("score" >= 10 AND "score" <= 100 AND "score" % 10 = 0)
 );
 --> statement-breakpoint
 ALTER TABLE "media_items" ADD CONSTRAINT "media_items_franchise_id_franchises_id_fk" FOREIGN KEY ("franchise_id") REFERENCES "public"."franchises"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media_items" ADD CONSTRAINT "media_items_created_by_author_id_authors_id_fk" FOREIGN KEY ("created_by_author_id") REFERENCES "public"."authors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "media_items" ADD CONSTRAINT "media_items_reviewed_by_admin_id_admin_users_id_fk" FOREIGN KEY ("reviewed_by_admin_id") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "author_access_tokens" ADD CONSTRAINT "author_access_tokens_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "author_access_tokens" ADD CONSTRAINT "author_access_tokens_created_by_admin_id_admin_users_id_fk" FOREIGN KEY ("created_by_admin_id") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "author_permissions" ADD CONSTRAINT "author_permissions_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "author_permissions" ADD CONSTRAINT "author_permissions_created_by_admin_id_admin_users_id_fk" FOREIGN KEY ("created_by_admin_id") REFERENCES "public"."admin_users"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_media_item_id_media_items_id_fk" FOREIGN KEY ("media_item_id") REFERENCES "public"."media_items"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "ratings" ADD CONSTRAINT "ratings_author_id_authors_id_fk" FOREIGN KEY ("author_id") REFERENCES "public"."authors"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+CREATE INDEX "author_access_tokens_author_id_idx" ON "author_access_tokens" USING btree ("author_id");--> statement-breakpoint
+CREATE INDEX "author_permissions_author_id_idx" ON "author_permissions" USING btree ("author_id");--> statement-breakpoint
+CREATE INDEX "media_items_publication_status_idx" ON "media_items" USING btree ("publication_status");--> statement-breakpoint
+CREATE INDEX "media_items_created_by_author_id_idx" ON "media_items" USING btree ("created_by_author_id");--> statement-breakpoint
+CREATE INDEX "media_items_franchise_id_idx" ON "media_items" USING btree ("franchise_id");--> statement-breakpoint
+CREATE INDEX "ratings_author_id_idx" ON "ratings" USING btree ("author_id");--> statement-breakpoint
 INSERT INTO "franchises" ("code", "title", "original_title", "description") VALUES
 	('half-life', 'Half-Life', NULL, 'Игры о научном эксперименте, который распахнул дверь в чужой мир и изменил шутеры.'),
 	('the-matrix', 'The Matrix', NULL, 'Киберпанковская история о реальности, симуляции и выборе красной таблетки.'),
@@ -179,7 +231,7 @@ INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life-2'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		95
+		100
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life-2'),
@@ -194,37 +246,37 @@ INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'the-matrix'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		92
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'dune'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		92
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'dune'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		86
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'watchmen'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		88
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'watchmen'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		94
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'neon-genesis-evangelion'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		85
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'neon-genesis-evangelion'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		96
+		100
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'zadrotto-demo-disc'),
@@ -234,32 +286,32 @@ INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'zadrotto-demo-disc'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		75
+		80
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-season-1'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		87
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-season-1'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		91
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		94
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'half-life'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		89
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'the-matrix-reloaded'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		82
+		80
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'the-matrix-reloaded'),
@@ -269,20 +321,20 @@ INSERT INTO "ratings" ("media_item_id", "author_id", "score") VALUES
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'dune-part-one'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		84
+		80
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'dune-part-one'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		88
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-the-return'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'pasha'),
-		93
+		90
 	),
 	(
 		(SELECT "id" FROM "media_items" WHERE "code" = 'twin-peaks-the-return'),
 		(SELECT "id" FROM "authors" WHERE "code" = 'sasha'),
-		95
+		100
 	);

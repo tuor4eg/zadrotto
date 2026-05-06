@@ -20,3 +20,4 @@ Keep the codebase simple, layered, and easy to change.
 - Do not create abstractions before there is a real repeated pattern.
 - Keep feature-specific code close to the feature.
 - Move code to shared modules only when it is reused or clearly belongs to the project core.
+- UI should be in russian everywhere.

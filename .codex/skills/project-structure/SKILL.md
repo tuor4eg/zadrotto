@@ -18,3 +18,5 @@ Keep the codebase simple, layered, and easy to change.
 - Do not create abstractions before there is a real repeated pattern.
 - Keep feature-specific code close to the feature.
 - Move code to shared modules only when it is reused or clearly belongs to the project core.
+- Maximum reuse of existing code and patterns is preferred over adding new abstractions or modules.
+- If you create UI pattern check could it be reused in other places as component of helper.

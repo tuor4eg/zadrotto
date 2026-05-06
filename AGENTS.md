@@ -13,6 +13,28 @@ Use these existing agents for meaningful work:
 
 Do not generate new temporary agents for these roles.
 
+## Mandatory start checklist
+
+Before any meaningful feature, explicitly state that you have completed this checklist:
+
+- Read `PROJECT_CONTEXT.md`
+- Checked relevant `.codex/skills`
+- Read `.codex/agents/architect`
+- Read `.codex/agents/implementer`
+- Read `.codex/agents/tester`
+- Read `.codex/agents/reviewer`
+- Stated which workflow phase is currently being executed
+
+Do not implement meaningful features until this checklist is completed.
+
+If local project agents cannot be run as separate sub-agents, still read their files and execute
+the workflow manually as named phases:
+
+1. Architect
+2. Implementer
+3. Tester
+4. Reviewer
+
 ## Workflow
 
 For every meaningful feature, run the task through all three agents:

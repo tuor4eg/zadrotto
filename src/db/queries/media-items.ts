@@ -1,10 +1,29 @@
-import { and, asc, eq, ne, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, not, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { franchises, mediaItems, ratings } from "@/db/schema";
+import { authors, franchises, mediaItems, ratings } from "@/db/schema";
+import type { MediaType } from "@/lib/media-types";
+import type { PublicationStatus } from "@/lib/publication-status";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
 import { resolveCoverUrl } from "@/lib/storage";
 
-const catalogMediaItemsQuery = () =>
+const publishedMediaItemCondition = eq(
+  mediaItems.publicationStatus,
+  PUBLISHED_PUBLICATION_STATUS,
+);
+
+const currentAuthorScoreSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<number | null>`(
+        select ${ratings.score}
+        from ${ratings}
+        where ${ratings.mediaItemId} = ${mediaItems.id}
+          and ${ratings.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<number | null>`null`;
+
+const catalogMediaItemsQuery = (currentAuthorId?: number) =>
   db
     .select({
       id: mediaItems.id,
@@ -20,10 +39,12 @@ const catalogMediaItemsQuery = () =>
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(publishedMediaItemCondition)
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -43,8 +64,8 @@ export type CatalogMediaItem = Awaited<
   ReturnType<typeof getCatalogMediaItems>
 >[number];
 
-export async function getCatalogMediaItems() {
-  const items = await catalogMediaItemsQuery();
+export async function getCatalogMediaItems(currentAuthorId?: number) {
+  const items = await catalogMediaItemsQuery(currentAuthorId);
 
   return items.map((item) => ({
     ...item,
@@ -52,19 +73,306 @@ export async function getCatalogMediaItems() {
   }));
 }
 
+export async function getAuthorMediaItems(authorId: number) {
+  return db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      mediaType: mediaItems.mediaType,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      publicationStatus: mediaItems.publicationStatus,
+      adminNote: mediaItems.adminNote,
+      updatedAt: mediaItems.updatedAt,
+    })
+    .from(mediaItems)
+    .where(eq(mediaItems.createdByAuthorId, authorId))
+    .orderBy(asc(mediaItems.title));
+}
+
+type AuthorMediaItemInput = {
+  authorId: number;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+  description: string | null;
+  mediaType: MediaType;
+  franchiseId: number | null;
+  releaseYear: number | null;
+  coverUrl: string | null;
+};
+
+export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
+  await db.insert(mediaItems).values({
+    code: input.code,
+    title: input.title,
+    originalTitle: input.originalTitle,
+    description: input.description,
+    mediaType: input.mediaType,
+    franchiseId: input.franchiseId,
+    releaseYear: input.releaseYear,
+    coverUrl: input.coverUrl,
+    createdByAuthorId: input.authorId,
+    publicationStatus: "private",
+  });
+}
+
+export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseId: mediaItems.franchiseId,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      publicationStatus: mediaItems.publicationStatus,
+      adminNote: mediaItems.adminNote,
+    })
+    .from(mediaItems)
+    .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.createdByAuthorId, authorId)))
+    .limit(1);
+
+  return item ?? null;
+}
+
+export async function getAuthorMediaItemForView(authorId: number, mediaItemId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseId: mediaItems.franchiseId,
+      franchiseCode: franchises.code,
+      franchiseTitle: franchises.title,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      publicationStatus: mediaItems.publicationStatus,
+      adminNote: mediaItems.adminNote,
+      averageScore: sql<number | null>`avg(${ratings.score})::float`,
+      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: currentAuthorScoreSql(authorId),
+    })
+    .from(mediaItems)
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.createdByAuthorId, authorId)))
+    .groupBy(
+      mediaItems.id,
+      mediaItems.code,
+      mediaItems.title,
+      mediaItems.originalTitle,
+      mediaItems.description,
+      mediaItems.mediaType,
+      mediaItems.franchiseId,
+      franchises.code,
+      franchises.title,
+      mediaItems.releaseYear,
+      mediaItems.coverUrl,
+      mediaItems.publicationStatus,
+      mediaItems.adminNote,
+    )
+    .limit(1);
+
+  return item ? { ...item, coverUrl: resolveCoverUrl(item.coverUrl) } : null;
+}
+
+export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "code"> & {
+  mediaItemId: number;
+}) {
+  await db
+    .update(mediaItems)
+    .set({
+      title: input.title,
+      originalTitle: input.originalTitle,
+      description: input.description,
+      mediaType: input.mediaType,
+      franchiseId: input.franchiseId,
+      releaseYear: input.releaseYear,
+      coverUrl: input.coverUrl,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(mediaItems.id, input.mediaItemId),
+        eq(mediaItems.createdByAuthorId, input.authorId),
+        not(publishedMediaItemCondition),
+      ),
+    );
+}
+
+export async function submitAuthorMediaItemForPublication(input: {
+  authorId: number;
+  mediaItemId: number;
+  nextStatus: Extract<PublicationStatus, "submitted" | "published">;
+}) {
+  const now = new Date();
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      publicationStatus: input.nextStatus,
+      submittedAt: input.nextStatus === "submitted" ? now : null,
+      reviewedByAdminId: null,
+      reviewedAt: null,
+      adminNote: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(mediaItems.id, input.mediaItemId),
+        eq(mediaItems.createdByAuthorId, input.authorId),
+        inArray(mediaItems.publicationStatus, ["private", "rejected"]),
+      ),
+    )
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      publicationStatus: mediaItems.publicationStatus,
+    });
+
+  return item ?? null;
+}
+
+export async function getSubmittedAuthorMediaItemsForAdmin() {
+  const items = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseTitle: franchises.title,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      submittedAt: mediaItems.submittedAt,
+      updatedAt: mediaItems.updatedAt,
+      authorName: authors.name,
+      authorCode: authors.code,
+    })
+    .from(mediaItems)
+    .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .where(eq(mediaItems.publicationStatus, "submitted"))
+    .orderBy(desc(mediaItems.submittedAt), desc(mediaItems.updatedAt));
+
+  return items.map((item) => ({
+    ...item,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+  }));
+}
+
+export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseId: mediaItems.franchiseId,
+      franchiseCode: franchises.code,
+      franchiseTitle: franchises.title,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      submittedAt: mediaItems.submittedAt,
+      authorName: authors.name,
+      authorCode: authors.code,
+      averageScore: sql<number | null>`avg(${ratings.score})::float`,
+      ratingsCount: sql<number>`count(${ratings.id})::int`,
+    })
+    .from(mediaItems)
+    .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, "submitted")))
+    .groupBy(
+      mediaItems.id,
+      mediaItems.code,
+      mediaItems.title,
+      mediaItems.originalTitle,
+      mediaItems.description,
+      mediaItems.mediaType,
+      mediaItems.franchiseId,
+      franchises.code,
+      franchises.title,
+      mediaItems.releaseYear,
+      mediaItems.coverUrl,
+      mediaItems.submittedAt,
+      authors.name,
+      authors.code,
+    )
+    .limit(1);
+
+  return item ? { ...item, coverUrl: resolveCoverUrl(item.coverUrl) } : null;
+}
+
+export async function reviewSubmittedAuthorMediaItem(input: {
+  mediaItemId: number;
+  adminUserId: number;
+  decision: Extract<PublicationStatus, "published" | "rejected">;
+}) {
+  const now = new Date();
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      publicationStatus: input.decision,
+      reviewedByAdminId: input.adminUserId,
+      reviewedAt: now,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(mediaItems.id, input.mediaItemId),
+        eq(mediaItems.publicationStatus, "submitted"),
+      ),
+    )
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      publicationStatus: mediaItems.publicationStatus,
+    });
+
+  return item ?? null;
+}
+
+export async function canViewMediaItemCover(objectKey: string, currentAuthorId?: number) {
+  const visibilityCondition = currentAuthorId
+    ? or(publishedMediaItemCondition, eq(mediaItems.createdByAuthorId, currentAuthorId))
+    : publishedMediaItemCondition;
+  const [item] = await db
+    .select({ id: mediaItems.id })
+    .from(mediaItems)
+    .where(and(eq(mediaItems.coverUrl, objectKey), visibilityCondition))
+    .limit(1);
+
+  return Boolean(item);
+}
+
 export async function getArchiveStats() {
   const [franchiseTotals, ratingTotals] = await Promise.all([
     db
       .select({
-        franchisesCount: sql<number>`count(${franchises.id})::int`,
+        franchisesCount: sql<number>`count(distinct ${mediaItems.franchiseId})::int`,
       })
-      .from(franchises),
+      .from(mediaItems)
+      .where(publishedMediaItemCondition),
     db
       .select({
         ratingsCount: sql<number>`count(${ratings.id})::int`,
         ratingAuthorsCount: sql<number>`count(distinct ${ratings.authorId})::int`,
       })
-      .from(ratings),
+      .from(ratings)
+      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
+      .where(publishedMediaItemCondition),
   ]);
 
   return {
@@ -74,7 +382,40 @@ export async function getArchiveStats() {
   };
 }
 
-export async function getMediaItemByCode(code: string) {
+export async function getMediaItemIdentityByCode(code: string) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+    })
+    .from(mediaItems)
+    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
+    .limit(1);
+
+  return item ?? null;
+}
+
+export async function getMediaItemIdentityForAuthorRating(code: string, authorId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      franchiseCode: franchises.code,
+    })
+    .from(mediaItems)
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .where(
+      and(
+        eq(mediaItems.code, code),
+        or(publishedMediaItemCondition, eq(mediaItems.createdByAuthorId, authorId)),
+      ),
+    )
+    .limit(1);
+
+  return item ?? null;
+}
+
+export async function getMediaItemByCode(code: string, currentAuthorId?: number) {
   const [item] = await db
     .select({
       id: mediaItems.id,
@@ -90,11 +431,12 @@ export async function getMediaItemByCode(code: string) {
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(eq(mediaItems.code, code))
+    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -127,6 +469,12 @@ export async function getOtherMediaItemsFromFranchise(
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
-    .where(and(eq(mediaItems.franchiseId, franchiseId), ne(mediaItems.id, currentMediaItemId)))
+    .where(
+      and(
+        eq(mediaItems.franchiseId, franchiseId),
+        ne(mediaItems.id, currentMediaItemId),
+        publishedMediaItemCondition,
+      ),
+    )
     .orderBy(asc(mediaItems.releaseYear), asc(mediaItems.title));
 }

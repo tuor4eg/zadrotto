@@ -1,3 +1,5 @@
+import { createHash, createHmac } from "node:crypto";
+
 type S3StorageEnv = {
   S3_ENDPOINT?: string;
   S3_REGION?: string;
@@ -52,6 +54,56 @@ function isAbsoluteUrl(value: string) {
   return /^https?:\/\//i.test(value);
 }
 
+function encodeS3Path(path: string) {
+  return path
+    .split("/")
+    .map((segment) => encodeURIComponent(segment))
+    .join("/");
+}
+
+function resolveLocalCoverPath(objectKey: string) {
+  return `/covers/${encodeS3Path(trimLeadingSlash(objectKey.trim()))}`;
+}
+
+function sha256Hex(value: Buffer | string) {
+  return createHash("sha256").update(value).digest("hex");
+}
+
+function hmacSha256(key: Buffer | string, value: string) {
+  return createHmac("sha256", key).update(value).digest();
+}
+
+function formatAmzDate(date: Date) {
+  return date.toISOString().replace(/[:-]|\.\d{3}/g, "");
+}
+
+function getDateStamp(amzDate: string) {
+  return amzDate.slice(0, 8);
+}
+
+function getSigningKey(secretAccessKey: string, dateStamp: string, region: string) {
+  const dateKey = hmacSha256(`AWS4${secretAccessKey}`, dateStamp);
+  const regionKey = hmacSha256(dateKey, region);
+  const serviceKey = hmacSha256(regionKey, "s3");
+
+  return hmacSha256(serviceKey, "aws4_request");
+}
+
+function getS3ObjectUrl(config: S3StorageConfig, objectKey: string) {
+  const normalizedObjectKey = trimLeadingSlash(objectKey.trim());
+  const encodedObjectKey = encodeS3Path(normalizedObjectKey);
+
+  if (config.forcePathStyle) {
+    return new URL(`${config.endpoint}/${config.bucket}/${encodedObjectKey}`);
+  }
+
+  const endpointUrl = new URL(config.endpoint);
+  endpointUrl.hostname = `${config.bucket}.${endpointUrl.hostname}`;
+  endpointUrl.pathname = `/${encodedObjectKey}`;
+
+  return endpointUrl;
+}
+
 export function getS3StorageConfig(env: S3StorageEnv = readStorageEnv()): S3StorageConfig | null {
   const endpoint = normalizeOptionalEnvValue(env.S3_ENDPOINT);
   const bucket = normalizeOptionalEnvValue(env.S3_BUCKET);
@@ -97,7 +149,7 @@ export function getCoverObjectPublicUrl(
   return `${publicBaseUrl}/${normalizedObjectKey}`;
 }
 
-export function resolveCoverUrl(coverUrl: string | null, env: S3StorageEnv = readStorageEnv()) {
+export function resolveCoverUrl(coverUrl: string | null) {
   const normalizedCoverUrl = coverUrl?.trim();
 
   if (!normalizedCoverUrl) {
@@ -108,5 +160,162 @@ export function resolveCoverUrl(coverUrl: string | null, env: S3StorageEnv = rea
     return normalizedCoverUrl;
   }
 
-  return getCoverObjectPublicUrl(normalizedCoverUrl, env);
+  return resolveLocalCoverPath(normalizedCoverUrl);
+}
+
+function buildS3AuthorizationHeader(input: {
+  config: S3StorageConfig;
+  method: "DELETE" | "GET" | "PUT";
+  url: URL;
+  amzDate: string;
+  payloadHash: string;
+  contentType?: string;
+}) {
+  const dateStamp = getDateStamp(input.amzDate);
+  const host = input.url.host;
+  const signedHeaders = input.contentType
+    ? "content-type;host;x-amz-content-sha256;x-amz-date"
+    : "host;x-amz-content-sha256;x-amz-date";
+  const canonicalHeaders = [
+    input.contentType ? `content-type:${input.contentType}` : null,
+    `host:${host}`,
+    `x-amz-content-sha256:${input.payloadHash}`,
+    `x-amz-date:${input.amzDate}`,
+    "",
+  ]
+    .filter((header): header is string => header !== null)
+    .join("\n");
+  const canonicalRequest = [
+    input.method,
+    input.url.pathname,
+    "",
+    canonicalHeaders,
+    signedHeaders,
+    input.payloadHash,
+  ].join("\n");
+  const credentialScope = `${dateStamp}/${input.config.region}/s3/aws4_request`;
+  const stringToSign = [
+    "AWS4-HMAC-SHA256",
+    input.amzDate,
+    credentialScope,
+    sha256Hex(canonicalRequest),
+  ].join("\n");
+  const signature = createHmac(
+    "sha256",
+    getSigningKey(input.config.secretAccessKey, dateStamp, input.config.region),
+  )
+    .update(stringToSign)
+    .digest("hex");
+
+  return [
+    `AWS4-HMAC-SHA256 Credential=${input.config.accessKeyId}/${credentialScope}`,
+    `SignedHeaders=${signedHeaders}`,
+    `Signature=${signature}`,
+  ].join(", ");
+}
+
+export async function fetchS3Object(input: {
+  objectKey: string;
+  env?: S3StorageEnv;
+}) {
+  const config = getS3StorageConfig(input.env);
+
+  if (!config) {
+    return null;
+  }
+
+  const url = getS3ObjectUrl(config, input.objectKey);
+  const amzDate = formatAmzDate(new Date());
+  const payloadHash = sha256Hex("");
+  const response = await fetch(url, {
+    method: "GET",
+    headers: {
+      Authorization: buildS3AuthorizationHeader({
+        config,
+        method: "GET",
+        url,
+        amzDate,
+        payloadHash,
+      }),
+      "X-Amz-Content-Sha256": payloadHash,
+      "X-Amz-Date": amzDate,
+    },
+  });
+
+  if (!response.ok) {
+    return null;
+  }
+
+  return response;
+}
+
+export async function uploadS3Object(input: {
+  objectKey: string;
+  body: Buffer;
+  contentType: string;
+  env?: S3StorageEnv;
+}) {
+  const config = getS3StorageConfig(input.env);
+
+  if (!config) {
+    throw new Error("S3 storage is not configured.");
+  }
+
+  const url = getS3ObjectUrl(config, input.objectKey);
+  const amzDate = formatAmzDate(new Date());
+  const payloadHash = sha256Hex(input.body);
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: buildS3AuthorizationHeader({
+        config,
+        method: "PUT",
+        url,
+        amzDate,
+        payloadHash,
+        contentType: input.contentType,
+      }),
+      "Content-Type": input.contentType,
+      "X-Amz-Content-Sha256": payloadHash,
+      "X-Amz-Date": amzDate,
+    },
+    body: new Uint8Array(input.body),
+  });
+
+  if (!response.ok) {
+    throw new Error(`S3 upload failed with status ${response.status}.`);
+  }
+}
+
+export async function deleteS3Object(input: {
+  objectKey: string;
+  env?: S3StorageEnv;
+}) {
+  const config = getS3StorageConfig(input.env);
+
+  if (!config) {
+    throw new Error("S3 storage is not configured.");
+  }
+
+  const url = getS3ObjectUrl(config, input.objectKey);
+  const amzDate = formatAmzDate(new Date());
+  const payloadHash = sha256Hex("");
+  const response = await fetch(url, {
+    method: "DELETE",
+    headers: {
+      Authorization: buildS3AuthorizationHeader({
+        config,
+        method: "DELETE",
+        url,
+        amzDate,
+        payloadHash,
+      }),
+      "X-Amz-Content-Sha256": payloadHash,
+      "X-Amz-Date": amzDate,
+    },
+  });
+
+  if (!response.ok && response.status !== 404) {
+    throw new Error(`S3 delete failed with status ${response.status}.`);
+  }
 }

@@ -3,9 +3,8 @@ import { describe, it } from "node:test";
 
 import {
   filterCatalogItems,
-  formatRatingsCount,
-  formatScore,
   matchesSearch,
+  parseAuthorRatingFilter,
   parseCatalogSort,
   parseMediaTypeFilter,
   sortCatalogItems,
@@ -24,6 +23,7 @@ const items: TestCatalogItem[] = [
     originalTitle: null,
     code: "disco-elysium",
     mediaType: "game",
+    currentAuthorScore: 100,
   },
   {
     id: 2,
@@ -31,6 +31,7 @@ const items: TestCatalogItem[] = [
     originalTitle: "Solaris",
     code: "solaris-1972",
     mediaType: "film",
+    currentAuthorScore: null,
   },
   {
     id: 3,
@@ -38,6 +39,7 @@ const items: TestCatalogItem[] = [
     originalTitle: "Dungeon Meshi",
     code: null,
     mediaType: "anime",
+    currentAuthorScore: 80,
   },
 ];
 
@@ -80,32 +82,6 @@ const sortableItems: TestSortableItem[] = [
   },
 ];
 
-describe("formatScore", () => {
-  it("formats stored integer scores as one decimal rating", () => {
-    assert.equal(formatScore(85), "8.5");
-    assert.equal(formatScore(100), "10.0");
-    assert.equal(formatScore(84), "8.4");
-  });
-
-  it("keeps empty score explicit", () => {
-    assert.equal(formatScore(null), "\u2014");
-  });
-});
-
-describe("formatRatingsCount", () => {
-  it("uses Russian plural forms for ratings count", () => {
-    assert.equal(formatRatingsCount(0), "0 оценок");
-    assert.equal(formatRatingsCount(1), "1 оценка");
-    assert.equal(formatRatingsCount(2), "2 оценки");
-    assert.equal(formatRatingsCount(5), "5 оценок");
-    assert.equal(formatRatingsCount(11), "11 оценок");
-    assert.equal(formatRatingsCount(14), "14 оценок");
-    assert.equal(formatRatingsCount(21), "21 оценка");
-    assert.equal(formatRatingsCount(22), "22 оценки");
-    assert.equal(formatRatingsCount(25), "25 оценок");
-  });
-});
-
 describe("matchesSearch", () => {
   it("searches title, original title, and code case-insensitively", () => {
     assert.equal(matchesSearch(items[0], "elysium"), true);
@@ -122,26 +98,45 @@ describe("matchesSearch", () => {
 describe("filterCatalogItems", () => {
   it("filters by trimmed search query across title, original title, and code", () => {
     assert.deepEqual(
-      filterCatalogItems(items, "  SOLAR  ", "all").map((item) => item.id),
+      filterCatalogItems(items, "  SOLAR  ", "all", "all").map((item) => item.id),
       [2],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "dungeon", "all").map((item) => item.id),
+      filterCatalogItems(items, "dungeon", "all", "all").map((item) => item.id),
       [3],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "disco-elysium", "all").map((item) => item.id),
+      filterCatalogItems(items, "disco-elysium", "all", "all").map((item) => item.id),
       [1],
     );
   });
 
   it("combines search with media type filter", () => {
     assert.deepEqual(
-      filterCatalogItems(items, "", "film").map((item) => item.id),
+      filterCatalogItems(items, "", "film", "all").map((item) => item.id),
       [2],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "solaris", "game").map((item) => item.id),
+      filterCatalogItems(items, "solaris", "game", "all").map((item) => item.id),
+      [],
+    );
+  });
+
+  it("filters by current author rating state", () => {
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "rated").map((item) => item.id),
+      [1, 3],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "unrated").map((item) => item.id),
+      [2],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "solar", "film", "unrated").map((item) => item.id),
+      [2],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "solar", "film", "rated").map((item) => item.id),
       [],
     );
   });
@@ -161,6 +156,15 @@ describe("parseMediaTypeFilter", () => {
     assert.equal(parseMediaTypeFilter("film"), "film");
     assert.equal(parseMediaTypeFilter("unknown"), "all");
     assert.equal(parseMediaTypeFilter(null), "all");
+  });
+});
+
+describe("parseAuthorRatingFilter", () => {
+  it("keeps known author rating filters and falls back to all", () => {
+    assert.equal(parseAuthorRatingFilter("rated"), "rated");
+    assert.equal(parseAuthorRatingFilter("unrated"), "unrated");
+    assert.equal(parseAuthorRatingFilter("unknown"), "all");
+    assert.equal(parseAuthorRatingFilter(null), "all");
   });
 });
 
