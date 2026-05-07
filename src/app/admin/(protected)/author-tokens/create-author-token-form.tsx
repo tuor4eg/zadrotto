@@ -1,7 +1,11 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import { Copy, KeyRound } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthors } from "@/db/queries/authors";
 import {
   createAuthorTokenAction,
@@ -41,20 +45,14 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
   }
 
   return (
-    <form action={formAction} className="mt-4 flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4">
       <div className="flex flex-col gap-2">
-        <label
-          htmlFor="author-token-author"
-          className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
-        >
-          Автор
-        </label>
-        <select
+        <Label htmlFor="author-token-author">Автор</Label>
+        <Select
           id="author-token-author"
           name="authorId"
           required
           disabled={!hasAuthors || isPending}
-          className="h-10 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-950 disabled:bg-zinc-100 disabled:text-zinc-400"
         >
           <option value="">Выбери автора</option>
           {authors.map((author) => (
@@ -62,47 +60,41 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
               {author.name} ({author.code})
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">
-        <label
-          htmlFor="author-token-label"
-          className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
-        >
-          Метка
-        </label>
-        <input
+        <Label htmlFor="author-token-label">Метка</Label>
+        <Input
           id="author-token-label"
           name="label"
           type="text"
           required
           disabled={!hasAuthors || isPending}
-          className="h-10 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-950 disabled:bg-zinc-100 disabled:text-zinc-400"
         />
       </div>
 
       {state.error ? (
-        <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {state.error}
-        </p>
+        <Alert variant="destructive">{state.error}</Alert>
       ) : null}
 
       {state.accessToken ? (
-        <div className="border border-amber-200 bg-amber-50 p-3">
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <div className="text-[10px] font-semibold uppercase tracking-[0.16em] text-amber-700">
+            <div className="text-xs font-medium text-amber-800">
               Токен доступа показывается один раз
             </div>
-            <button
+            <Button
               type="button"
+              variant="outline"
+              size="sm"
               onClick={copyAccessToken}
-              className="border border-amber-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-amber-800 transition-colors hover:border-zinc-950 hover:text-zinc-950"
             >
+              <Copy />
               Скопировать
-            </button>
+            </Button>
           </div>
-          <code className="mt-2 block break-all font-mono text-xs leading-5 text-zinc-950">
+          <code className="mt-2 block break-all font-mono text-xs leading-5 text-stone-950">
             {state.accessToken}
           </code>
           {isCopied ? (
@@ -114,16 +106,16 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
         </div>
       ) : null}
 
-      <button
+      <Button
         type="submit"
         disabled={!hasAuthors || isPending}
-        className="h-10 border border-zinc-950 bg-zinc-950 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-zinc-950 disabled:border-zinc-300 disabled:bg-zinc-200 disabled:text-zinc-400"
       >
+        <KeyRound />
         {isPending ? "Создаем" : "Создать токен"}
-      </button>
+      </Button>
 
       {!hasAuthors ? (
-        <p className="text-sm text-zinc-500">Сначала создай хотя бы одного автора.</p>
+        <p className="text-sm text-stone-500">Сначала создай хотя бы одного автора.</p>
       ) : null}
     </form>
   );

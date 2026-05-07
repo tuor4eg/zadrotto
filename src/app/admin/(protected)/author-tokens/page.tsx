@@ -1,7 +1,22 @@
+import { KeyRound } from "lucide-react";
+
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthorAccessTokens } from "@/db/queries/author-access-tokens";
 import { getAuthors } from "@/db/queries/authors";
+import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { EmptyState, PageHeader } from "../admin-ui";
 import { revokeAuthorTokenAction } from "./actions";
 import { CreateAuthorTokenForm } from "./create-author-token-form";
+
+type AdminAuthorTokensPageProps = {
+  searchParams: Promise<{
+    updated?: string;
+    error?: string;
+  }>;
+};
 
 function formatDate(value: Date | null) {
   if (!value) {
@@ -19,30 +34,37 @@ function formatStatus(revokedAt: Date | null) {
   return revokedAt ? "отозван" : "активен";
 }
 
-export default async function AdminAuthorTokensPage() {
-  const [tokens, authors] = await Promise.all([getAuthorAccessTokens(), getAuthors()]);
+export default async function AdminAuthorTokensPage({
+  searchParams,
+}: AdminAuthorTokensPageProps) {
+  const [tokens, authors, params] = await Promise.all([
+    getAuthorAccessTokens(),
+    getAuthors(),
+    searchParams,
+  ]);
+  const errorMessage = getAdminFormErrorMessage(params.error);
+  const successMessage = params.updated === "1" ? "Токен отозван." : null;
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <section className="min-w-0">
-        <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-          <div>
-            <h2 className="text-xl font-semibold text-zinc-950">Токены авторов</h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              Токены доступа для будущих авторских сценариев.
-            </p>
-          </div>
-          <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-            {tokens.length} всего
-          </div>
-        </div>
+        <PageHeader
+          title="Токены авторов"
+          description="Токены доступа для будущих авторских сценариев."
+          aside={<Badge variant="outline">{tokens.length} всего</Badge>}
+        />
+
+        {successMessage ? (
+          <Alert variant="success" className="mt-5">{successMessage}</Alert>
+        ) : null}
+        {errorMessage ? (
+          <Alert variant="destructive" className="mt-5">{errorMessage}</Alert>
+        ) : null}
 
         {tokens.length === 0 ? (
-          <div className="border border-zinc-200 p-5 text-sm text-zinc-500">
-            Токены пока не созданы.
-          </div>
+          <EmptyState className="mt-5">Токены пока не созданы.</EmptyState>
         ) : (
-          <div className="divide-y divide-zinc-200 border border-zinc-200">
+          <div className="mt-5 divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white">
             {tokens.map((token) => {
               const status = formatStatus(token.revokedAt);
 
@@ -52,35 +74,32 @@ export default async function AdminAuthorTokensPage() {
                   className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_150px_150px_90px_auto]"
                 >
                   <div className="min-w-0">
-                    <div className="truncate text-sm font-medium text-zinc-950">
+                    <div className="truncate text-sm font-medium text-stone-950">
                       {token.authorName}
                     </div>
-                    <div className="mt-1 font-mono text-xs text-zinc-500">{token.authorCode}</div>
+                    <div className="mt-1 font-mono text-xs text-stone-500">{token.authorCode}</div>
                   </div>
-                  <div className="min-w-0 text-sm text-zinc-700">{token.label}</div>
-                  <div className="text-xs tabular-nums text-zinc-500">
+                  <div className="min-w-0 text-sm text-stone-700">{token.label}</div>
+                  <div className="text-xs tabular-nums text-stone-500">
                     {formatDate(token.createdAt)}
                   </div>
-                  <div className="text-xs tabular-nums text-zinc-500">
+                  <div className="text-xs tabular-nums text-stone-500">
                     {formatDate(token.lastUsedAt)}
                   </div>
                   <div
-                    className={`w-fit border px-2 py-1 text-xs font-medium ${
-                      status === "активен"
-                        ? "border-emerald-200 bg-emerald-50 text-emerald-700"
-                        : "border-zinc-200 bg-zinc-100 text-zinc-500"
-                    }`}
+                    className="w-fit"
                   >
-                    {status}
+                    <Badge variant={status === "активен" ? "positive" : "default"}>{status}</Badge>
                   </div>
                   <form action={revokeAuthorTokenAction}>
                     <input type="hidden" name="tokenId" value={token.id} />
-                    <button
+                    <Button
                       type="submit"
-                      className="border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-red-700 hover:text-red-700"
+                      variant="destructive"
+                      size="sm"
                     >
                       Отозвать
-                    </button>
+                    </Button>
                   </form>
                 </div>
               );
@@ -89,12 +108,17 @@ export default async function AdminAuthorTokensPage() {
         )}
       </section>
 
-      <aside className="border border-zinc-200 p-4">
-        <h2 className="text-sm font-semibold uppercase tracking-[0.16em] text-zinc-500">
-          Новый токен
-        </h2>
-        <CreateAuthorTokenForm authors={authors} />
-      </aside>
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-base">
+            <KeyRound className="size-4" />
+            Новый токен
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CreateAuthorTokenForm authors={authors} />
+        </CardContent>
+      </Card>
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 
 import { reviewSubmittedAuthorMediaItem } from "@/db/queries/media-items";
 import { requireAdminUser } from "@/lib/admin-auth";
+import { getAdminFormErrorCode } from "@/lib/app-error-messages";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -25,11 +26,18 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
     redirect("/admin/media-review?error=invalid-review");
   }
 
-  const item = await reviewSubmittedAuthorMediaItem({
-    mediaItemId,
-    adminUserId: adminUser.id,
-    decision,
-  });
+  let item;
+
+  try {
+    item = await reviewSubmittedAuthorMediaItem({
+      mediaItemId,
+      adminUserId: adminUser.id,
+      decision,
+    });
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/media-review?error=${getAdminFormErrorCode(error)}`);
+  }
 
   if (!item) {
     redirect("/admin/media-review?error=invalid-review");

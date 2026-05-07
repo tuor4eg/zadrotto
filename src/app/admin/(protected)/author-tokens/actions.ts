@@ -8,6 +8,10 @@ import {
   revokeAuthorAccessToken,
 } from "@/db/queries/author-access-tokens";
 import { requireAdminUser } from "@/lib/admin-auth";
+import {
+  getAdminFormErrorCode,
+  getAdminFormErrorMessage,
+} from "@/lib/app-error-messages";
 import { generateAuthorAccessToken, hashAuthorAccessToken } from "@/lib/author-access-token";
 
 export type CreateAuthorTokenState = {
@@ -44,12 +48,21 @@ export async function createAuthorTokenAction(
 
   const accessToken = generateAuthorAccessToken();
 
-  await createAuthorAccessToken({
-    authorId,
-    tokenHash: hashAuthorAccessToken(accessToken),
-    label,
-    createdByAdminId: adminUser.id,
-  });
+  try {
+    await createAuthorAccessToken({
+      authorId,
+      tokenHash: hashAuthorAccessToken(accessToken),
+      label,
+      createdByAdminId: adminUser.id,
+    });
+  } catch (error) {
+    console.error(error);
+
+    return {
+      accessToken: null,
+      error: getAdminFormErrorMessage(getAdminFormErrorCode(error)),
+    };
+  }
 
   revalidatePath("/admin/author-tokens");
 
@@ -65,9 +78,14 @@ export async function revokeAuthorTokenAction(formData: FormData) {
   const tokenId = getFormNumber(formData, "tokenId");
 
   if (tokenId) {
-    await revokeAuthorAccessToken(tokenId);
+    try {
+      await revokeAuthorAccessToken(tokenId);
+    } catch (error) {
+      console.error(error);
+      redirect(`/admin/author-tokens?error=${getAdminFormErrorCode(error)}`);
+    }
   }
 
   revalidatePath("/admin/author-tokens");
-  redirect("/admin/author-tokens");
+  redirect("/admin/author-tokens?updated=1");
 }

@@ -1,6 +1,8 @@
 import { notFound } from "next/navigation";
+import { Check, X } from "lucide-react";
 
 import { MediaItemDetails } from "@/app/media-item-details";
+import { Button } from "@/components/ui/button";
 import { getSubmittedAuthorMediaItemForAdminView } from "@/db/queries/media-items";
 import { reviewAuthorMediaItemAction } from "../actions";
 
@@ -26,20 +28,18 @@ function ReviewButton({
   mediaItemId,
   decision,
   children,
-  className,
 }: {
   mediaItemId: number;
   decision: "published" | "rejected";
   children: React.ReactNode;
-  className: string;
 }) {
   return (
     <form action={reviewAuthorMediaItemAction}>
       <input type="hidden" name="mediaItemId" value={mediaItemId} />
       <input type="hidden" name="decision" value={decision} />
-      <button type="submit" className={className}>
+      <Button type="submit" variant={decision === "published" ? "positive" : "destructive"}>
         {children}
-      </button>
+      </Button>
     </form>
   );
 }
@@ -70,21 +70,21 @@ export default async function AdminMediaReviewItemPage({
           <ReviewButton
             mediaItemId={item.id}
             decision="published"
-            className="w-fit border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-emerald-700"
           >
+            <Check />
             Одобрить
           </ReviewButton>
           <ReviewButton
             mediaItemId={item.id}
             decision="rejected"
-            className="w-fit border border-red-700 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700 transition-colors hover:bg-red-700 hover:text-white"
           >
+            <X />
             Отклонить
           </ReviewButton>
         </>
       }
       noteSlot={
-        <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-6 text-zinc-600">
+        <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm leading-6 text-stone-600">
           Автор: {item.authorName} ({item.authorCode}). Отправлено: {formatDate(item.submittedAt)}.
         </div>
       }

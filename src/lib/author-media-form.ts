@@ -1,4 +1,5 @@
 import type { PublicationStatus } from "@/lib/publication-status";
+import { generateEntityCode, slugifyCodePart } from "@/lib/generated-code";
 
 export const AUTHOR_EDITABLE_PUBLICATION_STATUSES = [
   "private",
@@ -71,11 +72,15 @@ export function buildAuthorCoverObjectKey(input: {
 }
 
 export function buildAuthorMediaCode(input: {
-  authorCode: string;
+  mediaType: string;
   title: string;
   uniqueId: string;
 }) {
-  return `${input.authorCode}-${slugifyMediaTitle(input.title)}-${input.uniqueId}`;
+  return generateEntityCode({
+    type: input.mediaType,
+    name: input.title,
+    uniqueId: input.uniqueId,
+  });
 }
 
 export function parseOptionalReleaseYear(value: string) {
@@ -111,14 +116,5 @@ export function parseOptionalPositiveInteger(value: string) {
 }
 
 export function slugifyMediaTitle(title: string) {
-  const slug = title
-    .trim()
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 48);
-
-  return slug || "archive-entry";
+  return slugifyCodePart(title);
 }

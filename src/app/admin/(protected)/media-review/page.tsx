@@ -1,7 +1,13 @@
 import Link from "next/link";
+import { Check, Eye, X } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getSubmittedAuthorMediaItemsForAdmin } from "@/db/queries/media-items";
+import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { EmptyState, PageHeader } from "../admin-ui";
 import { reviewAuthorMediaItemAction } from "./actions";
 
 type AdminMediaReviewPageProps = {
@@ -33,50 +39,39 @@ export default async function AdminMediaReviewPage({
   ]);
   const successMessage =
     params.approved === "1"
-      ? "Тайтл опубликован."
+      ? "Запись опубликована."
       : params.rejected === "1"
-        ? "Тайтл отклонен."
+        ? "Запись отклонена."
         : null;
   const errorMessage =
-    params.error === "invalid-review" ? "Не удалось обработать заявку." : null;
+    getAdminFormErrorMessage(params.error) ??
+    (params.error === "invalid-review" ? "Не удалось обработать заявку." : null);
 
   return (
     <div className="flex flex-col gap-5">
-      <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="text-xl font-semibold text-zinc-950">Заявки на публикацию</h2>
-          <p className="mt-1 text-sm text-zinc-500">
-            Авторские тайтлы, которые ждут проверки перед публикацией.
-          </p>
-        </div>
-        <div className="text-xs font-medium uppercase tracking-[0.16em] text-zinc-400">
-          {items.length} на проверке
-        </div>
-      </div>
+      <PageHeader
+        title="Заявки на публикацию"
+        description="Авторские записи, которые ждут проверки перед публикацией."
+        aside={<Badge variant="warning">{items.length} на проверке</Badge>}
+      />
 
       {successMessage ? (
-        <p className="border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-700">
-          {successMessage}
-        </p>
+        <Alert variant="success">{successMessage}</Alert>
       ) : null}
       {errorMessage ? (
-        <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-          {errorMessage}
-        </p>
+        <Alert variant="destructive">{errorMessage}</Alert>
       ) : null}
 
       {items.length === 0 ? (
-        <div className="border border-zinc-200 p-5 text-sm text-zinc-500">
-          Заявок на проверку сейчас нет.
-        </div>
+        <EmptyState>Заявок на проверку сейчас нет.</EmptyState>
       ) : (
-        <div className="divide-y divide-zinc-200 border border-zinc-200">
+        <div className="divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white">
           {items.map((item) => (
             <article
               key={item.id}
               className="grid gap-4 p-4 xl:grid-cols-[120px_minmax(0,1fr)_170px]"
             >
-              <div className="aspect-square bg-zinc-100">
+              <div className="aspect-square overflow-hidden rounded-md bg-stone-100">
                 {item.coverUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -85,30 +80,30 @@ export default async function AdminMediaReviewPage({
                     className="h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="flex h-full w-full items-center justify-center border border-zinc-200 text-[10px] font-semibold uppercase tracking-[0.14em] text-zinc-400">
+                  <div className="flex h-full w-full items-center justify-center border border-stone-200 text-xs font-medium text-stone-400">
                     Без обложки
                   </div>
                 )}
               </div>
 
               <div className="min-w-0">
-                <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-red-700">
-                  <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
-                  {item.releaseYear ? <span>{item.releaseYear}</span> : null}
-                  {item.franchiseTitle ? <span>{item.franchiseTitle}</span> : null}
+                <div className="flex flex-wrap gap-2">
+                  <Badge variant="default">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                  {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
+                  {item.franchiseTitle ? <Badge variant="outline">{item.franchiseTitle}</Badge> : null}
                 </div>
-                <h3 className="mt-2 text-lg font-semibold leading-6 text-zinc-950">
+                <h3 className="mt-2 text-lg font-semibold leading-6 text-stone-950">
                   {item.title}
                 </h3>
                 {item.originalTitle ? (
-                  <p className="mt-1 text-sm text-zinc-500">{item.originalTitle}</p>
+                  <p className="mt-1 text-sm text-stone-500">{item.originalTitle}</p>
                 ) : null}
                 {item.description ? (
-                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-zinc-600">
+                  <p className="mt-3 line-clamp-3 text-sm leading-6 text-stone-600">
                     {item.description}
                   </p>
                 ) : null}
-                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-zinc-500">
+                <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
                   <span>
                     Автор: {item.authorName} ({item.authorCode})
                   </span>
@@ -120,29 +115,34 @@ export default async function AdminMediaReviewPage({
               <div className="flex flex-col gap-2 xl:items-stretch xl:justify-end">
                 <Link
                   href={`/admin/media-review/${item.id}`}
-                  className="flex h-10 w-full items-center justify-center border border-zinc-300 bg-white px-3 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                  className={buttonVariants({ variant: "outline" })}
                 >
+                  <Eye />
                   Смотреть
                 </Link>
                 <form action={reviewAuthorMediaItemAction}>
                   <input type="hidden" name="mediaItemId" value={item.id} />
                   <input type="hidden" name="decision" value="published" />
-                  <button
+                  <Button
                     type="submit"
-                    className="h-10 w-full border border-emerald-700 bg-emerald-700 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-emerald-700"
+                    variant="positive"
+                    className="w-full"
                   >
+                    <Check />
                     Одобрить
-                  </button>
+                  </Button>
                 </form>
                 <form action={reviewAuthorMediaItemAction}>
                   <input type="hidden" name="mediaItemId" value={item.id} />
                   <input type="hidden" name="decision" value="rejected" />
-                  <button
+                  <Button
                     type="submit"
-                    className="h-10 w-full border border-red-700 bg-white px-3 text-xs font-semibold uppercase tracking-[0.16em] text-red-700 transition-colors hover:bg-red-700 hover:text-white"
+                    variant="destructive"
+                    className="w-full"
                   >
+                    <X />
                     Отклонить
-                  </button>
+                  </Button>
                 </form>
               </div>
             </article>

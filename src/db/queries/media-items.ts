@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, ne, not, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, ne, not, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { authors, franchises, mediaItems, ratings } from "@/db/schema";
@@ -92,6 +92,57 @@ export async function getAuthorMediaItems(authorId: number) {
     .orderBy(asc(mediaItems.title));
 }
 
+export async function getAdminMediaItems() {
+  const items = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseId: mediaItems.franchiseId,
+      franchiseCode: franchises.code,
+      franchiseTitle: franchises.title,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      publicationStatus: mediaItems.publicationStatus,
+      createdByAuthorId: mediaItems.createdByAuthorId,
+      authorName: authors.name,
+      authorCode: authors.code,
+      averageScore: sql<number | null>`avg(${ratings.score})::float`,
+      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: sql<number | null>`null`,
+    })
+    .from(mediaItems)
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .groupBy(
+      mediaItems.id,
+      mediaItems.code,
+      mediaItems.title,
+      mediaItems.originalTitle,
+      mediaItems.description,
+      mediaItems.mediaType,
+      mediaItems.franchiseId,
+      franchises.code,
+      franchises.title,
+      mediaItems.releaseYear,
+      mediaItems.coverUrl,
+      mediaItems.publicationStatus,
+      mediaItems.createdByAuthorId,
+      authors.name,
+      authors.code,
+    )
+    .orderBy(asc(mediaItems.title));
+
+  return items.map((item) => ({
+    ...item,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+  }));
+}
+
 type AuthorMediaItemInput = {
   authorId: number;
   code: string;
@@ -138,6 +189,36 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
     .limit(1);
 
   return item ?? null;
+}
+
+export async function getAdminMediaItemForEdit(mediaItemId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      description: mediaItems.description,
+      mediaType: mediaItems.mediaType,
+      franchiseId: mediaItems.franchiseId,
+      releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
+      publicationStatus: mediaItems.publicationStatus,
+      adminNote: mediaItems.adminNote,
+      authorName: authors.name,
+      authorCode: authors.code,
+    })
+    .from(mediaItems)
+    .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+    .where(eq(mediaItems.id, mediaItemId))
+    .limit(1);
+
+  return item
+    ? {
+        ...item,
+        coverUrl: resolveCoverUrl(item.coverUrl),
+      }
+    : null;
 }
 
 export async function getAuthorMediaItemForView(authorId: number, mediaItemId: number) {
@@ -208,6 +289,30 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
     );
 }
 
+export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId" | "code"> & {
+  mediaItemId: number;
+}) {
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      title: input.title,
+      originalTitle: input.originalTitle,
+      description: input.description,
+      mediaType: input.mediaType,
+      franchiseId: input.franchiseId,
+      releaseYear: input.releaseYear,
+      coverUrl: input.coverUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(mediaItems.id, input.mediaItemId))
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+    });
+
+  return item ?? null;
+}
+
 export async function submitAuthorMediaItemForPublication(input: {
   authorId: number;
   mediaItemId: number;
@@ -267,6 +372,25 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
     ...item,
     coverUrl: resolveCoverUrl(item.coverUrl),
   }));
+}
+
+export async function getAdminMediaItemIdentityById(mediaItemId: number) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      franchiseId: mediaItems.franchiseId,
+      franchiseCode: franchises.code,
+      createdByAuthorId: mediaItems.createdByAuthorId,
+      publicationStatus: mediaItems.publicationStatus,
+      coverUrl: mediaItems.coverUrl,
+    })
+    .from(mediaItems)
+    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .where(eq(mediaItems.id, mediaItemId))
+    .limit(1);
+
+  return item ?? null;
 }
 
 export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: number) {
@@ -339,6 +463,28 @@ export async function reviewSubmittedAuthorMediaItem(input: {
       id: mediaItems.id,
       code: mediaItems.code,
       publicationStatus: mediaItems.publicationStatus,
+    });
+
+  return item ?? null;
+}
+
+export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
+  const [item] = await db
+    .delete(mediaItems)
+    .where(
+      and(
+        eq(mediaItems.id, mediaItemId),
+        notExists(
+          db
+            .select({ id: ratings.id })
+            .from(ratings)
+            .where(eq(ratings.mediaItemId, mediaItems.id)),
+        ),
+      ),
+    )
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
     });
 
   return item ?? null;

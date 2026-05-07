@@ -1,7 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
+import { ArrowLeft, LogIn } from "lucide-react";
 
+import { Alert } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input, Label } from "@/components/ui/form";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
+import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
 import { loginAdmin } from "./actions";
 
 type AdminLoginPageProps = {
@@ -18,75 +24,65 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   }
 
   const { error } = await searchParams;
-  const hasInvalidCredentialsError = error === "invalid";
+  const errorMessage =
+    getAdminFormErrorMessage(error) ??
+    (error === "invalid" ? "Неверный логин или пароль." : null);
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-6 text-zinc-950 sm:px-6 lg:px-10">
+    <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-sm flex-col justify-center gap-6">
         <Link
           href="/"
-          className="w-fit border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+          className={buttonVariants({ variant: "ghost", size: "sm" })}
         >
+          <ArrowLeft />
           К архиву
         </Link>
 
-        <section className="border border-zinc-300 bg-white p-5 sm:p-6">
-          <div className="mb-5">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-red-700">
-              Админка
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold leading-tight text-zinc-950">Вход</h1>
-          </div>
+        <Card>
+          <CardHeader>
+            <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">Админка</p>
+            <CardTitle className="text-3xl">Вход</CardTitle>
+            <CardDescription>Внутренний доступ к управлению архивом.</CardDescription>
+          </CardHeader>
 
+          <CardContent>
           <form action={loginAdmin} className="flex flex-col gap-4">
             <div className="flex flex-col gap-2">
-              <label
-                htmlFor="admin-login"
-                className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
-              >
-                Логин
-              </label>
-              <input
+              <Label htmlFor="admin-login">Логин</Label>
+              <Input
                 id="admin-login"
                 name="login"
                 type="text"
                 autoComplete="username"
                 required
-                className="h-10 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-950"
               />
             </div>
 
             <div className="flex flex-col gap-2">
-              <label
-                htmlFor="admin-password"
-                className="text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400"
-              >
-                Пароль
-              </label>
-              <input
+              <Label htmlFor="admin-password">Пароль</Label>
+              <Input
                 id="admin-password"
                 name="password"
                 type="password"
                 autoComplete="current-password"
                 required
-                className="h-10 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-950"
               />
             </div>
 
-            {hasInvalidCredentialsError ? (
-              <p className="border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">
-                Неверный логин или пароль.
-              </p>
+            {errorMessage ? (
+              <Alert variant="destructive">{errorMessage}</Alert>
             ) : null}
 
-            <button
+            <Button
               type="submit"
-              className="h-10 border border-zinc-950 bg-zinc-950 px-3 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-zinc-950"
             >
+              <LogIn />
               Войти
-            </button>
+            </Button>
           </form>
-        </section>
+          </CardContent>
+        </Card>
       </div>
     </main>
   );

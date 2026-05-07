@@ -12,6 +12,7 @@ import {
   slugifyMediaTitle,
   validateCoverFileInput,
 } from "../src/lib/author-media-form";
+import { generateEntityCode, slugifyCodePart } from "../src/lib/generated-code";
 
 describe("author media form helpers", () => {
   it("normalizes optional strings to null when empty", () => {
@@ -60,14 +61,14 @@ describe("author media form helpers", () => {
     );
   });
 
-  it("builds author media codes from author code, title slug, and unique id", () => {
+  it("builds media codes from media type, title slug, and unique id", () => {
     assert.equal(
       buildAuthorMediaCode({
-        authorCode: "pasha",
+        mediaType: "film",
         title: "The Matrix: Reloaded",
         uniqueId: "abcd1234",
       }),
-      "pasha-the-matrix-reloaded-abcd1234",
+      "film-the-matrix-reloaded-abcd1234",
     );
   });
 
@@ -88,7 +89,19 @@ describe("author media form helpers", () => {
 
   it("builds an ascii slug base from a title with a stable fallback", () => {
     assert.equal(slugifyMediaTitle("The Matrix: Reloaded"), "the-matrix-reloaded");
-    assert.equal(slugifyMediaTitle("  !!!  "), "archive-entry");
+    assert.equal(slugifyMediaTitle("  !!!  "), "item");
+  });
+
+  it("builds generated codes from type, name, and unique id", () => {
+    assert.equal(slugifyCodePart("Автор: Паша"), "avtor-pasha");
+    assert.equal(
+      generateEntityCode({
+        type: "series",
+        name: "Half-Life",
+        uniqueId: "hash123",
+      }),
+      "series-half-life-hash123",
+    );
   });
 
   it("allows authors to edit only non-published records", () => {

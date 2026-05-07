@@ -29,9 +29,39 @@ export async function getAuthorById(id: number) {
   return author ?? null;
 }
 
-export async function createAuthor(name: string, code: string) {
-  await db.insert(authors).values({
-    name,
-    code,
-  });
+export async function createAuthor(input: {
+  code: string;
+  name: string;
+}) {
+  const [author] = await db
+    .insert(authors)
+    .values({
+      name: input.name,
+      code: input.code,
+    })
+    .returning({
+      id: authors.id,
+      code: authors.code,
+    });
+
+  return author;
+}
+
+export async function updateAuthor(input: {
+  id: number;
+  name: string;
+}) {
+  const [author] = await db
+    .update(authors)
+    .set({
+      name: input.name,
+      updatedAt: new Date(),
+    })
+    .where(eq(authors.id, input.id))
+    .returning({
+      id: authors.id,
+      code: authors.code,
+    });
+
+  return author ?? null;
 }

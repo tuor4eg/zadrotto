@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 
 import { getAdminUserByLogin, updateAdminLastLoginAt } from "@/db/queries/admin-users";
 import { setAdminSessionCookie } from "@/lib/admin-auth";
+import { getAdminFormErrorCode } from "@/lib/app-error-messages";
 import { verifyPassword } from "@/lib/password";
 
 function getFormString(formData: FormData, key: string) {
@@ -15,7 +16,15 @@ function getFormString(formData: FormData, key: string) {
 export async function loginAdmin(formData: FormData) {
   const login = getFormString(formData, "login");
   const password = getFormString(formData, "password");
-  const adminUser = login ? await getAdminUserByLogin(login) : null;
+  let adminUser = null;
+
+  try {
+    adminUser = login ? await getAdminUserByLogin(login) : null;
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/login?error=${getAdminFormErrorCode(error)}`);
+  }
+
   const isValidPassword =
     adminUser && password ? await verifyPassword(password, adminUser.passwordHash) : false;
 
@@ -23,7 +32,13 @@ export async function loginAdmin(formData: FormData) {
     redirect("/admin/login?error=invalid");
   }
 
-  await updateAdminLastLoginAt(adminUser.id);
+  try {
+    await updateAdminLastLoginAt(adminUser.id);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/login?error=${getAdminFormErrorCode(error)}`);
+  }
+
   await setAdminSessionCookie(adminUser.id);
 
   redirect("/admin");

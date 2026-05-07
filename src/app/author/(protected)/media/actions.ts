@@ -148,7 +148,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
   }
 
   const code = buildAuthorMediaCode({
-    authorCode: author.code,
+    mediaType: form.value.mediaType,
     title: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });

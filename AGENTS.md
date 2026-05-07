@@ -4,7 +4,7 @@
 
 Specialized agents are stored in `.codex/agents`.
 
-Use these existing agents for meaningful work:
+Use existing agents when their role is directly relevant:
 
 - `architect` — architecture, data model, product structure, feature boundaries
 - `implementer` — code implementation
@@ -13,38 +13,42 @@ Use these existing agents for meaningful work:
 
 Do not generate new temporary agents for these roles.
 
-## Mandatory start checklist
+## Context discipline
 
-Before any meaningful feature, explicitly state that you have completed this checklist:
+Keep context small.
 
-- Read `PROJECT_CONTEXT.md`
-- Checked relevant `.codex/skills`
-- Read `.codex/agents/architect`
-- Read `.codex/agents/implementer`
-- Read `.codex/agents/tester`
-- Read `.codex/agents/reviewer`
-- Stated which workflow phase is currently being executed
+Do not read the whole repository unless explicitly required.
 
-Do not implement meaningful features until this checklist is completed.
+Do not load all agents or all skills by default.
 
-If local project agents cannot be run as separate sub-agents, still read their files and execute
-the workflow manually as named phases:
+Before meaningful work:
 
-1. Architect
-2. Implementer
-3. Tester
-4. Reviewer
+- read `PROJECT_CONTEXT.md`
+- choose only the agents needed for the task
+- check only directly relevant `.codex/skills`
+- state the current workflow phase
+
+If local project agents cannot be run as separate sub-agents, use only the relevant role instructions manually.
 
 ## Workflow
 
-For every meaningful feature, run the task through all three agents:
+Choose the minimal workflow needed for the task:
 
-1. `architect` — clarify the approach and boundaries
-2. `implementer` — implement the change
-3. `tester` — add or update useful tests when the change has testable behavior
-4. `reviewer` — review the result before considering it done
+- architecture, data model, product boundaries → use `architect`
+- code implementation → use `implementer`
+- testable behavior → use `tester`
+- finished diff, risky behavior, regressions → use `reviewer`
 
-This applies to changes that affect:
+Use the full workflow:
+
+1. `architect`
+2. `implementer`
+3. `tester`
+4. `reviewer`
+
+only for large or risky features.
+
+This may apply to changes that affect:
 
 - data model
 - database schema
@@ -69,7 +73,7 @@ Use `tester` especially for changes that affect:
 
 ## Small changes
 
-For small mechanical changes, using all agents is not required.
+For small mechanical changes, do not use the full workflow.
 
 Examples:
 
@@ -82,9 +86,11 @@ Examples:
 
 ## Project context
 
-All agents must read `PROJECT_CONTEXT.md` before making decisions.
-
 `PROJECT_CONTEXT.md` is the main source of project meaning and current direction.
+
+Read it before making product or architectural decisions.
+
+For small mechanical changes, reading it is optional unless the change affects project behavior or meaning.
 
 ## General rules
 
@@ -100,15 +106,30 @@ Respond to the user in Russian unless asked otherwise.
 
 ## Skills
 
-Before implementation, check `.codex/skills` and use relevant existing skills.
+Read `.codex/SKILLS_INDEX.md` when choosing a skill.
+Open a skill file only when it directly matches the task.
+Do not scan all skill files.
+
+Use a skill only when the task clearly matches it.
+
+Do not scan all skills for every task.
+
+Open only the directly relevant skill file.
 
 ## DB changes
 
-At this point we have no production db, just local. So, do not create new migration, but change existing and clear DB.
-I will change this rule after first production deploy.
+At this point we have no production DB, only local.
 
-<!-- BEGIN:nextjs-agent-rules -->
-# This is NOT the Next.js you know
+Do not create new migrations yet. Change the existing schema/migration files and clear the local DB when needed.
 
-This version has breaking changes — APIs, conventions, and file structure may all differ from your training data. Read the relevant guide in `node_modules/next/dist/docs/` before writing any code. Heed deprecation notices.
-<!-- END:nextjs-agent-rules -->
+This rule will change after the first production deploy.
+
+## Next.js
+
+This project may use a Next.js version with breaking changes.
+
+Prefer project-local patterns already used in the codebase.
+
+Read the relevant guide in `node_modules/next/dist/docs/` only when using unfamiliar or version-sensitive Next.js APIs.
+
+Do not scan Next.js docs for routine changes.

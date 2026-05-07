@@ -24,3 +24,44 @@ body {
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
 }
+
+.archive-page {
+  background:
+    radial-gradient(circle at 18% 10%, rgba(120, 113, 108, 0.16), transparent 28rem),
+    radial-gradient(circle at 82% 18%, rgba(87, 83, 78, 0.16), transparent 24rem),
+    linear-gradient(180deg, #211f1b 0%, #2b2924 100%);
+}
+
+.archive-paper {
+  position: relative;
+  background:
+    radial-gradient(circle at 20% 15%, rgba(120, 113, 108, 0.08) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 45%, rgba(68, 64, 60, 0.07) 0 1px, transparent 1px),
+    linear-gradient(135deg, rgba(255, 252, 244, 0.88), rgba(232, 220, 196, 0.9));
+  background-size: 9px 9px, 13px 13px, auto;
+}
+
+.archive-paper::after {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  content: "";
+  background:
+    linear-gradient(90deg, rgba(120, 113, 108, 0.09), transparent 18%, transparent 82%, rgba(120, 113, 108, 0.08)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 26%, rgba(68, 64, 60, 0.1));
+  mix-blend-mode: multiply;
+}
+
+.archive-panel {
+  overflow: hidden;
+  border: 1px solid rgba(68, 64, 60, 0.45);
+  border-radius: 8px;
+  box-shadow:
+    0 16px 34px rgba(0, 0, 0, 0.24),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+}
+
+.archive-paper > * {
+  position: relative;
+  z-index: 1;
+}
