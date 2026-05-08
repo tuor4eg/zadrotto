@@ -111,6 +111,8 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState(items[0]?.id);
   const [search, setSearch] = useState("");
+  const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
+  const [hasUnsavedRating, setHasUnsavedRating] = useState(false);
   const catalogSort = parseCatalogSort(searchParams.get("sort"));
   const availableMediaTypes = useMemo(
     () => MEDIA_TYPES.filter((mediaType) => items.some((item) => item.mediaType === mediaType)),
@@ -192,7 +194,7 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
 
   return (
     <section className="grid gap-3 xl:grid-cols-[minmax(0,0.95fr)_minmax(0,1fr)]">
-      <div className="archive-paper archive-panel min-w-0 p-4">
+      <div className="archive-paper archive-panel archive-stack archive-stack-right min-w-0 p-4">
         <div className="rounded-md border border-stone-300/80 bg-stone-50/35 p-2">
           <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto_auto]">
             <label className="sr-only" htmlFor="catalog-search">
@@ -387,134 +389,199 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
         </div>
       </div>
 
-      <article className="archive-paper archive-panel min-w-0 overflow-hidden">
+      <article className="archive-paper archive-panel archive-stack archive-stack-left min-w-0">
         {selectedItem ? (
-          <div className="grid min-h-full lg:grid-cols-[minmax(260px,0.9fr)_minmax(0,1fr)]">
-            <div className="relative border-b border-stone-300/80 bg-stone-200/30 p-6 lg:border-b-0 lg:border-r">
-              <div className="absolute right-5 top-0 hidden h-20 w-7 rounded-b-full border-x-4 border-b-4 border-stone-500/70 lg:block" />
-              <div className="font-mono text-lg uppercase tracking-[0.38em] text-stone-950">
-                Досье
-              </div>
-              <div className="mt-6 mx-auto max-w-[380px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25">
-                <div className="rounded-sm border border-stone-700 bg-stone-900 p-3">
-                  <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
-                    Archive cover
-                  </div>
-                  <div className="aspect-[3/4] overflow-hidden rounded-sm bg-stone-800">
-                    <ArchiveCover item={selectedItem} mode="cover" className="h-full w-full" />
+          <>
+            <div className="grid lg:grid-cols-[minmax(260px,0.9fr)_minmax(0,1fr)]">
+              <div className="relative border-b border-stone-300/80 bg-stone-200/30 p-6 lg:border-b-0 lg:border-r">
+                <div className="absolute right-5 top-0 hidden h-20 w-7 rounded-b-full border-x-4 border-b-4 border-stone-500/70 lg:block" />
+                <div className="font-mono text-lg uppercase tracking-[0.38em] text-stone-950">
+                  Досье
+                </div>
+                <div className="mt-6 mx-auto max-w-[380px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25">
+                  <div className="rounded-sm border border-stone-700 bg-stone-900 p-3">
+                    <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
+                      Archive cover
+                    </div>
+                    <div className="aspect-[3/4] overflow-hidden rounded-sm bg-stone-800">
+                      <ArchiveCover item={selectedItem} mode="cover" className="h-full w-full" />
+                    </div>
                   </div>
                 </div>
+              </div>
+
+              <div className="flex min-h-[520px] flex-col justify-between gap-8 p-6 sm:p-8">
+                <div>
+                  <div className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
+                    {selectedItem.title}
+                  </div>
+                  {selectedItem.originalTitle &&
+                  selectedItem.originalTitle !== selectedItem.title ? (
+                    <div className="mt-3 font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
+                      {selectedItem.originalTitle}
+                    </div>
+                  ) : null}
+                  <div className="mt-5 flex flex-wrap gap-3 font-mono text-sm text-stone-800">
+                    <span>{MEDIA_TYPE_LABELS[selectedItem.mediaType].toLowerCase()}</span>
+                    {selectedItem.releaseYear ? <span>•</span> : null}
+                    {selectedItem.releaseYear ? <span>{selectedItem.releaseYear}</span> : null}
+                    <span>•</span>
+                    <span>{formatRatingsCount(selectedItem.ratingsCount)}</span>
+                  </div>
+
+                  <dl className="mt-8 grid gap-5 border-t border-dashed border-stone-300 pt-5 text-sm leading-6 text-stone-800 sm:grid-cols-2">
+                    <div>
+                      <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        Серия
+                      </dt>
+                      <dd className="mt-1">
+                        {selectedItem.franchiseTitle && selectedItem.franchiseCode ? (
+                          <Link
+                            href={`/franchises/${selectedItem.franchiseCode}`}
+                            className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                          >
+                            {selectedItem.franchiseTitle}
+                          </Link>
+                        ) : (
+                          "—"
+                        )}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                        Код
+                      </dt>
+                      <dd className="mt-1 break-all font-mono text-stone-700">{selectedItem.code}</dd>
+                    </div>
+                  </dl>
+
+                  <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
+                      <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
+                        Оценка архива
+                      </div>
+                      <div className="mt-2 font-serif text-5xl tabular-nums text-stone-950">
+                        {formatScore(selectedItem.averageScore)}
+                      </div>
+                      <div className="mt-2 flex justify-center">
+                        <RatingStars score={selectedItem.averageScore} />
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsRatingDialogOpen(true)}
+                      className="group relative rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center transition-colors hover:border-stone-950 hover:bg-stone-100/70"
+                      aria-label="Изменить вашу оценку"
+                    >
+                      <span className="block font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
+                        Ваша оценка
+                      </span>
+                      <span className="mt-2 block font-serif text-5xl tabular-nums text-red-900">
+                        {formatScore(selectedItem.currentAuthorScore)}
+                      </span>
+                      <span className="mt-2 flex justify-center">
+                        <RatingStars score={selectedItem.currentAuthorScore} />
+                      </span>
+                      <span
+                        role="tooltip"
+                        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 font-mono text-xs text-stone-50 opacity-0 shadow-sm transition-opacity group-focus-visible:opacity-100 group-hover:opacity-100"
+                      >
+                        Изменить оценку
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                <Link
+                  href={`/media/${selectedItem.code}`}
+                  className="inline-flex w-fit items-center gap-3 rounded-md border border-stone-400 bg-stone-50/60 px-5 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
+                >
+                  <FolderOpen className="size-5" />
+                  Открыть досье
+                  <ArrowRight className="size-5" />
+                </Link>
               </div>
             </div>
 
-            <div className="flex min-h-[620px] flex-col justify-between gap-8 p-6 sm:p-8">
-              <div>
-                <div className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
-                  {selectedItem.title}
-                </div>
-                {selectedItem.originalTitle &&
-                selectedItem.originalTitle !== selectedItem.title ? (
-                  <div className="mt-3 font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
-                    {selectedItem.originalTitle}
+            {selectedItem.description ? (
+              <div className="border-t border-stone-300/80 bg-stone-50/30 p-6 sm:p-8">
+                <div className="mx-auto w-full max-w-[420px] p-5">
+                  <div className="mb-3 text-center font-mono text-xs uppercase tracking-[0.2em] text-stone-600">
+                    Архивная заметка
                   </div>
-                ) : null}
-                <div className="mt-5 flex flex-wrap gap-3 font-mono text-sm text-stone-800">
-                  <span>{MEDIA_TYPE_LABELS[selectedItem.mediaType].toLowerCase()}</span>
-                  {selectedItem.releaseYear ? <span>•</span> : null}
-                  {selectedItem.releaseYear ? <span>{selectedItem.releaseYear}</span> : null}
-                  <span>•</span>
-                  <span>{formatRatingsCount(selectedItem.ratingsCount)}</span>
-                </div>
-
-                <dl className="mt-8 grid gap-5 border-t border-dashed border-stone-300 pt-5 text-sm leading-6 text-stone-800 sm:grid-cols-2">
-                  <div>
-                    <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                      Серия
-                    </dt>
-                    <dd className="mt-1">
-                      {selectedItem.franchiseTitle && selectedItem.franchiseCode ? (
-                        <Link
-                          href={`/franchises/${selectedItem.franchiseCode}`}
-                          className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-                        >
-                          {selectedItem.franchiseTitle}
-                        </Link>
-                      ) : (
-                        "—"
-                      )}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                      Код
-                    </dt>
-                    <dd className="mt-1 break-all font-mono text-stone-700">{selectedItem.code}</dd>
-                  </div>
-                </dl>
-
-                <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
-                    <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-                      Оценка архива
-                    </div>
-                    <div className="mt-2 font-serif text-5xl tabular-nums text-stone-950">
-                      {formatScore(selectedItem.averageScore)}
-                    </div>
-                    <div className="mt-2 flex justify-center">
-                      <RatingStars score={selectedItem.averageScore} />
-                    </div>
-                  </div>
-                  <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
-                    <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-                      Ваша оценка
-                    </div>
-                    <div className="mt-2 font-serif text-5xl tabular-nums text-red-900">
-                      {formatScore(selectedItem.currentAuthorScore)}
-                    </div>
-                    <div className="mt-2 flex justify-center">
-                      <RatingStars score={selectedItem.currentAuthorScore} />
-                    </div>
-                  </div>
-                </div>
-
-                {selectedItem.description ? (
-                  <div className="mt-8 rounded-md border border-stone-300/80 bg-stone-50/45 p-5">
-                    <div className="mb-3 text-center font-mono text-xs uppercase tracking-[0.2em] text-stone-600">
-                      Архивная заметка
-                    </div>
-                    <p className="font-mono text-base leading-7 text-stone-800">
-                      {selectedItem.description}
-                    </p>
-                  </div>
-                ) : null}
-
-                <div className="mt-5">
-                  <AuthorRatingForm
-                    mediaItemCode={selectedItem.code}
-                    franchiseCode={selectedItem.franchiseCode}
-                    currentAuthor={currentAuthor}
-                    currentAuthorScore={selectedItem.currentAuthorScore}
-                    compact
-                  />
+                  <p className="font-mono text-base leading-7 text-stone-800">
+                    {selectedItem.description}
+                  </p>
                 </div>
               </div>
-
-              <Link
-                href={`/media/${selectedItem.code}`}
-                className="inline-flex w-fit items-center gap-3 rounded-md border border-stone-400 bg-stone-50/60 px-5 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
-              >
-                <FolderOpen className="size-5" />
-                Открыть досье
-                <ArrowRight className="size-5" />
-              </Link>
-            </div>
-          </div>
+            ) : null}
+          </>
         ) : (
           <div className="grid min-h-[420px] place-items-center p-6 text-sm text-stone-600">
             Ничего не найдено.
           </div>
         )}
       </article>
+
+      {isRatingDialogOpen && selectedItem ? (
+        <div
+          aria-labelledby="rating-dialog-title"
+          aria-modal="true"
+          className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 p-4"
+          role="dialog"
+        >
+          <div className="archive-paper archive-panel w-full max-w-xl p-5 shadow-2xl">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div
+                  id="rating-dialog-title"
+                  className="font-serif text-3xl leading-none text-stone-950"
+                >
+                  Ваша оценка
+                </div>
+                <div className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">
+                  {selectedItem.title}
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsRatingDialogOpen(false)}
+                className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
+                aria-label="Закрыть окно оценки"
+              >
+                <X className="size-4" />
+              </button>
+            </div>
+
+            <div className="mt-5">
+              <AuthorRatingForm
+                mediaItemCode={selectedItem.code}
+                franchiseCode={selectedItem.franchiseCode}
+                currentAuthor={currentAuthor}
+                currentAuthorScore={selectedItem.currentAuthorScore}
+                variant="archive"
+                inlineSaveButton={false}
+                onScoreChange={setHasUnsavedRating}
+                formId="rating-form"
+              />
+            </div>
+
+            <div className="mt-4 flex justify-end">
+              <button
+                type="submit"
+                form="rating-form"
+                name="intent"
+                value="save"
+                onClick={() => setIsRatingDialogOpen(false)}
+                className="rounded-md border border-stone-950 bg-stone-950 px-4 py-2 font-mono text-sm text-stone-50 transition-colors hover:bg-stone-50 hover:text-stone-950 disabled:border-stone-300 disabled:bg-stone-50 disabled:text-stone-300"
+                disabled={!hasUnsavedRating}
+              >
+                Сохранить
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

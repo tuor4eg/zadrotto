@@ -2,10 +2,9 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Search, Shield, UserCircle } from "lucide-react";
 
-import { getArchiveStats, getCatalogMediaItems } from "@/db/queries/media-items";
+import { getCatalogMediaItems } from "@/db/queries/media-items";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
-import { ArchiveStats } from "./archive-stats";
 import { MediaItemsCatalog } from "./media-items-catalog";
 
 export default async function Home() {
@@ -15,15 +14,12 @@ export default async function Home() {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
-  const [items, stats] = await Promise.all([
-    getCatalogMediaItems(currentAuthor?.id),
-    getArchiveStats(),
-  ]);
+  const items = await getCatalogMediaItems(currentAuthor?.id);
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <header className="archive-paper archive-panel flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
+        <header className="archive-paper archive-panel archive-stack archive-stack-bottom flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
           <div className="flex min-w-0 items-center gap-4">
             <div className="grid size-16 shrink-0 place-items-center border border-stone-400/70 bg-stone-100/60 text-center font-mono text-sm font-semibold leading-5 text-stone-950 shadow-[inset_0_0_0_1px_rgba(68,64,60,0.16)]">
               Ж. К.
@@ -66,8 +62,6 @@ export default async function Home() {
             </Link>
           </div>
         </header>
-
-        <ArchiveStats stats={stats} />
 
         <MediaItemsCatalog
           items={items}

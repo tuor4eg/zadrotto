@@ -3,6 +3,22 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --archive-bg-start: #211f1b;
+  --archive-bg-end: #2b2924;
+  --archive-bg-glow-primary: 120 113 108;
+  --archive-bg-glow-secondary: 87 83 78;
+  --archive-paper-ink: #1c1917;
+  --archive-paper-muted: #57534e;
+  --archive-paper-grain-primary: 120 113 108;
+  --archive-paper-grain-secondary: 68 64 60;
+  --archive-paper-start: 255 252 244;
+  --archive-paper-end: 232 220 196;
+  --archive-paper-underlay-start: 238 226 200;
+  --archive-paper-underlay-end: 219 204 174;
+  --archive-paper-edge: 68 64 60;
+  --archive-paper-highlight: 255 255 255;
+  --archive-shadow: 0 0 0;
+  --archive-accent: #7f1d1d;
 }
 
 @theme inline {
@@ -27,17 +43,18 @@ body {
 
 .archive-page {
   background:
-    radial-gradient(circle at 18% 10%, rgba(120, 113, 108, 0.16), transparent 28rem),
-    radial-gradient(circle at 82% 18%, rgba(87, 83, 78, 0.16), transparent 24rem),
-    linear-gradient(180deg, #211f1b 0%, #2b2924 100%);
+    radial-gradient(circle at 18% 10%, rgb(var(--archive-bg-glow-primary) / 16%), transparent 28rem),
+    radial-gradient(circle at 82% 18%, rgb(var(--archive-bg-glow-secondary) / 16%), transparent 24rem),
+    linear-gradient(180deg, var(--archive-bg-start) 0%, var(--archive-bg-end) 100%);
+  color: var(--archive-paper-ink);
 }
 
 .archive-paper {
   position: relative;
   background:
-    radial-gradient(circle at 20% 15%, rgba(120, 113, 108, 0.08) 0 1px, transparent 1px),
-    radial-gradient(circle at 70% 45%, rgba(68, 64, 60, 0.07) 0 1px, transparent 1px),
-    linear-gradient(135deg, rgba(255, 252, 244, 0.88), rgba(232, 220, 196, 0.9));
+    radial-gradient(circle at 20% 15%, rgb(var(--archive-paper-grain-primary) / 8%) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),
+    linear-gradient(135deg, rgb(var(--archive-paper-start) / 88%), rgb(var(--archive-paper-end) / 90%));
   background-size: 9px 9px, 13px 13px, auto;
 }
 
@@ -47,21 +64,87 @@ body {
   pointer-events: none;
   content: "";
   background:
-    linear-gradient(90deg, rgba(120, 113, 108, 0.09), transparent 18%, transparent 82%, rgba(120, 113, 108, 0.08)),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.22), transparent 26%, rgba(68, 64, 60, 0.1));
+    linear-gradient(90deg, rgb(var(--archive-paper-grain-primary) / 9%), transparent 18%, transparent 82%, rgb(var(--archive-paper-grain-primary) / 8%)),
+    linear-gradient(180deg, rgb(var(--archive-paper-highlight) / 22%), transparent 26%, rgb(var(--archive-paper-edge) / 10%));
   mix-blend-mode: multiply;
 }
 
 .archive-panel {
   overflow: hidden;
-  border: 1px solid rgba(68, 64, 60, 0.45);
+  border: 1px solid rgb(var(--archive-paper-edge) / 45%);
   border-radius: 8px;
   box-shadow:
-    0 16px 34px rgba(0, 0, 0, 0.24),
-    inset 0 0 0 1px rgba(255, 255, 255, 0.34);
+    0 16px 34px rgb(var(--archive-shadow) / 24%),
+    inset 0 0 0 1px rgb(var(--archive-paper-highlight) / 34%);
+}
+
+.archive-stack {
+  overflow: visible;
+  isolation: isolate;
+  z-index: 0;
+}
+
+.archive-stack::before {
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  content: "";
+  border: 1px solid rgb(var(--archive-paper-edge) / 32%);
+  border-radius: inherit;
+  background:
+    radial-gradient(circle at 18% 20%, rgb(var(--archive-paper-grain-primary) / 7%) 0 1px, transparent 1px),
+    linear-gradient(135deg, rgb(var(--archive-paper-underlay-start)), rgb(var(--archive-paper-underlay-end)));
+  background-size: 11px 11px, auto;
+  box-shadow:
+    3px 4px 0 -1px rgb(var(--archive-paper-underlay-end)),
+    4px 5px 0 0 rgb(var(--archive-paper-edge) / 18%),
+    7px 9px 18px rgb(var(--archive-shadow) / 16%);
+  transform-origin: center;
+}
+
+.archive-stack-right::before {
+  transform: translate(6px, 5px) rotate(0.35deg);
+}
+
+.archive-stack-left::before {
+  transform: translate(-6px, 5px) rotate(-0.35deg);
+}
+
+.archive-stack-bottom::before {
+  box-shadow:
+    0 4px 0 -1px rgb(var(--archive-paper-underlay-end)),
+    0 5px 0 0 rgb(var(--archive-paper-edge) / 16%),
+    0 9px 18px rgb(var(--archive-shadow) / 14%);
+  transform: translateY(5px);
 }
 
 .archive-paper > * {
   position: relative;
   z-index: 1;
+}
+
+@media (max-width: 640px) {
+  .archive-stack-right::before {
+    transform: translate(3px, 4px) rotate(0.25deg);
+    box-shadow:
+      2px 3px 0 -1px rgb(var(--archive-paper-underlay-end)),
+      3px 4px 0 0 rgb(var(--archive-paper-edge) / 14%),
+      5px 7px 14px rgb(var(--archive-shadow) / 14%);
+  }
+
+  .archive-stack-left::before {
+    transform: translate(-3px, 4px) rotate(-0.25deg);
+    box-shadow:
+      -2px 3px 0 -1px rgb(var(--archive-paper-underlay-end)),
+      -3px 4px 0 0 rgb(var(--archive-paper-edge) / 14%),
+      -5px 7px 14px rgb(var(--archive-shadow) / 14%);
+  }
+
+  .archive-stack-bottom::before {
+    box-shadow:
+      0 3px 0 -1px rgb(var(--archive-paper-underlay-end)),
+      0 4px 0 0 rgb(var(--archive-paper-edge) / 13%),
+      0 7px 14px rgb(var(--archive-shadow) / 12%);
+    transform: translateY(4px);
+  }
 }

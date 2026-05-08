@@ -503,31 +503,6 @@ export async function canViewMediaItemCover(objectKey: string, currentAuthorId?:
   return Boolean(item);
 }
 
-export async function getArchiveStats() {
-  const [franchiseTotals, ratingTotals] = await Promise.all([
-    db
-      .select({
-        franchisesCount: sql<number>`count(distinct ${mediaItems.franchiseId})::int`,
-      })
-      .from(mediaItems)
-      .where(publishedMediaItemCondition),
-    db
-      .select({
-        ratingsCount: sql<number>`count(${ratings.id})::int`,
-        ratingAuthorsCount: sql<number>`count(distinct ${ratings.authorId})::int`,
-      })
-      .from(ratings)
-      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
-      .where(publishedMediaItemCondition),
-  ]);
-
-  return {
-    franchisesCount: franchiseTotals[0]?.franchisesCount ?? 0,
-    ratingsCount: ratingTotals[0]?.ratingsCount ?? 0,
-    ratingAuthorsCount: ratingTotals[0]?.ratingAuthorsCount ?? 0,
-  };
-}
-
 export async function getMediaItemIdentityByCode(code: string) {
   const [item] = await db
     .select({
