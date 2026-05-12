@@ -55,7 +55,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
           {authors.map((author) => (
             <div
               key={author.id}
-              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,150px)_minmax(0,190px)_auto]"
+              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,190px)_auto]"
             >
               <div className="min-w-0">
                 <Link
@@ -65,7 +65,6 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   {author.name}
                 </Link>
               </div>
-              <div className="min-w-0 font-mono text-xs text-stone-500">{author.code}</div>
               <div className="text-xs tabular-nums text-stone-500">
                 {formatCreatedAt(author.createdAt)}
               </div>

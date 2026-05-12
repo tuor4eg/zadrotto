@@ -75,7 +75,7 @@ export function MediaItemFranchisePicker({
       {items.length === 0 ? (
         <p className="mt-3 text-sm text-stone-500">Все записи уже в этой серии.</p>
       ) : !normalizedSearchValue ? (
-        <p className="mt-3 text-sm text-stone-500">Начни вводить название, оригинал или код.</p>
+        <p className="mt-3 text-sm text-stone-500">Начни вводить название или оригинал.</p>
       ) : visibleItems.length === 0 ? (
         <p className="mt-3 text-sm text-stone-500">По этому поиску записей нет.</p>
       ) : (

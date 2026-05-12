@@ -116,7 +116,7 @@ export function AuthorMediaFiltersForm({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Название, оригинал или код"
+          placeholder="Название или оригинал"
           className="h-10 border border-zinc-300 bg-white px-3 text-sm text-zinc-950 outline-none focus:border-zinc-950"
         />
       </div>

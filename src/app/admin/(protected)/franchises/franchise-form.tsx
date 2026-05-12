@@ -31,7 +31,7 @@ export function FranchiseForm({
     <form action={action} className="grid gap-5">
       {values?.id ? <input type="hidden" name="franchiseId" value={values.id} /> : null}
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4">
         <Field
           id="franchise-title"
           label="Название"
@@ -39,7 +39,6 @@ export function FranchiseForm({
           defaultValue={values?.title ?? ""}
           required
         />
-        {values?.code ? <CodeDisplay code={values.code} /> : null}
       </div>
 
       <Field
@@ -105,17 +104,6 @@ function Field({
         required={required}
         className={monospace ? "font-mono" : ""}
       />
-    </div>
-  );
-}
-
-function CodeDisplay({ code }: { code: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="text-sm font-medium leading-none text-stone-700">Код</div>
-      <div className="flex h-10 items-center rounded-md border border-stone-200 bg-stone-50 px-3 font-mono text-sm text-stone-500">
-        {code}
-      </div>
     </div>
   );
 }

@@ -77,7 +77,6 @@ export default async function AdminAuthorTokensPage({
                     <div className="truncate text-sm font-medium text-stone-950">
                       {token.authorName}
                     </div>
-                    <div className="mt-1 font-mono text-xs text-stone-500">{token.authorCode}</div>
                   </div>
                   <div className="min-w-0 text-sm text-stone-700">{token.label}</div>
                   <div className="text-xs tabular-nums text-stone-500">

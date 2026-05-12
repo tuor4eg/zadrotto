@@ -49,7 +49,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
           <div className="mb-5 border-b border-zinc-200 pb-4 text-sm text-zinc-500">
             Текущий автор:{" "}
             <span className="font-medium text-zinc-950">
-              {author.name} / {author.code}
+              {author.name}
             </span>
           </div>
           {children}

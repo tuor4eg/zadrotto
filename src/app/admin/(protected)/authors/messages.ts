@@ -8,7 +8,7 @@ export function getAuthorErrorMessage(error?: string) {
   }
 
   if (error === "duplicate-code") {
-    return "Автор с таким кодом уже существует.";
+    return "Автор с таким именем уже существует.";
   }
 
   if (error === "required") {

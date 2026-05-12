@@ -85,7 +85,7 @@ export default async function AdminMediaReviewItemPage({
       }
       noteSlot={
         <div className="rounded-md border border-stone-200 bg-stone-50 px-3 py-2 text-sm leading-6 text-stone-600">
-          Автор: {item.authorName} ({item.authorCode}). Отправлено: {formatDate(item.submittedAt)}.
+          Автор: {item.authorName}. Отправлено: {formatDate(item.submittedAt)}.
         </div>
       }
     />

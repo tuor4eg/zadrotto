@@ -21,9 +21,6 @@ export default async function AuthorPage() {
           </span>
           <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
             <h2 className="text-2xl font-semibold text-zinc-950">{author.name}</h2>
-            <span className="font-mono text-xs uppercase tracking-[0.14em] text-zinc-500">
-              {author.code}
-            </span>
           </div>
         </div>
 
@@ -108,9 +105,6 @@ export default async function AuthorPage() {
                 <span className="min-w-0">
                   <span className="block truncate text-sm font-medium text-zinc-950">
                     {rating.mediaItemTitle}
-                  </span>
-                  <span className="mt-1 block font-mono text-xs text-zinc-500">
-                    {rating.mediaItemCode}
                   </span>
                 </span>
                 <span className="font-mono text-sm font-semibold tabular-nums text-zinc-950">

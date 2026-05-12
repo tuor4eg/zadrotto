@@ -8,6 +8,20 @@
       "when": 1777885885713,
       "tag": "0000_fast_stepford_cuckoos",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778598291570,
+      "tag": "0001_import_games_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778599799408,
+      "tag": "0002_catalog_pagination_indexes",
+      "breakpoints": true
     }
   ]
 }

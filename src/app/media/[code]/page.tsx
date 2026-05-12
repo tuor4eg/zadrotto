@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 
-import { AuthorRatingForm } from "@/app/author-rating-form";
 import { MediaItemDetails } from "@/app/media-item-details";
+import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
 import { getCurrentAuthor } from "@/lib/author-auth";
 
@@ -25,16 +25,18 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     : [];
 
   return (
-    <main className="min-h-screen bg-zinc-100 px-4 py-6 text-zinc-950 sm:px-6 lg:px-10">
-      <div className="mx-auto w-full max-w-5xl">
+    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      <div className="mx-auto w-full max-w-6xl">
         <MediaItemDetails
           item={item}
+          variant="archive"
           backLink={{ href: "/", label: "Назад к картотеке" }}
           relatedItems={relatedItems}
           ratingSlot={
-            <AuthorRatingForm
+            <MediaItemRatingDialog
               mediaItemCode={item.code}
               franchiseCode={item.franchiseCode}
+              title={item.title}
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
               }

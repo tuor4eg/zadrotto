@@ -65,6 +65,7 @@ export function AdminMediaFiltersForm({
       nextSearchParams.delete("updated");
       nextSearchParams.delete("deleted");
       nextSearchParams.delete("error");
+      nextSearchParams.delete("page");
 
       if (nextFilters.q !== undefined) {
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");
@@ -167,7 +168,7 @@ export function AdminMediaFiltersForm({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Название, оригинал или код"
+          placeholder="Название или оригинал"
           aria-label="Поиск записей"
         />
 

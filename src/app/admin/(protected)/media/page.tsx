@@ -1,19 +1,16 @@
 import Link from "next/link";
 import { Edit3, Trash2 } from "lucide-react";
 
-import {
-  filterCatalogItems,
-  parseCatalogSort,
-  parseMediaTypeFilter,
-  sortCatalogItems,
-} from "@/app/media-items-catalog-logic";
+import { parseCatalogSort, parseMediaTypeFilter } from "@/app/media-items-catalog-logic";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants, Button } from "@/components/ui/button";
+import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
-import { getAdminMediaItems } from "@/db/queries/media-items";
+import { getAdminMediaItems, getAdminMediaTypeCounts } from "@/db/queries/media-items";
 import { MEDIA_TYPES, MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { parsePage } from "@/lib/pagination";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import { EmptyState, PageHeader } from "../admin-ui";
@@ -25,12 +22,15 @@ type AdminMediaPageProps = {
   searchParams: Promise<{
     deleted?: string;
     error?: string;
+    page?: string;
     q?: string;
     sort?: string;
     type?: string;
     updated?: string;
   }>;
 };
+
+const ADMIN_MEDIA_PAGE_SIZE = 50;
 
 function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LABELS) {
   if (status === "published") {
@@ -49,10 +49,22 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
 }
 
 export default async function AdminMediaPage({ searchParams }: AdminMediaPageProps) {
-  const [items, params] = await Promise.all([getAdminMediaItems(), searchParams]);
+  const params = await searchParams;
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
   const sort = parseCatalogSort(params.sort ?? null);
+  const [mediaResult, mediaTypeCounts] = await Promise.all([
+    getAdminMediaItems({
+      mediaTypeFilter,
+      page: parsePage(params.page),
+      pageSize: ADMIN_MEDIA_PAGE_SIZE,
+      searchQuery,
+      sort,
+    }),
+    getAdminMediaTypeCounts(),
+  ]);
+  const items = mediaResult.items;
+  const totalItemsCount = mediaTypeCounts.reduce((total, item) => total + item.count, 0);
   const errorMessage = getAdminMediaErrorMessage(params.error);
   const successMessage =
     params.updated === "1"
@@ -60,54 +72,58 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
       : params.deleted === "1"
         ? "Запись удалена."
         : null;
-  const filteredItems = filterCatalogItems(items, searchQuery, mediaTypeFilter, "all");
-  const visibleItems = sortCatalogItems(filteredItems, sort);
   const availableMediaTypes = MEDIA_TYPES
     .map((mediaType) => ({
       mediaType,
-      count: items.filter((item) => item.mediaType === mediaType).length,
+      count: mediaTypeCounts.find((item) => item.mediaType === mediaType)?.count ?? 0,
     }))
     .filter((item) => item.count > 0);
   const hasActiveFilters = Boolean(searchQuery) || mediaTypeFilter !== "all" || sort !== "title";
+  const paginationSearchParams = {
+    q: searchQuery || undefined,
+    sort: sort !== "title" ? sort : undefined,
+    type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
+  };
 
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
         title="Записи"
         description="Архивные записи с теми же фильтрами, что и в каталоге."
-        aside={<Badge variant="outline">{items.length} всего</Badge>}
+        aside={<Badge variant="outline">{totalItemsCount} всего</Badge>}
       />
 
-      {items.length > 0 ? (
+      {totalItemsCount > 0 ? (
         <AdminMediaFiltersForm
           availableMediaTypes={availableMediaTypes}
           mediaTypeFilter={mediaTypeFilter}
           searchQuery={searchQuery}
           sort={sort}
-          totalCount={items.length}
+          totalCount={totalItemsCount}
         />
       ) : null}
 
       {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
       {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
-      {items.length === 0 ? (
+      {totalItemsCount === 0 ? (
         <EmptyState>Записей пока нет.</EmptyState>
-      ) : visibleItems.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyState>{hasActiveFilters ? "По этим фильтрам записей нет." : "Записей нет."}</EmptyState>
       ) : (
-        <TableWrap>
-          <Table className="table-fixed">
-            <THead>
-              <tr>
-                <TH>Название</TH>
-                <TH className="hidden w-24 sm:table-cell">Тип</TH>
-                <TH className="hidden w-28 md:table-cell">Статус</TH>
-                <TH className="w-28 px-2 text-right">Действия</TH>
-              </tr>
-            </THead>
-            <TBody>
-              {visibleItems.map((item) => (
+        <>
+          <TableWrap>
+            <Table className="table-fixed">
+              <THead>
+                <tr>
+                  <TH>Название</TH>
+                  <TH className="hidden w-24 sm:table-cell">Тип</TH>
+                  <TH className="hidden w-28 md:table-cell">Статус</TH>
+                  <TH className="w-28 px-2 text-right">Действия</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {items.map((item) => (
                 <TR key={item.id}>
                   <TD className="min-w-0 overflow-hidden">
                     <div className="min-w-0 overflow-hidden">
@@ -122,7 +138,6 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                         </Badge>
                       </div>
                       <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-stone-500">
-                        <span className="break-all font-mono leading-5">{item.code}</span>
                         {item.franchiseTitle ? (
                           <span className="truncate">Серия: {item.franchiseTitle}</span>
                         ) : null}
@@ -132,10 +147,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                           <span>Ср.: {formatScore(item.averageScore)}</span>
                         ) : null}
                         {item.authorName ? (
-                          <span className="truncate">
-                            Автор: {item.authorName}
-                            {item.authorCode ? ` (${item.authorCode})` : ""}
-                          </span>
+                          <span className="truncate">Автор: {item.authorName}</span>
                         ) : null}
                       </div>
                     </div>
@@ -183,10 +195,19 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                     </div>
                   </TD>
                 </TR>
-              ))}
-            </TBody>
-          </Table>
-        </TableWrap>
+                ))}
+              </TBody>
+            </Table>
+          </TableWrap>
+          <PaginationNav
+            basePath="/admin/media"
+            page={mediaResult.page}
+            pageSize={mediaResult.pageSize}
+            searchParams={paginationSearchParams}
+            totalCount={mediaResult.totalCount}
+            totalPages={mediaResult.totalPages}
+          />
+        </>
       )}
     </div>
   );

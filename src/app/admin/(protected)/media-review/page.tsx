@@ -104,11 +104,8 @@ export default async function AdminMediaReviewPage({
                   </p>
                 ) : null}
                 <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs text-stone-500">
-                  <span>
-                    Автор: {item.authorName} ({item.authorCode})
-                  </span>
+                  <span>Автор: {item.authorName}</span>
                   <span>Отправлено: {formatDate(item.submittedAt)}</span>
-                  <span className="font-mono">{item.code}</span>
                 </div>
               </div>
 

@@ -2,19 +2,55 @@ import Link from "next/link";
 import { connection } from "next/server";
 import { Search, Shield, UserCircle } from "lucide-react";
 
-import { getCatalogMediaItems } from "@/db/queries/media-items";
+import { getCatalogMediaItems, getCatalogMediaTypeCounts } from "@/db/queries/media-items";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
+import { parsePage } from "@/lib/pagination";
+import {
+  parseAuthorRatingFilter,
+  parseCatalogSort,
+  parseMediaTypeFilter,
+} from "./media-items-catalog-logic";
 import { MediaItemsCatalog } from "./media-items-catalog";
 
-export default async function Home() {
+const CATALOG_PAGE_SIZE = 50;
+
+type HomeProps = {
+  searchParams: Promise<{
+    mine?: string;
+    page?: string;
+    q?: string;
+    sort?: string;
+    type?: string;
+  }>;
+};
+
+export default async function Home({ searchParams }: HomeProps) {
   await connection();
 
-  const [currentAuthor, currentAdminUser] = await Promise.all([
+  const [currentAuthor, currentAdminUser, params] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
+    searchParams,
   ]);
-  const items = await getCatalogMediaItems(currentAuthor?.id);
+  const searchQuery = params.q?.trim() ?? "";
+  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
+  const sort = parseCatalogSort(params.sort ?? null);
+  const authorRatingFilter = currentAuthor
+    ? parseAuthorRatingFilter(params.mine ?? null)
+    : "all";
+  const [catalog, mediaTypeCounts] = await Promise.all([
+    getCatalogMediaItems({
+      authorRatingFilter,
+      currentAuthorId: currentAuthor?.id,
+      mediaTypeFilter,
+      page: parsePage(params.page),
+      pageSize: CATALOG_PAGE_SIZE,
+      searchQuery,
+      sort,
+    }),
+    getCatalogMediaTypeCounts(),
+  ]);
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -64,10 +100,20 @@ export default async function Home() {
         </header>
 
         <MediaItemsCatalog
-          items={items}
+          key={`${searchQuery}:${mediaTypeFilter}:${sort}:${authorRatingFilter}:${catalog.page}`}
+          authorRatingFilter={authorRatingFilter}
           currentAuthor={
             currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
           }
+          items={catalog.items}
+          mediaTypeCounts={mediaTypeCounts}
+          mediaTypeFilter={mediaTypeFilter}
+          page={catalog.page}
+          pageSize={catalog.pageSize}
+          searchQuery={searchQuery}
+          sort={sort}
+          totalCount={catalog.totalCount}
+          totalPages={catalog.totalPages}
         />
       </div>
     </main>

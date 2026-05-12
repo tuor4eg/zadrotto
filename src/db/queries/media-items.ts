@@ -1,10 +1,29 @@
-import { and, asc, desc, eq, inArray, ne, not, notExists, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  exists,
+  inArray,
+  ne,
+  not,
+  notExists,
+  or,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
+import type {
+  AuthorRatingFilter,
+  CatalogSort,
+  MediaTypeFilter,
+} from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
 import { authors, franchises, mediaItems, ratings } from "@/db/schema";
 import type { MediaType } from "@/lib/media-types";
 import type { PublicationStatus } from "@/lib/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
+import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
 import { resolveCoverUrl } from "@/lib/storage";
 
 const publishedMediaItemCondition = eq(
@@ -23,7 +42,90 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
       )`
     : sql<number | null>`null`;
 
-const catalogMediaItemsQuery = (currentAuthorId?: number) =>
+const catalogSearchCondition = (searchQuery: string) => {
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedSearchQuery) {
+    return undefined;
+  }
+
+  const pattern = `%${normalizedSearchQuery}%`;
+
+  return or(
+    sql`lower(${mediaItems.title}) like ${pattern}`,
+    sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
+    sql`lower(${mediaItems.code}) like ${pattern}`,
+  );
+};
+
+const currentAuthorRatingExistsCondition = (currentAuthorId: number) =>
+  exists(
+    db
+      .select({ id: ratings.id })
+      .from(ratings)
+      .where(and(eq(ratings.mediaItemId, mediaItems.id), eq(ratings.authorId, currentAuthorId))),
+  );
+
+function catalogFilterConditions(input: {
+  authorRatingFilter: AuthorRatingFilter;
+  currentAuthorId?: number;
+  mediaTypeFilter: MediaTypeFilter;
+  searchQuery: string;
+}) {
+  const conditions: SQL[] = [publishedMediaItemCondition];
+  const searchCondition = catalogSearchCondition(input.searchQuery);
+
+  if (searchCondition) {
+    conditions.push(searchCondition);
+  }
+
+  if (input.mediaTypeFilter !== "all") {
+    conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
+  }
+
+  if (input.currentAuthorId && input.authorRatingFilter !== "all") {
+    const ratingExistsCondition = currentAuthorRatingExistsCondition(input.currentAuthorId);
+
+    conditions.push(
+      input.authorRatingFilter === "rated"
+        ? ratingExistsCondition
+        : not(ratingExistsCondition),
+    );
+  }
+
+  return and(...conditions)!;
+}
+
+function catalogOrderBy(sort: CatalogSort) {
+  if (sort === "release_year") {
+    return [sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title)];
+  }
+
+  if (sort === "media_type") {
+    return [asc(mediaItems.mediaType), asc(mediaItems.title)];
+  }
+
+  if (sort === "average_score") {
+    return [sql`avg(${ratings.score}) desc nulls last`, asc(mediaItems.title)];
+  }
+
+  if (sort === "ratings_count") {
+    return [sql`count(${ratings.id}) desc`, asc(mediaItems.title)];
+  }
+
+  return [asc(mediaItems.title)];
+}
+
+const catalogMediaItemsQuery = (input: {
+  authorRatingFilter: AuthorRatingFilter;
+  currentAuthorId?: number;
+  filterCondition: SQL;
+  mediaTypeFilter: MediaTypeFilter;
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+  sort: CatalogSort;
+}) =>
   db
     .select({
       id: mediaItems.id,
@@ -39,12 +141,12 @@ const catalogMediaItemsQuery = (currentAuthorId?: number) =>
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
-      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+      currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(publishedMediaItemCondition)
+    .where(input.filterCondition)
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -58,19 +160,53 @@ const catalogMediaItemsQuery = (currentAuthorId?: number) =>
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )
-    .orderBy(asc(mediaItems.title));
+    .orderBy(...catalogOrderBy(input.sort))
+    .limit(input.pageSize)
+    .offset(getOffset(input.page, input.pageSize));
 
 export type CatalogMediaItem = Awaited<
   ReturnType<typeof getCatalogMediaItems>
->[number];
+>["items"][number];
 
-export async function getCatalogMediaItems(currentAuthorId?: number) {
-  const items = await catalogMediaItemsQuery(currentAuthorId);
+export async function getCatalogMediaItems(input: {
+  authorRatingFilter: AuthorRatingFilter;
+  currentAuthorId?: number;
+  mediaTypeFilter: MediaTypeFilter;
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+  sort: CatalogSort;
+}) {
+  const filterCondition = catalogFilterConditions(input);
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(mediaItems)
+    .where(filterCondition);
+  const totalPages = getTotalPages(totalCount, input.pageSize);
+  const page = clampPage(input.page, totalPages);
+  const items = await catalogMediaItemsQuery({ ...input, filterCondition, page });
 
-  return items.map((item) => ({
-    ...item,
-    coverUrl: resolveCoverUrl(item.coverUrl),
-  }));
+  return {
+    items: items.map((item) => ({
+      ...item,
+      coverUrl: resolveCoverUrl(item.coverUrl),
+    })),
+    page,
+    pageSize: input.pageSize,
+    totalCount,
+    totalPages,
+  };
+}
+
+export async function getCatalogMediaTypeCounts() {
+  return db
+    .select({
+      mediaType: mediaItems.mediaType,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(mediaItems)
+    .where(publishedMediaItemCondition)
+    .groupBy(mediaItems.mediaType);
 }
 
 export async function getAuthorMediaItems(authorId: number) {
@@ -92,7 +228,38 @@ export async function getAuthorMediaItems(authorId: number) {
     .orderBy(asc(mediaItems.title));
 }
 
-export async function getAdminMediaItems() {
+function adminMediaFilterConditions(input: {
+  mediaTypeFilter: MediaTypeFilter;
+  searchQuery: string;
+}) {
+  const conditions: SQL[] = [];
+  const searchCondition = catalogSearchCondition(input.searchQuery);
+
+  if (searchCondition) {
+    conditions.push(searchCondition);
+  }
+
+  if (input.mediaTypeFilter !== "all") {
+    conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function getAdminMediaItems(input: {
+  mediaTypeFilter: MediaTypeFilter;
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+  sort: CatalogSort;
+}) {
+  const filterCondition = adminMediaFilterConditions(input);
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(mediaItems)
+    .where(filterCondition);
+  const totalPages = getTotalPages(totalCount, input.pageSize);
+  const page = clampPage(input.page, totalPages);
   const items = await db
     .select({
       id: mediaItems.id,
@@ -118,6 +285,7 @@ export async function getAdminMediaItems() {
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(filterCondition)
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -135,12 +303,30 @@ export async function getAdminMediaItems() {
       authors.name,
       authors.code,
     )
-    .orderBy(asc(mediaItems.title));
+    .orderBy(...catalogOrderBy(input.sort))
+    .limit(input.pageSize)
+    .offset(getOffset(page, input.pageSize));
 
-  return items.map((item) => ({
-    ...item,
-    coverUrl: resolveCoverUrl(item.coverUrl),
-  }));
+  return {
+    items: items.map((item) => ({
+      ...item,
+      coverUrl: resolveCoverUrl(item.coverUrl),
+    })),
+    page,
+    pageSize: input.pageSize,
+    totalCount,
+    totalPages,
+  };
+}
+
+export async function getAdminMediaTypeCounts() {
+  return db
+    .select({
+      mediaType: mediaItems.mediaType,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(mediaItems)
+    .groupBy(mediaItems.mediaType);
 }
 
 type AuthorMediaItemInput = {
@@ -580,7 +766,7 @@ export async function getOtherMediaItemsFromFranchise(
   franchiseId: number,
   currentMediaItemId: number,
 ) {
-  return db
+  const items = await db
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
@@ -588,6 +774,7 @@ export async function getOtherMediaItemsFromFranchise(
       originalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
     })
     .from(mediaItems)
     .where(
@@ -598,4 +785,6 @@ export async function getOtherMediaItemsFromFranchise(
       ),
     )
     .orderBy(asc(mediaItems.releaseYear), asc(mediaItems.title));
+
+  return items.map((item) => ({ ...item, coverUrl: resolveCoverUrl(item.coverUrl) }));
 }

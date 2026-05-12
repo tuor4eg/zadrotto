@@ -91,7 +91,6 @@ export default async function EditAdminMediaPage({
             </div>
             <div className="min-w-0">
               <div className="text-sm font-medium text-stone-950">{item.title}</div>
-              <div className="mt-1 text-xs font-mono text-stone-500">{item.code}</div>
             </div>
           </div>
 
@@ -107,10 +106,7 @@ export default async function EditAdminMediaPage({
 
           <div className="space-y-2 text-sm text-stone-600">
             {item.authorName ? (
-              <p>
-                Автор: {item.authorName}
-                {item.authorCode ? ` (${item.authorCode})` : ""}
-              </p>
+              <p>Автор: {item.authorName}</p>
             ) : (
               <EmptyState className="p-4 text-left">Запись добавлена не через авторский профиль.</EmptyState>
             )}

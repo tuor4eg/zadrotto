@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import {
   ArrowRight,
   Check,
@@ -14,22 +14,35 @@ import {
 } from "lucide-react";
 
 import {
-  filterCatalogItems,
-  parseAuthorRatingFilter,
-  parseCatalogSort,
-  parseMediaTypeFilter,
-  sortCatalogItems,
   type AuthorRatingFilter,
   type CatalogSort,
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
-import { AuthorRatingForm } from "@/app/author-rating-form";
+import {
+  MediaItemRatingModal,
+  MediaItemRatingPanel,
+  RatingStars,
+} from "@/app/media-item-rating-dialog";
+import { MediaTypeTabs } from "@/app/media-type-tabs";
+import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
+import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 
 type MediaItemsCatalogProps = {
+  authorRatingFilter: AuthorRatingFilter;
   items: CatalogMediaItem[];
+  mediaTypeCounts: Array<{
+    count: number;
+    mediaType: MediaType;
+  }>;
+  mediaTypeFilter: MediaTypeFilter;
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+  sort: CatalogSort;
+  totalCount: number;
+  totalPages: number;
   currentAuthor: {
     name: string;
     code: string;
@@ -64,6 +77,20 @@ function getAuthorRatingFilterTooltip(filter: AuthorRatingFilter) {
   return `Фильтр: ${AUTHOR_RATING_FILTER_LABELS[filter].toLowerCase()}`;
 }
 
+function updateFilterParam(
+  searchParams: URLSearchParams,
+  key: string,
+  value: string,
+  emptyValue: string,
+) {
+  if (value === emptyValue || value.trim() === "") {
+    searchParams.delete(key);
+    return;
+  }
+
+  searchParams.set(key, value);
+}
+
 function ArchiveCover({
   className,
   item,
@@ -94,97 +121,126 @@ function ArchiveCover({
   );
 }
 
-function RatingStars({ score }: { score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span className="font-mono text-xs tracking-[0.16em] text-stone-900" aria-hidden="true">
-      {"★".repeat(filledStars)}
-      <span className="text-stone-300">{"★".repeat(5 - filledStars)}</span>
-    </span>
-  );
-}
-
-export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogProps) {
+export function MediaItemsCatalog({
+  authorRatingFilter,
+  currentAuthor,
+  items,
+  mediaTypeCounts: mediaTypeCountRows,
+  mediaTypeFilter,
+  page,
+  pageSize,
+  searchQuery,
+  sort,
+  totalCount,
+  totalPages,
+}: MediaItemsCatalogProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [selectedId, setSelectedId] = useState(items[0]?.id);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(searchQuery);
   const [isRatingDialogOpen, setIsRatingDialogOpen] = useState(false);
   const [hasUnsavedRating, setHasUnsavedRating] = useState(false);
-  const catalogSort = parseCatalogSort(searchParams.get("sort"));
+  const [, startTransition] = useTransition();
+  const isFirstSearchSync = useRef(true);
   const availableMediaTypes = useMemo(
-    () => MEDIA_TYPES.filter((mediaType) => items.some((item) => item.mediaType === mediaType)),
-    [items],
+    () =>
+      MEDIA_TYPES.filter((mediaType) =>
+        mediaTypeCountRows.some((item) => item.mediaType === mediaType && item.count > 0),
+      ),
+    [mediaTypeCountRows],
   );
-  const mediaTypeCounts = useMemo(
+  const mediaTypeCountMap = useMemo(
     () =>
       new Map(
         MEDIA_TYPES.map((mediaType) => [
           mediaType,
-          items.filter((item) => item.mediaType === mediaType).length,
+          mediaTypeCountRows.find((item) => item.mediaType === mediaType)?.count ?? 0,
         ]),
       ),
-    [items],
-  );
-  const parsedMediaTypeFilter = parseMediaTypeFilter(searchParams.get("type"));
-  const mediaTypeFilter =
-    parsedMediaTypeFilter === "all" || availableMediaTypes.includes(parsedMediaTypeFilter)
-      ? parsedMediaTypeFilter
-      : "all";
-  const authorRatingFilter = currentAuthor
-    ? parseAuthorRatingFilter(searchParams.get("mine"))
-    : "all";
-  const filteredItems = useMemo(
-    () => filterCatalogItems(items, search, mediaTypeFilter, authorRatingFilter),
-    [authorRatingFilter, items, mediaTypeFilter, search],
-  );
-  const sortedItems = useMemo(
-    () => sortCatalogItems(filteredItems, catalogSort),
-    [catalogSort, filteredItems],
+    [mediaTypeCountRows],
   );
   const selectedItem = useMemo(
-    () => sortedItems.find((item) => item.id === selectedId) ?? sortedItems[0] ?? null,
-    [selectedId, sortedItems],
+    () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
+    [items, selectedId],
+  );
+  const archiveTotalCount = useMemo(
+    () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
+    [mediaTypeCountRows],
+  );
+  const paginationSearchParams = {
+    mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
+    q: searchQuery || undefined,
+    sort: sort !== "title" ? sort : undefined,
+    type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
+  };
+
+  const replaceFilters = useCallback(
+    (nextFilters: {
+      mine?: AuthorRatingFilter;
+      q?: string;
+      sort?: CatalogSort;
+      type?: MediaTypeFilter;
+    }) => {
+      const nextSearchParams = new URLSearchParams(searchParams.toString());
+
+      nextSearchParams.delete("page");
+
+      if (nextFilters.q !== undefined) {
+        updateFilterParam(nextSearchParams, "q", nextFilters.q, "");
+      }
+
+      if (nextFilters.type !== undefined) {
+        updateFilterParam(nextSearchParams, "type", nextFilters.type, "all");
+      }
+
+      if (nextFilters.sort !== undefined) {
+        updateFilterParam(nextSearchParams, "sort", nextFilters.sort, "title");
+      }
+
+      if (nextFilters.mine !== undefined) {
+        updateFilterParam(nextSearchParams, "mine", nextFilters.mine, "all");
+      }
+
+      const queryString = nextSearchParams.toString();
+
+      if (queryString === searchParams.toString()) {
+        return;
+      }
+
+      startTransition(() => {
+        router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+      });
+    },
+    [pathname, router, searchParams],
   );
 
-  function replaceSearchParams(nextSearchParams: URLSearchParams) {
-    const queryString = nextSearchParams.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }
+  useEffect(() => {
+    if (isFirstSearchSync.current) {
+      isFirstSearchSync.current = false;
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      replaceFilters({ q: search });
+    }, 250);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [replaceFilters, search]);
 
   function handleSortChange(sort: CatalogSort) {
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.set("sort", sort);
-    replaceSearchParams(nextSearchParams);
+    replaceFilters({ sort });
   }
 
   function handleAuthorRatingFilterChange(nextAuthorRatingFilter: AuthorRatingFilter) {
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-
-    if (nextAuthorRatingFilter === "all") {
-      nextSearchParams.delete("mine");
-    } else {
-      nextSearchParams.set("mine", nextAuthorRatingFilter);
-    }
-
-    replaceSearchParams(nextSearchParams);
+    replaceFilters({ mine: nextAuthorRatingFilter });
   }
 
   function handleMediaTypeFilterChange(nextMediaTypeFilter: MediaTypeFilter) {
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-
-    if (nextMediaTypeFilter === "all") {
-      nextSearchParams.delete("type");
-    } else {
-      nextSearchParams.set("type", nextMediaTypeFilter);
-    }
-
-    replaceSearchParams(nextSearchParams);
+    replaceFilters({ type: nextMediaTypeFilter });
   }
 
-  if (items.length === 0) {
+  if (archiveTotalCount === 0) {
     return (
       <div className="archive-paper archive-panel p-6 text-sm text-stone-600">
         Пока в архиве нет записей.
@@ -247,7 +303,7 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
 
             <div
               className="relative h-11 w-full rounded-md border border-stone-300/80 bg-stone-50/80 text-stone-700 transition-colors hover:border-stone-700 sm:w-11"
-              title={getSortTooltip(catalogSort)}
+              title={getSortTooltip(sort)}
             >
               <span
                 aria-hidden="true"
@@ -260,10 +316,10 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
               </label>
               <select
                 id="media-catalog-sort"
-                value={catalogSort}
+                value={sort}
                 onChange={(event) => handleSortChange(event.target.value as CatalogSort)}
-                aria-label={getSortTooltip(catalogSort)}
-                title={getSortTooltip(catalogSort)}
+                aria-label={getSortTooltip(sort)}
+                title={getSortTooltip(sort)}
                 className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
               >
                 {Object.entries(CATALOG_SORT_LABELS).map(([sort, label]) => (
@@ -275,71 +331,47 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
             </div>
           </div>
 
-          <div
-            role="tablist"
-            aria-label="Тип медиа"
-            className="mt-3 flex gap-2 overflow-x-auto pb-1 whitespace-nowrap"
-          >
-            <button
-              type="button"
-              role="tab"
-              aria-selected={mediaTypeFilter === "all"}
-              onClick={() => handleMediaTypeFilterChange("all")}
-              className={`shrink-0 rounded-md border px-4 py-2 text-sm transition-colors ${
-                mediaTypeFilter === "all"
-                  ? "border-stone-950 bg-stone-950 text-stone-50 shadow-sm"
-                  : "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-700"
-              }`}
-            >
-              Все
-            </button>
-            {availableMediaTypes.map((mediaType) => {
-              const isSelected = mediaTypeFilter === mediaType;
-
-              return (
-                <button
-                  key={mediaType}
-                  type="button"
-                  role="tab"
-                  aria-selected={isSelected}
-                  onClick={() => handleMediaTypeFilterChange(mediaType)}
-                  className={`shrink-0 rounded-md border px-4 py-2 text-sm transition-colors ${
-                    isSelected
-                      ? "border-stone-950 bg-stone-950 text-stone-50 shadow-sm"
-                      : "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-700"
-                  }`}
-                >
-                  {MEDIA_TYPE_LABELS[mediaType]}
-                  <span className={isSelected ? "ml-2 text-stone-300" : "ml-2 text-stone-500"}>
-                    {mediaTypeCounts.get(mediaType)}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <MediaTypeTabs
+            availableMediaTypes={availableMediaTypes}
+            mediaTypeCounts={mediaTypeCountMap}
+            selectedMediaType={mediaTypeFilter}
+            onChange={handleMediaTypeFilterChange}
+          />
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3 px-1 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
           <span>Картотека</span>
           <span>
-            {sortedItems.length} из {items.length}
+            {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}-
+            {Math.min(page * pageSize, totalCount)} из {totalCount}
           </span>
         </div>
 
-        <div className="mt-3 flex max-h-[780px] flex-col gap-2 overflow-y-auto pr-1">
-          {sortedItems.length === 0 ? (
+        <div className="archive-scrollbar mt-3 flex max-h-[780px] flex-col gap-2 overflow-y-auto pr-1">
+          {items.length === 0 ? (
             <div className="rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
               Ничего не найдено.
             </div>
           ) : null}
-          {sortedItems.map((item) => {
+          {items.map((item) => {
             const isSelected = item.id === selectedItem?.id;
 
             return (
-              <button
+              <div
                 key={item.id}
-                type="button"
                 onClick={() => setSelectedId(item.id)}
+                onKeyDown={(event) => {
+                  if (event.target !== event.currentTarget) {
+                    return;
+                  }
+
+                  if (event.key === "Enter" || event.key === " ") {
+                    event.preventDefault();
+                    setSelectedId(item.id);
+                  }
+                }}
+                role="button"
+                tabIndex={0}
                 className={`relative grid w-full grid-cols-[18px_76px_minmax(0,1fr)_auto] gap-3 rounded-md border p-2 text-left transition-colors ${
                   isSelected
                     ? "border-red-900/60 bg-red-50/25 shadow-[inset_3px_0_0_#7f1d1d]"
@@ -365,7 +397,7 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
                     ) : null}
                   </span>
                 </span>
-                <span className="hidden shrink-0 grid-cols-2 gap-3 border-l border-dashed border-stone-300 pl-4 text-center sm:grid">
+                <span className="hidden shrink-0 grid-cols-2 items-stretch gap-3 border-l border-dashed border-stone-300 pl-4 text-center sm:grid">
                   <span>
                     <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
                       Архив
@@ -374,27 +406,48 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
                       {formatScore(item.averageScore)}
                     </span>
                   </span>
-                  <span>
-                    <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
-                      Моя
-                    </span>
-                    <span className="mt-1 block font-serif text-3xl tabular-nums text-red-900">
-                      {formatScore(item.currentAuthorScore)}
-                    </span>
-                  </span>
+                  <MediaItemRatingPanel
+                    mediaItemCode={item.code}
+                    franchiseCode={item.franchiseCode}
+                    title={item.title}
+                    currentAuthor={currentAuthor}
+                    currentAuthorScore={item.currentAuthorScore}
+                    onOpen={() => {
+                      setSelectedId(item.id);
+                      setIsRatingDialogOpen(true);
+                    }}
+                    size="compact"
+                  />
                 </span>
-              </button>
+              </div>
             );
           })}
+        </div>
+        <div className="mt-3">
+          <PaginationNav
+            basePath={pathname}
+            page={page}
+            pageSize={pageSize}
+            searchParams={paginationSearchParams}
+            totalCount={totalCount}
+            totalPages={totalPages}
+            variant="archive"
+          />
         </div>
       </div>
 
       <article className="archive-paper archive-panel archive-stack archive-stack-left min-w-0">
         {selectedItem ? (
           <>
-            <div className="grid lg:grid-cols-[minmax(260px,0.9fr)_minmax(0,1fr)]">
+            <div className="relative grid lg:grid-cols-[minmax(260px,0.9fr)_minmax(0,1fr)]">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/clip-transparent-trimmed.png"
+                alt=""
+                aria-hidden="true"
+                className="pointer-events-none absolute top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-0 sm:right-6 sm:h-28 lg:-top-4 lg:right-8 lg:h-32"
+              />
               <div className="relative border-b border-stone-300/80 bg-stone-200/30 p-6 lg:border-b-0 lg:border-r">
-                <div className="absolute right-5 top-0 hidden h-20 w-7 rounded-b-full border-x-4 border-b-4 border-stone-500/70 lg:block" />
                 <div className="font-mono text-lg uppercase tracking-[0.38em] text-stone-950">
                   Досье
                 </div>
@@ -429,7 +482,7 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
                     <span>{formatRatingsCount(selectedItem.ratingsCount)}</span>
                   </div>
 
-                  <dl className="mt-8 grid gap-5 border-t border-dashed border-stone-300 pt-5 text-sm leading-6 text-stone-800 sm:grid-cols-2">
+                  <dl className="mt-8 grid gap-5 border-t border-dashed border-stone-300 pt-5 text-sm leading-6 text-stone-800">
                     <div>
                       <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
                         Серия
@@ -447,12 +500,6 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
                         )}
                       </dd>
                     </div>
-                    <div>
-                      <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-                        Код
-                      </dt>
-                      <dd className="mt-1 break-all font-mono text-stone-700">{selectedItem.code}</dd>
-                    </div>
                   </dl>
 
                   <div className="mt-6 grid gap-3 sm:grid-cols-2">
@@ -467,28 +514,14 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
                         <RatingStars score={selectedItem.averageScore} />
                       </div>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setIsRatingDialogOpen(true)}
-                      className="group relative rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center transition-colors hover:border-stone-950 hover:bg-stone-100/70"
-                      aria-label="Изменить вашу оценку"
-                    >
-                      <span className="block font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-                        Ваша оценка
-                      </span>
-                      <span className="mt-2 block font-serif text-5xl tabular-nums text-red-900">
-                        {formatScore(selectedItem.currentAuthorScore)}
-                      </span>
-                      <span className="mt-2 flex justify-center">
-                        <RatingStars score={selectedItem.currentAuthorScore} />
-                      </span>
-                      <span
-                        role="tooltip"
-                        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 font-mono text-xs text-stone-50 opacity-0 shadow-sm transition-opacity group-focus-visible:opacity-100 group-hover:opacity-100"
-                      >
-                        Изменить оценку
-                      </span>
-                    </button>
+                    <MediaItemRatingPanel
+                      mediaItemCode={selectedItem.code}
+                      franchiseCode={selectedItem.franchiseCode}
+                      title={selectedItem.title}
+                      currentAuthor={currentAuthor}
+                      currentAuthorScore={selectedItem.currentAuthorScore}
+                      onOpen={() => setIsRatingDialogOpen(true)}
+                    />
                   </div>
                 </div>
 
@@ -504,8 +537,8 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
             </div>
 
             {selectedItem.description ? (
-              <div className="border-t border-stone-300/80 bg-stone-50/30 p-6 sm:p-8">
-                <div className="mx-auto w-full max-w-[420px] p-5">
+              <div className="border-t border-stone-300/80 p-6 sm:p-8">
+                <div className="mx-auto w-full max-w-[420px] rounded-md border border-stone-300/70 bg-stone-50/45 p-5">
                   <div className="mb-3 text-center font-mono text-xs uppercase tracking-[0.2em] text-stone-600">
                     Архивная заметка
                   </div>
@@ -524,63 +557,17 @@ export function MediaItemsCatalog({ items, currentAuthor }: MediaItemsCatalogPro
       </article>
 
       {isRatingDialogOpen && selectedItem ? (
-        <div
-          aria-labelledby="rating-dialog-title"
-          aria-modal="true"
-          className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 p-4"
-          role="dialog"
-        >
-          <div className="archive-paper archive-panel w-full max-w-xl p-5 shadow-2xl">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <div
-                  id="rating-dialog-title"
-                  className="font-serif text-3xl leading-none text-stone-950"
-                >
-                  Ваша оценка
-                </div>
-                <div className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">
-                  {selectedItem.title}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsRatingDialogOpen(false)}
-                className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
-                aria-label="Закрыть окно оценки"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="mt-5">
-              <AuthorRatingForm
-                mediaItemCode={selectedItem.code}
-                franchiseCode={selectedItem.franchiseCode}
-                currentAuthor={currentAuthor}
-                currentAuthorScore={selectedItem.currentAuthorScore}
-                variant="archive"
-                inlineSaveButton={false}
-                onScoreChange={setHasUnsavedRating}
-                formId="rating-form"
-              />
-            </div>
-
-            <div className="mt-4 flex justify-end">
-              <button
-                type="submit"
-                form="rating-form"
-                name="intent"
-                value="save"
-                onClick={() => setIsRatingDialogOpen(false)}
-                className="rounded-md border border-stone-950 bg-stone-950 px-4 py-2 font-mono text-sm text-stone-50 transition-colors hover:bg-stone-50 hover:text-stone-950 disabled:border-stone-300 disabled:bg-stone-50 disabled:text-stone-300"
-                disabled={!hasUnsavedRating}
-              >
-                Сохранить
-              </button>
-            </div>
-          </div>
-        </div>
+        <MediaItemRatingModal
+          mediaItemCode={selectedItem.code}
+          franchiseCode={selectedItem.franchiseCode}
+          title={selectedItem.title}
+          currentAuthor={currentAuthor}
+          currentAuthorScore={selectedItem.currentAuthorScore}
+          formId="rating-form"
+          hasUnsavedRating={hasUnsavedRating}
+          onClose={() => setIsRatingDialogOpen(false)}
+          onScoreChange={setHasUnsavedRating}
+        />
       ) : null}
     </section>
   );

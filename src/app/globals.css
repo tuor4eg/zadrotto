@@ -123,6 +123,41 @@ body {
   z-index: 1;
 }
 
+.archive-scrollbar {
+  scrollbar-color: rgb(var(--archive-paper-edge) / 48%) rgb(var(--archive-paper-underlay-end) / 34%);
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+}
+
+.archive-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.archive-scrollbar::-webkit-scrollbar-track {
+  border: 1px solid rgb(var(--archive-paper-edge) / 14%);
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, rgb(var(--archive-paper-highlight) / 18%), transparent),
+    rgb(var(--archive-paper-underlay-end) / 32%);
+}
+
+.archive-scrollbar::-webkit-scrollbar-thumb {
+  border: 2px solid transparent;
+  border-radius: 999px;
+  background:
+    linear-gradient(180deg, rgb(var(--archive-paper-highlight) / 22%), transparent 45%),
+    rgb(var(--archive-paper-edge) / 56%);
+  background-clip: padding-box;
+}
+
+.archive-scrollbar::-webkit-scrollbar-thumb:hover {
+  background:
+    linear-gradient(180deg, rgb(var(--archive-paper-highlight) / 20%), transparent 45%),
+    rgb(var(--archive-paper-edge) / 72%);
+  background-clip: padding-box;
+}
+
 @media (max-width: 640px) {
   .archive-stack-right::before {
     transform: translate(3px, 4px) rotate(0.25deg);

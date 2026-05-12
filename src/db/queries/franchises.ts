@@ -3,6 +3,7 @@ import { and, asc, eq, exists, isNull, ne, notExists, or, sql } from "drizzle-or
 import { db } from "@/db";
 import { franchises, mediaItems, ratings } from "@/db/schema";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
+import { resolveCoverUrl } from "@/lib/storage";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -155,7 +156,7 @@ export async function deleteFranchiseIfEmpty(id: number) {
 }
 
 export async function getMediaItemsByFranchiseId(franchiseId: number) {
-  return db
+  const items = await db
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
@@ -164,6 +165,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number) {
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
+      coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
     })
@@ -178,8 +180,11 @@ export async function getMediaItemsByFranchiseId(franchiseId: number) {
       mediaItems.description,
       mediaItems.mediaType,
       mediaItems.releaseYear,
+      mediaItems.coverUrl,
     )
     .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
+
+  return items.map((item) => ({ ...item, coverUrl: resolveCoverUrl(item.coverUrl) }));
 }
 
 export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {

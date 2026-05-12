@@ -57,7 +57,7 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
           <option value="">Выбери автора</option>
           {authors.map((author) => (
             <option key={author.id} value={author.id}>
-              {author.name} ({author.code})
+              {author.name}
             </option>
           ))}
         </Select>

@@ -110,6 +110,9 @@ export const mediaItems = pgTable(
   },
   (table) => [
     index("media_items_publication_status_idx").on(table.publicationStatus),
+    index("media_items_media_type_idx").on(table.mediaType),
+    index("media_items_release_year_idx").on(table.releaseYear),
+    index("media_items_title_idx").on(table.title),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
     index("media_items_franchise_id_idx").on(table.franchiseId),
   ],

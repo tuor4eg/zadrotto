@@ -20,7 +20,7 @@ export function getFranchiseErrorMessage(error?: string) {
   }
 
   if (error === "duplicate-code") {
-    return "Серия с таким кодом уже существует.";
+    return "Серия с таким названием уже существует.";
   }
 
   if (error === "required") {

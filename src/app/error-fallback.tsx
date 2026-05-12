@@ -27,9 +27,6 @@ export function ErrorFallback({ error, scope }: ErrorFallbackProps) {
           <p className="mt-3 text-sm leading-6 text-zinc-600">
             {getRuntimeErrorMessage()}
           </p>
-          {error.digest ? (
-            <p className="mt-3 font-mono text-xs text-zinc-400">Код ошибки: {error.digest}</p>
-          ) : null}
         </div>
       </section>
     </main>
