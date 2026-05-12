@@ -3,12 +3,46 @@ import postgres from "postgres";
 
 import * as schema from "./schema";
 
-const connectionString = process.env.DATABASE_URL;
+function createDbClient() {
+  const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString) {
-  throw new Error("DATABASE_URL is not set");
+  if (!connectionString) {
+    throw new Error("DATABASE_URL is not set");
+  }
+
+  return postgres(connectionString, { prepare: false });
 }
 
-export const dbClient = postgres(connectionString, { prepare: false });
+function createDb(client: ReturnType<typeof createDbClient>) {
+  return drizzle(client, { schema });
+}
 
-export const db = drizzle(dbClient, { schema });
+type DbClient = ReturnType<typeof createDbClient>;
+type Db = ReturnType<typeof createDb>;
+
+let cachedDbClient: DbClient | null = null;
+let cachedDb: Db | null = null;
+
+export function getDbClient() {
+  cachedDbClient ??= createDbClient();
+  return cachedDbClient;
+}
+
+export function getDb() {
+  cachedDb ??= createDb(getDbClient());
+  return cachedDb;
+}
+
+export const dbClient = new Proxy({} as DbClient, {
+  get(_target, property, receiver) {
+    const value = Reflect.get(getDbClient(), property, receiver);
+    return typeof value === "function" ? value.bind(getDbClient()) : value;
+  },
+});
+
+export const db = new Proxy({} as Db, {
+  get(_target, property, receiver) {
+    const value = Reflect.get(getDb(), property, receiver);
+    return typeof value === "function" ? value.bind(getDb()) : value;
+  },
+});
