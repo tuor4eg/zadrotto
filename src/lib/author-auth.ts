@@ -13,6 +13,7 @@ import {
   createAuthorSessionToken,
   verifyAuthorSessionToken,
 } from "@/lib/author-session";
+import { shouldUseSecureCookies } from "@/lib/cookies";
 
 export async function getCurrentAuthor() {
   const token = (await cookies()).get(AUTHOR_SESSION_COOKIE_NAME)?.value;
@@ -66,7 +67,7 @@ export async function setAuthorSessionCookie(authorId: number, authorCode: strin
     value: token,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: AUTHOR_SESSION_MAX_AGE_SECONDS,
   });
@@ -78,7 +79,7 @@ export async function clearAuthorSessionCookie() {
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: 0,
   });

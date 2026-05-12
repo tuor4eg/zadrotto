@@ -8,6 +8,7 @@ import {
   createAdminSessionToken,
   verifyAdminSessionToken,
 } from "@/lib/admin-session";
+import { shouldUseSecureCookies } from "@/lib/cookies";
 
 export async function getCurrentAdminUser() {
   const token = (await cookies()).get(ADMIN_SESSION_COOKIE_NAME)?.value;
@@ -43,7 +44,7 @@ export async function setAdminSessionCookie(adminId: number) {
     value: token,
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: ADMIN_SESSION_MAX_AGE_SECONDS,
   });
@@ -57,7 +58,7 @@ export async function clearAdminSessionCookie() {
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: 0,
   });
@@ -66,7 +67,7 @@ export async function clearAdminSessionCookie() {
     value: "",
     httpOnly: true,
     sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
+    secure: shouldUseSecureCookies(),
     path: "/admin",
     maxAge: 0,
   });
