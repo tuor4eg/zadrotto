@@ -18,6 +18,7 @@ import {
   type CatalogSort,
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
+import { ArchiveNote } from "@/app/archive-note";
 import {
   MediaItemRatingModal,
   MediaItemRatingPanel,
@@ -147,16 +148,6 @@ export function MediaItemsCatalog({
     () =>
       MEDIA_TYPES.filter((mediaType) =>
         mediaTypeCountRows.some((item) => item.mediaType === mediaType && item.count > 0),
-      ),
-    [mediaTypeCountRows],
-  );
-  const mediaTypeCountMap = useMemo(
-    () =>
-      new Map(
-        MEDIA_TYPES.map((mediaType) => [
-          mediaType,
-          mediaTypeCountRows.find((item) => item.mediaType === mediaType)?.count ?? 0,
-        ]),
       ),
     [mediaTypeCountRows],
   );
@@ -330,24 +321,15 @@ export function MediaItemsCatalog({
               </select>
             </div>
           </div>
-
-          <MediaTypeTabs
-            availableMediaTypes={availableMediaTypes}
-            mediaTypeCounts={mediaTypeCountMap}
-            selectedMediaType={mediaTypeFilter}
-            onChange={handleMediaTypeFilterChange}
-          />
         </div>
 
-        <div className="mt-4 flex items-center justify-between gap-3 px-1 font-mono text-[11px] uppercase tracking-[0.18em] text-stone-500">
-          <span>Картотека</span>
-          <span>
-            {totalCount === 0 ? 0 : (page - 1) * pageSize + 1}-
-            {Math.min(page * pageSize, totalCount)} из {totalCount}
-          </span>
-        </div>
+        <MediaTypeTabs
+          availableMediaTypes={availableMediaTypes}
+          selectedMediaType={mediaTypeFilter}
+          onChange={handleMediaTypeFilterChange}
+        />
 
-        <div className="archive-scrollbar mt-3 flex max-h-[780px] flex-col gap-2 overflow-y-auto pr-1">
+        <div className="archive-scrollbar mt-2 flex max-h-[780px] flex-col gap-2 overflow-y-auto pr-1">
           {items.length === 0 ? (
             <div className="rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
               Ничего не найдено.
@@ -355,6 +337,8 @@ export function MediaItemsCatalog({
           ) : null}
           {items.map((item) => {
             const isSelected = item.id === selectedItem?.id;
+            const shouldShowAuthorScore =
+              currentAuthor !== null && item.currentAuthorScore !== null;
 
             return (
               <div
@@ -397,27 +381,33 @@ export function MediaItemsCatalog({
                     ) : null}
                   </span>
                 </span>
-                <span className="hidden shrink-0 grid-cols-2 items-stretch gap-3 border-l border-dashed border-stone-300 pl-4 text-center sm:grid">
+                <span
+                  className={`hidden shrink-0 items-stretch gap-3 border-l border-dashed border-stone-300 pl-4 text-center sm:grid ${
+                    shouldShowAuthorScore ? "grid-cols-2" : "grid-cols-1"
+                  }`}
+                >
                   <span>
                     <span className="block font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
-                      Архив
+                      Оценка
                     </span>
                     <span className="mt-1 block font-serif text-3xl tabular-nums text-stone-950">
                       {formatScore(item.averageScore)}
                     </span>
                   </span>
-                  <MediaItemRatingPanel
-                    mediaItemCode={item.code}
-                    franchiseCode={item.franchiseCode}
-                    title={item.title}
-                    currentAuthor={currentAuthor}
-                    currentAuthorScore={item.currentAuthorScore}
-                    onOpen={() => {
-                      setSelectedId(item.id);
-                      setIsRatingDialogOpen(true);
-                    }}
-                    size="compact"
-                  />
+                  {shouldShowAuthorScore ? (
+                    <MediaItemRatingPanel
+                      mediaItemCode={item.code}
+                      franchiseCode={item.franchiseCode}
+                      title={item.title}
+                      currentAuthor={currentAuthor}
+                      currentAuthorScore={item.currentAuthorScore}
+                      onOpen={() => {
+                        setSelectedId(item.id);
+                        setIsRatingDialogOpen(true);
+                      }}
+                      size="compact"
+                    />
+                  ) : null}
                 </span>
               </div>
             );
@@ -538,14 +528,7 @@ export function MediaItemsCatalog({
 
             {selectedItem.description ? (
               <div className="border-t border-stone-300/80 p-6 sm:p-8">
-                <div className="mx-auto w-full max-w-[420px] rounded-md border border-stone-300/70 bg-stone-50/45 p-5">
-                  <div className="mb-3 text-center font-mono text-xs uppercase tracking-[0.2em] text-stone-600">
-                    Архивная заметка
-                  </div>
-                  <p className="font-mono text-base leading-7 text-stone-800">
-                    {selectedItem.description}
-                  </p>
-                </div>
+                <ArchiveNote text={selectedItem.description} maxWidthClassName="max-w-[420px]" />
               </div>
             ) : null}
           </>

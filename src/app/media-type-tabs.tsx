@@ -1,7 +1,6 @@
 "use client";
 
-import { useRef } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useMemo } from "react";
 
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import type { MediaType } from "@/lib/media-types";
@@ -10,117 +9,127 @@ import { cn } from "@/lib/utils";
 
 type MediaTypeTabsProps = {
   availableMediaTypes: MediaType[];
-  mediaTypeCounts: Map<MediaType, number>;
   selectedMediaType: MediaTypeFilter;
   onChange: (mediaType: MediaTypeFilter) => void;
 };
 
+type MediaTypeTabItem = {
+  label: string;
+  value: MediaTypeFilter;
+};
+
+const TAB_PAPER_CLASSES = [
+  "bg-[#b8a0a4]",
+  "bg-[#d6aba2]",
+  "bg-[#d2b691]",
+  "bg-[#cbb79e]",
+  "bg-[#b7bdac]",
+  "bg-[#aec2c6]",
+  "bg-[#c5b9b8]",
+  "bg-[#aaa3ad]",
+];
+
 function MediaTypeTab({
-  children,
+  index,
   isSelected,
+  label,
   onClick,
+  paperClassName,
+  selectedIndex,
 }: {
-  children: React.ReactNode;
+  index: number;
   isSelected: boolean;
+  label: string;
   onClick: () => void;
+  paperClassName: string;
+  selectedIndex: number;
 }) {
+  const distanceFromSelected = Math.abs(index - selectedIndex);
+  const overlap = index === 0 ? 0 : Math.min(82, 26 + distanceFromSelected * 16);
+  const zIndex = isSelected ? 60 : Math.max(1, 34 - distanceFromSelected);
+
   return (
     <button
       type="button"
       role="tab"
       aria-selected={isSelected}
       onClick={onClick}
+      style={{
+        marginLeft: index === 0 ? undefined : `${-overlap}px`,
+        zIndex,
+      }}
       className={cn(
-        "shrink-0 rounded-t-md border px-4 py-2 font-mono text-xs uppercase tracking-[0.12em] transition-colors",
+        "group relative grow shrink-0 rounded-t-[18px] border px-6 text-center font-mono text-xs uppercase tracking-[0.12em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,border-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80]",
         isSelected
-          ? "translate-y-px border-stone-500 border-b-transparent bg-stone-50 text-stone-950 shadow-[0_-1px_0_rgba(255,255,255,0.75)_inset]"
-          : "border-stone-300/80 bg-stone-100/80 text-stone-600 shadow-[0_2px_0_rgba(68,64,60,0.10)] hover:border-stone-700 hover:text-stone-950",
+          ? "archive-paper-surface h-16 min-w-[156px] border-stone-700 border-b-0 pb-4 pt-5 text-stone-950 shadow-[0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-['']"
+          : cn(
+              "h-12 min-w-[124px] border-stone-500/80 pb-3 pt-3 text-stone-800 hover:border-stone-700 hover:text-stone-950",
+              paperClassName,
+            ),
       )}
     >
-      {children}
-    </button>
-  );
-}
-
-function MediaTypeTabsScrollButton({
-  direction,
-  onClick,
-}: {
-  direction: "left" | "right";
-  onClick: () => void;
-}) {
-  const Icon = direction === "left" ? ChevronLeft : ChevronRight;
-
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="mb-1 grid size-9 shrink-0 place-items-center rounded-t-md border border-stone-300/80 bg-stone-100/85 text-stone-700 shadow-[0_2px_0_rgba(68,64,60,0.12)] transition-colors hover:border-stone-700 hover:text-stone-950"
-      aria-label={`Прокрутить типы медиа ${direction === "left" ? "влево" : "вправо"}`}
-    >
-      <Icon className="size-4" />
+      <span className="relative z-10 inline-flex max-w-full items-baseline justify-center gap-2">
+        <span className="truncate">{label}</span>
+      </span>
+      {!isSelected ? (
+        <span
+          role="tooltip"
+          className="archive-paper-surface pointer-events-none absolute left-1/2 top-0 z-[90] -translate-x-1/2 -translate-y-[calc(100%+0.45rem)] whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 group-hover:opacity-100 group-focus-visible:opacity-100 before:absolute before:left-1/2 before:top-full before:size-2 before:-translate-x-1/2 before:-translate-y-1/2 before:rotate-45 before:border-b before:border-r before:border-stone-500 before:bg-[rgb(var(--archive-paper-end))] before:content-['']"
+        >
+          {label}
+        </span>
+      ) : null}
     </button>
   );
 }
 
 export function MediaTypeTabs({
   availableMediaTypes,
-  mediaTypeCounts,
   selectedMediaType,
   onChange,
 }: MediaTypeTabsProps) {
-  const tabsRef = useRef<HTMLDivElement>(null);
-
-  function scrollTabs(direction: -1 | 1) {
-    const tabs = tabsRef.current;
-
-    if (!tabs) {
-      return;
-    }
-
-    tabs.scrollBy({
-      left: direction * Math.max(180, tabs.clientWidth * 0.72),
-      behavior: "smooth",
-    });
-  }
+  const tabs = useMemo<MediaTypeTabItem[]>(
+    () => [
+      {
+        label: "Все",
+        value: "all",
+      },
+      ...availableMediaTypes.map((mediaType) => ({
+        label: MEDIA_TYPE_LABELS[mediaType],
+        value: mediaType,
+      })),
+    ],
+    [availableMediaTypes],
+  );
+  const selectedIndex = Math.max(
+    0,
+    tabs.findIndex((tab) => tab.value === selectedMediaType),
+  );
 
   return (
-    <div className="mt-3 overflow-hidden rounded-t-md border-b border-stone-400/70 bg-stone-200/20 px-1 pt-2">
-      <div className="flex min-w-0 items-end gap-1">
-        <MediaTypeTabsScrollButton direction="left" onClick={() => scrollTabs(-1)} />
-
+    <div className="relative overflow-visible rounded-t-[18px] px-1 pt-2">
+      <div className="relative z-10 flex min-h-16 min-w-0 items-end gap-1.5">
         <div
-          ref={tabsRef}
           role="tablist"
           aria-label="Тип медиа"
-          className="flex min-w-0 flex-1 items-end gap-1 overflow-x-auto overflow-y-hidden scroll-smooth whitespace-nowrap [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="flex min-w-0 flex-1 items-end overflow-visible whitespace-nowrap px-2"
         >
-          <MediaTypeTab
-            isSelected={selectedMediaType === "all"}
-            onClick={() => onChange("all")}
-          >
-            Все
-          </MediaTypeTab>
-
-          {availableMediaTypes.map((mediaType) => {
-            const isSelected = selectedMediaType === mediaType;
+          {tabs.map((tab, index) => {
+            const isSelected = selectedMediaType === tab.value;
 
             return (
               <MediaTypeTab
-                key={mediaType}
+                key={tab.value}
+                index={index}
                 isSelected={isSelected}
-                onClick={() => onChange(mediaType)}
-              >
-                {MEDIA_TYPE_LABELS[mediaType]}
-                <span className={isSelected ? "ml-2 text-stone-500" : "ml-2 text-stone-400"}>
-                  {mediaTypeCounts.get(mediaType)}
-                </span>
-              </MediaTypeTab>
+                label={tab.label}
+                paperClassName={TAB_PAPER_CLASSES[index % TAB_PAPER_CLASSES.length]}
+                selectedIndex={selectedIndex}
+                onClick={() => onChange(tab.value)}
+              />
             );
           })}
         </div>
-
-        <MediaTypeTabsScrollButton direction="right" onClick={() => scrollTabs(1)} />
       </div>
     </div>
   );
