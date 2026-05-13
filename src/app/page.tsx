@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { connection } from "next/server";
-import { Search, Shield, UserCircle } from "lucide-react";
+import { Shield, UserCircle } from "lucide-react";
 
 import { getCatalogMediaItems, getCatalogMediaTypeCounts } from "@/db/queries/media-items";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
@@ -73,13 +73,6 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 text-sm">
-            <a
-              href="#catalog-search"
-              className="grid size-10 place-items-center border border-transparent text-stone-800 transition-colors hover:border-stone-300 hover:bg-stone-100/60"
-              aria-label="Перейти к поиску"
-            >
-              <Search className="size-5" />
-            </a>
             {currentAdminUser ? (
               <Link
                 href="/admin"
