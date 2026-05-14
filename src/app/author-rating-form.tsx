@@ -4,6 +4,11 @@ import Link from "next/link";
 import { useActionState, useEffect, useState } from "react";
 
 import { saveAuthorRatingAction, type SaveAuthorRatingState } from "@/app/ratings/actions";
+import {
+  getRatingTone,
+  RATING_BUTTON_TONE_CLASS_NAMES,
+  SELECTED_RATING_BUTTON_TONE_CLASS_NAMES,
+} from "@/lib/rating-tone";
 
 type AuthorRatingFormProps = {
   mediaItemCode: string;
@@ -144,6 +149,7 @@ export function AuthorRatingForm({
           <div className={ratingButtonGridClassName} aria-label="Оценка">
             {RATING_BUTTON_SCORES.map((score) => {
               const isSelected = visibleSelectedScore === score;
+              const ratingTone = getRatingTone(score);
 
               return (
                 <button
@@ -154,10 +160,10 @@ export function AuthorRatingForm({
                   className={`border font-semibold tabular-nums transition-colors disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400 ${ratingButtonSizeClassName} ${
                     isSelected
                       ? variant === "archive"
-                        ? "border-stone-950 bg-stone-950 text-stone-50"
+                        ? SELECTED_RATING_BUTTON_TONE_CLASS_NAMES[ratingTone]
                         : "border-zinc-950 bg-zinc-950 text-white"
                       : variant === "archive"
-                        ? "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-950 hover:text-stone-950"
+                        ? RATING_BUTTON_TONE_CLASS_NAMES[ratingTone]
                         : "border-zinc-300 bg-white text-zinc-700 hover:border-zinc-950 hover:text-zinc-950"
                   }`}
                 >

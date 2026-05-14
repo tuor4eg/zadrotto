@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { formatScore } from "@/lib/rating-score";
+import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
 type MediaItemRatingDialogProps = {
   mediaItemCode: string;
@@ -34,9 +35,9 @@ export function RatingStars({ score }: { score: number | null }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
-    <span className="font-mono text-xs tracking-[0.16em] text-stone-900" aria-hidden="true">
+    <span className="font-mono text-xs tracking-[0.16em] text-current" aria-hidden="true">
       {"★".repeat(filledStars)}
-      <span className="text-stone-300">{"★".repeat(5 - filledStars)}</span>
+      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
     </span>
   );
 }
@@ -48,16 +49,30 @@ export function MediaItemRatingPanel({
   size = "card",
 }: MediaItemRatingPanelProps) {
   const isCompact = size === "compact";
+  const authorRatingToneClassName =
+    AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const ratingPanelClassName = isCompact
-    ? "group relative block min-w-[82px] rounded-md border border-stone-300/80 bg-stone-50/35 px-3 py-2 text-center transition-colors hover:border-stone-950 hover:bg-stone-100/70"
-    : "group relative rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center transition-colors hover:border-stone-950 hover:bg-stone-100/70";
+    ? `group relative block min-w-[82px] rounded-md border px-3 py-2 text-center transition-colors ${
+        currentAuthor
+          ? authorRatingToneClassName
+          : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
+      }`
+    : `group relative rounded-md border p-4 text-center transition-colors ${
+        currentAuthor
+          ? authorRatingToneClassName
+          : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
+      }`;
   const labelClassName = isCompact
-    ? "block font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500"
-    : "block font-mono text-xs uppercase tracking-[0.14em] text-stone-500";
+    ? `block font-mono text-[10px] uppercase tracking-[0.12em] ${
+        currentAuthor ? "opacity-75" : "text-stone-500"
+      }`
+    : `block font-mono text-xs uppercase tracking-[0.14em] ${
+        currentAuthor ? "opacity-75" : "text-stone-500"
+      }`;
   const valueClassName = currentAuthor
     ? isCompact
-      ? "mt-1 block font-serif text-3xl tabular-nums text-red-900"
-      : "mt-2 block font-serif text-5xl tabular-nums text-red-900"
+      ? "mt-1 block font-serif text-3xl tabular-nums"
+      : "mt-2 block font-serif text-5xl tabular-nums"
     : isCompact
       ? "mt-1 block font-mono text-xs uppercase tracking-[0.1em] text-red-900"
       : "mt-2 block font-mono text-sm uppercase tracking-[0.14em] text-red-900";

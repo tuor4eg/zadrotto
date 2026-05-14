@@ -3,6 +3,7 @@ import Link from "next/link";
 import { ArchiveNote } from "@/app/archive-note";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
 type MediaItemDetailsItem = {
   id: number;
@@ -131,14 +132,16 @@ export function MediaItemDetails({
                 ) : null}
               </div>
 
-              <div className="w-fit border border-zinc-300 px-3 py-2">
-                <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
+              <div
+                className={`w-fit border px-3 py-2 ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)]}`}
+              >
+                <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] opacity-70">
                   Средний рейтинг
                 </span>
-                <span className="mt-1 block text-2xl font-semibold tabular-nums text-zinc-950">
+                <span className="mt-1 block text-2xl font-semibold tabular-nums">
                   {formatScore(item.averageScore)}
                 </span>
-                <span className="mt-1 block text-xs text-zinc-500">
+                <span className="mt-1 block text-xs opacity-70">
                   {formatRatingsCount(item.ratingsCount)}
                 </span>
               </div>
@@ -279,11 +282,13 @@ function ArchiveMediaItemDetails({
               </dl>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
-                  <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
+                <div
+                  className={`rounded-md border p-4 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)]}`}
+                >
+                  <div className="font-mono text-xs uppercase tracking-[0.14em] opacity-70">
                     Оценка архива
                   </div>
-                  <div className="mt-2 font-serif text-5xl tabular-nums text-stone-950">
+                  <div className="mt-2 font-serif text-5xl tabular-nums">
                     {formatScore(item.averageScore)}
                   </div>
                   <div className="mt-2 flex justify-center">
@@ -371,9 +376,9 @@ function DetailRatingStars({ score }: { score: number | null }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
-    <span className="font-mono text-xs tracking-[0.16em] text-stone-900" aria-hidden="true">
+    <span className="font-mono text-xs tracking-[0.16em] text-current" aria-hidden="true">
       {"★".repeat(filledStars)}
-      <span className="text-stone-300">{"★".repeat(5 - filledStars)}</span>
+      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
     </span>
   );
 }

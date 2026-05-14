@@ -59,11 +59,11 @@ function MediaTypeTab({
         zIndex,
       }}
       className={cn(
-        "group relative grow shrink-0 rounded-t-[18px] border px-6 text-center font-mono text-xs uppercase tracking-[0.12em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,border-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80]",
+        "group relative grow shrink-0 rounded-t-[18px] px-6 text-center font-mono text-xs uppercase tracking-[0.12em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80]",
         isSelected
-          ? "archive-paper-surface h-16 min-w-[156px] border-stone-700 border-b-0 pb-4 pt-5 text-stone-950 shadow-[0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-['']"
+          ? "archive-paper-surface h-16 min-w-[156px] pb-4 pt-5 text-stone-950 shadow-[12px_0_22px_rgba(68,64,60,0.32),0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-['']"
           : cn(
-              "h-12 min-w-[124px] border-stone-500/80 pb-3 pt-3 text-stone-800 hover:border-stone-700 hover:text-stone-950",
+              "h-12 min-w-[124px] pb-3 pt-3 text-stone-800 hover:text-stone-950",
               paperClassName,
             ),
       )}
@@ -107,12 +107,12 @@ export function MediaTypeTabs({
   );
 
   return (
-    <div className="relative overflow-visible rounded-t-[18px] px-1 pt-2">
+    <div className="relative overflow-visible rounded-t-[18px] pl-1 pr-4 pt-2">
       <div className="relative z-10 flex min-h-16 min-w-0 items-end gap-1.5">
         <div
           role="tablist"
           aria-label="Тип медиа"
-          className="flex min-w-0 flex-1 items-end overflow-visible whitespace-nowrap px-2"
+          className="flex min-w-0 flex-1 items-end overflow-visible whitespace-nowrap"
         >
           {tabs.map((tab, index) => {
             const isSelected = selectedMediaType === tab.value;

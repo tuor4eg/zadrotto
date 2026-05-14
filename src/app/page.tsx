@@ -6,6 +6,7 @@ import { getCatalogMediaItems, getCatalogMediaTypeCounts } from "@/db/queries/me
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
 import { parsePage } from "@/lib/pagination";
+import { CatalogHeaderControls } from "./catalog-header-controls";
 import {
   parseAuthorRatingFilter,
   parseCatalogSort,
@@ -54,8 +55,8 @@ export default async function Home({ searchParams }: HomeProps) {
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <header className="archive-paper archive-panel archive-stack archive-stack-bottom flex flex-wrap items-center justify-between gap-4 px-4 py-4 sm:px-6">
+      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1480px] flex-col gap-3">
+        <header className="archive-paper archive-panel archive-stack archive-stack-bottom flex flex-wrap items-center justify-between gap-4 py-4 pl-5 pr-4">
           <div className="flex min-w-0 items-center gap-4">
             <div className="grid size-16 shrink-0 place-items-center border border-stone-400/70 bg-stone-100/60 text-center font-mono text-sm font-semibold leading-5 text-stone-950 shadow-[inset_0_0_0_1px_rgba(68,64,60,0.16)]">
               Ж. К.
@@ -63,7 +64,7 @@ export default async function Home({ searchParams }: HomeProps) {
               Н. Б.
             </div>
             <div className="min-w-0">
-              <h1 className="font-serif text-3xl leading-none text-stone-950 sm:text-5xl">
+              <h1 className="pt-5 font-serif text-3xl leading-none text-stone-950 sm:text-5xl">
                 Журнал, которого не было
               </h1>
               <p className="mt-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-700">
@@ -73,10 +74,17 @@ export default async function Home({ searchParams }: HomeProps) {
           </div>
 
           <div className="flex shrink-0 flex-wrap items-center gap-2 text-sm">
+            <CatalogHeaderControls
+              authorRatingFilter={authorRatingFilter}
+              currentAuthor={Boolean(currentAuthor)}
+              mediaTypeFilter={mediaTypeFilter}
+              searchQuery={searchQuery}
+              sort={sort}
+            />
             {currentAdminUser ? (
               <Link
                 href="/admin"
-                className="inline-flex h-10 items-center gap-2 border-l border-stone-400/70 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-800 transition-colors hover:bg-stone-100/70"
+                className="inline-flex h-9 items-center gap-2 rounded-md border border-stone-300/80 bg-stone-50/80 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 transition-colors hover:border-stone-700"
               >
                 <Shield className="size-4" />
                 Админка
@@ -84,7 +92,7 @@ export default async function Home({ searchParams }: HomeProps) {
             ) : null}
             <Link
               href={currentAuthor ? "/author" : "/author/login"}
-              className="inline-flex h-10 items-center gap-2 border-l border-stone-400/70 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-800 transition-colors hover:bg-stone-100/70"
+              className="inline-flex h-9 items-center gap-2 rounded-md border border-stone-300/80 bg-stone-50/80 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 transition-colors hover:border-stone-700"
             >
               <UserCircle className="size-5" />
               {currentAuthor ? "Профиль" : "Войти"}
