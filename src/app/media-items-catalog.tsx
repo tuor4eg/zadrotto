@@ -343,7 +343,7 @@ export function MediaItemsCatalog({
             );
           })}
         </div>
-        <div className="mt-3">
+        <div className="mt-3 pl-1 pr-4">
           <PaginationNav
             basePath={pathname}
             page={page}

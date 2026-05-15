@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
 
 import { PageSizeSelect } from "@/components/page-size-select";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 
 type PaginationNavProps = {
   basePath: string;
@@ -101,24 +102,32 @@ function PageLink({
     "inline-flex size-10 items-center justify-center rounded-md border font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
 
   if (disabled) {
-    return (
+    const disabledLink = (
       <span aria-label={ariaLabel} aria-disabled="true" className={`${className} ${styles.disabled}`}>
         {children}
       </span>
     );
+
+    return variant === "archive" ? (
+      <ArchiveTooltip label={ariaLabel}>{disabledLink}</ArchiveTooltip>
+    ) : (
+      disabledLink
+    );
   }
 
-  return (
+  const link = (
     <Link
       href={href}
       scroll={false}
       aria-label={ariaLabel}
-      title={ariaLabel}
+      title={variant === "archive" ? undefined : ariaLabel}
       className={`${className} ${styles.enabled}`}
     >
       {children}
     </Link>
   );
+
+  return variant === "archive" ? <ArchiveTooltip label={ariaLabel}>{link}</ArchiveTooltip> : link;
 }
 
 export function PaginationNav({

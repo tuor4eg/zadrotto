@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { Shield, UserCircle } from "lucide-react";
 
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type {
   AuthorRatingFilter,
   CatalogSort,
@@ -31,6 +32,7 @@ export function CatalogStickyHeader({
   const [isCompact, setIsCompact] = useState(false);
   const isCompactRef = useRef(false);
   const frameRef = useRef<number | null>(null);
+  const authorLinkLabel = currentAuthor ? "Профиль" : "Войти";
 
   useEffect(() => {
     const compactScrollY = 72;
@@ -73,6 +75,31 @@ export function CatalogStickyHeader({
       window.removeEventListener("resize", scheduleUpdateCompactState);
     };
   }, []);
+
+  const adminLink = currentAdminUser ? (
+    <Link
+      href="/admin"
+      aria-label="Админка"
+      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+        isCompact ? "w-9 px-0" : "gap-2 px-3"
+      }`}
+    >
+      <Shield className="size-4" />
+      <span className={isCompact ? "sr-only" : undefined}>Админка</span>
+    </Link>
+  ) : null;
+  const authorLink = (
+    <Link
+      href={currentAuthor ? "/author" : "/author/login"}
+      aria-label={authorLinkLabel}
+      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+        isCompact ? "w-9 px-0" : "gap-2 px-3"
+      }`}
+    >
+      <UserCircle className="size-5" />
+      <span className={isCompact ? "sr-only" : undefined}>{authorLinkLabel}</span>
+    </Link>
+  );
 
   return (
     <header
@@ -120,22 +147,20 @@ export function CatalogStickyHeader({
           searchQuery={searchQuery}
           sort={sort}
         />
-        {currentAdminUser ? (
-          <Link
-            href="/admin"
-            className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-stone-50/80 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50"
-          >
-            <Shield className="size-4" />
-            Админка
-          </Link>
-        ) : null}
-        <Link
-          href={currentAuthor ? "/author" : "/author/login"}
-          className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-stone-50/80 px-3 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50"
-        >
-          <UserCircle className="size-5" />
-          {currentAuthor ? "Профиль" : "Войти"}
-        </Link>
+        {adminLink && isCompact ? (
+          <ArchiveTooltip label="Админка" side="bottom">
+            {adminLink}
+          </ArchiveTooltip>
+        ) : (
+          adminLink
+        )}
+        {isCompact ? (
+          <ArchiveTooltip label={authorLinkLabel} side="bottom">
+            {authorLink}
+          </ArchiveTooltip>
+        ) : (
+          authorLink
+        )}
       </div>
     </header>
   );

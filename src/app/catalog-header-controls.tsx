@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Check, Library, Search, SlidersHorizontal, X } from "lucide-react";
 
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type { AuthorRatingFilter, CatalogSort, MediaTypeFilter } from "./media-items-catalog-logic";
 
 type CatalogHeaderControlsProps = {
@@ -155,70 +156,76 @@ export function CatalogHeaderControls({
           placeholder="Поиск"
         />
         {search ? (
-          <button
-            type="button"
-            onClick={() => setSearch("")}
-            className="absolute right-2 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-200/70 hover:text-stone-950"
-            aria-label="Сбросить поиск"
+          <ArchiveTooltip
+            className="absolute right-2 top-1/2 -translate-y-1/2"
+            label="Сбросить поиск"
+            side="bottom"
           >
-            <X className="size-3.5" />
-          </button>
+            <button
+              type="button"
+              onClick={() => setSearch("")}
+              className="grid size-5 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-200/70 hover:text-stone-950"
+              aria-label="Сбросить поиск"
+            >
+              <X className="size-3.5" />
+            </button>
+          </ArchiveTooltip>
         ) : null}
       </div>
 
       {currentAuthor ? (
+        <ArchiveTooltip label={getAuthorRatingFilterTooltip(authorRatingFilter)} side="bottom">
+          <div
+            className="relative h-9 w-9 rounded-md border border-stone-300/80 bg-stone-50/80 text-stone-700 transition-colors hover:border-stone-700"
+          >
+            <span aria-hidden="true" className="pointer-events-none flex h-full w-full items-center justify-center">
+              {AUTHOR_RATING_FILTER_ICONS[authorRatingFilter]}
+            </span>
+            <label className="sr-only" htmlFor="header-author-rating-filter">
+              Фильтр моих оценок
+            </label>
+            <select
+              id="header-author-rating-filter"
+              value={authorRatingFilter}
+              onChange={(event) => replaceFilters({ mine: event.target.value as AuthorRatingFilter })}
+              aria-label={getAuthorRatingFilterTooltip(authorRatingFilter)}
+              className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
+            >
+              {Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([filter, label]) => (
+                <option key={filter} value={filter}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </ArchiveTooltip>
+      ) : null}
+
+      <ArchiveTooltip label={getSortTooltip(sort)} side="bottom">
         <div
           className="relative h-9 w-9 rounded-md border border-stone-300/80 bg-stone-50/80 text-stone-700 transition-colors hover:border-stone-700"
-          title={getAuthorRatingFilterTooltip(authorRatingFilter)}
         >
           <span aria-hidden="true" className="pointer-events-none flex h-full w-full items-center justify-center">
-            {AUTHOR_RATING_FILTER_ICONS[authorRatingFilter]}
+            <SlidersHorizontal className="size-4" />
           </span>
-          <label className="sr-only" htmlFor="header-author-rating-filter">
-            Фильтр моих оценок
+          <label className="sr-only" htmlFor="header-catalog-sort">
+            Сортировка
           </label>
           <select
-            id="header-author-rating-filter"
-            value={authorRatingFilter}
-            onChange={(event) => replaceFilters({ mine: event.target.value as AuthorRatingFilter })}
-            aria-label={getAuthorRatingFilterTooltip(authorRatingFilter)}
-            title={getAuthorRatingFilterTooltip(authorRatingFilter)}
+            id="header-catalog-sort"
+            value={sort}
+            onChange={(event) => replaceFilters({ sort: event.target.value as CatalogSort })}
+            aria-label={getSortTooltip(sort)}
             className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
           >
-            {Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([filter, label]) => (
-              <option key={filter} value={filter}>
+            {Object.entries(CATALOG_SORT_LABELS).map(([sort, label]) => (
+              <option key={sort} value={sort}>
                 {label}
               </option>
             ))}
           </select>
         </div>
-      ) : null}
-
-      <div
-        className="relative h-9 w-9 rounded-md border border-stone-300/80 bg-stone-50/80 text-stone-700 transition-colors hover:border-stone-700"
-        title={getSortTooltip(sort)}
-      >
-        <span aria-hidden="true" className="pointer-events-none flex h-full w-full items-center justify-center">
-          <SlidersHorizontal className="size-4" />
-        </span>
-        <label className="sr-only" htmlFor="header-catalog-sort">
-          Сортировка
-        </label>
-        <select
-          id="header-catalog-sort"
-          value={sort}
-          onChange={(event) => replaceFilters({ sort: event.target.value as CatalogSort })}
-          aria-label={getSortTooltip(sort)}
-          title={getSortTooltip(sort)}
-          className="absolute inset-0 h-full w-full cursor-pointer opacity-0"
-        >
-          {Object.entries(CATALOG_SORT_LABELS).map(([sort, label]) => (
-            <option key={sort} value={sort}>
-              {label}
-            </option>
-          ))}
-        </select>
-      </div>
+      </ArchiveTooltip>
     </div>
   );
 }

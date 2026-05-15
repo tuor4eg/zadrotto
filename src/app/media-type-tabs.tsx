@@ -74,14 +74,6 @@ function MediaTypeTab({
       <span className="relative z-10 inline-flex max-w-full items-baseline justify-center gap-2">
         <span className="truncate">{label}</span>
       </span>
-      {!isSelected ? (
-        <span
-          role="tooltip"
-          className="archive-paper-surface pointer-events-none absolute left-1/2 top-0 z-[90] hidden -translate-x-1/2 -translate-y-[calc(100%+0.45rem)] whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 group-hover:opacity-100 group-focus-visible:opacity-100 before:absolute before:left-1/2 before:top-full before:size-2 before:-translate-x-1/2 before:-translate-y-1/2 before:rotate-45 before:border-b before:border-r before:border-stone-500 before:bg-[rgb(var(--archive-paper-end))] before:content-[''] lg:block"
-        >
-          {label}
-        </span>
-      ) : null}
     </button>
   );
 }
