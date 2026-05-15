@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { ArchiveNote } from "@/app/archive-note";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
@@ -63,14 +64,7 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
 
           {franchise.description ? (
             <div className="border-b border-stone-300/80 p-6 sm:p-8">
-              <div className="mx-auto w-full max-w-[680px] rounded-md border border-stone-300/70 bg-stone-50/45 p-5">
-                <div className="mb-3 text-center font-mono text-xs uppercase tracking-[0.2em] text-stone-600">
-                  Архивная заметка
-                </div>
-                <p className="font-mono text-base leading-7 text-stone-800">
-                  {franchise.description}
-                </p>
-              </div>
+              <ArchiveNote text={franchise.description} />
             </div>
           ) : null}
 
