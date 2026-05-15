@@ -1,12 +1,17 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+
+import { PageSizeSelect } from "@/components/page-size-select";
 
 type PaginationNavProps = {
   basePath: string;
   itemLabel?: string;
   page: number;
   pageSize: number;
+  pageSizeOptions?: readonly number[];
   searchParams: Record<string, string | undefined>;
+  showPageJump?: boolean;
   totalCount: number;
   totalPages: number;
   variant?: "admin" | "archive";
@@ -17,6 +22,9 @@ const VARIANT_STYLES = {
     nav: "rounded-md border border-stone-200 bg-white px-3 py-2",
     meta: "text-stone-500",
     page: "text-stone-500",
+    input: "border-stone-300 bg-white text-stone-700 focus:border-stone-950",
+    button:
+      "border-stone-300 bg-white text-stone-700 hover:border-stone-950 hover:text-stone-950",
     enabled:
       "border-stone-300 bg-white text-stone-700 hover:border-stone-950 hover:text-stone-950",
     disabled: "border-stone-200 bg-stone-50 text-stone-300",
@@ -25,6 +33,10 @@ const VARIANT_STYLES = {
     nav: "rounded-md border border-stone-300/80 bg-stone-50/45 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]",
     meta: "text-stone-600",
     page: "border-x border-dashed border-stone-300 px-3 text-stone-600",
+    input:
+      "border-stone-300/80 bg-stone-50/70 text-stone-800 focus:border-stone-950",
+    button:
+      "border-stone-400/80 bg-stone-100/50 text-stone-800 hover:border-stone-950 hover:bg-stone-50 hover:text-stone-950",
     enabled:
       "border-stone-400/80 bg-stone-100/50 text-stone-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:border-stone-950 hover:bg-stone-50 hover:text-stone-950",
     disabled: "border-stone-300/60 bg-stone-100/25 text-stone-400",
@@ -55,12 +67,30 @@ function buildPageHref(
   return queryString ? `${basePath}?${queryString}` : basePath;
 }
 
+function HiddenSearchParams({
+  exclude = [],
+  searchParams,
+}: {
+  exclude?: string[];
+  searchParams: Record<string, string | undefined>;
+}) {
+  const excludedKeys = new Set(exclude);
+
+  return Object.entries(searchParams).map(([key, value]) =>
+    value && !excludedKeys.has(key) ? (
+      <input key={key} type="hidden" name={key} value={value} />
+    ) : null,
+  );
+}
+
 function PageLink({
+  ariaLabel,
   children,
   disabled,
   href,
   variant,
 }: {
+  ariaLabel: string;
   children: ReactNode;
   disabled: boolean;
   href: string;
@@ -68,16 +98,22 @@ function PageLink({
 }) {
   const styles = VARIANT_STYLES[variant];
   const className =
-    "inline-flex h-10 items-center justify-center rounded-md border px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
+    "inline-flex size-10 items-center justify-center rounded-md border font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
 
   if (disabled) {
-    return <span className={`${className} ${styles.disabled}`}>{children}</span>;
+    return (
+      <span aria-label={ariaLabel} aria-disabled="true" className={`${className} ${styles.disabled}`}>
+        {children}
+      </span>
+    );
   }
 
   return (
     <Link
       href={href}
       scroll={false}
+      aria-label={ariaLabel}
+      title={ariaLabel}
       className={`${className} ${styles.enabled}`}
     >
       {children}
@@ -90,46 +126,113 @@ export function PaginationNav({
   itemLabel = "записей",
   page,
   pageSize,
+  pageSizeOptions,
   searchParams,
+  showPageJump = false,
   totalCount,
   totalPages,
   variant = "admin",
 }: PaginationNavProps) {
-  if (totalPages <= 1) {
+  const shouldShowPageSizeControl =
+    pageSizeOptions !== undefined &&
+    pageSizeOptions.length > 0 &&
+    totalCount > Math.min(...pageSizeOptions);
+
+  if (totalPages <= 1 && !shouldShowPageSizeControl) {
     return null;
   }
 
-  const startItem = (page - 1) * pageSize + 1;
+  const startItem = totalCount === 0 ? 0 : (page - 1) * pageSize + 1;
   const endItem = Math.min(page * pageSize, totalCount);
   const styles = VARIANT_STYLES[variant];
+  const controlClassName =
+    "h-9 rounded-md border px-2 font-mono text-xs uppercase tracking-[0.08em] outline-none transition-colors";
+  const buttonClassName =
+    "inline-flex h-9 items-center justify-center rounded-md border px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
 
   return (
     <nav
       className={`flex flex-wrap items-center justify-between gap-3 ${styles.nav}`}
       aria-label="Пагинация"
     >
-      <div className={`font-mono text-xs uppercase tracking-[0.14em] ${styles.meta}`}>
-        {startItem}-{endItem} из {totalCount} {itemLabel}
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+        <div className={`font-mono text-xs uppercase tracking-[0.14em] ${styles.meta}`}>
+          {startItem}-{endItem} из {totalCount} {itemLabel}
+        </div>
+        {shouldShowPageSizeControl ? (
+          <form action={basePath} className="flex items-center gap-2" method="get">
+            <HiddenSearchParams exclude={["page", "pageSize"]} searchParams={searchParams} />
+            <label className={`font-mono text-xs uppercase tracking-[0.12em] ${styles.meta}`}>
+              На странице
+            </label>
+            <PageSizeSelect
+              ariaLabel="Записей на странице"
+              className={`${controlClassName} ${styles.input}`}
+              name="pageSize"
+              options={pageSizeOptions}
+              value={pageSize}
+            />
+          </form>
+        ) : null}
       </div>
-      <div className="flex items-center gap-2">
-        <PageLink
-          disabled={page <= 1}
-          href={buildPageHref(basePath, searchParams, page - 1)}
-          variant={variant}
-        >
-          Назад
-        </PageLink>
-        <span className={`font-mono text-xs ${styles.page}`}>
-          {page} / {totalPages}
-        </span>
-        <PageLink
-          disabled={page >= totalPages}
-          href={buildPageHref(basePath, searchParams, page + 1)}
-          variant={variant}
-        >
-          Вперед
-        </PageLink>
-      </div>
+      {totalPages > 1 ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <PageLink
+            disabled={page <= 1}
+            href={buildPageHref(basePath, searchParams, 1)}
+            ariaLabel="Первая страница"
+            variant={variant}
+          >
+            <ChevronsLeft className="size-4" />
+          </PageLink>
+          <PageLink
+            disabled={page <= 1}
+            href={buildPageHref(basePath, searchParams, page - 1)}
+            ariaLabel="Предыдущая страница"
+            variant={variant}
+          >
+            <ChevronLeft className="size-4" />
+          </PageLink>
+          <span className={`font-mono text-xs ${styles.page}`}>
+            {page} / {totalPages}
+          </span>
+          <PageLink
+            disabled={page >= totalPages}
+            href={buildPageHref(basePath, searchParams, page + 1)}
+            ariaLabel="Следующая страница"
+            variant={variant}
+          >
+            <ChevronRight className="size-4" />
+          </PageLink>
+          <PageLink
+            disabled={page >= totalPages}
+            href={buildPageHref(basePath, searchParams, totalPages)}
+            ariaLabel="Последняя страница"
+            variant={variant}
+          >
+            <ChevronsRight className="size-4" />
+          </PageLink>
+          {showPageJump ? (
+            <form action={basePath} className="flex items-center gap-2" method="get" noValidate>
+              <HiddenSearchParams exclude={["page"]} searchParams={searchParams} />
+              <label className="sr-only" htmlFor="pagination-page">
+                Номер страницы
+              </label>
+              <input
+                className={`w-20 ${controlClassName} ${styles.input}`}
+                defaultValue={page}
+                id="pagination-page"
+                inputMode="numeric"
+                name="page"
+                type="text"
+              />
+              <button className={`${buttonClassName} ${styles.button}`} type="submit">
+                Перейти
+              </button>
+            </form>
+          ) : null}
+        </div>
+      ) : null}
     </nav>
   );
 }

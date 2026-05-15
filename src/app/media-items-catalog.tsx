@@ -6,8 +6,6 @@ import { useCallback, useMemo, useState, useTransition } from "react";
 import {
   ArrowRight,
   FolderOpen,
-  Sigma,
-  Star,
 } from "lucide-react";
 
 import {
@@ -29,6 +27,7 @@ import {
 
 type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;
+  defaultPageSize: number;
   items: CatalogMediaItem[];
   mediaTypeCounts: Array<{
     count: number;
@@ -37,6 +36,7 @@ type MediaItemsCatalogProps = {
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
+  pageSizeOptions: readonly number[];
   searchQuery: string;
   sort: CatalogSort;
   totalCount: number;
@@ -94,11 +94,13 @@ function ArchiveCover({
 export function MediaItemsCatalog({
   authorRatingFilter,
   currentAuthor,
+  defaultPageSize,
   items,
   mediaTypeCounts: mediaTypeCountRows,
   mediaTypeFilter,
   page,
   pageSize,
+  pageSizeOptions,
   searchQuery,
   sort,
   totalCount,
@@ -126,6 +128,7 @@ export function MediaItemsCatalog({
   );
   const paginationSearchParams = {
     mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
+    pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
     q: searchQuery || undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
@@ -256,7 +259,9 @@ export function MediaItemsCatalog({
             basePath={pathname}
             page={page}
             pageSize={pageSize}
+            pageSizeOptions={pageSizeOptions}
             searchParams={paginationSearchParams}
+            showPageJump
             totalCount={totalCount}
             totalPages={totalPages}
             variant="archive"
@@ -272,7 +277,7 @@ export function MediaItemsCatalog({
               src="/clip-transparent-trimmed.png"
               alt=""
               aria-hidden="true"
-              className="pointer-events-none absolute -top-4 right-4 z-30 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
+              className="pointer-events-none absolute -top-1 right-4 z-30 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
             />
             <div className="relative -ml-2 rotate-[0.35deg] border border-stone-400/70 bg-[linear-gradient(135deg,rgb(var(--archive-paper-start)),rgb(var(--archive-paper-end)))] p-4 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-5">
               <div className="font-mono text-sm uppercase tracking-[0.34em] text-stone-950">

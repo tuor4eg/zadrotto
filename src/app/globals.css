@@ -185,6 +185,12 @@ body {
   transform: translateY(5px);
 }
 
+.archive-sticky-header {
+  position: sticky;
+  top: 0.75rem;
+  z-index: 40;
+}
+
 .archive-paper > * {
   position: relative;
   z-index: 1;

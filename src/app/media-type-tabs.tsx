@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
+import type { CSSProperties } from "react";
 
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import type { MediaType } from "@/lib/media-types";
@@ -46,6 +47,7 @@ function MediaTypeTab({
 }) {
   const distanceFromSelected = Math.abs(index - selectedIndex);
   const overlap = index === 0 ? 0 : Math.min(82, 26 + distanceFromSelected * 16);
+  const mobileOverlap = index === 0 ? 0 : Math.min(38, 14 + distanceFromSelected * 8);
   const zIndex = isSelected ? 60 : Math.max(1, 34 - distanceFromSelected);
 
   return (
@@ -55,15 +57,16 @@ function MediaTypeTab({
       aria-selected={isSelected}
       onClick={onClick}
       style={{
-        marginLeft: index === 0 ? undefined : `${-overlap}px`,
+        "--tab-mobile-overlap": index === 0 ? "0px" : `${-mobileOverlap}px`,
+        "--tab-overlap": index === 0 ? "0px" : `${-overlap}px`,
         zIndex,
-      }}
+      } as CSSProperties}
       className={cn(
-        "group relative grow shrink-0 rounded-t-[18px] px-6 text-center font-mono text-xs uppercase tracking-[0.12em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80]",
+        "group relative shrink-0 rounded-t-[14px] px-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80] ml-[var(--tab-mobile-overlap)] lg:ml-[var(--tab-overlap)] lg:grow lg:rounded-t-[18px] lg:px-6 lg:text-xs lg:tracking-[0.12em]",
         isSelected
-          ? "archive-paper-surface h-16 min-w-[156px] pb-4 pt-5 text-stone-950 shadow-[12px_0_22px_rgba(68,64,60,0.32),0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-['']"
+          ? "archive-paper-surface h-12 min-w-[116px] pb-3 pt-3 text-stone-950 shadow-[12px_0_22px_rgba(68,64,60,0.32),0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-[''] lg:h-16 lg:min-w-[156px] lg:pb-4 lg:pt-5"
           : cn(
-              "h-12 min-w-[124px] pb-3 pt-3 text-stone-800 hover:text-stone-950",
+              "h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
               paperClassName,
             ),
       )}
@@ -74,7 +77,7 @@ function MediaTypeTab({
       {!isSelected ? (
         <span
           role="tooltip"
-          className="archive-paper-surface pointer-events-none absolute left-1/2 top-0 z-[90] -translate-x-1/2 -translate-y-[calc(100%+0.45rem)] whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 group-hover:opacity-100 group-focus-visible:opacity-100 before:absolute before:left-1/2 before:top-full before:size-2 before:-translate-x-1/2 before:-translate-y-1/2 before:rotate-45 before:border-b before:border-r before:border-stone-500 before:bg-[rgb(var(--archive-paper-end))] before:content-['']"
+          className="archive-paper-surface pointer-events-none absolute left-1/2 top-0 z-[90] hidden -translate-x-1/2 -translate-y-[calc(100%+0.45rem)] whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 group-hover:opacity-100 group-focus-visible:opacity-100 before:absolute before:left-1/2 before:top-full before:size-2 before:-translate-x-1/2 before:-translate-y-1/2 before:rotate-45 before:border-b before:border-r before:border-stone-500 before:bg-[rgb(var(--archive-paper-end))] before:content-[''] lg:block"
         >
           {label}
         </span>
@@ -107,12 +110,12 @@ export function MediaTypeTabs({
   );
 
   return (
-    <div className="relative overflow-visible rounded-t-[18px] pl-1 pr-4 pt-2">
+    <div className="archive-scrollbar relative max-w-full overflow-x-auto overflow-y-hidden rounded-t-[18px] pl-1 pr-1 pt-2 lg:overflow-visible lg:pr-4">
       <div className="relative z-10 flex min-h-16 min-w-0 items-end gap-1.5">
         <div
           role="tablist"
           aria-label="Тип медиа"
-          className="flex min-w-0 flex-1 items-end overflow-visible whitespace-nowrap"
+          className="flex w-max min-w-0 items-end overflow-visible whitespace-nowrap lg:w-auto lg:flex-1"
         >
           {tabs.map((tab, index) => {
             const isSelected = selectedMediaType === tab.value;

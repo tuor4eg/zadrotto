@@ -45,7 +45,7 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} className="flex flex-col gap-4" noValidate>
       <div className="flex flex-col gap-2">
         <Label htmlFor="author-token-author">Автор</Label>
         <Select

@@ -26,7 +26,7 @@ export function AuthorForm({
   values,
 }: AuthorFormProps) {
   return (
-    <form action={action} className="grid gap-5">
+    <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="authorId" value={values.id} /> : null}
 
       <div className="grid gap-4">

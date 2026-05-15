@@ -28,7 +28,7 @@ export function FranchiseForm({
   successMessage,
 }: FranchiseFormProps) {
   return (
-    <form action={action} className="grid gap-5">
+    <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="franchiseId" value={values.id} /> : null}
 
       <div className="grid gap-4">

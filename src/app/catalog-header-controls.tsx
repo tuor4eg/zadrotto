@@ -8,6 +8,7 @@ import type { AuthorRatingFilter, CatalogSort, MediaTypeFilter } from "./media-i
 
 type CatalogHeaderControlsProps = {
   authorRatingFilter: AuthorRatingFilter;
+  compact?: boolean;
   currentAuthor: boolean;
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
@@ -58,6 +59,7 @@ function updateFilterParam(
 
 export function CatalogHeaderControls({
   authorRatingFilter,
+  compact = false,
   currentAuthor,
   mediaTypeFilter,
   searchQuery,
@@ -69,6 +71,7 @@ export function CatalogHeaderControls({
   const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
   const isFirstSearchSync = useRef(true);
+  const previousSearchQuery = useRef(searchQuery);
 
   const replaceFilters = useCallback(
     (nextFilters: { mine?: AuthorRatingFilter; q?: string; sort?: CatalogSort }) => {
@@ -106,8 +109,18 @@ export function CatalogHeaderControls({
   );
 
   useEffect(() => {
+    if (previousSearchQuery.current !== searchQuery) {
+      previousSearchQuery.current = searchQuery;
+      setSearch(searchQuery);
+      return;
+    }
+
     if (isFirstSearchSync.current) {
       isFirstSearchSync.current = false;
+      return;
+    }
+
+    if (search === searchQuery) {
       return;
     }
 
@@ -116,14 +129,22 @@ export function CatalogHeaderControls({
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search]);
+  }, [replaceFilters, search, searchQuery]);
 
   return (
-    <div className="flex w-full flex-wrap items-center gap-2 sm:w-auto">
+    <div
+      className={`contents ${
+        compact ? "lg:flex lg:w-auto lg:flex-nowrap lg:items-center lg:gap-2" : "lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-2"
+      }`}
+    >
       <label className="sr-only" htmlFor="header-catalog-search">
         Поиск
       </label>
-      <div className="relative w-full sm:w-[210px]">
+      <div
+        className={`relative ${
+          compact ? "w-full basis-full lg:w-[210px] lg:basis-auto" : "w-full basis-full lg:w-[210px] lg:basis-auto"
+        }`}
+      >
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
         <input
           id="header-catalog-search"

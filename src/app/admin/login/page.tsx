@@ -47,7 +47,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
           </CardHeader>
 
           <CardContent>
-          <form action={loginAdmin} className="flex flex-col gap-4">
+          <form action={loginAdmin} className="flex flex-col gap-4" noValidate>
             <div className="flex flex-col gap-2">
               <Label htmlFor="admin-login">Логин</Label>
               <Input

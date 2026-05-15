@@ -38,7 +38,7 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
             <h1 className="mt-2 text-3xl font-semibold leading-tight text-zinc-950">Вход</h1>
           </div>
 
-          <form action={loginAuthor} className="flex flex-col gap-4">
+          <form action={loginAuthor} className="flex flex-col gap-4" noValidate>
             <div className="flex flex-col gap-2">
               <label
                 htmlFor="author-access-token"

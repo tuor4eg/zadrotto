@@ -36,7 +36,7 @@ export function AdminMediaForm({
   successMessage,
 }: AdminMediaFormProps) {
   return (
-    <form action={action} className="grid gap-5">
+    <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2">
