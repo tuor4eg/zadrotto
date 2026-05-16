@@ -103,9 +103,9 @@ export function CatalogStickyHeader({
 
   return (
     <header
-      className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 transition-[padding,width] duration-200 ${
+      className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 transition-[max-width,padding,width] duration-200 ${
         isCompact
-          ? "w-full max-w-full flex-wrap justify-end px-2 pb-2 pt-4 lg:ml-auto lg:w-fit lg:flex-nowrap"
+          ? "ml-auto w-full max-w-[320px] flex-wrap justify-end px-2 pb-2 pt-4 lg:flex-nowrap"
           : "w-full flex-wrap justify-between py-4 pl-5 pr-4"
       }`}
     >
@@ -135,7 +135,7 @@ export function CatalogStickyHeader({
       <div
         className={`flex items-center gap-2 text-sm ${
           isCompact
-            ? "w-full flex-wrap justify-end lg:w-auto lg:flex-nowrap"
+            ? "w-full min-w-0 flex-nowrap justify-end"
             : "w-full flex-wrap justify-start sm:items-start lg:w-auto lg:shrink-0 lg:items-center lg:justify-end"
         }`}
       >

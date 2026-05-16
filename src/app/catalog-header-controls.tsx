@@ -135,7 +135,9 @@ export function CatalogHeaderControls({
   return (
     <div
       className={`contents ${
-        compact ? "lg:flex lg:w-auto lg:flex-nowrap lg:items-center lg:gap-2" : "lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-2"
+        compact
+          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2"
+          : "lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-2"
       }`}
     >
       <label className="sr-only" htmlFor="header-catalog-search">
@@ -143,7 +145,9 @@ export function CatalogHeaderControls({
       </label>
       <div
         className={`relative ${
-          compact ? "w-full basis-full lg:w-[210px] lg:basis-auto" : "w-full basis-full lg:w-[210px] lg:basis-auto"
+          compact
+            ? "min-w-0 flex-1 basis-auto"
+            : "w-full basis-full lg:w-[210px] lg:basis-auto"
         }`}
       >
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />

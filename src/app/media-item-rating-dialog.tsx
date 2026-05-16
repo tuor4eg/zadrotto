@@ -35,7 +35,7 @@ export function RatingStars({ score }: { score: number | null }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
-    <span className="font-mono text-xs tracking-[0.16em] text-current" aria-hidden="true">
+    <span className="font-mono text-2xl leading-none tracking-[0.16em] text-current" aria-hidden="true">
       {"★".repeat(filledStars)}
       <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
     </span>

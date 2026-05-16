@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
@@ -189,17 +190,28 @@ function ArchiveMediaItemDetails({
 }: Omit<MediaItemDetailsProps, "variant"> & { relatedItems: RelatedMediaItem[] }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="flex flex-wrap gap-2">
-        <Link
-          href={backLink.href}
-          className="w-fit rounded-md border border-stone-400 bg-stone-50/70 px-4 py-2 font-mono text-xs uppercase tracking-[0.14em] text-stone-800 transition-colors hover:border-stone-950 hover:bg-stone-100"
-        >
-          {backLink.label}
-        </Link>
-        {actions}
-      </div>
+      {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
-      <article className="archive-paper archive-panel archive-stack archive-stack-left min-w-0">
+      <article className="archive-paper archive-panel archive-stack archive-stack-left relative min-w-0 overflow-visible">
+        <ArchiveTooltip
+          label="Назад"
+          className="absolute left-0 top-7 z-40 h-20 w-16 -translate-x-full"
+          side="top"
+        >
+          <Link
+            href={backLink.href}
+            className="grid h-full w-full place-items-center bg-stone-200/70 text-stone-800 shadow-[0_10px_18px_rgba(28,25,23,0.16)] [clip-path:polygon(0_50%,100%_0,100%_100%)] hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            aria-label={backLink.label}
+          >
+            <span
+              className="translate-x-3 font-mono text-4xl leading-none transition-transform group-hover:translate-x-2"
+              aria-hidden="true"
+            >
+              &lt;
+            </span>
+          </Link>
+        </ArchiveTooltip>
+
         <div className="relative grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
@@ -309,6 +321,12 @@ function ArchiveMediaItemDetails({
                     </div>
                   </div>
                 )}
+
+                {item.description ? (
+                  <div className="mt-3 sm:col-span-2">
+                    <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
+                  </div>
+                ) : null}
               </div>
 
               <div className="mt-6 flex flex-col gap-3">
@@ -317,12 +335,6 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
         </div>
-
-        {item.description ? (
-          <div className="border-t border-stone-300/80 p-6 sm:p-8">
-            <ArchiveNote text={item.description} />
-          </div>
-        ) : null}
 
         {relatedItems.length > 0 ? (
           <div className="border-t border-stone-300/80 bg-stone-50/20 p-6 sm:p-8">
@@ -376,7 +388,7 @@ function DetailRatingStars({ score }: { score: number | null }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
-    <span className="font-mono text-xs tracking-[0.16em] text-current" aria-hidden="true">
+    <span className="font-mono text-2xl leading-none tracking-[0.16em] text-current" aria-hidden="true">
       {"★".repeat(filledStars)}
       <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
     </span>

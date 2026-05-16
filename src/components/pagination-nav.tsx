@@ -155,9 +155,9 @@ export function PaginationNav({
   const endItem = Math.min(page * pageSize, totalCount);
   const styles = VARIANT_STYLES[variant];
   const controlClassName =
-    "h-9 rounded-md border px-2 font-mono text-xs uppercase tracking-[0.08em] outline-none transition-colors";
+    "h-10 rounded-md border px-2 font-mono text-xs uppercase tracking-[0.08em] outline-none transition-colors";
   const buttonClassName =
-    "inline-flex h-9 items-center justify-center rounded-md border px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
+    "inline-flex h-10 items-center justify-center rounded-md border px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
 
   return (
     <nav
