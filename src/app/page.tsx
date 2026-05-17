@@ -71,7 +71,6 @@ export default async function Home({ searchParams }: HomeProps) {
         />
 
         <MediaItemsCatalog
-          key={`${searchQuery}:${mediaTypeFilter}:${sort}:${authorRatingFilter}:${catalog.page}`}
           authorRatingFilter={authorRatingFilter}
           defaultPageSize={DEFAULT_CATALOG_PAGE_SIZE}
           currentAuthor={

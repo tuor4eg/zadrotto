@@ -192,33 +192,41 @@ function ArchiveMediaItemDetails({
     <div className="flex flex-col gap-3">
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
-      <article className="archive-paper archive-panel archive-stack archive-stack-left relative min-w-0 overflow-visible">
+      <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
         <ArchiveTooltip
           label="Назад"
-          className="absolute left-0 top-7 z-40 h-20 w-16 -translate-x-full"
+          className="absolute left-0 top-7 !-z-20 h-20 w-16 -translate-x-full"
           side="top"
         >
           <Link
             href={backLink.href}
-            className="grid h-full w-full place-items-center bg-stone-200/70 text-stone-800 shadow-[0_10px_18px_rgba(28,25,23,0.16)] [clip-path:polygon(0_50%,100%_0,100%_100%)] hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            className="grid h-full w-full place-items-center rounded-l-md bg-stone-200 text-stone-800 shadow-[0_10px_18px_rgba(28,25,23,0.16)] transition-colors hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
             aria-label={backLink.label}
           >
-            <span
-              className="translate-x-3 font-mono text-4xl leading-none transition-transform group-hover:translate-x-2"
+            <svg
               aria-hidden="true"
+              className="size-8"
+              fill="none"
+              viewBox="0 0 32 32"
             >
-              &lt;
-            </span>
+              <path
+                d="M21 7 10 16l11 9"
+                stroke="currentColor"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2.5"
+              />
+            </svg>
           </Link>
         </ArchiveTooltip>
 
-        <div className="relative grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
+        <div className="relative z-10 grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-0 sm:right-6 sm:h-28 lg:-top-4 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute -top-16 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-20 sm:right-6 sm:h-28 lg:-top-24 lg:right-8 lg:h-32"
           />
 
           <div className="relative border-b border-stone-300/80 bg-stone-200/30 p-6 lg:border-b-0 lg:border-r">

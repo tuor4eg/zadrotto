@@ -365,7 +365,7 @@ export function MediaItemsCatalog({
       >
         <article
           ref={detailsPanelRef}
-          className="archive-paper archive-panel archive-stack archive-stack-left relative min-w-0 overflow-visible"
+          className="archive-paper archive-panel archive-stack archive-stack-left relative w-full min-w-0 overflow-visible"
           style={
             fixedDetails.isFixed
               ? {

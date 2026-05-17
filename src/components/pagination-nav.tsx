@@ -1,6 +1,12 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
+  CornerDownLeft,
+} from "lucide-react";
 
 import { PageSizeSelect } from "@/components/page-size-select";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
@@ -156,8 +162,8 @@ export function PaginationNav({
   const styles = VARIANT_STYLES[variant];
   const controlClassName =
     "h-10 rounded-md border px-2 font-mono text-xs uppercase tracking-[0.08em] outline-none transition-colors";
-  const buttonClassName =
-    "inline-flex h-10 items-center justify-center rounded-md border px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] transition-colors";
+  const pageJumpButtonClassName =
+    "absolute right-1 top-1 inline-flex size-8 items-center justify-center rounded border border-transparent transition-colors";
 
   return (
     <nav
@@ -222,22 +228,28 @@ export function PaginationNav({
             <ChevronsRight className="size-4" />
           </PageLink>
           {showPageJump ? (
-            <form action={basePath} className="flex items-center gap-2" method="get" noValidate>
+            <form action={basePath} className="flex items-center" method="get" noValidate>
               <HiddenSearchParams exclude={["page"]} searchParams={searchParams} />
               <label className="sr-only" htmlFor="pagination-page">
                 Номер страницы
               </label>
-              <input
-                className={`w-20 ${controlClassName} ${styles.input}`}
-                defaultValue={page}
-                id="pagination-page"
-                inputMode="numeric"
-                name="page"
-                type="text"
-              />
-              <button className={`${buttonClassName} ${styles.button}`} type="submit">
-                Перейти
-              </button>
+              <div className="relative">
+                <input
+                  className={`w-20 pr-10 ${controlClassName} ${styles.input}`}
+                  defaultValue={page}
+                  id="pagination-page"
+                  inputMode="numeric"
+                  name="page"
+                  type="text"
+                />
+                <button
+                  aria-label="Перейти к странице"
+                  className={`${pageJumpButtonClassName} ${styles.button}`}
+                  type="submit"
+                >
+                  <CornerDownLeft className="size-4" />
+                </button>
+              </div>
             </form>
           ) : null}
         </div>
