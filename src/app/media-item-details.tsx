@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
-import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
@@ -151,12 +151,12 @@ export function MediaItemDetails({
               {noteSlot}
             </div>
 
-            {relatedItems.length > 0 ? (
-              <div className="border-t border-zinc-200 pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">
-                <div className="flex flex-col gap-2 normal-case tracking-normal">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    Еще из этой серии
-                  </div>
+            <div className="pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">
+              <div className="flex flex-col gap-2 normal-case tracking-normal">
+                <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                  На соседней полке
+                </div>
+                {relatedItems.length > 0 ? (
                   <div className="flex flex-wrap gap-2">
                     {relatedItems.map((relatedItem) => (
                       <Link
@@ -169,9 +169,13 @@ export function MediaItemDetails({
                       </Link>
                     ))}
                   </div>
-                </div>
+                ) : (
+                  <div className="px-3 py-2 text-xs text-zinc-500">
+                    Here be dragons
+                  </div>
+                )}
               </div>
-            ) : null}
+            </div>
           </div>
         </div>
       </article>
@@ -193,32 +197,7 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
-        <ArchiveTooltip
-          label="Назад"
-          className="absolute left-0 top-7 !-z-20 h-20 w-16 -translate-x-full"
-          side="top"
-        >
-          <Link
-            href={backLink.href}
-            className="grid h-full w-full place-items-center rounded-l-md bg-stone-200 text-stone-800 shadow-[0_10px_18px_rgba(28,25,23,0.16)] transition-colors hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-            aria-label={backLink.label}
-          >
-            <svg
-              aria-hidden="true"
-              className="size-8"
-              fill="none"
-              viewBox="0 0 32 32"
-            >
-              <path
-                d="M21 7 10 16l11 9"
-                stroke="currentColor"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth="2.5"
-              />
-            </svg>
-          </Link>
-        </ArchiveTooltip>
+        <ArchiveBackLink href={backLink.href} label={backLink.label} />
 
         <div className="relative z-10 grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -226,10 +205,10 @@ function ArchiveMediaItemDetails({
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -top-16 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-20 sm:right-6 sm:h-28 lg:-top-24 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute -top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-3 sm:right-6 sm:h-28 lg:-top-4 lg:right-8 lg:h-32"
           />
 
-          <div className="relative border-b border-stone-300/80 bg-stone-200/30 p-6 lg:border-b-0 lg:border-r">
+          <div className="relative px-6 pb-6 pt-[3.75rem]">
             <div className="font-mono text-lg uppercase tracking-[0.38em] text-stone-950">
               Досье
             </div>
@@ -256,7 +235,7 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
-          <div className="flex min-h-[560px] flex-col justify-between gap-8 p-6 sm:p-8">
+          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-8 sm:px-8 sm:pb-8 sm:pt-8">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
                 <div className="font-serif text-4xl leading-none text-stone-950 sm:text-6xl">
@@ -279,7 +258,7 @@ function ArchiveMediaItemDetails({
                 <span>{formatRatingsCount(item.ratingsCount)}</span>
               </div>
 
-              <dl className="mt-8 grid gap-5 border-t border-dashed border-stone-300 pt-5 text-sm leading-6 text-stone-800">
+              <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
                 <div>
                   <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
                     Серия
@@ -342,14 +321,12 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
           </div>
-        </div>
 
-        {relatedItems.length > 0 ? (
-          <div className="border-t border-stone-300/80 bg-stone-50/20 p-6 sm:p-8">
-            <div className="mx-auto w-full max-w-[760px]">
-              <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                Еще из этой серии
-              </div>
+          <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
+            <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+              На соседней полке
+            </div>
+            {relatedItems.length > 0 ? (
               <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
                 {relatedItems.map((relatedItem) => (
                   <Link
@@ -384,9 +361,13 @@ function ArchiveMediaItemDetails({
                   </Link>
                 ))}
               </div>
-            </div>
+            ) : (
+              <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
+                Here be dragons
+              </div>
+            )}
           </div>
-        ) : null}
+        </div>
       </article>
     </div>
   );

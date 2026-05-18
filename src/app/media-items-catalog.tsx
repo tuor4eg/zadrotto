@@ -298,21 +298,19 @@ export function MediaItemsCatalog({
                 <span aria-hidden="true" className="absolute inset-0 bg-stone-950/10" />
                 <span
                   aria-hidden="true"
-                  className="absolute inset-x-0 top-0 h-2/5 bg-gradient-to-b from-stone-950/82 via-stone-950/30 to-transparent"
+                  className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-stone-950/88 via-stone-950/44 to-transparent"
                 />
-                <span
-                  aria-hidden="true"
-                  className="absolute inset-x-0 bottom-0 h-2/5 bg-gradient-to-t from-stone-950/82 via-stone-950/24 to-transparent"
-                />
-                <span className="absolute inset-x-0 top-0 p-2.5 text-stone-50">
+                <span className="absolute bottom-3 left-2.5 right-[4.25rem] flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
                   <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
                     {item.title}
                   </span>
-                  {mediaTypeFilter === "all" ? (
-                    <span className="mt-1 block truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-200">
-                      {MEDIA_TYPE_LABELS[item.mediaType]}
-                    </span>
-                  ) : null}
+                  <span className="mt-1 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.12em] text-stone-200">
+                    <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
+                    {item.releaseYear ? <span>•</span> : null}
+                    {item.releaseYear ? <span>{item.releaseYear}</span> : null}
+                    <span>•</span>
+                    <span>{formatRatingsCount(item.ratingsCount)}</span>
+                  </span>
                 </span>
                 <span
                   className={`absolute bottom-2 right-2 inline-flex h-8 items-center justify-center rounded-full border text-center shadow-sm ${averageRatingToneClassName} ${
@@ -330,13 +328,6 @@ export function MediaItemsCatalog({
                         {formatScore(item.currentAuthorScore)}
                       </span>
                     </span>
-                  ) : null}
-                </span>
-                <span className="absolute bottom-3 left-2.5 right-[4.25rem] flex min-w-0 flex-wrap gap-x-2 gap-y-1 font-mono text-[10px] leading-4 text-stone-200">
-                  {item.releaseYear ? <span>{item.releaseYear}</span> : null}
-                  {item.releaseYear && item.franchiseTitle ? <span>•</span> : null}
-                  {item.franchiseTitle ? (
-                    <span className="min-w-0 truncate">{item.franchiseTitle}</span>
                   ) : null}
                 </span>
               </button>
