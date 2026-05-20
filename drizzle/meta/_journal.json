@@ -29,6 +29,13 @@
       "when": 1779254148288,
       "tag": "0003_dark_sabretooth",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779261660332,
+      "tag": "0004_premium_wendell_vaughn",
+      "breakpoints": true
     }
   ]
 }

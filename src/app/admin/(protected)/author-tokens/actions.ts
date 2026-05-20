@@ -51,12 +51,19 @@ export async function createAuthorTokenAction(
   const accessToken = generateAuthorAccessToken();
 
   try {
-    await createAuthorAccessToken({
+    const isCreated = await createAuthorAccessToken({
       authorId,
       tokenHash: hashAuthorAccessToken(accessToken),
       label,
       createdByAdminId: adminUser.id,
     });
+
+    if (!isCreated) {
+      return {
+        accessToken: null,
+        error: "Для системного автора нельзя создать токен.",
+      };
+    }
   } catch (error) {
     console.error(error);
 

@@ -5,8 +5,10 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { authorExistsById } from "@/db/queries/authors";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import {
+  createAdminMediaItem,
   deleteAdminMediaItemIfUnrated,
   getAdminMediaItemIdentityById,
   updateAdminMediaItem,
@@ -20,6 +22,7 @@ import {
 } from "@/lib/author-media-form";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/app-error-messages";
+import { generateEntityCode } from "@/lib/generated-code";
 import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
@@ -107,11 +110,12 @@ async function uploadOptionalCover(input: {
   return { ok: true as const, coverUrl: objectKey };
 }
 
-function readMediaForm(formData: FormData) {
+function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }) {
   const title = getFormString(formData, "title");
   const mediaType = parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
   const franchiseId = parseOptionalPositiveInteger(getFormString(formData, "franchiseId"));
+  const authorId = parseOptionalPositiveInteger(getFormString(formData, "authorId"));
 
   if (!title || !mediaType) {
     return { ok: false as const, error: "required" };
@@ -125,6 +129,14 @@ function readMediaForm(formData: FormData) {
     return { ok: false as const, error: "invalid-franchise" };
   }
 
+  if (!authorId.ok) {
+    return { ok: false as const, error: "invalid-author" };
+  }
+
+  if (options?.requireAuthor && authorId.value === null) {
+    return { ok: false as const, error: "author-required" };
+  }
+
   return {
     ok: true as const,
     value: {
@@ -133,6 +145,7 @@ function readMediaForm(formData: FormData) {
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
       franchiseId: franchiseId.value,
+      authorId: authorId.value,
       releaseYear: releaseYear.value,
     },
   };
@@ -140,6 +153,10 @@ function readMediaForm(formData: FormData) {
 
 async function isKnownFranchise(franchiseId: number | null) {
   return franchiseId === null || franchiseExistsById(franchiseId);
+}
+
+async function isKnownAuthor(authorId: number | null) {
+  return authorId === null || authorExistsById(authorId);
 }
 
 function revalidateMediaSurfaces(input: {
@@ -173,7 +190,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
   const removeCover = shouldRemoveCover(formData);
-  const form = readMediaForm(formData);
+  const form = readMediaForm(formData, { requireAuthor: true });
 
   if (!mediaItemId.ok) {
     redirect("/admin/media?error=invalid-media");
@@ -185,6 +202,10 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-franchise`);
+  }
+
+  if (!(await isKnownAuthor(form.value.authorId))) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-author`);
   }
 
   const existingItem = await getAdminMediaItemIdentityById(mediaItemId.value);
@@ -236,6 +257,66 @@ export async function updateAdminMediaItemAction(formData: FormData) {
   }
 
   redirect(`/admin/media/${mediaItemId.value}/edit?updated=1`);
+}
+
+export async function createAdminMediaItemAction(formData: FormData) {
+  await requireAdminUser();
+
+  const form = readMediaForm(formData, { requireAuthor: true });
+
+  if (!form.ok) {
+    redirect(`/admin/media/new?error=${form.error}`);
+  }
+
+  if (form.value.authorId === null) {
+    redirect("/admin/media/new?error=author-required");
+  }
+
+  if (!(await isKnownFranchise(form.value.franchiseId))) {
+    redirect("/admin/media/new?error=invalid-franchise");
+  }
+
+  if (!(await isKnownAuthor(form.value.authorId))) {
+    redirect("/admin/media/new?error=invalid-author");
+  }
+
+  const code = generateEntityCode({
+    type: form.value.mediaType,
+    name: form.value.title,
+    uniqueId: randomUUID().slice(0, 8),
+  });
+  const cover = await uploadOptionalCover({
+    mediaItemCode: code,
+    coverFile: getOptionalCoverFile(formData),
+  });
+
+  if (!cover.ok) {
+    redirect(`/admin/media/new?error=${cover.error}`);
+  }
+
+  let item;
+
+  try {
+    const { authorId, ...mediaInput } = form.value;
+
+    item = await createAdminMediaItem({
+      authorId,
+      code,
+      coverUrl: cover.coverUrl,
+      ...mediaInput,
+    });
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  const identity = await getAdminMediaItemIdentityById(item.id);
+
+  if (identity) {
+    revalidateMediaSurfaces(identity);
+  }
+
+  redirect(`/admin/media/${item.id}/edit?created=1`);
 }
 
 export async function deleteAdminMediaItemAction(formData: FormData) {

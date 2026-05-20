@@ -64,7 +64,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             </Link>
             <Link
               href="/"
-              className={buttonVariants({ variant: "ghost", size: "sm" })}
+              className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <Archive />
               Архив
@@ -72,7 +72,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             <form action={logoutAdmin}>
               <button
                 type="submit"
-                className={buttonVariants({ variant: "ghost", size: "sm" })}
+                className={buttonVariants({ variant: "outline", size: "sm" })}
               >
                 <LogOut />
                 Выйти

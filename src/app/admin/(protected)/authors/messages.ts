@@ -20,7 +20,15 @@ export function getAuthorErrorMessage(error?: string) {
   }
 
   if (error === "author-has-data") {
-    return "Нельзя удалить автора: у него есть токены, права, оценки или добавленные записи.";
+    return "Нельзя удалить автора: у него есть права, оценки или добавленные записи.";
+  }
+
+  if (error === "system-author") {
+    return "Системного автора нельзя заблокировать.";
+  }
+
+  if (error === "last-system-author") {
+    return "Нельзя удалить последнего системного автора.";
   }
 
   if (error === "invalid-permission") {

@@ -66,6 +66,7 @@ export default async function AdminAuthorTokensPage({
   ]);
   const errorMessage = getAdminFormErrorMessage(params.error);
   const successMessage = getSuccessMessage(params.updated);
+  const tokenAuthors = authors.filter((author) => !author.isSystem);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -172,7 +173,7 @@ export default async function AdminAuthorTokensPage({
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <CreateAuthorTokenForm authors={authors} />
+          <CreateAuthorTokenForm authors={tokenAuthors} />
         </CardContent>
       </Card>
     </div>

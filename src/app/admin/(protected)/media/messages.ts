@@ -19,6 +19,14 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Выбранная серия не найдена.";
   }
 
+  if (error === "invalid-author") {
+    return "Выбранный автор не найден.";
+  }
+
+  if (error === "author-required") {
+    return "Укажи автора записи.";
+  }
+
   if (error === "invalid-media") {
     return "Не удалось найти запись.";
   }

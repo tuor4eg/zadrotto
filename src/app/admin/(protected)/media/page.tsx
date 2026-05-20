@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Edit3, Trash2 } from "lucide-react";
+import { Edit3, Plus, Trash2 } from "lucide-react";
 
 import { parseCatalogSort, parseMediaTypeFilter } from "@/app/media-items-catalog-logic";
 import { Alert } from "@/components/ui/alert";
@@ -27,6 +27,7 @@ type AdminMediaPageProps = {
     sort?: string;
     type?: string;
     updated?: string;
+    created?: string;
   }>;
 };
 
@@ -67,7 +68,9 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
   const totalItemsCount = mediaTypeCounts.reduce((total, item) => total + item.count, 0);
   const errorMessage = getAdminMediaErrorMessage(params.error);
   const successMessage =
-    params.updated === "1"
+    params.created === "1"
+      ? "Запись создана."
+      : params.updated === "1"
       ? "Запись сохранена."
       : params.deleted === "1"
         ? "Запись удалена."
@@ -90,7 +93,18 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
       <PageHeader
         title="Записи"
         description="Архивные записи с теми же фильтрами, что и в каталоге."
-        aside={<Badge variant="outline">{totalItemsCount} всего</Badge>}
+        aside={
+          <>
+            <Badge variant="outline">{totalItemsCount} всего</Badge>
+            <Link
+              href="/admin/media/new"
+              className={buttonVariants()}
+            >
+              <Plus />
+              Создать
+            </Link>
+          </>
+        }
       />
 
       {totalItemsCount > 0 ? (

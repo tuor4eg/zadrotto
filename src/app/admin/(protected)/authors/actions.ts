@@ -145,6 +145,16 @@ export async function blockAuthorAction(formData: FormData) {
     redirect("/admin/authors?error=invalid-author");
   }
 
+  const existingAuthor = await getAuthorById(authorId);
+
+  if (!existingAuthor) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  if (existingAuthor.isSystem) {
+    redirect("/admin/authors?error=system-author");
+  }
+
   let author;
 
   try {
@@ -202,17 +212,31 @@ export async function deleteAuthorAction(formData: FormData) {
     redirect("/admin/authors?error=invalid-author");
   }
 
-  let isDeleted = false;
+  const author = await getAuthorById(authorId);
+
+  if (!author) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  let deleteResult;
 
   try {
-    isDeleted = await deleteAuthorIfUnused(authorId);
+    deleteResult = await deleteAuthorIfUnused(authorId);
   } catch (error) {
     console.error(error);
     redirect(`/admin/authors?error=${getAdminFormErrorCode(error)}`);
   }
 
-  if (!isDeleted) {
+  if (deleteResult === "not-found") {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  if (deleteResult === "has-data") {
     redirect("/admin/authors?error=author-has-data");
+  }
+
+  if (deleteResult === "last-system-author") {
+    redirect("/admin/authors?error=last-system-author");
   }
 
   revalidatePath("/admin/authors");

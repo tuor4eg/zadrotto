@@ -25,7 +25,20 @@ export async function createAuthorAccessToken(input: {
   label: string;
   createdByAdminId: number;
 }) {
+  const [author] = await db
+    .select({
+      id: authors.id,
+    })
+    .from(authors)
+    .where(and(eq(authors.id, input.authorId), eq(authors.isSystem, false)))
+    .limit(1);
+
+  if (!author) {
+    return false;
+  }
+
   await db.insert(authorAccessTokens).values(input);
+  return true;
 }
 
 export async function getAuthorByAccessTokenHash(tokenHash: string) {
@@ -43,6 +56,7 @@ export async function getAuthorByAccessTokenHash(tokenHash: string) {
         eq(authorAccessTokens.tokenHash, tokenHash),
         isNull(authorAccessTokens.revokedAt),
         isNull(authors.blockedAt),
+        eq(authors.isSystem, false),
       ),
     )
     .limit(1);

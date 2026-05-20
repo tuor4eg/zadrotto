@@ -54,6 +54,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
   const [authors, params] = await Promise.all([getAuthors(), searchParams]);
   const errorMessage = getAuthorErrorMessage(params.error);
   const successMessage = getSuccessMessage(params);
+  const systemAuthorsCount = authors.filter((author) => author.isSystem).length;
 
   return (
     <div className="flex flex-col gap-5">
@@ -78,11 +79,15 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
         <EmptyState>Авторы пока не добавлены.</EmptyState>
       ) : (
         <div className="divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white">
-          {authors.map((author) => (
-            <div
-              key={author.id}
-              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_120px_minmax(0,190px)_auto]"
-            >
+          {authors.map((author) => {
+            const isLastSystemAuthor = author.isSystem && systemAuthorsCount <= 1;
+            const canDeleteAuthor = author.usageCount === 0 && !isLastSystemAuthor;
+
+            return (
+              <div
+                key={author.id}
+                className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_190px_minmax(0,190px)_auto]"
+              >
               <div className="min-w-0">
                 <Link
                   href={`/admin/authors/${author.id}/edit`}
@@ -92,9 +97,12 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                 </Link>
               </div>
               <div>
-                <Badge variant={author.blockedAt ? "destructive" : "positive"}>
-                  {author.blockedAt ? "заблокирован" : "активен"}
-                </Badge>
+                <div className="flex flex-wrap gap-1.5">
+                  <Badge variant={author.blockedAt ? "destructive" : "positive"}>
+                    {author.blockedAt ? "заблокирован" : "активен"}
+                  </Badge>
+                  {author.isSystem ? <Badge variant="outline">системный</Badge> : null}
+                </div>
               </div>
               <div className="text-xs tabular-nums text-stone-500">
                 {formatCreatedAt(author.createdAt)}
@@ -109,7 +117,19 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                     <Edit3 />
                   </Link>
                 </Tooltip>
-                {author.blockedAt ? (
+                {author.isSystem ? (
+                  <Tooltip label="Системного автора нельзя заблокировать">
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      disabled
+                      aria-label={`Системного автора ${author.name} нельзя заблокировать`}
+                    >
+                      <Lock />
+                    </Button>
+                  </Tooltip>
+                ) : author.blockedAt ? (
                   <form action={unblockAuthorAction} className="shrink-0">
                     <input type="hidden" name="authorId" value={author.id} />
                     <Tooltip label="Разблокировать">
@@ -140,17 +160,19 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                 )}
                 <Tooltip
                   label={
-                    author.usageCount > 0
+                    isLastSystemAuthor
+                      ? "Нельзя удалить последнего системного автора"
+                      : author.usageCount > 0
                       ? "Нельзя удалить: есть данные"
                       : "Удалить"
                   }
                 >
                   <ConfirmAction
                     action={deleteAuthorAction}
-                    disabled={author.usageCount > 0}
+                    disabled={!canDeleteAuthor}
                     fields={[{ name: "authorId", value: author.id }]}
                     title="Удалить автора?"
-                    description={`Автор «${author.name}» будет полностью удален. Это возможно только если у него нет токенов, прав, оценок и добавленных записей.`}
+                    description={`Автор «${author.name}» будет полностью удален вместе с токенами доступа. Это возможно только если у него нет прав, оценок и добавленных записей.`}
                     triggerLabel="Удалить"
                     triggerAriaLabel={`Удалить автора ${author.name}`}
                     triggerIcon={<Trash2 />}
@@ -160,7 +182,8 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                 </Tooltip>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 

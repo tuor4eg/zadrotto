@@ -1,8 +1,10 @@
 import { Save } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
+import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select, Textarea } from "@/components/ui/form";
+import { Input, Label, Select } from "@/components/ui/form";
+import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { CoverFileInput } from "./cover-file-input";
@@ -16,12 +18,15 @@ type MediaFormValues = {
   franchiseId?: number | null;
   releaseYear?: number | null;
   coverUrl?: string | null;
+  createdByAuthorId?: number | null;
 };
 
 type AdminMediaFormProps = {
   action: (formData: FormData) => Promise<void>;
   submitLabel: string;
+  authors: Awaited<ReturnType<typeof getAuthorOptions>>;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
+  requireAuthor?: boolean;
   values?: MediaFormValues;
   errorMessage?: string | null;
   successMessage?: string | null;
@@ -30,11 +35,15 @@ type AdminMediaFormProps = {
 export function AdminMediaForm({
   action,
   submitLabel,
+  authors,
   franchises,
+  requireAuthor = false,
   values,
   errorMessage,
   successMessage,
 }: AdminMediaFormProps) {
+  const hasAuthors = authors.length > 0;
+
   return (
     <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -78,6 +87,27 @@ export function AdminMediaForm({
         </div>
 
         <div className="flex flex-col gap-2">
+          <Label htmlFor="admin-media-author">Автор</Label>
+          <Select
+            id="admin-media-author"
+            name="authorId"
+            defaultValue={values?.createdByAuthorId ?? ""}
+            required={requireAuthor}
+            disabled={requireAuthor && !hasAuthors}
+          >
+            {requireAuthor ? null : <option value="">Без автора</option>}
+            {authors.map((author) => (
+              <option key={author.id} value={author.id}>
+                {author.isSystem ? `${author.name} (системный)` : author.name}
+              </option>
+            ))}
+          </Select>
+          {requireAuthor && !hasAuthors ? (
+            <p className="text-xs text-stone-500">Сначала создай хотя бы одного автора.</p>
+          ) : null}
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Label htmlFor="admin-media-franchise">Серия</Label>
           <Select
             id="admin-media-franchise"
@@ -115,12 +145,10 @@ export function AdminMediaForm({
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="admin-media-description">Описание</Label>
-          <Textarea
+          <AutoResizeTextarea
             id="admin-media-description"
             name="description"
             defaultValue={values?.description ?? ""}
-            rows={5}
-            className="min-h-32"
           />
         </div>
       </div>
@@ -133,7 +161,7 @@ export function AdminMediaForm({
       ) : null}
 
       <div>
-        <Button type="submit">
+        <Button type="submit" disabled={requireAuthor && !hasAuthors}>
           <Save />
           {submitLabel}
         </Button>

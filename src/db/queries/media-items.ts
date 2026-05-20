@@ -409,6 +409,31 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
   });
 }
 
+export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId"> & {
+  authorId: number;
+}) {
+  const [item] = await db
+    .insert(mediaItems)
+    .values({
+      code: input.code,
+      title: input.title,
+      originalTitle: input.originalTitle,
+      description: input.description,
+      mediaType: input.mediaType,
+      franchiseId: input.franchiseId,
+      releaseYear: input.releaseYear,
+      coverUrl: input.coverUrl,
+      createdByAuthorId: input.authorId,
+      publicationStatus: "published",
+    })
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+    });
+
+  return item;
+}
+
 export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: number) {
   const [item] = await db
     .select({
@@ -444,6 +469,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
+      createdByAuthorId: mediaItems.createdByAuthorId,
       authorName: authors.name,
       authorCode: authors.code,
     })
@@ -530,6 +556,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
 
 export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId" | "code"> & {
   mediaItemId: number;
+  authorId: number | null;
 }) {
   const [item] = await db
     .update(mediaItems)
@@ -541,6 +568,7 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       franchiseId: input.franchiseId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      createdByAuthorId: input.authorId,
       updatedAt: new Date(),
     })
     .where(eq(mediaItems.id, input.mediaItemId))

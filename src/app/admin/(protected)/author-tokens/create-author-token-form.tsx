@@ -115,7 +115,7 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
       </Button>
 
       {!hasAuthors ? (
-        <p className="text-sm text-stone-500">Сначала создай хотя бы одного автора.</p>
+        <p className="text-sm text-stone-500">Сначала создай хотя бы одного обычного автора.</p>
       ) : null}
     </form>
   );

@@ -10,6 +10,7 @@ import { EmptyState, PageHeader } from "@/app/admin/(protected)/admin-ui";
 import { updateAdminMediaItemAction } from "@/app/admin/(protected)/media/actions";
 import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
+import { getAuthorOptions } from "@/db/queries/authors";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
@@ -20,6 +21,7 @@ type EditAdminMediaPageProps = {
     id: string;
   }>;
   searchParams: Promise<{
+    created?: string;
     error?: string;
     updated?: string;
   }>;
@@ -29,9 +31,10 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [{ id }, query, franchises] = await Promise.all([
+  const [{ id }, query, authors, franchises] = await Promise.all([
     params,
     searchParams,
+    getAuthorOptions(),
     getFranchiseOptions(),
   ]);
   const mediaItemId = Number(id);
@@ -74,10 +77,18 @@ export default async function EditAdminMediaPage({
             <AdminMediaForm
               action={updateAdminMediaItemAction}
               submitLabel="Сохранить"
+              authors={authors}
               franchises={franchises}
+              requireAuthor
               values={item}
               errorMessage={getAdminMediaErrorMessage(query.error)}
-              successMessage={query.updated === "1" ? "Запись сохранена." : null}
+              successMessage={
+                query.created === "1"
+                  ? "Запись создана."
+                  : query.updated === "1"
+                    ? "Запись сохранена."
+                    : null
+              }
             />
           </CardContent>
         </Card>
