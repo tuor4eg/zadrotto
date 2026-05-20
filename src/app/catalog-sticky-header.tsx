@@ -8,6 +8,7 @@ import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type {
   AuthorRatingFilter,
   CatalogSort,
+  CatalogSortDirection,
   MediaTypeFilter,
 } from "./media-items-catalog-logic";
 import { CatalogHeaderControls } from "./catalog-header-controls";
@@ -19,6 +20,7 @@ type CatalogStickyHeaderProps = {
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
   sort: CatalogSort;
+  sortDirection: CatalogSortDirection;
 };
 
 export function CatalogStickyHeader({
@@ -28,6 +30,7 @@ export function CatalogStickyHeader({
   mediaTypeFilter,
   searchQuery,
   sort,
+  sortDirection,
 }: CatalogStickyHeaderProps) {
   const [isCompact, setIsCompact] = useState(false);
   const isCompactRef = useRef(false);
@@ -146,6 +149,7 @@ export function CatalogStickyHeader({
           mediaTypeFilter={mediaTypeFilter}
           searchQuery={searchQuery}
           sort={sort}
+          sortDirection={sortDirection}
         />
         {adminLink && isCompact ? (
           <ArchiveTooltip label="Админка" side="bottom">

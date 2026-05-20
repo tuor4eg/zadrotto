@@ -1,7 +1,8 @@
-import { and, asc, eq, exists, isNull, ne, notExists, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
 import { franchises, mediaItems, ratings } from "@/db/schema";
+import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
 import { resolveCoverUrl } from "@/lib/storage";
 
@@ -9,6 +10,17 @@ const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
   PUBLISHED_PUBLICATION_STATUS,
 );
+
+const currentAuthorScoreSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<number | null>`(
+        select ${ratings.score}
+        from ${ratings}
+        where ${ratings.mediaItemId} = ${mediaItems.id}
+          and ${ratings.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<number | null>`null`;
 
 export async function getFranchiseByCode(code: string) {
   const [franchise] = await db
@@ -47,22 +59,75 @@ export async function getFranchiseOptions() {
     .orderBy(asc(franchises.title));
 }
 
-export async function getAdminFranchises() {
-  return db
+function adminFranchiseSearchCondition(searchQuery: string) {
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+
+  if (!normalizedSearchQuery) {
+    return undefined;
+  }
+
+  const pattern = `%${normalizedSearchQuery}%`;
+
+  return or(
+    sql`lower(${franchises.title}) like ${pattern}`,
+    sql`lower(${franchises.originalTitle}) like ${pattern}`,
+    sql`lower(${franchises.code}) like ${pattern}`,
+  );
+}
+
+function adminFranchiseFilterConditions(input: {
+  searchQuery: string;
+}) {
+  const conditions: SQL[] = [];
+  const searchCondition = adminFranchiseSearchCondition(input.searchQuery);
+
+  if (searchCondition) {
+    conditions.push(searchCondition);
+  }
+
+  return conditions.length > 0 ? and(...conditions) : undefined;
+}
+
+export async function getAdminFranchises(input: {
+  page: number;
+  pageSize: number;
+  searchQuery: string;
+}) {
+  const filterCondition = adminFranchiseFilterConditions(input);
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(franchises)
+    .where(filterCondition);
+  const totalPages = getTotalPages(totalCount, input.pageSize);
+  const page = clampPage(input.page, totalPages);
+  const items = await db
     .select({
       id: franchises.id,
       code: franchises.code,
       title: franchises.title,
+      originalTitle: franchises.originalTitle,
       mediaItemsCount: sql<number>`count(${mediaItems.id})::int`,
     })
     .from(franchises)
     .leftJoin(mediaItems, eq(mediaItems.franchiseId, franchises.id))
+    .where(filterCondition)
     .groupBy(
       franchises.id,
       franchises.code,
       franchises.title,
+      franchises.originalTitle,
     )
-    .orderBy(asc(franchises.title), asc(franchises.code));
+    .orderBy(asc(franchises.title), asc(franchises.code))
+    .limit(input.pageSize)
+    .offset(getOffset(page, input.pageSize));
+
+  return {
+    items,
+    page,
+    pageSize: input.pageSize,
+    totalCount,
+    totalPages,
+  };
 }
 
 export async function getAdminFranchiseById(id: number) {
@@ -155,7 +220,7 @@ export async function deleteFranchiseIfEmpty(id: number) {
   return franchise ?? null;
 }
 
-export async function getMediaItemsByFranchiseId(franchiseId: number) {
+export async function getMediaItemsByFranchiseId(franchiseId: number, currentAuthorId?: number) {
   const items = await db
     .select({
       id: mediaItems.id,
@@ -168,6 +233,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number) {
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))

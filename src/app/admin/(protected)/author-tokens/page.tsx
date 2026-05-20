@@ -1,14 +1,20 @@
-import { KeyRound } from "lucide-react";
+import { Ban, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/ui/confirm-action";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorAccessTokens } from "@/db/queries/author-access-tokens";
 import { getAuthors } from "@/db/queries/authors";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
 import { EmptyState, PageHeader } from "../admin-ui";
-import { revokeAuthorTokenAction } from "./actions";
+import {
+  deleteAuthorTokenAction,
+  restoreAuthorTokenAction,
+  revokeAuthorTokenAction,
+} from "./actions";
 import { CreateAuthorTokenForm } from "./create-author-token-form";
 
 type AdminAuthorTokensPageProps = {
@@ -34,6 +40,22 @@ function formatStatus(revokedAt: Date | null) {
   return revokedAt ? "отозван" : "активен";
 }
 
+function getSuccessMessage(updated: string | undefined) {
+  if (updated === "revoked") {
+    return "Токен отозван.";
+  }
+
+  if (updated === "restored") {
+    return "Токен снова активен.";
+  }
+
+  if (updated === "deleted") {
+    return "Токен удален.";
+  }
+
+  return null;
+}
+
 export default async function AdminAuthorTokensPage({
   searchParams,
 }: AdminAuthorTokensPageProps) {
@@ -43,7 +65,7 @@ export default async function AdminAuthorTokensPage({
     searchParams,
   ]);
   const errorMessage = getAdminFormErrorMessage(params.error);
-  const successMessage = params.updated === "1" ? "Токен отозван." : null;
+  const successMessage = getSuccessMessage(params.updated);
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
@@ -67,11 +89,12 @@ export default async function AdminAuthorTokensPage({
           <div className="mt-5 divide-y divide-stone-100 rounded-lg border border-stone-200 bg-white">
             {tokens.map((token) => {
               const status = formatStatus(token.revokedAt);
+              const isRevoked = Boolean(token.revokedAt);
 
               return (
                 <div
                   key={token.id}
-                  className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_150px_150px_90px_auto]"
+                  className="grid gap-3 px-4 py-3 xl:grid-cols-[minmax(0,1fr)_minmax(0,0.9fr)_150px_150px_90px_110px]"
                 >
                   <div className="min-w-0">
                     <div className="truncate text-sm font-medium text-stone-950">
@@ -90,16 +113,50 @@ export default async function AdminAuthorTokensPage({
                   >
                     <Badge variant={status === "активен" ? "positive" : "default"}>{status}</Badge>
                   </div>
-                  <form action={revokeAuthorTokenAction}>
-                    <input type="hidden" name="tokenId" value={token.id} />
-                    <Button
-                      type="submit"
-                      variant="destructive"
-                      size="sm"
-                    >
-                      Отозвать
-                    </Button>
-                  </form>
+                  <div className="flex flex-nowrap justify-end gap-1.5">
+                    {isRevoked ? (
+                      <form action={restoreAuthorTokenAction} className="shrink-0">
+                        <input type="hidden" name="tokenId" value={token.id} />
+                        <Tooltip label="Сделать активным">
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="icon"
+                            aria-label={`Сделать токен ${token.label} активным`}
+                          >
+                            <RotateCcw />
+                          </Button>
+                        </Tooltip>
+                      </form>
+                    ) : (
+                      <form action={revokeAuthorTokenAction} className="shrink-0">
+                        <input type="hidden" name="tokenId" value={token.id} />
+                        <Tooltip label="Отозвать">
+                          <Button
+                            type="submit"
+                            variant="destructive"
+                            size="icon"
+                            aria-label={`Отозвать токен ${token.label}`}
+                          >
+                            <Ban />
+                          </Button>
+                        </Tooltip>
+                      </form>
+                    )}
+                    <Tooltip label="Удалить">
+                      <ConfirmAction
+                        action={deleteAuthorTokenAction}
+                        fields={[{ name: "tokenId", value: token.id }]}
+                        title="Удалить токен?"
+                        description={`Токен «${token.label}» для автора ${token.authorName} будет полностью удален. Это действие нельзя отменить.`}
+                        triggerLabel="Удалить"
+                        triggerAriaLabel={`Удалить токен ${token.label}`}
+                        triggerIcon={<Trash2 />}
+                        triggerSize="icon"
+                        confirmLabel="Удалить токен"
+                      />
+                    </Tooltip>
+                  </div>
                 </div>
               );
             })}

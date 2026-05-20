@@ -1,11 +1,16 @@
 "use server";
 
-import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
+import { RedirectType, redirect } from "next/navigation";
 
-import { clearAdminSessionCookie } from "@/lib/admin-auth";
+import { clearAdminSessionCookie, revokeCurrentAdminSession } from "@/lib/admin-auth";
 
 export async function logoutAdmin() {
+  await revokeCurrentAdminSession();
   await clearAdminSessionCookie();
 
-  redirect("/admin/login");
+  revalidatePath("/admin", "layout");
+  revalidatePath("/admin/login");
+
+  redirect("/admin/login", RedirectType.replace);
 }

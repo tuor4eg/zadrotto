@@ -24,6 +24,7 @@ const SORT_LABELS: Record<CatalogSort, string> = {
   media_type: "По типу",
   average_score: "По средней оценке",
   ratings_count: "По количеству оценок",
+  my_rating_order: "По порядку оценки",
 };
 
 function updateFilterParam(
@@ -178,9 +179,11 @@ export function AdminMediaFiltersForm({
           aria-label="Сортировка записей"
         >
           {Object.entries(SORT_LABELS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+            value === "my_rating_order" ? null : (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            )
           ))}
         </Select>
 

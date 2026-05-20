@@ -21,7 +21,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   }
 
   const relatedItems = item.franchiseId
-    ? await getOtherMediaItemsFromFranchise(item.franchiseId, item.id)
+    ? await getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
     : [];
 
   return (

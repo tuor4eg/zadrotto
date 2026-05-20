@@ -10,11 +10,16 @@ import { cn } from "@/lib/utils";
 
 type MediaTypeTabsProps = {
   availableMediaTypes: MediaType[];
+  mediaTypeCounts: Array<{
+    count: number;
+    mediaType: MediaType;
+  }>;
   selectedMediaType: MediaTypeFilter;
   onChange: (mediaType: MediaTypeFilter) => void;
 };
 
 type MediaTypeTabItem = {
+  count: number;
   label: string;
   value: MediaTypeFilter;
 };
@@ -34,10 +39,12 @@ function MediaTypeTab({
   index,
   isSelected,
   label,
+  count,
   onClick,
   paperClassName,
   selectedIndex,
 }: {
+  count: number;
   index: number;
   isSelected: boolean;
   label: string;
@@ -73,6 +80,14 @@ function MediaTypeTab({
     >
       <span className="relative z-10 inline-flex max-w-full items-baseline justify-center gap-2">
         <span className="truncate">{label}</span>
+        <span
+          className={cn(
+            "shrink-0 text-[0.9em] tabular-nums",
+            isSelected ? "text-stone-500" : "text-stone-700/70",
+          )}
+        >
+          {count}
+        </span>
       </span>
       {!isSelected ? (
         <span
@@ -88,21 +103,32 @@ function MediaTypeTab({
 
 export function MediaTypeTabs({
   availableMediaTypes,
+  mediaTypeCounts,
   selectedMediaType,
   onChange,
 }: MediaTypeTabsProps) {
+  const countByMediaType = useMemo(
+    () => new Map(mediaTypeCounts.map((item) => [item.mediaType, item.count])),
+    [mediaTypeCounts],
+  );
+  const totalCount = useMemo(
+    () => mediaTypeCounts.reduce((total, item) => total + item.count, 0),
+    [mediaTypeCounts],
+  );
   const tabs = useMemo<MediaTypeTabItem[]>(
     () => [
       {
+        count: totalCount,
         label: "Все",
         value: "all",
       },
       ...availableMediaTypes.map((mediaType) => ({
+        count: countByMediaType.get(mediaType) ?? 0,
         label: MEDIA_TYPE_LABELS[mediaType],
         value: mediaType,
       })),
     ],
-    [availableMediaTypes],
+    [availableMediaTypes, countByMediaType, totalCount],
   );
   const selectedIndex = Math.max(
     0,
@@ -126,6 +152,7 @@ export function MediaTypeTabs({
                 index={index}
                 isSelected={isSelected}
                 label={tab.label}
+                count={tab.count}
                 paperClassName={TAB_PAPER_CLASSES[index % TAB_PAPER_CLASSES.length]}
                 selectedIndex={selectedIndex}
                 onClick={() => onChange(tab.value)}

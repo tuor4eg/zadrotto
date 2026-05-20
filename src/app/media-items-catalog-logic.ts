@@ -9,11 +9,22 @@ export const CATALOG_SORTS = [
   "media_type",
   "average_score",
   "ratings_count",
+  "my_rating_order",
 ] as const;
 
 export type CatalogSort = (typeof CATALOG_SORTS)[number];
+export type CatalogSortDirection = "asc" | "desc";
 
 export const DEFAULT_CATALOG_SORT: CatalogSort = "title";
+
+export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDirection> = {
+  title: "asc",
+  release_year: "asc",
+  media_type: "asc",
+  average_score: "desc",
+  ratings_count: "desc",
+  my_rating_order: "desc",
+};
 
 export type CatalogFilterItem = {
   title: string;
@@ -29,6 +40,7 @@ export type CatalogSortItem = {
   releaseYear: number | null;
   averageScore: number | null;
   ratingsCount: number;
+  currentAuthorRatedAt?: Date | null;
 };
 
 export function matchesSearch(item: CatalogFilterItem, normalizedSearchQuery: string) {
@@ -75,6 +87,15 @@ export function parseCatalogSort(sort: string | null): CatalogSort {
     : DEFAULT_CATALOG_SORT;
 }
 
+export function parseCatalogSortDirection(
+  direction: string | null,
+  sort: CatalogSort,
+): CatalogSortDirection {
+  return direction === "asc" || direction === "desc"
+    ? direction
+    : DEFAULT_CATALOG_SORT_DIRECTIONS[sort];
+}
+
 function compareNullableNumbers(
   left: number | null,
   right: number | null,
@@ -102,28 +123,42 @@ function compareTitles(left: string, right: string) {
 export function sortCatalogItems<TItem extends CatalogSortItem>(
   items: TItem[],
   sort: CatalogSort,
+  direction: CatalogSortDirection = DEFAULT_CATALOG_SORT_DIRECTIONS[sort],
 ) {
   return [...items].sort((left, right) => {
     const titleFallback = compareTitles(left.title, right.title);
 
     if (sort === "release_year") {
-      return compareNullableNumbers(left.releaseYear, right.releaseYear, "asc") || titleFallback;
+      return compareNullableNumbers(left.releaseYear, right.releaseYear, direction) || titleFallback;
     }
 
     if (sort === "media_type") {
-      return (
-        MEDIA_TYPES.indexOf(left.mediaType) - MEDIA_TYPES.indexOf(right.mediaType) || titleFallback
-      );
+      const mediaTypeDifference =
+        MEDIA_TYPES.indexOf(left.mediaType) - MEDIA_TYPES.indexOf(right.mediaType);
+
+      return (direction === "asc" ? mediaTypeDifference : -mediaTypeDifference) || titleFallback;
     }
 
     if (sort === "average_score") {
-      return compareNullableNumbers(left.averageScore, right.averageScore, "desc") || titleFallback;
+      return compareNullableNumbers(left.averageScore, right.averageScore, direction) || titleFallback;
     }
 
     if (sort === "ratings_count") {
-      return right.ratingsCount - left.ratingsCount || titleFallback;
+      const ratingsCountDifference = left.ratingsCount - right.ratingsCount;
+
+      return (direction === "asc" ? ratingsCountDifference : -ratingsCountDifference) || titleFallback;
     }
 
-    return titleFallback;
+    if (sort === "my_rating_order") {
+      return (
+        compareNullableNumbers(
+          left.currentAuthorRatedAt?.getTime() ?? null,
+          right.currentAuthorRatedAt?.getTime() ?? null,
+          direction,
+        ) || titleFallback
+      );
+    }
+
+    return direction === "asc" ? titleFallback : -titleFallback;
   });
 }

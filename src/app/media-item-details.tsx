@@ -1,6 +1,7 @@
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
+import { MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
@@ -22,11 +23,15 @@ type MediaItemDetailsItem = {
 };
 
 type RelatedMediaItem = {
+  averageScore: number | null;
   id: number;
   code: string;
   title: string;
+  mediaType: MediaType;
   releaseYear: number | null;
   coverUrl: string | null;
+  ratingsCount: number;
+  currentAuthorScore: number | null;
 };
 
 type MediaItemDetailsProps = {
@@ -151,30 +156,41 @@ export function MediaItemDetails({
               {noteSlot}
             </div>
 
-            <div className="pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">
+            <div className="flex flex-col gap-4 pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">
               <div className="flex flex-col gap-2 normal-case tracking-normal">
                 <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
                   На соседней полке
                 </div>
-                {relatedItems.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {relatedItems.map((relatedItem) => (
-                      <Link
-                        key={relatedItem.id}
-                        href={`/media/${relatedItem.code}`}
-                        className="border border-zinc-200 px-2 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
-                      >
-                        {relatedItem.title}
-                        {relatedItem.releaseYear ? `, ${relatedItem.releaseYear}` : ""}
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="px-3 py-2 text-xs text-zinc-500">
-                    Here be dragons
-                  </div>
-                )}
+                <div className="px-3 py-2 text-xs text-zinc-500">
+                  Here be dragons
+                </div>
               </div>
+
+              {item.franchiseTitle ? (
+                <div className="flex flex-col gap-2 normal-case tracking-normal">
+                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                    Еще из этой серии
+                  </div>
+                  {relatedItems.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {relatedItems.map((relatedItem) => (
+                        <Link
+                          key={relatedItem.id}
+                          href={`/media/${relatedItem.code}`}
+                          className="border border-zinc-200 px-2 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                        >
+                          {relatedItem.title}
+                          {relatedItem.releaseYear ? `, ${relatedItem.releaseYear}` : ""}
+                        </Link>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="px-3 py-2 text-xs text-zinc-500">
+                      Других тайтлов серии пока нет.
+                    </div>
+                  )}
+                </div>
+              ) : null}
             </div>
           </div>
         </div>
@@ -197,7 +213,11 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
-        <ArchiveBackLink href={backLink.href} label={backLink.label} />
+        <ArchiveBackLink
+          href={backLink.href}
+          label={backLink.label}
+          tooltipLabel="К картотеке"
+        />
 
         <div className="relative z-10 grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -322,50 +342,39 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
-          <div className="px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
-            <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-              На соседней полке
-            </div>
-            {relatedItems.length > 0 ? (
-              <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {relatedItems.map((relatedItem) => (
-                  <Link
-                    key={relatedItem.id}
-                    href={`/media/${relatedItem.code}`}
-                    className="group min-w-0 rounded-md border border-stone-300/80 bg-stone-50/50 p-2 transition-colors hover:border-stone-950 hover:bg-stone-100/70"
-                  >
-                    <span className="block aspect-square overflow-hidden rounded-sm border border-stone-300/70 bg-stone-200/50">
-                      {relatedItem.coverUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={relatedItem.coverUrl}
-                          alt={`Обложка: ${relatedItem.title}`}
-                          className="h-full w-full object-cover transition-transform duration-200 group-hover:scale-[1.03]"
-                        />
-                      ) : (
-                        <span className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,#d8cbb4,#f7efdf_52%,#c8b58f)] px-3 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-                          Без обложки
-                        </span>
-                      )}
-                    </span>
-                    <span className="mt-2 block min-w-0">
-                      <span className="block truncate text-sm font-medium text-stone-950">
-                        {relatedItem.title}
-                      </span>
-                      {relatedItem.releaseYear ? (
-                        <span className="mt-1 block font-mono text-xs text-stone-500">
-                          {relatedItem.releaseYear}
-                        </span>
-                      ) : null}
-                    </span>
-                  </Link>
-                ))}
+          <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
+            <section>
+              <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                На соседней полке
               </div>
-            ) : (
               <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
                 Here be dragons
               </div>
-            )}
+            </section>
+
+            {item.franchiseTitle ? (
+              <section>
+                <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                  Еще из этой серии
+                </div>
+                {relatedItems.length > 0 ? (
+                  <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
+                    {relatedItems.map((relatedItem) => (
+                      <MediaItemTile
+                        key={relatedItem.id}
+                        currentAuthorScore={relatedItem.currentAuthorScore}
+                        item={relatedItem}
+                        href={`/media/${relatedItem.code}`}
+                      />
+                    ))}
+                  </div>
+                ) : (
+                  <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
+                    Других тайтлов серии пока нет.
+                  </div>
+                )}
+              </section>
+            ) : null}
           </div>
         </div>
       </article>

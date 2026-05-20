@@ -19,6 +19,10 @@ export function getAuthorErrorMessage(error?: string) {
     return "Не удалось найти автора.";
   }
 
+  if (error === "author-has-data") {
+    return "Нельзя удалить автора: у него есть токены, права, оценки или добавленные записи.";
+  }
+
   if (error === "invalid-permission") {
     return "Не удалось сохранить право автора.";
   }

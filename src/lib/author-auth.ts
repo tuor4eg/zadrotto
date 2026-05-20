@@ -30,7 +30,7 @@ export async function getCurrentAuthor() {
 
   const author = await getAuthorById(payload.authorId);
 
-  if (!author || author.code !== payload.authorCode) {
+  if (!author || author.code !== payload.authorCode || author.blockedAt) {
     return null;
   }
 

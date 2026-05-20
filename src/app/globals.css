@@ -196,6 +196,55 @@ body {
   z-index: 1;
 }
 
+.archive-franchise-sticker {
+  position: sticky;
+  top: 1rem;
+  z-index: 30;
+  width: fit-content;
+  max-width: calc(100% - 3rem);
+  margin: 2.5rem 1.5rem 0;
+  padding: 1.05rem 1.15rem 1rem;
+  border: 1px solid rgb(120 113 108 / 42%);
+  border-radius: 3px;
+  background:
+    radial-gradient(circle at 16% 18%, rgb(120 113 108 / 9%) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 55%, rgb(68 64 60 / 6%) 0 1px, transparent 1px),
+    linear-gradient(135deg, #fff4bd, #ead58b);
+  background-size: 8px 8px, 13px 13px, auto;
+  box-shadow:
+    0 14px 22px rgb(var(--archive-shadow) / 18%),
+    inset 0 0 0 1px rgb(255 255 255 / 42%);
+  transform: rotate(-0.2deg);
+}
+
+@media (min-width: 640px) {
+  .archive-franchise-sticker {
+    max-width: calc(100% - 4rem);
+    margin-right: 2rem;
+    margin-left: 2rem;
+  }
+}
+
+.archive-franchise-sticker::before {
+  position: absolute;
+  top: -0.85rem;
+  left: clamp(1rem, 12%, 5rem);
+  width: 7.5rem;
+  height: 1.45rem;
+  content: "";
+  border: 1px solid rgb(120 113 108 / 16%);
+  background:
+    linear-gradient(90deg, rgb(255 255 255 / 24%), transparent 32%, rgb(120 113 108 / 10%)),
+    rgb(232 220 194 / 86%);
+  box-shadow: 0 4px 8px rgb(var(--archive-shadow) / 10%);
+  transform: rotate(-1.6deg);
+}
+
+.archive-franchise-sticker > * {
+  position: relative;
+  z-index: 1;
+}
+
 .archive-scrollbar {
   scrollbar-color: rgb(var(--archive-paper-edge) / 48%) rgb(var(--archive-paper-underlay-end) / 34%);
   scrollbar-gutter: stable;

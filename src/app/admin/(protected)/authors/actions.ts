@@ -3,7 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { createAuthor, getAuthorById, updateAuthor } from "@/db/queries/authors";
+import {
+  blockAuthor,
+  createAuthor,
+  deleteAuthorIfUnused,
+  getAuthorById,
+  unblockAuthor,
+  updateAuthor,
+} from "@/db/queries/authors";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
 import { saveAuthorPermission } from "@/lib/author-permission-service";
@@ -14,6 +21,12 @@ function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getFormNumber(formData: FormData, key: string) {
+  const value = Number(getFormString(formData, key));
+
+  return Number.isInteger(value) && value > 0 ? value : null;
 }
 
 export async function createAuthorAction(formData: FormData) {
@@ -46,10 +59,10 @@ export async function createAuthorAction(formData: FormData) {
 export async function updateAuthorAction(formData: FormData) {
   await requireAdminUser();
 
-  const authorId = Number(getFormString(formData, "authorId"));
+  const authorId = getFormNumber(formData, "authorId");
   const name = getFormString(formData, "name");
 
-  if (!Number.isInteger(authorId) || authorId <= 0) {
+  if (!authorId) {
     redirect("/admin/authors?error=invalid-author");
   }
 
@@ -57,15 +70,13 @@ export async function updateAuthorAction(formData: FormData) {
     redirect(`/admin/authors/${authorId}/edit?error=required`);
   }
 
+  let author;
+
   try {
-    const author = await updateAuthor({
+    author = await updateAuthor({
       id: authorId,
       name,
     });
-
-    if (!author) {
-      redirect("/admin/authors?error=invalid-author");
-    }
   } catch (error) {
     if (isUniqueViolation(error)) {
       redirect(`/admin/authors/${authorId}/edit?error=duplicate-code`);
@@ -73,6 +84,10 @@ export async function updateAuthorAction(formData: FormData) {
 
     console.error(error);
     redirect(`/admin/authors/${authorId}/edit?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!author) {
+    redirect("/admin/authors?error=invalid-author");
   }
 
   revalidatePath("/admin/authors");
@@ -83,15 +98,12 @@ export async function updateAuthorAction(formData: FormData) {
 
 export async function updateAuthorPermissionAction(formData: FormData) {
   const adminUser = await requireAdminUser();
-  const authorId = Number(getFormString(formData, "authorId"));
+  const authorId = getFormNumber(formData, "authorId");
   const permission = getFormString(formData, "permission");
   const isEnabled = getFormString(formData, "enabled") === "1";
-  const redirectPath =
-    Number.isInteger(authorId) && authorId > 0
-      ? `/admin/authors/${authorId}/edit`
-      : "/admin/authors";
+  const redirectPath = authorId ? `/admin/authors/${authorId}/edit` : "/admin/authors";
 
-  if (!Number.isInteger(authorId) || authorId <= 0 || !isAuthorPermission(permission)) {
+  if (!authorId || !isAuthorPermission(permission)) {
     redirect(`${redirectPath}?error=invalid-permission`);
   }
 
@@ -123,4 +135,86 @@ export async function updateAuthorPermissionAction(formData: FormData) {
   revalidatePath("/admin/authors");
   revalidatePath(redirectPath);
   redirect(`${redirectPath}?permissions=1`);
+}
+
+export async function blockAuthorAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const authorId = getFormNumber(formData, "authorId");
+
+  if (!authorId) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  let author;
+
+  try {
+    author = await blockAuthor({
+      id: authorId,
+      blockedByAdminId: adminUser.id,
+    });
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/authors?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!author) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  revalidatePath("/admin/authors");
+  revalidatePath(`/admin/authors/${authorId}/edit`);
+  redirect("/admin/authors?updated=blocked");
+}
+
+export async function unblockAuthorAction(formData: FormData) {
+  await requireAdminUser();
+
+  const authorId = getFormNumber(formData, "authorId");
+
+  if (!authorId) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  let author;
+
+  try {
+    author = await unblockAuthor(authorId);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/authors?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!author) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  revalidatePath("/admin/authors");
+  revalidatePath(`/admin/authors/${authorId}/edit`);
+  redirect("/admin/authors?updated=unblocked");
+}
+
+export async function deleteAuthorAction(formData: FormData) {
+  await requireAdminUser();
+
+  const authorId = getFormNumber(formData, "authorId");
+
+  if (!authorId) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  let isDeleted = false;
+
+  try {
+    isDeleted = await deleteAuthorIfUnused(authorId);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/authors?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!isDeleted) {
+    redirect("/admin/authors?error=author-has-data");
+  }
+
+  revalidatePath("/admin/authors");
+  redirect("/admin/authors?updated=deleted");
 }

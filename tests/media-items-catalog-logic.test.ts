@@ -55,6 +55,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 2001,
     averageScore: 80,
     ratingsCount: 2,
+    currentAuthorRatedAt: new Date("2026-01-02T00:00:00Z"),
   },
   {
     id: 2,
@@ -63,6 +64,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: null,
     averageScore: 95,
     ratingsCount: 1,
+    currentAuthorRatedAt: null,
   },
   {
     id: 3,
@@ -71,6 +73,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 1999,
     averageScore: null,
     ratingsCount: 7,
+    currentAuthorRatedAt: new Date("2026-01-03T00:00:00Z"),
   },
   {
     id: 4,
@@ -79,6 +82,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 1999,
     averageScore: 95,
     ratingsCount: 3,
+    currentAuthorRatedAt: new Date("2026-01-01T00:00:00Z"),
   },
 ];
 
@@ -145,6 +149,7 @@ describe("filterCatalogItems", () => {
 describe("parseCatalogSort", () => {
   it("keeps known catalog sort values and falls back to title", () => {
     assert.equal(parseCatalogSort("release_year"), "release_year");
+    assert.equal(parseCatalogSort("my_rating_order"), "my_rating_order");
     assert.equal(parseCatalogSort("unknown"), "title");
     assert.equal(parseCatalogSort(null), "title");
   });
@@ -201,6 +206,13 @@ describe("sortCatalogItems", () => {
     assert.deepEqual(
       sortCatalogItems(sortableItems, "ratings_count").map((item) => item.id),
       [3, 4, 1, 2],
+    );
+  });
+
+  it("sorts by current author rating time descending", () => {
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "my_rating_order").map((item) => item.id),
+      [3, 1, 4, 2],
     );
   });
 

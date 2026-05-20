@@ -1,18 +1,21 @@
 import Link from "next/link";
-import { Edit3, Plus } from "lucide-react";
+import { Edit3, Lock, Plus, Trash2, Unlock } from "lucide-react";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthors } from "@/db/queries/authors";
 import { EmptyState, PageHeader } from "../admin-ui";
+import { blockAuthorAction, deleteAuthorAction, unblockAuthorAction } from "./actions";
 import { getAuthorErrorMessage } from "./messages";
 
 type AdminAuthorsPageProps = {
   searchParams: Promise<{
     created?: string;
     error?: string;
+    updated?: string;
   }>;
 };
 
@@ -24,10 +27,33 @@ function formatCreatedAt(createdAt: Date) {
   }).format(createdAt);
 }
 
+function getSuccessMessage(input: {
+  created?: string;
+  updated?: string;
+}) {
+  if (input.created === "1") {
+    return "Автор создан.";
+  }
+
+  if (input.updated === "blocked") {
+    return "Автор заблокирован.";
+  }
+
+  if (input.updated === "unblocked") {
+    return "Автор разблокирован.";
+  }
+
+  if (input.updated === "deleted") {
+    return "Автор удален.";
+  }
+
+  return null;
+}
+
 export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPageProps) {
   const [authors, params] = await Promise.all([getAuthors(), searchParams]);
   const errorMessage = getAuthorErrorMessage(params.error);
-  const successMessage = params.created === "1" ? "Автор создан." : null;
+  const successMessage = getSuccessMessage(params);
 
   return (
     <div className="flex flex-col gap-5">
@@ -55,7 +81,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
           {authors.map((author) => (
             <div
               key={author.id}
-              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,190px)_auto]"
+              className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_120px_minmax(0,190px)_auto]"
             >
               <div className="min-w-0">
                 <Link
@@ -65,10 +91,15 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   {author.name}
                 </Link>
               </div>
+              <div>
+                <Badge variant={author.blockedAt ? "destructive" : "positive"}>
+                  {author.blockedAt ? "заблокирован" : "активен"}
+                </Badge>
+              </div>
               <div className="text-xs tabular-nums text-stone-500">
                 {formatCreatedAt(author.createdAt)}
               </div>
-              <div className="flex justify-end">
+              <div className="flex flex-nowrap justify-end gap-1.5">
                 <Tooltip label="Редактировать">
                   <Link
                     href={`/admin/authors/${author.id}/edit`}
@@ -77,6 +108,55 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   >
                     <Edit3 />
                   </Link>
+                </Tooltip>
+                {author.blockedAt ? (
+                  <form action={unblockAuthorAction} className="shrink-0">
+                    <input type="hidden" name="authorId" value={author.id} />
+                    <Tooltip label="Разблокировать">
+                      <Button
+                        type="submit"
+                        variant="outline"
+                        size="icon"
+                        aria-label={`Разблокировать автора ${author.name}`}
+                      >
+                        <Unlock />
+                      </Button>
+                    </Tooltip>
+                  </form>
+                ) : (
+                  <form action={blockAuthorAction} className="shrink-0">
+                    <input type="hidden" name="authorId" value={author.id} />
+                    <Tooltip label="Заблокировать">
+                      <Button
+                        type="submit"
+                        variant="destructive"
+                        size="icon"
+                        aria-label={`Заблокировать автора ${author.name}`}
+                      >
+                        <Lock />
+                      </Button>
+                    </Tooltip>
+                  </form>
+                )}
+                <Tooltip
+                  label={
+                    author.usageCount > 0
+                      ? "Нельзя удалить: есть данные"
+                      : "Удалить"
+                  }
+                >
+                  <ConfirmAction
+                    action={deleteAuthorAction}
+                    disabled={author.usageCount > 0}
+                    fields={[{ name: "authorId", value: author.id }]}
+                    title="Удалить автора?"
+                    description={`Автор «${author.name}» будет полностью удален. Это возможно только если у него нет токенов, прав, оценок и добавленных записей.`}
+                    triggerLabel="Удалить"
+                    triggerAriaLabel={`Удалить автора ${author.name}`}
+                    triggerIcon={<Trash2 />}
+                    triggerSize="icon"
+                    confirmLabel="Удалить автора"
+                  />
                 </Tooltip>
               </div>
             </div>

@@ -33,13 +33,12 @@ export async function loginAdmin(formData: FormData) {
   }
 
   try {
-    await updateAdminLastLoginAt(adminUser.id);
+    const sessionUpdatedAt = await updateAdminLastLoginAt(adminUser.id);
+    await setAdminSessionCookie(adminUser.id, sessionUpdatedAt.getTime());
   } catch (error) {
     console.error(error);
     redirect(`/admin/login?error=${getAdminFormErrorCode(error)}`);
   }
-
-  await setAdminSessionCookie(adminUser.id);
 
   redirect("/admin");
 }

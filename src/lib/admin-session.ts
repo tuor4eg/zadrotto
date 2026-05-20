@@ -6,6 +6,7 @@ export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 type AdminSessionPayload = {
   type: "admin";
   adminId: number;
+  sessionUpdatedAt: number;
   iat: number;
   exp: number;
 };
@@ -53,18 +54,20 @@ function isAdminSessionPayload(payload: unknown): payload is AdminSessionPayload
   return (
     maybePayload.type === "admin" &&
     Number.isInteger(maybePayload.adminId) &&
+    Number.isInteger(maybePayload.sessionUpdatedAt) &&
     typeof maybePayload.exp === "number" &&
     typeof maybePayload.iat === "number"
   );
 }
 
-export function createAdminSessionToken(adminId: number) {
+export function createAdminSessionToken(adminId: number, sessionUpdatedAt: number) {
   const now = Math.floor(Date.now() / 1000);
   const header = encodeBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const payload = encodeBase64Url(
     JSON.stringify({
       type: "admin",
       adminId,
+      sessionUpdatedAt,
       iat: now,
       exp: now + ADMIN_SESSION_MAX_AGE_SECONDS,
     } satisfies AdminSessionPayload),

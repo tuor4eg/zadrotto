@@ -23,6 +23,7 @@ export async function getAdminUserById(id: number) {
     .select({
       id: adminUsers.id,
       login: adminUsers.login,
+      updatedAt: adminUsers.updatedAt,
       lastLoginAt: adminUsers.lastLoginAt,
     })
     .from(adminUsers)
@@ -55,5 +56,16 @@ export async function createAdminUser(login: string, passwordHash: string) {
 }
 
 export async function updateAdminLastLoginAt(id: number) {
-  await db.update(adminUsers).set({ lastLoginAt: new Date() }).where(eq(adminUsers.id, id));
+  const now = new Date();
+  const [adminUser] = await db
+    .update(adminUsers)
+    .set({ lastLoginAt: now, updatedAt: now })
+    .where(eq(adminUsers.id, id))
+    .returning({ updatedAt: adminUsers.updatedAt });
+
+  return adminUser?.updatedAt ?? now;
+}
+
+export async function revokeAdminSessions(id: number) {
+  await db.update(adminUsers).set({ updatedAt: new Date() }).where(eq(adminUsers.id, id));
 }

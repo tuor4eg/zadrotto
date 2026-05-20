@@ -8,6 +8,7 @@ import { CatalogStickyHeader } from "./catalog-sticky-header";
 import {
   parseAuthorRatingFilter,
   parseCatalogSort,
+  parseCatalogSortDirection,
   parseMediaTypeFilter,
 } from "./media-items-catalog-logic";
 import { MediaItemsCatalog } from "./media-items-catalog";
@@ -21,6 +22,7 @@ type HomeProps = {
     page?: string;
     pageSize?: string;
     q?: string;
+    dir?: string;
     sort?: string;
     type?: string;
   }>;
@@ -36,7 +38,6 @@ export default async function Home({ searchParams }: HomeProps) {
   ]);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
-  const sort = parseCatalogSort(params.sort ?? null);
   const pageSize = parsePageSize(
     params.pageSize,
     CATALOG_PAGE_SIZE_OPTIONS,
@@ -45,6 +46,9 @@ export default async function Home({ searchParams }: HomeProps) {
   const authorRatingFilter = currentAuthor
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
+  const parsedSort = parseCatalogSort(params.sort ?? null);
+  const sort = !currentAuthor && parsedSort === "my_rating_order" ? "title" : parsedSort;
+  const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
   const [catalog, mediaTypeCounts] = await Promise.all([
     getCatalogMediaItems({
       authorRatingFilter,
@@ -54,6 +58,7 @@ export default async function Home({ searchParams }: HomeProps) {
       pageSize,
       searchQuery,
       sort,
+      sortDirection,
     }),
     getCatalogMediaTypeCounts(),
   ]);
@@ -68,6 +73,7 @@ export default async function Home({ searchParams }: HomeProps) {
           mediaTypeFilter={mediaTypeFilter}
           searchQuery={searchQuery}
           sort={sort}
+          sortDirection={sortDirection}
         />
 
         <MediaItemsCatalog
@@ -84,6 +90,7 @@ export default async function Home({ searchParams }: HomeProps) {
           pageSize={catalog.pageSize}
           searchQuery={searchQuery}
           sort={sort}
+          sortDirection={sortDirection}
           totalCount={catalog.totalCount}
           totalPages={catalog.totalPages}
         />

@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 
 import {
   createAuthorAccessToken,
+  deleteAuthorAccessToken,
+  restoreAuthorAccessToken,
   revokeAuthorAccessToken,
 } from "@/db/queries/author-access-tokens";
 import { requireAdminUser } from "@/lib/admin-auth";
@@ -87,5 +89,41 @@ export async function revokeAuthorTokenAction(formData: FormData) {
   }
 
   revalidatePath("/admin/author-tokens");
-  redirect("/admin/author-tokens?updated=1");
+  redirect("/admin/author-tokens?updated=revoked");
+}
+
+export async function restoreAuthorTokenAction(formData: FormData) {
+  await requireAdminUser();
+
+  const tokenId = getFormNumber(formData, "tokenId");
+
+  if (tokenId) {
+    try {
+      await restoreAuthorAccessToken(tokenId);
+    } catch (error) {
+      console.error(error);
+      redirect(`/admin/author-tokens?error=${getAdminFormErrorCode(error)}`);
+    }
+  }
+
+  revalidatePath("/admin/author-tokens");
+  redirect("/admin/author-tokens?updated=restored");
+}
+
+export async function deleteAuthorTokenAction(formData: FormData) {
+  await requireAdminUser();
+
+  const tokenId = getFormNumber(formData, "tokenId");
+
+  if (tokenId) {
+    try {
+      await deleteAuthorAccessToken(tokenId);
+    } catch (error) {
+      console.error(error);
+      redirect(`/admin/author-tokens?error=${getAdminFormErrorCode(error)}`);
+    }
+  }
+
+  revalidatePath("/admin/author-tokens");
+  redirect("/admin/author-tokens?updated=deleted");
 }

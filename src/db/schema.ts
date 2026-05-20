@@ -37,6 +37,10 @@ export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
+  blockedAt: timestamp("blocked_at", { withTimezone: true }),
+  blockedByAdminId: integer("blocked_by_admin_id").references(() => adminUsers.id, {
+    onDelete: "set null",
+  }),
   ...timestamps(),
 });
 

@@ -37,11 +37,12 @@ describe("admin session JWT", () => {
   it("creates and verifies a signed admin session token", () => {
     withAdminSessionSecret("test-secret");
 
-    const token = createAdminSessionToken(42);
+    const token = createAdminSessionToken(42, 123456789);
     const payload = verifyAdminSessionToken(token);
 
     assert.equal(payload?.type, "admin");
     assert.equal(payload?.adminId, 42);
+    assert.equal(payload?.sessionUpdatedAt, 123456789);
 
     restoreAdminSessionSecret();
   });
@@ -49,7 +50,7 @@ describe("admin session JWT", () => {
   it("rejects a token with a changed signature", () => {
     withAdminSessionSecret("test-secret");
 
-    const token = createAdminSessionToken(42);
+    const token = createAdminSessionToken(42, 123456789);
     const tamperedToken = `${token.slice(0, -1)}x`;
 
     assert.equal(verifyAdminSessionToken(tamperedToken), null);

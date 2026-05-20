@@ -16,8 +16,10 @@ import {
 import type {
   AuthorRatingFilter,
   CatalogSort,
+  CatalogSortDirection,
   MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
+import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
 import { authors, franchises, mediaItems, ratings } from "@/db/schema";
 import type { MediaType } from "@/lib/media-types";
@@ -41,6 +43,17 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
         limit 1
       )`
     : sql<number | null>`null`;
+
+const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<Date | null>`(
+        select ${ratings.createdAt}
+        from ${ratings}
+        where ${ratings.mediaItemId} = ${mediaItems.id}
+          and ${ratings.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<Date | null>`null`;
 
 const catalogSearchCondition = (searchQuery: string) => {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -96,24 +109,55 @@ function catalogFilterConditions(input: {
   return and(...conditions)!;
 }
 
-function catalogOrderBy(sort: CatalogSort) {
+function catalogOrderBy(
+  sort: CatalogSort,
+  direction: CatalogSortDirection,
+  currentAuthorId?: number,
+) {
+  const titleOrder = direction === "asc" ? asc(mediaItems.title) : desc(mediaItems.title);
+
   if (sort === "release_year") {
-    return [sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title)];
+    return [
+      direction === "asc"
+        ? sql`${mediaItems.releaseYear} asc nulls last`
+        : sql`${mediaItems.releaseYear} desc nulls last`,
+      asc(mediaItems.title),
+    ];
   }
 
   if (sort === "media_type") {
-    return [asc(mediaItems.mediaType), asc(mediaItems.title)];
+    return [
+      direction === "asc" ? asc(mediaItems.mediaType) : desc(mediaItems.mediaType),
+      asc(mediaItems.title),
+    ];
   }
 
   if (sort === "average_score") {
-    return [sql`avg(${ratings.score}) desc nulls last`, asc(mediaItems.title)];
+    return [
+      direction === "asc"
+        ? sql`avg(${ratings.score}) asc nulls last`
+        : sql`avg(${ratings.score}) desc nulls last`,
+      asc(mediaItems.title),
+    ];
   }
 
   if (sort === "ratings_count") {
-    return [sql`count(${ratings.id}) desc`, asc(mediaItems.title)];
+    return [
+      direction === "asc" ? sql`count(${ratings.id}) asc` : sql`count(${ratings.id}) desc`,
+      asc(mediaItems.title),
+    ];
   }
 
-  return [asc(mediaItems.title)];
+  if (sort === "my_rating_order" && currentAuthorId) {
+    return [
+      direction === "asc"
+        ? sql`${currentAuthorRatedAtSql(currentAuthorId)} asc nulls last`
+        : sql`${currentAuthorRatedAtSql(currentAuthorId)} desc nulls last`,
+      asc(mediaItems.title),
+    ];
+  }
+
+  return [titleOrder];
 }
 
 const catalogMediaItemsQuery = (input: {
@@ -125,6 +169,7 @@ const catalogMediaItemsQuery = (input: {
   pageSize: number;
   searchQuery: string;
   sort: CatalogSort;
+  sortDirection: CatalogSortDirection;
 }) =>
   db
     .select({
@@ -142,6 +187,7 @@ const catalogMediaItemsQuery = (input: {
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
+      currentAuthorRatedAt: currentAuthorRatedAtSql(input.currentAuthorId),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
@@ -160,7 +206,7 @@ const catalogMediaItemsQuery = (input: {
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )
-    .orderBy(...catalogOrderBy(input.sort))
+    .orderBy(...catalogOrderBy(input.sort, input.sortDirection, input.currentAuthorId))
     .limit(input.pageSize)
     .offset(getOffset(input.page, input.pageSize));
 
@@ -176,6 +222,7 @@ export async function getCatalogMediaItems(input: {
   pageSize: number;
   searchQuery: string;
   sort: CatalogSort;
+  sortDirection: CatalogSortDirection;
 }) {
   const filterCondition = catalogFilterConditions(input);
   const [{ totalCount }] = await db
@@ -252,6 +299,7 @@ export async function getAdminMediaItems(input: {
   pageSize: number;
   searchQuery: string;
   sort: CatalogSort;
+  sortDirection?: CatalogSortDirection;
 }) {
   const filterCondition = adminMediaFilterConditions(input);
   const [{ totalCount }] = await db
@@ -303,7 +351,12 @@ export async function getAdminMediaItems(input: {
       authors.name,
       authors.code,
     )
-    .orderBy(...catalogOrderBy(input.sort))
+    .orderBy(
+      ...catalogOrderBy(
+        input.sort,
+        input.sortDirection ?? DEFAULT_CATALOG_SORT_DIRECTIONS[input.sort],
+      ),
+    )
     .limit(input.pageSize)
     .offset(getOffset(page, input.pageSize));
 
@@ -765,6 +818,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
 export async function getOtherMediaItemsFromFranchise(
   franchiseId: number,
   currentMediaItemId: number,
+  currentAuthorId?: number,
 ) {
   const items = await db
     .select({
@@ -775,8 +829,12 @@ export async function getOtherMediaItemsFromFranchise(
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      averageScore: sql<number | null>`avg(${ratings.score})::float`,
+      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
         eq(mediaItems.franchiseId, franchiseId),
@@ -784,7 +842,17 @@ export async function getOtherMediaItemsFromFranchise(
         publishedMediaItemCondition,
       ),
     )
-    .orderBy(asc(mediaItems.releaseYear), asc(mediaItems.title));
+    .groupBy(
+      mediaItems.id,
+      mediaItems.code,
+      mediaItems.title,
+      mediaItems.originalTitle,
+      mediaItems.mediaType,
+      mediaItems.releaseYear,
+      mediaItems.coverUrl,
+    )
+    .orderBy(sql`random()`)
+    .limit(4);
 
   return items.map((item) => ({ ...item, coverUrl: resolveCoverUrl(item.coverUrl) }));
 }

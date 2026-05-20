@@ -1,7 +1,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-import { getAdminUserById } from "@/db/queries/admin-users";
+import { getAdminUserById, revokeAdminSessions } from "@/db/queries/admin-users";
 import {
   ADMIN_SESSION_COOKIE_NAME,
   ADMIN_SESSION_MAX_AGE_SECONDS,
@@ -23,7 +23,13 @@ export async function getCurrentAdminUser() {
     return null;
   }
 
-  return getAdminUserById(payload.adminId);
+  const adminUser = await getAdminUserById(payload.adminId);
+
+  if (!adminUser || adminUser.updatedAt.getTime() !== payload.sessionUpdatedAt) {
+    return null;
+  }
+
+  return adminUser;
 }
 
 export async function requireAdminUser() {
@@ -36,8 +42,8 @@ export async function requireAdminUser() {
   return adminUser;
 }
 
-export async function setAdminSessionCookie(adminId: number) {
-  const token = createAdminSessionToken(adminId);
+export async function setAdminSessionCookie(adminId: number, sessionUpdatedAt: number) {
+  const token = createAdminSessionToken(adminId, sessionUpdatedAt);
 
   (await cookies()).set({
     name: ADMIN_SESSION_COOKIE_NAME,
@@ -50,9 +56,19 @@ export async function setAdminSessionCookie(adminId: number) {
   });
 }
 
+export async function revokeCurrentAdminSession() {
+  const token = (await cookies()).get(ADMIN_SESSION_COOKIE_NAME)?.value;
+  const payload = token ? verifyAdminSessionToken(token) : null;
+
+  if (payload?.type === "admin") {
+    await revokeAdminSessions(payload.adminId);
+  }
+}
+
 export async function clearAdminSessionCookie() {
   const cookieStore = await cookies();
 
+  cookieStore.delete(ADMIN_SESSION_COOKIE_NAME);
   cookieStore.set({
     name: ADMIN_SESSION_COOKIE_NAME,
     value: "",
@@ -61,6 +77,7 @@ export async function clearAdminSessionCookie() {
     secure: shouldUseSecureCookies(),
     path: "/",
     maxAge: 0,
+    expires: new Date(0),
   });
   cookieStore.set({
     name: ADMIN_SESSION_COOKIE_NAME,
@@ -70,5 +87,6 @@ export async function clearAdminSessionCookie() {
     secure: shouldUseSecureCookies(),
     path: "/admin",
     maxAge: 0,
+    expires: new Date(0),
   });
 }

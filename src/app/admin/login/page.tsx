@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, LogIn } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/form";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
-import { loginAdmin } from "./actions";
+import { AdminLoginForm } from "./admin-login-form";
 
 type AdminLoginPageProps = {
   searchParams: Promise<{
@@ -47,40 +45,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
           </CardHeader>
 
           <CardContent>
-          <form action={loginAdmin} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="admin-login">Логин</Label>
-              <Input
-                id="admin-login"
-                name="login"
-                type="text"
-                autoComplete="username"
-                required
-              />
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="admin-password">Пароль</Label>
-              <Input
-                id="admin-password"
-                name="password"
-                type="password"
-                autoComplete="current-password"
-                required
-              />
-            </div>
-
-            {errorMessage ? (
-              <Alert variant="destructive">{errorMessage}</Alert>
-            ) : null}
-
-            <Button
-              type="submit"
-            >
-              <LogIn />
-              Войти
-            </Button>
-          </form>
+            <AdminLoginForm errorMessage={errorMessage} />
           </CardContent>
         </Card>
       </div>
