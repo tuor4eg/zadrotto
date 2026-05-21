@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import { requireAuthor } from "@/lib/author-auth";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
@@ -14,107 +15,95 @@ export default async function AuthorPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="grid gap-3 sm:grid-cols-3">
-        <div className="border border-zinc-200 p-4 sm:col-span-3">
-          <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Автор
-          </span>
-          <div className="mt-2 flex flex-wrap items-end justify-between gap-3">
-            <h2 className="text-2xl font-semibold text-zinc-950">{author.name}</h2>
-          </div>
-        </div>
+      <section className="grid gap-3 lg:grid-cols-[8.5rem_8.5rem_minmax(0,1fr)] lg:items-start">
+        <Card className="lg:col-span-3">
+          <CardContent className="p-4">
+            <div className="flex flex-wrap items-end justify-between gap-3">
+              <h2 className="font-serif text-3xl leading-none text-stone-950">{author.name}</h2>
+            </div>
+          </CardContent>
+        </Card>
 
-        <div className="border border-zinc-200 p-4">
-          <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Оценок
-          </span>
-          <span className="mt-2 block text-3xl font-semibold tabular-nums text-zinc-950">
-            {summary.ratingsCount}
-          </span>
-          <span className="mt-1 block text-xs text-zinc-500">
-            {formatRatingsCount(summary.ratingsCount)}
-          </span>
-        </div>
+        <Card>
+          <CardContent className="p-3">
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+              Оценок
+            </span>
+            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
+              {summary.ratingsCount}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
+              {formatRatingsCount(summary.ratingsCount)}
+            </span>
+          </CardContent>
+        </Card>
 
-        <div className="border border-zinc-200 p-4">
-          <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-400">
-            Средняя
-          </span>
-          <span className="mt-2 block text-3xl font-semibold tabular-nums text-zinc-950">
-            {formatScore(summary.averageScore)}
-          </span>
-          <span className="mt-1 block text-xs text-zinc-500">личная средняя оценка</span>
-        </div>
+        <Card>
+          <CardContent className="p-3">
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+              Средняя
+            </span>
+            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
+              {formatScore(summary.averageScore)}
+            </span>
+            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">личная</span>
+          </CardContent>
+        </Card>
 
-        <div className="flex flex-col gap-2 border border-zinc-200 p-4">
-          <Link
-            href="/?mine=rated"
-            className="border border-zinc-300 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-zinc-700 transition-colors hover:border-zinc-950 hover:text-zinc-950"
-          >
-            Оцененные мной
-          </Link>
-          <Link
-            href="/?mine=unrated"
-            className="border border-zinc-300 px-3 py-2 text-center text-xs font-semibold uppercase tracking-[0.14em] text-zinc-700 transition-colors hover:border-zinc-950 hover:text-zinc-950"
-          >
-            Без моей оценки
-          </Link>
-        </div>
+        <Card>
+          <CardContent className="p-3">
+            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+              По типам медиа
+            </span>
+            <div className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-4">
+              {MEDIA_TYPES.map((mediaType) => {
+                const count = distributionByMediaType.get(mediaType) ?? 0;
+
+                return (
+                  <div
+                    key={mediaType}
+                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm"
+                  >
+                    <span className="truncate text-stone-700">{MEDIA_TYPE_LABELS[mediaType]}</span>
+                    <span className="font-mono text-xs text-stone-500">{count}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
       </section>
 
-      <section className="border border-zinc-200">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
-            По типам медиа
-          </h2>
-        </div>
-        <div className="divide-y divide-zinc-200">
-          {MEDIA_TYPES.map((mediaType) => {
-            const count = distributionByMediaType.get(mediaType) ?? 0;
-
-            return (
-              <div
-                key={mediaType}
-                className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 text-sm"
-              >
-                <span className="text-zinc-700">{MEDIA_TYPE_LABELS[mediaType]}</span>
-                <span className="font-mono text-xs text-zinc-500">{count}</span>
-              </div>
-            );
-          })}
-        </div>
-      </section>
-
-      <section className="border border-zinc-200">
-        <div className="border-b border-zinc-200 px-4 py-3">
-          <h2 className="text-xs font-semibold uppercase tracking-[0.18em] text-zinc-500">
+      <Card>
+        <CardHeader className="border-b border-stone-200 px-4 py-3">
+          <CardTitle className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
             Последние оценки
-          </h2>
-        </div>
+          </CardTitle>
+        </CardHeader>
 
         {summary.latestRatings.length === 0 ? (
-          <div className="p-4 text-sm text-zinc-500">Пока нет оценок.</div>
+          <CardContent className="p-4 text-sm text-stone-500">Пока нет оценок.</CardContent>
         ) : (
-          <div className="divide-y divide-zinc-200">
+          <CardContent className="divide-y divide-stone-200 p-0">
             {summary.latestRatings.map((rating) => (
               <Link
                 key={rating.mediaItemCode}
                 href={`/media/${rating.mediaItemCode}`}
-                className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 transition-colors hover:bg-zinc-100"
+                className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 transition-colors hover:bg-stone-100"
               >
                 <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-zinc-950">
+                  <span className="block truncate text-sm font-medium text-stone-950">
                     {rating.mediaItemTitle}
                   </span>
                 </span>
-                <span className="font-mono text-sm font-semibold tabular-nums text-zinc-950">
+                <span className="font-mono text-sm font-semibold tabular-nums text-stone-950">
                   {formatScore(rating.score)}
                 </span>
               </Link>
             ))}
-          </div>
+          </CardContent>
         )}
-      </section>
+      </Card>
     </div>
   );
 }

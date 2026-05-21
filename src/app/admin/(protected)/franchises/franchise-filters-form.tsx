@@ -27,6 +27,7 @@ export function AdminFranchiseFiltersForm({
   const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
   const isFirstSearchSync = useRef(true);
+  const previousSearchQuery = useRef(searchQuery);
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -64,8 +65,18 @@ export function AdminFranchiseFiltersForm({
   }
 
   useEffect(() => {
+    if (previousSearchQuery.current !== searchQuery) {
+      previousSearchQuery.current = searchQuery;
+      setSearch(searchQuery);
+      return;
+    }
+
     if (isFirstSearchSync.current) {
       isFirstSearchSync.current = false;
+      return;
+    }
+
+    if (search === searchQuery) {
       return;
     }
 
@@ -74,7 +85,7 @@ export function AdminFranchiseFiltersForm({
     }, 250);
 
     return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search]);
+  }, [replaceFilters, search, searchQuery]);
 
   return (
     <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-[minmax(220px,1fr)_auto]">

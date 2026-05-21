@@ -5,6 +5,7 @@ import { useState } from "react";
 import { X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { formatScore } from "@/lib/rating-score";
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
@@ -26,9 +27,7 @@ type MediaItemRatingPanelProps = MediaItemRatingDialogProps & {
 
 type MediaItemRatingModalProps = MediaItemRatingDialogProps & {
   formId: string;
-  hasUnsavedRating: boolean;
   onClose: () => void;
-  onScoreChange: (hasUnsaved: boolean) => void;
 };
 
 export function RatingStars({ score }: { score: number | null }) {
@@ -52,14 +51,14 @@ export function MediaItemRatingPanel({
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const ratingPanelClassName = isCompact
-    ? `group relative block min-w-[82px] rounded-md border px-3 py-2 text-center transition-colors ${
+    ? `group relative block min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
         currentAuthor
-          ? authorRatingToneClassName
+          ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
           : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
       }`
-    : `group relative rounded-md border p-4 text-center transition-colors ${
+    : `group relative w-full cursor-pointer rounded-md border p-4 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(28,25,23,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
         currentAuthor
-          ? authorRatingToneClassName
+          ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
           : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
       }`;
   const labelClassName = isCompact
@@ -94,40 +93,38 @@ export function MediaItemRatingPanel({
           </span>
         )
       ) : null}
-      <span
-        role="tooltip"
-        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-2 -translate-x-1/2 whitespace-nowrap rounded-md bg-stone-950 px-2 py-1 font-mono text-xs text-stone-50 opacity-0 shadow-sm transition-opacity group-focus-visible:opacity-100 group-hover:opacity-100"
-      >
-        {tooltip}
-      </span>
     </>
   );
 
   if (!currentAuthor) {
     return (
-      <Link
-        href="/author/login"
-        className={ratingPanelClassName}
-        aria-label="Войти как автор, чтобы поставить оценку"
-        onClick={(event) => event.stopPropagation()}
-      >
-        {content}
-      </Link>
+      <ArchiveTooltip label={tooltip} className={isCompact ? "shrink-0" : "w-full"}>
+        <Link
+          href="/author/login"
+          className={ratingPanelClassName}
+          aria-label="Войти как автор, чтобы поставить оценку"
+          onClick={(event) => event.stopPropagation()}
+        >
+          {content}
+        </Link>
+      </ArchiveTooltip>
     );
   }
 
   return (
-    <button
-      type="button"
-      onClick={(event) => {
-        event.stopPropagation();
-        onOpen?.();
-      }}
-      className={ratingPanelClassName}
-      aria-label="Изменить вашу оценку"
-    >
-      {content}
-    </button>
+    <ArchiveTooltip label={tooltip} className={isCompact ? "shrink-0" : "w-full"}>
+      <button
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onOpen?.();
+        }}
+        className={ratingPanelClassName}
+        aria-label="Изменить вашу оценку"
+      >
+        {content}
+      </button>
+    </ArchiveTooltip>
   );
 }
 
@@ -136,10 +133,8 @@ export function MediaItemRatingModal({
   currentAuthorScore,
   formId,
   franchiseCode,
-  hasUnsavedRating,
   mediaItemCode,
   onClose,
-  onScoreChange,
   title,
 }: MediaItemRatingModalProps) {
   return (
@@ -179,24 +174,11 @@ export function MediaItemRatingModal({
             currentAuthor={currentAuthor}
             currentAuthorScore={currentAuthorScore}
             variant="archive"
+            autoSubmitOnSelect
             inlineSaveButton={false}
-            onScoreChange={onScoreChange}
+            showLabel={false}
             formId={formId}
           />
-        </div>
-
-        <div className="mt-4 flex justify-end">
-          <button
-            type="submit"
-            form={formId}
-            name="intent"
-            value="save"
-            onClick={onClose}
-            className="rounded-md border border-stone-950 bg-stone-950 px-4 py-2 font-mono text-sm text-stone-50 transition-colors hover:bg-stone-50 hover:text-stone-950 disabled:border-stone-300 disabled:bg-stone-50 disabled:text-stone-300"
-            disabled={!hasUnsavedRating}
-          >
-            Сохранить
-          </button>
         </div>
       </div>
     </div>
@@ -211,7 +193,6 @@ export function MediaItemRatingDialog({
   currentAuthorScore,
 }: MediaItemRatingDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
-  const [hasUnsavedRating, setHasUnsavedRating] = useState(false);
 
   return (
     <>
@@ -232,9 +213,7 @@ export function MediaItemRatingDialog({
           currentAuthor={currentAuthor}
           currentAuthorScore={currentAuthorScore}
           formId="media-item-rating-form"
-          hasUnsavedRating={hasUnsavedRating}
           onClose={() => setIsOpen(false)}
-          onScoreChange={setHasUnsavedRating}
         />
       ) : null}
     </>

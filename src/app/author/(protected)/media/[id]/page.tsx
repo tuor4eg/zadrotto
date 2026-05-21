@@ -3,6 +3,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { MediaItemDetails } from "@/app/media-item-details";
+import { Alert } from "@/components/ui/alert";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { getAuthorMediaItemForView } from "@/db/queries/media-items";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
 import { canAuthorRequestPublication } from "@/lib/author-media-publication";
@@ -50,7 +52,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           {isEditable ? (
             <Link
               href={`/author/media/${item.id}/edit`}
-              className="w-fit border border-zinc-950 bg-zinc-950 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-zinc-950"
+              className={buttonVariants({ className: "w-fit" })}
             >
               Править
             </Link>
@@ -58,12 +60,9 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           {canRequestPublication ? (
             <form action={publishAuthorMediaItemAction}>
               <input type="hidden" name="mediaItemId" value={item.id} />
-              <button
-                type="submit"
-                className="w-fit border border-emerald-700 bg-emerald-700 px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-white transition-colors hover:bg-white hover:text-emerald-700"
-              >
+              <Button type="submit" variant="positive" className="w-fit">
                 Опубликовать
-              </button>
+              </Button>
             </form>
           ) : null}
         </>
@@ -77,9 +76,9 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
             currentAuthorScore={item.currentAuthorScore}
           />
           {item.adminNote ? (
-            <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm leading-6 text-zinc-600">
+            <Alert>
               {item.adminNote}
-            </div>
+            </Alert>
           ) : null}
         </>
       }

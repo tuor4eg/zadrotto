@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
+import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPreview } from "./cover-preview";
 
 const EMPTY_FILE_LABEL = "Файл не выбран";
@@ -51,13 +52,15 @@ export function CoverFileInput({ initialPreviewUrl }: CoverFileInputProps) {
         />
         <label
           htmlFor="author-media-cover-file"
-          className="cursor-pointer border border-zinc-950 bg-zinc-950 px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition-colors hover:bg-white hover:text-zinc-950"
+          className={buttonVariants({ size: "sm", className: "cursor-pointer" })}
         >
           Выбрать файл
         </label>
         {previewUrl ? (
-          <button
+          <Button
             type="button"
+            variant="destructive"
+            size="sm"
             onClick={() => {
               if (inputRef.current) {
                 inputRef.current.value = "";
@@ -68,19 +71,18 @@ export function CoverFileInput({ initialPreviewUrl }: CoverFileInputProps) {
               setLocalPreviewUrl(null);
               setPreviewUrl(null);
             }}
-            className="border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-zinc-600 transition-colors hover:border-red-700 hover:text-red-700"
           >
             Удалить обложку
-          </button>
+          </Button>
         ) : null}
-        <span className="min-w-0 truncate text-sm text-zinc-500">{fileName}</span>
+        <span className="min-w-0 truncate text-sm text-stone-500">{fileName}</span>
       </div>
 
       {previewUrl ? (
         <CoverPreview
           src={previewUrl}
           alt="Обложка"
-          buttonClassName="mt-3 block w-fit border border-zinc-200 bg-white p-1 text-left transition-colors hover:border-zinc-950"
+          buttonClassName="mt-3 block w-fit rounded-md border border-stone-200 bg-white p-1 text-left transition-colors hover:border-stone-500"
           thumbnailClassName="h-28 w-20 object-cover"
         />
       ) : null}

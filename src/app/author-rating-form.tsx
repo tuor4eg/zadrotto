@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState, useEffect, useState } from "react";
+import { useActionState, useEffect, useRef, useState } from "react";
 
 import { saveAuthorRatingAction, type SaveAuthorRatingState } from "@/app/ratings/actions";
 import {
@@ -20,7 +20,9 @@ type AuthorRatingFormProps = {
   currentAuthorScore: number | null;
   compact?: boolean;
   variant?: "default" | "archive";
+  autoSubmitOnSelect?: boolean;
   inlineSaveButton?: boolean;
+  showLabel?: boolean;
   onScoreChange?: (hasUnsaved: boolean) => void;
   formId?: string;
 };
@@ -38,12 +40,15 @@ export function AuthorRatingForm({
   currentAuthorScore,
   compact = false,
   variant = "default",
+  autoSubmitOnSelect = false,
   inlineSaveButton = true,
+  showLabel = true,
   onScoreChange,
   formId,
 }: AuthorRatingFormProps) {
   const [state, formAction, isPending] = useActionState(saveAuthorRatingAction, initialState);
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
+  const autoSubmitScoreInputRef = useRef<HTMLInputElement>(null);
   const visibleSelectedScore =
     selectedScore ?? (currentAuthorScore !== null && currentAuthorScore % 10 === 0
       ? currentAuthorScore
@@ -54,6 +59,8 @@ export function AuthorRatingForm({
     onScoreChange?.(hasUnsavedScore);
   }, [hasUnsavedScore, onScoreChange]);
   const hasSavedScore = currentAuthorScore !== null;
+  const hasVisibleDeleteButton = hasSavedScore && !autoSubmitOnSelect;
+  const contentGapClassName = hasVisibleDeleteButton ? "gap-5" : showLabel ? "gap-3" : "";
 
   if (!currentAuthor) {
     return (
@@ -109,11 +116,13 @@ export function AuthorRatingForm({
       >
       <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
       {franchiseCode ? <input type="hidden" name="franchiseCode" value={franchiseCode} /> : null}
-      {selectedScore !== null ? (
+      {autoSubmitOnSelect ? (
+        <input ref={autoSubmitScoreInputRef} type="hidden" name="score" />
+      ) : selectedScore !== null ? (
         <input type="hidden" name="score" value={selectedScore / 10} />
       ) : null}
 
-      {hasSavedScore ? (
+      {hasVisibleDeleteButton ? (
         <button
           type="submit"
           name="intent"
@@ -134,16 +143,18 @@ export function AuthorRatingForm({
         </button>
       ) : null}
 
-      <div className={`flex flex-col ${hasSavedScore ? "gap-5" : "gap-3"}`}>
-        <div className={hasSavedScore ? "pr-10" : undefined}>
-          <span
-            className={`block text-[10px] font-semibold uppercase tracking-[0.16em] ${
-              variant === "archive" ? "text-stone-500" : "text-zinc-400"
-            }`}
-          >
-            Моя оценка
-          </span>
-        </div>
+      <div className={`flex flex-col ${contentGapClassName}`}>
+        {showLabel ? (
+          <div className={hasVisibleDeleteButton ? "pr-10" : undefined}>
+            <span
+              className={`block text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                variant === "archive" ? "text-stone-500" : "text-zinc-400"
+              }`}
+            >
+              Моя оценка
+            </span>
+          </div>
+        ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
           <div className={ratingButtonGridClassName} aria-label="Оценка">
@@ -154,8 +165,17 @@ export function AuthorRatingForm({
               return (
                 <button
                   key={score}
-                  type="button"
-                  onClick={() => setSelectedScore(score)}
+                  type={autoSubmitOnSelect ? "submit" : "button"}
+                  name={autoSubmitOnSelect ? "intent" : undefined}
+                  value={autoSubmitOnSelect && isSelected ? "delete" : "save"}
+                  onClick={() => {
+                    if (autoSubmitOnSelect && autoSubmitScoreInputRef.current) {
+                      autoSubmitScoreInputRef.current.value = String(score / 10);
+                      return;
+                    }
+
+                    setSelectedScore(score);
+                  }}
                   disabled={isPending}
                   className={`border font-semibold tabular-nums transition-colors disabled:border-zinc-200 disabled:bg-zinc-100 disabled:text-zinc-400 ${ratingButtonSizeClassName} ${
                     isSelected

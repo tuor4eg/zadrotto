@@ -1,5 +1,7 @@
 import { notFound } from "next/navigation";
 
+import { Alert } from "@/components/ui/alert";
+import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
@@ -46,19 +48,20 @@ export default async function EditAuthorMediaPage({
   return (
     <div className="grid gap-6">
       <div>
-        <h2 className="text-2xl font-semibold text-zinc-950">Редактировать запись</h2>
-        <p className="mt-1 text-sm text-zinc-500">
+        <h2 className="font-serif text-3xl leading-none text-stone-950">Редактировать запись</h2>
+        <p className="mt-2 text-sm text-stone-600">
           Статус: {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus].toLowerCase()}.
         </p>
       </div>
 
       {item.adminNote ? (
-        <div className="border border-zinc-200 bg-zinc-50 px-3 py-2 text-sm text-zinc-600">
+        <Alert>
           {item.adminNote}
-        </div>
+        </Alert>
       ) : null}
 
-      <section className="border border-zinc-200 p-4 sm:p-5">
+      <Card>
+        <CardContent className="p-4 sm:p-5">
         <MediaItemForm
           action={updateAuthorMediaItemAction}
           submitLabel="Сохранить"
@@ -66,7 +69,8 @@ export default async function EditAuthorMediaPage({
           values={item}
           error={error}
         />
-      </section>
+        </CardContent>
+      </Card>
     </div>
   );
 }
