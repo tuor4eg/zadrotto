@@ -3,9 +3,14 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import {
+  deleteAuthorMediaExperience,
+  upsertAuthorMediaExperience,
+} from "@/db/queries/author-media-experiences";
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
 import { getCurrentAuthor } from "@/lib/author-auth";
+import { parseFirstExperiencedInput } from "@/lib/experience-date";
 import { parseRatingScoreInput } from "@/lib/rating-score";
 
 export type SaveAuthorRatingState = {
@@ -47,6 +52,9 @@ export async function saveAuthorRatingAction(
   const franchiseCode = getFormString(formData, "franchiseCode");
   const intent = getFormString(formData, "intent");
   const score = parseRatingScoreInput(formData.get("score"));
+  const shouldUpdateExperience = formData.has("firstExperiencedValue");
+  const firstExperiencedValue = getFormString(formData, "firstExperiencedValue");
+  const firstExperiencedPrecision = getFormString(formData, "firstExperiencedPrecision");
 
   if (!mediaItemCode) {
     return { error: "Не удалось определить запись архива." };
@@ -78,11 +86,35 @@ export async function saveAuthorRatingAction(
     return { error: "Выбери целую оценку от 1 до 10." };
   }
 
+  const firstExperience =
+    shouldUpdateExperience && firstExperiencedValue
+      ? parseFirstExperiencedInput(firstExperiencedValue, firstExperiencedPrecision)
+      : null;
+
+  if (shouldUpdateExperience && firstExperiencedValue && !firstExperience) {
+    return { error: "Проверь дату знакомства." };
+  }
+
   await upsertAuthorRating({
     mediaItemId: mediaItem.id,
     authorId: author.id,
     score,
   });
+
+  if (shouldUpdateExperience) {
+    if (firstExperience) {
+      await upsertAuthorMediaExperience({
+        mediaItemId: mediaItem.id,
+        authorId: author.id,
+        ...firstExperience,
+      });
+    } else {
+      await deleteAuthorMediaExperience({
+        mediaItemId: mediaItem.id,
+        authorId: author.id,
+      });
+    }
+  }
 
   revalidateRatingPaths({
     mediaItemId: mediaItem.id,

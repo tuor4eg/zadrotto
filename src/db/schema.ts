@@ -2,6 +2,7 @@ import { sql } from "drizzle-orm";
 import {
   check,
   boolean,
+  date,
   index,
   integer,
   pgEnum,
@@ -13,12 +14,17 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { MEDIA_TYPES } from "@/lib/media-types";
+import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/author-media-experiences";
 import { AUTHOR_PERMISSIONS } from "@/lib/author-permissions";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/publication-status";
 
 export const mediaTypeEnum = pgEnum("media_type", MEDIA_TYPES);
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const authorPermissionEnum = pgEnum("author_permission", AUTHOR_PERMISSIONS);
+export const firstExperiencedPrecisionEnum = pgEnum(
+  "first_experienced_precision",
+  FIRST_EXPERIENCED_PRECISIONS,
+);
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -147,6 +153,31 @@ export const ratings = pgTable(
   ],
 );
 
+export const authorMediaExperiences = pgTable(
+  "author_media_experiences",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id),
+    mediaItemId: integer("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id),
+    firstExperiencedAt: date("first_experienced_at").notNull(),
+    firstExperiencedPrecision: firstExperiencedPrecisionEnum(
+      "first_experienced_precision",
+    ).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("author_media_experiences_author_id_idx").on(table.authorId),
+    unique("author_media_experiences_media_item_id_author_id_unique").on(
+      table.mediaItemId,
+      table.authorId,
+    ),
+  ],
+);
+
 export type Franchise = typeof franchises.$inferSelect;
 export type NewFranchise = typeof franchises.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
@@ -161,3 +192,5 @@ export type MediaItem = typeof mediaItems.$inferSelect;
 export type NewMediaItem = typeof mediaItems.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
+export type AuthorMediaExperience = typeof authorMediaExperiences.$inferSelect;
+export type NewAuthorMediaExperience = typeof authorMediaExperiences.$inferInsert;

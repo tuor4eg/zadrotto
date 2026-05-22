@@ -40,6 +40,8 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
               }
+              currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
+              currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
               currentAuthorScore={item.currentAuthorScore}
             />
           }

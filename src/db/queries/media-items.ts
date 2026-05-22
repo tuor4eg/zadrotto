@@ -21,7 +21,7 @@ import type {
 } from "@/app/media-items-catalog-logic";
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
-import { authors, franchises, mediaItems, ratings } from "@/db/schema";
+import { authorMediaExperiences, authors, franchises, mediaItems, ratings } from "@/db/schema";
 import type { MediaType } from "@/lib/media-types";
 import type { PublicationStatus } from "@/lib/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
@@ -54,6 +54,28 @@ const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
         limit 1
       )`
     : sql<Date | null>`null`;
+
+const currentAuthorFirstExperiencedAtSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<string | null>`(
+        select ${authorMediaExperiences.firstExperiencedAt}
+        from ${authorMediaExperiences}
+        where ${authorMediaExperiences.mediaItemId} = ${mediaItems.id}
+          and ${authorMediaExperiences.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<string | null>`null`;
+
+const currentAuthorFirstExperiencedPrecisionSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<"year" | "month" | "day" | null>`(
+        select ${authorMediaExperiences.firstExperiencedPrecision}
+        from ${authorMediaExperiences}
+        where ${authorMediaExperiences.mediaItemId} = ${mediaItems.id}
+          and ${authorMediaExperiences.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<"year" | "month" | "day" | null>`null`;
 
 const catalogSearchCondition = (searchQuery: string) => {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
@@ -125,13 +147,6 @@ function catalogOrderBy(
     ];
   }
 
-  if (sort === "media_type") {
-    return [
-      direction === "asc" ? asc(mediaItems.mediaType) : desc(mediaItems.mediaType),
-      asc(mediaItems.title),
-    ];
-  }
-
   if (sort === "average_score") {
     return [
       direction === "asc"
@@ -153,6 +168,15 @@ function catalogOrderBy(
       direction === "asc"
         ? sql`${currentAuthorRatedAtSql(currentAuthorId)} asc nulls last`
         : sql`${currentAuthorRatedAtSql(currentAuthorId)} desc nulls last`,
+      asc(mediaItems.title),
+    ];
+  }
+
+  if (sort === "my_first_experience_year" && currentAuthorId) {
+    return [
+      direction === "asc"
+        ? sql`${currentAuthorFirstExperiencedAtSql(currentAuthorId)} asc nulls last`
+        : sql`${currentAuthorFirstExperiencedAtSql(currentAuthorId)} desc nulls last`,
       asc(mediaItems.title),
     ];
   }
@@ -188,6 +212,12 @@ const catalogMediaItemsQuery = (input: {
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
       currentAuthorRatedAt: currentAuthorRatedAtSql(input.currentAuthorId),
+      currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(
+        input.currentAuthorId,
+      ),
+      currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(
+        input.currentAuthorId,
+      ),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
@@ -820,6 +850,10 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+      currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(currentAuthorId),
+      currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(
+        currentAuthorId,
+      ),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))

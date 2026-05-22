@@ -116,14 +116,6 @@ Do not scan all skills for every task.
 
 Open only the directly relevant skill file.
 
-## DB changes
-
-At this point we have no production DB, only local.
-
-Do not create new migrations yet. Change the existing schema/migration files and clear the local DB when needed.
-
-This rule will change after the first production deploy.
-
 ## Next.js
 
 This project may use a Next.js version with breaking changes.

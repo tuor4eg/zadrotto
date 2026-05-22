@@ -4,7 +4,11 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Input, Select } from "@/components/ui/form";
-import type { CatalogSort, MediaTypeFilter } from "@/app/media-items-catalog-logic";
+import {
+  isAuthorOnlyCatalogSort,
+  type CatalogSort,
+  type MediaTypeFilter,
+} from "@/app/media-items-catalog-logic";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 
 type AdminMediaFiltersFormProps = {
@@ -21,10 +25,10 @@ type AdminMediaFiltersFormProps = {
 const SORT_LABELS: Record<CatalogSort, string> = {
   title: "По названию",
   release_year: "По году",
-  media_type: "По типу",
   average_score: "По средней оценке",
   ratings_count: "По количеству оценок",
   my_rating_order: "По порядку оценки",
+  my_first_experience_year: "По году знакомства",
 };
 
 function updateFilterParam(
@@ -189,13 +193,15 @@ export function AdminMediaFiltersForm({
           onChange={(event) => replaceFilters({ sort: event.target.value as CatalogSort })}
           aria-label="Сортировка записей"
         >
-          {Object.entries(SORT_LABELS).map(([value, label]) => (
-            value === "my_rating_order" ? null : (
+          {Object.entries(SORT_LABELS).map(([value, label]) => {
+            const optionSort = value as CatalogSort;
+
+            return isAuthorOnlyCatalogSort(optionSort) ? null : (
               <option key={value} value={value}>
                 {label}
               </option>
-            )
-          ))}
+            );
+          })}
         </Select>
 
         <button

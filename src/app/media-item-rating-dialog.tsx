@@ -2,10 +2,12 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { X } from "lucide-react";
+import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import type { FirstExperiencedPrecision } from "@/lib/author-media-experiences";
+import { formatFirstExperiencedDate } from "@/lib/experience-date";
 import { formatScore } from "@/lib/rating-score";
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
@@ -17,6 +19,8 @@ type MediaItemRatingDialogProps = {
     name: string;
     code: string;
   } | null;
+  currentAuthorFirstExperiencedAt?: Date | string | null;
+  currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
   currentAuthorScore: number | null;
 };
 
@@ -43,11 +47,17 @@ export function RatingStars({ score }: { score: number | null }) {
 
 export function MediaItemRatingPanel({
   currentAuthor,
+  currentAuthorFirstExperiencedAt = null,
+  currentAuthorFirstExperiencedPrecision = null,
   currentAuthorScore,
   onOpen,
   size = "card",
 }: MediaItemRatingPanelProps) {
   const isCompact = size === "compact";
+  const firstExperiencedDate = formatFirstExperiencedDate(
+    currentAuthorFirstExperiencedAt,
+    currentAuthorFirstExperiencedPrecision,
+  );
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const ratingPanelClassName = isCompact
@@ -84,14 +94,25 @@ export function MediaItemRatingPanel({
       </span>
       {!isCompact ? (
         currentAuthor ? (
-          <span className="mt-2 flex justify-center">
-            <RatingStars score={currentAuthorScore} />
-          </span>
+          <>
+            <span className="mt-2 flex justify-center">
+              <RatingStars score={currentAuthorScore} />
+            </span>
+            {firstExperiencedDate ? (
+              <span className="mt-3 block font-mono text-[10px] uppercase tracking-[0.12em] opacity-75">
+                Знакомство: {firstExperiencedDate}
+              </span>
+            ) : null}
+          </>
         ) : (
           <span className="mt-3 block text-sm leading-5 text-stone-600">
             чтобы поставить оценку
           </span>
         )
+      ) : currentAuthor && firstExperiencedDate ? (
+        <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.08em] opacity-75">
+          {firstExperiencedDate}
+        </span>
       ) : null}
     </>
   );
@@ -130,6 +151,8 @@ export function MediaItemRatingPanel({
 
 export function MediaItemRatingModal({
   currentAuthor,
+  currentAuthorFirstExperiencedAt,
+  currentAuthorFirstExperiencedPrecision,
   currentAuthorScore,
   formId,
   franchiseCode,
@@ -144,7 +167,10 @@ export function MediaItemRatingModal({
       className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 p-4"
       role="dialog"
     >
-      <div className="archive-paper archive-panel w-full max-w-xl p-5 shadow-2xl">
+      <div
+        className="archive-paper archive-panel w-full max-w-xl p-5 shadow-2xl"
+        style={{ overflow: "visible" }}
+      >
         <div className="flex items-start justify-between gap-4">
           <div>
             <div
@@ -157,14 +183,30 @@ export function MediaItemRatingModal({
               {title}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
-            aria-label="Закрыть окно оценки"
-          >
-            <X className="size-4" />
-          </button>
+          <div className="flex shrink-0 items-center gap-2">
+            <ArchiveTooltip label="Сохранить" side="bottom">
+              <button
+                type="submit"
+                form={formId}
+                name="intent"
+                value="save"
+                className="grid size-9 place-items-center rounded-md border border-emerald-950/20 bg-emerald-50/80 text-emerald-950 transition-colors hover:border-emerald-700 hover:bg-emerald-100"
+                aria-label="Сохранить"
+              >
+                <Check className="size-4" />
+              </button>
+            </ArchiveTooltip>
+            <ArchiveTooltip label="Закрыть" side="bottom">
+              <button
+                type="button"
+                onClick={onClose}
+                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
+                aria-label="Закрыть окно оценки"
+              >
+                <X className="size-4" />
+              </button>
+            </ArchiveTooltip>
+          </div>
         </div>
 
         <div className="mt-5">
@@ -172,12 +214,15 @@ export function MediaItemRatingModal({
             mediaItemCode={mediaItemCode}
             franchiseCode={franchiseCode}
             currentAuthor={currentAuthor}
+            currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
+            currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
             currentAuthorScore={currentAuthorScore}
             variant="archive"
-            autoSubmitOnSelect
             inlineSaveButton={false}
             showLabel={false}
+            showExperienceFields
             formId={formId}
+            onSaved={onClose}
           />
         </div>
       </div>
@@ -190,6 +235,8 @@ export function MediaItemRatingDialog({
   franchiseCode,
   title,
   currentAuthor,
+  currentAuthorFirstExperiencedAt,
+  currentAuthorFirstExperiencedPrecision,
   currentAuthorScore,
 }: MediaItemRatingDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -201,6 +248,8 @@ export function MediaItemRatingDialog({
         franchiseCode={franchiseCode}
         title={title}
         currentAuthor={currentAuthor}
+        currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
+        currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
         currentAuthorScore={currentAuthorScore}
         onOpen={() => setIsOpen(true)}
       />
@@ -211,6 +260,8 @@ export function MediaItemRatingDialog({
           franchiseCode={franchiseCode}
           title={title}
           currentAuthor={currentAuthor}
+          currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
+          currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
           currentAuthorScore={currentAuthorScore}
           formId="media-item-rating-form"
           onClose={() => setIsOpen(false)}

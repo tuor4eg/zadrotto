@@ -1,7 +1,11 @@
 import Link from "next/link";
 import { Edit3, Plus, Trash2 } from "lucide-react";
 
-import { parseCatalogSort, parseMediaTypeFilter } from "@/app/media-items-catalog-logic";
+import {
+  isAuthorOnlyCatalogSort,
+  parseCatalogSort,
+  parseMediaTypeFilter,
+} from "@/app/media-items-catalog-logic";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants, Button } from "@/components/ui/button";
@@ -53,7 +57,8 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
   const params = await searchParams;
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
-  const sort = parseCatalogSort(params.sort ?? null);
+  const parsedSort = parseCatalogSort(params.sort ?? null);
+  const sort = isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const [mediaResult, mediaTypeCounts] = await Promise.all([
     getAdminMediaItems({
       mediaTypeFilter,

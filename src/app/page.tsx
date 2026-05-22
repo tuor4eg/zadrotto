@@ -10,6 +10,7 @@ import {
   parseCatalogSort,
   parseCatalogSortDirection,
   parseMediaTypeFilter,
+  isAuthorOnlyCatalogSort,
 } from "./media-items-catalog-logic";
 import { MediaItemsCatalog } from "./media-items-catalog";
 
@@ -47,7 +48,7 @@ export default async function Home({ searchParams }: HomeProps) {
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
   const parsedSort = parseCatalogSort(params.sort ?? null);
-  const sort = !currentAuthor && parsedSort === "my_rating_order" ? "title" : parsedSort;
+  const sort = !currentAuthor && isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
   const [catalog, mediaTypeCounts] = await Promise.all([
     getCatalogMediaItems({

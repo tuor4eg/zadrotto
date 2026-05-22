@@ -6,24 +6,28 @@ export type AuthorRatingFilter = "all" | "rated" | "unrated";
 export const CATALOG_SORTS = [
   "title",
   "release_year",
-  "media_type",
   "average_score",
   "ratings_count",
   "my_rating_order",
+  "my_first_experience_year",
 ] as const;
 
 export type CatalogSort = (typeof CATALOG_SORTS)[number];
 export type CatalogSortDirection = "asc" | "desc";
 
 export const DEFAULT_CATALOG_SORT: CatalogSort = "title";
+export const AUTHOR_ONLY_CATALOG_SORTS = [
+  "my_rating_order",
+  "my_first_experience_year",
+] as const satisfies readonly CatalogSort[];
 
 export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDirection> = {
   title: "asc",
   release_year: "asc",
-  media_type: "asc",
   average_score: "desc",
   ratings_count: "desc",
   my_rating_order: "desc",
+  my_first_experience_year: "asc",
 };
 
 export type CatalogFilterItem = {
@@ -41,6 +45,7 @@ export type CatalogSortItem = {
   averageScore: number | null;
   ratingsCount: number;
   currentAuthorRatedAt?: Date | null;
+  currentAuthorFirstExperiencedAt?: Date | string | null;
 };
 
 export function matchesSearch(item: CatalogFilterItem, normalizedSearchQuery: string) {
@@ -87,6 +92,10 @@ export function parseCatalogSort(sort: string | null): CatalogSort {
     : DEFAULT_CATALOG_SORT;
 }
 
+export function isAuthorOnlyCatalogSort(sort: CatalogSort) {
+  return AUTHOR_ONLY_CATALOG_SORTS.some((authorOnlySort) => authorOnlySort === sort);
+}
+
 export function parseCatalogSortDirection(
   direction: string | null,
   sort: CatalogSort,
@@ -120,6 +129,16 @@ function compareTitles(left: string, right: string) {
   return left.localeCompare(right, "ru");
 }
 
+function getDateTime(value: Date | string | null | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
+
+  return Number.isNaN(time) ? null : time;
+}
+
 export function sortCatalogItems<TItem extends CatalogSortItem>(
   items: TItem[],
   sort: CatalogSort,
@@ -130,13 +149,6 @@ export function sortCatalogItems<TItem extends CatalogSortItem>(
 
     if (sort === "release_year") {
       return compareNullableNumbers(left.releaseYear, right.releaseYear, direction) || titleFallback;
-    }
-
-    if (sort === "media_type") {
-      const mediaTypeDifference =
-        MEDIA_TYPES.indexOf(left.mediaType) - MEDIA_TYPES.indexOf(right.mediaType);
-
-      return (direction === "asc" ? mediaTypeDifference : -mediaTypeDifference) || titleFallback;
     }
 
     if (sort === "average_score") {
@@ -152,8 +164,18 @@ export function sortCatalogItems<TItem extends CatalogSortItem>(
     if (sort === "my_rating_order") {
       return (
         compareNullableNumbers(
-          left.currentAuthorRatedAt?.getTime() ?? null,
-          right.currentAuthorRatedAt?.getTime() ?? null,
+          getDateTime(left.currentAuthorRatedAt),
+          getDateTime(right.currentAuthorRatedAt),
+          direction,
+        ) || titleFallback
+      );
+    }
+
+    if (sort === "my_first_experience_year") {
+      return (
+        compareNullableNumbers(
+          getDateTime(left.currentAuthorFirstExperiencedAt),
+          getDateTime(right.currentAuthorFirstExperiencedAt),
           direction,
         ) || titleFallback
       );

@@ -56,6 +56,7 @@ const sortableItems: TestSortableItem[] = [
     averageScore: 80,
     ratingsCount: 2,
     currentAuthorRatedAt: new Date("2026-01-02T00:00:00Z"),
+    currentAuthorFirstExperiencedAt: "2001-01-01",
   },
   {
     id: 2,
@@ -65,6 +66,7 @@ const sortableItems: TestSortableItem[] = [
     averageScore: 95,
     ratingsCount: 1,
     currentAuthorRatedAt: null,
+    currentAuthorFirstExperiencedAt: null,
   },
   {
     id: 3,
@@ -74,6 +76,7 @@ const sortableItems: TestSortableItem[] = [
     averageScore: null,
     ratingsCount: 7,
     currentAuthorRatedAt: new Date("2026-01-03T00:00:00Z"),
+    currentAuthorFirstExperiencedAt: "1999-01-01",
   },
   {
     id: 4,
@@ -83,6 +86,7 @@ const sortableItems: TestSortableItem[] = [
     averageScore: 95,
     ratingsCount: 3,
     currentAuthorRatedAt: new Date("2026-01-01T00:00:00Z"),
+    currentAuthorFirstExperiencedAt: "1998-01-01",
   },
 ];
 
@@ -150,6 +154,7 @@ describe("parseCatalogSort", () => {
   it("keeps known catalog sort values and falls back to title", () => {
     assert.equal(parseCatalogSort("release_year"), "release_year");
     assert.equal(parseCatalogSort("my_rating_order"), "my_rating_order");
+    assert.equal(parseCatalogSort("my_first_experience_year"), "my_first_experience_year");
     assert.equal(parseCatalogSort("unknown"), "title");
     assert.equal(parseCatalogSort(null), "title");
   });
@@ -188,13 +193,6 @@ describe("sortCatalogItems", () => {
     );
   });
 
-  it("sorts by media type order from the shared media types list", () => {
-    assert.deepEqual(
-      sortCatalogItems(sortableItems, "media_type").map((item) => item.id),
-      [2, 4, 1, 3],
-    );
-  });
-
   it("sorts by average score descending with empty scores last", () => {
     assert.deepEqual(
       sortCatalogItems(sortableItems, "average_score").map((item) => item.id),
@@ -213,6 +211,13 @@ describe("sortCatalogItems", () => {
     assert.deepEqual(
       sortCatalogItems(sortableItems, "my_rating_order").map((item) => item.id),
       [3, 1, 4, 2],
+    );
+  });
+
+  it("sorts by current author first experience year ascending with empty dates last", () => {
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "my_first_experience_year").map((item) => item.id),
+      [4, 3, 1, 2],
     );
   });
 

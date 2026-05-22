@@ -94,7 +94,7 @@ export function ArchiveSelect<TValue extends string>({
           id={selectId}
           role="listbox"
           aria-label={ariaLabel}
-          className="archive-paper-surface absolute right-0 top-full z-[80] mt-2 w-max min-w-[230px] overflow-hidden rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
+          className="archive-paper-surface archive-scrollbar absolute right-0 top-full z-[80] mt-2 max-h-[min(18rem,calc(100vh-8rem))] w-max min-w-[230px] overflow-y-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
         >
           {options.map((option) => {
             const selected = option.value === value;

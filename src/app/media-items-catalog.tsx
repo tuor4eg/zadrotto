@@ -20,6 +20,7 @@ import { MediaTypeTabs } from "@/app/media-type-tabs";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
+import { formatFirstExperiencedDate } from "@/lib/experience-date";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
@@ -118,6 +119,12 @@ export function MediaItemsCatalog({
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
     [items, selectedId],
   );
+  const selectedItemFirstExperiencedDate = selectedItem
+    ? formatFirstExperiencedDate(
+        selectedItem.currentAuthorFirstExperiencedAt,
+        selectedItem.currentAuthorFirstExperiencedPrecision,
+      )
+    : null;
   const archiveTotalCount = useMemo(
     () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
     [mediaTypeCountRows],
@@ -361,6 +368,11 @@ export function MediaItemsCatalog({
                       <div className="mt-1 font-serif text-3xl tabular-nums">
                         {formatScore(selectedItem.currentAuthorScore)}
                       </div>
+                      {selectedItemFirstExperiencedDate ? (
+                        <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] opacity-75">
+                          Знакомство: {selectedItemFirstExperiencedDate}
+                        </div>
+                      ) : null}
                     </div>
                   ) : null}
                 </div>

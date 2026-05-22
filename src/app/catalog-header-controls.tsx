@@ -9,6 +9,7 @@ import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type { AuthorRatingFilter, CatalogSort, MediaTypeFilter } from "./media-items-catalog-logic";
 import {
   DEFAULT_CATALOG_SORT_DIRECTIONS,
+  isAuthorOnlyCatalogSort,
   type CatalogSortDirection,
 } from "./media-items-catalog-logic";
 
@@ -25,10 +26,10 @@ type CatalogHeaderControlsProps = {
 const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   title: "Название",
   release_year: "Год выпуска",
-  media_type: "Тип медиа",
   average_score: "Средняя оценка",
   ratings_count: "Количество оценок",
   my_rating_order: "Порядок моей оценки",
+  my_first_experience_year: "Год знакомства",
 };
 
 const AUTHOR_RATING_FILTER_LABELS: Record<AuthorRatingFilter, string> = {
@@ -91,7 +92,7 @@ export function CatalogHeaderControls({
   const isFirstSearchSync = useRef(true);
   const previousSearchQuery = useRef(searchQuery);
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
-    ([value]) => currentAuthor || value !== "my_rating_order",
+    ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
   );
 
   const replaceFilters = useCallback(
