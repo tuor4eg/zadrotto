@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
+import { getAuthorAccessProfileById } from "@/db/queries/author-access-profiles";
 import {
   blockAuthor,
   createAuthor,
@@ -13,8 +14,7 @@ import {
 } from "@/db/queries/authors";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { saveAuthorPermission } from "@/lib/author-permission-service";
-import { isAuthorPermission } from "@/lib/author-permissions";
+import { canAssignAuthorAccessProfile } from "@/lib/author-access-profiles";
 import { generateEntityCode } from "@/lib/generated-code";
 
 function getFormString(formData: FormData, key: string) {
@@ -33,15 +33,30 @@ export async function createAuthorAction(formData: FormData) {
   await requireAdminUser();
 
   const name = getFormString(formData, "name");
+  const accessProfileId = getFormNumber(formData, "accessProfileId");
 
-  if (!name) {
+  if (!name || !accessProfileId) {
     redirect("/admin/authors/new?error=required");
+  }
+
+  let accessProfile;
+
+  try {
+    accessProfile = await getAuthorAccessProfileById(accessProfileId);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/authors/new?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!accessProfile || !canAssignAuthorAccessProfile(accessProfile)) {
+    redirect("/admin/authors/new?error=invalid-profile");
   }
 
   try {
     await createAuthor({
       name,
       code: generateEntityCode({ type: "author", name }),
+      accessProfileId,
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -61,21 +76,35 @@ export async function updateAuthorAction(formData: FormData) {
 
   const authorId = getFormNumber(formData, "authorId");
   const name = getFormString(formData, "name");
+  const accessProfileId = getFormNumber(formData, "accessProfileId");
 
   if (!authorId) {
     redirect("/admin/authors?error=invalid-author");
   }
 
-  if (!name) {
+  if (!name || !accessProfileId) {
     redirect(`/admin/authors/${authorId}/edit?error=required`);
   }
 
   let author;
+  let accessProfile;
+
+  try {
+    accessProfile = await getAuthorAccessProfileById(accessProfileId);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/authors/${authorId}/edit?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!accessProfile || !canAssignAuthorAccessProfile(accessProfile)) {
+    redirect(`/admin/authors/${authorId}/edit?error=invalid-profile`);
+  }
 
   try {
     author = await updateAuthor({
       id: authorId,
       name,
+      accessProfileId,
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -94,47 +123,6 @@ export async function updateAuthorAction(formData: FormData) {
   revalidatePath(`/admin/authors/${authorId}/edit`);
   revalidatePath("/", "layout");
   redirect(`/admin/authors/${authorId}/edit?updated=1`);
-}
-
-export async function updateAuthorPermissionAction(formData: FormData) {
-  const adminUser = await requireAdminUser();
-  const authorId = getFormNumber(formData, "authorId");
-  const permission = getFormString(formData, "permission");
-  const isEnabled = getFormString(formData, "enabled") === "1";
-  const redirectPath = authorId ? `/admin/authors/${authorId}/edit` : "/admin/authors";
-
-  if (!authorId || !isAuthorPermission(permission)) {
-    redirect(`${redirectPath}?error=invalid-permission`);
-  }
-
-  let author;
-
-  try {
-    author = await getAuthorById(authorId);
-  } catch (error) {
-    console.error(error);
-    redirect(`${redirectPath}?error=${getAdminFormErrorCode(error)}`);
-  }
-
-  if (!author) {
-    redirect(`${redirectPath}?error=invalid-permission`);
-  }
-
-  try {
-    await saveAuthorPermission({
-      authorId,
-      permission,
-      isEnabled,
-      createdByAdminId: adminUser.id,
-    });
-  } catch (error) {
-    console.error(error);
-    redirect(`${redirectPath}?error=${getAdminFormErrorCode(error)}`);
-  }
-
-  revalidatePath("/admin/authors");
-  revalidatePath(redirectPath);
-  redirect(`${redirectPath}?permissions=1`);
 }
 
 export async function blockAuthorAction(formData: FormData) {

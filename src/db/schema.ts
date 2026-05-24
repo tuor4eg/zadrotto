@@ -15,12 +15,10 @@ import {
 
 import { MEDIA_TYPES } from "@/lib/media-types";
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/author-media-experiences";
-import { AUTHOR_PERMISSIONS } from "@/lib/author-permissions";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/publication-status";
 
 export const mediaTypeEnum = pgEnum("media_type", MEDIA_TYPES);
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
-export const authorPermissionEnum = pgEnum("author_permission", AUTHOR_PERMISSIONS);
 export const firstExperiencedPrecisionEnum = pgEnum(
   "first_experienced_precision",
   FIRST_EXPERIENCED_PRECISIONS,
@@ -40,17 +38,36 @@ export const franchises = pgTable("franchises", {
   ...timestamps(),
 });
 
+export const authorAccessProfiles = pgTable("author_access_profiles", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
+  isSystem: boolean("is_system").default(false).notNull(),
+  canPublishMediaWithoutReview: boolean("can_publish_media_without_review")
+    .default(false)
+    .notNull(),
+  maxDraftMediaItems: integer("max_draft_media_items"),
+  maxUploadBytes: integer("max_upload_bytes"),
+  maxFilesPerMediaItem: integer("max_files_per_media_item"),
+  ...timestamps(),
+});
+
 export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   isSystem: boolean("is_system").default(false).notNull(),
+  accessProfileId: integer("access_profile_id")
+    .notNull()
+    .references(() => authorAccessProfiles.id),
   blockedAt: timestamp("blocked_at", { withTimezone: true }),
   blockedByAdminId: integer("blocked_by_admin_id").references(() => adminUsers.id, {
     onDelete: "set null",
   }),
   ...timestamps(),
-});
+}, (table) => [
+  index("authors_access_profile_id_idx").on(table.accessProfileId),
+]);
 
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
@@ -78,23 +95,6 @@ export const authorAccessTokens = pgTable(
   },
   (table) => [
     index("author_access_tokens_author_id_idx").on(table.authorId),
-  ],
-);
-
-export const authorPermissions = pgTable(
-  "author_permissions",
-  {
-    id: serial("id").primaryKey(),
-    authorId: integer("author_id")
-      .notNull()
-      .references(() => authors.id),
-    permission: authorPermissionEnum("permission").notNull(),
-    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
-    createdByAdminId: integer("created_by_admin_id").references(() => adminUsers.id),
-  },
-  (table) => [
-    index("author_permissions_author_id_idx").on(table.authorId),
-    unique("author_permissions_author_id_permission_unique").on(table.authorId, table.permission),
   ],
 );
 
@@ -180,12 +180,12 @@ export const authorMediaExperiences = pgTable(
 
 export type Franchise = typeof franchises.$inferSelect;
 export type NewFranchise = typeof franchises.$inferInsert;
+export type AuthorAccessProfile = typeof authorAccessProfiles.$inferSelect;
+export type NewAuthorAccessProfile = typeof authorAccessProfiles.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type AuthorAccessToken = typeof authorAccessTokens.$inferSelect;
 export type NewAuthorAccessToken = typeof authorAccessTokens.$inferInsert;
-export type AuthorPermissionRecord = typeof authorPermissions.$inferSelect;
-export type NewAuthorPermissionRecord = typeof authorPermissions.$inferInsert;
 export type Author = typeof authors.$inferSelect;
 export type NewAuthor = typeof authors.$inferInsert;
 export type MediaItem = typeof mediaItems.$inferSelect;

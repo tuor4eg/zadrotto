@@ -24,7 +24,6 @@ import {
 } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
 import { getPublicationStatusAfterAuthorSubmit } from "@/lib/author-media-publication";
-import { listAuthorPermissions } from "@/lib/author-permission-service";
 import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
@@ -248,8 +247,9 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=publish-locked");
   }
 
-  const permissions = await listAuthorPermissions(author.id);
-  const nextStatus = getPublicationStatusAfterAuthorSubmit(permissions);
+  const nextStatus = getPublicationStatusAfterAuthorSubmit({
+    canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+  });
   const updatedItem = await submitAuthorMediaItemForPublication({
     authorId: author.id,
     mediaItemId,

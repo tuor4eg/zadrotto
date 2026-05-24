@@ -1,4 +1,13 @@
-import { Archive, FileClock, FileText, KeyRound, Layers3, UserRound } from "lucide-react";
+import {
+  Archive,
+  FileClock,
+  FileText,
+  KeyRound,
+  Layers3,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 import Link from "next/link";
 
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,8 +18,10 @@ export default function AdminPage() {
     { href: "/admin/franchises", label: "Серии", icon: Layers3 },
     { href: "/admin/media", label: "Записи", icon: FileText },
     { href: "/admin/authors", label: "Авторы", icon: UserRound },
+    { href: "/admin/access-profiles", label: "Профили", icon: ShieldCheck },
     { href: "/admin/media-review", label: "Заявки", icon: FileClock },
     { href: "/admin/author-tokens", label: "Токены", icon: KeyRound },
+    { href: "/admin/settings", label: "Настройки", icon: Settings },
     { href: "/", label: "Архив", icon: Archive },
   ];
 

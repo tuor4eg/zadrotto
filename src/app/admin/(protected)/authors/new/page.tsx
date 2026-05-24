@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
 import { PageHeader } from "../../admin-ui";
 import { createAuthorAction } from "../actions";
 import { AuthorForm } from "../author-form";
@@ -15,7 +16,10 @@ type NewAuthorPageProps = {
 };
 
 export default async function NewAuthorPage({ searchParams }: NewAuthorPageProps) {
-  const { error } = await searchParams;
+  const [{ error }, accessProfiles] = await Promise.all([
+    searchParams,
+    getAuthorAccessProfiles({ assignableOnly: true }),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -37,6 +41,7 @@ export default async function NewAuthorPage({ searchParams }: NewAuthorPageProps
         <CardContent className="pt-5">
           <AuthorForm
             action={createAuthorAction}
+            accessProfiles={accessProfiles}
             submitLabel="Создать"
             errorMessage={getAuthorErrorMessage(error)}
           />

@@ -1,5 +1,15 @@
 import Link from "next/link";
-import { Archive, FileClock, FileText, KeyRound, Layers3, LogOut, UserRound } from "lucide-react";
+import {
+  Archive,
+  FileClock,
+  FileText,
+  KeyRound,
+  Layers3,
+  LogOut,
+  Settings,
+  ShieldCheck,
+  UserRound,
+} from "lucide-react";
 
 import { logoutAdmin } from "@/app/admin/actions";
 import { buttonVariants } from "@/components/ui/button";
@@ -49,6 +59,13 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               Авторы
             </Link>
             <Link
+              href="/admin/access-profiles"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <ShieldCheck />
+              Профили
+            </Link>
+            <Link
               href="/admin/media-review"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
@@ -61,6 +78,13 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             >
               <KeyRound />
               Токены
+            </Link>
+            <Link
+              href="/admin/settings"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              <Settings />
+              Настройки
             </Link>
             <Link
               href="/"

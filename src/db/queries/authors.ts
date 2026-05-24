@@ -1,7 +1,13 @@
 import { and, asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authorAccessTokens, authorPermissions, authors, mediaItems, ratings } from "@/db/schema";
+import {
+  authorAccessProfiles,
+  authorAccessTokens,
+  authors,
+  mediaItems,
+  ratings,
+} from "@/db/schema";
 
 export type DeleteAuthorResult =
   | "deleted"
@@ -10,14 +16,12 @@ export type DeleteAuthorResult =
   | "not-found";
 
 const authorUsageCountSql = sql<number>`(
-  count(distinct ${authorPermissions.id}) +
   count(distinct ${ratings.id}) +
   count(distinct ${mediaItems.id})
 )::int`;
 
 function authorUsageCountByIdSql(authorId: number) {
   return sql<number>`(
-    (select count(*) from ${authorPermissions} where ${authorPermissions.authorId} = ${authorId}) +
     (select count(*) from ${ratings} where ${ratings.authorId} = ${authorId}) +
     (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId})
   )::int`;
@@ -30,12 +34,13 @@ export async function getAuthors() {
       code: authors.code,
       name: authors.name,
       isSystem: authors.isSystem,
+      accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
       usageCount: authorUsageCountSql,
     })
     .from(authors)
-    .leftJoin(authorPermissions, eq(authorPermissions.authorId, authors.id))
+    .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
     .leftJoin(ratings, eq(ratings.authorId, authors.id))
     .leftJoin(mediaItems, eq(mediaItems.createdByAuthorId, authors.id))
     .groupBy(
@@ -43,6 +48,7 @@ export async function getAuthors() {
       authors.code,
       authors.name,
       authors.isSystem,
+      authorAccessProfiles.name,
       authors.createdAt,
       authors.blockedAt,
     )
@@ -55,8 +61,10 @@ export async function getAuthorOptions() {
       id: authors.id,
       name: authors.name,
       isSystem: authors.isSystem,
+      accessProfileName: authorAccessProfiles.name,
     })
     .from(authors)
+    .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
     .orderBy(desc(authors.isSystem), asc(authors.name), asc(authors.code));
 }
 
@@ -67,9 +75,17 @@ export async function getAuthorById(id: number) {
       code: authors.code,
       name: authors.name,
       isSystem: authors.isSystem,
+      accessProfileId: authors.accessProfileId,
+      accessProfileCode: authorAccessProfiles.code,
+      accessProfileName: authorAccessProfiles.name,
+      canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
+      maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxUploadBytes: authorAccessProfiles.maxUploadBytes,
+      maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
       blockedAt: authors.blockedAt,
     })
     .from(authors)
+    .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
     .where(eq(authors.id, id))
     .limit(1);
 
@@ -91,12 +107,14 @@ export async function authorExistsById(id: number) {
 export async function createAuthor(input: {
   code: string;
   name: string;
+  accessProfileId: number;
 }) {
   const [author] = await db
     .insert(authors)
     .values({
       name: input.name,
       code: input.code,
+      accessProfileId: input.accessProfileId,
     })
     .returning({
       id: authors.id,
@@ -109,11 +127,13 @@ export async function createAuthor(input: {
 export async function updateAuthor(input: {
   id: number;
   name: string;
+  accessProfileId: number;
 }) {
   const [author] = await db
     .update(authors)
     .set({
       name: input.name,
+      accessProfileId: input.accessProfileId,
       updatedAt: new Date(),
     })
     .where(and(eq(authors.id, input.id), eq(authors.isSystem, false)))

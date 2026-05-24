@@ -8,12 +8,15 @@ import {
 
 describe("author media publication", () => {
   it("sends regular author submissions to review", () => {
-    assert.equal(getPublicationStatusAfterAuthorSubmit([]), "submitted");
+    assert.equal(
+      getPublicationStatusAfterAuthorSubmit({ canPublishMediaWithoutReview: false }),
+      "submitted",
+    );
   });
 
-  it("publishes immediately when author has permission", () => {
+  it("publishes immediately when author profile allows it", () => {
     assert.equal(
-      getPublicationStatusAfterAuthorSubmit(["publish_media_without_review"]),
+      getPublicationStatusAfterAuthorSubmit({ canPublishMediaWithoutReview: true }),
       "published",
     );
   });

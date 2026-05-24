@@ -12,7 +12,7 @@ export function getAuthorErrorMessage(error?: string) {
   }
 
   if (error === "required") {
-    return "Заполни имя.";
+    return "Заполни имя и профиль доступа.";
   }
 
   if (error === "invalid-author") {
@@ -20,7 +20,7 @@ export function getAuthorErrorMessage(error?: string) {
   }
 
   if (error === "author-has-data") {
-    return "Нельзя удалить автора: у него есть права, оценки или добавленные записи.";
+    return "Нельзя удалить автора: у него есть оценки или добавленные записи.";
   }
 
   if (error === "system-author") {
@@ -31,8 +31,8 @@ export function getAuthorErrorMessage(error?: string) {
     return "Нельзя удалить последнего системного автора.";
   }
 
-  if (error === "invalid-permission") {
-    return "Не удалось сохранить право автора.";
+  if (error === "invalid-profile") {
+    return "Не удалось сохранить профиль доступа автора.";
   }
 
   return null;

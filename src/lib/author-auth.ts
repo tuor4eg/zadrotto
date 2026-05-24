@@ -3,11 +3,6 @@ import { redirect } from "next/navigation";
 
 import { getAuthorById } from "@/db/queries/authors";
 import {
-  checkAuthorPermission,
-  listAuthorPermissions,
-} from "@/lib/author-permission-service";
-import type { AuthorPermission } from "@/lib/author-permissions";
-import {
   AUTHOR_SESSION_COOKIE_NAME,
   AUTHOR_SESSION_MAX_AGE_SECONDS,
   createAuthorSessionToken,
@@ -45,18 +40,6 @@ export async function requireAuthor() {
   }
 
   return author;
-}
-
-export async function getCurrentAuthorPermissions() {
-  const author = await getCurrentAuthor();
-
-  return author ? listAuthorPermissions(author.id) : [];
-}
-
-export async function currentAuthorHasPermission(permission: AuthorPermission) {
-  const author = await getCurrentAuthor();
-
-  return author ? checkAuthorPermission(author.id, permission) : false;
 }
 
 export async function setAuthorSessionCookie(authorId: number, authorCode: string) {

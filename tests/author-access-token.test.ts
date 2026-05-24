@@ -5,7 +5,10 @@ import {
   generateAuthorAccessToken,
   hashAuthorAccessToken,
 } from "../src/lib/author-access-token";
-import { isAuthorPermission } from "../src/lib/author-permissions";
+import {
+  canAssignAuthorAccessProfile,
+  isAuthorAccessProfileCode,
+} from "../src/lib/author-access-profiles";
 
 describe("author access tokens", () => {
   it("generates opaque access tokens with a stable prefix", () => {
@@ -29,9 +32,15 @@ describe("author access tokens", () => {
   });
 });
 
-describe("author permissions", () => {
-  it("keeps known author permissions explicit", () => {
-    assert.equal(isAuthorPermission("publish_media_without_review"), true);
-    assert.equal(isAuthorPermission("unknown"), false);
+describe("author access profiles", () => {
+  it("keeps known profile codes explicit", () => {
+    assert.equal(isAuthorAccessProfileCode("regular"), true);
+    assert.equal(isAuthorAccessProfileCode("trusted"), true);
+    assert.equal(isAuthorAccessProfileCode("unknown"), false);
+  });
+
+  it("allows assigning profiles only to real authors", () => {
+    assert.equal(canAssignAuthorAccessProfile({ isSystem: false }), true);
+    assert.equal(canAssignAuthorAccessProfile({ isSystem: true }), false);
   });
 });

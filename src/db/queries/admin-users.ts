@@ -33,6 +33,19 @@ export async function getAdminUserById(id: number) {
   return adminUser ?? null;
 }
 
+export async function getAdminUserCredentialsById(id: number) {
+  const [adminUser] = await db
+    .select({
+      id: adminUsers.id,
+      passwordHash: adminUsers.passwordHash,
+    })
+    .from(adminUsers)
+    .where(eq(adminUsers.id, id))
+    .limit(1);
+
+  return adminUser ?? null;
+}
+
 export async function getAdminUsersCount() {
   const [row] = await db
     .select({
@@ -64,6 +77,17 @@ export async function updateAdminLastLoginAt(id: number) {
     .returning({ updatedAt: adminUsers.updatedAt });
 
   return adminUser?.updatedAt ?? now;
+}
+
+export async function updateAdminPasswordHash(id: number, passwordHash: string) {
+  const now = new Date();
+  const [adminUser] = await db
+    .update(adminUsers)
+    .set({ passwordHash, updatedAt: now })
+    .where(eq(adminUsers.id, id))
+    .returning({ updatedAt: adminUsers.updatedAt });
+
+  return adminUser?.updatedAt ?? null;
 }
 
 export async function revokeAdminSessions(id: number) {

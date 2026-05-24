@@ -86,7 +86,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
             return (
               <div
                 key={author.id}
-                className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_190px_minmax(0,190px)_auto]"
+                className="grid gap-3 px-4 py-3 sm:grid-cols-[minmax(0,1fr)_230px_minmax(0,190px)_auto]"
               >
               <div className="min-w-0">
                 <Link
@@ -101,7 +101,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   <Badge variant={author.blockedAt ? "destructive" : "positive"}>
                     {author.blockedAt ? "заблокирован" : "активен"}
                   </Badge>
-                  {author.isSystem ? <Badge variant="outline">системный</Badge> : null}
+                  <Badge variant="outline">{author.accessProfileName}</Badge>
                 </div>
               </div>
               <div className="text-xs tabular-nums text-stone-500">
@@ -172,7 +172,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                     disabled={!canDeleteAuthor}
                     fields={[{ name: "authorId", value: author.id }]}
                     title="Удалить автора?"
-                    description={`Автор «${author.name}» будет полностью удален вместе с токенами доступа. Это возможно только если у него нет прав, оценок и добавленных записей.`}
+                    description={`Автор «${author.name}» будет полностью удален вместе с токенами доступа. Это возможно только если у него нет оценок и добавленных записей.`}
                     triggerLabel="Удалить"
                     triggerAriaLabel={`Удалить автора ${author.name}`}
                     triggerIcon={<Trash2 />}
