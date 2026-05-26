@@ -19,6 +19,7 @@ export async function getAuthorAccessProfiles(input?: { assignableOnly?: boolean
       isSystem: authorAccessProfiles.isSystem,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
     })
@@ -37,6 +38,7 @@ export async function getAdminAuthorAccessProfiles() {
       isSystem: authorAccessProfiles.isSystem,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
       authorsCount: authorsCountSql,
@@ -50,6 +52,7 @@ export async function getAdminAuthorAccessProfiles() {
       authorAccessProfiles.isSystem,
       authorAccessProfiles.canPublishMediaWithoutReview,
       authorAccessProfiles.maxDraftMediaItems,
+      authorAccessProfiles.maxDraftMediaItemsPerDay,
       authorAccessProfiles.maxUploadBytes,
       authorAccessProfiles.maxFilesPerMediaItem,
     )
@@ -65,6 +68,7 @@ export async function getAuthorAccessProfileById(id: number) {
       isSystem: authorAccessProfiles.isSystem,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
     })
@@ -85,6 +89,7 @@ export async function createAuthorAccessProfile(input: AuthorAccessProfileFormIn
       name: input.name,
       canPublishMediaWithoutReview: input.canPublishMediaWithoutReview,
       maxDraftMediaItems: input.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
       maxUploadBytes: input.maxUploadBytes,
       maxFilesPerMediaItem: input.maxFilesPerMediaItem,
     })
@@ -104,6 +109,7 @@ export async function updateAuthorAccessProfile(input: AuthorAccessProfileFormIn
       name: input.name,
       canPublishMediaWithoutReview: input.canPublishMediaWithoutReview,
       maxDraftMediaItems: input.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
       maxUploadBytes: input.maxUploadBytes,
       maxFilesPerMediaItem: input.maxFilesPerMediaItem,
       updatedAt: new Date(),
@@ -155,6 +161,7 @@ export async function getAuthorAccessProfileByCode(code: AuthorAccessProfileCode
       isSystem: authorAccessProfiles.isSystem,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
     })

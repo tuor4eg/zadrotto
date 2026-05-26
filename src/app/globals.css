@@ -49,6 +49,26 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+.admin-progress-fill {
+  transform: scaleX(0);
+  transform-origin: left center;
+  animation: admin-progress-fill 1.6s cubic-bezier(0.22, 0.72, 0.28, 0.99) forwards;
+}
+
+@keyframes admin-progress-fill {
+  0% {
+    transform: scaleX(0);
+  }
+
+  45% {
+    transform: scaleX(0.68);
+  }
+
+  100% {
+    transform: scaleX(0.96);
+  }
+}
+
 .archive-page {
   background:
     radial-gradient(circle at 18% 10%, rgb(var(--archive-bg-glow-primary) / 16%), transparent 28rem),

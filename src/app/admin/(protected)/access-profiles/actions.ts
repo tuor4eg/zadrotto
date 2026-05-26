@@ -30,6 +30,7 @@ function getProfileInput(formData: FormData) {
     name: getFormString(formData, "name"),
     canPublishMediaWithoutReview: getFormString(formData, "canPublishMediaWithoutReview"),
     maxDraftMediaItems: getFormString(formData, "maxDraftMediaItems"),
+    maxDraftMediaItemsPerDay: getFormString(formData, "maxDraftMediaItemsPerDay"),
     maxUploadMegabytes: getFormString(formData, "maxUploadMegabytes"),
     maxFilesPerMediaItem: getFormString(formData, "maxFilesPerMediaItem"),
   });

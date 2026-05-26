@@ -4,6 +4,7 @@ export type AuthorAccessProfileFormInput = {
   name: string;
   canPublishMediaWithoutReview: boolean;
   maxDraftMediaItems: number | null;
+  maxDraftMediaItemsPerDay: number | null;
   maxUploadBytes: number | null;
   maxFilesPerMediaItem: number | null;
 };
@@ -30,11 +31,13 @@ export function parseAuthorAccessProfileFormInput(input: {
   name: string;
   canPublishMediaWithoutReview: string;
   maxDraftMediaItems: string;
+  maxDraftMediaItemsPerDay: string;
   maxUploadMegabytes: string;
   maxFilesPerMediaItem: string;
 }) {
   const name = input.name.trim();
   const maxDraftMediaItems = parseOptionalPositiveInteger(input.maxDraftMediaItems);
+  const maxDraftMediaItemsPerDay = parseOptionalPositiveInteger(input.maxDraftMediaItemsPerDay);
   const maxUploadMegabytes = parseOptionalPositiveInteger(input.maxUploadMegabytes);
   const maxFilesPerMediaItem = parseOptionalPositiveInteger(input.maxFilesPerMediaItem);
 
@@ -42,7 +45,12 @@ export function parseAuthorAccessProfileFormInput(input: {
     return { ok: false as const, error: "required" };
   }
 
-  if (!maxDraftMediaItems.ok || !maxUploadMegabytes.ok || !maxFilesPerMediaItem.ok) {
+  if (
+    !maxDraftMediaItems.ok ||
+    !maxDraftMediaItemsPerDay.ok ||
+    !maxUploadMegabytes.ok ||
+    !maxFilesPerMediaItem.ok
+  ) {
     return { ok: false as const, error: "invalid-limit" };
   }
 
@@ -61,6 +69,7 @@ export function parseAuthorAccessProfileFormInput(input: {
       name,
       canPublishMediaWithoutReview: input.canPublishMediaWithoutReview === "1",
       maxDraftMediaItems: maxDraftMediaItems.value,
+      maxDraftMediaItemsPerDay: maxDraftMediaItemsPerDay.value,
       maxUploadBytes,
       maxFilesPerMediaItem: maxFilesPerMediaItem.value,
     } satisfies AuthorAccessProfileFormInput,

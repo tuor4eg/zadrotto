@@ -15,15 +15,7 @@ export default async function AuthorPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <section className="grid gap-3 lg:grid-cols-[8.5rem_8.5rem_minmax(0,1fr)] lg:items-start">
-        <Card className="lg:col-span-3">
-          <CardContent className="p-4">
-            <div className="flex flex-wrap items-end justify-between gap-3">
-              <h2 className="font-serif text-3xl leading-none text-stone-950">{author.name}</h2>
-            </div>
-          </CardContent>
-        </Card>
-
+      <section className="grid gap-3 lg:grid-cols-[8.5rem_8.5rem_minmax(0,1fr)]">
         <Card>
           <CardContent className="p-3">
             <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
@@ -55,17 +47,21 @@ export default async function AuthorPage() {
             <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
               По типам медиа
             </span>
-            <div className="mt-2 grid gap-x-4 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
               {MEDIA_TYPES.map((mediaType) => {
                 const count = distributionByMediaType.get(mediaType) ?? 0;
 
                 return (
                   <div
                     key={mediaType}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 text-sm"
+                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-stone-200 bg-stone-100/80 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
                   >
-                    <span className="truncate text-stone-700">{MEDIA_TYPE_LABELS[mediaType]}</span>
-                    <span className="font-mono text-xs text-stone-500">{count}</span>
+                    <span className="truncate text-xs text-stone-600">
+                      {MEDIA_TYPE_LABELS[mediaType]}
+                    </span>
+                    <span className="font-mono text-sm font-semibold leading-none tabular-nums text-stone-950">
+                      {count}
+                    </span>
                   </div>
                 );
               })}

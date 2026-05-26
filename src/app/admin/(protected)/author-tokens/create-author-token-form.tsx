@@ -21,6 +21,36 @@ const initialState: CreateAuthorTokenState = {
   error: null,
 };
 
+async function copyTextToClipboard(value: string) {
+  if (navigator.clipboard?.writeText) {
+    try {
+      await navigator.clipboard.writeText(value);
+      return true;
+    } catch {
+      // Production can block Clipboard API on non-HTTPS origins or restrictive permissions.
+    }
+  }
+
+  const textarea = document.createElement("textarea");
+  textarea.value = value;
+  textarea.readOnly = true;
+  textarea.setAttribute("aria-hidden", "true");
+  textarea.style.position = "fixed";
+  textarea.style.left = "-9999px";
+  textarea.style.top = "0";
+
+  document.body.appendChild(textarea);
+  textarea.focus();
+  textarea.select();
+  textarea.setSelectionRange(0, value.length);
+
+  try {
+    return document.execCommand("copy");
+  } finally {
+    document.body.removeChild(textarea);
+  }
+}
+
 export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
   const [state, formAction, isPending] = useActionState(createAuthorTokenAction, initialState);
   const [copiedAccessToken, setCopiedAccessToken] = useState<string | null>(null);
@@ -35,9 +65,15 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
     }
 
     try {
-      await navigator.clipboard.writeText(state.accessToken);
-      setCopiedAccessToken(state.accessToken);
-      setFailedAccessToken(null);
+      const copied = await copyTextToClipboard(state.accessToken);
+
+      if (copied) {
+        setCopiedAccessToken(state.accessToken);
+        setFailedAccessToken(null);
+      } else {
+        setFailedAccessToken(state.accessToken);
+        setCopiedAccessToken(null);
+      }
     } catch {
       setFailedAccessToken(state.accessToken);
       setCopiedAccessToken(null);
@@ -101,7 +137,9 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
             <p className="mt-2 text-xs text-emerald-700">Скопировано в буфер.</p>
           ) : null}
           {isFailed ? (
-            <p className="mt-2 text-xs text-red-700">Не удалось скопировать автоматически.</p>
+            <p className="mt-2 text-xs text-red-700">
+              Не удалось скопировать автоматически. Выдели токен вручную.
+            </p>
           ) : null}
         </div>
       ) : null}

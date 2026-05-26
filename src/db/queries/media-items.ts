@@ -21,6 +21,7 @@ import type {
 } from "@/app/media-items-catalog-logic";
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
+import type { DbTransaction } from "@/db/transaction";
 import { authorMediaExperiences, authors, franchises, mediaItems, ratings } from "@/db/schema";
 import type { MediaType } from "@/lib/media-types";
 import type { PublicationStatus } from "@/lib/publication-status";
@@ -306,6 +307,7 @@ export async function getAuthorMediaItems(authorId: number) {
 }
 
 function adminMediaFilterConditions(input: {
+  authorId?: number;
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
 }) {
@@ -320,10 +322,15 @@ function adminMediaFilterConditions(input: {
     conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
   }
 
+  if (input.authorId) {
+    conditions.push(eq(mediaItems.createdByAuthorId, input.authorId));
+  }
+
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export async function getAdminMediaItems(input: {
+  authorId?: number;
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
@@ -402,17 +409,48 @@ export async function getAdminMediaItems(input: {
   };
 }
 
-export async function getAdminMediaTypeCounts() {
+export async function getAdminMediaTypeCounts(input?: { authorId?: number }) {
   return db
     .select({
       mediaType: mediaItems.mediaType,
       count: sql<number>`count(*)::int`,
     })
     .from(mediaItems)
+    .where(input?.authorId ? eq(mediaItems.createdByAuthorId, input.authorId) : undefined)
     .groupBy(mediaItems.mediaType);
 }
 
-type AuthorMediaItemInput = {
+type MediaItemLimitUsageExecutor = Pick<typeof db, "select"> | Pick<DbTransaction, "select">;
+
+export async function getAuthorPrivateMediaItemLimitUsageForExecutor(
+  executor: MediaItemLimitUsageExecutor,
+  input: {
+    authorId: number;
+    since: Date;
+  },
+) {
+  const [usage] = await executor
+    .select({
+      totalCount: sql<number>`count(*) filter (where ${mediaItems.publicationStatus} = 'private')::int`,
+      recentCount: sql<number>`count(*) filter (where ${mediaItems.createdAt} >= ${input.since})::int`,
+    })
+    .from(mediaItems)
+    .where(eq(mediaItems.createdByAuthorId, input.authorId));
+
+  return {
+    totalCount: usage?.totalCount ?? 0,
+    recentCount: usage?.recentCount ?? 0,
+  };
+}
+
+export async function getAuthorPrivateMediaItemLimitUsage(input: {
+  authorId: number;
+  since: Date;
+}) {
+  return getAuthorPrivateMediaItemLimitUsageForExecutor(db, input);
+}
+
+export type AuthorMediaItemInput = {
   authorId: number;
   code: string;
   title: string;
@@ -656,6 +694,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       coverUrl: mediaItems.coverUrl,
       submittedAt: mediaItems.submittedAt,
       updatedAt: mediaItems.updatedAt,
+      authorId: authors.id,
       authorName: authors.name,
       authorCode: authors.code,
     })
@@ -669,6 +708,15 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
     ...item,
     coverUrl: resolveCoverUrl(item.coverUrl),
   }));
+}
+
+export async function getSubmittedAuthorMediaItemsCountForAdmin() {
+  const [result] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(mediaItems)
+    .where(eq(mediaItems.publicationStatus, "submitted"));
+
+  return result?.count ?? 0;
 }
 
 export async function getAdminMediaItemIdentityById(mediaItemId: number) {

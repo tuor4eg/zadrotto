@@ -47,6 +47,7 @@ export const authorAccessProfiles = pgTable("author_access_profiles", {
     .default(false)
     .notNull(),
   maxDraftMediaItems: integer("max_draft_media_items"),
+  maxDraftMediaItemsPerDay: integer("max_draft_media_items_per_day"),
   maxUploadBytes: integer("max_upload_bytes"),
   maxFilesPerMediaItem: integer("max_files_per_media_item"),
   ...timestamps(),

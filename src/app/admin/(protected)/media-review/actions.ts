@@ -44,6 +44,7 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
   }
 
   revalidatePath("/admin/media-review");
+  revalidatePath("/admin", "layout");
   revalidatePath(`/admin/media-review/${mediaItemId}`);
   revalidatePath("/author/media");
 

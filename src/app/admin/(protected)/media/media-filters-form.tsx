@@ -16,6 +16,11 @@ type AdminMediaFiltersFormProps = {
     count: number;
     mediaType: MediaType;
   }>;
+  authorFilter: number | null;
+  authors: Array<{
+    id: number;
+    name: string;
+  }>;
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
   sort: CatalogSort;
@@ -47,6 +52,8 @@ function updateFilterParam(
 
 export function AdminMediaFiltersForm({
   availableMediaTypes,
+  authorFilter,
+  authors,
   mediaTypeFilter,
   searchQuery,
   sort,
@@ -58,10 +65,12 @@ export function AdminMediaFiltersForm({
   const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
   const isFirstSearchSync = useRef(true);
+  const isResettingFilters = useRef(false);
   const previousSearchQuery = useRef(searchQuery);
 
   const replaceFilters = useCallback(
     (nextFilters: {
+      author?: number | null;
       q?: string;
       sort?: CatalogSort;
       type?: MediaTypeFilter;
@@ -75,6 +84,15 @@ export function AdminMediaFiltersForm({
 
       if (nextFilters.q !== undefined) {
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");
+      }
+
+      if (nextFilters.author !== undefined) {
+        updateFilterParam(
+          nextSearchParams,
+          "author",
+          nextFilters.author ? String(nextFilters.author) : "",
+          "",
+        );
       }
 
       if (nextFilters.type !== undefined) {
@@ -99,6 +117,8 @@ export function AdminMediaFiltersForm({
   );
 
   function resetFilters() {
+    isResettingFilters.current = true;
+    previousSearchQuery.current = "";
     setSearch("");
     startTransition(() => {
       router.replace(pathname, { scroll: false });
@@ -109,6 +129,12 @@ export function AdminMediaFiltersForm({
     if (previousSearchQuery.current !== searchQuery) {
       previousSearchQuery.current = searchQuery;
       setSearch(searchQuery);
+      isResettingFilters.current = false;
+      return;
+    }
+
+    if (isResettingFilters.current) {
+      isResettingFilters.current = false;
       return;
     }
 
@@ -179,7 +205,7 @@ export function AdminMediaFiltersForm({
         })}
       </div>
 
-      <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_auto]">
+      <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_220px_auto]">
         <Input
           type="search"
           value={search}
@@ -187,6 +213,23 @@ export function AdminMediaFiltersForm({
           placeholder="Название или оригинал"
           aria-label="Поиск записей"
         />
+
+        <Select
+          value={authorFilter ? String(authorFilter) : ""}
+          onChange={(event) =>
+            replaceFilters({
+              author: event.target.value ? Number(event.target.value) : null,
+            })
+          }
+          aria-label="Фильтр по автору"
+        >
+          <option value="">Все авторы</option>
+          {authors.map((author) => (
+            <option key={author.id} value={author.id}>
+              {author.name}
+            </option>
+          ))}
+        </Select>
 
         <Select
           value={sort}

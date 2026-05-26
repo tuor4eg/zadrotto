@@ -357,6 +357,9 @@ export function MediaItemsCatalog({
                     <div className="mt-1 font-serif text-3xl tabular-nums">
                       {formatScore(selectedItem.averageScore)}
                     </div>
+                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] opacity-70">
+                      {formatRatingsCount(selectedItem.ratingsCount)}
+                    </div>
                   </div>
                   {currentAuthor && selectedItem.currentAuthorScore !== null ? (
                     <div

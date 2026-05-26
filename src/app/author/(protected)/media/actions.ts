@@ -5,9 +5,10 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
+import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import {
-  createAuthorMediaItem,
+  getAuthorPrivateMediaItemLimitUsage,
   getAuthorMediaItemForEdit,
   getAuthorMediaItemForView,
   submitAuthorMediaItemForPublication,
@@ -24,6 +25,10 @@ import {
 } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
 import { getPublicationStatusAfterAuthorSubmit } from "@/lib/author-media-publication";
+import {
+  checkAuthorPrivateMediaLimit,
+  getPrivateMediaLimitWindowStart,
+} from "@/lib/author-private-media-limits";
 import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
@@ -134,6 +139,41 @@ async function isKnownFranchise(franchiseId: number | null) {
   return franchiseId === null || franchiseExistsById(franchiseId);
 }
 
+async function canCreatePrivateMediaItem(author: {
+  id: number;
+  maxDraftMediaItems: number | null;
+  maxDraftMediaItemsPerDay: number | null;
+}) {
+  if (author.maxDraftMediaItems === null && author.maxDraftMediaItemsPerDay === null) {
+    return { ok: true as const };
+  }
+
+  const usage = await getAuthorPrivateMediaItemLimitUsage({
+    authorId: author.id,
+    since: getPrivateMediaLimitWindowStart(),
+  });
+
+  return checkAuthorPrivateMediaLimit({
+    limits: {
+      maxDraftMediaItems: author.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
+    },
+    usage,
+  });
+}
+
+async function deleteUploadedCoverIfNeeded(coverUrl: string | null) {
+  if (!isS3ObjectKey(coverUrl)) {
+    return;
+  }
+
+  try {
+    await deleteS3Object({ objectKey: coverUrl! });
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 export async function createAuthorMediaItemAction(formData: FormData) {
   const author = await requireAuthor();
   const form = readAuthorMediaForm(formData);
@@ -144,6 +184,12 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect("/author/media/new?error=invalid-franchise");
+  }
+
+  const limit = await canCreatePrivateMediaItem(author);
+
+  if (!limit.ok) {
+    redirect(`/author/media/new?error=${limit.reason}`);
   }
 
   const code = buildAuthorMediaCode({
@@ -161,12 +207,28 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/new?error=${cover.error}`);
   }
 
-  await createAuthorMediaItem({
-    authorId: author.id,
-    code,
-    coverUrl: cover.coverUrl,
-    ...form.value,
-  });
+  let result;
+
+  try {
+    result = await createAuthorPrivateMediaItemWithLimitCheck({
+      authorId: author.id,
+      code,
+      coverUrl: cover.coverUrl,
+      limits: {
+        maxDraftMediaItems: author.maxDraftMediaItems,
+        maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
+      },
+      ...form.value,
+    });
+  } catch (error) {
+    await deleteUploadedCoverIfNeeded(cover.coverUrl);
+    throw error;
+  }
+
+  if (!result.ok) {
+    await deleteUploadedCoverIfNeeded(cover.coverUrl);
+    redirect(`/author/media/new?error=${result.reason}`);
+  }
 
   revalidatePath("/author/media");
   redirect("/author/media?created=1");
@@ -270,5 +332,6 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   }
 
   revalidatePath("/admin/media-review");
+  revalidatePath("/admin", "layout");
   redirect("/author/media?submitted=1");
 }

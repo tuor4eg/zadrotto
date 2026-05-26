@@ -313,6 +313,9 @@ function ArchiveMediaItemDetails({
                   <div className="mt-2 flex justify-center">
                     <DetailRatingStars score={item.averageScore} />
                   </div>
+                  <div className="mt-2 font-mono text-xs uppercase tracking-[0.12em] opacity-70">
+                    {formatRatingsCount(item.ratingsCount)}
+                  </div>
                 </div>
 
                 {ratingSlot ?? (

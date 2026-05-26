@@ -8,7 +8,6 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
-import { formatUploadLimitMegabytes } from "@/lib/author-access-profile-form";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { deleteAuthorAccessProfileAction } from "./actions";
 import { getAuthorAccessProfileErrorMessage } from "./messages";
@@ -20,10 +19,6 @@ type AccessProfilesPageProps = {
     error?: string;
   }>;
 };
-
-function formatOptionalLimit(value: number | null) {
-  return value === null ? "Без лимита" : value.toLocaleString("ru-RU");
-}
 
 function getSuccessMessage(input: { created?: string; deleted?: string }) {
   if (input.created === "1") {
@@ -76,7 +71,6 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
               <tr>
                 <TH>Профиль</TH>
                 <TH className="w-36">Публикация</TH>
-                <TH className="w-44">Лимиты</TH>
                 <TH className="w-28">Авторы</TH>
                 <TH className="w-28 px-2 text-right">Действия</TH>
               </tr>
@@ -89,9 +83,6 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
                   <TR key={profile.id}>
                     <TD className="min-w-0 overflow-hidden">
                       <div className="truncate font-medium text-stone-950">{profile.name}</div>
-                      <div className="mt-1 truncate font-mono text-xs text-stone-500">
-                        {profile.code}
-                      </div>
                     </TD>
                     <TD>
                       <Badge
@@ -99,16 +90,6 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
                       >
                         {profile.canPublishMediaWithoutReview ? "Без проверки" : "Через проверку"}
                       </Badge>
-                    </TD>
-                    <TD className="text-xs leading-5 text-stone-500">
-                      <div>Черновики: {formatOptionalLimit(profile.maxDraftMediaItems)}</div>
-                      <div>
-                        Загрузка:{" "}
-                        {profile.maxUploadBytes === null
-                          ? "Без лимита"
-                          : `${formatUploadLimitMegabytes(profile.maxUploadBytes)} МБ`}
-                      </div>
-                      <div>Файлы: {formatOptionalLimit(profile.maxFilesPerMediaItem)}</div>
                     </TD>
                     <TD>
                       <Badge variant="outline">{profile.authorsCount}</Badge>

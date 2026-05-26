@@ -78,7 +78,7 @@ export async function getAuthorRatingSummary(authorId: number) {
       .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
       .where(eq(ratings.authorId, authorId))
       .orderBy(desc(ratings.updatedAt), desc(ratings.id))
-      .limit(5),
+      .limit(10),
   ]);
   const totals = totalRows[0];
 

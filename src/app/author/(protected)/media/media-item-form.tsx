@@ -56,6 +56,14 @@ function getErrorMessage(error?: string) {
     return "Не удалось удалить обложку из хранилища. Проверь S3-настройки.";
   }
 
+  if (error === "total-limit") {
+    return "Достигнут общий лимит приватных записей для твоего профиля.";
+  }
+
+  if (error === "daily-limit") {
+    return "Достигнут суточный лимит приватных записей для твоего профиля.";
+  }
+
   return null;
 }
 

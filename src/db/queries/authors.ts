@@ -80,9 +80,48 @@ export async function getAuthorById(id: number) {
       accessProfileName: authorAccessProfiles.name,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
       blockedAt: authors.blockedAt,
+    })
+    .from(authors)
+    .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
+    .where(eq(authors.id, id))
+    .limit(1);
+
+  return author ?? null;
+}
+
+export async function getAdminAuthorProfileById(id: number) {
+  const [author] = await db
+    .select({
+      id: authors.id,
+      code: authors.code,
+      name: authors.name,
+      isSystem: authors.isSystem,
+      accessProfileName: authorAccessProfiles.name,
+      createdAt: authors.createdAt,
+      blockedAt: authors.blockedAt,
+      lastActivityAt: sql<Date>`greatest(
+        ${authors.createdAt},
+        coalesce(
+          (select max(${mediaItems.updatedAt}) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id}),
+          ${authors.createdAt}
+        ),
+        coalesce(
+          (select max(${ratings.updatedAt}) from ${ratings} where ${ratings.authorId} = ${authors.id}),
+          ${authors.createdAt}
+        )
+      )::timestamptz`,
+      createdMediaItemsCount: sql<number>`(
+        select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id}
+      )::int`,
+      publishedMediaItemsCount: sql<number>`(
+        select count(*) from ${mediaItems}
+        where ${mediaItems.createdByAuthorId} = ${authors.id}
+          and ${mediaItems.publicationStatus} = 'published'
+      )::int`,
     })
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))

@@ -10,6 +10,7 @@ type AccessProfileFormValues = {
   name?: string;
   canPublishMediaWithoutReview?: boolean;
   maxDraftMediaItems?: number | null;
+  maxDraftMediaItemsPerDay?: number | null;
   maxUploadBytes?: number | null;
   maxFilesPerMediaItem?: number | null;
 };
@@ -56,26 +57,45 @@ export function AccessProfileForm({
           Публикация без проверки
         </label>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <LimitField
-            id="access-profile-max-drafts"
-            label="Черновиков"
-            name="maxDraftMediaItems"
-            defaultValue={values?.maxDraftMediaItems?.toString() ?? ""}
-          />
-          <LimitField
-            id="access-profile-max-upload"
-            label="Загрузка, МБ"
-            name="maxUploadMegabytes"
-            defaultValue={formatUploadLimitMegabytes(values?.maxUploadBytes ?? null)}
-          />
-          <LimitField
-            id="access-profile-max-files"
-            label="Файлов на запись"
-            name="maxFilesPerMediaItem"
-            defaultValue={values?.maxFilesPerMediaItem?.toString() ?? ""}
-          />
-        </div>
+        <section className="grid gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-950">Лимиты</h3>
+          </div>
+
+          <div className="grid gap-3">
+            <LimitSection title="Записи">
+              <LimitField
+                id="access-profile-max-drafts"
+                label="Приватных всего"
+                name="maxDraftMediaItems"
+                defaultValue={values?.maxDraftMediaItems?.toString() ?? ""}
+              />
+              <LimitField
+                id="access-profile-max-drafts-per-day"
+                label="Приватных в сутки"
+                name="maxDraftMediaItemsPerDay"
+                defaultValue={values?.maxDraftMediaItemsPerDay?.toString() ?? ""}
+              />
+            </LimitSection>
+
+            <LimitSection title="Файлы">
+              <LimitField
+                id="access-profile-max-upload"
+                label="Загрузка, МБ"
+                name="maxUploadMegabytes"
+                defaultValue={formatUploadLimitMegabytes(values?.maxUploadBytes ?? null)}
+                disabled
+              />
+              <LimitField
+                id="access-profile-max-files"
+                label="Файлов на запись"
+                name="maxFilesPerMediaItem"
+                defaultValue={values?.maxFilesPerMediaItem?.toString() ?? ""}
+                disabled
+              />
+            </LimitSection>
+          </div>
+        </section>
       </div>
 
       {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
@@ -91,16 +111,37 @@ export function AccessProfileForm({
   );
 }
 
+function LimitSection({
+  children,
+  title,
+}: {
+  children: React.ReactNode;
+  title: string;
+}) {
+  return (
+    <fieldset className="grid gap-4 rounded-md border border-stone-200 bg-stone-50/60 p-4">
+      <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+        {title}
+      </legend>
+      <div className="grid gap-4 sm:grid-cols-2">
+        {children}
+      </div>
+    </fieldset>
+  );
+}
+
 function LimitField({
   id,
   label,
   name,
   defaultValue,
+  disabled = false,
 }: {
   id: string;
   label: string;
   name: string;
   defaultValue: string;
+  disabled?: boolean;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -113,6 +154,7 @@ function LimitField({
         step="1"
         inputMode="numeric"
         defaultValue={defaultValue}
+        disabled={disabled}
       />
     </div>
   );

@@ -9,7 +9,7 @@ type AuthorLayoutProps = {
 };
 
 export default async function AuthorLayout({ children }: AuthorLayoutProps) {
-  await requireAuthor();
+  const author = await requireAuthor();
 
   return (
     <main className="archive-page min-h-screen px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -17,7 +17,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
         <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-400/40 pb-5">
           <div>
             <h1 className="font-serif text-4xl leading-none text-stone-50">
-              Кабинет автора
+              Кабинет автора: {author.name}
             </h1>
           </div>
 

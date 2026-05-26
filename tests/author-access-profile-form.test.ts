@@ -12,6 +12,7 @@ describe("author access profile form", () => {
       name: "  Доверенный автор  ",
       canPublishMediaWithoutReview: "1",
       maxDraftMediaItems: "10",
+      maxDraftMediaItemsPerDay: "2",
       maxUploadMegabytes: "25",
       maxFilesPerMediaItem: "",
     });
@@ -22,6 +23,7 @@ describe("author access profile form", () => {
       assert.equal(result.value.name, "Доверенный автор");
       assert.equal(result.value.canPublishMediaWithoutReview, true);
       assert.equal(result.value.maxDraftMediaItems, 10);
+      assert.equal(result.value.maxDraftMediaItemsPerDay, 2);
       assert.equal(result.value.maxUploadBytes, 25 * 1024 * 1024);
       assert.equal(result.value.maxFilesPerMediaItem, null);
     }
@@ -32,6 +34,7 @@ describe("author access profile form", () => {
       name: "",
       canPublishMediaWithoutReview: "",
       maxDraftMediaItems: "",
+      maxDraftMediaItemsPerDay: "",
       maxUploadMegabytes: "",
       maxFilesPerMediaItem: "",
     });
@@ -45,6 +48,7 @@ describe("author access profile form", () => {
         name: "Обычный",
         canPublishMediaWithoutReview: "",
         maxDraftMediaItems: "0",
+        maxDraftMediaItemsPerDay: "",
         maxUploadMegabytes: "",
         maxFilesPerMediaItem: "",
       }).ok,
@@ -55,7 +59,36 @@ describe("author access profile form", () => {
         name: "Обычный",
         canPublishMediaWithoutReview: "",
         maxDraftMediaItems: "",
+        maxDraftMediaItemsPerDay: "",
         maxUploadMegabytes: "1.5",
+        maxFilesPerMediaItem: "",
+      }).ok,
+      false,
+    );
+  });
+
+  it("rejects daily draft limits that are too large to store safely", () => {
+    assert.equal(
+      parseAuthorAccessProfileFormInput({
+        name: "Обычный",
+        canPublishMediaWithoutReview: "",
+        maxDraftMediaItems: "",
+        maxDraftMediaItemsPerDay: String(Number.MAX_SAFE_INTEGER + 1),
+        maxUploadMegabytes: "",
+        maxFilesPerMediaItem: "",
+      }).ok,
+      false,
+    );
+  });
+
+  it("rejects daily draft limits that are not positive integers", () => {
+    assert.equal(
+      parseAuthorAccessProfileFormInput({
+        name: "Обычный",
+        canPublishMediaWithoutReview: "",
+        maxDraftMediaItems: "",
+        maxDraftMediaItemsPerDay: "0",
+        maxUploadMegabytes: "",
         maxFilesPerMediaItem: "",
       }).ok,
       false,
@@ -68,6 +101,7 @@ describe("author access profile form", () => {
         name: "Обычный",
         canPublishMediaWithoutReview: "",
         maxDraftMediaItems: "",
+        maxDraftMediaItemsPerDay: "",
         maxUploadMegabytes: String(Number.MAX_SAFE_INTEGER),
         maxFilesPerMediaItem: "",
       }).ok,

@@ -12,6 +12,7 @@ import { buttonVariants, Button } from "@/components/ui/button";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
+import { getAuthorOptions } from "@/db/queries/authors";
 import { getAdminMediaItems, getAdminMediaTypeCounts } from "@/db/queries/media-items";
 import { MEDIA_TYPES, MEDIA_TYPE_LABELS } from "@/lib/media-types";
 import { parsePage } from "@/lib/pagination";
@@ -26,6 +27,7 @@ type AdminMediaPageProps = {
   searchParams: Promise<{
     deleted?: string;
     error?: string;
+    author?: string;
     page?: string;
     q?: string;
     sort?: string;
@@ -36,6 +38,16 @@ type AdminMediaPageProps = {
 };
 
 const ADMIN_MEDIA_PAGE_SIZE = 50;
+
+function parseAuthorFilter(value: string | undefined) {
+  if (!value) {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
+}
 
 function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LABELS) {
   if (status === "published") {
@@ -56,18 +68,21 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
 export default async function AdminMediaPage({ searchParams }: AdminMediaPageProps) {
   const params = await searchParams;
   const searchQuery = params.q?.trim() ?? "";
+  const authorFilter = parseAuthorFilter(params.author);
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
   const parsedSort = parseCatalogSort(params.sort ?? null);
   const sort = isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
-  const [mediaResult, mediaTypeCounts] = await Promise.all([
+  const [mediaResult, mediaTypeCounts, authors] = await Promise.all([
     getAdminMediaItems({
+      authorId: authorFilter ?? undefined,
       mediaTypeFilter,
       page: parsePage(params.page),
       pageSize: ADMIN_MEDIA_PAGE_SIZE,
       searchQuery,
       sort,
     }),
-    getAdminMediaTypeCounts(),
+    getAdminMediaTypeCounts({ authorId: authorFilter ?? undefined }),
+    getAuthorOptions(),
   ]);
   const items = mediaResult.items;
   const totalItemsCount = mediaTypeCounts.reduce((total, item) => total + item.count, 0);
@@ -86,8 +101,10 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
       count: mediaTypeCounts.find((item) => item.mediaType === mediaType)?.count ?? 0,
     }))
     .filter((item) => item.count > 0);
-  const hasActiveFilters = Boolean(searchQuery) || mediaTypeFilter !== "all" || sort !== "title";
+  const hasActiveFilters =
+    Boolean(searchQuery) || Boolean(authorFilter) || mediaTypeFilter !== "all" || sort !== "title";
   const paginationSearchParams = {
+    author: authorFilter ? String(authorFilter) : undefined,
     q: searchQuery || undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
@@ -112,9 +129,11 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
         }
       />
 
-      {totalItemsCount > 0 ? (
+      {totalItemsCount > 0 || authors.length > 0 ? (
         <AdminMediaFiltersForm
           availableMediaTypes={availableMediaTypes}
+          authorFilter={authorFilter}
+          authors={authors}
           mediaTypeFilter={mediaTypeFilter}
           searchQuery={searchQuery}
           sort={sort}
