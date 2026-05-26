@@ -7,18 +7,23 @@ import {
   integer,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp,
   unique,
+  uniqueIndex,
 } from "drizzle-orm/pg-core";
 
 import { MEDIA_TYPES } from "@/lib/media-types";
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/author-media-experiences";
+import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/publication-status";
 
 export const mediaTypeEnum = pgEnum("media_type", MEDIA_TYPES);
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
+export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
+export const contributionStatusEnum = pgEnum("contribution_status", CONTRIBUTION_STATUSES);
 export const firstExperiencedPrecisionEnum = pgEnum(
   "first_experienced_precision",
   FIRST_EXPERIENCED_PRECISIONS,
@@ -179,6 +184,61 @@ export const authorMediaExperiences = pgTable(
   ],
 );
 
+export const contributions = pgTable(
+  "contributions",
+  {
+    id: serial("id").primaryKey(),
+    type: contributionTypeEnum("type").notNull(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id),
+    primaryMediaItemId: integer("primary_media_item_id")
+      .notNull()
+      .references(() => mediaItems.id),
+    status: contributionStatusEnum("status").default("draft").notNull(),
+    submittedAt: timestamp("submitted_at", { withTimezone: true }),
+    reviewedByAdminId: integer("reviewed_by_admin_id").references(() => adminUsers.id),
+    reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
+    adminNote: text("admin_note"),
+    ...timestamps(),
+  },
+  (table) => [
+    index("contributions_status_submitted_at_idx").on(table.status, table.submittedAt),
+    index("contributions_author_id_updated_at_idx").on(table.authorId, table.updatedAt),
+    index("contributions_primary_media_item_id_idx").on(table.primaryMediaItemId),
+    uniqueIndex("contributions_review_author_media_unique")
+      .on(table.authorId, table.primaryMediaItemId)
+      .where(sql`${table.type} = 'review'`),
+  ],
+);
+
+export const contributionReviews = pgTable("contribution_reviews", {
+  contributionId: integer("contribution_id")
+    .primaryKey()
+    .references(() => contributions.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+});
+
+export const contributionMediaItems = pgTable(
+  "contribution_media_items",
+  {
+    contributionId: integer("contribution_id")
+      .notNull()
+      .references(() => contributions.id, { onDelete: "cascade" }),
+    mediaItemId: integer("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.contributionId, table.mediaItemId],
+      name: "contribution_media_items_pk",
+    }),
+    index("contribution_media_items_media_item_id_idx").on(table.mediaItemId),
+  ],
+);
+
 export type Franchise = typeof franchises.$inferSelect;
 export type NewFranchise = typeof franchises.$inferInsert;
 export type AuthorAccessProfile = typeof authorAccessProfiles.$inferSelect;
@@ -195,3 +255,9 @@ export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
 export type AuthorMediaExperience = typeof authorMediaExperiences.$inferSelect;
 export type NewAuthorMediaExperience = typeof authorMediaExperiences.$inferInsert;
+export type Contribution = typeof contributions.$inferSelect;
+export type NewContribution = typeof contributions.$inferInsert;
+export type ContributionReview = typeof contributionReviews.$inferSelect;
+export type NewContributionReview = typeof contributionReviews.$inferInsert;
+export type ContributionMediaItem = typeof contributionMediaItems.$inferSelect;
+export type NewContributionMediaItem = typeof contributionMediaItems.$inferInsert;

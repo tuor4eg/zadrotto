@@ -35,6 +35,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Моя картотека
             </Link>
             <Link
+              href="/author/reviews"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Рецензии
+            </Link>
+            <Link
               href="/"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >

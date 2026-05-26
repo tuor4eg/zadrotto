@@ -1,7 +1,6 @@
 import Link from "next/link";
 import {
   Archive,
-  FileClock,
   House,
   LogOut,
   Settings,
@@ -11,9 +10,15 @@ import {
 import { logoutAdmin } from "@/app/admin/actions";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
 import { requireAdminUser } from "@/lib/admin-auth";
-import { AdminAuthorsMenu, AdminContentMenu } from "./admin-nav-menu";
+import {
+  AdminAuthorsMenu,
+  AdminContentMenu,
+  AdminMaterialsMenu,
+  AdminRequestsMenu,
+} from "./admin-nav-menu";
 import { AdminProgressBar } from "./admin-progress-bar";
 
 type AdminLayoutProps = {
@@ -23,13 +28,11 @@ type AdminLayoutProps = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const [adminUser, submittedMediaItemsCount] = await Promise.all([
+  const [adminUser, submittedMediaItemsCount, submittedReviewsCount] = await Promise.all([
     requireAdminUser(),
     getSubmittedAuthorMediaItemsCountForAdmin(),
+    getSubmittedContributionReviewCountForAdmin(),
   ]);
-  const visibleSubmittedMediaItemsCount =
-    submittedMediaItemsCount > 99 ? "99+" : String(submittedMediaItemsCount);
-
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#f3f0ea_45%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
       <AdminProgressBar />
@@ -53,22 +56,12 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               Главная
             </Link>
             <AdminContentMenu />
+            <AdminMaterialsMenu />
             <AdminAuthorsMenu />
-            <Link
-              href="/admin/media-review"
-              className={`${buttonVariants({ variant: "outline", size: "sm" })} relative`}
-            >
-              <FileClock />
-              Заявки
-              {submittedMediaItemsCount > 0 ? (
-                <span
-                  aria-label={`${submittedMediaItemsCount} заявок на модерацию`}
-                  className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white shadow-sm"
-                >
-                  {visibleSubmittedMediaItemsCount}
-                </span>
-              ) : null}
-            </Link>
+            <AdminRequestsMenu
+              submittedMediaItemsCount={submittedMediaItemsCount}
+              submittedReviewsCount={submittedReviewsCount}
+            />
             <Link
               href="/admin/settings"
               className={buttonVariants({ variant: "outline", size: "sm" })}

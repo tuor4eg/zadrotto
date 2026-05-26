@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
+import { MediaItemReviews } from "@/app/media-item-reviews";
+import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
 import { getCurrentAuthor } from "@/lib/author-auth";
 
@@ -23,6 +25,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const relatedItems = item.franchiseId
     ? await getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
     : [];
+  const reviews = await getPublishedReviewsForMediaItem(item.id);
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -32,6 +35,15 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           variant="archive"
           backLink={{ href: "/", label: "Назад к картотеке" }}
           relatedItems={relatedItems}
+          adjacentShelfSlot={
+            <MediaItemReviews
+              mediaItemId={item.id}
+              currentAuthor={
+                currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
+              }
+              reviews={reviews}
+            />
+          }
           ratingSlot={
             <MediaItemRatingDialog
               mediaItemCode={item.code}

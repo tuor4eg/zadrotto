@@ -42,6 +42,7 @@ type MediaItemDetailsProps = {
   };
   variant?: "default" | "archive";
   actions?: React.ReactNode;
+  adjacentShelfSlot?: React.ReactNode;
   meta?: React.ReactNode;
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
@@ -53,6 +54,7 @@ export function MediaItemDetails({
   backLink,
   variant = "default",
   actions,
+  adjacentShelfSlot,
   meta,
   ratingSlot,
   noteSlot,
@@ -64,6 +66,7 @@ export function MediaItemDetails({
         item={item}
         backLink={backLink}
         actions={actions}
+        adjacentShelfSlot={adjacentShelfSlot}
         meta={meta}
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
@@ -158,12 +161,16 @@ export function MediaItemDetails({
 
             <div className="flex flex-col gap-4 pt-4 text-xs uppercase tracking-[0.16em] text-zinc-400">
               <div className="flex flex-col gap-2 normal-case tracking-normal">
-                <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                  На соседней полке
-                </div>
-                <div className="px-3 py-2 text-xs text-zinc-500">
-                  Here be dragons
-                </div>
+                {adjacentShelfSlot ?? (
+                  <>
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                      На соседней полке
+                    </div>
+                    <div className="px-3 py-2 text-xs text-zinc-500">
+                      Here be dragons
+                    </div>
+                  </>
+                )}
               </div>
 
               {item.franchiseTitle ? (
@@ -203,6 +210,7 @@ function ArchiveMediaItemDetails({
   item,
   backLink,
   actions,
+  adjacentShelfSlot,
   meta,
   ratingSlot,
   noteSlot,
@@ -347,12 +355,16 @@ function ArchiveMediaItemDetails({
 
           <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
             <section>
-              <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                На соседней полке
-              </div>
-              <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
-                Here be dragons
-              </div>
+              {adjacentShelfSlot ?? (
+                <>
+                  <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    На соседней полке
+                  </div>
+                  <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
+                    Here be dragons
+                  </div>
+                </>
+              )}
             </section>
 
             {item.franchiseTitle ? (

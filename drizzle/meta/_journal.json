@@ -57,6 +57,13 @@
       "when": 1779630400000,
       "tag": "0007_access_profile_daily_private_limit",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779786621156,
+      "tag": "0008_author_contributions",
+      "breakpoints": true
     }
   ]
 }

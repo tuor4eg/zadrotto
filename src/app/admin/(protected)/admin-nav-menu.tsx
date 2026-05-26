@@ -4,9 +4,12 @@ import { useRef, useState } from "react";
 import Link from "next/link";
 import {
   ChevronDown,
+  FileClock,
   FileText,
   KeyRound,
   Layers3,
+  MessageSquareText,
+  Newspaper,
   ShieldCheck,
   UserRound,
   type LucideIcon,
@@ -15,20 +18,27 @@ import {
 import { buttonVariants } from "@/components/ui/button";
 
 type AdminNavMenuItem = {
+  count?: number;
   href: string;
   icon: LucideIcon;
   label: string;
 };
 
 type AdminNavMenuProps = {
+  count?: number;
   icon: LucideIcon;
   items: AdminNavMenuItem[];
   label: string;
 };
 
-function AdminNavMenu({ icon: Icon, items, label }: AdminNavMenuProps) {
+function formatBadgeCount(count: number) {
+  return count > 99 ? "99+" : String(count);
+}
+
+function AdminNavMenu({ count = 0, icon: Icon, items, label }: AdminNavMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement>(null);
+  const visibleCount = formatBadgeCount(count);
 
   function closeMenu() {
     setIsOpen(false);
@@ -54,13 +64,21 @@ function AdminNavMenu({ icon: Icon, items, label }: AdminNavMenuProps) {
         aria-haspopup="menu"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
-        className={buttonVariants({ variant: "outline", size: "sm" })}
+        className={`${buttonVariants({ variant: "outline", size: "sm" })} relative`}
       >
         <Icon />
         {label}
         <ChevronDown
           className={`size-4 transition-transform ${isOpen ? "rotate-180" : ""}`}
         />
+        {count > 0 ? (
+          <span
+            aria-label={`${count} заявок на модерацию`}
+            className="absolute -right-2 -top-2 grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white shadow-sm"
+          >
+            {visibleCount}
+          </span>
+        ) : null}
       </button>
       <div
         className={`absolute right-0 top-full z-20 min-w-44 pt-2 transition ${
@@ -77,16 +95,54 @@ function AdminNavMenu({ icon: Icon, items, label }: AdminNavMenuProps) {
                 href={item.href}
                 role="menuitem"
                 onClick={closeMenu}
-                className="flex items-center gap-2 rounded-sm px-3 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-950"
+                className="grid grid-cols-[auto_minmax(0,1fr)_auto] items-center gap-2 rounded-sm px-3 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-950"
               >
                 <ItemIcon className="size-4" />
-                {item.label}
+                <span className="truncate">{item.label}</span>
+                {item.count && item.count > 0 ? (
+                  <span
+                    aria-label={`${item.count} заявок`}
+                    className="grid h-5 min-w-5 place-items-center rounded-full bg-red-600 px-1.5 text-[11px] font-semibold leading-none text-white"
+                  >
+                    {formatBadgeCount(item.count)}
+                  </span>
+                ) : null}
               </Link>
             );
           })}
         </div>
       </div>
     </div>
+  );
+}
+
+export function AdminRequestsMenu({
+  submittedMediaItemsCount,
+  submittedReviewsCount,
+}: {
+  submittedMediaItemsCount: number;
+  submittedReviewsCount: number;
+}) {
+  return (
+    <AdminNavMenu
+      count={submittedMediaItemsCount + submittedReviewsCount}
+      icon={FileClock}
+      label="Заявки"
+      items={[
+        {
+          href: "/admin/media-review",
+          icon: FileText,
+          label: "Записи",
+          count: submittedMediaItemsCount,
+        },
+        {
+          href: "/admin/reviews",
+          icon: MessageSquareText,
+          label: "Рецензии",
+          count: submittedReviewsCount,
+        },
+      ]}
+    />
   );
 }
 
@@ -98,6 +154,18 @@ export function AdminContentMenu() {
       items={[
         { href: "/admin/media", icon: FileText, label: "Записи" },
         { href: "/admin/franchises", icon: Layers3, label: "Серии" },
+      ]}
+    />
+  );
+}
+
+export function AdminMaterialsMenu() {
+  return (
+    <AdminNavMenu
+      icon={Newspaper}
+      label="Материалы"
+      items={[
+        { href: "/admin/materials/reviews", icon: MessageSquareText, label: "Рецензии" },
       ]}
     />
   );
