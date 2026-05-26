@@ -35,30 +35,34 @@ export function AdminProgressBar() {
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const search = searchParams.toString();
+  const routeKey = `${pathname}?${search}`;
+
+  return <AdminProgressBarState key={routeKey} />;
+}
+
+function AdminProgressBarState() {
   const [isLoading, setIsLoading] = useState(false);
   const timeoutRef = useRef<number | null>(null);
 
-  const stopLoading = useCallback(() => {
+  const clearLoadingTimeout = useCallback(() => {
     if (timeoutRef.current !== null) {
       window.clearTimeout(timeoutRef.current);
       timeoutRef.current = null;
     }
-
-    setIsLoading(false);
   }, []);
 
+  const stopLoading = useCallback(() => {
+    clearLoadingTimeout();
+
+    setIsLoading(false);
+  }, [clearLoadingTimeout]);
+
   const startLoading = useCallback(() => {
-    if (timeoutRef.current !== null) {
-      window.clearTimeout(timeoutRef.current);
-    }
+    clearLoadingTimeout();
 
     setIsLoading(true);
     timeoutRef.current = window.setTimeout(stopLoading, LOADER_TIMEOUT_MS);
-  }, [stopLoading]);
-
-  useEffect(() => {
-    stopLoading();
-  }, [pathname, search, stopLoading]);
+  }, [clearLoadingTimeout, stopLoading]);
 
   useEffect(() => {
     function handleClick(event: MouseEvent) {
@@ -88,9 +92,9 @@ export function AdminProgressBar() {
       document.removeEventListener("click", handleClick, true);
       document.removeEventListener("submit", handleSubmit, true);
       window.removeEventListener("pageshow", stopLoading);
-      stopLoading();
+      clearLoadingTimeout();
     };
-  }, [startLoading, stopLoading]);
+  }, [clearLoadingTimeout, startLoading, stopLoading]);
 
   if (!isLoading) {
     return null;
