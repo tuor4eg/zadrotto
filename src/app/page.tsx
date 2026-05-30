@@ -9,8 +9,11 @@ import {
   parseAuthorRatingFilter,
   parseCatalogSort,
   parseCatalogSortDirection,
+  parseCatalogYear,
+  parseCatalogYearMode,
   parseMediaTypeFilter,
   isAuthorOnlyCatalogSort,
+  isAuthorOnlyCatalogYearMode,
 } from "./media-items-catalog-logic";
 import { MediaItemsCatalog } from "./media-items-catalog";
 
@@ -26,6 +29,8 @@ type HomeProps = {
     dir?: string;
     sort?: string;
     type?: string;
+    year?: string;
+    yearMode?: string;
   }>;
 };
 
@@ -50,6 +55,10 @@ export default async function Home({ searchParams }: HomeProps) {
   const parsedSort = parseCatalogSort(params.sort ?? null);
   const sort = !currentAuthor && isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
+  const yearFilter = parseCatalogYear(params.year ?? null);
+  const parsedYearMode = parseCatalogYearMode(params.yearMode ?? null);
+  const yearMode =
+    !currentAuthor && isAuthorOnlyCatalogYearMode(parsedYearMode) ? "release" : parsedYearMode;
   const [catalog, mediaTypeCounts] = await Promise.all([
     getCatalogMediaItems({
       authorRatingFilter,
@@ -60,6 +69,8 @@ export default async function Home({ searchParams }: HomeProps) {
       searchQuery,
       sort,
       sortDirection,
+      yearFilter,
+      yearMode,
     }),
     getCatalogMediaTypeCounts(),
   ]);
@@ -75,6 +86,8 @@ export default async function Home({ searchParams }: HomeProps) {
           searchQuery={searchQuery}
           sort={sort}
           sortDirection={sortDirection}
+          yearFilter={yearFilter}
+          yearMode={yearMode}
         />
 
         <MediaItemsCatalog
@@ -94,6 +107,8 @@ export default async function Home({ searchParams }: HomeProps) {
           sortDirection={sortDirection}
           totalCount={catalog.totalCount}
           totalPages={catalog.totalPages}
+          yearFilter={yearFilter}
+          yearMode={yearMode}
         />
       </div>
     </main>

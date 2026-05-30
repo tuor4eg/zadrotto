@@ -19,6 +19,8 @@ import type {
   AuthorRatingFilter,
   CatalogSort,
   CatalogSortDirection,
+  CatalogYearFilter,
+  CatalogYearMode,
   MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
@@ -115,6 +117,8 @@ function catalogFilterConditions(input: {
   currentAuthorId?: number;
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
 }) {
   const conditions: SQL[] = [publishedMediaItemCondition];
   const searchCondition = catalogSearchCondition(input.searchQuery);
@@ -137,7 +141,49 @@ function catalogFilterConditions(input: {
     );
   }
 
+  if (input.yearFilter !== null) {
+    conditions.push(catalogYearCondition(input.yearFilter, input.yearMode, input.currentAuthorId));
+  }
+
   return and(...conditions)!;
+}
+
+function catalogYearCondition(
+  yearFilter: number,
+  yearMode: CatalogYearMode,
+  currentAuthorId?: number,
+) {
+  if (yearMode === "experience" && currentAuthorId) {
+    return exists(
+      db
+        .select({ id: authorMediaExperiences.id })
+        .from(authorMediaExperiences)
+        .where(
+          and(
+            eq(authorMediaExperiences.mediaItemId, mediaItems.id),
+            eq(authorMediaExperiences.authorId, currentAuthorId),
+            sql`extract(year from ${authorMediaExperiences.firstExperiencedAt}) = ${yearFilter}`,
+          ),
+        ),
+    );
+  }
+
+  if (yearMode === "rating" && currentAuthorId) {
+    return exists(
+      db
+        .select({ id: ratings.id })
+        .from(ratings)
+        .where(
+          and(
+            eq(ratings.mediaItemId, mediaItems.id),
+            eq(ratings.authorId, currentAuthorId),
+            sql`extract(year from ${ratings.createdAt}) = ${yearFilter}`,
+          ),
+        ),
+    );
+  }
+
+  return eq(mediaItems.releaseYear, yearFilter);
 }
 
 function catalogOrderBy(
@@ -203,6 +249,8 @@ const catalogMediaItemsQuery = (input: {
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
 }) =>
   db
     .select({
@@ -262,6 +310,8 @@ export async function getCatalogMediaItems(input: {
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
 }) {
   const filterCondition = catalogFilterConditions(input);
   const [{ totalCount }] = await db

@@ -8,10 +8,13 @@ import {
   FolderOpen,
 } from "lucide-react";
 
+import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import {
   type AuthorRatingFilter,
   type CatalogSort,
   type CatalogSortDirection,
+  type CatalogYearFilter,
+  type CatalogYearMode,
   type MediaTypeFilter,
   DEFAULT_CATALOG_SORT_DIRECTIONS,
 } from "@/app/media-items-catalog-logic";
@@ -19,12 +22,10 @@ import { MediaTypeTabs } from "@/app/media-type-tabs";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
-import { formatFirstExperiencedDate } from "@/lib/experience-date";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
-  AUTHOR_RATING_TONE_CLASS_NAMES,
   getRatingTone,
 } from "@/lib/rating-tone";
 
@@ -45,6 +46,8 @@ type MediaItemsCatalogProps = {
   sortDirection: CatalogSortDirection;
   totalCount: number;
   totalPages: number;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
   currentAuthor: {
     name: string;
     code: string;
@@ -91,6 +94,8 @@ export function MediaItemsCatalog({
   sortDirection,
   totalCount,
   totalPages,
+  yearFilter,
+  yearMode,
 }: MediaItemsCatalogProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -118,12 +123,6 @@ export function MediaItemsCatalog({
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
     [items, selectedId],
   );
-  const selectedItemFirstExperiencedDate = selectedItem
-    ? formatFirstExperiencedDate(
-        selectedItem.currentAuthorFirstExperiencedAt,
-        selectedItem.currentAuthorFirstExperiencedPrecision,
-      )
-    : null;
   const archiveTotalCount = useMemo(
     () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
     [mediaTypeCountRows],
@@ -138,6 +137,8 @@ export function MediaItemsCatalog({
         : undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
+    year: yearFilter !== null ? String(yearFilter) : undefined,
+    yearMode: yearFilter !== null && yearMode !== "release" ? yearMode : undefined,
   };
 
   const replaceFilters = useCallback(
@@ -371,23 +372,18 @@ export function MediaItemsCatalog({
                       {formatRatingsCount(selectedItem.ratingsCount)}
                     </div>
                   </div>
-                  {currentAuthor && selectedItem.currentAuthorScore !== null ? (
-                    <div
-                      className={`rounded-md border p-2 text-center ${AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(selectedItem.currentAuthorScore)]}`}
-                    >
-                      <div className="font-mono text-[10px] uppercase tracking-[0.14em] opacity-75">
-                        Моя
-                      </div>
-                      <div className="mt-1 font-serif text-3xl tabular-nums">
-                        {formatScore(selectedItem.currentAuthorScore)}
-                      </div>
-                      {selectedItemFirstExperiencedDate ? (
-                        <div className="mt-2 font-mono text-[10px] uppercase tracking-[0.12em] opacity-75">
-                          Знакомство: {selectedItemFirstExperiencedDate}
-                        </div>
-                      ) : null}
-                    </div>
-                  ) : null}
+                  <MediaItemRatingDialog
+                    mediaItemCode={selectedItem.code}
+                    franchiseCode={selectedItem.franchiseCode}
+                    title={selectedItem.title}
+                    currentAuthor={currentAuthor}
+                    currentAuthorFirstExperiencedAt={selectedItem.currentAuthorFirstExperiencedAt}
+                    currentAuthorFirstExperiencedPrecision={
+                      selectedItem.currentAuthorFirstExperiencedPrecision
+                    }
+                    currentAuthorScore={selectedItem.currentAuthorScore}
+                    size="compact"
+                  />
                 </div>
 
                 {selectedItem.franchiseTitle && selectedItem.franchiseCode ? (

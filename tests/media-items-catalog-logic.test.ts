@@ -4,8 +4,11 @@ import { describe, it } from "node:test";
 import {
   filterCatalogItems,
   matchesSearch,
+  matchesYear,
   parseAuthorRatingFilter,
   parseCatalogSort,
+  parseCatalogYear,
+  parseCatalogYearMode,
   parseMediaTypeFilter,
   sortCatalogItems,
   type CatalogFilterItem,
@@ -23,7 +26,10 @@ const items: TestCatalogItem[] = [
     originalTitle: null,
     code: "disco-elysium",
     mediaType: "game",
+    releaseYear: 2019,
     currentAuthorScore: 100,
+    currentAuthorRatedAt: new Date("2026-02-01T00:00:00Z"),
+    currentAuthorFirstExperiencedAt: "2020-01-01",
   },
   {
     id: 2,
@@ -31,7 +37,10 @@ const items: TestCatalogItem[] = [
     originalTitle: "Solaris",
     code: "solaris-1972",
     mediaType: "film",
+    releaseYear: 1972,
     currentAuthorScore: null,
+    currentAuthorRatedAt: null,
+    currentAuthorFirstExperiencedAt: null,
   },
   {
     id: 3,
@@ -39,7 +48,10 @@ const items: TestCatalogItem[] = [
     originalTitle: "Dungeon Meshi",
     code: null,
     mediaType: "anime",
+    releaseYear: 2024,
     currentAuthorScore: 80,
+    currentAuthorRatedAt: new Date("2025-03-01T00:00:00Z"),
+    currentAuthorFirstExperiencedAt: "2024-01-01",
   },
 ];
 
@@ -148,6 +160,21 @@ describe("filterCatalogItems", () => {
       [],
     );
   });
+
+  it("filters by selected year mode", () => {
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "all", 1972, "release").map((item) => item.id),
+      [2],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "all", 2024, "experience").map((item) => item.id),
+      [3],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "all", 2026, "rating").map((item) => item.id),
+      [1],
+    );
+  });
 });
 
 describe("parseCatalogSort", () => {
@@ -175,6 +202,39 @@ describe("parseAuthorRatingFilter", () => {
     assert.equal(parseAuthorRatingFilter("unrated"), "unrated");
     assert.equal(parseAuthorRatingFilter("unknown"), "all");
     assert.equal(parseAuthorRatingFilter(null), "all");
+  });
+});
+
+describe("parseCatalogYear", () => {
+  it("keeps valid years and falls back to an empty filter", () => {
+    assert.equal(parseCatalogYear("1972"), 1972);
+    assert.equal(parseCatalogYear("1899"), null);
+    assert.equal(parseCatalogYear("not-a-year"), null);
+    assert.equal(parseCatalogYear(null), null);
+  });
+});
+
+describe("parseCatalogYearMode", () => {
+  it("keeps known year modes and falls back to release year", () => {
+    assert.equal(parseCatalogYearMode("release"), "release");
+    assert.equal(parseCatalogYearMode("experience"), "experience");
+    assert.equal(parseCatalogYearMode("rating"), "rating");
+    assert.equal(parseCatalogYearMode("unknown"), "release");
+    assert.equal(parseCatalogYearMode(null), "release");
+  });
+});
+
+describe("matchesYear", () => {
+  it("matches release, experience and rating years explicitly", () => {
+    assert.equal(matchesYear(items[0], 2019, "release"), true);
+    assert.equal(matchesYear(items[0], 2020, "experience"), true);
+    assert.equal(matchesYear(items[0], 2026, "rating"), true);
+    assert.equal(matchesYear(items[0], 2021, "experience"), false);
+    assert.equal(matchesYear(items[1], 2026, "rating"), false);
+  });
+
+  it("keeps empty year filter permissive", () => {
+    assert.equal(matchesYear(items[1], null, "release"), true);
   });
 });
 

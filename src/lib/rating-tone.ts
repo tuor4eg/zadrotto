@@ -24,6 +24,12 @@ export const SELECTED_RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string>
   good: "border-emerald-700 bg-emerald-700 text-emerald-50",
 };
 
+export const RATING_BAR_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "bg-red-700/75",
+  medium: "bg-stone-700/75",
+  good: "bg-emerald-700/75",
+};
+
 export function getRatingTone(score: number | null): RatingTone {
   if (score !== null && score <= 30) {
     return "bad";

@@ -2,6 +2,10 @@ import { MEDIA_TYPES, type MediaType } from "../lib/media-types";
 
 export type MediaTypeFilter = MediaType | "all";
 export type AuthorRatingFilter = "all" | "rated" | "unrated";
+export type CatalogYearMode = "release" | "experience" | "rating";
+export type CatalogYearFilter = number | null;
+
+const MIN_CATALOG_YEAR = 1900;
 
 export const CATALOG_SORTS = [
   "title",
@@ -21,6 +25,11 @@ export const AUTHOR_ONLY_CATALOG_SORTS = [
   "my_first_experience_year",
 ] as const satisfies readonly CatalogSort[];
 
+export const AUTHOR_ONLY_CATALOG_YEAR_MODES = [
+  "experience",
+  "rating",
+] as const satisfies readonly CatalogYearMode[];
+
 export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDirection> = {
   title: "asc",
   release_year: "asc",
@@ -35,7 +44,10 @@ export type CatalogFilterItem = {
   originalTitle: string | null;
   code: string | null;
   mediaType: MediaType;
+  releaseYear: number | null;
   currentAuthorScore: number | null;
+  currentAuthorRatedAt?: Date | string | null;
+  currentAuthorFirstExperiencedAt?: Date | string | null;
 };
 
 export type CatalogSortItem = {
@@ -63,6 +75,8 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
   searchQuery: string,
   mediaTypeFilter: MediaTypeFilter,
   authorRatingFilter: AuthorRatingFilter,
+  yearFilter: CatalogYearFilter = null,
+  yearMode: CatalogYearMode = "release",
 ) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 
@@ -72,6 +86,7 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
       (authorRatingFilter === "all" ||
         (authorRatingFilter === "rated" && item.currentAuthorScore !== null) ||
         (authorRatingFilter === "unrated" && item.currentAuthorScore === null)) &&
+      matchesYear(item, yearFilter, yearMode) &&
       matchesSearch(item, normalizedSearchQuery),
   );
 }
@@ -84,6 +99,27 @@ export function parseMediaTypeFilter(mediaType: string | null): MediaTypeFilter 
 
 export function parseAuthorRatingFilter(filter: string | null): AuthorRatingFilter {
   return filter === "rated" || filter === "unrated" ? filter : "all";
+}
+
+export function parseCatalogYear(value: string | null): CatalogYearFilter {
+  if (!value) {
+    return null;
+  }
+
+  const year = Number(value);
+  const maxCatalogYear = new Date().getFullYear();
+
+  return Number.isInteger(year) && year >= MIN_CATALOG_YEAR && year <= maxCatalogYear
+    ? year
+    : null;
+}
+
+export function parseCatalogYearMode(mode: string | null): CatalogYearMode {
+  return mode === "experience" || mode === "rating" ? mode : "release";
+}
+
+export function isAuthorOnlyCatalogYearMode(mode: CatalogYearMode) {
+  return AUTHOR_ONLY_CATALOG_YEAR_MODES.some((authorOnlyMode) => authorOnlyMode === mode);
 }
 
 export function parseCatalogSort(sort: string | null): CatalogSort {
@@ -137,6 +173,36 @@ function getDateTime(value: Date | string | null | undefined) {
   const time = value instanceof Date ? value.getTime() : new Date(value).getTime();
 
   return Number.isNaN(time) ? null : time;
+}
+
+function getYearFromDate(value: Date | string | null | undefined) {
+  const time = getDateTime(value);
+
+  if (time === null) {
+    return null;
+  }
+
+  return new Date(time).getFullYear();
+}
+
+export function matchesYear(
+  item: CatalogFilterItem,
+  yearFilter: CatalogYearFilter,
+  yearMode: CatalogYearMode,
+) {
+  if (yearFilter === null) {
+    return true;
+  }
+
+  if (yearMode === "experience") {
+    return getYearFromDate(item.currentAuthorFirstExperiencedAt) === yearFilter;
+  }
+
+  if (yearMode === "rating") {
+    return getYearFromDate(item.currentAuthorRatedAt) === yearFilter;
+  }
+
+  return item.releaseYear === yearFilter;
 }
 
 export function sortCatalogItems<TItem extends CatalogSortItem>(

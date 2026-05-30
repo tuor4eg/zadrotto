@@ -3,6 +3,15 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaItems, ratings } from "@/db/schema";
 
+function getCurrentMoscowYear() {
+  return Number(
+    new Intl.DateTimeFormat("ru-RU", {
+      timeZone: "Europe/Moscow",
+      year: "numeric",
+    }).format(new Date()),
+  );
+}
+
 export async function upsertAuthorRating(input: {
   mediaItemId: number;
   authorId: number;
@@ -50,11 +59,14 @@ export async function deleteAuthorRating(input: {
 }
 
 export async function getAuthorRatingSummary(authorId: number) {
-  const [totalRows, distribution, latestRatings] = await Promise.all([
+  const currentYear = getCurrentMoscowYear();
+  const [totalRows, distribution, scoreDistribution, latestRatings] = await Promise.all([
     db
       .select({
         ratingsCount: sql<number>`count(${ratings.id})::int`,
         averageScore: sql<number | null>`avg(${ratings.score})::float`,
+        currentYearRatingsCount:
+          sql<number>`count(${ratings.id}) filter (where extract(year from ${ratings.createdAt} at time zone 'Europe/Moscow') = ${currentYear})::int`,
       })
       .from(ratings)
       .where(eq(ratings.authorId, authorId)),
@@ -67,6 +79,14 @@ export async function getAuthorRatingSummary(authorId: number) {
       .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
       .where(eq(ratings.authorId, authorId))
       .groupBy(mediaItems.mediaType),
+    db
+      .select({
+        score: ratings.score,
+        ratingsCount: sql<number>`count(${ratings.id})::int`,
+      })
+      .from(ratings)
+      .where(eq(ratings.authorId, authorId))
+      .groupBy(ratings.score),
     db
       .select({
         mediaItemCode: mediaItems.code,
@@ -85,7 +105,9 @@ export async function getAuthorRatingSummary(authorId: number) {
   return {
     ratingsCount: totals?.ratingsCount ?? 0,
     averageScore: totals?.averageScore ?? null,
+    currentYearRatingsCount: totals?.currentYearRatingsCount ?? 0,
     distribution,
+    scoreDistribution,
     latestRatings,
   };
 }

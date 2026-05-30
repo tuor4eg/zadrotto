@@ -1,12 +1,30 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { ArrowDown, ArrowUp, Check, Library, Search, X } from "lucide-react";
+import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  ArrowDown,
+  ArrowUp,
+  Calendar,
+  CalendarCheck,
+  ChevronDown,
+  Check,
+  History,
+  Library,
+  Search,
+  Star,
+  X,
+} from "lucide-react";
 
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import type { AuthorRatingFilter, CatalogSort, MediaTypeFilter } from "./media-items-catalog-logic";
+import type {
+  AuthorRatingFilter,
+  CatalogSort,
+  CatalogYearFilter,
+  CatalogYearMode,
+  MediaTypeFilter,
+} from "./media-items-catalog-logic";
 import {
   DEFAULT_CATALOG_SORT_DIRECTIONS,
   isAuthorOnlyCatalogSort,
@@ -21,7 +39,11 @@ type CatalogHeaderControlsProps = {
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
 };
+
+type YearSelectValue = "all" | `${number}`;
 
 const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   title: "Название",
@@ -44,6 +66,18 @@ const AUTHOR_RATING_FILTER_ICONS: Record<AuthorRatingFilter, React.ReactNode> = 
   unrated: <X className="size-4" />,
 };
 
+const CATALOG_YEAR_MODE_LABELS: Record<CatalogYearMode, string> = {
+  release: "Год выхода",
+  experience: "Год знакомства",
+  rating: "Год оценки",
+};
+
+const CATALOG_YEAR_MODE_ICONS: Record<CatalogYearMode, React.ReactNode> = {
+  release: <Calendar className="size-4" />,
+  experience: <History className="size-4" />,
+  rating: <Star className="size-4" />,
+};
+
 function getSortTooltip(sort: CatalogSort) {
   return `Сортировка: ${CATALOG_SORT_LABELS[sort].toLowerCase()}`;
 }
@@ -56,8 +90,55 @@ function getOppositeSortDirection(direction: CatalogSortDirection): CatalogSortD
   return direction === "asc" ? "desc" : "asc";
 }
 
-function getAuthorRatingFilterTooltip(filter: AuthorRatingFilter) {
-  return `Фильтр: ${AUTHOR_RATING_FILTER_LABELS[filter].toLowerCase()}`;
+function getFiltersTooltip(
+  authorRatingFilter: AuthorRatingFilter,
+  yearFilter: CatalogYearFilter,
+  yearMode: CatalogYearMode,
+  currentAuthor: boolean,
+) {
+  const activeParts = [];
+
+  if (currentAuthor && authorRatingFilter !== "all") {
+    activeParts.push(AUTHOR_RATING_FILTER_LABELS[authorRatingFilter].toLowerCase());
+  }
+
+  if (yearFilter !== null) {
+    activeParts.push(getYearFilterTooltip(yearFilter, yearMode).toLowerCase());
+  }
+
+  return activeParts.length > 0 ? `Фильтры: ${activeParts.join(", ")}` : "Фильтры";
+}
+
+function getYearFilterTooltip(yearFilter: CatalogYearFilter, yearMode: CatalogYearMode) {
+  const yearLabel = yearFilter === null ? "все годы" : String(yearFilter);
+
+  return `${CATALOG_YEAR_MODE_LABELS[yearMode]}: ${yearLabel}`;
+}
+
+function getYearOptions(yearFilter: CatalogYearFilter) {
+  const currentYear = new Date().getFullYear();
+  const years = Array.from(
+    { length: currentYear - 1900 + 1 },
+    (_, index) => currentYear - index,
+  );
+
+  if (yearFilter !== null && !years.includes(yearFilter)) {
+    years.push(yearFilter);
+    years.sort((left, right) => right - left);
+  }
+
+  return [
+    {
+      value: "all" as const,
+      label: "Все годы",
+      icon: <CalendarCheck className="size-4" />,
+    },
+    ...years.map((year) => ({
+      value: String(year) as YearSelectValue,
+      label: String(year),
+      icon: <Calendar className="size-4" />,
+    })),
+  ];
 }
 
 function updateFilterParam(
@@ -82,13 +163,17 @@ export function CatalogHeaderControls({
   searchQuery,
   sort,
   sortDirection,
+  yearFilter,
+  yearMode,
 }: CatalogHeaderControlsProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
   const [search, setSearch] = useState(searchQuery);
-  const [openSelect, setOpenSelect] = useState<"author-rating" | "sort" | null>(null);
+  const [openSelect, setOpenSelect] = useState<"filters" | "sort" | null>(null);
   const [, startTransition] = useTransition();
+  const filtersMenuId = useId();
+  const filtersRootRef = useRef<HTMLDivElement>(null);
   const isFirstSearchSync = useRef(true);
   const previousSearchQuery = useRef(searchQuery);
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
@@ -101,6 +186,8 @@ export function CatalogHeaderControls({
       q?: string;
       sort?: CatalogSort;
       sortDirection?: CatalogSortDirection;
+      year?: CatalogYearFilter;
+      yearMode?: CatalogYearMode;
     }) => {
       const nextSearchParams = new URLSearchParams(searchParams.toString());
       const nextSort = nextFilters.sort ?? sort;
@@ -109,6 +196,8 @@ export function CatalogHeaderControls({
         (nextFilters.sort && nextFilters.sort !== sort
           ? DEFAULT_CATALOG_SORT_DIRECTIONS[nextFilters.sort]
           : sortDirection);
+      const nextYearMode =
+        nextFilters.yearMode !== undefined ? nextFilters.yearMode : yearMode;
 
       nextSearchParams.delete("page");
 
@@ -137,6 +226,19 @@ export function CatalogHeaderControls({
         updateFilterParam(nextSearchParams, "mine", nextFilters.mine, "all");
       }
 
+      if (nextFilters.year !== undefined) {
+        updateFilterParam(
+          nextSearchParams,
+          "year",
+          nextFilters.year === null ? "" : String(nextFilters.year),
+          "",
+        );
+      }
+
+      if (nextFilters.year !== undefined || nextFilters.yearMode !== undefined) {
+        updateFilterParam(nextSearchParams, "yearMode", nextYearMode, "release");
+      }
+
       const queryString = nextSearchParams.toString();
 
       if (queryString === searchParams.toString()) {
@@ -147,8 +249,34 @@ export function CatalogHeaderControls({
         router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
       });
     },
-    [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection],
+    [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection, yearMode],
   );
+
+  useEffect(() => {
+    if (openSelect !== "filters") {
+      return;
+    }
+
+    function handlePointerDown(event: PointerEvent) {
+      if (!filtersRootRef.current?.contains(event.target as Node)) {
+        setOpenSelect(null);
+      }
+    }
+
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        setOpenSelect(null);
+      }
+    }
+
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [openSelect]);
 
   useEffect(() => {
     if (previousSearchQuery.current !== searchQuery) {
@@ -218,25 +346,117 @@ export function CatalogHeaderControls({
         ) : null}
       </div>
 
-      {currentAuthor ? (
-        <ArchiveTooltip
-          label={openSelect === "author-rating" ? "" : getAuthorRatingFilterTooltip(authorRatingFilter)}
-          side="bottom"
-        >
-          <ArchiveSelect
-            ariaLabel={getAuthorRatingFilterTooltip(authorRatingFilter)}
-            compact
-            onOpenChange={(isOpen) => setOpenSelect(isOpen ? "author-rating" : null)}
-            options={Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([value, label]) => ({
-              value: value as AuthorRatingFilter,
-              label,
-              icon: AUTHOR_RATING_FILTER_ICONS[value as AuthorRatingFilter],
-            }))}
-            value={authorRatingFilter}
-            onChange={(nextFilter) => replaceFilters({ mine: nextFilter })}
-          />
-        </ArchiveTooltip>
-      ) : null}
+      <ArchiveTooltip
+        label={
+          openSelect === "filters"
+            ? ""
+            : getFiltersTooltip(authorRatingFilter, yearFilter, yearMode, currentAuthor)
+        }
+        side="bottom"
+      >
+        <div ref={filtersRootRef} className="relative">
+          <button
+            type="button"
+            aria-label={getFiltersTooltip(authorRatingFilter, yearFilter, yearMode, currentAuthor)}
+            aria-haspopup="menu"
+            aria-expanded={openSelect === "filters"}
+            aria-controls={filtersMenuId}
+            onClick={() => setOpenSelect(openSelect === "filters" ? null : "filters")}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+          >
+            {yearFilter === null ? <Library className="size-4" /> : <Calendar className="size-4" />}
+            <ChevronDown className="sr-only" />
+          </button>
+
+          {openSelect === "filters" ? (
+            <div
+              id={filtersMenuId}
+              role="menu"
+              className="archive-paper-surface absolute right-0 top-full z-[80] mt-2 w-[min(19rem,calc(100vw-2rem))] rounded-md border border-stone-500/70 p-2 shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
+            >
+              {currentAuthor ? (
+                <div className="grid gap-1">
+                  {Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([value, label]) => {
+                    const filter = value as AuthorRatingFilter;
+                    const selected = authorRatingFilter === filter;
+
+                    return (
+                      <button
+                        key={filter}
+                        type="button"
+                        role="menuitemradio"
+                        aria-checked={selected}
+                        onClick={() => {
+                          replaceFilters({ mine: filter });
+                          setOpenSelect(null);
+                        }}
+                        className={`flex h-9 w-full items-center gap-2 rounded-sm px-2.5 text-left font-mono text-xs uppercase tracking-[0.1em] transition-colors ${
+                          selected
+                            ? "bg-red-900/10 text-stone-950"
+                            : "text-stone-700 hover:bg-stone-200/60 hover:text-stone-950"
+                        }`}
+                      >
+                        <span className="grid size-4 shrink-0 place-items-center text-stone-600">
+                          {AUTHOR_RATING_FILTER_ICONS[filter]}
+                        </span>
+                        <span className="min-w-0 flex-1 truncate">{label}</span>
+                        <Check
+                          className={`size-3.5 shrink-0 text-red-900 ${
+                            selected ? "opacity-100" : "opacity-0"
+                          }`}
+                        />
+                      </button>
+                    );
+                  })}
+                </div>
+              ) : null}
+
+              <div className={currentAuthor ? "mt-2 border-t border-stone-300/70 pt-2" : ""}>
+                <div className="flex min-w-0 items-center gap-1.5">
+                  <ArchiveSelect
+                    ariaLabel={getYearFilterTooltip(yearFilter, yearMode)}
+                    className="min-w-0 flex-1"
+                    options={getYearOptions(yearFilter)}
+                    triggerClassName="w-full min-w-0"
+                    value={yearFilter === null ? "all" : String(yearFilter)}
+                    onChange={(nextYear) =>
+                      replaceFilters({ year: nextYear === "all" ? null : Number(nextYear) })
+                    }
+                  />
+                  <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
+                    {(["release", "experience", "rating"] as const).map((mode) => {
+                      const isDisabled = !currentAuthor && mode !== "release";
+                      const isSelected = yearMode === mode;
+                      const label = isDisabled
+                        ? `${CATALOG_YEAR_MODE_LABELS[mode]}: войди как автор`
+                        : CATALOG_YEAR_MODE_LABELS[mode];
+
+                      return (
+                        <ArchiveTooltip key={mode} label={label} side="bottom">
+                          <button
+                            type="button"
+                            disabled={isDisabled}
+                            onClick={() => replaceFilters({ yearMode: mode })}
+                            className={`grid size-8 place-items-center rounded-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 disabled:cursor-not-allowed disabled:text-stone-400 ${
+                              isSelected
+                                ? "bg-red-900/12 text-red-950"
+                                : "text-stone-600 hover:bg-stone-200/70 hover:text-stone-950"
+                            }`}
+                            aria-label={label}
+                            aria-pressed={isSelected}
+                          >
+                            {CATALOG_YEAR_MODE_ICONS[mode]}
+                          </button>
+                        </ArchiveTooltip>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ) : null}
+        </div>
+      </ArchiveTooltip>
 
       <ArchiveTooltip
         label={

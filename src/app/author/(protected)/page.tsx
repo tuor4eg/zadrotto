@@ -7,11 +7,11 @@ import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import { requireAuthor } from "@/lib/author-auth";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
-  CONTRIBUTION_STATUSES,
   type ContributionStatus,
 } from "@/lib/contributions";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
-import { formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { RATING_SCORE_VALUES, formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
 const REVIEW_STATUS_BADGE_VARIANTS: Record<
   ContributionStatus,
@@ -45,8 +45,12 @@ export default async function AuthorPage() {
   const distributionByMediaType = new Map(
     summary.distribution.map((item) => [item.mediaType, item.ratingsCount]),
   );
-  const reviewsByStatus = new Map(
-    reviewSummary.statusCounts.map((item) => [item.status, item.reviewsCount]),
+  const distributionByScore = new Map(
+    summary.scoreDistribution.map((item) => [item.score, item.ratingsCount]),
+  );
+  const maxScoreDistributionCount = Math.max(
+    1,
+    ...summary.scoreDistribution.map((item) => item.ratingsCount),
   );
 
   return (
@@ -81,13 +85,13 @@ export default async function AuthorPage() {
         <Card>
           <CardContent className="p-3">
             <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Рецензий
+              Оценено в этом году
             </span>
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {reviewSummary.reviewsCount}
+              {summary.currentYearRatingsCount}
             </span>
             <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
-              авторских текстов
+              {formatRatingsCount(summary.currentYearRatingsCount)}
             </span>
           </CardContent>
         </Card>
@@ -95,13 +99,13 @@ export default async function AuthorPage() {
         <Card>
           <CardContent className="p-3">
             <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Опубликовано
+              Рецензий
             </span>
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {reviewsByStatus.get("published") ?? 0}
+              {reviewSummary.reviewsCount}
             </span>
             <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
-              рецензий в архиве
+              авторских текстов
             </span>
           </CardContent>
         </Card>
@@ -138,21 +142,31 @@ export default async function AuthorPage() {
         <Card>
           <CardContent className="p-3">
             <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Рецензии по статусам
+              Распределение оценок
             </span>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              {CONTRIBUTION_STATUSES.map((status) => {
-                const count = reviewsByStatus.get(status) ?? 0;
+            <div className="mt-2 grid gap-1.5">
+              {RATING_SCORE_VALUES.map((score) => {
+                const count = distributionByScore.get(score) ?? 0;
+                const toneClassName = RATING_BAR_TONE_CLASS_NAMES[getRatingTone(score)];
+                const width = `${Math.max(3, (count / maxScoreDistributionCount) * 100)}%`;
 
                 return (
                   <div
-                    key={status}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-stone-200 bg-stone-100/80 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
+                    key={score}
+                    className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2"
                   >
-                    <span className="truncate text-xs text-stone-600">
-                      {CONTRIBUTION_STATUS_VALUE_LABELS[status]}
+                    <span className="font-mono text-xs font-semibold tabular-nums text-stone-700">
+                      {formatScore(score)}
                     </span>
-                    <span className="font-mono text-sm font-semibold leading-none tabular-nums text-stone-950">
+                    <span className="h-5 overflow-hidden rounded-sm border border-stone-200 bg-stone-100">
+                      <span
+                        className={`block h-full rounded-sm ${
+                          count > 0 ? toneClassName : "bg-stone-200/80"
+                        }`}
+                        style={{ width }}
+                      />
+                    </span>
+                    <span className="text-right font-mono text-xs font-semibold tabular-nums text-stone-950">
                       {count}
                     </span>
                   </div>

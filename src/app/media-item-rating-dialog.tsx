@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
@@ -22,6 +23,7 @@ type MediaItemRatingDialogProps = {
   currentAuthorFirstExperiencedAt?: Date | string | null;
   currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
   currentAuthorScore: number | null;
+  size?: "card" | "compact";
 };
 
 type MediaItemRatingPanelProps = MediaItemRatingDialogProps & {
@@ -61,7 +63,7 @@ export function MediaItemRatingPanel({
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const ratingPanelClassName = isCompact
-    ? `group relative block min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+    ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
         currentAuthor
           ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
           : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
@@ -85,7 +87,8 @@ export function MediaItemRatingPanel({
     : isCompact
       ? "mt-1 block font-mono text-xs uppercase tracking-[0.1em] text-red-900"
       : "mt-2 block font-mono text-sm uppercase tracking-[0.14em] text-red-900";
-  const tooltip = currentAuthor ? "Изменить оценку" : "Войти как автор";
+  const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
+  const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
   const content = (
     <>
       <span className={labelClassName}>{isCompact ? "Моя" : "Ваша оценка"}</span>
@@ -119,7 +122,7 @@ export function MediaItemRatingPanel({
 
   if (!currentAuthor) {
     return (
-      <ArchiveTooltip label={tooltip} className={isCompact ? "shrink-0" : "w-full"}>
+      <ArchiveTooltip label={tooltip} className="w-full">
         <Link
           href="/author/login"
           className={ratingPanelClassName}
@@ -133,7 +136,7 @@ export function MediaItemRatingPanel({
   }
 
   return (
-    <ArchiveTooltip label={tooltip} className={isCompact ? "shrink-0" : "w-full"}>
+    <ArchiveTooltip label={tooltip} className="w-full">
       <button
         type="button"
         onClick={(event) => {
@@ -141,7 +144,7 @@ export function MediaItemRatingPanel({
           onOpen?.();
         }}
         className={ratingPanelClassName}
-        aria-label="Изменить вашу оценку"
+        aria-label={ratingActionLabel}
       >
         {content}
       </button>
@@ -238,6 +241,7 @@ export function MediaItemRatingDialog({
   currentAuthorFirstExperiencedAt,
   currentAuthorFirstExperiencedPrecision,
   currentAuthorScore,
+  size = "card",
 }: MediaItemRatingDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
 
@@ -252,21 +256,25 @@ export function MediaItemRatingDialog({
         currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
         currentAuthorScore={currentAuthorScore}
         onOpen={() => setIsOpen(true)}
+        size={size}
       />
 
-      {isOpen ? (
-        <MediaItemRatingModal
-          mediaItemCode={mediaItemCode}
-          franchiseCode={franchiseCode}
-          title={title}
-          currentAuthor={currentAuthor}
-          currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
-          currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
-          currentAuthorScore={currentAuthorScore}
-          formId="media-item-rating-form"
-          onClose={() => setIsOpen(false)}
-        />
-      ) : null}
+      {isOpen
+        ? createPortal(
+            <MediaItemRatingModal
+              mediaItemCode={mediaItemCode}
+              franchiseCode={franchiseCode}
+              title={title}
+              currentAuthor={currentAuthor}
+              currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
+              currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
+              currentAuthorScore={currentAuthorScore}
+              formId="media-item-rating-form"
+              onClose={() => setIsOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

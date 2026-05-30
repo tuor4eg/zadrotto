@@ -9,6 +9,8 @@ import type {
   AuthorRatingFilter,
   CatalogSort,
   CatalogSortDirection,
+  CatalogYearFilter,
+  CatalogYearMode,
   MediaTypeFilter,
 } from "./media-items-catalog-logic";
 import { CatalogHeaderControls } from "./catalog-header-controls";
@@ -21,6 +23,8 @@ type CatalogStickyHeaderProps = {
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
 };
 
 export function CatalogStickyHeader({
@@ -31,6 +35,8 @@ export function CatalogStickyHeader({
   searchQuery,
   sort,
   sortDirection,
+  yearFilter,
+  yearMode,
 }: CatalogStickyHeaderProps) {
   const [isCompact, setIsCompact] = useState(false);
   const isCompactRef = useRef(false);
@@ -150,6 +156,8 @@ export function CatalogStickyHeader({
           searchQuery={searchQuery}
           sort={sort}
           sortDirection={sortDirection}
+          yearFilter={yearFilter}
+          yearMode={yearMode}
         />
         {adminLink && isCompact ? (
           <ArchiveTooltip label="Админка" side="bottom">
