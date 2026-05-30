@@ -70,6 +70,42 @@ export async function getAuthorReviews(authorId: number) {
     .orderBy(desc(contributions.updatedAt), desc(contributions.id));
 }
 
+export async function getAuthorReviewSummary(authorId: number) {
+  const [statusCounts, latestReviews] = await Promise.all([
+    db
+      .select({
+        status: contributions.status,
+        reviewsCount: sql<number>`count(${contributions.id})::int`,
+      })
+      .from(contributions)
+      .where(and(eq(contributions.authorId, authorId), eq(contributions.type, "review")))
+      .groupBy(contributions.status),
+    db
+      .select({
+        id: contributions.id,
+        status: contributions.status,
+        updatedAt: contributions.updatedAt,
+        mediaItemCode: mediaItems.code,
+        mediaItemTitle: mediaItems.title,
+        reviewTitle: contributionReviews.title,
+      })
+      .from(contributions)
+      .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+      .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+      .where(and(eq(contributions.authorId, authorId), eq(contributions.type, "review")))
+      .orderBy(desc(contributions.updatedAt), desc(contributions.id))
+      .limit(5),
+  ]);
+
+  const reviewsCount = statusCounts.reduce((total, item) => total + item.reviewsCount, 0);
+
+  return {
+    reviewsCount,
+    statusCounts,
+    latestReviews,
+  };
+}
+
 export async function getAuthorReviewForEdit(authorId: number, contributionId: number) {
   const [review] = await db
     .select({
@@ -165,10 +201,11 @@ export async function upsertAuthorReview(input: {
   mediaItemId: number;
   title: string;
   body: string;
-  status: Extract<ContributionStatus, "draft" | "submitted">;
+  status: Extract<ContributionStatus, "draft" | "published" | "submitted">;
 }) {
   const now = new Date();
   const submittedAt = input.status === "submitted" ? now : null;
+  const reviewedAt = input.status === "published" ? now : null;
 
   return db.transaction(async (tx) => {
     const existingReview = input.contributionId
@@ -219,7 +256,7 @@ export async function upsertAuthorReview(input: {
           status: input.status,
           submittedAt,
           reviewedByAdminId: null,
-          reviewedAt: null,
+          reviewedAt,
           adminNote: null,
           updatedAt: now,
         })
@@ -243,6 +280,7 @@ export async function upsertAuthorReview(input: {
         primaryMediaItemId: input.mediaItemId,
         status: input.status,
         submittedAt,
+        reviewedAt,
         updatedAt: now,
       })
       .returning({ id: contributions.id });

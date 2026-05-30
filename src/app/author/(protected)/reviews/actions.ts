@@ -49,7 +49,12 @@ export async function saveAuthorReviewAction(
   const contributionId = getPositiveInteger(getFormString(formData, "contributionId"));
   const mediaItemId = getPositiveInteger(getFormString(formData, "mediaItemId"));
   const intent = getFormString(formData, "intent");
-  const status = intent === "draft" ? "draft" : "submitted";
+  const status =
+    intent === "draft"
+      ? "draft"
+      : author.canPublishMediaWithoutReview
+        ? "published"
+        : "submitted";
   const values = getFormValues(formData);
   const form = parseReviewFormInput({
     title: values.title,
@@ -107,5 +112,9 @@ export async function saveAuthorReviewAction(
   revalidatePath("/admin/reviews");
   revalidatePath("/admin", "layout");
 
-  redirect(`/author/reviews?${status === "draft" ? "saved" : "submitted"}=1`);
+  redirect(
+    `/author/reviews?${
+      status === "draft" ? "saved" : status === "published" ? "published" : "submitted"
+    }=1`,
+  );
 }

@@ -1,8 +1,6 @@
 import Link from "next/link";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
-import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorReviews } from "@/db/queries/contribution-reviews";
 import { requireAuthor } from "@/lib/author-auth";
@@ -10,9 +8,11 @@ import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
 } from "@/lib/contributions";
+import { AuthorToasts, type AuthorToast } from "../author-toasts";
 
 type AuthorReviewsPageProps = {
   searchParams: Promise<{
+    published?: string;
     saved?: string;
     submitted?: string;
   }>;
@@ -44,33 +44,36 @@ function formatDate(value: Date | null) {
 export default async function AuthorReviewsPage({ searchParams }: AuthorReviewsPageProps) {
   const [author, params] = await Promise.all([requireAuthor(), searchParams]);
   const reviews = await getAuthorReviews(author.id);
-  const message =
+  const toast: AuthorToast | null =
     params.saved === "1"
-      ? "Черновик рецензии сохранен."
+      ? { id: "saved", tone: "success", text: "Черновик рецензии сохранен." }
+      : params.published === "1"
+        ? { id: "published", tone: "success", text: "Рецензия опубликована." }
       : params.submitted === "1"
-        ? "Рецензия отправлена на проверку."
+        ? { id: "submitted", tone: "success", text: "Рецензия отправлена на проверку." }
         : null;
+  const description = author.canPublishMediaWithoutReview
+    ? "Авторский текст можно публиковать в архиве сразу."
+    : "Авторский текст появляется в архиве после проверки админом.";
 
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-serif text-3xl leading-none text-stone-950">Мои рецензии</h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Авторский текст появляется в архиве после проверки админом.
-          </p>
+          <p className="mt-2 text-sm text-stone-600">{description}</p>
         </div>
-        <Link href="/author/reviews/new" className={buttonVariants({ size: "sm" })}>
-          Написать
-        </Link>
       </div>
 
-      {message ? <Alert variant="success">{message}</Alert> : null}
+      <AuthorToasts
+        clearParams={["saved", "published", "submitted"]}
+        messages={toast ? [toast] : []}
+      />
 
       {reviews.length === 0 ? (
         <Card>
           <CardContent className="p-5 text-sm text-stone-500">
-            Рецензий пока нет.
+            Рецензий пока нет. Открой запись в архиве и поделись мнением со страницы тайтла.
           </CardContent>
         </Card>
       ) : (

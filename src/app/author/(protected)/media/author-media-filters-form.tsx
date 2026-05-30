@@ -6,13 +6,13 @@ import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import {
+  AUTHOR_MEDIA_STATUS_FILTERS,
   type AuthorMediaStatusFilter,
   type AuthorMediaTypeFilter,
 } from "@/lib/author-media-filters";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import {
   PUBLICATION_STATUS_LABELS,
-  PUBLICATION_STATUSES,
   type PublicationStatus,
 } from "@/lib/publication-status";
 
@@ -63,6 +63,8 @@ export function AuthorMediaFiltersForm({
       nextSearchParams.delete("page");
       nextSearchParams.delete("published");
       nextSearchParams.delete("submitted");
+      nextSearchParams.delete("withdrawn");
+      nextSearchParams.delete("deleted");
 
       if (nextFilters.q !== undefined) {
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");
@@ -165,7 +167,7 @@ export function AuthorMediaFiltersForm({
           }
         >
           <option value="all">Все статусы</option>
-          {PUBLICATION_STATUSES.map((status: PublicationStatus) => (
+          {AUTHOR_MEDIA_STATUS_FILTERS.map((status: PublicationStatus) => (
             <option key={status} value={status}>
               {PUBLICATION_STATUS_LABELS[status]}
             </option>

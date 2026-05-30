@@ -5,12 +5,17 @@ import * as schema from "./schema";
 
 function createDbClient() {
   const connectionString = process.env.DATABASE_URL;
+  const maxConnections = Number(process.env.DATABASE_MAX_CONNECTIONS ?? 3);
 
   if (!connectionString) {
     throw new Error("DATABASE_URL is not set");
   }
 
-  return postgres(connectionString, { prepare: false });
+  return postgres(connectionString, {
+    idle_timeout: 20,
+    max: Number.isSafeInteger(maxConnections) && maxConnections > 0 ? maxConnections : 3,
+    prepare: false,
+  });
 }
 
 function createDb(client: ReturnType<typeof createDbClient>) {

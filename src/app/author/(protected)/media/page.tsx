@@ -1,10 +1,12 @@
 import Link from "next/link";
+import { Edit3, Eye, Plus, Send, Trash2, Undo2 } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 import { PaginationNav } from "@/components/pagination-nav";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorMediaItems } from "@/db/queries/media-items";
 import {
   filterAuthorMediaItems,
@@ -12,19 +14,25 @@ import {
   parseAuthorMediaTypeFilter,
 } from "@/lib/author-media-filters";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
-import { canAuthorRequestPublication } from "@/lib/author-media-publication";
+import {
+  canAuthorDeleteMediaItem,
+  canAuthorRequestPublication,
+  canAuthorWithdrawPublicationRequest,
+} from "@/lib/author-media-publication";
 import { requireAuthor } from "@/lib/author-auth";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
 import {
   PUBLICATION_STATUS_VALUE_LABELS,
-  PUBLISHED_PUBLICATION_STATUS,
   type PublicationStatus,
 } from "@/lib/publication-status";
 import { clampPage, getOffset, getTotalPages, parsePage, parsePageSize } from "@/lib/pagination";
-import { resolveCoverUrl } from "@/lib/storage";
-import { publishAuthorMediaItemAction } from "./actions";
+import {
+  deleteAuthorMediaItemAction,
+  publishAuthorMediaItemAction,
+  withdrawAuthorMediaItemAction,
+} from "./actions";
+import { AuthorToasts, type AuthorToast } from "../author-toasts";
 import { AuthorMediaFiltersForm } from "./author-media-filters-form";
-import { CoverPreview } from "./cover-preview";
 
 const AUTHOR_MEDIA_PAGE_SIZE_OPTIONS = [12, 24, 48] as const;
 const DEFAULT_AUTHOR_MEDIA_PAGE_SIZE = 24;
@@ -38,113 +46,92 @@ type AuthorMediaPageProps = {
     pageSize?: string;
     published?: string;
     submitted?: string;
+    withdrawn?: string;
+    deleted?: string;
     status?: string;
     type?: string;
     q?: string;
   }>;
 };
 
-const STATUS_ICON_CLASS_NAMES: Record<PublicationStatus, string> = {
-  private: "border-stone-300 bg-stone-100 text-stone-600",
-  submitted: "border-amber-300 bg-amber-50 text-amber-700",
-  published: "border-emerald-300 bg-emerald-50 text-emerald-700",
-  rejected: "border-red-300 bg-red-50 text-red-700",
+const STATUS_BADGE_VARIANTS: Record<
+  PublicationStatus,
+  "default" | "outline" | "positive" | "warning" | "destructive"
+> = {
+  private: "outline",
+  submitted: "warning",
+  published: "positive",
+  rejected: "destructive",
 };
 
-function getStatusMessage(params: Awaited<AuthorMediaPageProps["searchParams"]>) {
+function getStatusToast(params: Awaited<AuthorMediaPageProps["searchParams"]>): AuthorToast | null {
   if (params.created === "1") {
-    return { tone: "success" as const, text: "Запись создана." };
+    return { id: "created", tone: "success", text: "Запись создана." };
   }
 
   if (params.updated === "1") {
-    return { tone: "success" as const, text: "Запись сохранена." };
+    return { id: "updated", tone: "success", text: "Запись сохранена." };
   }
 
   if (params.published === "1") {
-    return { tone: "success" as const, text: "Запись опубликована." };
+    return { id: "published", tone: "success", text: "Запись опубликована." };
   }
 
   if (params.submitted === "1") {
-    return { tone: "success" as const, text: "Запись отправлена на проверку." };
+    return { id: "submitted", tone: "success", text: "Запись отправлена на проверку." };
+  }
+
+  if (params.withdrawn === "1") {
+    return { id: "withdrawn", tone: "success", text: "Запись снова стала черновиком." };
+  }
+
+  if (params.deleted === "1") {
+    return { id: "deleted", tone: "success", text: "Черновик удален." };
   }
 
   if (params.error === "locked") {
-    return { tone: "error" as const, text: "Эту запись сейчас нельзя редактировать." };
+    return { id: "locked", tone: "error", text: "Эту запись сейчас нельзя редактировать." };
   }
 
   if (params.error === "publish-locked") {
-    return { tone: "error" as const, text: "Эту запись сейчас нельзя отправить на публикацию." };
+    return {
+      id: "publish-locked",
+      tone: "error",
+      text: "Эту запись сейчас нельзя отправить на публикацию.",
+    };
+  }
+
+  if (params.error === "withdraw-locked") {
+    return {
+      id: "withdraw-locked",
+      tone: "error",
+      text: "Эту запись сейчас нельзя отозвать с проверки.",
+    };
+  }
+
+  if (params.error === "delete-locked") {
+    return { id: "delete-locked", tone: "error", text: "Эту запись сейчас нельзя удалить." };
   }
 
   return null;
 }
 
-function PublicationStatusIcon({ status }: { status: PublicationStatus }) {
-  if (status === "private") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
-        <path
-          d="M7 10V8a5 5 0 0 1 10 0v2"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-        <path
-          d="M6 10h12v9H6z"
-          stroke="currentColor"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    );
+function formatDate(value: Date | string | null) {
+  if (!value) {
+    return "—";
   }
 
-  if (status === "submitted") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
-        <circle cx="12" cy="12" r="8" stroke="currentColor" strokeWidth="2" />
-        <path
-          d="M12 8v5l3 2"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    );
-  }
-
-  if (status === "published") {
-    return (
-      <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
-        <path
-          d="M5 12l4 4L19 6"
-          stroke="currentColor"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth="2"
-        />
-      </svg>
-    );
-  }
-
-  return (
-    <svg viewBox="0 0 24 24" aria-hidden="true" className="h-4 w-4" fill="none">
-      <path
-        d="M7 7l10 10M17 7 7 17"
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeWidth="2"
-      />
-    </svg>
-  );
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZone: "Europe/Moscow",
+  }).format(new Date(value));
 }
 
 export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageProps) {
   const [author, params] = await Promise.all([requireAuthor(), searchParams]);
   const items = await getAuthorMediaItems(author.id);
-  const statusMessage = getStatusMessage(params);
+  const statusToast = getStatusToast(params);
   const mediaTypeFilter = parseAuthorMediaTypeFilter(params.type);
   const statusFilter = parseAuthorMediaStatusFilter(params.status);
   const searchQuery = params.q?.trim() ?? "";
@@ -174,9 +161,9 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
     <div className="flex flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-serif text-3xl leading-none text-stone-950">Моя картотека</h2>
+          <h2 className="font-serif text-3xl leading-none text-stone-950">Мои предложения</h2>
           <p className="mt-2 text-sm text-stone-600">
-            Приватные записи видны только тебе и не открываются публичным маршрутом.
+            Здесь остаются черновики и записи на проверке. Опубликованное уходит в общий архив.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -187,6 +174,7 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
             href="/author/media/new"
             className={buttonVariants({ size: "sm" })}
           >
+            <Plus />
             Добавить
           </Link>
         </div>
@@ -200,16 +188,23 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
         />
       ) : null}
 
-      {statusMessage ? (
-        <Alert variant={statusMessage.tone === "success" ? "success" : "destructive"}>
-          {statusMessage.text}
-        </Alert>
-      ) : null}
+      <AuthorToasts
+        clearParams={[
+          "created",
+          "updated",
+          "published",
+          "submitted",
+          "withdrawn",
+          "deleted",
+          "error",
+        ]}
+        messages={statusToast ? [statusToast] : []}
+      />
 
       {items.length === 0 ? (
         <Card>
           <CardContent className="p-5 text-sm text-stone-500">
-          Пока нет приватно добавленных записей.
+          Пока нет черновиков или записей на проверке.
           </CardContent>
         </Card>
       ) : visibleItems.length === 0 ? (
@@ -220,103 +215,117 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
         </Card>
       ) : (
         <>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-3">
           {paginatedItems.map((item) => {
-            const isPublished = item.publicationStatus === PUBLISHED_PUBLICATION_STATUS;
             const isEditable = isAuthorEditablePublicationStatus(item.publicationStatus);
             const canRequestPublication = canAuthorRequestPublication(item.publicationStatus);
-            const coverUrl = resolveCoverUrl(item.coverUrl);
+            const canWithdrawPublication =
+              canAuthorWithdrawPublicationRequest(item.publicationStatus);
+            const canDelete = canAuthorDeleteMediaItem(item.publicationStatus);
             const statusLabel = PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus];
-            const viewHref = isPublished ? `/media/${item.code}` : `/author/media/${item.id}`;
 
             return (
-              <Card key={item.id} className="flex min-h-full flex-col overflow-hidden">
-                <div className="overflow-hidden bg-stone-100">
-                  {coverUrl ? (
-                    <CoverPreview
-                      src={coverUrl}
-                      alt={`Обложка: ${item.title}`}
-                      buttonClassName="relative block aspect-square w-full overflow-hidden bg-white p-0 text-left"
-                      thumbnailClassName="absolute inset-0 size-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex aspect-square w-full items-center justify-center border-b border-stone-200 font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-400">
-                      Без обложки
+              <div
+                key={item.id}
+                className="rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
+              >
+                <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                  <div className="min-w-0">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge variant={STATUS_BADGE_VARIANTS[item.publicationStatus]}>
+                        {statusLabel}
+                      </Badge>
+                      <span className="text-xs text-stone-500">
+                        Обновлено: {formatDate(item.updatedAt)}
+                      </span>
                     </div>
-                  )}
-                </div>
-
-                <CardContent className="flex flex-1 flex-col gap-3 p-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <h3 className="line-clamp-2 text-sm font-semibold leading-5 text-stone-950">
-                        {item.title}
-                      </h3>
+                    <h3 className="mt-2 truncate text-base font-semibold text-stone-950">
+                      {item.title}
+                    </h3>
+                    <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1 text-sm text-stone-600">
                       {item.originalTitle ? (
-                        <p className="mt-1 truncate text-xs text-stone-500">
-                          {item.originalTitle}
-                        </p>
+                        <span className="min-w-0 truncate">{item.originalTitle}</span>
                       ) : null}
+                      <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
+                      {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                     </div>
-
-                    <span
-                      className={`flex h-7 w-7 shrink-0 items-center justify-center border ${STATUS_ICON_CLASS_NAMES[item.publicationStatus]}`}
-                      title={statusLabel}
-                      aria-label={`Статус: ${statusLabel}`}
-                    >
-                      <PublicationStatusIcon status={item.publicationStatus} />
-                    </span>
+                    {item.adminNote ? (
+                      <p className="mt-3 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-600">
+                        {item.adminNote}
+                      </p>
+                    ) : null}
                   </div>
 
-                  <dl className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-500">
-                    <div>
-                      <dt className="sr-only">Тип медиа</dt>
-                      <dd>{MEDIA_TYPE_LABELS[item.mediaType]}</dd>
-                    </div>
-                    {item.releaseYear ? (
-                      <div>
-                        <dt className="sr-only">Год выпуска</dt>
-                        <dd>{item.releaseYear}</dd>
-                      </div>
-                    ) : null}
-                    <div>
-                      <dt className="sr-only">Статус публикации</dt>
-                      <dd>{statusLabel}</dd>
-                    </div>
-                  </dl>
-
-                  {item.adminNote ? (
-                    <div className="line-clamp-3 rounded-md border border-stone-200 bg-stone-50 px-2 py-1.5 text-xs leading-5 text-stone-600">
-                      {item.adminNote}
-                    </div>
-                  ) : null}
-
-                  <div className="mt-auto flex flex-wrap gap-2 pt-1">
-                    <Link
-                      href={viewHref}
-                      className={buttonVariants({ variant: "outline", size: "sm" })}
-                    >
-                      Смотреть
-                    </Link>
-                    {isEditable ? (
+                  <div className="flex shrink-0 flex-wrap gap-1.5 md:justify-end">
+                    <Tooltip label="Смотреть">
                       <Link
-                        href={`/author/media/${item.id}/edit`}
-                        className={buttonVariants({ variant: "outline", size: "sm" })}
+                        href={`/author/media/${item.id}`}
+                        className={buttonVariants({ variant: "outline", size: "icon" })}
+                        aria-label={`Смотреть предложение ${item.title}`}
                       >
-                        Править
+                        <Eye />
                       </Link>
+                    </Tooltip>
+                    {isEditable ? (
+                      <Tooltip label="Править">
+                        <Link
+                          href={`/author/media/${item.id}/edit`}
+                          className={buttonVariants({ variant: "outline", size: "icon" })}
+                          aria-label={`Править предложение ${item.title}`}
+                        >
+                          <Edit3 />
+                        </Link>
+                      </Tooltip>
                     ) : null}
                     {canRequestPublication ? (
-                      <form action={publishAuthorMediaItemAction}>
-                        <input type="hidden" name="mediaItemId" value={item.id} />
-                        <Button type="submit" size="sm">
-                          Опубликовать
-                        </Button>
-                      </form>
+                      <Tooltip label="Отправить на публикацию">
+                        <ConfirmAction
+                          action={publishAuthorMediaItemAction}
+                          confirmLabel="Отправить"
+                          confirmVariant="positive"
+                          description={`Если администратор одобрит «${item.title}», запись попадет в общую базу и пропадет из черновиков. После этого ты уже не сможешь ее редактировать или удалить из предложений.`}
+                          fields={[{ name: "mediaItemId", value: item.id }]}
+                          title="Отправить на публикацию?"
+                          triggerAriaLabel={`Отправить на публикацию ${item.title}`}
+                          triggerIcon={<Send />}
+                          triggerLabel="Отправить"
+                          triggerSize="icon"
+                        />
+                      </Tooltip>
+                    ) : null}
+                    {canWithdrawPublication ? (
+                      <Tooltip label="Отозвать с проверки">
+                        <form action={withdrawAuthorMediaItemAction}>
+                          <input type="hidden" name="mediaItemId" value={item.id} />
+                          <Button
+                            type="submit"
+                            variant="outline"
+                            size="icon"
+                            aria-label={`Отозвать с проверки ${item.title}`}
+                          >
+                            <Undo2 />
+                          </Button>
+                        </form>
+                      </Tooltip>
+                    ) : null}
+                    {canDelete ? (
+                      <Tooltip label="Удалить">
+                        <ConfirmAction
+                          action={deleteAuthorMediaItemAction}
+                          fields={[{ name: "mediaItemId", value: item.id }]}
+                          title="Удалить черновик?"
+                          description={`Запись «${item.title}» будет удалена из твоих предложений. Это действие нельзя отменить.`}
+                          triggerIcon={<Trash2 />}
+                          triggerLabel="Удалить"
+                          triggerAriaLabel={`Удалить черновик ${item.title}`}
+                          triggerSize="icon"
+                          confirmLabel="Удалить"
+                        />
+                      </Tooltip>
                     ) : null}
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             );
           })}
         </div>

@@ -4,7 +4,9 @@ import {
   desc,
   eq,
   exists,
+  gte,
   inArray,
+  isNull,
   ne,
   not,
   notExists,
@@ -22,7 +24,13 @@ import type {
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
-import { authorMediaExperiences, authors, franchises, mediaItems, ratings } from "@/db/schema";
+import {
+  authorMediaExperiences,
+  authors,
+  franchises,
+  mediaItems,
+  ratings,
+} from "@/db/schema";
 import type { MediaType } from "@/lib/media-types";
 import type { PublicationStatus } from "@/lib/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
@@ -302,7 +310,12 @@ export async function getAuthorMediaItems(authorId: number) {
       updatedAt: mediaItems.updatedAt,
     })
     .from(mediaItems)
-    .where(eq(mediaItems.createdByAuthorId, authorId))
+    .where(
+      and(
+        eq(mediaItems.createdByAuthorId, authorId),
+        ne(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      ),
+    )
     .orderBy(asc(mediaItems.title));
 }
 
@@ -429,10 +442,15 @@ export async function getAuthorPrivateMediaItemLimitUsageForExecutor(
     since: Date;
   },
 ) {
+  const privateMediaItemCondition = eq(mediaItems.publicationStatus, "private");
+
   const [usage] = await executor
     .select({
-      totalCount: sql<number>`count(*) filter (where ${mediaItems.publicationStatus} = 'private')::int`,
-      recentCount: sql<number>`count(*) filter (where ${mediaItems.createdAt} >= ${input.since})::int`,
+      totalCount: sql<number>`count(*) filter (where ${privateMediaItemCondition})::int`,
+      recentCount: sql<number>`count(*) filter (where ${and(
+        privateMediaItemCondition,
+        gte(mediaItems.createdAt, input.since),
+      )})::int`,
     })
     .from(mediaItems)
     .where(eq(mediaItems.createdByAuthorId, input.authorId));
@@ -573,6 +591,8 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(authorId),
+      currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(authorId),
+      currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(authorId),
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
@@ -678,6 +698,72 @@ export async function submitAuthorMediaItemForPublication(input: {
     });
 
   return item ?? null;
+}
+
+export async function withdrawAuthorMediaItemFromReview(input: {
+  authorId: number;
+  mediaItemId: number;
+}) {
+  const now = new Date();
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      publicationStatus: "private",
+      submittedAt: null,
+      reviewedByAdminId: null,
+      reviewedAt: null,
+      updatedAt: now,
+    })
+    .where(
+      and(
+        eq(mediaItems.id, input.mediaItemId),
+        eq(mediaItems.createdByAuthorId, input.authorId),
+        eq(mediaItems.publicationStatus, "submitted"),
+      ),
+    )
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      publicationStatus: mediaItems.publicationStatus,
+    });
+
+  return item ?? null;
+}
+
+export async function deleteAuthorDraftMediaItem(input: {
+  authorId: number;
+  mediaItemId: number;
+}) {
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .select({
+        id: mediaItems.id,
+        code: mediaItems.code,
+        coverUrl: mediaItems.coverUrl,
+        publicationStatus: mediaItems.publicationStatus,
+      })
+      .from(mediaItems)
+      .where(
+        and(
+          eq(mediaItems.id, input.mediaItemId),
+          eq(mediaItems.createdByAuthorId, input.authorId),
+          inArray(mediaItems.publicationStatus, ["private", "rejected"]),
+        ),
+      )
+      .limit(1);
+
+    if (!item) {
+      return null;
+    }
+
+    await tx
+      .delete(authorMediaExperiences)
+      .where(eq(authorMediaExperiences.mediaItemId, input.mediaItemId));
+    await tx.delete(ratings).where(eq(ratings.mediaItemId, input.mediaItemId));
+    await tx.delete(mediaItems).where(eq(mediaItems.id, input.mediaItemId));
+
+    return item;
+  });
 }
 
 export async function getSubmittedAuthorMediaItemsForAdmin() {
@@ -835,9 +921,29 @@ export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
   return item ?? null;
 }
 
-export async function canViewMediaItemCover(objectKey: string, currentAuthorId?: number) {
-  const visibilityCondition = currentAuthorId
-    ? or(publishedMediaItemCondition, eq(mediaItems.createdByAuthorId, currentAuthorId))
+export async function canViewMediaItemCover(
+  objectKey: string,
+  currentAuthor?: { id: number; code: string },
+) {
+  const authorOwnsCoverCondition = currentAuthor
+    ? and(
+        eq(mediaItems.createdByAuthorId, currentAuthor.id),
+        exists(
+          db
+            .select({ id: authors.id })
+            .from(authors)
+            .where(
+              and(
+                eq(authors.id, currentAuthor.id),
+                eq(authors.code, currentAuthor.code),
+                isNull(authors.blockedAt),
+              ),
+            ),
+        ),
+      )
+    : undefined;
+  const visibilityCondition = authorOwnsCoverCondition
+    ? or(publishedMediaItemCondition, authorOwnsCoverCondition)
     : publishedMediaItemCondition;
   const [item] = await db
     .select({ id: mediaItems.id })

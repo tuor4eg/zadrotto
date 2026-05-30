@@ -1,8 +1,16 @@
 import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
-import { PUBLICATION_STATUSES, type PublicationStatus } from "@/lib/publication-status";
+import {
+  PUBLICATION_STATUSES,
+  PUBLISHED_PUBLICATION_STATUS,
+  type PublicationStatus,
+} from "@/lib/publication-status";
 
 export type AuthorMediaTypeFilter = MediaType | "all";
 export type AuthorMediaStatusFilter = PublicationStatus | "all";
+
+export const AUTHOR_MEDIA_STATUS_FILTERS = PUBLICATION_STATUSES.filter(
+  (status) => status !== PUBLISHED_PUBLICATION_STATUS,
+);
 
 export type AuthorMediaFilterItem = {
   title: string;
@@ -19,7 +27,7 @@ export function parseAuthorMediaTypeFilter(value: string | undefined) {
 }
 
 export function parseAuthorMediaStatusFilter(value: string | undefined) {
-  return PUBLICATION_STATUSES.some((status) => status === value)
+  return AUTHOR_MEDIA_STATUS_FILTERS.some((status) => status === value)
     ? (value as PublicationStatus)
     : "all";
 }
@@ -39,6 +47,7 @@ export function filterAuthorMediaItems<TItem extends AuthorMediaFilterItem>(
   const normalizedSearchQuery = normalizeAuthorMediaSearch(filters.searchQuery);
 
   return items.filter((item) => {
+    const isVisibleAuthorMediaItem = item.publicationStatus !== PUBLISHED_PUBLICATION_STATUS;
     const matchesType = filters.mediaType === "all" || item.mediaType === filters.mediaType;
     const matchesStatus =
       filters.status === "all" || item.publicationStatus === filters.status;
@@ -48,6 +57,6 @@ export function filterAuthorMediaItems<TItem extends AuthorMediaFilterItem>(
         (value) => value !== null && value.toLowerCase().includes(normalizedSearchQuery),
       );
 
-    return matchesType && matchesStatus && matchesSearch;
+    return isVisibleAuthorMediaItem && matchesType && matchesStatus && matchesSearch;
   });
 }

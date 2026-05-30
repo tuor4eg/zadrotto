@@ -3,7 +3,6 @@ import { generateEntityCode, slugifyCodePart } from "@/lib/generated-code";
 
 export const AUTHOR_EDITABLE_PUBLICATION_STATUSES = [
   "private",
-  "submitted",
   "rejected",
 ] as const satisfies
   readonly PublicationStatus[];

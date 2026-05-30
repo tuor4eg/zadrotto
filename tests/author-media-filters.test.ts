@@ -38,6 +38,7 @@ describe("author media filters", () => {
     assert.equal(parseAuthorMediaTypeFilter("game"), "game");
     assert.equal(parseAuthorMediaTypeFilter("unknown"), "all");
     assert.equal(parseAuthorMediaStatusFilter("private"), "private");
+    assert.equal(parseAuthorMediaStatusFilter("published"), "all");
     assert.equal(parseAuthorMediaStatusFilter("unknown"), "all");
   });
 
@@ -53,7 +54,7 @@ describe("author media filters", () => {
         mediaType: "film",
         status: "published",
       }).map((item) => item.code),
-      ["the-matrix"],
+      [],
     );
     assert.deepEqual(
       filterAuthorMediaItems(items, {
@@ -70,6 +71,17 @@ describe("author media filters", () => {
         status: "all",
       }),
       [],
+    );
+  });
+
+  it("excludes published items from the author cabinet list", () => {
+    assert.deepEqual(
+      filterAuthorMediaItems(items, {
+        searchQuery: "",
+        mediaType: "all",
+        status: "all",
+      }).map((item) => item.code),
+      ["half-life", "dune"],
     );
   });
 });

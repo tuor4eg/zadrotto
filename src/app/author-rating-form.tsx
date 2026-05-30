@@ -195,8 +195,12 @@ export function AuthorRatingForm({
       : compact
         ? "h-7 w-7 text-sm"
         : "h-9 w-9 text-base";
-  const experienceParts = getExperienceParts(selectedExperienceValue);
   const currentYear = new Date().getFullYear();
+  const experienceParts = getExperienceParts(selectedExperienceValue);
+  const visibleExperienceParts = {
+    ...experienceParts,
+    year: experienceParts.year || String(currentYear),
+  };
   const yearOptions = Array.from(
     { length: currentYear - MIN_EXPERIENCE_YEAR + 1 },
     (_, index) => String(currentYear - index),
@@ -205,11 +209,11 @@ export function AuthorRatingForm({
     experienceParts.year && !yearOptions.includes(experienceParts.year)
       ? [experienceParts.year, ...yearOptions]
       : yearOptions;
-  const yearSelectOptions = [
-    { label: "Год", value: "" },
-    ...visibleYearOptions.map((year) => ({ label: year, value: year })),
-  ];
-  const monthDayCount = getDaysInMonth(experienceParts.year, experienceParts.month);
+  const yearSelectOptions = visibleYearOptions.map((year) => ({ label: year, value: year }));
+  const monthDayCount = getDaysInMonth(
+    visibleExperienceParts.year,
+    visibleExperienceParts.month,
+  );
   const monthSelectOptions = MONTH_OPTIONS.map((month, index) => {
     const value = padDatePart(index + 1);
 
@@ -226,7 +230,7 @@ export function AuthorRatingForm({
   }));
 
   function updateExperienceValue(nextParts: Partial<typeof experienceParts>) {
-    const mergedParts = { ...experienceParts, ...nextParts };
+    const mergedParts = { ...visibleExperienceParts, ...nextParts };
     const normalizedDay = String(
       Math.min(Number(mergedParts.day), getDaysInMonth(mergedParts.year, mergedParts.month)),
     ).padStart(2, "0");
@@ -379,7 +383,7 @@ export function AuthorRatingForm({
                   className={DATE_SELECT_CLASS_NAME}
                   compact={false}
                   options={yearSelectOptions}
-                  value={experienceParts.year}
+                  value={visibleExperienceParts.year}
                   onChange={(year) => updateExperienceValue({ year })}
                 />
                 {selectedExperiencePrecision !== "year" ? (
@@ -388,7 +392,7 @@ export function AuthorRatingForm({
                     className={DATE_SELECT_CLASS_NAME}
                     compact={false}
                     options={monthSelectOptions}
-                    value={experienceParts.month}
+                    value={visibleExperienceParts.month}
                     onChange={(month) => updateExperienceValue({ month })}
                   />
                 ) : null}
@@ -398,7 +402,7 @@ export function AuthorRatingForm({
                     className={DATE_SELECT_CLASS_NAME}
                     compact={false}
                     options={daySelectOptions}
-                    value={experienceParts.day}
+                    value={visibleExperienceParts.day}
                     onChange={(day) => updateExperienceValue({ day })}
                   />
                 ) : null}
@@ -413,7 +417,7 @@ export function AuthorRatingForm({
                   setSelectedExperiencePrecision(nextPrecision);
                   setSelectedExperienceValue(
                     buildExperienceValue({
-                      ...experienceParts,
+                      ...visibleExperienceParts,
                       precision: nextPrecision,
                     }),
                   );

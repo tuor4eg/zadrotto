@@ -104,9 +104,9 @@ describe("author media form helpers", () => {
     );
   });
 
-  it("allows authors to edit only non-published records", () => {
+  it("allows authors to edit only draft-like records", () => {
     assert.equal(isAuthorEditablePublicationStatus("private"), true);
-    assert.equal(isAuthorEditablePublicationStatus("submitted"), true);
+    assert.equal(isAuthorEditablePublicationStatus("submitted"), false);
     assert.equal(isAuthorEditablePublicationStatus("rejected"), true);
     assert.equal(isAuthorEditablePublicationStatus("published"), false);
   });

@@ -67,11 +67,9 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
             </div>
           </div>
 
-          {franchise.description ? (
-            <div className="p-6 sm:p-8">
-              <ArchiveNote text={franchise.description} />
-            </div>
-          ) : null}
+          <div className="p-6 sm:p-8">
+            <ArchiveNote text={franchise.description} />
+          </div>
 
           <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-4">
             {items.length === 0 ? (

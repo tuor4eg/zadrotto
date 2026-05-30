@@ -32,7 +32,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               href="/author/media"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
-              Моя картотека
+              Предложения
             </Link>
             <Link
               href="/author/reviews"
@@ -47,14 +47,17 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Архив
             </Link>
             <form action={logoutAuthor}>
-              <Button type="submit" variant="outline" size="sm">
+              <Button type="submit" variant="outline" size="sm" className="cursor-pointer">
                 Выйти
               </Button>
             </form>
           </div>
         </header>
 
-        <section className="archive-paper-surface archive-panel p-5 sm:p-6">
+        <section
+          className="archive-paper-surface archive-panel p-5 sm:p-6"
+          style={{ overflow: "visible" }}
+        >
           {children}
         </section>
       </div>

@@ -1,6 +1,5 @@
 import Link from "next/link";
 
-import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
@@ -27,7 +26,7 @@ type MediaItemFormProps = {
   error?: string;
 };
 
-function getErrorMessage(error?: string) {
+export function getAuthorMediaFormErrorMessage(error?: string) {
   if (error === "required") {
     return "Заполни название и тип медиа.";
   }
@@ -57,11 +56,11 @@ function getErrorMessage(error?: string) {
   }
 
   if (error === "total-limit") {
-    return "Достигнут общий лимит приватных записей для твоего профиля.";
+    return "Достигнут общий лимит черновиков для твоего профиля.";
   }
 
   if (error === "daily-limit") {
-    return "Достигнут суточный лимит приватных записей для твоего профиля.";
+    return "Достигнут суточный лимит черновиков для твоего профиля.";
   }
 
   return null;
@@ -72,10 +71,7 @@ export function MediaItemForm({
   submitLabel,
   franchises,
   values,
-  error,
 }: MediaItemFormProps) {
-  const errorMessage = getErrorMessage(error);
-
   return (
     <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -178,12 +174,6 @@ export function MediaItemForm({
           />
         </div>
       </div>
-
-      {errorMessage ? (
-        <Alert variant="destructive">
-          {errorMessage}
-        </Alert>
-      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Button type="submit">

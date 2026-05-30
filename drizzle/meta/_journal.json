@@ -64,6 +64,13 @@
       "when": 1779786621156,
       "tag": "0008_author_contributions",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780073936103,
+      "tag": "0009_clear_pasha_game_completion_descriptions",
+      "breakpoints": true
     }
   ]
 }

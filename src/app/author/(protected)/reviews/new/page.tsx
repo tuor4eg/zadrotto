@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/db/queries/contribution-reviews";
 import { requireAuthor } from "@/lib/author-auth";
 import { getReviewFormErrorMessage } from "@/lib/contribution-review-form";
+import { AuthorToasts } from "../../author-toasts";
 import { AuthorReviewForm } from "../review-form";
 
 type NewAuthorReviewPageProps = {
@@ -49,14 +49,34 @@ export default async function NewAuthorReviewPage({ searchParams }: NewAuthorRev
 
     return (
       <div className="flex flex-col gap-5">
-        <div>
-          <h2 className="font-serif text-3xl leading-none text-stone-950">Новая рецензия</h2>
-          <p className="mt-2 text-sm text-stone-600">
-            Рецензия станет публичной после проверки.
-          </p>
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="font-serif text-3xl leading-none text-stone-950">Новая рецензия</h2>
+            <p className="mt-2 text-sm text-stone-600">
+              {author.canPublishMediaWithoutReview
+                ? "Рецензия сразу появится в архиве."
+                : "Рецензия станет публичной после проверки."}
+            </p>
+          </div>
+          <Link
+            href="/author/reviews"
+            className={buttonVariants({ variant: "outline", size: "sm" })}
+          >
+            Назад к рецензиям
+          </Link>
         </div>
-        {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
-        <AuthorReviewForm mediaItem={mediaItem} />
+        <AuthorToasts
+          clearParams={["error"]}
+          messages={
+            errorMessage
+              ? [{ id: params.error ?? "review-error", tone: "error", text: errorMessage }]
+              : []
+          }
+        />
+        <AuthorReviewForm
+          canPublishWithoutReview={author.canPublishMediaWithoutReview}
+          mediaItem={mediaItem}
+        />
       </div>
     );
   }
@@ -65,13 +85,28 @@ export default async function NewAuthorReviewPage({ searchParams }: NewAuthorRev
 
   return (
     <div className="flex flex-col gap-5">
-      <div>
-        <h2 className="font-serif text-3xl leading-none text-stone-950">Выбери запись</h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Найди публичную запись архива, к которой хочешь написать рецензию.
-        </p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h2 className="font-serif text-3xl leading-none text-stone-950">Выбери запись</h2>
+          <p className="mt-2 text-sm text-stone-600">
+            Найди публичную запись архива, к которой хочешь написать рецензию.
+          </p>
+        </div>
+        <Link
+          href="/author/reviews"
+          className={buttonVariants({ variant: "outline", size: "sm" })}
+        >
+          Назад к рецензиям
+        </Link>
       </div>
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
+      <AuthorToasts
+        clearParams={["error"]}
+        messages={
+          errorMessage
+            ? [{ id: params.error ?? "review-error", tone: "error", text: errorMessage }]
+            : []
+        }
+      />
 
       <form className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
         <Input name="q" defaultValue={query} placeholder="Название или код записи" />

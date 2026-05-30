@@ -8,11 +8,13 @@ import { notFound, redirect } from "next/navigation";
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import {
+  deleteAuthorDraftMediaItem,
   getAuthorPrivateMediaItemLimitUsage,
   getAuthorMediaItemForEdit,
   getAuthorMediaItemForView,
   submitAuthorMediaItemForPublication,
   updateAuthorMediaItem,
+  withdrawAuthorMediaItemFromReview,
 } from "@/db/queries/media-items";
 import {
   buildAuthorCoverObjectKey,
@@ -24,7 +26,11 @@ import {
   validateCoverFileInput,
 } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
-import { getPublicationStatusAfterAuthorSubmit } from "@/lib/author-media-publication";
+import {
+  canAuthorDeleteMediaItem,
+  canAuthorWithdrawPublicationRequest,
+  getPublicationStatusAfterAuthorSubmit,
+} from "@/lib/author-media-publication";
 import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
@@ -334,4 +340,72 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
   redirect("/author/media?submitted=1");
+}
+
+export async function withdrawAuthorMediaItemAction(formData: FormData) {
+  const author = await requireAuthor();
+  const mediaItemId = Number(getFormString(formData, "mediaItemId"));
+
+  if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+    notFound();
+  }
+
+  const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
+
+  if (!item) {
+    notFound();
+  }
+
+  if (!canAuthorWithdrawPublicationRequest(item.publicationStatus)) {
+    redirect("/author/media?error=withdraw-locked");
+  }
+
+  const updatedItem = await withdrawAuthorMediaItemFromReview({
+    authorId: author.id,
+    mediaItemId,
+  });
+
+  if (!updatedItem) {
+    redirect("/author/media?error=withdraw-locked");
+  }
+
+  revalidatePath("/author/media");
+  revalidatePath(`/author/media/${mediaItemId}`);
+  revalidatePath("/admin/media-review");
+  revalidatePath("/admin", "layout");
+  redirect("/author/media?withdrawn=1");
+}
+
+export async function deleteAuthorMediaItemAction(formData: FormData) {
+  const author = await requireAuthor();
+  const mediaItemId = Number(getFormString(formData, "mediaItemId"));
+
+  if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
+    notFound();
+  }
+
+  const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
+
+  if (!item) {
+    notFound();
+  }
+
+  if (!canAuthorDeleteMediaItem(item.publicationStatus)) {
+    redirect("/author/media?error=delete-locked");
+  }
+
+  const deletedItem = await deleteAuthorDraftMediaItem({
+    authorId: author.id,
+    mediaItemId,
+  });
+
+  if (!deletedItem) {
+    redirect("/author/media?error=delete-locked");
+  }
+
+  await deleteUploadedCoverIfNeeded(deletedItem.coverUrl);
+
+  revalidatePath("/author/media");
+  revalidatePath(`/author/media/${mediaItemId}`);
+  redirect("/author/media?deleted=1");
 }

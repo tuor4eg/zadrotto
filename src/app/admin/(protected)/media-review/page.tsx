@@ -47,6 +47,9 @@ export default async function AdminMediaReviewPage({
         : null;
   const errorMessage =
     getAdminFormErrorMessage(params.error) ??
+    (params.error === "stale-review"
+      ? "Заявка уже не на проверке. Автор мог отозвать ее или запись уже обработали."
+      : null) ??
     (params.error === "invalid-review" ? "Не удалось обработать заявку." : null);
 
   return (

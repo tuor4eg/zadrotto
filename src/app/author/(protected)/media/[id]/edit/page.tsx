@@ -7,8 +7,9 @@ import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
+import { AuthorToasts } from "../../../author-toasts";
 import { updateAuthorMediaItemAction } from "../../actions";
-import { MediaItemForm } from "../../media-item-form";
+import { getAuthorMediaFormErrorMessage, MediaItemForm } from "../../media-item-form";
 
 type EditAuthorMediaPageProps = {
   params: Promise<{
@@ -36,6 +37,7 @@ export default async function EditAuthorMediaPage({
   }
 
   const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
+  const errorMessage = getAuthorMediaFormErrorMessage(error);
 
   if (!item) {
     notFound();
@@ -47,6 +49,14 @@ export default async function EditAuthorMediaPage({
 
   return (
     <div className="grid gap-6">
+      <AuthorToasts
+        clearParams={["error"]}
+        messages={
+          errorMessage
+            ? [{ id: error ?? "form-error", tone: "error", text: errorMessage }]
+            : []
+        }
+      />
       <div>
         <h2 className="font-serif text-3xl leading-none text-stone-950">Редактировать запись</h2>
         <p className="mt-2 text-sm text-stone-600">
@@ -67,7 +77,6 @@ export default async function EditAuthorMediaPage({
           submitLabel="Сохранить"
           franchises={franchises}
           values={item}
-          error={error}
         />
         </CardContent>
       </Card>

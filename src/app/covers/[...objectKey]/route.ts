@@ -1,5 +1,7 @@
+import { cookies } from "next/headers";
+
 import { canViewMediaItemCover } from "@/db/queries/media-items";
-import { getCurrentAuthor } from "@/lib/author-auth";
+import { AUTHOR_SESSION_COOKIE_NAME, verifyAuthorSessionToken } from "@/lib/author-session";
 import { fetchS3Object } from "@/lib/storage";
 
 type CoverRouteContext = {
@@ -20,6 +22,15 @@ function getSafeCoverObjectKey(segments: string[]) {
   return segments.join("/");
 }
 
+async function getCurrentAuthorFromSession() {
+  const token = (await cookies()).get(AUTHOR_SESSION_COOKIE_NAME)?.value;
+  const payload = token ? verifyAuthorSessionToken(token) : null;
+
+  return payload?.type === "author"
+    ? { id: payload.authorId, code: payload.authorCode }
+    : undefined;
+}
+
 export async function GET(_request: Request, { params }: CoverRouteContext) {
   const { objectKey: segments } = await params;
   const objectKey = getSafeCoverObjectKey(segments);
@@ -28,8 +39,8 @@ export async function GET(_request: Request, { params }: CoverRouteContext) {
     return new Response("Обложка не найдена.", { status: 404 });
   }
 
-  const currentAuthor = await getCurrentAuthor();
-  const canViewCover = await canViewMediaItemCover(objectKey, currentAuthor?.id);
+  const currentAuthor = await getCurrentAuthorFromSession();
+  const canViewCover = await canViewMediaItemCover(objectKey, currentAuthor);
 
   if (!canViewCover) {
     return new Response("Обложка не найдена.", { status: 404 });

@@ -40,7 +40,7 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
   }
 
   if (!item) {
-    redirect("/admin/media-review?error=invalid-review");
+    redirect("/admin/media-review?error=stale-review");
   }
 
   revalidatePath("/admin/media-review");

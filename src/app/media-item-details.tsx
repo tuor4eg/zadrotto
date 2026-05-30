@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
-import { MediaItemTile } from "@/app/media-item-tile";
+import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
@@ -90,18 +90,7 @@ export function MediaItemDetails({
       <article className="border border-zinc-300 bg-white">
         <div className="grid gap-0 md:grid-cols-[320px_minmax(0,1fr)]">
           <div className="aspect-[4/3] bg-zinc-200 md:aspect-auto md:min-h-[480px]">
-            {item.coverUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={item.coverUrl}
-                alt={`Обложка: ${item.title}`}
-                className="h-full w-full object-cover"
-              />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-[linear-gradient(135deg,#e4e4e7,#fafafa)] px-6 text-center text-xs font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                Без обложки
-              </div>
-            )}
+            <ArchiveCover item={item} className="h-full w-full" />
           </div>
 
           <div className="flex min-h-[360px] flex-col justify-between gap-10 p-5 sm:p-8">
@@ -245,19 +234,15 @@ function ArchiveMediaItemDetails({
                 <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
                   Archive cover
                 </div>
-                <div className="aspect-[3/4] overflow-hidden rounded-sm bg-stone-800">
-                  {item.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={item.coverUrl}
-                      alt={`Обложка: ${item.title}`}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="grid h-full w-full place-items-center bg-[linear-gradient(135deg,#d8cbb4,#f7efdf_52%,#c8b58f)] px-6 text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500">
-                      Без обложки
+                <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800">
+                  <ArchiveCover item={item} className="h-full w-full" />
+                  {!item.coverUrl ? (
+                    <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+                      <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
+                        Нет изображения
+                      </span>
                     </div>
-                  )}
+                  ) : null}
                 </div>
               </div>
             </div>
@@ -340,11 +325,9 @@ function ArchiveMediaItemDetails({
                   </div>
                 )}
 
-                {item.description ? (
-                  <div className="mt-3 sm:col-span-2">
-                    <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
-                  </div>
-                ) : null}
+                <div className="mt-6 sm:col-span-2">
+                  <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
+                </div>
               </div>
 
               <div className="mt-6 flex flex-col gap-3">

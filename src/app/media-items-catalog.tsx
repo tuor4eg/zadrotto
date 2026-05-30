@@ -15,7 +15,6 @@ import {
   type MediaTypeFilter,
   DEFAULT_CATALOG_SORT_DIRECTIONS,
 } from "@/app/media-items-catalog-logic";
-import { ArchiveNote } from "@/app/archive-note";
 import { MediaTypeTabs } from "@/app/media-type-tabs";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
@@ -185,14 +184,18 @@ export function MediaItemsCatalog({
       }
 
       const slotRect = detailsSlot.getBoundingClientRect();
+      const isFixed = slotRect.top <= FIXED_DETAILS_TOP_OFFSET;
+      const panelTop = isFixed
+        ? FIXED_DETAILS_TOP_OFFSET
+        : Math.max(slotRect.top, FIXED_DETAILS_TOP_OFFSET);
       const availableHeight = Math.max(
         0,
-        window.innerHeight - FIXED_DETAILS_TOP_OFFSET - FIXED_DETAILS_BOTTOM_OFFSET,
+        window.innerHeight - panelTop - FIXED_DETAILS_BOTTOM_OFFSET,
       );
       const height = Math.max(detailsPanel.offsetHeight, availableHeight);
       const nextState: FixedDetailsState = {
         height,
-        isFixed: slotRect.top <= FIXED_DETAILS_TOP_OFFSET,
+        isFixed,
         left: slotRect.left,
         minHeight: availableHeight,
         width: slotRect.width,
@@ -294,7 +297,7 @@ export function MediaItemsCatalog({
       >
         <article
           ref={detailsPanelRef}
-          className="archive-paper archive-panel archive-stack archive-stack-left relative w-full min-w-0 overflow-visible"
+          className="archive-paper archive-panel archive-stack archive-stack-left relative flex w-full min-w-0 flex-col overflow-visible"
           style={
             fixedDetails.isFixed
               ? {
@@ -311,7 +314,7 @@ export function MediaItemsCatalog({
           }
         >
           {selectedItem ? (
-            <div className="relative p-4 sm:p-5">
+            <div className="relative flex flex-1 p-3 sm:p-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src="/clip-transparent-trimmed.png"
@@ -319,18 +322,25 @@ export function MediaItemsCatalog({
                 aria-hidden="true"
                 className="pointer-events-none absolute -top-1 right-4 z-30 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
               />
-              <div className="relative -ml-2 rotate-[0.35deg] border border-stone-400/70 bg-[linear-gradient(135deg,rgb(var(--archive-paper-start)),rgb(var(--archive-paper-end)))] p-4 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-5">
+              <div className="relative -ml-2 flex flex-1 rotate-[0.35deg] flex-col border border-stone-400/70 bg-[linear-gradient(135deg,rgb(var(--archive-paper-start)),rgb(var(--archive-paper-end)))] p-3 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-4">
                 <div className="font-mono text-sm uppercase tracking-[0.34em] text-stone-950">
                   Досье
                 </div>
 
-                <div className="mt-4 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-2 shadow-xl shadow-stone-950/20">
-                  <div className="aspect-[4/3] overflow-hidden rounded-sm bg-stone-800">
+                <div className="mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20">
+                  <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800">
                     <ArchiveCover item={selectedItem} className="h-full w-full" />
+                    {!selectedItem.coverUrl ? (
+                      <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+                        <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
+                          Нет изображения
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
                 </div>
 
-                <div className="mt-4 font-serif text-2xl leading-none text-stone-950">
+                <div className="mt-3 font-serif text-2xl leading-none text-stone-950">
                   {selectedItem.title}
                 </div>
                 {selectedItem.originalTitle && selectedItem.originalTitle !== selectedItem.title ? (
@@ -347,7 +357,7 @@ export function MediaItemsCatalog({
                   <span>{formatRatingsCount(selectedItem.ratingsCount)}</span>
                 </div>
 
-                <div className="mt-4 grid gap-2 border-t border-dashed border-stone-300 pt-4 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2 border-t border-dashed border-stone-300 pt-3 sm:grid-cols-2">
                   <div
                     className={`rounded-md border p-2 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(selectedItem.averageScore)]}`}
                   >
@@ -381,7 +391,7 @@ export function MediaItemsCatalog({
                 </div>
 
                 {selectedItem.franchiseTitle && selectedItem.franchiseCode ? (
-                  <div className="mt-5 border-t border-dashed border-stone-300 pt-4 text-sm leading-6 text-stone-800">
+                  <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
                     <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
                       Серия
                     </div>
@@ -394,20 +404,16 @@ export function MediaItemsCatalog({
                   </div>
                 ) : null}
 
-                {selectedItem.description ? (
-                  <div className="mt-6">
-                    <ArchiveNote text={selectedItem.description} maxWidthClassName="max-w-full" />
-                  </div>
-                ) : null}
-
-                <Link
-                  href={`/media/${selectedItem.code}`}
-                  className="mt-6 inline-flex w-full items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
-                >
-                  <FolderOpen className="size-5" />
-                  Открыть досье
-                  <ArrowRight className="size-5" />
-                </Link>
+                <div className="mt-auto pt-4">
+                  <Link
+                    href={`/media/${selectedItem.code}`}
+                    className="inline-flex w-full items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
+                  >
+                    <FolderOpen className="size-5" />
+                    Открыть досье
+                    <ArrowRight className="size-5" />
+                  </Link>
+                </div>
               </div>
             </div>
           ) : (

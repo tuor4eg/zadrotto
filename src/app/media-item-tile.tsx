@@ -35,7 +35,11 @@ type MediaItemTileProps = {
   selected?: boolean;
 };
 
-export function ArchiveCover({ className, item, mode = "cover" }: ArchiveCoverProps) {
+export function ArchiveCover({
+  className,
+  item,
+  mode = "cover",
+}: ArchiveCoverProps) {
   if (item.coverUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -50,10 +54,10 @@ export function ArchiveCover({ className, item, mode = "cover" }: ArchiveCoverPr
 
   return (
     <div
-      className={`grid place-items-center bg-[linear-gradient(135deg,#d8cbb4,#f7efdf_52%,#c8b58f)] text-center font-mono text-[10px] font-semibold uppercase tracking-[0.18em] text-stone-500 ${className ?? ""}`}
-    >
-      Без обложки
-    </div>
+      role="img"
+      aria-label={`Обложка не добавлена: ${item.title}`}
+      className={`grid place-items-center bg-[radial-gradient(circle_at_50%_28%,#fff8e8_0,#ead8b7_42%,#bfa277_100%)] text-stone-700 ${className ?? ""}`}
+    />
   );
 }
 

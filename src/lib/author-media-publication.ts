@@ -14,3 +14,11 @@ export function getPublicationStatusAfterAuthorSubmit(input: {
 export function canAuthorRequestPublication(status: PublicationStatus) {
   return status === "private" || status === "rejected";
 }
+
+export function canAuthorWithdrawPublicationRequest(status: PublicationStatus) {
+  return status === "submitted";
+}
+
+export function canAuthorDeleteMediaItem(status: PublicationStatus) {
+  return status === "private" || status === "rejected";
+}
