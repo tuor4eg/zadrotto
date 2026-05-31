@@ -334,15 +334,39 @@ export async function getCatalogMediaItems(input: {
   };
 }
 
-export async function getCatalogMediaTypeCounts() {
+export async function getCatalogMediaTypeCounts(input: {
+  authorRatingFilter: AuthorRatingFilter;
+  currentAuthorId?: number;
+  searchQuery: string;
+  yearFilter: CatalogYearFilter;
+  yearMode: CatalogYearMode;
+}) {
+  const filterCondition = catalogFilterConditions({
+    ...input,
+    mediaTypeFilter: "all",
+  });
+
   return db
     .select({
       mediaType: mediaItems.mediaType,
       count: sql<number>`count(*)::int`,
     })
     .from(mediaItems)
-    .where(publishedMediaItemCondition)
+    .where(filterCondition)
     .groupBy(mediaItems.mediaType);
+}
+
+export async function getCatalogReleaseYearBounds() {
+  const [bounds] = await db
+    .select({
+      minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
+    })
+    .from(mediaItems)
+    .where(publishedMediaItemCondition);
+
+  return {
+    minReleaseYear: bounds?.minReleaseYear ?? null,
+  };
 }
 
 export async function getAuthorMediaItems(authorId: number) {

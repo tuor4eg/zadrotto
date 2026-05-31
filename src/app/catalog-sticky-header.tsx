@@ -20,6 +20,7 @@ type CatalogStickyHeaderProps = {
   currentAdminUser: boolean;
   currentAuthor: boolean;
   mediaTypeFilter: MediaTypeFilter;
+  minReleaseYear: number | null;
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
@@ -32,6 +33,7 @@ export function CatalogStickyHeader({
   currentAdminUser,
   currentAuthor,
   mediaTypeFilter,
+  minReleaseYear,
   searchQuery,
   sort,
   sortDirection,
@@ -153,6 +155,7 @@ export function CatalogStickyHeader({
           compact={isCompact}
           currentAuthor={currentAuthor}
           mediaTypeFilter={mediaTypeFilter}
+          minReleaseYear={minReleaseYear}
           searchQuery={searchQuery}
           sort={sort}
           sortDirection={sortDirection}

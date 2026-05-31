@@ -36,6 +36,7 @@ type CatalogHeaderControlsProps = {
   compact?: boolean;
   currentAuthor: boolean;
   mediaTypeFilter: MediaTypeFilter;
+  minReleaseYear: number | null;
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
@@ -78,6 +79,8 @@ const CATALOG_YEAR_MODE_ICONS: Record<CatalogYearMode, React.ReactNode> = {
   rating: <Star className="size-4" />,
 };
 
+const CATALOG_YEAR_MODES = ["release", "experience", "rating"] as const;
+
 function getSortTooltip(sort: CatalogSort) {
   return `Сортировка: ${CATALOG_SORT_LABELS[sort].toLowerCase()}`;
 }
@@ -115,10 +118,11 @@ function getYearFilterTooltip(yearFilter: CatalogYearFilter, yearMode: CatalogYe
   return `${CATALOG_YEAR_MODE_LABELS[yearMode]}: ${yearLabel}`;
 }
 
-function getYearOptions(yearFilter: CatalogYearFilter) {
+function getYearOptions(yearFilter: CatalogYearFilter, minReleaseYear: number | null) {
   const currentYear = new Date().getFullYear();
+  const firstYear = Math.min(minReleaseYear ?? currentYear, currentYear);
   const years = Array.from(
-    { length: currentYear - 1900 + 1 },
+    { length: currentYear - firstYear + 1 },
     (_, index) => currentYear - index,
   );
 
@@ -160,6 +164,7 @@ export function CatalogHeaderControls({
   compact = false,
   currentAuthor,
   mediaTypeFilter,
+  minReleaseYear,
   searchQuery,
   sort,
   sortDirection,
@@ -179,6 +184,7 @@ export function CatalogHeaderControls({
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
     ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
   );
+  const yearModeOptions = currentAuthor ? CATALOG_YEAR_MODES : CATALOG_YEAR_MODES.slice(0, 1);
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -416,7 +422,7 @@ export function CatalogHeaderControls({
                   <ArchiveSelect
                     ariaLabel={getYearFilterTooltip(yearFilter, yearMode)}
                     className="min-w-0 flex-1"
-                    options={getYearOptions(yearFilter)}
+                    options={getYearOptions(yearFilter, minReleaseYear)}
                     triggerClassName="w-full min-w-0"
                     value={yearFilter === null ? "all" : String(yearFilter)}
                     onChange={(nextYear) =>
@@ -424,20 +430,16 @@ export function CatalogHeaderControls({
                     }
                   />
                   <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
-                    {(["release", "experience", "rating"] as const).map((mode) => {
-                      const isDisabled = !currentAuthor && mode !== "release";
+                    {yearModeOptions.map((mode) => {
                       const isSelected = yearMode === mode;
-                      const label = isDisabled
-                        ? `${CATALOG_YEAR_MODE_LABELS[mode]}: войди как автор`
-                        : CATALOG_YEAR_MODE_LABELS[mode];
+                      const label = CATALOG_YEAR_MODE_LABELS[mode];
 
                       return (
                         <ArchiveTooltip key={mode} label={label} side="bottom">
                           <button
                             type="button"
-                            disabled={isDisabled}
                             onClick={() => replaceFilters({ yearMode: mode })}
-                            className={`grid size-8 place-items-center rounded-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 disabled:cursor-not-allowed disabled:text-stone-400 ${
+                            className={`grid size-8 place-items-center rounded-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
                               isSelected
                                 ? "bg-red-900/12 text-red-950"
                                 : "text-stone-600 hover:bg-stone-200/70 hover:text-stone-950"

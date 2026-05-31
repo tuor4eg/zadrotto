@@ -1,6 +1,10 @@
 import { connection } from "next/server";
 
-import { getCatalogMediaItems, getCatalogMediaTypeCounts } from "@/db/queries/media-items";
+import {
+  getCatalogMediaItems,
+  getCatalogMediaTypeCounts,
+  getCatalogReleaseYearBounds,
+} from "@/db/queries/media-items";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
 import { parsePage, parsePageSize } from "@/lib/pagination";
@@ -59,7 +63,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const parsedYearMode = parseCatalogYearMode(params.yearMode ?? null);
   const yearMode =
     !currentAuthor && isAuthorOnlyCatalogYearMode(parsedYearMode) ? "release" : parsedYearMode;
-  const [catalog, mediaTypeCounts] = await Promise.all([
+  const [catalog, mediaTypeCounts, releaseYearBounds] = await Promise.all([
     getCatalogMediaItems({
       authorRatingFilter,
       currentAuthorId: currentAuthor?.id,
@@ -72,7 +76,14 @@ export default async function Home({ searchParams }: HomeProps) {
       yearFilter,
       yearMode,
     }),
-    getCatalogMediaTypeCounts(),
+    getCatalogMediaTypeCounts({
+      authorRatingFilter,
+      currentAuthorId: currentAuthor?.id,
+      searchQuery,
+      yearFilter,
+      yearMode,
+    }),
+    getCatalogReleaseYearBounds(),
   ]);
 
   return (
@@ -83,6 +94,7 @@ export default async function Home({ searchParams }: HomeProps) {
           currentAdminUser={Boolean(currentAdminUser)}
           currentAuthor={Boolean(currentAuthor)}
           mediaTypeFilter={mediaTypeFilter}
+          minReleaseYear={releaseYearBounds.minReleaseYear}
           searchQuery={searchQuery}
           sort={sort}
           sortDirection={sortDirection}

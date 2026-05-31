@@ -115,9 +115,10 @@ export function MediaItemsCatalog({
   const availableMediaTypes = useMemo(
     () =>
       MEDIA_TYPES.filter((mediaType) =>
+        mediaType === mediaTypeFilter ||
         mediaTypeCountRows.some((item) => item.mediaType === mediaType && item.count > 0),
       ),
-    [mediaTypeCountRows],
+    [mediaTypeCountRows, mediaTypeFilter],
   );
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
@@ -127,6 +128,11 @@ export function MediaItemsCatalog({
     () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
     [mediaTypeCountRows],
   );
+  const hasActiveFilters =
+    authorRatingFilter !== "all" ||
+    mediaTypeFilter !== "all" ||
+    searchQuery !== "" ||
+    yearFilter !== null;
   const paginationSearchParams = {
     mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
@@ -240,7 +246,7 @@ export function MediaItemsCatalog({
     };
   }, [selectedItem?.id]);
 
-  if (archiveTotalCount === 0) {
+  if (archiveTotalCount === 0 && !hasActiveFilters) {
     return (
       <div className="archive-paper archive-panel p-6 text-sm text-stone-600">
         Пока в архиве нет записей.
