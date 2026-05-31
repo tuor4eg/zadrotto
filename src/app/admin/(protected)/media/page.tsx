@@ -6,7 +6,6 @@ import {
   parseCatalogSort,
   parseMediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { PaginationNav } from "@/components/pagination-nav";
@@ -18,6 +17,7 @@ import { MEDIA_TYPES, MEDIA_TYPE_LABELS } from "@/lib/media-types";
 import { parsePage } from "@/lib/pagination";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { deleteAdminMediaItemAction } from "./actions";
 import { AdminMediaFiltersForm } from "./media-filters-form";
@@ -95,6 +95,10 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
       : params.deleted === "1"
         ? "Запись удалена."
         : null;
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
   const availableMediaTypes = MEDIA_TYPES
     .map((mediaType) => ({
       mediaType,
@@ -112,6 +116,11 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts
+        clearParams={["created", "deleted", "error", "updated"]}
+        messages={toastMessages}
+      />
+
       <PageHeader
         title="Записи"
         description="Архивные записи с теми же фильтрами, что и в каталоге."
@@ -140,9 +149,6 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           totalCount={totalItemsCount}
         />
       ) : null}
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       {totalItemsCount === 0 ? (
         <EmptyState>Записей пока нет.</EmptyState>

@@ -1,9 +1,9 @@
 import { Save } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type AuthorFormValues = {
   id?: number;
@@ -31,9 +31,15 @@ export function AuthorForm({
   values,
 }: AuthorFormProps) {
   const canChangeProfile = !values?.isSystem;
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <form action={action} className="grid gap-5" noValidate>
+      <AdminToasts clearParams={["error", "updated"]} messages={toastMessages} />
+
       {values?.id ? <input type="hidden" name="authorId" value={values.id} /> : null}
       {!canChangeProfile && values?.accessProfileId ? (
         <input type="hidden" name="accessProfileId" value={values.accessProfileId} />
@@ -69,9 +75,6 @@ export function AuthorForm({
           </Select>
         </div>
       </div>
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       <div>
         <Button type="submit">

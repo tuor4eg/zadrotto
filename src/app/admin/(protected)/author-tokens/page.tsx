@@ -1,6 +1,5 @@
 import { Ban, KeyRound, RotateCcw, Trash2 } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -10,6 +9,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorAccessTokens } from "@/db/queries/author-access-tokens";
 import { getAuthors } from "@/db/queries/authors";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import {
   deleteAuthorTokenAction,
@@ -68,22 +68,21 @@ export default async function AdminAuthorTokensPage({
   const errorMessage = getAdminFormErrorMessage(params.error);
   const successMessage = getSuccessMessage(params.updated);
   const tokenAuthors = authors.filter((author) => !author.isSystem);
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
+      <AdminToasts clearParams={["error", "updated"]} messages={toastMessages} />
+
       <section className="min-w-0">
         <PageHeader
           title="Токены авторов"
           description="Токены доступа для будущих авторских сценариев."
           aside={<Badge variant="outline">{tokens.length} всего</Badge>}
         />
-
-        {successMessage ? (
-          <Alert variant="success" className="mt-5">{successMessage}</Alert>
-        ) : null}
-        {errorMessage ? (
-          <Alert variant="destructive" className="mt-5">{errorMessage}</Alert>
-        ) : null}
 
         {tokens.length === 0 ? (
           <EmptyState className="mt-5">Токены пока не созданы.</EmptyState>

@@ -1,12 +1,12 @@
 import { Save } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { CoverFileInput } from "./cover-file-input";
 
 type MediaFormValues = {
@@ -43,9 +43,15 @@ export function AdminMediaForm({
   successMessage,
 }: AdminMediaFormProps) {
   const hasAuthors = authors.length > 0;
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <form action={action} className="grid gap-5" noValidate>
+      <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
+
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
 
       <div className="grid gap-4 md:grid-cols-2">
@@ -152,13 +158,6 @@ export function AdminMediaForm({
           />
         </div>
       </div>
-
-      {successMessage ? (
-        <Alert variant="success">{successMessage}</Alert>
-      ) : null}
-      {errorMessage ? (
-        <Alert variant="destructive">{errorMessage}</Alert>
-      ) : null}
 
       <div>
         <Button type="submit" disabled={requireAuthor && !hasAuthors}>

@@ -1,8 +1,8 @@
 import { Save } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type FranchiseFormValues = {
   id?: number;
@@ -27,8 +27,18 @@ export function FranchiseForm({
   errorMessage,
   successMessage,
 }: FranchiseFormProps) {
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
+
   return (
     <form action={action} className="grid gap-5" noValidate>
+      <AdminToasts
+        clearParams={["attached", "detached", "error", "updated"]}
+        messages={toastMessages}
+      />
+
       {values?.id ? <input type="hidden" name="franchiseId" value={values.id} /> : null}
 
       <div className="grid gap-4">
@@ -58,13 +68,6 @@ export function FranchiseForm({
           className="min-h-32"
         />
       </div>
-
-      {successMessage ? (
-        <Alert variant="success">{successMessage}</Alert>
-      ) : null}
-      {errorMessage ? (
-        <Alert variant="destructive">{errorMessage}</Alert>
-      ) : null}
 
       <div>
         <Button

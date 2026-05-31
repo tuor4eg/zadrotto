@@ -3,9 +3,9 @@
 import { Save } from "lucide-react";
 import { useActionState, useEffect, useRef } from "react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import {
   changeAdminPasswordAction,
   type ChangeAdminPasswordState,
@@ -22,6 +22,10 @@ export function ChangeAdminPasswordForm() {
     initialState,
   );
   const formRef = useRef<HTMLFormElement>(null);
+  const toastMessages = [
+    ...(state.success ? [{ id: "success", tone: "success" as const, text: state.success }] : []),
+    ...(state.error ? [{ id: "error", tone: "error" as const, text: state.error }] : []),
+  ] satisfies AdminToast[];
 
   useEffect(() => {
     if (state.success) {
@@ -31,6 +35,8 @@ export function ChangeAdminPasswordForm() {
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-5" autoComplete="off" noValidate>
+      <AdminToasts messages={toastMessages} />
+
       <div className="grid gap-4">
         <div className="flex flex-col gap-2">
           <Label htmlFor="admin-current-password">Текущий пароль</Label>
@@ -68,9 +74,6 @@ export function ChangeAdminPasswordForm() {
           />
         </div>
       </div>
-
-      {state.success ? <Alert variant="success">{state.success}</Alert> : null}
-      {state.error ? <Alert variant="destructive">{state.error}</Alert> : null}
 
       <div>
         <Button type="submit" disabled={isPending}>

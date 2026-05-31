@@ -202,8 +202,14 @@ export function CatalogHeaderControls({
         (nextFilters.sort && nextFilters.sort !== sort
           ? DEFAULT_CATALOG_SORT_DIRECTIONS[nextFilters.sort]
           : sortDirection);
+      const nextYearFilter =
+        nextFilters.year !== undefined ? nextFilters.year : yearFilter;
       const nextYearMode =
-        nextFilters.yearMode !== undefined ? nextFilters.yearMode : yearMode;
+        nextYearFilter === null
+          ? "release"
+          : nextFilters.yearMode !== undefined
+            ? nextFilters.yearMode
+            : yearMode;
 
       nextSearchParams.delete("page");
 
@@ -255,7 +261,7 @@ export function CatalogHeaderControls({
         router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
       });
     },
-    [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection, yearMode],
+    [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection, yearFilter, yearMode],
   );
 
   useEffect(() => {
@@ -429,30 +435,35 @@ export function CatalogHeaderControls({
                       replaceFilters({ year: nextYear === "all" ? null : Number(nextYear) })
                     }
                   />
-                  <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
-                    {yearModeOptions.map((mode) => {
-                      const isSelected = yearMode === mode;
-                      const label = CATALOG_YEAR_MODE_LABELS[mode];
+                  {yearFilter !== null ? (
+                    <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
+                      {yearModeOptions.map((mode) => {
+                        const isSelected = yearMode === mode;
+                        const label = CATALOG_YEAR_MODE_LABELS[mode];
 
-                      return (
-                        <ArchiveTooltip key={mode} label={label} side="bottom">
-                          <button
-                            type="button"
-                            onClick={() => replaceFilters({ yearMode: mode })}
-                            className={`grid size-8 place-items-center rounded-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
-                              isSelected
-                                ? "bg-red-900/12 text-red-950"
-                                : "text-stone-600 hover:bg-stone-200/70 hover:text-stone-950"
-                            }`}
-                            aria-label={label}
-                            aria-pressed={isSelected}
-                          >
-                            {CATALOG_YEAR_MODE_ICONS[mode]}
-                          </button>
-                        </ArchiveTooltip>
-                      );
-                    })}
-                  </div>
+                        return (
+                          <ArchiveTooltip key={mode} label={label} side="bottom">
+                            <button
+                              type="button"
+                              onClick={(event) => {
+                                event.currentTarget.blur();
+                                replaceFilters({ yearMode: mode });
+                              }}
+                              className={`grid size-8 place-items-center rounded-sm transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+                                isSelected
+                                  ? "bg-red-900/12 text-red-950"
+                                  : "text-stone-600 hover:bg-stone-200/70 hover:text-stone-950"
+                              }`}
+                              aria-label={label}
+                              aria-pressed={isSelected}
+                            >
+                              {CATALOG_YEAR_MODE_ICONS[mode]}
+                            </button>
+                          </ArchiveTooltip>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               </div>
             </div>

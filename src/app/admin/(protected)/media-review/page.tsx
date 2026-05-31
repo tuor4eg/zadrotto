@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Check, Eye, X } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
@@ -9,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getSubmittedAuthorMediaItemsForAdmin } from "@/db/queries/media-items";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { reviewAuthorMediaItemAction } from "./actions";
 
@@ -51,21 +51,20 @@ export default async function AdminMediaReviewPage({
       ? "Заявка уже не на проверке. Автор мог отозвать ее или запись уже обработали."
       : null) ??
     (params.error === "invalid-review" ? "Не удалось обработать заявку." : null);
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts clearParams={["approved", "error", "rejected"]} messages={toastMessages} />
+
       <PageHeader
         title="Заявки на публикацию"
         description="Авторские записи, которые ждут проверки перед публикацией."
         aside={<Badge variant="warning">{items.length} на проверке</Badge>}
       />
-
-      {successMessage ? (
-        <Alert variant="success">{successMessage}</Alert>
-      ) : null}
-      {errorMessage ? (
-        <Alert variant="destructive">{errorMessage}</Alert>
-      ) : null}
 
       {items.length === 0 ? (
         <EmptyState>Заявок на проверку сейчас нет.</EmptyState>

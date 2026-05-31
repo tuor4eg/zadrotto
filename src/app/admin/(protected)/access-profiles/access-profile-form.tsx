@@ -1,9 +1,9 @@
 import { Save } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { formatUploadLimitMegabytes } from "@/lib/author-access-profile-form";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type AccessProfileFormValues = {
   id?: number;
@@ -30,8 +30,15 @@ export function AccessProfileForm({
   submitLabel,
   values,
 }: AccessProfileFormProps) {
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
+
   return (
     <form action={action} className="grid gap-5" noValidate>
+      <AdminToasts clearParams={["error", "updated"]} messages={toastMessages} />
+
       {values?.id ? <input type="hidden" name="profileId" value={values.id} /> : null}
 
       <div className="grid gap-4">
@@ -97,9 +104,6 @@ export function AccessProfileForm({
           </div>
         </section>
       </div>
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       <div>
         <Button type="submit">

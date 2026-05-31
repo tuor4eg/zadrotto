@@ -2,13 +2,13 @@ import Link from "next/link";
 import { Edit3, Plus, Trash2 } from "lucide-react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminFranchises } from "@/db/queries/franchises";
 import { parsePage } from "@/lib/pagination";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { PageHeader, EmptyState } from "../admin-ui";
 import { deleteFranchiseAction } from "./actions";
 import { AdminFranchiseFiltersForm } from "./franchise-filters-form";
@@ -44,6 +44,10 @@ export default async function AdminFranchisesPage({
       : params.deleted === "1"
         ? "Серия удалена."
         : null;
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
   const hasActiveFilters = Boolean(searchQuery);
   const paginationSearchParams = {
     q: searchQuery || undefined,
@@ -51,6 +55,8 @@ export default async function AdminFranchisesPage({
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts clearParams={["created", "deleted", "error"]} messages={toastMessages} />
+
       <PageHeader
         title="Серии"
         description="Серии, к которым можно привязывать записи архива."
@@ -67,13 +73,6 @@ export default async function AdminFranchisesPage({
           </>
         }
       />
-
-      {successMessage ? (
-        <Alert variant="success">{successMessage}</Alert>
-      ) : null}
-      {errorMessage ? (
-        <Alert variant="destructive">{errorMessage}</Alert>
-      ) : null}
 
       {franchisesResult.totalCount > 0 || hasActiveFilters ? (
         <AdminFranchiseFiltersForm searchQuery={searchQuery} />

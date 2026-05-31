@@ -1,7 +1,6 @@
 import Link from "next/link";
 import { Check, Eye, X } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
@@ -9,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminContributionReviews } from "@/db/queries/contribution-reviews";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
 import { CONTRIBUTION_STATUS_VALUE_LABELS, type ContributionStatus } from "@/lib/contributions";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { reviewContributionReviewAction } from "./actions";
 
@@ -55,17 +55,23 @@ export default async function AdminReviewsPage({ searchParams }: AdminReviewsPag
   const errorMessage =
     getAdminFormErrorMessage(params.error) ??
     (params.error === "invalid-review" ? "Не удалось обработать рецензию." : null);
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts
+        clearParams={["error", "hidden", "published", "rejected"]}
+        messages={toastMessages}
+      />
+
       <PageHeader
         title="Заявки на рецензии"
         description="Авторские рецензии, которые ждут проверки перед публикацией."
         aside={<Badge variant="warning">{reviews.length} на проверке</Badge>}
       />
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       {reviews.length === 0 ? (
         <EmptyState>Заявок на проверку сейчас нет.</EmptyState>

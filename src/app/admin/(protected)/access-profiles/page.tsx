@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Edit3, Plus, Trash2 } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { deleteAuthorAccessProfileAction } from "./actions";
 import { getAuthorAccessProfileErrorMessage } from "./messages";
@@ -39,9 +39,15 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
   ]);
   const errorMessage = getAuthorAccessProfileErrorMessage(params.error);
   const successMessage = getSuccessMessage(params);
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts clearParams={["created", "deleted", "error"]} messages={toastMessages} />
+
       <PageHeader
         title="Профили доступа"
         description="Наборы правил и лимитов для авторов."
@@ -58,9 +64,6 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
           </>
         }
       />
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       {profiles.length === 0 ? (
         <EmptyState>Профили доступа пока не добавлены.</EmptyState>

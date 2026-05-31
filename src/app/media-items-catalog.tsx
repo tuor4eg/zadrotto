@@ -133,6 +133,7 @@ export function MediaItemsCatalog({
     mediaTypeFilter !== "all" ||
     searchQuery !== "" ||
     yearFilter !== null;
+  const hasItems = items.length > 0;
   const paginationSearchParams = {
     mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
@@ -257,14 +258,18 @@ export function MediaItemsCatalog({
   return (
     <section className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(290px,0.28fr)]">
       <div className="archive-paper archive-panel archive-stack archive-stack-right flex min-h-0 min-w-0 flex-col p-4">
-        <MediaTypeTabs
-          availableMediaTypes={availableMediaTypes}
-          mediaTypeCounts={mediaTypeCountRows}
-          selectedMediaType={mediaTypeFilter}
-          onChange={handleMediaTypeFilterChange}
-        />
+        {hasItems ? (
+          <MediaTypeTabs
+            availableMediaTypes={availableMediaTypes}
+            mediaTypeCounts={mediaTypeCountRows}
+            selectedMediaType={mediaTypeFilter}
+            onChange={handleMediaTypeFilterChange}
+          />
+        ) : null}
 
-        <div className="archive-scrollbar mt-2 grid min-h-0 flex-1 grid-cols-3 content-start gap-2.5 overflow-y-auto pl-1 pr-1 md:grid-cols-4 xl:grid-cols-6">
+        <div
+          className={`archive-scrollbar grid min-h-0 flex-1 grid-cols-3 content-start gap-2.5 overflow-y-auto pl-1 pr-1 md:grid-cols-4 xl:grid-cols-6 ${hasItems ? "mt-2" : ""}`}
+        >
           {items.length === 0 ? (
             <div className="col-span-full rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
               Ничего не найдено.

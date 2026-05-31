@@ -3,10 +3,10 @@
 import { useActionState, useState } from "react";
 import { Copy, KeyRound } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthors } from "@/db/queries/authors";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import {
   createAuthorTokenAction,
   type CreateAuthorTokenState,
@@ -58,6 +58,9 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
   const hasAuthors = authors.length > 0;
   const isCopied = state.accessToken !== null && copiedAccessToken === state.accessToken;
   const isFailed = state.accessToken !== null && failedAccessToken === state.accessToken;
+  const toastMessages = [
+    ...(state.error ? [{ id: "error", tone: "error" as const, text: state.error }] : []),
+  ] satisfies AdminToast[];
 
   async function copyAccessToken() {
     if (!state.accessToken) {
@@ -82,6 +85,8 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
 
   return (
     <form action={formAction} className="flex flex-col gap-4" noValidate>
+      <AdminToasts messages={toastMessages} />
+
       <div className="flex flex-col gap-2">
         <Label htmlFor="author-token-author">Автор</Label>
         <Select
@@ -109,10 +114,6 @@ export function CreateAuthorTokenForm({ authors }: AuthorTokenCreateFormProps) {
           disabled={!hasAuthors || isPending}
         />
       </div>
-
-      {state.error ? (
-        <Alert variant="destructive">{state.error}</Alert>
-      ) : null}
 
       {state.accessToken ? (
         <div className="rounded-lg border border-amber-200 bg-amber-50 p-3">

@@ -1,13 +1,13 @@
 import Link from "next/link";
 import { Edit3, Eye, Lock, Plus, Trash2, Unlock } from "lucide-react";
 
-import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthors } from "@/db/queries/authors";
+import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { blockAuthorAction, deleteAuthorAction, unblockAuthorAction } from "./actions";
 import { getAuthorErrorMessage } from "./messages";
@@ -56,9 +56,15 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
   const errorMessage = getAuthorErrorMessage(params.error);
   const successMessage = getSuccessMessage(params);
   const systemAuthorsCount = authors.filter((author) => author.isSystem).length;
+  const toastMessages = [
+    ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+    ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <div className="flex flex-col gap-5">
+      <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
+
       <PageHeader
         title="Авторы"
         description="Участники, которые могут ставить оценки."
@@ -72,9 +78,6 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
           </Link>
         }
       />
-
-      {successMessage ? <Alert variant="success">{successMessage}</Alert> : null}
-      {errorMessage ? <Alert variant="destructive">{errorMessage}</Alert> : null}
 
       {authors.length === 0 ? (
         <EmptyState>Авторы пока не добавлены.</EmptyState>
