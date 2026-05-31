@@ -3,13 +3,15 @@ import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { AuthorToasts } from "../../../author-toasts";
 import { updateAuthorMediaItemAction } from "../../actions";
-import { getAuthorMediaFormErrorMessage, MediaItemForm } from "../../media-item-form";
+import { MediaItemForm } from "../../media-item-form";
+import { getAuthorMediaFormErrorMessage } from "../../messages";
 
 type EditAuthorMediaPageProps = {
   params: Promise<{
@@ -24,11 +26,12 @@ export default async function EditAuthorMediaPage({
   params,
   searchParams,
 }: EditAuthorMediaPageProps) {
-  const [{ id }, { error }, author, franchises] = await Promise.all([
+  const [{ id }, { error }, author, franchises, mediaCarriers] = await Promise.all([
     params,
     searchParams,
     requireAuthor(),
     getFranchiseOptions(),
+    getMediaCarrierOptions(),
   ]);
   const mediaItemId = Number(id);
 
@@ -72,12 +75,13 @@ export default async function EditAuthorMediaPage({
 
       <Card>
         <CardContent className="p-4 sm:p-5">
-        <MediaItemForm
-          action={updateAuthorMediaItemAction}
-          submitLabel="Сохранить"
-          franchises={franchises}
-          values={item}
-        />
+          <MediaItemForm
+            action={updateAuthorMediaItemAction}
+            submitLabel="Сохранить"
+            franchises={franchises}
+            mediaCarriers={mediaCarriers}
+            values={item}
+          />
         </CardContent>
       </Card>
     </div>

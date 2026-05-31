@@ -104,6 +104,21 @@ export const authorAccessTokens = pgTable(
   ],
 );
 
+export const mediaCarriers = pgTable(
+  "media_carriers",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    mediaType: mediaTypeEnum("media_type").notNull(),
+    description: text("description"),
+    ...timestamps(),
+  },
+  (table) => [
+    index("media_carriers_media_type_idx").on(table.mediaType),
+  ],
+);
+
 export const mediaItems = pgTable(
   "media_items",
   {
@@ -114,6 +129,7 @@ export const mediaItems = pgTable(
     description: text("description"),
     mediaType: mediaTypeEnum("media_type").notNull(),
     franchiseId: integer("franchise_id").references(() => franchises.id),
+    mediaCarrierId: integer("media_carrier_id").references(() => mediaCarriers.id),
     releaseYear: integer("release_year"),
     coverUrl: text("cover_url"),
     createdByAuthorId: integer("created_by_author_id").references(() => authors.id),
@@ -133,6 +149,7 @@ export const mediaItems = pgTable(
     index("media_items_title_idx").on(table.title),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
     index("media_items_franchise_id_idx").on(table.franchiseId),
+    index("media_items_media_carrier_id_idx").on(table.mediaCarrierId),
   ],
 );
 

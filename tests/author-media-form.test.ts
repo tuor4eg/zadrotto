@@ -13,6 +13,10 @@ import {
   validateCoverFileInput,
 } from "../src/lib/author-media-form";
 import { generateEntityCode, slugifyCodePart } from "../src/lib/generated-code";
+import {
+  parseRequiredMediaCarrierId,
+  validateMediaCarrierForMediaType,
+} from "../src/lib/media-carrier-form";
 
 describe("author media form helpers", () => {
   it("normalizes optional strings to null when empty", () => {
@@ -85,6 +89,49 @@ describe("author media form helpers", () => {
     assert.deepEqual(parseOptionalPositiveInteger("0"), { ok: false });
     assert.deepEqual(parseOptionalPositiveInteger("-1"), { ok: false });
     assert.deepEqual(parseOptionalPositiveInteger("1.5"), { ok: false });
+  });
+
+  it("parses required media carrier ids", () => {
+    assert.deepEqual(parseRequiredMediaCarrierId(" 7 "), { ok: true, value: 7 });
+    assert.deepEqual(parseRequiredMediaCarrierId(""), { ok: false });
+    assert.deepEqual(parseRequiredMediaCarrierId("0"), { ok: false });
+    assert.deepEqual(parseRequiredMediaCarrierId("-1"), { ok: false });
+    assert.deepEqual(parseRequiredMediaCarrierId("1.5"), { ok: false });
+  });
+
+  it("validates media carrier type against media item type", () => {
+    assert.deepEqual(
+      validateMediaCarrierForMediaType({
+        mediaCarrierId: null,
+        mediaCarrierMediaType: null,
+        mediaType: "film",
+      }),
+      { ok: true },
+    );
+    assert.deepEqual(
+      validateMediaCarrierForMediaType({
+        mediaCarrierId: 1,
+        mediaCarrierMediaType: null,
+        mediaType: "film",
+      }),
+      { ok: false, error: "invalid-carrier" },
+    );
+    assert.deepEqual(
+      validateMediaCarrierForMediaType({
+        mediaCarrierId: 1,
+        mediaCarrierMediaType: "game",
+        mediaType: "film",
+      }),
+      { ok: false, error: "carrier-media-type" },
+    );
+    assert.deepEqual(
+      validateMediaCarrierForMediaType({
+        mediaCarrierId: 1,
+        mediaCarrierMediaType: "game",
+        mediaType: "game",
+      }),
+      { ok: true },
+    );
   });
 
   it("builds an ascii slug base from a title with a stable fallback", () => {

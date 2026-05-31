@@ -1,12 +1,4 @@
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
-
-export function getAdminMediaErrorMessage(error?: string) {
-  const formErrorMessage = getAdminFormErrorMessage(error);
-
-  if (formErrorMessage) {
-    return formErrorMessage;
-  }
-
+export function getAuthorMediaFormErrorMessage(error?: string) {
   if (error === "required") {
     return "Заполни название и тип медиа.";
   }
@@ -27,22 +19,6 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Носитель должен соответствовать выбранному типу медиа.";
   }
 
-  if (error === "invalid-author") {
-    return "Выбранный автор не найден.";
-  }
-
-  if (error === "author-required") {
-    return "Укажи автора записи.";
-  }
-
-  if (error === "invalid-media") {
-    return "Не удалось найти запись.";
-  }
-
-  if (error === "rated") {
-    return "Удалять можно только записи без оценок.";
-  }
-
   if (error === "cover-type") {
     return "Обложка должна быть JPG, PNG или WebP.";
   }
@@ -52,11 +28,19 @@ export function getAdminMediaErrorMessage(error?: string) {
   }
 
   if (error === "cover-upload") {
-    return "Не удалось загрузить обложку.";
+    return "Не удалось загрузить обложку. Проверь S3-настройки.";
   }
 
   if (error === "cover-delete") {
-    return "Не удалось удалить обложку.";
+    return "Не удалось удалить обложку из хранилища. Проверь S3-настройки.";
+  }
+
+  if (error === "total-limit") {
+    return "Достигнут общий лимит черновиков для твоего профиля.";
+  }
+
+  if (error === "daily-limit") {
+    return "Достигнут суточный лимит черновиков для твоего профиля.";
   }
 
   return null;

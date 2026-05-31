@@ -1,8 +1,10 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
-import { getAuthorMediaFormErrorMessage, MediaItemForm } from "../media-item-form";
+import { MediaItemForm } from "../media-item-form";
+import { getAuthorMediaFormErrorMessage } from "../messages";
 
 type NewAuthorMediaPageProps = {
   searchParams: Promise<{
@@ -11,7 +13,11 @@ type NewAuthorMediaPageProps = {
 };
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
-  const [{ error }, franchises] = await Promise.all([searchParams, getFranchiseOptions()]);
+  const [{ error }, franchises, mediaCarriers] = await Promise.all([
+    searchParams,
+    getFranchiseOptions(),
+    getMediaCarrierOptions(),
+  ]);
   const errorMessage = getAuthorMediaFormErrorMessage(error);
 
   return (
@@ -33,11 +39,12 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
 
       <Card>
         <CardContent className="p-4 sm:p-5">
-        <MediaItemForm
-          action={createAuthorMediaItemAction}
-          submitLabel="Создать"
-          franchises={franchises}
-        />
+          <MediaItemForm
+            action={createAuthorMediaItemAction}
+            submitLabel="Создать"
+            franchises={franchises}
+            mediaCarriers={mediaCarriers}
+          />
         </CardContent>
       </Card>
     </div>

@@ -7,6 +7,7 @@ import { redirect } from "next/navigation";
 
 import { authorExistsById } from "@/db/queries/authors";
 import { franchiseExistsById } from "@/db/queries/franchises";
+import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
 import {
   createAdminMediaItem,
   deleteAdminMediaItemIfUnrated,
@@ -20,6 +21,7 @@ import {
   parseOptionalReleaseYear,
   validateCoverFileInput,
 } from "@/lib/author-media-form";
+import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/app-error-messages";
 import { generateEntityCode } from "@/lib/generated-code";
@@ -115,6 +117,7 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
   const mediaType = parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
   const franchiseId = parseOptionalPositiveInteger(getFormString(formData, "franchiseId"));
+  const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
   const authorId = parseOptionalPositiveInteger(getFormString(formData, "authorId"));
 
   if (!title || !mediaType) {
@@ -127,6 +130,10 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
 
   if (!franchiseId.ok) {
     return { ok: false as const, error: "invalid-franchise" };
+  }
+
+  if (!mediaCarrierId.ok) {
+    return { ok: false as const, error: "invalid-carrier" };
   }
 
   if (!authorId.ok) {
@@ -145,6 +152,7 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
       franchiseId: franchiseId.value,
+      mediaCarrierId: mediaCarrierId.value,
       authorId: authorId.value,
       releaseYear: releaseYear.value,
     },
@@ -157,6 +165,21 @@ async function isKnownFranchise(franchiseId: number | null) {
 
 async function isKnownAuthor(authorId: number | null) {
   return authorId === null || authorExistsById(authorId);
+}
+
+async function validateMediaCarrier(input: {
+  mediaCarrierId: number | null;
+  mediaType: MediaType;
+}) {
+  const mediaCarrierMediaType = input.mediaCarrierId
+    ? await getMediaCarrierMediaTypeById(input.mediaCarrierId)
+    : null;
+
+  return validateMediaCarrierForMediaType({
+    mediaCarrierId: input.mediaCarrierId,
+    mediaCarrierMediaType,
+    mediaType: input.mediaType,
+  });
 }
 
 function revalidateMediaSurfaces(input: {
@@ -202,6 +225,12 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-franchise`);
+  }
+
+  const mediaCarrier = await validateMediaCarrier(form.value);
+
+  if (!mediaCarrier.ok) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=${mediaCarrier.error}`);
   }
 
   if (!(await isKnownAuthor(form.value.authorId))) {
@@ -274,6 +303,12 @@ export async function createAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect("/admin/media/new?error=invalid-franchise");
+  }
+
+  const mediaCarrier = await validateMediaCarrier(form.value);
+
+  if (!mediaCarrier.ok) {
+    redirect(`/admin/media/new?error=${mediaCarrier.error}`);
   }
 
   if (!(await isKnownAuthor(form.value.authorId))) {

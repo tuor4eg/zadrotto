@@ -8,6 +8,7 @@ import {
   FileText,
   KeyRound,
   Layers3,
+  Package,
   MessageSquareText,
   Newspaper,
   ShieldCheck,
@@ -154,6 +155,7 @@ export function AdminContentMenu() {
       items={[
         { href: "/admin/media", icon: FileText, label: "Записи" },
         { href: "/admin/franchises", icon: Layers3, label: "Серии" },
+        { href: "/admin/media-carriers", icon: Package, label: "Носители" },
       ]}
     />
   );

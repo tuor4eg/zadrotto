@@ -30,6 +30,7 @@ import {
   authorMediaExperiences,
   authors,
   franchises,
+  mediaCarriers,
   mediaItems,
   ratings,
 } from "@/db/schema";
@@ -263,6 +264,8 @@ const catalogMediaItemsQuery = (input: {
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       franchiseTitle: franchises.title,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -278,6 +281,7 @@ const catalogMediaItemsQuery = (input: {
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(input.filterCondition)
     .groupBy(
@@ -290,6 +294,8 @@ const catalogMediaItemsQuery = (input: {
       mediaItems.franchiseId,
       franchises.code,
       franchises.title,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )
@@ -377,6 +383,8 @@ export async function getAuthorMediaItems(authorId: number) {
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
@@ -384,6 +392,7 @@ export async function getAuthorMediaItems(authorId: number) {
       updatedAt: mediaItems.updatedAt,
     })
     .from(mediaItems)
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .where(
       and(
         eq(mediaItems.createdByAuthorId, authorId),
@@ -443,6 +452,8 @@ export async function getAdminMediaItems(input: {
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       franchiseTitle: franchises.title,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
@@ -455,6 +466,7 @@ export async function getAdminMediaItems(input: {
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(filterCondition)
@@ -468,6 +480,8 @@ export async function getAdminMediaItems(input: {
       mediaItems.franchiseId,
       franchises.code,
       franchises.title,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
       mediaItems.publicationStatus,
@@ -550,6 +564,7 @@ export type AuthorMediaItemInput = {
   description: string | null;
   mediaType: MediaType;
   franchiseId: number | null;
+  mediaCarrierId: number | null;
   releaseYear: number | null;
   coverUrl: string | null;
 };
@@ -562,6 +577,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
     description: input.description,
     mediaType: input.mediaType,
     franchiseId: input.franchiseId,
+    mediaCarrierId: input.mediaCarrierId,
     releaseYear: input.releaseYear,
     coverUrl: input.coverUrl,
     createdByAuthorId: input.authorId,
@@ -581,6 +597,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       description: input.description,
       mediaType: input.mediaType,
       franchiseId: input.franchiseId,
+      mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
       createdByAuthorId: input.authorId,
@@ -603,6 +620,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchiseId: mediaItems.franchiseId,
+      mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
@@ -625,6 +643,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchiseId: mediaItems.franchiseId,
+      mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
@@ -658,6 +677,9 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       franchiseTitle: franchises.title,
+      mediaCarrierId: mediaItems.mediaCarrierId,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       publicationStatus: mediaItems.publicationStatus,
@@ -670,6 +692,7 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.createdByAuthorId, authorId)))
     .groupBy(
@@ -682,6 +705,9 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       mediaItems.franchiseId,
       franchises.code,
       franchises.title,
+      mediaItems.mediaCarrierId,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
       mediaItems.publicationStatus,
@@ -703,6 +729,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
       description: input.description,
       mediaType: input.mediaType,
       franchiseId: input.franchiseId,
+      mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
       updatedAt: new Date(),
@@ -728,6 +755,7 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       description: input.description,
       mediaType: input.mediaType,
       franchiseId: input.franchiseId,
+      mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
       createdByAuthorId: input.authorId,
@@ -910,6 +938,8 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       franchiseTitle: franchises.title,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       submittedAt: mediaItems.submittedAt,
@@ -921,6 +951,7 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
     .from(mediaItems)
     .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, "submitted")))
     .groupBy(
@@ -933,6 +964,8 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       mediaItems.franchiseId,
       franchises.code,
       franchises.title,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
       mediaItems.submittedAt,
@@ -1073,6 +1106,8 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       franchiseTitle: franchises.title,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -1085,6 +1120,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
     .groupBy(
@@ -1097,6 +1133,8 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaItems.franchiseId,
       franchises.code,
       franchises.title,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )
@@ -1117,6 +1155,8 @@ export async function getOtherMediaItemsFromFranchise(
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -1124,6 +1164,7 @@ export async function getOtherMediaItemsFromFranchise(
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
@@ -1138,6 +1179,8 @@ export async function getOtherMediaItemsFromFranchise(
       mediaItems.title,
       mediaItems.originalTitle,
       mediaItems.mediaType,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )

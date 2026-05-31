@@ -71,6 +71,20 @@
       "when": 1780073936103,
       "tag": "0009_clear_pasha_game_completion_descriptions",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780256400000,
+      "tag": "0010_media_carriers",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780256500000,
+      "tag": "0011_seed_game_media_carriers",
+      "breakpoints": true
     }
   ]
 }

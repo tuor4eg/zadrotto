@@ -47,6 +47,7 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
         description: input.description,
         mediaType: input.mediaType,
         franchiseId: input.franchiseId,
+        mediaCarrierId: input.mediaCarrierId,
         releaseYear: input.releaseYear,
         coverUrl: input.coverUrl,
         createdByAuthorId: input.authorId,

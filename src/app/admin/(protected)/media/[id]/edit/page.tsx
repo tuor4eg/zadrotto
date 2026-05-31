@@ -12,6 +12,7 @@ import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
 import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
@@ -31,11 +32,12 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [{ id }, query, authors, franchises] = await Promise.all([
+  const [{ id }, query, authors, franchises, mediaCarriers] = await Promise.all([
     params,
     searchParams,
     getAuthorOptions(),
     getFranchiseOptions(),
+    getMediaCarrierOptions(),
   ]);
   const mediaItemId = Number(id);
 
@@ -79,6 +81,7 @@ export default async function EditAdminMediaPage({
               submitLabel="Сохранить"
               authors={authors}
               franchises={franchises}
+              mediaCarriers={mediaCarriers}
               requireAuthor
               values={item}
               errorMessage={getAdminMediaErrorMessage(query.error)}

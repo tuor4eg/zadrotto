@@ -1,10 +1,14 @@
+"use client";
+
 import { Save } from "lucide-react";
+import { useMemo, useState } from "react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
+import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { CoverFileInput } from "./cover-file-input";
@@ -16,6 +20,7 @@ type MediaFormValues = {
   description?: string | null;
   mediaType?: MediaType;
   franchiseId?: number | null;
+  mediaCarrierId?: number | null;
   releaseYear?: number | null;
   coverUrl?: string | null;
   createdByAuthorId?: number | null;
@@ -26,6 +31,7 @@ type AdminMediaFormProps = {
   submitLabel: string;
   authors: Awaited<ReturnType<typeof getAuthorOptions>>;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
+  mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   requireAuthor?: boolean;
   values?: MediaFormValues;
   errorMessage?: string | null;
@@ -37,12 +43,23 @@ export function AdminMediaForm({
   submitLabel,
   authors,
   franchises,
+  mediaCarriers,
   requireAuthor = false,
   values,
   errorMessage,
   successMessage,
 }: AdminMediaFormProps) {
   const hasAuthors = authors.length > 0;
+  const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
+    values?.mediaType ?? "game",
+  );
+  const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
+    values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
+  );
+  const availableMediaCarriers = useMemo(
+    () => mediaCarriers.filter((carrier) => carrier.mediaType === selectedMediaType),
+    [mediaCarriers, selectedMediaType],
+  );
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
@@ -81,7 +98,23 @@ export function AdminMediaForm({
           <Select
             id="admin-media-type"
             name="mediaType"
-            defaultValue={values?.mediaType ?? "game"}
+            value={selectedMediaType}
+            onChange={(event) => {
+              const nextMediaType = event.currentTarget.value as MediaType;
+
+              setSelectedMediaType(nextMediaType);
+
+              if (
+                selectedMediaCarrierId &&
+                !mediaCarriers.some(
+                  (carrier) =>
+                    String(carrier.id) === selectedMediaCarrierId &&
+                    carrier.mediaType === nextMediaType,
+                )
+              ) {
+                setSelectedMediaCarrierId("");
+              }
+            }}
             required
           >
             {MEDIA_TYPES.map((mediaType) => (
@@ -93,24 +126,20 @@ export function AdminMediaForm({
         </div>
 
         <div className="flex flex-col gap-2">
-          <Label htmlFor="admin-media-author">Автор</Label>
+          <Label htmlFor="admin-media-carrier">Носитель</Label>
           <Select
-            id="admin-media-author"
-            name="authorId"
-            defaultValue={values?.createdByAuthorId ?? ""}
-            required={requireAuthor}
-            disabled={requireAuthor && !hasAuthors}
+            id="admin-media-carrier"
+            name="mediaCarrierId"
+            value={selectedMediaCarrierId}
+            onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
           >
-            {requireAuthor ? null : <option value="">Без автора</option>}
-            {authors.map((author) => (
-              <option key={author.id} value={author.id}>
-                {author.isSystem ? `${author.name} (системный)` : author.name}
+            <option value="">Без носителя</option>
+            {availableMediaCarriers.map((carrier) => (
+              <option key={carrier.id} value={carrier.id}>
+                {carrier.name}
               </option>
             ))}
           </Select>
-          {requireAuthor && !hasAuthors ? (
-            <p className="text-xs text-stone-500">Сначала создай хотя бы одного автора.</p>
-          ) : null}
         </div>
 
         <div className="flex flex-col gap-2">
@@ -141,6 +170,27 @@ export function AdminMediaForm({
             max="9999"
             defaultValue={values?.releaseYear ?? ""}
           />
+        </div>
+
+        <div className="flex flex-col gap-2 md:col-span-2">
+          <Label htmlFor="admin-media-author">Автор</Label>
+          <Select
+            id="admin-media-author"
+            name="authorId"
+            defaultValue={values?.createdByAuthorId ?? ""}
+            required={requireAuthor}
+            disabled={requireAuthor && !hasAuthors}
+          >
+            {requireAuthor ? null : <option value="">Без автора</option>}
+            {authors.map((author) => (
+              <option key={author.id} value={author.id}>
+                {author.isSystem ? `${author.name} (системный)` : author.name}
+              </option>
+            ))}
+          </Select>
+          {requireAuthor && !hasAuthors ? (
+            <p className="text-xs text-stone-500">Сначала создай хотя бы одного автора.</p>
+          ) : null}
         </div>
 
         <div className="flex flex-col gap-2 md:col-span-2">

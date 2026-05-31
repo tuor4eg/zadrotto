@@ -7,6 +7,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { franchiseExistsById } from "@/db/queries/franchises";
+import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
 import {
   deleteAuthorDraftMediaItem,
   getAuthorPrivateMediaItemLimitUsage,
@@ -26,6 +27,7 @@ import {
   validateCoverFileInput,
 } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
+import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
 import {
   canAuthorDeleteMediaItem,
   canAuthorWithdrawPublicationRequest,
@@ -115,6 +117,7 @@ function readAuthorMediaForm(formData: FormData) {
   const mediaType = parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
   const franchiseId = parseOptionalPositiveInteger(getFormString(formData, "franchiseId"));
+  const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
 
   if (!title || !mediaType) {
     return { ok: false as const, error: "required" };
@@ -128,6 +131,10 @@ function readAuthorMediaForm(formData: FormData) {
     return { ok: false as const, error: "invalid-franchise" };
   }
 
+  if (!mediaCarrierId.ok) {
+    return { ok: false as const, error: "invalid-carrier" };
+  }
+
   return {
     ok: true as const,
     value: {
@@ -136,6 +143,7 @@ function readAuthorMediaForm(formData: FormData) {
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
       franchiseId: franchiseId.value,
+      mediaCarrierId: mediaCarrierId.value,
       releaseYear: releaseYear.value,
     },
   };
@@ -143,6 +151,21 @@ function readAuthorMediaForm(formData: FormData) {
 
 async function isKnownFranchise(franchiseId: number | null) {
   return franchiseId === null || franchiseExistsById(franchiseId);
+}
+
+async function validateMediaCarrier(input: {
+  mediaCarrierId: number | null;
+  mediaType: MediaType;
+}) {
+  const mediaCarrierMediaType = input.mediaCarrierId
+    ? await getMediaCarrierMediaTypeById(input.mediaCarrierId)
+    : null;
+
+  return validateMediaCarrierForMediaType({
+    mediaCarrierId: input.mediaCarrierId,
+    mediaCarrierMediaType,
+    mediaType: input.mediaType,
+  });
 }
 
 async function canCreatePrivateMediaItem(author: {
@@ -190,6 +213,12 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect("/author/media/new?error=invalid-franchise");
+  }
+
+  const mediaCarrier = await validateMediaCarrier(form.value);
+
+  if (!mediaCarrier.ok) {
+    redirect(`/author/media/new?error=${mediaCarrier.error}`);
   }
 
   const limit = await canCreatePrivateMediaItem(author);
@@ -256,6 +285,12 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
+  }
+
+  const mediaCarrier = await validateMediaCarrier(form.value);
+
+  if (!mediaCarrier.ok) {
+    redirect(`/author/media/${mediaItemId}/edit?error=${mediaCarrier.error}`);
   }
 
   const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);

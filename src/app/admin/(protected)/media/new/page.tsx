@@ -5,6 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { PageHeader } from "../../admin-ui";
 import { createAdminMediaItemAction } from "../actions";
 import { AdminMediaForm } from "../media-form";
@@ -17,10 +18,11 @@ type NewAdminMediaPageProps = {
 };
 
 export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaPageProps) {
-  const [{ error }, authors, franchises] = await Promise.all([
+  const [{ error }, authors, franchises, mediaCarriers] = await Promise.all([
     searchParams,
     getAuthorOptions(),
     getFranchiseOptions(),
+    getMediaCarrierOptions(),
   ]);
 
   return (
@@ -46,6 +48,7 @@ export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaP
             submitLabel="Создать"
             authors={authors}
             franchises={franchises}
+            mediaCarriers={mediaCarriers}
             requireAuthor
             values={{ releaseYear: new Date().getFullYear() }}
             errorMessage={getAdminMediaErrorMessage(error)}

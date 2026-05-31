@@ -1,8 +1,12 @@
+"use client";
+
 import Link from "next/link";
+import { useMemo, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
+import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { resolveCoverUrl } from "@/lib/storage";
 import { CoverFileInput } from "./cover-file-input";
@@ -14,6 +18,7 @@ type MediaItemFormValues = {
   description?: string | null;
   mediaType?: MediaType;
   franchiseId?: number | null;
+  mediaCarrierId?: number | null;
   releaseYear?: number | null;
   coverUrl?: string | null;
 };
@@ -22,56 +27,29 @@ type MediaItemFormProps = {
   action: (formData: FormData) => void | Promise<void>;
   submitLabel: string;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
+  mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   values?: MediaItemFormValues;
   error?: string;
 };
-
-export function getAuthorMediaFormErrorMessage(error?: string) {
-  if (error === "required") {
-    return "Заполни название и тип медиа.";
-  }
-
-  if (error === "invalid-year") {
-    return "Год должен быть числом от 0 до 9999.";
-  }
-
-  if (error === "invalid-franchise") {
-    return "Выбранная серия не найдена.";
-  }
-
-  if (error === "cover-type") {
-    return "Обложка должна быть JPG, PNG или WebP.";
-  }
-
-  if (error === "cover-too-large") {
-    return "Обложка должна быть не больше 5 МБ.";
-  }
-
-  if (error === "cover-upload") {
-    return "Не удалось загрузить обложку. Проверь S3-настройки.";
-  }
-
-  if (error === "cover-delete") {
-    return "Не удалось удалить обложку из хранилища. Проверь S3-настройки.";
-  }
-
-  if (error === "total-limit") {
-    return "Достигнут общий лимит черновиков для твоего профиля.";
-  }
-
-  if (error === "daily-limit") {
-    return "Достигнут суточный лимит черновиков для твоего профиля.";
-  }
-
-  return null;
-}
 
 export function MediaItemForm({
   action,
   submitLabel,
   franchises,
+  mediaCarriers,
   values,
 }: MediaItemFormProps) {
+  const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
+    values?.mediaType ?? "game",
+  );
+  const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
+    values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
+  );
+  const availableMediaCarriers = useMemo(
+    () => mediaCarriers.filter((carrier) => carrier.mediaType === selectedMediaType),
+    [mediaCarriers, selectedMediaType],
+  );
+
   return (
     <form action={action} className="grid gap-5" noValidate>
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -110,11 +88,46 @@ export function MediaItemForm({
             id="author-media-type"
             name="mediaType"
             required
-            defaultValue={values?.mediaType ?? "game"}
+            value={selectedMediaType}
+            onChange={(event) => {
+              const nextMediaType = event.currentTarget.value as MediaType;
+
+              setSelectedMediaType(nextMediaType);
+
+              if (
+                selectedMediaCarrierId &&
+                !mediaCarriers.some(
+                  (carrier) =>
+                    String(carrier.id) === selectedMediaCarrierId &&
+                    carrier.mediaType === nextMediaType,
+                )
+              ) {
+                setSelectedMediaCarrierId("");
+              }
+            }}
           >
             {MEDIA_TYPES.map((mediaType) => (
               <option key={mediaType} value={mediaType}>
                 {MEDIA_TYPE_LABELS[mediaType]}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="author-media-carrier">
+            Носитель
+          </Label>
+          <Select
+            id="author-media-carrier"
+            name="mediaCarrierId"
+            value={selectedMediaCarrierId}
+            onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
+          >
+            <option value="">Без носителя</option>
+            {availableMediaCarriers.map((carrier) => (
+              <option key={carrier.id} value={carrier.id}>
+                {carrier.name}
               </option>
             ))}
           </Select>
