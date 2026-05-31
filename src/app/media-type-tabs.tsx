@@ -21,6 +21,7 @@ type MediaTypeTabsProps = {
 type MediaTypeTabItem = {
   count: number;
   label: string;
+  selected: boolean;
   value: MediaTypeFilter;
 };
 
@@ -116,23 +117,40 @@ export function MediaTypeTabs({
     [mediaTypeCounts],
   );
   const tabs = useMemo<MediaTypeTabItem[]>(
-    () => [
-      {
-        count: totalCount,
-        label: "Все",
-        value: "all",
-      },
-      ...availableMediaTypes.map((mediaType) => ({
-        count: countByMediaType.get(mediaType) ?? 0,
-        label: MEDIA_TYPE_LABELS[mediaType],
-        value: mediaType,
-      })),
-    ],
-    [availableMediaTypes, countByMediaType, totalCount],
+    () => {
+      if (availableMediaTypes.length === 1) {
+        const [mediaType] = availableMediaTypes;
+
+        return [
+          {
+            count: countByMediaType.get(mediaType) ?? totalCount,
+            label: MEDIA_TYPE_LABELS[mediaType],
+            selected: selectedMediaType === "all" || selectedMediaType === mediaType,
+            value: "all",
+          },
+        ];
+      }
+
+      return [
+        {
+          count: totalCount,
+          label: "Все",
+          selected: selectedMediaType === "all",
+          value: "all",
+        },
+        ...availableMediaTypes.map((mediaType) => ({
+          count: countByMediaType.get(mediaType) ?? 0,
+          label: MEDIA_TYPE_LABELS[mediaType],
+          selected: selectedMediaType === mediaType,
+          value: mediaType,
+        })),
+      ];
+    },
+    [availableMediaTypes, countByMediaType, selectedMediaType, totalCount],
   );
   const selectedIndex = Math.max(
     0,
-    tabs.findIndex((tab) => tab.value === selectedMediaType),
+    tabs.findIndex((tab) => tab.selected),
   );
 
   return (
@@ -144,13 +162,11 @@ export function MediaTypeTabs({
           className="flex w-max min-w-0 items-end overflow-visible whitespace-nowrap lg:w-auto lg:flex-1"
         >
           {tabs.map((tab, index) => {
-            const isSelected = selectedMediaType === tab.value;
-
             return (
               <MediaTypeTab
                 key={tab.value}
                 index={index}
-                isSelected={isSelected}
+                isSelected={tab.selected}
                 label={tab.label}
                 count={tab.count}
                 paperClassName={TAB_PAPER_CLASSES[index % TAB_PAPER_CLASSES.length]}
