@@ -6,6 +6,7 @@ import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
 import { getCurrentAuthor } from "@/lib/author-auth";
+import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
 
 type MediaItemPageProps = {
   params: Promise<{
@@ -22,6 +23,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     notFound();
   }
 
+  const mediaCarrierFrame = getMediaCarrierFrame(item);
   const relatedItems = item.franchiseId
     ? await getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
     : [];
@@ -55,6 +57,8 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
               currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
               currentAuthorScore={item.currentAuthorScore}
+              panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
+              panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
             />
           }
         />

@@ -1,5 +1,6 @@
 import Link from "next/link";
 
+import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media-carrier-frame";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
@@ -12,6 +13,7 @@ type MediaItemTileItem = {
   averageScore: number | null;
   coverUrl: string | null;
   id: number;
+  mediaCarrierCode?: string | null;
   mediaType: MediaType;
   releaseYear: number | null;
   ratingsCount: number;
@@ -20,8 +22,11 @@ type MediaItemTileItem = {
 
 type ArchiveCoverProps = {
   className?: string;
+  carrierFrame?: boolean;
   item: {
     coverUrl: string | null;
+    mediaCarrierCode?: string | null;
+    mediaType?: MediaType;
     title: string;
   };
   mode?: "cover" | "contain";
@@ -35,11 +40,65 @@ type MediaItemTileProps = {
   selected?: boolean;
 };
 
+function NesCartridgeCover({
+  className,
+  frame,
+  item,
+}: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
+  return (
+    <div
+      role="img"
+      aria-label={
+        item.coverUrl
+          ? `Обложка на картридже: ${item.title}`
+          : `Обложка не добавлена: ${item.title}`
+      }
+      className={`grid place-items-center ${className ?? ""}`}
+    >
+      <span className="relative block aspect-[3/2] w-[96%] max-w-full">
+        {item.coverUrl ? (
+          <span className="absolute left-[9.5%] top-[18.5%] h-[58.5%] w-[81%] overflow-hidden rounded-[2%]">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={item.coverUrl}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
+          </span>
+        ) : (
+          <span className="absolute left-[9.5%] top-[18.5%] grid h-[58.5%] w-[81%] place-items-center px-4">
+            <span
+              className={`rounded-sm bg-stone-50/70 px-3 py-2 text-center text-[10px] font-semibold uppercase leading-5 text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)] ${frame.fontClassName ?? "font-mono tracking-[0.18em]"}`}
+            >
+              Нет изображения
+            </span>
+          </span>
+        )}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={frame.assetPath}
+          alt=""
+          aria-hidden="true"
+          className="absolute inset-0 h-full w-full object-contain"
+        />
+      </span>
+    </div>
+  );
+}
+
 export function ArchiveCover({
+  carrierFrame = true,
   className,
   item,
   mode = "cover",
 }: ArchiveCoverProps) {
+  const mediaCarrierFrame = carrierFrame ? getMediaCarrierFrame(item) : null;
+
+  if (mediaCarrierFrame?.renderKind === "nes-cartridge") {
+    return <NesCartridgeCover className={className} frame={mediaCarrierFrame} item={item} />;
+  }
+
   if (item.coverUrl) {
     return (
       // eslint-disable-next-line @next/next/no-img-element
@@ -79,6 +138,7 @@ export function MediaItemTile({
   const content = (
     <>
       <ArchiveCover
+        carrierFrame={false}
         item={item}
         className="absolute inset-0 h-full w-full transition-transform duration-300 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"
       />

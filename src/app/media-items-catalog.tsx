@@ -21,7 +21,9 @@ import {
 import { MediaTypeTabs } from "@/app/media-type-tabs";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
+import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
+import { hasMediaCarrierFrame } from "@/lib/media-carrier-frame";
 import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
@@ -339,10 +341,33 @@ export function MediaItemsCatalog({
                   Досье
                 </div>
 
-                <div className="mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20">
-                  <div className="relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800">
-                    <ArchiveCover item={selectedItem} className="h-full w-full" />
-                    {!selectedItem.coverUrl ? (
+                <div
+                  className={
+                    hasMediaCarrierFrame(selectedItem)
+                      ? "mt-3 overflow-hidden rounded-sm"
+                      : "mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
+                  }
+                >
+                  <div
+                    className={
+                      hasMediaCarrierFrame(selectedItem)
+                        ? "relative aspect-[4/3] overflow-visible rounded-sm"
+                        : "relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800"
+                    }
+                  >
+                    {selectedItem.coverUrl ? (
+                      <ImageViewer
+                        src={selectedItem.coverUrl}
+                        alt={`Обложка: ${selectedItem.title}`}
+                        title={selectedItem.title}
+                        triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+                      >
+                        <ArchiveCover item={selectedItem} className="h-full w-full" />
+                      </ImageViewer>
+                    ) : (
+                      <ArchiveCover item={selectedItem} className="h-full w-full" />
+                    )}
+                    {!selectedItem.coverUrl && !hasMediaCarrierFrame(selectedItem) ? (
                       <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
                         <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
                           Нет изображения

@@ -23,6 +23,8 @@ type MediaItemRatingDialogProps = {
   currentAuthorFirstExperiencedAt?: Date | string | null;
   currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
   currentAuthorScore: number | null;
+  panelDisplayClassName?: string;
+  panelLabelClassName?: string;
   size?: "card" | "compact";
 };
 
@@ -53,6 +55,8 @@ export function MediaItemRatingPanel({
   currentAuthorFirstExperiencedPrecision = null,
   currentAuthorScore,
   onOpen,
+  panelDisplayClassName,
+  panelLabelClassName,
   size = "card",
 }: MediaItemRatingPanelProps) {
   const isCompact = size === "compact";
@@ -74,19 +78,19 @@ export function MediaItemRatingPanel({
           : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
       }`;
   const labelClassName = isCompact
-    ? `block font-mono text-[10px] uppercase tracking-[0.12em] ${
+    ? `block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase ${
         currentAuthor ? "opacity-75" : "text-stone-500"
       }`
-    : `block font-mono text-xs uppercase tracking-[0.14em] ${
+    : `block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-xs uppercase ${
         currentAuthor ? "opacity-75" : "text-stone-500"
       }`;
   const valueClassName = currentAuthor
     ? isCompact
-      ? "mt-1 block font-serif text-3xl tabular-nums"
-      : "mt-2 block font-serif text-5xl tabular-nums"
+      ? `mt-1 block ${panelDisplayClassName ?? "font-serif"} text-3xl tabular-nums`
+      : `mt-2 block ${panelDisplayClassName ?? "font-serif"} text-5xl tabular-nums`
     : isCompact
-      ? "mt-1 block font-mono text-xs uppercase tracking-[0.1em] text-red-900"
-      : "mt-2 block font-mono text-sm uppercase tracking-[0.14em] text-red-900";
+      ? `mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.1em]"} text-xs uppercase text-red-900`
+      : `mt-2 block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
   const content = (
@@ -102,7 +106,7 @@ export function MediaItemRatingPanel({
               <RatingStars score={currentAuthorScore} />
             </span>
             {firstExperiencedDate ? (
-              <span className="mt-3 block font-mono text-[10px] uppercase tracking-[0.12em] opacity-75">
+              <span className={`mt-3 block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase opacity-75`}>
                 Знакомство: {firstExperiencedDate}
               </span>
             ) : null}
@@ -113,7 +117,7 @@ export function MediaItemRatingPanel({
           </span>
         )
       ) : currentAuthor && firstExperiencedDate ? (
-        <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.08em] opacity-75">
+        <span className={`mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.08em]"} text-[9px] uppercase opacity-75`}>
           {firstExperiencedDate}
         </span>
       ) : null}
@@ -241,6 +245,8 @@ export function MediaItemRatingDialog({
   currentAuthorFirstExperiencedAt,
   currentAuthorFirstExperiencedPrecision,
   currentAuthorScore,
+  panelDisplayClassName,
+  panelLabelClassName,
   size = "card",
 }: MediaItemRatingDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -256,6 +262,8 @@ export function MediaItemRatingDialog({
         currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
         currentAuthorScore={currentAuthorScore}
         onOpen={() => setIsOpen(true)}
+        panelDisplayClassName={panelDisplayClassName}
+        panelLabelClassName={panelLabelClassName}
         size={size}
       />
 

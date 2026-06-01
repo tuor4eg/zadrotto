@@ -1,7 +1,7 @@
 import { and, asc, eq, exists, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
-import { franchises, mediaItems, ratings } from "@/db/schema";
+import { franchises, mediaCarriers, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
 import { resolveCoverUrl } from "@/lib/storage";
@@ -229,6 +229,8 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -236,6 +238,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.franchiseId, franchiseId), publishedMediaItemCondition))
     .groupBy(
@@ -245,6 +248,8 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
+      mediaCarriers.code,
+      mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
     )

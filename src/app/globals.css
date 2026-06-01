@@ -8,6 +8,14 @@
   src: url("/fonts/broadsheet.woff") format("woff");
 }
 
+@font-face {
+  font-family: "Press Start 2P";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/press-start-2p-regular.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -143,6 +151,49 @@ body {
 .archive-typewriter-text {
   font-family: "Archive Typewriter", "Courier New", monospace;
   letter-spacing: 0.015em;
+}
+
+.media-carrier-font-nes {
+  font-family: "Press Start 2P", "Courier New", monospace;
+}
+
+.media-image-lift-trigger {
+  position: relative;
+  overflow: visible;
+  transition: transform 180ms ease, filter 180ms ease;
+}
+
+.media-image-lift-trigger > * {
+  position: relative;
+  z-index: 1;
+}
+
+.media-image-lift-trigger::after {
+  position: absolute;
+  z-index: 0;
+  right: 13%;
+  bottom: 3%;
+  left: 13%;
+  height: 12%;
+  pointer-events: none;
+  content: "";
+  border-radius: 999px;
+  background: rgb(28 25 23 / 38%);
+  filter: blur(12px);
+  opacity: 0;
+  transform: translateY(0.45rem) scaleX(0.82);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.media-image-lift-trigger:hover,
+.media-image-lift-trigger:focus-visible {
+  transform: translateY(-0.32rem);
+}
+
+.media-image-lift-trigger:hover::after,
+.media-image-lift-trigger:focus-visible::after {
+  opacity: 1;
+  transform: translateY(0.88rem) scaleX(1);
 }
 
 .archive-paper::after {

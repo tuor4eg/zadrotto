@@ -3,6 +3,8 @@ import Link from "next/link";
 import { ArchiveNote } from "@/app/archive-note";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
+import { ImageViewer } from "@/components/ui/image-viewer";
+import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
 import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
@@ -16,6 +18,7 @@ type MediaItemDetailsItem = {
   mediaType: MediaType;
   franchiseCode?: string | null;
   franchiseTitle?: string | null;
+  mediaCarrierCode?: string | null;
   releaseYear: number | null;
   coverUrl: string | null;
   averageScore: number | null;
@@ -28,6 +31,7 @@ type RelatedMediaItem = {
   code: string;
   title: string;
   mediaType: MediaType;
+  mediaCarrierCode?: string | null;
   releaseYear: number | null;
   coverUrl: string | null;
   ratingsCount: number;
@@ -90,7 +94,18 @@ export function MediaItemDetails({
       <article className="border border-zinc-300 bg-white">
         <div className="grid gap-0 md:grid-cols-[320px_minmax(0,1fr)]">
           <div className="aspect-[4/3] bg-zinc-200 md:aspect-auto md:min-h-[480px]">
-            <ArchiveCover item={item} className="h-full w-full" />
+            {item.coverUrl ? (
+              <ImageViewer
+                src={item.coverUrl}
+                alt={`Обложка: ${item.title}`}
+                title={item.title}
+                triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+              >
+                <ArchiveCover item={item} className="h-full w-full" />
+              </ImageViewer>
+            ) : (
+              <ArchiveCover item={item} className="h-full w-full" />
+            )}
           </div>
 
           <div className="flex min-h-[360px] flex-col justify-between gap-10 p-5 sm:p-8">
@@ -205,6 +220,11 @@ function ArchiveMediaItemDetails({
   noteSlot,
   relatedItems,
 }: Omit<MediaItemDetailsProps, "variant"> & { relatedItems: RelatedMediaItem[] }) {
+  const mediaCarrierFrame = getMediaCarrierFrame(item);
+  const hasCarrierFrame = mediaCarrierFrame !== null;
+  const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
+  const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+
   return (
     <div className="flex flex-col gap-3">
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
@@ -226,17 +246,48 @@ function ArchiveMediaItemDetails({
           />
 
           <div className="relative px-6 pb-6 pt-[3.75rem]">
-            <div className="font-mono text-lg uppercase tracking-[0.38em] text-stone-950">
+            <div className={`${labelFontClassName} text-sm uppercase leading-7 text-stone-950`}>
               Досье
             </div>
-            <div className="mt-6 mx-auto max-w-[360px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25">
-              <div className="rounded-sm border border-stone-700 bg-stone-900 p-3">
-                <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
-                  Archive cover
-                </div>
-                <div className="relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800">
-                  <ArchiveCover item={item} className="h-full w-full" />
-                  {!item.coverUrl ? (
+            <div
+              className={
+                hasCarrierFrame
+                  ? "mt-6 mx-auto max-w-[420px]"
+                  : "mt-6 mx-auto max-w-[360px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
+              }
+            >
+              <div
+                className={
+                  hasCarrierFrame
+                    ? ""
+                    : "rounded-sm border border-stone-700 bg-stone-900 p-3"
+                }
+              >
+                {!hasCarrierFrame ? (
+                  <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
+                    Archive cover
+                  </div>
+                ) : null}
+                <div
+                  className={
+                    hasCarrierFrame
+                      ? "relative aspect-[4/3] overflow-visible rounded-sm"
+                      : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                  }
+                >
+                  {item.coverUrl ? (
+                    <ImageViewer
+                      src={item.coverUrl}
+                      alt={`Обложка: ${item.title}`}
+                      title={item.title}
+                      triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+                    >
+                      <ArchiveCover item={item} className="h-full w-full" />
+                    </ImageViewer>
+                  ) : (
+                    <ArchiveCover item={item} className="h-full w-full" />
+                  )}
+                  {!item.coverUrl && !hasCarrierFrame ? (
                     <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
                       <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
                         Нет изображения
@@ -251,17 +302,23 @@ function ArchiveMediaItemDetails({
           <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-8 sm:px-8 sm:pb-8 sm:pt-8">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
-                <div className="font-serif text-4xl leading-none text-stone-950 sm:text-6xl">
+                <div
+                  className={
+                    mediaCarrierFrame
+                      ? `${displayFontClassName} text-2xl leading-[1.55] text-stone-950 sm:text-4xl`
+                      : "font-serif text-4xl leading-none text-stone-950 sm:text-6xl"
+                  }
+                >
                   {item.title}
                 </div>
                 {item.originalTitle && item.originalTitle !== item.title ? (
-                  <div className="mt-3 font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
+                  <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
                     {item.originalTitle}
                   </div>
                 ) : null}
               </div>
 
-              <div className="mt-5 flex flex-wrap gap-3 font-mono text-sm text-stone-800">
+              <div className={`mt-5 flex flex-wrap gap-3 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
                 <span>{MEDIA_TYPE_LABELS[item.mediaType].toLowerCase()}</span>
                 {item.releaseYear ? <span>•</span> : null}
                 {item.releaseYear ? <span>{item.releaseYear}</span> : null}
@@ -273,7 +330,7 @@ function ArchiveMediaItemDetails({
 
               <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
                 <div>
-                  <dt className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+                  <dt className={`${labelFontClassName} text-xs font-semibold uppercase leading-6 text-stone-600`}>
                     Серия
                   </dt>
                   <dd className="mt-1">
@@ -297,16 +354,16 @@ function ArchiveMediaItemDetails({
                 <div
                   className={`rounded-md border p-4 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)]}`}
                 >
-                  <div className="font-mono text-xs uppercase tracking-[0.14em] opacity-70">
+                  <div className={`${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
                     Оценка архива
                   </div>
-                  <div className="mt-2 font-serif text-5xl tabular-nums">
+                  <div className={`mt-2 ${displayFontClassName} text-4xl tabular-nums sm:text-5xl`}>
                     {formatScore(item.averageScore)}
                   </div>
                   <div className="mt-2 flex justify-center">
                     <DetailRatingStars score={item.averageScore} />
                   </div>
-                  <div className="mt-2 font-mono text-xs uppercase tracking-[0.12em] opacity-70">
+                  <div className={`mt-2 ${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
                     {formatRatingsCount(item.ratingsCount)}
                   </div>
                 </div>

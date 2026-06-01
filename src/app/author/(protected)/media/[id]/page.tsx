@@ -14,6 +14,7 @@ import {
   canAuthorWithdrawPublicationRequest,
 } from "@/lib/author-media-publication";
 import { requireAuthor } from "@/lib/author-auth";
+import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
 import {
   PUBLICATION_STATUS_VALUE_LABELS,
   PUBLISHED_PUBLICATION_STATUS,
@@ -52,6 +53,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
   const canRequestPublication = canAuthorRequestPublication(item.publicationStatus);
   const canWithdrawPublication = canAuthorWithdrawPublicationRequest(item.publicationStatus);
   const canDelete = canAuthorDeleteMediaItem(item.publicationStatus);
+  const mediaCarrierFrame = getMediaCarrierFrame(item);
 
   return (
     <MediaItemDetails
@@ -114,6 +116,8 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
           currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
           currentAuthorScore={item.currentAuthorScore}
+          panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
+          panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
         />
       }
       noteSlot={
