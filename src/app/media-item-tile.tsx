@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
@@ -36,6 +36,7 @@ type MediaItemTileProps = {
   currentAuthorScore?: number | null;
   href?: string;
   item: MediaItemTileItem;
+  mediaTypes: MediaTypeOption[];
   onSelect?: () => void;
   selected?: boolean;
 };
@@ -124,6 +125,7 @@ export function MediaItemTile({
   currentAuthorScore,
   href,
   item,
+  mediaTypes,
   onSelect,
   selected = false,
 }: MediaItemTileProps) {
@@ -152,7 +154,7 @@ export function MediaItemTile({
           {item.title}
         </span>
         <span className="mt-1 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.12em] text-stone-200">
-          <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
+          <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
           {item.releaseYear ? <span>•</span> : null}
           {item.releaseYear ? <span>{item.releaseYear}</span> : null}
           <span>•</span>

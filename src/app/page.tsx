@@ -5,6 +5,7 @@ import {
   getCatalogMediaTypeCounts,
   getCatalogReleaseYearBounds,
 } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
 import { parsePage, parsePageSize } from "@/lib/pagination";
@@ -41,13 +42,14 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   await connection();
 
-  const [currentAuthor, currentAdminUser, params] = await Promise.all([
+  const [currentAuthor, currentAdminUser, params, mediaTypes] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
     searchParams,
+    getMediaTypeOptions(),
   ]);
   const searchQuery = params.q?.trim() ?? "";
-  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
+  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const pageSize = parsePageSize(
     params.pageSize,
     CATALOG_PAGE_SIZE_OPTIONS,
@@ -111,6 +113,7 @@ export default async function Home({ searchParams }: HomeProps) {
           items={catalog.items}
           mediaTypeCounts={mediaTypeCounts}
           mediaTypeFilter={mediaTypeFilter}
+          mediaTypes={mediaTypes}
           page={catalog.page}
           pageSizeOptions={CATALOG_PAGE_SIZE_OPTIONS}
           pageSize={catalog.pageSize}

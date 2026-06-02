@@ -12,6 +12,7 @@ import {
   MessageSquareText,
   Newspaper,
   ShieldCheck,
+  Tags,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -154,6 +155,7 @@ export function AdminContentMenu() {
       label="Записи"
       items={[
         { href: "/admin/media", icon: FileText, label: "Записи" },
+        { href: "/admin/media-types", icon: Tags, label: "Типы" },
         { href: "/admin/franchises", icon: Layers3, label: "Серии" },
         { href: "/admin/media-carriers", icon: Package, label: "Носители" },
       ]}

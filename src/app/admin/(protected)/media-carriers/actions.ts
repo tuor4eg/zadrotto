@@ -9,6 +9,7 @@ import {
   getMediaCarrierById,
   updateMediaCarrier,
 } from "@/db/queries/media-carriers";
+import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
 import { generateEntityCode } from "@/lib/generated-code";
@@ -16,7 +17,7 @@ import {
   normalizeOptionalMediaCarrierString,
   parseRequiredMediaCarrierId,
 } from "@/lib/media-carrier-form";
-import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -25,7 +26,7 @@ function getFormString(formData: FormData, key: string) {
 }
 
 function parseMediaType(value: string): MediaType | null {
-  return MEDIA_TYPES.some((mediaType) => mediaType === value) ? (value as MediaType) : null;
+  return isMediaTypeCode(value) ? value : null;
 }
 
 function readMediaCarrierForm(formData: FormData) {
@@ -62,6 +63,10 @@ export async function createMediaCarrierAction(formData: FormData) {
     redirect(`/admin/media-carriers/new?error=${input.error}`);
   }
 
+  if (!(await mediaTypeExistsByCode(input.value.mediaType))) {
+    redirect("/admin/media-carriers/new?error=required");
+  }
+
   try {
     await createMediaCarrier({
       ...input.value,
@@ -92,6 +97,10 @@ export async function updateMediaCarrierAction(formData: FormData) {
 
   if (!input.ok) {
     redirect(`/admin/media-carriers/${carrierId.value}/edit?error=${input.error}`);
+  }
+
+  if (!(await mediaTypeExistsByCode(input.value.mediaType))) {
+    redirect(`/admin/media-carriers/${carrierId.value}/edit?error=required`);
   }
 
   const existingCarrier = await getMediaCarrierById(carrierId.value);

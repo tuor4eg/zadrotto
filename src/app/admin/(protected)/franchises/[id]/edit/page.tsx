@@ -11,7 +11,8 @@ import {
   getAdminMediaItemsAvailableForFranchise,
   getAdminMediaItemsByFranchiseId,
 } from "@/db/queries/franchises";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getMediaTypeLabel } from "@/lib/media-types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { removeMediaItemFromFranchiseAction, updateFranchiseAction } from "../../actions";
 import { EmptyState, PageHeader } from "../../../admin-ui";
@@ -48,10 +49,11 @@ export default async function EditFranchisePage({
     notFound();
   }
 
-  const [franchise, mediaItems, availableMediaItems] = await Promise.all([
+  const [franchise, mediaItems, availableMediaItems, mediaTypes] = await Promise.all([
     getAdminFranchiseById(franchiseId),
     getAdminMediaItemsByFranchiseId(franchiseId),
     getAdminMediaItemsAvailableForFranchise(franchiseId),
+    getMediaTypeOptions(),
   ]);
 
   if (!franchise) {
@@ -108,6 +110,7 @@ export default async function EditFranchisePage({
           <MediaItemFranchisePicker
             franchiseId={franchise.id}
             items={availableMediaItems}
+            mediaTypes={mediaTypes}
           />
 
           {mediaItems.length === 0 ? (
@@ -125,7 +128,7 @@ export default async function EditFranchisePage({
                       <div className="mt-1 truncate text-xs text-stone-500">{item.originalTitle}</div>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <Badge variant="default">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                      <Badge variant="default">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                       {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
                       <Badge variant="outline">
                         {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}

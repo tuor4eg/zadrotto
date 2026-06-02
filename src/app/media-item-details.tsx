@@ -5,7 +5,7 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
@@ -48,6 +48,7 @@ type MediaItemDetailsProps = {
   actions?: React.ReactNode;
   adjacentShelfSlot?: React.ReactNode;
   meta?: React.ReactNode;
+  mediaTypes: MediaTypeOption[];
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
   relatedItems?: RelatedMediaItem[];
@@ -60,6 +61,7 @@ export function MediaItemDetails({
   actions,
   adjacentShelfSlot,
   meta,
+  mediaTypes,
   ratingSlot,
   noteSlot,
   relatedItems = [],
@@ -72,6 +74,7 @@ export function MediaItemDetails({
         actions={actions}
         adjacentShelfSlot={adjacentShelfSlot}
         meta={meta}
+        mediaTypes={mediaTypes}
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
         relatedItems={relatedItems}
@@ -111,7 +114,7 @@ export function MediaItemDetails({
           <div className="flex min-h-[360px] flex-col justify-between gap-10 p-5 sm:p-8">
             <div className="flex flex-col gap-5">
               <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
-                <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
+                <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
                 {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                 {meta}
               </div>
@@ -216,6 +219,7 @@ function ArchiveMediaItemDetails({
   actions,
   adjacentShelfSlot,
   meta,
+  mediaTypes,
   ratingSlot,
   noteSlot,
   relatedItems,
@@ -319,7 +323,7 @@ function ArchiveMediaItemDetails({
               </div>
 
               <div className={`mt-5 flex flex-wrap gap-3 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
-                <span>{MEDIA_TYPE_LABELS[item.mediaType].toLowerCase()}</span>
+                <span>{getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase()}</span>
                 {item.releaseYear ? <span>•</span> : null}
                 {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                 {meta ? <span>•</span> : null}
@@ -419,6 +423,7 @@ function ArchiveMediaItemDetails({
                         key={relatedItem.id}
                         currentAuthorScore={relatedItem.currentAuthorScore}
                         item={relatedItem}
+                        mediaTypes={mediaTypes}
                         href={`/media/${relatedItem.code}`}
                       />
                     ))}

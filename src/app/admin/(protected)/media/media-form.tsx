@@ -9,7 +9,8 @@ import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import type { getMediaTypeOptions } from "@/db/queries/media-types";
+import type { MediaType } from "@/lib/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { CoverFileInput } from "./cover-file-input";
 
@@ -32,6 +33,7 @@ type AdminMediaFormProps = {
   authors: Awaited<ReturnType<typeof getAuthorOptions>>;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
+  mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
   requireAuthor?: boolean;
   values?: MediaFormValues;
   errorMessage?: string | null;
@@ -44,6 +46,7 @@ export function AdminMediaForm({
   authors,
   franchises,
   mediaCarriers,
+  mediaTypes,
   requireAuthor = false,
   values,
   errorMessage,
@@ -51,7 +54,7 @@ export function AdminMediaForm({
 }: AdminMediaFormProps) {
   const hasAuthors = authors.length > 0;
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
-    values?.mediaType ?? "game",
+    values?.mediaType ?? mediaTypes[0]?.code ?? "",
   );
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
@@ -117,9 +120,9 @@ export function AdminMediaForm({
             }}
             required
           >
-            {MEDIA_TYPES.map((mediaType) => (
-              <option key={mediaType} value={mediaType}>
-                {MEDIA_TYPE_LABELS[mediaType]}
+            {mediaTypes.map((mediaType) => (
+              <option key={mediaType.code} value={mediaType.code}>
+                {mediaType.name}
               </option>
             ))}
           </Select>

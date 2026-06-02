@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { type MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import { Input, Select } from "@/components/ui/form";
-import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
 
 type MediaCarrierFiltersFormProps = {
   availableMediaTypes: Array<{
@@ -13,6 +13,7 @@ type MediaCarrierFiltersFormProps = {
     mediaType: MediaType;
   }>;
   mediaTypeFilter: MediaTypeFilter;
+  mediaTypes: MediaTypeOption[];
   searchQuery: string;
   totalCount: number;
 };
@@ -34,6 +35,7 @@ function updateFilterParam(
 export function MediaCarrierFiltersForm({
   availableMediaTypes,
   mediaTypeFilter,
+  mediaTypes,
   searchQuery,
   totalCount,
 }: MediaCarrierFiltersFormProps) {
@@ -132,7 +134,7 @@ export function MediaCarrierFiltersForm({
           <option value="all">Все типы ({totalCount})</option>
           {availableMediaTypes.map(({ mediaType, count }) => (
             <option key={mediaType} value={mediaType}>
-              {MEDIA_TYPE_LABELS[mediaType]} ({count})
+              {getMediaTypeLabel(mediaType, mediaTypes)} ({count})
             </option>
           ))}
         </Select>

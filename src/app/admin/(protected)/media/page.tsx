@@ -13,7 +13,8 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getAdminMediaItems, getAdminMediaTypeCounts } from "@/db/queries/media-items";
-import { MEDIA_TYPES, MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { parsePage } from "@/lib/pagination";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
@@ -66,10 +67,10 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
 }
 
 export default async function AdminMediaPage({ searchParams }: AdminMediaPageProps) {
-  const params = await searchParams;
+  const [params, mediaTypes] = await Promise.all([searchParams, getMediaTypeOptions()]);
   const searchQuery = params.q?.trim() ?? "";
   const authorFilter = parseAuthorFilter(params.author);
-  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
+  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const parsedSort = parseCatalogSort(params.sort ?? null);
   const sort = isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const [mediaResult, mediaTypeCounts, authors] = await Promise.all([
@@ -99,10 +100,10 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
   ] satisfies AdminToast[];
-  const availableMediaTypes = MEDIA_TYPES
+  const availableMediaTypes = sortMediaTypesByCount(mediaTypes, mediaTypeCounts)
     .map((mediaType) => ({
-      mediaType,
-      count: mediaTypeCounts.find((item) => item.mediaType === mediaType)?.count ?? 0,
+      mediaType: mediaType.code,
+      count: mediaTypeCounts.find((item) => item.mediaType === mediaType.code)?.count ?? 0,
     }))
     .filter((item) => item.count > 0);
   const hasActiveFilters =
@@ -144,6 +145,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           authorFilter={authorFilter}
           authors={authors}
           mediaTypeFilter={mediaTypeFilter}
+          mediaTypes={mediaTypes}
           searchQuery={searchQuery}
           sort={sort}
           totalCount={totalItemsCount}
@@ -176,7 +178,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                         <div className="mt-1 truncate text-xs text-stone-500">{item.originalTitle}</div>
                       ) : null}
                       <div className="mt-2 flex flex-wrap gap-2 sm:hidden">
-                        <Badge variant="outline">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                        <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                         <Badge variant={getStatusBadgeVariant(item.publicationStatus)}>
                           {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}
                         </Badge>
@@ -197,7 +199,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                     </div>
                   </TD>
                   <TD className="hidden sm:table-cell">
-                    <Badge variant="outline">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                    <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                   </TD>
                   <TD className="hidden md:table-cell">
                     <Badge variant={getStatusBadgeVariant(item.publicationStatus)}>

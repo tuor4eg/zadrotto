@@ -11,7 +11,8 @@ import {
   getAdminMediaCarriers,
   getAdminMediaCarrierTypeCounts,
 } from "@/db/queries/media-carriers";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { deleteMediaCarrierAction } from "./actions";
@@ -41,9 +42,9 @@ function getSuccessMessage(input: { created?: string; deleted?: string }) {
 }
 
 export default async function MediaCarriersPage({ searchParams }: MediaCarriersPageProps) {
-  const params = await searchParams;
+  const [params, mediaTypes] = await Promise.all([searchParams, getMediaTypeOptions()]);
   const searchQuery = params.q?.trim() ?? "";
-  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null);
+  const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const [carriers, mediaTypeCounts] = await Promise.all([
     getAdminMediaCarriers({ mediaTypeFilter, searchQuery }),
     getAdminMediaCarrierTypeCounts(),
@@ -55,10 +56,10 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
   ] satisfies AdminToast[];
-  const availableMediaTypes = MEDIA_TYPES
+  const availableMediaTypes = sortMediaTypesByCount(mediaTypes, mediaTypeCounts)
     .map((mediaType) => ({
-      mediaType,
-      count: mediaTypeCounts.find((item) => item.mediaType === mediaType)?.count ?? 0,
+      mediaType: mediaType.code,
+      count: mediaTypeCounts.find((item) => item.mediaType === mediaType.code)?.count ?? 0,
     }))
     .filter((item) => item.count > 0);
   const hasActiveFilters = Boolean(searchQuery) || mediaTypeFilter !== "all";
@@ -88,6 +89,7 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
         <MediaCarrierFiltersForm
           availableMediaTypes={availableMediaTypes}
           mediaTypeFilter={mediaTypeFilter}
+          mediaTypes={mediaTypes}
           searchQuery={searchQuery}
           totalCount={totalCarriersCount}
         />
@@ -123,7 +125,7 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
                       ) : null}
                     </TD>
                     <TD>
-                      <Badge variant="outline">{MEDIA_TYPE_LABELS[carrier.mediaType]}</Badge>
+                      <Badge variant="outline">{getMediaTypeLabel(carrier.mediaType, mediaTypes)}</Badge>
                     </TD>
                     <TD>
                       <Badge variant="outline">{carrier.mediaItemsCount}</Badge>

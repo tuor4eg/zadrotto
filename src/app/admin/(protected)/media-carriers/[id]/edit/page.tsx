@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getMediaCarrierById } from "@/db/queries/media-carriers";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { PageHeader } from "../../../admin-ui";
 import { updateMediaCarrierAction } from "../../actions";
 import { MediaCarrierForm } from "../../media-carrier-form";
@@ -30,7 +31,11 @@ export default async function EditMediaCarrierPage({
   params,
   searchParams,
 }: EditMediaCarrierPageProps) {
-  const [{ id: rawId }, query] = await Promise.all([params, searchParams]);
+  const [{ id: rawId }, query, mediaTypes] = await Promise.all([
+    params,
+    searchParams,
+    getMediaTypeOptions(),
+  ]);
   const carrierId = parseCarrierId(rawId);
 
   if (!carrierId) {
@@ -64,6 +69,7 @@ export default async function EditMediaCarrierPage({
           <MediaCarrierForm
             action={updateMediaCarrierAction}
             submitLabel="Сохранить"
+            mediaTypes={mediaTypes}
             values={carrier}
             errorMessage={getMediaCarrierErrorMessage(query.error)}
             successMessage={query.updated === "1" ? "Носитель сохранен." : null}

@@ -15,12 +15,10 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-import { MEDIA_TYPES } from "@/lib/media-types";
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/author-media-experiences";
 import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/publication-status";
 
-export const mediaTypeEnum = pgEnum("media_type", MEDIA_TYPES);
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
 export const contributionStatusEnum = pgEnum("contribution_status", CONTRIBUTION_STATUSES);
@@ -39,6 +37,14 @@ export const franchises = pgTable("franchises", {
   code: text("code").notNull().unique(),
   title: text("title").notNull(),
   originalTitle: text("original_title"),
+  description: text("description"),
+  ...timestamps(),
+});
+
+export const mediaTypes = pgTable("media_types", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  name: text("name").notNull(),
   description: text("description"),
   ...timestamps(),
 });
@@ -110,7 +116,9 @@ export const mediaCarriers = pgTable(
     id: serial("id").primaryKey(),
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
-    mediaType: mediaTypeEnum("media_type").notNull(),
+    mediaType: text("media_type")
+      .notNull()
+      .references(() => mediaTypes.code),
     description: text("description"),
     ...timestamps(),
   },
@@ -127,7 +135,9 @@ export const mediaItems = pgTable(
     title: text("title").notNull(),
     originalTitle: text("original_title"),
     description: text("description"),
-    mediaType: mediaTypeEnum("media_type").notNull(),
+    mediaType: text("media_type")
+      .notNull()
+      .references(() => mediaTypes.code),
     franchiseId: integer("franchise_id").references(() => franchises.id),
     mediaCarrierId: integer("media_carrier_id").references(() => mediaCarriers.id),
     releaseYear: integer("release_year"),

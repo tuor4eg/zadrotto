@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
 import { MediaItemForm } from "../media-item-form";
@@ -13,10 +14,11 @@ type NewAuthorMediaPageProps = {
 };
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
-  const [{ error }, franchises, mediaCarriers] = await Promise.all([
+  const [{ error }, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     searchParams,
     getFranchiseOptions(),
     getMediaCarrierOptions(),
+    getMediaTypeOptions(),
   ]);
   const errorMessage = getAuthorMediaFormErrorMessage(error);
 
@@ -44,6 +46,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             submitLabel="Создать"
             franchises={franchises}
             mediaCarriers={mediaCarriers}
+            mediaTypes={mediaTypes}
           />
         </CardContent>
       </Card>

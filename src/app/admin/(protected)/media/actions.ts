@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 import { authorExistsById } from "@/db/queries/authors";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
+import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   createAdminMediaItem,
   deleteAdminMediaItemIfUnrated,
@@ -25,7 +26,7 @@ import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/app-error-messages";
 import { generateEntityCode } from "@/lib/generated-code";
-import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
 import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
 function getFormString(formData: FormData, key: string) {
@@ -35,7 +36,7 @@ function getFormString(formData: FormData, key: string) {
 }
 
 function parseMediaType(value: string): MediaType | null {
-  return MEDIA_TYPES.some((mediaType) => mediaType === value) ? (value as MediaType) : null;
+  return isMediaTypeCode(value) ? value : null;
 }
 
 function parseRequiredMediaItemId(value: string) {
@@ -167,6 +168,10 @@ async function isKnownAuthor(authorId: number | null) {
   return authorId === null || authorExistsById(authorId);
 }
 
+async function isKnownMediaType(mediaType: MediaType) {
+  return mediaTypeExistsByCode(mediaType);
+}
+
 async function validateMediaCarrier(input: {
   mediaCarrierId: number | null;
   mediaType: MediaType;
@@ -225,6 +230,10 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-franchise`);
+  }
+
+  if (!(await isKnownMediaType(form.value.mediaType))) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=required`);
   }
 
   const mediaCarrier = await validateMediaCarrier(form.value);
@@ -303,6 +312,10 @@ export async function createAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect("/admin/media/new?error=invalid-franchise");
+  }
+
+  if (!(await isKnownMediaType(form.value.mediaType))) {
+    redirect("/admin/media/new?error=required");
   }
 
   const mediaCarrier = await validateMediaCarrier(form.value);

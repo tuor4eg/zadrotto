@@ -24,7 +24,12 @@ import { PaginationNav } from "@/components/pagination-nav";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { hasMediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import {
+  getMediaTypeLabel,
+  sortMediaTypesByCount,
+  type MediaType,
+  type MediaTypeOption,
+} from "@/lib/media-types";
 import { formatRatingsCount, formatScore } from "@/lib/rating-score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
@@ -40,6 +45,7 @@ type MediaItemsCatalogProps = {
     mediaType: MediaType;
   }>;
   mediaTypeFilter: MediaTypeFilter;
+  mediaTypes: MediaTypeOption[];
   page: number;
   pageSize: number;
   pageSizeOptions: readonly number[];
@@ -88,6 +94,7 @@ export function MediaItemsCatalog({
   items,
   mediaTypeCounts: mediaTypeCountRows,
   mediaTypeFilter,
+  mediaTypes,
   page,
   pageSize,
   pageSizeOptions,
@@ -116,11 +123,14 @@ export function MediaItemsCatalog({
   const [, startTransition] = useTransition();
   const availableMediaTypes = useMemo(
     () =>
-      MEDIA_TYPES.filter((mediaType) =>
-        mediaType === mediaTypeFilter ||
-        mediaTypeCountRows.some((item) => item.mediaType === mediaType && item.count > 0),
-      ),
-    [mediaTypeCountRows, mediaTypeFilter],
+      sortMediaTypesByCount(mediaTypes, mediaTypeCountRows)
+        .filter(
+          (mediaType) =>
+            mediaType.code === mediaTypeFilter ||
+            mediaTypeCountRows.some((item) => item.mediaType === mediaType.code && item.count > 0),
+        )
+        .map((mediaType) => mediaType.code),
+    [mediaTypeCountRows, mediaTypeFilter, mediaTypes],
   );
   const selectedItem = useMemo(
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
@@ -264,6 +274,7 @@ export function MediaItemsCatalog({
           <MediaTypeTabs
             availableMediaTypes={availableMediaTypes}
             mediaTypeCounts={mediaTypeCountRows}
+            mediaTypes={mediaTypes}
             selectedMediaType={mediaTypeFilter}
             onChange={handleMediaTypeFilterChange}
           />
@@ -284,6 +295,7 @@ export function MediaItemsCatalog({
                 currentAuthor !== null ? item.currentAuthorScore : undefined
               }
               item={item}
+              mediaTypes={mediaTypes}
               onSelect={() => setSelectedId(item.id)}
               selected={selectedItem?.id === item.id}
             />
@@ -387,7 +399,7 @@ export function MediaItemsCatalog({
                 ) : null}
 
                 <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs text-stone-800">
-                  <span>{MEDIA_TYPE_LABELS[selectedItem.mediaType].toLowerCase()}</span>
+                  <span>{getMediaTypeLabel(selectedItem.mediaType, mediaTypes).toLowerCase()}</span>
                   {selectedItem.releaseYear ? <span>•</span> : null}
                   {selectedItem.releaseYear ? <span>{selectedItem.releaseYear}</span> : null}
                   <span>•</span>

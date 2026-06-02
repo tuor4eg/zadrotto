@@ -3,14 +3,15 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import { requireAuthor } from "@/lib/author-auth";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
 } from "@/lib/contributions";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES } from "@/lib/media-types";
-import { RATING_SCORE_VALUES, formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
+import { RATING_SCORE_VALUES, formatScore } from "@/lib/rating-score";
 import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
 
 const REVIEW_STATUS_BADGE_VARIANTS: Record<
@@ -38,12 +39,20 @@ function formatDate(value: Date | string | null) {
 
 export default async function AuthorPage() {
   const author = await requireAuthor();
-  const [summary, reviewSummary] = await Promise.all([
+  const [summary, reviewSummary, mediaTypes] = await Promise.all([
     getAuthorRatingSummary(author.id),
     getAuthorReviewSummary(author.id),
+    getMediaTypeOptions(),
   ]);
   const distributionByMediaType = new Map(
     summary.distribution.map((item) => [item.mediaType, item.ratingsCount]),
+  );
+  const mediaTypesByRatingCount = sortMediaTypesByCount(
+    mediaTypes,
+    summary.distribution.map((item) => ({
+      count: item.ratingsCount,
+      mediaType: item.mediaType,
+    })),
   );
   const distributionByScore = new Map(
     summary.scoreDistribution.map((item) => [item.score, item.ratingsCount]),
@@ -64,9 +73,6 @@ export default async function AuthorPage() {
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
               {summary.ratingsCount}
             </span>
-            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
-              {formatRatingsCount(summary.ratingsCount)}
-            </span>
           </CardContent>
         </Card>
 
@@ -78,7 +84,6 @@ export default async function AuthorPage() {
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
               {formatScore(summary.averageScore)}
             </span>
-            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">личная</span>
           </CardContent>
         </Card>
 
@@ -89,9 +94,6 @@ export default async function AuthorPage() {
             </span>
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
               {summary.currentYearRatingsCount}
-            </span>
-            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
-              {formatRatingsCount(summary.currentYearRatingsCount)}
             </span>
           </CardContent>
         </Card>
@@ -104,9 +106,6 @@ export default async function AuthorPage() {
             <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
               {reviewSummary.reviewsCount}
             </span>
-            <span className="mt-0.5 block text-[11px] leading-4 text-stone-500">
-              авторских текстов
-            </span>
           </CardContent>
         </Card>
       </section>
@@ -118,16 +117,16 @@ export default async function AuthorPage() {
               По типам медиа
             </span>
             <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {MEDIA_TYPES.map((mediaType) => {
-                const count = distributionByMediaType.get(mediaType) ?? 0;
+              {mediaTypesByRatingCount.map((mediaType) => {
+                const count = distributionByMediaType.get(mediaType.code) ?? 0;
 
                 return (
                   <div
-                    key={mediaType}
+                    key={mediaType.code}
                     className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-stone-200 bg-stone-100/80 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
                   >
                     <span className="truncate text-xs text-stone-600">
-                      {MEDIA_TYPE_LABELS[mediaType]}
+                      {getMediaTypeLabel(mediaType.code, mediaTypes)}
                     </span>
                     <span className="font-mono text-sm font-semibold leading-none tabular-nums text-stone-950">
                       {count}

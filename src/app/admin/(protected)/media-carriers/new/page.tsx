@@ -3,6 +3,7 @@ import { ArrowLeft } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { PageHeader } from "../../admin-ui";
 import { createMediaCarrierAction } from "../actions";
 import { MediaCarrierForm } from "../media-carrier-form";
@@ -15,7 +16,7 @@ type NewMediaCarrierPageProps = {
 };
 
 export default async function NewMediaCarrierPage({ searchParams }: NewMediaCarrierPageProps) {
-  const { error } = await searchParams;
+  const [{ error }, mediaTypes] = await Promise.all([searchParams, getMediaTypeOptions()]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -38,6 +39,7 @@ export default async function NewMediaCarrierPage({ searchParams }: NewMediaCarr
           <MediaCarrierForm
             action={createMediaCarrierAction}
             submitLabel="Создать"
+            mediaTypes={mediaTypes}
             errorMessage={getMediaCarrierErrorMessage(error)}
           />
         </CardContent>

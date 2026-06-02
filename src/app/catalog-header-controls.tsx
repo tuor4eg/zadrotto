@@ -184,7 +184,7 @@ export function CatalogHeaderControls({
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
     ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
   );
-  const yearModeOptions = currentAuthor ? CATALOG_YEAR_MODES : CATALOG_YEAR_MODES.slice(0, 1);
+  const yearModeOptions = CATALOG_YEAR_MODES;
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -435,7 +435,7 @@ export function CatalogHeaderControls({
                       replaceFilters({ year: nextYear === "all" ? null : Number(nextYear) })
                     }
                   />
-                  {yearFilter !== null ? (
+                  {currentAuthor && yearFilter !== null ? (
                     <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
                       {yearModeOptions.map((mode) => {
                         const isSelected = yearMode === mode;

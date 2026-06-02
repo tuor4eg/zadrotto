@@ -188,11 +188,16 @@ describe("parseCatalogSort", () => {
 });
 
 describe("parseMediaTypeFilter", () => {
-  it("keeps known media type values and falls back to all", () => {
-    assert.equal(parseMediaTypeFilter("game"), "game");
-    assert.equal(parseMediaTypeFilter("film"), "film");
-    assert.equal(parseMediaTypeFilter("unknown"), "all");
-    assert.equal(parseMediaTypeFilter(null), "all");
+  it("keeps media type values from options and falls back to all", () => {
+    const mediaTypes = [
+      { code: "game", name: "Игра", description: null },
+      { code: "podcast", name: "Подкаст", description: null },
+    ];
+
+    assert.equal(parseMediaTypeFilter("game", mediaTypes), "game");
+    assert.equal(parseMediaTypeFilter("podcast", mediaTypes), "podcast");
+    assert.equal(parseMediaTypeFilter("unknown", mediaTypes), "all");
+    assert.equal(parseMediaTypeFilter(null, mediaTypes), "all");
   });
 });
 

@@ -13,8 +13,9 @@ import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/message
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel } from "@/lib/media-types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 
 type EditAdminMediaPageProps = {
@@ -32,12 +33,13 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [{ id }, query, authors, franchises, mediaCarriers] = await Promise.all([
+  const [{ id }, query, authors, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     params,
     searchParams,
     getAuthorOptions(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
+    getMediaTypeOptions(),
   ]);
   const mediaItemId = Number(id);
 
@@ -82,6 +84,7 @@ export default async function EditAdminMediaPage({
               authors={authors}
               franchises={franchises}
               mediaCarriers={mediaCarriers}
+              mediaTypes={mediaTypes}
               requireAuthor
               values={item}
               errorMessage={getAdminMediaErrorMessage(query.error)}
@@ -109,7 +112,7 @@ export default async function EditAdminMediaPage({
           </div>
 
           <div className="flex flex-wrap gap-2">
-            <Badge variant="outline">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+            <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
             <Badge
               variant={item.publicationStatus === "published" ? "positive" : item.publicationStatus === "submitted" ? "warning" : item.publicationStatus === "rejected" ? "destructive" : "outline"}
             >

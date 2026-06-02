@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, type MediaType } from "../lib/media-types";
+import type { MediaType, MediaTypeOption } from "../lib/media-types";
 
 export type MediaTypeFilter = MediaType | "all";
 export type AuthorRatingFilter = "all" | "rated" | "unrated";
@@ -91,8 +91,11 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
   );
 }
 
-export function parseMediaTypeFilter(mediaType: string | null): MediaTypeFilter {
-  return MEDIA_TYPES.some((availableMediaType) => availableMediaType === mediaType)
+export function parseMediaTypeFilter(
+  mediaType: string | null,
+  mediaTypes: readonly MediaTypeOption[],
+): MediaTypeFilter {
+  return mediaTypes.some((availableMediaType) => availableMediaType.code === mediaType)
     ? (mediaType as MediaType)
     : "all";
 }

@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { getAuthorMediaItemForView } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
 import {
   canAuthorDeleteMediaItem,
@@ -32,7 +33,11 @@ type AuthorMediaViewPageProps = {
 };
 
 export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPageProps) {
-  const [{ id }, author] = await Promise.all([params, requireAuthor()]);
+  const [{ id }, author, mediaTypes] = await Promise.all([
+    params,
+    requireAuthor(),
+    getMediaTypeOptions(),
+  ]);
   const mediaItemId = Number(id);
 
   if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
@@ -60,6 +65,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
       item={item}
       variant="archive"
       backLink={{ href: "/author/media", label: "Назад к предложениям" }}
+      mediaTypes={mediaTypes}
       meta={<span>{PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}</span>}
       actions={
         <>

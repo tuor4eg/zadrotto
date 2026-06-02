@@ -1,4 +1,4 @@
-import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import type { MediaType, MediaTypeOption } from "@/lib/media-types";
 import {
   PUBLICATION_STATUSES,
   PUBLISHED_PUBLICATION_STATUS,
@@ -20,8 +20,11 @@ export type AuthorMediaFilterItem = {
   publicationStatus: PublicationStatus;
 };
 
-export function parseAuthorMediaTypeFilter(value: string | undefined) {
-  return MEDIA_TYPES.some((mediaType) => mediaType === value)
+export function parseAuthorMediaTypeFilter(
+  value: string | undefined,
+  mediaTypes: readonly MediaTypeOption[],
+) {
+  return mediaTypes.some((mediaType) => mediaType.code === value)
     ? (value as MediaType)
     : "all";
 }

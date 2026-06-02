@@ -10,7 +10,7 @@ import {
   type AuthorMediaStatusFilter,
   type AuthorMediaTypeFilter,
 } from "@/lib/author-media-filters";
-import { MEDIA_TYPE_LABELS, MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media-types";
 import {
   PUBLICATION_STATUS_LABELS,
   type PublicationStatus,
@@ -19,6 +19,7 @@ import {
 type AuthorMediaFiltersFormProps = {
   searchQuery: string;
   mediaTypeFilter: AuthorMediaTypeFilter;
+  mediaTypes: MediaTypeOption[];
   statusFilter: AuthorMediaStatusFilter;
 };
 
@@ -39,6 +40,7 @@ function updateFilterParam(
 export function AuthorMediaFiltersForm({
   searchQuery,
   mediaTypeFilter,
+  mediaTypes,
   statusFilter,
 }: AuthorMediaFiltersFormProps) {
   const pathname = usePathname();
@@ -147,9 +149,9 @@ export function AuthorMediaFiltersForm({
           }
         >
           <option value="all">Все типы</option>
-          {MEDIA_TYPES.map((mediaType: MediaType) => (
-            <option key={mediaType} value={mediaType}>
-              {MEDIA_TYPE_LABELS[mediaType]}
+          {mediaTypes.map((mediaType) => (
+            <option key={mediaType.code} value={mediaType.code}>
+              {getMediaTypeLabel(mediaType.code, mediaTypes)}
             </option>
           ))}
         </Select>

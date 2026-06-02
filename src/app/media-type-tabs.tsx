@@ -4,8 +4,7 @@ import { useMemo } from "react";
 import type { CSSProperties } from "react";
 
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
-import type { MediaType } from "@/lib/media-types";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
 import { cn } from "@/lib/utils";
 
 type MediaTypeTabsProps = {
@@ -14,6 +13,7 @@ type MediaTypeTabsProps = {
     count: number;
     mediaType: MediaType;
   }>;
+  mediaTypes: MediaTypeOption[];
   selectedMediaType: MediaTypeFilter;
   onChange: (mediaType: MediaTypeFilter) => void;
 };
@@ -105,6 +105,7 @@ function MediaTypeTab({
 export function MediaTypeTabs({
   availableMediaTypes,
   mediaTypeCounts,
+  mediaTypes,
   selectedMediaType,
   onChange,
 }: MediaTypeTabsProps) {
@@ -124,7 +125,7 @@ export function MediaTypeTabs({
         return [
           {
             count: countByMediaType.get(mediaType) ?? totalCount,
-            label: MEDIA_TYPE_LABELS[mediaType],
+            label: getMediaTypeLabel(mediaType, mediaTypes),
             selected: selectedMediaType === "all" || selectedMediaType === mediaType,
             value: "all",
           },
@@ -140,13 +141,13 @@ export function MediaTypeTabs({
         },
         ...availableMediaTypes.map((mediaType) => ({
           count: countByMediaType.get(mediaType) ?? 0,
-          label: MEDIA_TYPE_LABELS[mediaType],
+          label: getMediaTypeLabel(mediaType, mediaTypes),
           selected: selectedMediaType === mediaType,
           value: mediaType,
         })),
       ];
     },
-    [availableMediaTypes, countByMediaType, selectedMediaType, totalCount],
+    [availableMediaTypes, countByMediaType, mediaTypes, selectedMediaType, totalCount],
   );
   const selectedIndex = Math.max(
     0,

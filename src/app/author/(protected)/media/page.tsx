@@ -8,6 +8,7 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorMediaItems } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import {
   filterAuthorMediaItems,
   parseAuthorMediaStatusFilter,
@@ -20,7 +21,7 @@ import {
   canAuthorWithdrawPublicationRequest,
 } from "@/lib/author-media-publication";
 import { requireAuthor } from "@/lib/author-auth";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
 import {
   PUBLICATION_STATUS_VALUE_LABELS,
   type PublicationStatus,
@@ -129,10 +130,24 @@ function formatDate(value: Date | string | null) {
 }
 
 export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageProps) {
-  const [author, params] = await Promise.all([requireAuthor(), searchParams]);
+  const [author, params, mediaTypes] = await Promise.all([
+    requireAuthor(),
+    searchParams,
+    getMediaTypeOptions(),
+  ]);
   const items = await getAuthorMediaItems(author.id);
+  const mediaTypesByItemsCount = sortMediaTypesByCount(
+    mediaTypes,
+    Array.from(
+      items.reduce((counts, item) => {
+        counts.set(item.mediaType, (counts.get(item.mediaType) ?? 0) + 1);
+        return counts;
+      }, new Map<string, number>()),
+      ([mediaType, count]) => ({ count, mediaType }),
+    ),
+  );
   const statusToast = getStatusToast(params);
-  const mediaTypeFilter = parseAuthorMediaTypeFilter(params.type);
+  const mediaTypeFilter = parseAuthorMediaTypeFilter(params.type, mediaTypesByItemsCount);
   const statusFilter = parseAuthorMediaStatusFilter(params.status);
   const searchQuery = params.q?.trim() ?? "";
   const pageSize = parsePageSize(
@@ -184,6 +199,7 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
         <AuthorMediaFiltersForm
           searchQuery={searchQuery}
           mediaTypeFilter={mediaTypeFilter}
+          mediaTypes={mediaTypesByItemsCount}
           statusFilter={statusFilter}
         />
       ) : null}
@@ -246,7 +262,7 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
                       {item.originalTitle ? (
                         <span className="min-w-0 truncate">{item.originalTitle}</span>
                       ) : null}
-                      <span>{MEDIA_TYPE_LABELS[item.mediaType]}</span>
+                      <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
                       {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                     </div>
                     {item.adminNote ? (

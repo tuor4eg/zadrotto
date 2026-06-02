@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
@@ -26,12 +27,13 @@ export default async function EditAuthorMediaPage({
   params,
   searchParams,
 }: EditAuthorMediaPageProps) {
-  const [{ id }, { error }, author, franchises, mediaCarriers] = await Promise.all([
+  const [{ id }, { error }, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     params,
     searchParams,
     requireAuthor(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
+    getMediaTypeOptions(),
   ]);
   const mediaItemId = Number(id);
 
@@ -80,6 +82,7 @@ export default async function EditAuthorMediaPage({
             submitLabel="Сохранить"
             franchises={franchises}
             mediaCarriers={mediaCarriers}
+            mediaTypes={mediaTypes}
             values={item}
           />
         </CardContent>

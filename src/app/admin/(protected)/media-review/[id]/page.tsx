@@ -4,6 +4,7 @@ import { Check, X } from "lucide-react";
 import { MediaItemDetails } from "@/app/media-item-details";
 import { Button } from "@/components/ui/button";
 import { getSubmittedAuthorMediaItemForAdminView } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { reviewAuthorMediaItemAction } from "../actions";
 
 type AdminMediaReviewItemPageProps = {
@@ -54,7 +55,10 @@ export default async function AdminMediaReviewItemPage({
     notFound();
   }
 
-  const item = await getSubmittedAuthorMediaItemForAdminView(mediaItemId);
+  const [item, mediaTypes] = await Promise.all([
+    getSubmittedAuthorMediaItemForAdminView(mediaItemId),
+    getMediaTypeOptions(),
+  ]);
 
   if (!item) {
     notFound();
@@ -64,6 +68,7 @@ export default async function AdminMediaReviewItemPage({
     <MediaItemDetails
       item={item}
       backLink={{ href: "/admin/media-review", label: "Назад к заявкам" }}
+      mediaTypes={mediaTypes}
       meta={<span>На проверке</span>}
       actions={
         <>

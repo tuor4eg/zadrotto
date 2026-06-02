@@ -34,9 +34,15 @@ const items: AuthorMediaFilterItem[] = [
 ];
 
 describe("author media filters", () => {
-  it("parses known filters and falls back to all", () => {
-    assert.equal(parseAuthorMediaTypeFilter("game"), "game");
-    assert.equal(parseAuthorMediaTypeFilter("unknown"), "all");
+  it("parses media type filters from provided options", () => {
+    const mediaTypes = [
+      { code: "game", name: "Игра", description: null },
+      { code: "podcast", name: "Подкаст", description: null },
+    ];
+
+    assert.equal(parseAuthorMediaTypeFilter("game", mediaTypes), "game");
+    assert.equal(parseAuthorMediaTypeFilter("podcast", mediaTypes), "podcast");
+    assert.equal(parseAuthorMediaTypeFilter("unknown", mediaTypes), "all");
     assert.equal(parseAuthorMediaStatusFilter("private"), "private");
     assert.equal(parseAuthorMediaStatusFilter("published"), "all");
     assert.equal(parseAuthorMediaStatusFilter("unknown"), "all");

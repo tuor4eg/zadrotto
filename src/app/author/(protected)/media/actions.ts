@@ -8,6 +8,7 @@ import { notFound, redirect } from "next/navigation";
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
+import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   deleteAuthorDraftMediaItem,
   getAuthorPrivateMediaItemLimitUsage,
@@ -37,7 +38,7 @@ import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
 } from "@/lib/author-private-media-limits";
-import { MEDIA_TYPES, type MediaType } from "@/lib/media-types";
+import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
 import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
 function getFormString(formData: FormData, key: string) {
@@ -47,7 +48,7 @@ function getFormString(formData: FormData, key: string) {
 }
 
 function parseMediaType(value: string): MediaType | null {
-  return MEDIA_TYPES.some((mediaType) => mediaType === value) ? (value as MediaType) : null;
+  return isMediaTypeCode(value) ? value : null;
 }
 
 function getOptionalCoverFile(formData: FormData) {
@@ -153,6 +154,10 @@ async function isKnownFranchise(franchiseId: number | null) {
   return franchiseId === null || franchiseExistsById(franchiseId);
 }
 
+async function isKnownMediaType(mediaType: MediaType) {
+  return mediaTypeExistsByCode(mediaType);
+}
+
 async function validateMediaCarrier(input: {
   mediaCarrierId: number | null;
   mediaType: MediaType;
@@ -213,6 +218,10 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect("/author/media/new?error=invalid-franchise");
+  }
+
+  if (!(await isKnownMediaType(form.value.mediaType))) {
+    redirect("/author/media/new?error=required");
   }
 
   const mediaCarrier = await validateMediaCarrier(form.value);
@@ -285,6 +294,10 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
 
   if (!(await isKnownFranchise(form.value.franchiseId))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
+  }
+
+  if (!(await isKnownMediaType(form.value.mediaType))) {
+    redirect(`/author/media/${mediaItemId}/edit?error=required`);
   }
 
   const mediaCarrier = await validateMediaCarrier(form.value);

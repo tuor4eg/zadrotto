@@ -9,7 +9,7 @@ import {
   type CatalogSort,
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
-import { MEDIA_TYPE_LABELS, type MediaType } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
 
 type AdminMediaFiltersFormProps = {
   availableMediaTypes: Array<{
@@ -22,6 +22,7 @@ type AdminMediaFiltersFormProps = {
     name: string;
   }>;
   mediaTypeFilter: MediaTypeFilter;
+  mediaTypes: MediaTypeOption[];
   searchQuery: string;
   sort: CatalogSort;
   totalCount: number;
@@ -55,6 +56,7 @@ export function AdminMediaFiltersForm({
   authorFilter,
   authors,
   mediaTypeFilter,
+  mediaTypes,
   searchQuery,
   sort,
   totalCount,
@@ -192,7 +194,7 @@ export function AdminMediaFiltersForm({
                   : "border-stone-200 bg-white text-stone-600 hover:border-stone-400 hover:text-stone-950"
               }`}
             >
-              {MEDIA_TYPE_LABELS[mediaType]}
+              {getMediaTypeLabel(mediaType, mediaTypes)}
               <span
                 className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
                   isSelected ? "bg-white text-stone-950" : "bg-stone-100 text-stone-600"

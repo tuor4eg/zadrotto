@@ -6,8 +6,9 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getSubmittedAuthorMediaItemsForAdmin } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel } from "@/lib/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { reviewAuthorMediaItemAction } from "./actions";
@@ -35,9 +36,10 @@ function formatDate(value: Date | null) {
 export default async function AdminMediaReviewPage({
   searchParams,
 }: AdminMediaReviewPageProps) {
-  const [items, params] = await Promise.all([
+  const [items, params, mediaTypes] = await Promise.all([
     getSubmittedAuthorMediaItemsForAdmin(),
     searchParams,
+    getMediaTypeOptions(),
   ]);
   const successMessage =
     params.approved === "1"
@@ -101,7 +103,7 @@ export default async function AdminMediaReviewPage({
                   </TD>
                   <TD className="min-w-0 overflow-hidden">
                     <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge variant="default">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                      <Badge variant="default">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                       {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
                       {item.franchiseTitle ? <Badge variant="outline">{item.franchiseTitle}</Badge> : null}
                     </div>

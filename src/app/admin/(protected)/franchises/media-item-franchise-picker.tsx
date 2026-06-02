@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { Tooltip } from "@/components/ui/tooltip";
 import { type getAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
-import { MEDIA_TYPE_LABELS } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media-types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
 import { addMediaItemToFranchiseAction } from "./actions";
 
@@ -19,20 +19,25 @@ type AvailableMediaItem = Awaited<
 type MediaItemFranchisePickerProps = {
   franchiseId: number;
   items: AvailableMediaItem[];
+  mediaTypes: MediaTypeOption[];
 };
 
 function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase();
 }
 
-function itemMatchesSearch(item: AvailableMediaItem, searchValue: string) {
+function itemMatchesSearch(
+  item: AvailableMediaItem,
+  searchValue: string,
+  mediaTypes: MediaTypeOption[],
+) {
   const searchableText = [
     item.title,
     item.originalTitle,
     item.code,
     item.franchiseTitle,
     item.releaseYear?.toString(),
-    MEDIA_TYPE_LABELS[item.mediaType],
+    getMediaTypeLabel(item.mediaType, mediaTypes),
     PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus],
   ]
     .filter(Boolean)
@@ -45,6 +50,7 @@ function itemMatchesSearch(item: AvailableMediaItem, searchValue: string) {
 export function MediaItemFranchisePicker({
   franchiseId,
   items,
+  mediaTypes,
 }: MediaItemFranchisePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const [itemToMove, setItemToMove] = useState<AvailableMediaItem | null>(null);
@@ -55,9 +61,9 @@ export function MediaItemFranchisePicker({
     }
 
     return items
-      .filter((item) => itemMatchesSearch(item, normalizedSearchValue))
+      .filter((item) => itemMatchesSearch(item, normalizedSearchValue, mediaTypes))
       .slice(0, 8);
-  }, [items, normalizedSearchValue]);
+  }, [items, mediaTypes, normalizedSearchValue]);
 
   return (
     <div className="mb-5 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
@@ -88,7 +94,7 @@ export function MediaItemFranchisePicker({
                   <div className="mt-1 truncate text-xs text-stone-500">{item.originalTitle}</div>
                 ) : null}
                 <div className="mt-2 flex flex-wrap gap-2">
-                  <Badge variant="outline">{MEDIA_TYPE_LABELS[item.mediaType]}</Badge>
+                  <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                   {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
                   {item.franchiseTitle ? (
                     <Badge variant="default">Сейчас: {item.franchiseTitle}</Badge>

@@ -5,6 +5,7 @@ import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
 
@@ -24,10 +25,13 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   }
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
-  const relatedItems = item.franchiseId
-    ? await getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
-    : [];
-  const reviews = await getPublishedReviewsForMediaItem(item.id);
+  const [relatedItems, reviews, mediaTypes] = await Promise.all([
+    item.franchiseId
+      ? getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
+      : [],
+    getPublishedReviewsForMediaItem(item.id),
+    getMediaTypeOptions(),
+  ]);
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -36,6 +40,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           item={item}
           variant="archive"
           backLink={{ href: "/", label: "Назад к картотеке" }}
+          mediaTypes={mediaTypes}
           relatedItems={relatedItems}
           adjacentShelfSlot={
             <MediaItemReviews
