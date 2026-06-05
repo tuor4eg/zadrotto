@@ -21,6 +21,12 @@ type AdminMediaFiltersFormProps = {
     id: number;
     name: string;
   }>;
+  mediaCarrierFilter: number | null;
+  mediaCarriers: Array<{
+    id: number;
+    mediaType: MediaType;
+    name: string;
+  }>;
   mediaTypeFilter: MediaTypeFilter;
   mediaTypes: MediaTypeOption[];
   searchQuery: string;
@@ -55,6 +61,8 @@ export function AdminMediaFiltersForm({
   availableMediaTypes,
   authorFilter,
   authors,
+  mediaCarrierFilter,
+  mediaCarriers,
   mediaTypeFilter,
   mediaTypes,
   searchQuery,
@@ -73,6 +81,7 @@ export function AdminMediaFiltersForm({
   const replaceFilters = useCallback(
     (nextFilters: {
       author?: number | null;
+      carrier?: number | null;
       q?: string;
       sort?: CatalogSort;
       type?: MediaTypeFilter;
@@ -99,6 +108,16 @@ export function AdminMediaFiltersForm({
 
       if (nextFilters.type !== undefined) {
         updateFilterParam(nextSearchParams, "type", nextFilters.type, "all");
+        nextSearchParams.delete("carrier");
+      }
+
+      if (nextFilters.carrier !== undefined) {
+        updateFilterParam(
+          nextSearchParams,
+          "carrier",
+          nextFilters.carrier ? String(nextFilters.carrier) : "",
+          "",
+        );
       }
 
       if (nextFilters.sort !== undefined) {
@@ -156,65 +175,58 @@ export function AdminMediaFiltersForm({
     return () => window.clearTimeout(timeoutId);
   }, [replaceFilters, search, searchQuery]);
 
+  const availableMediaCarriers =
+    mediaTypeFilter === "all"
+      ? []
+      : mediaCarriers.filter((carrier) => carrier.mediaType === mediaTypeFilter);
+
   return (
     <div className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">
-      <div className="flex gap-2 overflow-x-auto whitespace-nowrap">
-        <button
-          type="button"
-          onClick={() => replaceFilters({ type: "all" })}
-          className={`shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
-            mediaTypeFilter === "all"
-              ? "border-stone-950 bg-stone-950 text-white"
-              : "border-stone-200 bg-white text-stone-600 hover:border-stone-400 hover:text-stone-950"
-          }`}
+      <Input
+        type="search"
+        value={search}
+        onChange={(event) => setSearch(event.target.value)}
+        placeholder="Название или оригинал"
+        aria-label="Поиск записей"
+      />
+
+      <div className="grid gap-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+        <Select
+          value={mediaTypeFilter}
+          onChange={(event) => replaceFilters({ type: event.target.value as MediaTypeFilter })}
+          aria-label="Фильтр по типу медиа"
         >
-          Все
-          <span
-            className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-              mediaTypeFilter === "all"
-                ? "bg-white text-stone-950"
-                : "bg-stone-100 text-stone-600"
-            }`}
-          >
-            {totalCount}
-          </span>
-        </button>
+          <option value="all">Все типы ({totalCount})</option>
+          {availableMediaTypes.map(({ mediaType, count }) => (
+            <option key={mediaType} value={mediaType}>
+              {getMediaTypeLabel(mediaType, mediaTypes)} ({count})
+            </option>
+          ))}
+        </Select>
 
-        {availableMediaTypes.map(({ mediaType, count }) => {
-          const isSelected = mediaTypeFilter === mediaType;
-
-          return (
-            <button
-              key={mediaType}
-              type="button"
-              onClick={() => replaceFilters({ type: mediaType })}
-              className={`shrink-0 rounded-md border px-3 py-2 text-xs font-medium transition-colors ${
-                isSelected
-                  ? "border-stone-950 bg-stone-950 text-white"
-                  : "border-stone-200 bg-white text-stone-600 hover:border-stone-400 hover:text-stone-950"
-              }`}
-            >
-              {getMediaTypeLabel(mediaType, mediaTypes)}
-              <span
-                className={`ml-2 inline-flex min-w-5 items-center justify-center rounded-full px-1.5 py-0.5 text-[10px] tabular-nums ${
-                  isSelected ? "bg-white text-stone-950" : "bg-stone-100 text-stone-600"
-                }`}
-              >
-                {count}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_220px_auto]">
-        <Input
-          type="search"
-          value={search}
-          onChange={(event) => setSearch(event.target.value)}
-          placeholder="Название или оригинал"
-          aria-label="Поиск записей"
-        />
+        <Select
+          value={mediaCarrierFilter ? String(mediaCarrierFilter) : ""}
+          onChange={(event) =>
+            replaceFilters({
+              carrier: event.target.value ? Number(event.target.value) : null,
+            })
+          }
+          disabled={mediaTypeFilter === "all" || availableMediaCarriers.length === 0}
+          aria-label="Фильтр по носителю"
+        >
+          <option value="">
+            {mediaTypeFilter === "all"
+              ? "Сначала тип медиа"
+              : availableMediaCarriers.length === 0
+                ? "Носителей нет"
+                : "Все носители"}
+          </option>
+          {availableMediaCarriers.map((carrier) => (
+            <option key={carrier.id} value={carrier.id}>
+              {carrier.name}
+            </option>
+          ))}
+        </Select>
 
         <Select
           value={authorFilter ? String(authorFilter) : ""}

@@ -41,7 +41,7 @@ type MediaItemTileProps = {
   selected?: boolean;
 };
 
-function NesCartridgeCover({
+function CartridgeCover({
   className,
   frame,
   item,
@@ -54,11 +54,11 @@ function NesCartridgeCover({
           ? `Обложка на картридже: ${item.title}`
           : `Обложка не добавлена: ${item.title}`
       }
-      className={`grid place-items-center ${className ?? ""}`}
+      className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
     >
-      <span className="relative block aspect-[3/2] w-[96%] max-w-full">
+      <span className={`relative block ${frame.aspectRatioClassName} w-[96%] max-w-full`}>
         {item.coverUrl ? (
-          <span className="absolute left-[9.5%] top-[18.5%] h-[58.5%] w-[81%] overflow-hidden rounded-[2%]">
+          <span className={`absolute overflow-hidden rounded-[2%] ${frame.coverAreaClassName}`}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.coverUrl}
@@ -68,7 +68,7 @@ function NesCartridgeCover({
             />
           </span>
         ) : (
-          <span className="absolute left-[9.5%] top-[18.5%] grid h-[58.5%] w-[81%] place-items-center px-4">
+          <span className={`absolute grid place-items-center px-4 ${frame.coverAreaClassName}`}>
             <span
               className={`rounded-sm bg-stone-50/70 px-3 py-2 text-center text-[10px] font-semibold uppercase leading-5 text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)] ${frame.fontClassName ?? "font-mono tracking-[0.18em]"}`}
             >
@@ -96,8 +96,8 @@ export function ArchiveCover({
 }: ArchiveCoverProps) {
   const mediaCarrierFrame = carrierFrame ? getMediaCarrierFrame(item) : null;
 
-  if (mediaCarrierFrame?.renderKind === "nes-cartridge") {
-    return <NesCartridgeCover className={className} frame={mediaCarrierFrame} item={item} />;
+  if (mediaCarrierFrame?.renderKind === "cartridge") {
+    return <CartridgeCover className={className} frame={mediaCarrierFrame} item={item} />;
   }
 
   if (item.coverUrl) {

@@ -82,6 +82,8 @@ export function MediaItemDetails({
     );
   }
 
+  const hasCarrierFrame = getMediaCarrierFrame(item) !== null;
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap gap-2">
@@ -102,7 +104,9 @@ export function MediaItemDetails({
                 src={item.coverUrl}
                 alt={`Обложка: ${item.title}`}
                 title={item.title}
-                triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+                triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
+                  hasCarrierFrame ? "" : "media-image-lift-trigger"
+                }`}
               >
                 <ArchiveCover item={item} className="h-full w-full" />
               </ImageViewer>
@@ -284,7 +288,9 @@ function ArchiveMediaItemDetails({
                       src={item.coverUrl}
                       alt={`Обложка: ${item.title}`}
                       title={item.title}
-                      triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+                      triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
+                        hasCarrierFrame ? "" : "media-image-lift-trigger"
+                      }`}
                     >
                       <ArchiveCover item={item} className="h-full w-full" />
                     </ImageViewer>

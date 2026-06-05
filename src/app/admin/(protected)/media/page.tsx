@@ -12,6 +12,7 @@ import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getAdminMediaItems, getAdminMediaTypeCounts } from "@/db/queries/media-items";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -29,6 +30,7 @@ type AdminMediaPageProps = {
     deleted?: string;
     error?: string;
     author?: string;
+    carrier?: string;
     page?: string;
     q?: string;
     sort?: string;
@@ -50,6 +52,30 @@ function parseAuthorFilter(value: string | undefined) {
   return Number.isSafeInteger(parsed) && parsed > 0 ? parsed : null;
 }
 
+function parseMediaCarrierFilter(
+  value: string | undefined,
+  input: {
+    mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
+    mediaTypeFilter: ReturnType<typeof parseMediaTypeFilter>;
+  },
+) {
+  if (!value || input.mediaTypeFilter === "all") {
+    return null;
+  }
+
+  const parsed = Number(value);
+
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) {
+    return null;
+  }
+
+  return input.mediaCarriers.some(
+    (carrier) => carrier.id === parsed && carrier.mediaType === input.mediaTypeFilter,
+  )
+    ? parsed
+    : null;
+}
+
 function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LABELS) {
   if (status === "published") {
     return "positive" as const;
@@ -67,15 +93,24 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
 }
 
 export default async function AdminMediaPage({ searchParams }: AdminMediaPageProps) {
-  const [params, mediaTypes] = await Promise.all([searchParams, getMediaTypeOptions()]);
+  const [params, mediaTypes, mediaCarriers] = await Promise.all([
+    searchParams,
+    getMediaTypeOptions(),
+    getMediaCarrierOptions(),
+  ]);
   const searchQuery = params.q?.trim() ?? "";
   const authorFilter = parseAuthorFilter(params.author);
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
+  const mediaCarrierFilter = parseMediaCarrierFilter(params.carrier, {
+    mediaCarriers,
+    mediaTypeFilter,
+  });
   const parsedSort = parseCatalogSort(params.sort ?? null);
   const sort = isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const [mediaResult, mediaTypeCounts, authors] = await Promise.all([
     getAdminMediaItems({
       authorId: authorFilter ?? undefined,
+      mediaCarrierId: mediaCarrierFilter ?? undefined,
       mediaTypeFilter,
       page: parsePage(params.page),
       pageSize: ADMIN_MEDIA_PAGE_SIZE,
@@ -107,9 +142,14 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     }))
     .filter((item) => item.count > 0);
   const hasActiveFilters =
-    Boolean(searchQuery) || Boolean(authorFilter) || mediaTypeFilter !== "all" || sort !== "title";
+    Boolean(searchQuery) ||
+    Boolean(authorFilter) ||
+    Boolean(mediaCarrierFilter) ||
+    mediaTypeFilter !== "all" ||
+    sort !== "title";
   const paginationSearchParams = {
     author: authorFilter ? String(authorFilter) : undefined,
+    carrier: mediaCarrierFilter ? String(mediaCarrierFilter) : undefined,
     q: searchQuery || undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
@@ -124,7 +164,6 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
 
       <PageHeader
         title="Записи"
-        description="Архивные записи с теми же фильтрами, что и в каталоге."
         aside={
           <>
             <Badge variant="outline">{totalItemsCount} всего</Badge>
@@ -144,6 +183,8 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           availableMediaTypes={availableMediaTypes}
           authorFilter={authorFilter}
           authors={authors}
+          mediaCarrierFilter={mediaCarrierFilter}
+          mediaCarriers={mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypes}
           searchQuery={searchQuery}
@@ -188,6 +229,9 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                           <span className="truncate">Серия: {item.franchiseTitle}</span>
                         ) : null}
                         {item.releaseYear ? <span>{item.releaseYear}</span> : null}
+                        {item.mediaCarrierName ? (
+                          <span className="truncate">Носитель: {item.mediaCarrierName}</span>
+                        ) : null}
                         <span>{formatRatingsCount(item.ratingsCount)}</span>
                         {item.averageScore !== null ? (
                           <span>Ср.: {formatScore(item.averageScore)}</span>

@@ -404,6 +404,7 @@ export async function getAuthorMediaItems(authorId: number) {
 
 function adminMediaFilterConditions(input: {
   authorId?: number;
+  mediaCarrierId?: number;
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
 }) {
@@ -418,6 +419,10 @@ function adminMediaFilterConditions(input: {
     conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
   }
 
+  if (input.mediaCarrierId) {
+    conditions.push(eq(mediaItems.mediaCarrierId, input.mediaCarrierId));
+  }
+
   if (input.authorId) {
     conditions.push(eq(mediaItems.createdByAuthorId, input.authorId));
   }
@@ -427,6 +432,7 @@ function adminMediaFilterConditions(input: {
 
 export async function getAdminMediaItems(input: {
   authorId?: number;
+  mediaCarrierId?: number;
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;

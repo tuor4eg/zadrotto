@@ -16,6 +16,14 @@
   src: url("/fonts/press-start-2p-regular.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "DotGothic16";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/dot-gothic-16-regular.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -157,18 +165,25 @@ body {
   font-family: "Press Start 2P", "Courier New", monospace;
 }
 
-.media-image-lift-trigger {
+.media-carrier-font-sega {
+  font-family: "DotGothic16", "Courier New", monospace;
+}
+
+.media-image-lift-trigger,
+.media-carrier-lift-trigger {
   position: relative;
   overflow: visible;
   transition: transform 180ms ease, filter 180ms ease;
 }
 
-.media-image-lift-trigger > * {
+.media-image-lift-trigger > *,
+.media-carrier-lift-trigger > * {
   position: relative;
   z-index: 1;
 }
 
-.media-image-lift-trigger::after {
+.media-image-lift-trigger::after,
+.media-carrier-lift-trigger::after {
   position: absolute;
   z-index: 0;
   right: 13%;
@@ -186,12 +201,18 @@ body {
 }
 
 .media-image-lift-trigger:hover,
-.media-image-lift-trigger:focus-visible {
+.media-image-lift-trigger:focus-visible,
+.media-carrier-lift-trigger:hover,
+.media-carrier-lift-trigger:focus-visible,
+:focus-visible > .media-carrier-lift-trigger {
   transform: translateY(-0.32rem);
 }
 
 .media-image-lift-trigger:hover::after,
-.media-image-lift-trigger:focus-visible::after {
+.media-image-lift-trigger:focus-visible::after,
+.media-carrier-lift-trigger:hover::after,
+.media-carrier-lift-trigger:focus-visible::after,
+:focus-visible > .media-carrier-lift-trigger::after {
   opacity: 1;
   transform: translateY(0.88rem) scaleX(1);
 }

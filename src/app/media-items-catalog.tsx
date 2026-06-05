@@ -23,7 +23,7 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
-import { hasMediaCarrierFrame } from "@/lib/media-carrier-frame";
+import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
 import {
   getMediaTypeLabel,
   sortMediaTypesByCount,
@@ -136,6 +136,10 @@ export function MediaItemsCatalog({
     () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
     [items, selectedId],
   );
+  const selectedMediaCarrierFrame = selectedItem ? getMediaCarrierFrame(selectedItem) : null;
+  const hasSelectedCarrierFrame = selectedMediaCarrierFrame !== null;
+  const selectedLabelFontClassName = selectedMediaCarrierFrame?.labelFontClassName ?? "font-mono";
+  const selectedDisplayFontClassName = selectedMediaCarrierFrame?.displayFontClassName ?? "font-serif";
   const archiveTotalCount = useMemo(
     () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
     [mediaTypeCountRows],
@@ -349,20 +353,20 @@ export function MediaItemsCatalog({
                 className="pointer-events-none absolute -top-1 right-4 z-30 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
               />
               <div className="relative -ml-2 flex flex-1 rotate-[0.35deg] flex-col border border-stone-400/70 bg-[linear-gradient(135deg,rgb(var(--archive-paper-start)),rgb(var(--archive-paper-end)))] p-3 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-4">
-                <div className="font-mono text-sm uppercase tracking-[0.34em] text-stone-950">
+                <div className={`${selectedLabelFontClassName} text-sm uppercase leading-6 text-stone-950`}>
                   Досье
                 </div>
 
                 <div
                   className={
-                    hasMediaCarrierFrame(selectedItem)
+                    hasSelectedCarrierFrame
                       ? "mt-3 overflow-hidden rounded-sm"
                       : "mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
                   }
                 >
                   <div
                     className={
-                      hasMediaCarrierFrame(selectedItem)
+                      hasSelectedCarrierFrame
                         ? "relative aspect-[4/3] overflow-visible rounded-sm"
                         : "relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800"
                     }
@@ -372,14 +376,16 @@ export function MediaItemsCatalog({
                         src={selectedItem.coverUrl}
                         alt={`Обложка: ${selectedItem.title}`}
                         title={selectedItem.title}
-                        triggerClassName="media-image-lift-trigger block h-full w-full cursor-zoom-in text-left"
+                        triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
+                          hasSelectedCarrierFrame ? "" : "media-image-lift-trigger"
+                        }`}
                       >
                         <ArchiveCover item={selectedItem} className="h-full w-full" />
                       </ImageViewer>
                     ) : (
                       <ArchiveCover item={selectedItem} className="h-full w-full" />
                     )}
-                    {!selectedItem.coverUrl && !hasMediaCarrierFrame(selectedItem) ? (
+                    {!selectedItem.coverUrl && !hasSelectedCarrierFrame ? (
                       <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
                         <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
                           Нет изображения
@@ -389,16 +395,16 @@ export function MediaItemsCatalog({
                   </div>
                 </div>
 
-                <div className="mt-3 font-serif text-2xl leading-none text-stone-950">
+                <div className={`mt-3 ${selectedDisplayFontClassName} text-2xl leading-tight text-stone-950`}>
                   {selectedItem.title}
                 </div>
                 {selectedItem.originalTitle && selectedItem.originalTitle !== selectedItem.title ? (
-                  <div className="mt-2 font-mono text-xs uppercase tracking-[0.14em] text-stone-600">
+                  <div className={`mt-2 ${selectedLabelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
                     {selectedItem.originalTitle}
                   </div>
                 ) : null}
 
-                <div className="mt-3 flex flex-wrap gap-2 font-mono text-xs text-stone-800">
+                <div className={`mt-3 flex flex-wrap gap-2 ${selectedLabelFontClassName} text-xs leading-5 text-stone-800`}>
                   <span>{getMediaTypeLabel(selectedItem.mediaType, mediaTypes).toLowerCase()}</span>
                   {selectedItem.releaseYear ? <span>•</span> : null}
                   {selectedItem.releaseYear ? <span>{selectedItem.releaseYear}</span> : null}
@@ -410,13 +416,13 @@ export function MediaItemsCatalog({
                   <div
                     className={`rounded-md border p-2 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(selectedItem.averageScore)]}`}
                   >
-                    <div className="font-mono text-[10px] uppercase tracking-[0.14em] opacity-70">
+                    <div className={`${selectedLabelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
                       Оценка
                     </div>
-                    <div className="mt-1 font-serif text-3xl tabular-nums">
+                    <div className={`mt-1 ${selectedDisplayFontClassName} text-3xl tabular-nums`}>
                       {formatScore(selectedItem.averageScore)}
                     </div>
-                    <div className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] opacity-70">
+                    <div className={`mt-1 ${selectedLabelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
                       {formatRatingsCount(selectedItem.ratingsCount)}
                     </div>
                   </div>
@@ -430,13 +436,15 @@ export function MediaItemsCatalog({
                       selectedItem.currentAuthorFirstExperiencedPrecision
                     }
                     currentAuthorScore={selectedItem.currentAuthorScore}
+                    panelDisplayClassName={selectedMediaCarrierFrame?.displayFontClassName}
+                    panelLabelClassName={selectedMediaCarrierFrame?.labelFontClassName}
                     size="compact"
                   />
                 </div>
 
                 {selectedItem.franchiseTitle && selectedItem.franchiseCode ? (
                   <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
-                    <div className="font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
+                    <div className={`${selectedLabelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
                       Серия
                     </div>
                     <Link
@@ -448,7 +456,7 @@ export function MediaItemsCatalog({
                   </div>
                 ) : null}
 
-                <div className="mt-auto pt-4">
+                <div className="mt-5">
                   <Link
                     href={`/media/${selectedItem.code}`}
                     className="inline-flex w-full items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
