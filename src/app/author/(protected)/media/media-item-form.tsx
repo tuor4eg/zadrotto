@@ -4,13 +4,13 @@ import Link from "next/link";
 import { useMemo, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
+import { CoverPicker } from "@/components/ui/cover-picker";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media-types";
 import { resolveCoverUrl } from "@/lib/storage";
-import { CoverFileInput } from "./cover-file-input";
 
 type MediaItemFormValues = {
   id?: number;
@@ -45,6 +45,9 @@ export function MediaItemForm({
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
     values?.mediaType ?? mediaTypes[0]?.code ?? "",
   );
+  const [title, setTitle] = useState(values?.title ?? "");
+  const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
+  const [releaseYear, setReleaseYear] = useState(values?.releaseYear ? String(values.releaseYear) : "");
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
@@ -67,7 +70,8 @@ export function MediaItemForm({
             name="title"
             type="text"
             required
-            defaultValue={values?.title ?? ""}
+            value={title}
+            onChange={(event) => setTitle(event.currentTarget.value)}
           />
         </div>
 
@@ -79,7 +83,8 @@ export function MediaItemForm({
             id="author-media-original-title"
             name="originalTitle"
             type="text"
-            defaultValue={values?.originalTitle ?? ""}
+            value={originalTitle}
+            onChange={(event) => setOriginalTitle(event.currentTarget.value)}
           />
         </div>
 
@@ -166,7 +171,8 @@ export function MediaItemForm({
             type="number"
             min="0"
             max="9999"
-            defaultValue={values?.releaseYear ?? ""}
+            value={releaseYear}
+            onChange={(event) => setReleaseYear(event.currentTarget.value)}
           />
         </div>
 
@@ -174,7 +180,17 @@ export function MediaItemForm({
           <Label htmlFor="author-media-cover-file">
             Обложка
           </Label>
-          <CoverFileInput initialPreviewUrl={resolveCoverUrl(values?.coverUrl ?? null)} />
+          <CoverPicker
+            inputId="author-media-cover-file"
+            initialPreviewUrl={resolveCoverUrl(values?.coverUrl ?? null)}
+            values={{
+              title,
+              originalTitle,
+              mediaType: selectedMediaType,
+              releaseYear,
+            }}
+            thumbnailClassName="h-28 w-20 object-cover"
+          />
           <p className="text-xs text-stone-500">JPG, PNG или WebP до 5 МБ.</p>
         </div>
 

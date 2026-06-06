@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
+import { CoverPicker } from "@/components/ui/cover-picker";
 import { Input, Label, Select } from "@/components/ui/form";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
@@ -12,7 +13,6 @@ import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
-import { CoverFileInput } from "./cover-file-input";
 
 type MediaFormValues = {
   id?: number;
@@ -56,6 +56,9 @@ export function AdminMediaForm({
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
     values?.mediaType ?? mediaTypes[0]?.code ?? "",
   );
+  const [title, setTitle] = useState(values?.title ?? "");
+  const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
+  const [releaseYear, setReleaseYear] = useState(values?.releaseYear ? String(values.releaseYear) : "");
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
@@ -81,7 +84,8 @@ export function AdminMediaForm({
             id="admin-media-title"
             name="title"
             type="text"
-            defaultValue={values?.title ?? ""}
+            value={title}
+            onChange={(event) => setTitle(event.currentTarget.value)}
             required
           />
         </div>
@@ -92,7 +96,8 @@ export function AdminMediaForm({
             id="admin-media-original-title"
             name="originalTitle"
             type="text"
-            defaultValue={values?.originalTitle ?? ""}
+            value={originalTitle}
+            onChange={(event) => setOriginalTitle(event.currentTarget.value)}
           />
         </div>
 
@@ -171,7 +176,8 @@ export function AdminMediaForm({
             type="number"
             min="0"
             max="9999"
-            defaultValue={values?.releaseYear ?? ""}
+            value={releaseYear}
+            onChange={(event) => setReleaseYear(event.currentTarget.value)}
           />
         </div>
 
@@ -198,7 +204,16 @@ export function AdminMediaForm({
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="admin-media-cover-file">Обложка</Label>
-          <CoverFileInput initialPreviewUrl={values?.coverUrl ?? null} />
+          <CoverPicker
+            inputId="admin-media-cover-file"
+            initialPreviewUrl={values?.coverUrl ?? null}
+            values={{
+              title,
+              originalTitle,
+              mediaType: selectedMediaType,
+              releaseYear,
+            }}
+          />
           <p className="text-xs text-stone-500">JPG, PNG или WebP до 5 МБ.</p>
         </div>
 

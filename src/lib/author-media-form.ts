@@ -39,7 +39,9 @@ export function getCoverFileExtension(contentType: string) {
 export function validateCoverFileInput(input: {
   size: number;
   type: string;
-}) {
+}):
+  | { ok: true }
+  | { ok: false; error: "cover-too-large" | "cover-type" } {
   if (input.size <= 0) {
     return { ok: true as const };
   }

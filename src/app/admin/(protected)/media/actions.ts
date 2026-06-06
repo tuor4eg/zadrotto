@@ -16,18 +16,21 @@ import {
   updateAdminMediaItem,
 } from "@/db/queries/media-items";
 import {
-  getCoverFileExtension,
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
   parseOptionalReleaseYear,
-  validateCoverFileInput,
 } from "@/lib/author-media-form";
 import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/app-error-messages";
+import {
+  deleteUploadedCoverIfNeeded,
+  isS3ObjectKey,
+  resolveCoverUpload,
+} from "@/lib/covers/storage";
+import type { CoverSourceInput } from "@/lib/covers/types";
 import { generateEntityCode } from "@/lib/generated-code";
 import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
-import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -53,64 +56,12 @@ function getOptionalCoverFile(formData: FormData) {
   return value instanceof File && value.size > 0 ? value : null;
 }
 
+function getOptionalCoverCandidateToken(formData: FormData) {
+  return normalizeOptionalFormString(getFormString(formData, "coverCandidateToken"));
+}
+
 function shouldRemoveCover(formData: FormData) {
   return getFormString(formData, "coverAction") === "remove";
-}
-
-function isS3ObjectKey(coverUrl: string | null) {
-  const normalizedCoverUrl = coverUrl?.trim();
-
-  if (!normalizedCoverUrl) {
-    return false;
-  }
-
-  return !/^https?:\/\//i.test(normalizedCoverUrl);
-}
-
-function buildAdminCoverObjectKey(mediaItemCode: string, contentType: string) {
-  const extension = getCoverFileExtension(contentType);
-
-  if (!extension) {
-    return null;
-  }
-
-  return `covers/media-items/${mediaItemCode}-${randomUUID().slice(0, 12)}.${extension}`;
-}
-
-async function uploadOptionalCover(input: {
-  mediaItemCode: string;
-  coverFile: File | null;
-}) {
-  if (!input.coverFile) {
-    return { ok: true as const, coverUrl: null };
-  }
-
-  const validation = validateCoverFileInput({
-    size: input.coverFile.size,
-    type: input.coverFile.type,
-  });
-
-  if (!validation.ok) {
-    return validation;
-  }
-
-  const objectKey = buildAdminCoverObjectKey(input.mediaItemCode, input.coverFile.type);
-
-  if (!objectKey) {
-    return { ok: false as const, error: "cover-type" };
-  }
-
-  try {
-    await uploadS3Object({
-      objectKey,
-      body: Buffer.from(await input.coverFile.arrayBuffer()),
-      contentType: input.coverFile.type,
-    });
-  } catch {
-    return { ok: false as const, error: "cover-upload" };
-  }
-
-  return { ok: true as const, coverUrl: objectKey };
 }
 
 function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }) {
@@ -213,6 +164,18 @@ function revalidateMediaSurfaces(input: {
   }
 }
 
+function getCoverSourceFromItem(item: {
+  coverSourceProvider: string | null;
+  coverSourceExternalId: string | null;
+  coverSourcePageUrl: string | null;
+}): CoverSourceInput {
+  return {
+    provider: item.coverSourceProvider as CoverSourceInput["provider"],
+    externalId: item.coverSourceExternalId,
+    pageUrl: item.coverSourcePageUrl,
+  };
+}
+
 export async function updateAdminMediaItemAction(formData: FormData) {
   await requireAdminUser();
 
@@ -252,18 +215,23 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect("/admin/media?error=invalid-media");
   }
 
-  const cover = await uploadOptionalCover({
+  const cover = await resolveCoverUpload({
     mediaItemCode: existingItem.code,
     coverFile: removeCover ? null : getOptionalCoverFile(formData),
+    candidateToken: removeCover ? null : getOptionalCoverCandidateToken(formData),
   });
 
   if (!cover.ok) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${cover.error}`);
   }
 
-  if (removeCover && isS3ObjectKey(existingItem.coverUrl)) {
+  const nextCoverUrl = removeCover ? null : (cover.coverUrl ?? existingItem.coverUrl);
+  const nextCoverSource =
+    removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(existingItem);
+
+  if ((removeCover || cover.coverUrl) && isS3ObjectKey(existingItem.coverUrl)) {
     try {
-      await deleteS3Object({ objectKey: existingItem.coverUrl! });
+      await deleteUploadedCoverIfNeeded(existingItem.coverUrl);
     } catch {
       redirect(`/admin/media/${mediaItemId.value}/edit?error=cover-delete`);
     }
@@ -272,7 +240,8 @@ export async function updateAdminMediaItemAction(formData: FormData) {
   try {
     const updatedItem = await updateAdminMediaItem({
       mediaItemId: mediaItemId.value,
-      coverUrl: removeCover ? null : (cover.coverUrl ?? existingItem.coverUrl),
+      coverUrl: nextCoverUrl,
+      coverSource: nextCoverSource,
       ...form.value,
     });
 
@@ -333,9 +302,10 @@ export async function createAdminMediaItemAction(formData: FormData) {
     name: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
-  const cover = await uploadOptionalCover({
+  const cover = await resolveCoverUpload({
     mediaItemCode: code,
     coverFile: getOptionalCoverFile(formData),
+    candidateToken: getOptionalCoverCandidateToken(formData),
   });
 
   if (!cover.ok) {
@@ -351,9 +321,11 @@ export async function createAdminMediaItemAction(formData: FormData) {
       authorId,
       code,
       coverUrl: cover.coverUrl,
+      coverSource: cover.source,
       ...mediaInput,
     });
   } catch (error) {
+    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
     console.error(error);
     redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
   }
@@ -397,7 +369,7 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
 
   if (isS3ObjectKey(existingItem.coverUrl)) {
     try {
-      await deleteS3Object({ objectKey: existingItem.coverUrl! });
+      await deleteUploadedCoverIfNeeded(existingItem.coverUrl);
     } catch (error) {
       console.error(error);
     }

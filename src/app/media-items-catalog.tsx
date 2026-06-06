@@ -73,6 +73,29 @@ type FixedDetailsState = {
 const FIXED_DETAILS_TOP_OFFSET = 96;
 const FIXED_DETAILS_BOTTOM_OFFSET = 16;
 
+function CoverSourceAttribution({
+  provider,
+  pageUrl,
+}: {
+  provider?: string | null;
+  pageUrl?: string | null;
+}) {
+  if (provider !== "rawg" || !pageUrl) {
+    return null;
+  }
+
+  return (
+    <a
+      href={pageUrl}
+      target="_blank"
+      rel="noreferrer"
+      className="mt-2 inline-flex text-xs text-stone-600 underline decoration-stone-400 underline-offset-4 transition-colors hover:text-stone-950"
+    >
+      Обложка: RAWG
+    </a>
+  );
+}
+
 function updateFilterParam(
   searchParams: URLSearchParams,
   key: string,
@@ -394,6 +417,10 @@ export function MediaItemsCatalog({
                     ) : null}
                   </div>
                 </div>
+                <CoverSourceAttribution
+                  provider={selectedItem.coverSourceProvider}
+                  pageUrl={selectedItem.coverSourcePageUrl}
+                />
 
                 <div className={`mt-3 ${selectedDisplayFontClassName} text-2xl leading-tight text-stone-950`}>
                   {selectedItem.title}

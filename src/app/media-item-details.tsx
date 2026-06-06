@@ -21,6 +21,8 @@ type MediaItemDetailsItem = {
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
   coverUrl: string | null;
+  coverSourceProvider?: string | null;
+  coverSourcePageUrl?: string | null;
   averageScore: number | null;
   ratingsCount: number;
 };
@@ -53,6 +55,27 @@ type MediaItemDetailsProps = {
   noteSlot?: React.ReactNode;
   relatedItems?: RelatedMediaItem[];
 };
+
+function CoverSourceAttribution({
+  provider,
+  pageUrl,
+}: {
+  provider?: string | null;
+  pageUrl?: string | null;
+}) {
+  if (provider !== "rawg" || !pageUrl) {
+    return null;
+  }
+
+  return (
+    <Link
+      href={pageUrl}
+      className="mt-2 inline-flex w-fit text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950"
+    >
+      Обложка: RAWG
+    </Link>
+  );
+}
 
 export function MediaItemDetails({
   item,
@@ -113,6 +136,10 @@ export function MediaItemDetails({
             ) : (
               <ArchiveCover item={item} className="h-full w-full" />
             )}
+            <CoverSourceAttribution
+              provider={item.coverSourceProvider}
+              pageUrl={item.coverSourcePageUrl}
+            />
           </div>
 
           <div className="flex min-h-[360px] flex-col justify-between gap-10 p-5 sm:p-8">
@@ -306,6 +333,10 @@ function ArchiveMediaItemDetails({
                   ) : null}
                 </div>
               </div>
+              <CoverSourceAttribution
+                provider={item.coverSourceProvider}
+                pageUrl={item.coverSourcePageUrl}
+              />
             </div>
           </div>
 

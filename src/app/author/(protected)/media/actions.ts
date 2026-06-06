@@ -19,13 +19,11 @@ import {
   withdrawAuthorMediaItemFromReview,
 } from "@/db/queries/media-items";
 import {
-  buildAuthorCoverObjectKey,
   buildAuthorMediaCode,
   isAuthorEditablePublicationStatus,
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
   parseOptionalReleaseYear,
-  validateCoverFileInput,
 } from "@/lib/author-media-form";
 import { requireAuthor } from "@/lib/author-auth";
 import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
@@ -38,8 +36,13 @@ import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
 } from "@/lib/author-private-media-limits";
+import {
+  deleteUploadedCoverIfNeeded,
+  isS3ObjectKey,
+  resolveCoverUpload,
+} from "@/lib/covers/storage";
+import type { CoverSourceInput } from "@/lib/covers/types";
 import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
-import { deleteS3Object, uploadS3Object } from "@/lib/storage";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -57,60 +60,12 @@ function getOptionalCoverFile(formData: FormData) {
   return value instanceof File && value.size > 0 ? value : null;
 }
 
+function getOptionalCoverCandidateToken(formData: FormData) {
+  return normalizeOptionalFormString(getFormString(formData, "coverCandidateToken"));
+}
+
 function shouldRemoveCover(formData: FormData) {
   return getFormString(formData, "coverAction") === "remove";
-}
-
-function isS3ObjectKey(coverUrl: string | null) {
-  const normalizedCoverUrl = coverUrl?.trim();
-
-  if (!normalizedCoverUrl) {
-    return false;
-  }
-
-  return !/^https?:\/\//i.test(normalizedCoverUrl);
-}
-
-async function uploadOptionalCover(input: {
-  authorId: number;
-  mediaItemCode: string;
-  coverFile: File | null;
-}) {
-  if (!input.coverFile) {
-    return { ok: true as const, coverUrl: null };
-  }
-
-  const validation = validateCoverFileInput({
-    size: input.coverFile.size,
-    type: input.coverFile.type,
-  });
-
-  if (!validation.ok) {
-    return validation;
-  }
-
-  const objectKey = buildAuthorCoverObjectKey({
-    authorId: input.authorId,
-    mediaItemCode: input.mediaItemCode,
-    contentType: input.coverFile.type,
-    uniqueId: randomUUID().slice(0, 12),
-  });
-
-  if (!objectKey) {
-    return { ok: false as const, error: "cover-type" };
-  }
-
-  try {
-    await uploadS3Object({
-      objectKey,
-      body: Buffer.from(await input.coverFile.arrayBuffer()),
-      contentType: input.coverFile.type,
-    });
-  } catch {
-    return { ok: false as const, error: "cover-upload" };
-  }
-
-  return { ok: true as const, coverUrl: objectKey };
 }
 
 function readAuthorMediaForm(formData: FormData) {
@@ -196,16 +151,16 @@ async function canCreatePrivateMediaItem(author: {
   });
 }
 
-async function deleteUploadedCoverIfNeeded(coverUrl: string | null) {
-  if (!isS3ObjectKey(coverUrl)) {
-    return;
-  }
-
-  try {
-    await deleteS3Object({ objectKey: coverUrl! });
-  } catch (error) {
-    console.error(error);
-  }
+function getCoverSourceFromItem(item: {
+  coverSourceProvider: string | null;
+  coverSourceExternalId: string | null;
+  coverSourcePageUrl: string | null;
+}): CoverSourceInput {
+  return {
+    provider: item.coverSourceProvider as CoverSourceInput["provider"],
+    externalId: item.coverSourceExternalId,
+    pageUrl: item.coverSourcePageUrl,
+  };
 }
 
 export async function createAuthorMediaItemAction(formData: FormData) {
@@ -241,10 +196,11 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     title: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
-  const cover = await uploadOptionalCover({
+  const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: code,
     coverFile: getOptionalCoverFile(formData),
+    candidateToken: getOptionalCoverCandidateToken(formData),
   });
 
   if (!cover.ok) {
@@ -258,6 +214,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       authorId: author.id,
       code,
       coverUrl: cover.coverUrl,
+      coverSource: cover.source,
       limits: {
         maxDraftMediaItems: author.maxDraftMediaItems,
         maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
@@ -265,12 +222,12 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       ...form.value,
     });
   } catch (error) {
-    await deleteUploadedCoverIfNeeded(cover.coverUrl);
+    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
     throw error;
   }
 
   if (!result.ok) {
-    await deleteUploadedCoverIfNeeded(cover.coverUrl);
+    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
     redirect(`/author/media/new?error=${result.reason}`);
   }
 
@@ -316,19 +273,24 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=locked");
   }
 
-  const cover = await uploadOptionalCover({
+  const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: `media-${mediaItemId}`,
     coverFile: removeCover ? null : getOptionalCoverFile(formData),
+    candidateToken: removeCover ? null : getOptionalCoverCandidateToken(formData),
   });
 
   if (!cover.ok) {
     redirect(`/author/media/${mediaItemId}/edit?error=${cover.error}`);
   }
 
-  if (removeCover && isS3ObjectKey(item.coverUrl)) {
+  const nextCoverUrl = removeCover ? null : (cover.coverUrl ?? item.coverUrl);
+  const nextCoverSource =
+    removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(item);
+
+  if ((removeCover || cover.coverUrl) && isS3ObjectKey(item.coverUrl)) {
     try {
-      await deleteS3Object({ objectKey: item.coverUrl! });
+      await deleteUploadedCoverIfNeeded(item.coverUrl);
     } catch {
       redirect(`/author/media/${mediaItemId}/edit?error=cover-delete`);
     }
@@ -337,7 +299,8 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   await updateAuthorMediaItem({
     authorId: author.id,
     mediaItemId,
-    coverUrl: removeCover ? null : (cover.coverUrl ?? item.coverUrl),
+    coverUrl: nextCoverUrl,
+    coverSource: nextCoverSource,
     ...form.value,
   });
 
@@ -451,7 +414,7 @@ export async function deleteAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=delete-locked");
   }
 
-  await deleteUploadedCoverIfNeeded(deletedItem.coverUrl);
+  await deleteUploadedCoverIfNeeded(deletedItem.coverUrl).catch(console.error);
 
   revalidatePath("/author/media");
   revalidatePath(`/author/media/${mediaItemId}`);

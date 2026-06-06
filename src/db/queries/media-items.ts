@@ -39,6 +39,7 @@ import type { PublicationStatus } from "@/lib/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
 import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
 import { resolveCoverUrl } from "@/lib/storage";
+import type { CoverSourceInput } from "@/lib/covers/types";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -268,6 +269,8 @@ const catalogMediaItemsQuery = (input: {
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
@@ -298,6 +301,8 @@ const catalogMediaItemsQuery = (input: {
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverSourceProvider,
+      mediaItems.coverSourcePageUrl,
     )
     .orderBy(...catalogOrderBy(input.sort, input.sortDirection, input.currentAuthorId))
     .limit(input.pageSize)
@@ -573,6 +578,7 @@ export type AuthorMediaItemInput = {
   mediaCarrierId: number | null;
   releaseYear: number | null;
   coverUrl: string | null;
+  coverSource: CoverSourceInput;
 };
 
 export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
@@ -586,6 +592,9 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
     mediaCarrierId: input.mediaCarrierId,
     releaseYear: input.releaseYear,
     coverUrl: input.coverUrl,
+    coverSourceProvider: input.coverSource.provider,
+    coverSourceExternalId: input.coverSource.externalId,
+    coverSourcePageUrl: input.coverSource.pageUrl,
     createdByAuthorId: input.authorId,
     publicationStatus: "private",
   });
@@ -606,6 +615,9 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverSourceProvider: input.coverSource.provider,
+      coverSourceExternalId: input.coverSource.externalId,
+      coverSourcePageUrl: input.coverSource.pageUrl,
       createdByAuthorId: input.authorId,
       publicationStatus: "published",
     })
@@ -629,6 +641,9 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
       mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourceExternalId: mediaItems.coverSourceExternalId,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
     })
@@ -738,6 +753,9 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverSourceProvider: input.coverSource.provider,
+      coverSourceExternalId: input.coverSource.externalId,
+      coverSourcePageUrl: input.coverSource.pageUrl,
       updatedAt: new Date(),
     })
     .where(
@@ -764,6 +782,9 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverSourceProvider: input.coverSource.provider,
+      coverSourceExternalId: input.coverSource.externalId,
+      coverSourcePageUrl: input.coverSource.pageUrl,
       createdByAuthorId: input.authorId,
       updatedAt: new Date(),
     })
@@ -923,6 +944,9 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourceExternalId: mediaItems.coverSourceExternalId,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
@@ -1116,6 +1140,8 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
@@ -1143,6 +1169,8 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverSourceProvider,
+      mediaItems.coverSourcePageUrl,
     )
     .limit(1);
 

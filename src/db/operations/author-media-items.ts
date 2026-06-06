@@ -50,6 +50,9 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
         mediaCarrierId: input.mediaCarrierId,
         releaseYear: input.releaseYear,
         coverUrl: input.coverUrl,
+        coverSourceProvider: input.coverSource.provider,
+        coverSourceExternalId: input.coverSource.externalId,
+        coverSourcePageUrl: input.coverSource.pageUrl,
         createdByAuthorId: input.authorId,
         publicationStatus: "private",
       })
