@@ -40,6 +40,20 @@ services:
       ADMIN_PASSWORD: ${ADMIN_PASSWORD}
     profiles: [seed]
 
+  cover-thumbs:
+    image: ghcr.io/tuor4eg/zadrotto-migrator:latest
+    command: npm run covers:backfill-thumbs
+    environment:
+      DATABASE_URL: ${DATABASE_URL}
+      S3_ENDPOINT: ${S3_ENDPOINT}
+      S3_REGION: ${S3_REGION}
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
+      S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
+      S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
+    profiles: [tools]
+
   minio:
     image: minio/minio:latest
     command: server /data --console-address ":9001"

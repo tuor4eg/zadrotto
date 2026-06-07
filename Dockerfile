@@ -15,6 +15,7 @@ COPY drizzle.config.ts ./
 COPY drizzle ./drizzle
 COPY src/db ./src/db
 COPY src/lib ./src/lib
+COPY tools ./tools
 
 # Build Next.js in CI.
 FROM base AS builder
