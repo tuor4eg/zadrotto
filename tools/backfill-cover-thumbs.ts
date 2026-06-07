@@ -4,7 +4,7 @@ import { dbClient } from "@/db";
 import {
   getMediaItemsMissingCoverThumb,
   updateMediaItemCoverThumb,
-} from "@/db/queries/media-items";
+} from "@/db/queries/cover-thumbs";
 import {
   createAndUploadCoverThumbFromObjectKey,
   isS3ObjectKey,
