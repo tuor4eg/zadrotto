@@ -1,4 +1,4 @@
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 export function TableWrap({ className, ...props }: React.HTMLAttributes<HTMLDivElement>) {
   return (

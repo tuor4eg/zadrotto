@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 
-import { getRuntimeErrorMessage, getRuntimeErrorTitle } from "@/lib/app-error-messages";
+import { getRuntimeErrorMessage, getRuntimeErrorTitle } from "@/lib/common/app-error-messages";
 
 type ErrorFallbackProps = {
   error: Error & { digest?: string };

@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 type ArchiveBackLinkProps = {
   className?: string;

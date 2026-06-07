@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { validateAdminPasswordChange } from "../src/lib/admin-settings";
+import { validateAdminPasswordChange } from "../src/lib/admin/settings";
 
 describe("admin password settings", () => {
   it("accepts a complete password change", () => {

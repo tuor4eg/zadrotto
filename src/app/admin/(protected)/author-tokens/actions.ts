@@ -9,12 +9,12 @@ import {
   restoreAuthorAccessToken,
   revokeAuthorAccessToken,
 } from "@/db/queries/author-access-tokens";
-import { requireAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
   getAdminFormErrorCode,
   getAdminFormErrorMessage,
-} from "@/lib/app-error-messages";
-import { generateAuthorAccessToken, hashAuthorAccessToken } from "@/lib/author-access-token";
+} from "@/lib/common/app-error-messages";
+import { generateAuthorAccessToken, hashAuthorAccessToken } from "@/lib/authors/access-token";
 
 export type CreateAuthorTokenState = {
   accessToken: string | null;

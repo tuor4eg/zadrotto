@@ -4,8 +4,8 @@ import { ArrowLeft } from "lucide-react";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 import { AdminLoginForm } from "./admin-login-form";
 
 type AdminLoginPageProps = {

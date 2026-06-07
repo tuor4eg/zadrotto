@@ -4,18 +4,36 @@ import { describe, it } from "node:test";
 import {
   formatUploadLimitMegabytes,
   parseAuthorAccessProfileFormInput,
-} from "../src/lib/author-access-profile-form";
+} from "../src/lib/forms/author-access-profile";
+
+function profileInput(input: Partial<Parameters<typeof parseAuthorAccessProfileFormInput>[0]> = {}) {
+  return {
+    name: "",
+    canPublishMediaWithoutReview: "",
+    maxDraftMediaItems: "",
+    maxDraftMediaItemsPerDay: "",
+    maxUploadMegabytes: "",
+    maxFilesPerMediaItem: "",
+    coverSearchesPerMinute: "",
+    coverSearchesPerHour: "",
+    coverSearchesPerDay: "",
+    ...input,
+  };
+}
 
 describe("author access profile form", () => {
   it("parses rules and optional limits", () => {
-    const result = parseAuthorAccessProfileFormInput({
+    const result = parseAuthorAccessProfileFormInput(profileInput({
       name: "  Доверенный автор  ",
       canPublishMediaWithoutReview: "1",
       maxDraftMediaItems: "10",
       maxDraftMediaItemsPerDay: "2",
       maxUploadMegabytes: "25",
       maxFilesPerMediaItem: "",
-    });
+      coverSearchesPerMinute: "20",
+      coverSearchesPerHour: "200",
+      coverSearchesPerDay: "1000",
+    }));
 
     assert.equal(result.ok, true);
 
@@ -26,18 +44,14 @@ describe("author access profile form", () => {
       assert.equal(result.value.maxDraftMediaItemsPerDay, 2);
       assert.equal(result.value.maxUploadBytes, 25 * 1024 * 1024);
       assert.equal(result.value.maxFilesPerMediaItem, null);
+      assert.equal(result.value.coverSearchesPerMinute, 20);
+      assert.equal(result.value.coverSearchesPerHour, 200);
+      assert.equal(result.value.coverSearchesPerDay, 1000);
     }
   });
 
   it("requires a profile name", () => {
-    const result = parseAuthorAccessProfileFormInput({
-      name: "",
-      canPublishMediaWithoutReview: "",
-      maxDraftMediaItems: "",
-      maxDraftMediaItemsPerDay: "",
-      maxUploadMegabytes: "",
-      maxFilesPerMediaItem: "",
-    });
+    const result = parseAuthorAccessProfileFormInput(profileInput());
 
     assert.deepEqual(result, { ok: false, error: "required" });
   });
@@ -45,23 +59,17 @@ describe("author access profile form", () => {
   it("rejects zero, negative and decimal limits", () => {
     assert.equal(
       parseAuthorAccessProfileFormInput({
+        ...profileInput(),
         name: "Обычный",
-        canPublishMediaWithoutReview: "",
         maxDraftMediaItems: "0",
-        maxDraftMediaItemsPerDay: "",
-        maxUploadMegabytes: "",
-        maxFilesPerMediaItem: "",
       }).ok,
       false,
     );
     assert.equal(
       parseAuthorAccessProfileFormInput({
+        ...profileInput(),
         name: "Обычный",
-        canPublishMediaWithoutReview: "",
-        maxDraftMediaItems: "",
-        maxDraftMediaItemsPerDay: "",
         maxUploadMegabytes: "1.5",
-        maxFilesPerMediaItem: "",
       }).ok,
       false,
     );
@@ -70,12 +78,9 @@ describe("author access profile form", () => {
   it("rejects daily draft limits that are too large to store safely", () => {
     assert.equal(
       parseAuthorAccessProfileFormInput({
+        ...profileInput(),
         name: "Обычный",
-        canPublishMediaWithoutReview: "",
-        maxDraftMediaItems: "",
         maxDraftMediaItemsPerDay: String(Number.MAX_SAFE_INTEGER + 1),
-        maxUploadMegabytes: "",
-        maxFilesPerMediaItem: "",
       }).ok,
       false,
     );
@@ -84,12 +89,9 @@ describe("author access profile form", () => {
   it("rejects daily draft limits that are not positive integers", () => {
     assert.equal(
       parseAuthorAccessProfileFormInput({
+        ...profileInput(),
         name: "Обычный",
-        canPublishMediaWithoutReview: "",
-        maxDraftMediaItems: "",
         maxDraftMediaItemsPerDay: "0",
-        maxUploadMegabytes: "",
-        maxFilesPerMediaItem: "",
       }).ok,
       false,
     );
@@ -98,12 +100,20 @@ describe("author access profile form", () => {
   it("rejects upload limits that are too large to store safely", () => {
     assert.equal(
       parseAuthorAccessProfileFormInput({
+        ...profileInput(),
         name: "Обычный",
-        canPublishMediaWithoutReview: "",
-        maxDraftMediaItems: "",
-        maxDraftMediaItemsPerDay: "",
         maxUploadMegabytes: String(Number.MAX_SAFE_INTEGER),
-        maxFilesPerMediaItem: "",
+      }).ok,
+      false,
+    );
+  });
+
+  it("rejects invalid cover search limits", () => {
+    assert.equal(
+      parseAuthorAccessProfileFormInput({
+        ...profileInput(),
+        name: "Обычный",
+        coverSearchesPerMinute: "0",
       }).ok,
       false,
     );

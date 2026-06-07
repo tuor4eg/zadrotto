@@ -1,4 +1,4 @@
-import type { PublicationStatus } from "@/lib/publication-status";
+import type { PublicationStatus } from "@/lib/media/publication-status";
 
 export type AuthorPublicationSubmitStatus = Extract<
   PublicationStatus,

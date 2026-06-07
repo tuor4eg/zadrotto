@@ -5,7 +5,7 @@ import {
   formatFirstExperiencedDate,
   formatFirstExperiencedInputValue,
   parseFirstExperiencedInput,
-} from "../src/lib/experience-date";
+} from "../src/lib/authors/experience-date";
 
 describe("formatFirstExperiencedDate", () => {
   it("formats first experience dates by stored precision", () => {

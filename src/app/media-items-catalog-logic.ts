@@ -1,4 +1,4 @@
-import type { MediaType, MediaTypeOption } from "../lib/media-types";
+import type { MediaType, MediaTypeOption } from "../lib/media/types";
 
 export type MediaTypeFilter = MediaType | "all";
 export type AuthorRatingFilter = "all" | "rated" | "unrated";

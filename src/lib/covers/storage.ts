@@ -5,8 +5,8 @@ import {
   buildAuthorCoverObjectKey,
   getCoverFileExtension,
   validateCoverFileInput,
-} from "@/lib/author-media-form";
-import { deleteS3Object, fetchS3Object, uploadS3Object } from "@/lib/storage";
+} from "@/lib/forms/author-media";
+import { deleteS3Object, fetchS3Object, uploadS3Object } from "@/lib/services/minio";
 import { verifyCoverCandidateToken } from "@/lib/covers/candidates";
 import type { CoverCandidate, CoverSourceInput } from "@/lib/covers/types";
 

@@ -8,7 +8,7 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorAccessTokens } from "@/db/queries/author-access-tokens";
 import { getAuthors } from "@/db/queries/authors";
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import {

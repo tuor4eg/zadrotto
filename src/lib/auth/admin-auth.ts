@@ -7,8 +7,8 @@ import {
   ADMIN_SESSION_MAX_AGE_SECONDS,
   createAdminSessionToken,
   verifyAdminSessionToken,
-} from "@/lib/admin-session";
-import { shouldUseSecureCookies } from "@/lib/cookies";
+} from "@/lib/auth/admin-session";
+import { shouldUseSecureCookies } from "@/lib/auth/cookies";
 
 export async function getCurrentAdminUser() {
   const token = (await cookies()).get(ADMIN_SESSION_COOKIE_NAME)?.value;

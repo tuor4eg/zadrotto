@@ -6,7 +6,7 @@ import {
   formatScore,
   parseRatingScoreInput,
   RATING_SCORE_VALUES,
-} from "../src/lib/rating-score";
+} from "../src/lib/ratings/score";
 
 describe("formatScore", () => {
   it("formats stored integer scores without trailing decimal zero", () => {

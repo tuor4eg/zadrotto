@@ -2,7 +2,7 @@ import "dotenv/config";
 
 import { dbClient } from "@/db";
 import { createAdminUser, getAdminUsersCount } from "@/db/queries/admin-users";
-import { hashPassword } from "@/lib/password";
+import { hashPassword } from "@/lib/auth/password";
 
 function readRequiredEnv(name: string) {
   const value = process.env[name]?.trim();

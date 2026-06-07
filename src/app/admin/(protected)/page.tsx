@@ -10,7 +10,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { getAdminDashboardStats } from "@/db/queries/admin-dashboard";
-import { PUBLICATION_STATUS_LABELS } from "@/lib/publication-status";
+import { PUBLICATION_STATUS_LABELS } from "@/lib/media/publication-status";
 import { PageHeader } from "./admin-ui";
 
 function formatCount(value: number) {

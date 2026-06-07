@@ -11,8 +11,11 @@ import {
   Package,
   MessageSquareText,
   Newspaper,
+  Settings,
+  ServerCog,
   ShieldCheck,
   Tags,
+  Wrench,
   UserRound,
   type LucideIcon,
 } from "lucide-react";
@@ -184,6 +187,19 @@ export function AdminAuthorsMenu() {
         { href: "/admin/authors", icon: UserRound, label: "Авторы" },
         { href: "/admin/author-tokens", icon: KeyRound, label: "Токены" },
         { href: "/admin/access-profiles", icon: ShieldCheck, label: "Профили" },
+      ]}
+    />
+  );
+}
+
+export function AdminToolsMenu() {
+  return (
+    <AdminNavMenu
+      icon={Wrench}
+      label="Инструменты"
+      items={[
+        { href: "/admin/settings/administrator", icon: Settings, label: "Настройки" },
+        { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
       ]}
     />
   );

@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
-} from "../src/lib/author-private-media-limits";
+} from "../src/lib/authors/private-media-limits";
 
 describe("author private media limits", () => {
   it("allows creation when no limits are set", () => {

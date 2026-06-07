@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 type MediaItemReview = {
   id: number;

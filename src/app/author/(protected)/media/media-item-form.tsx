@@ -9,8 +9,8 @@ import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
-import type { MediaType } from "@/lib/media-types";
-import { resolveCoverUrl } from "@/lib/storage";
+import type { MediaType } from "@/lib/media/types";
+import { resolveCoverUrl } from "@/lib/services/minio";
 
 type MediaItemFormValues = {
   id?: number;

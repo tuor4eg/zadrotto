@@ -3,7 +3,7 @@ import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type MediaCarrierFormValues = {

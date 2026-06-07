@@ -3,8 +3,8 @@ import { and, asc, eq, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaCarriers, mediaItems } from "@/db/schema";
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
-import type { MediaCarrierFormInput } from "@/lib/media-carrier-form";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaCarrierFormInput } from "@/lib/forms/media-carrier";
+import type { MediaType } from "@/lib/media/types";
 
 const mediaItemsCountSql = sql<number>`count(${mediaItems.id})::int`;
 

@@ -8,7 +8,7 @@ import {
   getRuntimeErrorTitle,
   isDatabaseUnavailableError,
   isUniqueViolation,
-} from "../src/lib/app-error-messages";
+} from "../src/lib/common/app-error-messages";
 
 describe("app error messages", () => {
   it("recognizes unique constraint violations", () => {

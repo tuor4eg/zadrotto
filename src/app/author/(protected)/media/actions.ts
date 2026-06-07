@@ -25,25 +25,25 @@ import {
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
   parseOptionalReleaseYear,
-} from "@/lib/author-media-form";
-import { requireAuthor } from "@/lib/author-auth";
-import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
+} from "@/lib/forms/author-media";
+import { requireAuthor } from "@/lib/auth/author-auth";
+import { validateMediaCarrierForMediaType } from "@/lib/forms/media-carrier";
 import {
   canAuthorDeleteMediaItem,
   canAuthorWithdrawPublicationRequest,
   getPublicationStatusAfterAuthorSubmit,
-} from "@/lib/author-media-publication";
+} from "@/lib/authors/media-publication";
 import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
-} from "@/lib/author-private-media-limits";
+} from "@/lib/authors/private-media-limits";
 import {
   deleteUploadedCoverFilesIfNeeded,
   isS3ObjectKey,
   resolveCoverUpload,
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
-import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
+import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

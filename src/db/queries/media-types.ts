@@ -2,8 +2,8 @@ import { asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { mediaCarriers, mediaItems, mediaTypes } from "@/db/schema";
-import type { MediaTypeFormInput } from "@/lib/media-type-form";
-import type { MediaTypeOption } from "@/lib/media-types";
+import type { MediaTypeFormInput } from "@/lib/forms/media-type";
+import type { MediaTypeOption } from "@/lib/media/types";
 
 const mediaItemsCountSql = sql<number>`count(distinct ${mediaItems.id})::int`;
 const mediaCarriersCountSql = sql<number>`count(distinct ${mediaCarriers.id})::int`;

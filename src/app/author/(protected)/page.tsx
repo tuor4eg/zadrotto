@@ -5,14 +5,14 @@ import { Badge } from "@/components/ui/badge";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
-import { requireAuthor } from "@/lib/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
-} from "@/lib/contributions";
-import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
-import { RATING_SCORE_VALUES, formatScore } from "@/lib/rating-score";
-import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
+} from "@/lib/contributions/model";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
+import { RATING_SCORE_VALUES, formatScore } from "@/lib/ratings/score";
+import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 
 const REVIEW_STATUS_BADGE_VARIANTS: Record<
   ContributionStatus,

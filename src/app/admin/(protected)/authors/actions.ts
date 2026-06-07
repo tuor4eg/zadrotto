@@ -12,10 +12,10 @@ import {
   unblockAuthor,
   updateAuthor,
 } from "@/db/queries/authors";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { canAssignAuthorAccessProfile } from "@/lib/author-access-profiles";
-import { generateEntityCode } from "@/lib/generated-code";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { canAssignAuthorAccessProfile } from "@/lib/authors/access-profiles";
+import { generateEntityCode } from "@/lib/common/generated-code";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

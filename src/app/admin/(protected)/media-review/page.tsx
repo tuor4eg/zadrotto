@@ -7,8 +7,8 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip";
 import { getSubmittedAuthorMediaItemsForAdmin } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
-import { getMediaTypeLabel } from "@/lib/media-types";
+import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
+import { getMediaTypeLabel } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { reviewAuthorMediaItemAction } from "./actions";

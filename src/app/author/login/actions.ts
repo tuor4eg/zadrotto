@@ -6,8 +6,8 @@ import {
   getAuthorByAccessTokenHash,
   updateAuthorAccessTokenLastUsedAt,
 } from "@/db/queries/author-access-tokens";
-import { hashAuthorAccessToken } from "@/lib/author-access-token";
-import { setAuthorSessionCookie } from "@/lib/author-auth";
+import { hashAuthorAccessToken } from "@/lib/authors/access-token";
+import { setAuthorSessionCookie } from "@/lib/auth/author-auth";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

@@ -5,11 +5,11 @@ import { describe, it } from "node:test";
 import {
   parseReviewFormInput,
   REVIEW_BODY_MAX_LENGTH,
-} from "../src/lib/contribution-review-form";
+} from "../src/lib/forms/contribution-review";
 import {
   isAdminReviewableContributionStatus,
   isAuthorEditableContributionStatus,
-} from "../src/lib/contributions";
+} from "../src/lib/contributions/model";
 
 describe("parseReviewFormInput", () => {
   it("trims plain review text input", () => {

@@ -8,13 +8,13 @@ import {
   deleteMediaTypeIfUnused,
   updateMediaType,
 } from "@/db/queries/media-types";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { slugifyCodePart } from "@/lib/generated-code";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { slugifyCodePart } from "@/lib/common/generated-code";
 import {
   normalizeOptionalMediaTypeString,
   parseRequiredMediaTypeId,
-} from "@/lib/media-type-form";
+} from "@/lib/forms/media-type";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

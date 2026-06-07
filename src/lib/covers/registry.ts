@@ -15,7 +15,7 @@ import type {
   CoverSearchInput,
   CoverSearchOptions,
 } from "@/lib/covers/types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 export type CoverProviderRuntimeSetting = {
   mediaType: MediaType;
@@ -101,16 +101,24 @@ export async function searchCoverCandidates(
           !coverProviderRequiresCredentials(provider.code) ||
           Boolean(options.providerCredentials?.[provider.code]),
       )
-      .map((provider) =>
-        provider.searchCoverCandidates(
+      .map(async (provider) => {
+        const canSearch = options.beforeProviderSearch
+          ? await options.beforeProviderSearch(provider.code)
+          : true;
+
+        if (!canSearch) {
+          return [];
+        }
+
+        return provider.searchCoverCandidates(
           {
             ...input,
             title: normalizedTitle,
             originalTitle: normalizedOriginalTitle,
           },
           options,
-        ),
-      ),
+        );
+      }),
   );
 
   return normalizeCoverCandidates(

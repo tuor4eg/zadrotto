@@ -8,11 +8,11 @@ import {
   getPublishedMediaItemForReview,
   upsertAuthorReview,
 } from "@/db/queries/contribution-reviews";
-import { requireAuthor } from "@/lib/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   getReviewFormErrorMessage,
   parseReviewFormInput,
-} from "@/lib/contribution-review-form";
+} from "@/lib/forms/contribution-review";
 
 export type SaveAuthorReviewState = {
   error: string | null;

@@ -2,9 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  parseCoverProviderRateLimitsFormInput,
   parseCoverProviderSettingsFormInput,
   parseCoverSettingsFormInput,
-} from "@/lib/cover-settings-form";
+} from "@/lib/forms/cover-settings";
 import {
   createCoverCandidateToken,
   normalizeCoverCandidates,
@@ -20,6 +21,11 @@ import {
   uploadManualCover,
 } from "@/lib/covers/storage";
 import type { CoverCandidate, CoverProvider, CoverSearchOptions } from "@/lib/covers/types";
+import {
+  checkFixedWindowRateLimitWithClient,
+  getFixedWindowRateLimitKey,
+  getFixedWindowRetryAfterSeconds,
+} from "@/lib/rate-limits/redis";
 
 const baseCandidate = {
   id: "external:1",
@@ -154,6 +160,39 @@ describe("cover provider registry", () => {
       ["open-library", "google-books"],
     );
   });
+
+  it("skips providers rejected by the provider search guard", async () => {
+    let calls = 0;
+
+    const guardedProviders = [
+      {
+        code: "open-library",
+        mediaTypes: ["book"],
+        async searchCoverCandidates() {
+          calls += 1;
+          return [baseCandidate];
+        },
+      },
+    ] satisfies CoverProvider[];
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        {
+          title: "Dune",
+          originalTitle: null,
+          mediaType: "book",
+          releaseYear: null,
+        },
+        guardedProviders,
+        {
+          ...customOptions,
+          beforeProviderSearch: async () => false,
+        },
+      ),
+      [],
+    );
+    assert.equal(calls, 0);
+  });
 });
 
 describe("cover settings form", () => {
@@ -225,6 +264,96 @@ describe("cover settings form", () => {
         : null,
       { mediaType: "game", providerCode: "rawg", enabled: false, priority: 10 },
     );
+  });
+
+  it("parses provider daily rate limits", () => {
+    const formData = new FormData();
+
+    for (const providerCode of [
+      "tmdb",
+      "open-library",
+      "google-books",
+      "igdb",
+      "rawg",
+      "jikan",
+    ]) {
+      formData.set(`providerSearchesPerDay:${providerCode}`, "1000");
+    }
+
+    const parsed = parseCoverProviderRateLimitsFormInput(formData);
+
+    assert.equal(parsed.ok, true);
+    assert.deepEqual(
+      parsed.ok ? parsed.value.find((limit) => limit.providerCode === "tmdb") : null,
+      { providerCode: "tmdb", searchesPerDay: 1000 },
+    );
+  });
+});
+
+describe("redis fixed-window rate limits", () => {
+  it("builds stable fixed-window keys and retry-after values", () => {
+    const now = new Date("2026-06-07T10:15:30.250Z");
+
+    assert.equal(
+      getFixedWindowRateLimitKey({
+        keyPrefix: "cover-search:author",
+        subject: "7",
+        window: "minute",
+        limit: 20,
+        now,
+      }),
+      "cover-search:author:7:minute:1780827300000",
+    );
+    assert.equal(getFixedWindowRetryAfterSeconds({ now, window: "minute" }), 30);
+  });
+
+  it("increments counters and denies requests over the limit", async () => {
+    const counts = new Map<string, number>();
+    const fakeClient = {
+      multi() {
+        let key = "";
+
+        return {
+          incr(nextKey: string) {
+            key = nextKey;
+            const count = (counts.get(key) ?? 0) + 1;
+            counts.set(key, count);
+
+            return this;
+          },
+          expire() {
+            return this;
+          },
+          async exec() {
+            return [counts.get(key) ?? 0, true];
+          },
+        };
+      },
+    };
+
+    const first = await checkFixedWindowRateLimitWithClient(
+      {
+        keyPrefix: "cover-search:provider",
+        subject: "tmdb",
+        window: "day",
+        limit: 1,
+        now: new Date("2026-06-07T10:15:30.250Z"),
+      },
+      fakeClient,
+    );
+    const second = await checkFixedWindowRateLimitWithClient(
+      {
+        keyPrefix: "cover-search:provider",
+        subject: "tmdb",
+        window: "day",
+        limit: 1,
+        now: new Date("2026-06-07T10:15:31.250Z"),
+      },
+      fakeClient,
+    );
+
+    assert.equal(first.ok && first.allowed, true);
+    assert.equal(second.ok && second.allowed, false);
   });
 });
 

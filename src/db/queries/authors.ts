@@ -83,6 +83,9 @@ export async function getAuthorById(id: number) {
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
+      coverSearchesPerMinute: authorAccessProfiles.coverSearchesPerMinute,
+      coverSearchesPerHour: authorAccessProfiles.coverSearchesPerHour,
+      coverSearchesPerDay: authorAccessProfiles.coverSearchesPerDay,
       blockedAt: authors.blockedAt,
     })
     .from(authors)

@@ -15,9 +15,9 @@ import {
   uniqueIndex,
 } from "drizzle-orm/pg-core";
 
-import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/author-media-experiences";
-import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions";
-import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/publication-status";
+import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/authors/media-experiences";
+import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/model";
+import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
@@ -61,6 +61,9 @@ export const authorAccessProfiles = pgTable("author_access_profiles", {
   maxDraftMediaItemsPerDay: integer("max_draft_media_items_per_day"),
   maxUploadBytes: integer("max_upload_bytes"),
   maxFilesPerMediaItem: integer("max_files_per_media_item"),
+  coverSearchesPerMinute: integer("cover_searches_per_minute"),
+  coverSearchesPerHour: integer("cover_searches_per_hour"),
+  coverSearchesPerDay: integer("cover_searches_per_day"),
   ...timestamps(),
 });
 
@@ -110,6 +113,18 @@ export const coverProviderCredentials = pgTable("cover_provider_credentials", {
   }),
   ...timestamps(),
 });
+
+export const coverProviderRateLimits = pgTable(
+  "cover_provider_rate_limits",
+  {
+    providerCode: text("provider_code").primaryKey(),
+    searchesPerDay: integer("searches_per_day").default(1000).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    check("cover_provider_rate_limits_searches_per_day_check", sql`${table.searchesPerDay} >= 1`),
+  ],
+);
 
 export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),

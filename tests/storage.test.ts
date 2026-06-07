@@ -6,7 +6,7 @@ import {
   getCoverObjectPublicUrl,
   getS3StorageConfig,
   resolveCoverUrl,
-} from "../src/lib/storage";
+} from "../src/lib/services/minio";
 
 const storageEnv = {
   S3_ENDPOINT: "http://127.0.0.1:9000/",

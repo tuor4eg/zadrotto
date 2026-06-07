@@ -6,7 +6,7 @@ import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
   type AuthorPrivateMediaLimitResult,
-} from "@/lib/author-private-media-limits";
+} from "@/lib/authors/private-media-limits";
 
 type CreateAuthorPrivateMediaItemInput = AuthorMediaItemInput & {
   limits: {

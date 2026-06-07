@@ -3,7 +3,7 @@
 import { X } from "lucide-react";
 import { useEffect, useId, useState } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 import { Button, type ButtonProps, buttonVariants } from "./button";
 
 type ConfirmActionField = {

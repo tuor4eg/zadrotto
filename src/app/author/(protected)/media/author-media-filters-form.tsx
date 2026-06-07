@@ -9,12 +9,12 @@ import {
   AUTHOR_MEDIA_STATUS_FILTERS,
   type AuthorMediaStatusFilter,
   type AuthorMediaTypeFilter,
-} from "@/lib/author-media-filters";
-import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media-types";
+} from "@/lib/authors/media-filters";
+import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 import {
   PUBLICATION_STATUS_LABELS,
   type PublicationStatus,
-} from "@/lib/publication-status";
+} from "@/lib/media/publication-status";
 
 type AuthorMediaFiltersFormProps = {
   searchQuery: string;

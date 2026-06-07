@@ -4,10 +4,10 @@ import { ArchiveNote } from "@/app/archive-note";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { ImageViewer } from "@/components/ui/image-viewer";
-import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
-import { formatRatingsCount, formatScore } from "@/lib/rating-score";
-import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
+import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
+import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 
 type MediaItemDetailsItem = {
   id: number;

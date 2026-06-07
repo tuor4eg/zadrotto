@@ -5,7 +5,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { type MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import { Input, Select } from "@/components/ui/form";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCarrierFiltersFormProps = {
   availableMediaTypes: Array<{

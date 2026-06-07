@@ -8,10 +8,10 @@ import {
   deleteAuthorAccessProfileIfUnused,
   updateAuthorAccessProfile,
 } from "@/db/queries/author-access-profiles";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { parseAuthorAccessProfileFormInput } from "@/lib/author-access-profile-form";
-import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { generateEntityCode } from "@/lib/generated-code";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { parseAuthorAccessProfileFormInput } from "@/lib/forms/author-access-profile";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { generateEntityCode } from "@/lib/common/generated-code";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -33,6 +33,9 @@ function getProfileInput(formData: FormData) {
     maxDraftMediaItemsPerDay: getFormString(formData, "maxDraftMediaItemsPerDay"),
     maxUploadMegabytes: getFormString(formData, "maxUploadMegabytes"),
     maxFilesPerMediaItem: getFormString(formData, "maxFilesPerMediaItem"),
+    coverSearchesPerMinute: getFormString(formData, "coverSearchesPerMinute"),
+    coverSearchesPerHour: getFormString(formData, "coverSearchesPerHour"),
+    coverSearchesPerDay: getFormString(formData, "coverSearchesPerDay"),
   });
 }
 

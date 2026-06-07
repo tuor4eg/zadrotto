@@ -7,6 +7,9 @@ export type AuthorAccessProfileFormInput = {
   maxDraftMediaItemsPerDay: number | null;
   maxUploadBytes: number | null;
   maxFilesPerMediaItem: number | null;
+  coverSearchesPerMinute: number | null;
+  coverSearchesPerHour: number | null;
+  coverSearchesPerDay: number | null;
 };
 
 function parseOptionalPositiveInteger(value: string) {
@@ -34,12 +37,18 @@ export function parseAuthorAccessProfileFormInput(input: {
   maxDraftMediaItemsPerDay: string;
   maxUploadMegabytes: string;
   maxFilesPerMediaItem: string;
+  coverSearchesPerMinute: string;
+  coverSearchesPerHour: string;
+  coverSearchesPerDay: string;
 }) {
   const name = input.name.trim();
   const maxDraftMediaItems = parseOptionalPositiveInteger(input.maxDraftMediaItems);
   const maxDraftMediaItemsPerDay = parseOptionalPositiveInteger(input.maxDraftMediaItemsPerDay);
   const maxUploadMegabytes = parseOptionalPositiveInteger(input.maxUploadMegabytes);
   const maxFilesPerMediaItem = parseOptionalPositiveInteger(input.maxFilesPerMediaItem);
+  const coverSearchesPerMinute = parseOptionalPositiveInteger(input.coverSearchesPerMinute);
+  const coverSearchesPerHour = parseOptionalPositiveInteger(input.coverSearchesPerHour);
+  const coverSearchesPerDay = parseOptionalPositiveInteger(input.coverSearchesPerDay);
 
   if (!name) {
     return { ok: false as const, error: "required" };
@@ -49,7 +58,10 @@ export function parseAuthorAccessProfileFormInput(input: {
     !maxDraftMediaItems.ok ||
     !maxDraftMediaItemsPerDay.ok ||
     !maxUploadMegabytes.ok ||
-    !maxFilesPerMediaItem.ok
+    !maxFilesPerMediaItem.ok ||
+    !coverSearchesPerMinute.ok ||
+    !coverSearchesPerHour.ok ||
+    !coverSearchesPerDay.ok
   ) {
     return { ok: false as const, error: "invalid-limit" };
   }
@@ -72,6 +84,9 @@ export function parseAuthorAccessProfileFormInput(input: {
       maxDraftMediaItemsPerDay: maxDraftMediaItemsPerDay.value,
       maxUploadBytes,
       maxFilesPerMediaItem: maxFilesPerMediaItem.value,
+      coverSearchesPerMinute: coverSearchesPerMinute.value,
+      coverSearchesPerHour: coverSearchesPerHour.value,
+      coverSearchesPerDay: coverSearchesPerDay.value,
     } satisfies AuthorAccessProfileFormInput,
   };
 }

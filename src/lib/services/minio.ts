@@ -1,5 +1,12 @@
 import { createHash, createHmac } from "node:crypto";
 
+import {
+  buildMissingServiceConfigHealthCheck,
+  buildServiceHealthCheck,
+  getErrorMessage,
+  type ServiceHealthCheck,
+} from "./health";
+
 type S3StorageEnv = {
   S3_ENDPOINT?: string;
   S3_REGION?: string;
@@ -104,6 +111,18 @@ function getS3ObjectUrl(config: S3StorageConfig, objectKey: string) {
   return endpointUrl;
 }
 
+function getS3BucketUrl(config: S3StorageConfig) {
+  if (config.forcePathStyle) {
+    return new URL(`${config.endpoint}/${config.bucket}`);
+  }
+
+  const endpointUrl = new URL(config.endpoint);
+  endpointUrl.hostname = `${config.bucket}.${endpointUrl.hostname}`;
+  endpointUrl.pathname = "/";
+
+  return endpointUrl;
+}
+
 export function getS3StorageConfig(env: S3StorageEnv = readStorageEnv()): S3StorageConfig | null {
   const endpoint = normalizeOptionalEnvValue(env.S3_ENDPOINT);
   const bucket = normalizeOptionalEnvValue(env.S3_BUCKET);
@@ -165,7 +184,7 @@ export function resolveCoverUrl(coverUrl: string | null) {
 
 function buildS3AuthorizationHeader(input: {
   config: S3StorageConfig;
-  method: "DELETE" | "GET" | "PUT";
+  method: "DELETE" | "GET" | "HEAD" | "PUT";
   url: URL;
   amzDate: string;
   payloadHash: string;
@@ -247,6 +266,65 @@ export async function fetchS3Object(input: {
   }
 
   return response;
+}
+
+export async function checkMinioHealth(): Promise<ServiceHealthCheck> {
+  const startedAt = Date.now();
+  const config = getS3StorageConfig();
+
+  if (!config) {
+    return buildMissingServiceConfigHealthCheck({
+      code: "minio",
+      name: "MinIO / S3",
+      message: "S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY_ID или S3_SECRET_ACCESS_KEY не заданы.",
+    });
+  }
+
+  try {
+    const url = getS3BucketUrl(config);
+    const amzDate = formatAmzDate(new Date());
+    const payloadHash = sha256Hex("");
+    const response = await fetch(url, {
+      method: "HEAD",
+      headers: {
+        Authorization: buildS3AuthorizationHeader({
+          config,
+          method: "HEAD",
+          url,
+          amzDate,
+          payloadHash,
+        }),
+        "X-Amz-Content-Sha256": payloadHash,
+        "X-Amz-Date": amzDate,
+      },
+    });
+
+    if (!response.ok) {
+      return buildServiceHealthCheck({
+        code: "minio",
+        name: "MinIO / S3",
+        status: "unhealthy",
+        message: `Бакет недоступен, статус ${response.status}.`,
+        startedAt,
+      });
+    }
+
+    return buildServiceHealthCheck({
+      code: "minio",
+      name: "MinIO / S3",
+      status: "healthy",
+      message: "Бакет доступен.",
+      startedAt,
+    });
+  } catch (error) {
+    return buildServiceHealthCheck({
+      code: "minio",
+      name: "MinIO / S3",
+      status: "unhealthy",
+      message: getErrorMessage(error),
+      startedAt,
+    });
+  }
 }
 
 export async function uploadS3Object(input: {

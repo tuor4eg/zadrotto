@@ -1,7 +1,12 @@
 import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { coverProviderCredentials, coverProviderSettings, coverSettings } from "@/db/schema";
+import {
+  coverProviderCredentials,
+  coverProviderRateLimits,
+  coverProviderSettings,
+  coverSettings,
+} from "@/db/schema";
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
   DEFAULT_COVER_MAX_BYTES,
@@ -21,7 +26,7 @@ import {
   type CoverProviderMediaSetting,
 } from "@/lib/covers/provider-settings";
 import type { CoverProviderCode } from "@/lib/covers/types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 export type CoverSettingsValue = {
   candidateLimit: number;
@@ -43,6 +48,11 @@ export type CoverProviderCredentialStatus = {
   updatedAt: Date | null;
 };
 
+export type CoverProviderRateLimitValue = {
+  providerCode: CoverProviderCode;
+  searchesPerDay: number;
+};
+
 export const DEFAULT_COVER_SETTINGS = {
   candidateLimit: DEFAULT_COVER_CANDIDATE_LIMIT,
   tmdbResultScanLimit: DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
@@ -50,6 +60,7 @@ export const DEFAULT_COVER_SETTINGS = {
 } satisfies CoverSettingsValue;
 
 const COVER_SETTINGS_ID = 1;
+const DEFAULT_PROVIDER_SEARCHES_PER_DAY = 1000;
 
 function getKnownProviderCodes() {
   return getCoverProviderDefaultSettings().map((provider) => provider.providerCode);
@@ -235,6 +246,53 @@ export async function updateCoverProviderSettings(
   }
 
   return getCoverProviderSettings();
+}
+
+export async function getCoverProviderRateLimits(): Promise<CoverProviderRateLimitValue[]> {
+  const rows = await db
+    .select({
+      providerCode: coverProviderRateLimits.providerCode,
+      searchesPerDay: coverProviderRateLimits.searchesPerDay,
+    })
+    .from(coverProviderRateLimits);
+  const rowsByProviderCode = new Map(
+    rows
+      .filter((row): row is CoverProviderRateLimitValue => isKnownProviderCode(row.providerCode))
+      .map((row) => [row.providerCode, row]),
+  );
+
+  return [...new Set(getKnownProviderCodes())].map((providerCode) => ({
+    providerCode,
+    searchesPerDay:
+      rowsByProviderCode.get(providerCode)?.searchesPerDay ?? DEFAULT_PROVIDER_SEARCHES_PER_DAY,
+  }));
+}
+
+export async function updateCoverProviderRateLimits(
+  input: readonly CoverProviderRateLimitValue[],
+): Promise<CoverProviderRateLimitValue[]> {
+  const values = input
+    .filter((limit) => isKnownProviderCode(limit.providerCode))
+    .map((limit) => ({
+      providerCode: limit.providerCode,
+      searchesPerDay: limit.searchesPerDay,
+      updatedAt: new Date(),
+    }));
+
+  if (values.length > 0) {
+    await db
+      .insert(coverProviderRateLimits)
+      .values(values)
+      .onConflictDoUpdate({
+        target: coverProviderRateLimits.providerCode,
+        set: {
+          searchesPerDay: sql`excluded.searches_per_day`,
+          updatedAt: sql`excluded.updated_at`,
+        },
+      });
+  }
+
+  return getCoverProviderRateLimits();
 }
 
 export async function getCoverProviderCredentialStatuses(): Promise<

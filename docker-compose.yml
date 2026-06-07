@@ -15,6 +15,7 @@ services:
       AUTHOR_SESSION_SECRET: ${AUTHOR_SESSION_SECRET}
       COVER_CANDIDATE_SECRET: ${COVER_CANDIDATE_SECRET}
       COVER_PROVIDER_CREDENTIALS_KEY: ${COVER_PROVIDER_CREDENTIALS_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       SECURE_COOKIES: ${SECURE_COOKIES:-false}
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_REGION: ${S3_REGION}
@@ -23,6 +24,15 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
+    depends_on:
+      - redis
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: redis-server --save "" --appendonly no
+    ports:
+      - "127.0.0.1:6379:6379"
 
   migrate:
     image: ghcr.io/tuor4eg/zadrotto-migrator:latest

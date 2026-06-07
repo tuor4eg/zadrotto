@@ -20,18 +20,18 @@ import {
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
   parseOptionalReleaseYear,
-} from "@/lib/author-media-form";
-import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorCode } from "@/lib/app-error-messages";
+} from "@/lib/forms/author-media";
+import { validateMediaCarrierForMediaType } from "@/lib/forms/media-carrier";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
 import {
   deleteUploadedCoverFilesIfNeeded,
   isS3ObjectKey,
   resolveCoverUpload,
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
-import { generateEntityCode } from "@/lib/generated-code";
-import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
+import { generateEntityCode } from "@/lib/common/generated-code";
+import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

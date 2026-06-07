@@ -3,11 +3,11 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorReviews } from "@/db/queries/contribution-reviews";
-import { requireAuthor } from "@/lib/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
-} from "@/lib/contributions";
+} from "@/lib/contributions/model";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
 
 type AuthorReviewsPageProps = {

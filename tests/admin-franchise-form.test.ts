@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 import {
   normalizeOptionalFranchiseString,
   parseRequiredFranchiseId,
-} from "../src/lib/admin-franchise-form";
+} from "../src/lib/forms/admin-franchise";
 
 describe("admin franchise form helpers", () => {
   it("normalizes optional strings to null when empty", () => {

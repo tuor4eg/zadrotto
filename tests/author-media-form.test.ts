@@ -11,12 +11,12 @@ import {
   parseOptionalReleaseYear,
   slugifyMediaTitle,
   validateCoverFileInput,
-} from "../src/lib/author-media-form";
-import { generateEntityCode, slugifyCodePart } from "../src/lib/generated-code";
+} from "../src/lib/forms/author-media";
+import { generateEntityCode, slugifyCodePart } from "../src/lib/common/generated-code";
 import {
   parseRequiredMediaCarrierId,
   validateMediaCarrierForMediaType,
-} from "../src/lib/media-carrier-form";
+} from "../src/lib/forms/media-carrier";
 
 describe("author media form helpers", () => {
   it("normalizes optional strings to null when empty", () => {

@@ -12,8 +12,8 @@ import {
   isAuthorEditableContributionStatus,
   PUBLISHED_CONTRIBUTION_STATUS,
   type ContributionStatus,
-} from "@/lib/contributions";
-import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
+} from "@/lib/contributions/model";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
 export async function getSubmittedContributionReviewCountForAdmin() {
   const [result] = await db

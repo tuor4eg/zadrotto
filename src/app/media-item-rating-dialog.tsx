@@ -7,10 +7,10 @@ import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import type { FirstExperiencedPrecision } from "@/lib/author-media-experiences";
-import { formatFirstExperiencedDate } from "@/lib/experience-date";
-import { formatScore } from "@/lib/rating-score";
-import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/rating-tone";
+import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
+import { formatFirstExperiencedDate } from "@/lib/authors/experience-date";
+import { formatScore } from "@/lib/ratings/score";
+import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 
 type MediaItemRatingDialogProps = {
   mediaItemCode: string;

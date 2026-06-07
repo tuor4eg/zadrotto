@@ -3,7 +3,7 @@
 import { useLayoutEffect, useRef } from "react";
 
 import { Textarea } from "@/components/ui/form";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 type AutoResizeTextareaProps = React.TextareaHTMLAttributes<HTMLTextAreaElement>;
 

@@ -6,9 +6,9 @@ import {
   getCatalogReleaseYearBounds,
 } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { getCurrentAdminUser } from "@/lib/admin-auth";
-import { getCurrentAuthor } from "@/lib/author-auth";
-import { parsePage, parsePageSize } from "@/lib/pagination";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { CatalogStickyHeader } from "./catalog-sticky-header";
 import {
   parseAuthorRatingFilter,

@@ -12,8 +12,8 @@ import {
   getAdminMediaItemsByFranchiseId,
 } from "@/db/queries/franchises";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { getMediaTypeLabel } from "@/lib/media-types";
-import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
+import { getMediaTypeLabel } from "@/lib/media/types";
+import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 import { removeMediaItemFromFranchiseAction, updateFranchiseAction } from "../../actions";
 import { EmptyState, PageHeader } from "../../../admin-ui";
 import { FranchiseForm } from "../../franchise-form";

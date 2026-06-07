@@ -1,4 +1,4 @@
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 export type CoverProviderCode =
   | "tmdb"
@@ -48,6 +48,7 @@ export type CoverSearchOptions = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   providerCredentials?: Partial<Record<CoverProviderCode, Record<string, string>>>;
+  beforeProviderSearch?: (providerCode: CoverProviderCode) => Promise<boolean>;
 };
 
 export type CoverProvider = {

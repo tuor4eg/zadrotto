@@ -5,7 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/form";
-import { getCurrentAuthor } from "@/lib/author-auth";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { loginAuthor } from "./actions";
 
 type AuthorLoginPageProps = {

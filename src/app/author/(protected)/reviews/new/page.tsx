@@ -8,8 +8,8 @@ import {
   getPublishedMediaItemForReview,
   searchPublishedMediaItemsForReview,
 } from "@/db/queries/contribution-reviews";
-import { requireAuthor } from "@/lib/author-auth";
-import { getReviewFormErrorMessage } from "@/lib/contribution-review-form";
+import { requireAuthor } from "@/lib/auth/author-auth";
+import { getReviewFormErrorMessage } from "@/lib/forms/contribution-review";
 import { AuthorToasts } from "../../author-toasts";
 import { AuthorReviewForm } from "../review-form";
 

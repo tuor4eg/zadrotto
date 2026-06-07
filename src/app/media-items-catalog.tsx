@@ -23,18 +23,18 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { PaginationNav } from "@/components/pagination-nav";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
-import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
+import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import {
   getMediaTypeLabel,
   sortMediaTypesByCount,
   type MediaType,
   type MediaTypeOption,
-} from "@/lib/media-types";
-import { formatRatingsCount, formatScore } from "@/lib/rating-score";
+} from "@/lib/media/types";
+import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
   getRatingTone,
-} from "@/lib/rating-tone";
+} from "@/lib/ratings/tone";
 
 type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;

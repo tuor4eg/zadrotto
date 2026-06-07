@@ -10,14 +10,14 @@ import {
   updateMediaCarrier,
 } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { generateEntityCode } from "@/lib/generated-code";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { generateEntityCode } from "@/lib/common/generated-code";
 import {
   normalizeOptionalMediaCarrierString,
   parseRequiredMediaCarrierId,
-} from "@/lib/media-carrier-form";
-import { isMediaTypeCode, type MediaType } from "@/lib/media-types";
+} from "@/lib/forms/media-carrier";
+import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

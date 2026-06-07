@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { CoverPreview } from "@/app/author/(protected)/media/cover-preview";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 import type { SignedCoverCandidate } from "@/lib/covers/types";
 
 const EMPTY_FILE_LABEL = "Файл не выбран";
@@ -28,6 +28,7 @@ type CoverPickerProps = {
 
 type CoverCandidatesResponse = {
   candidates?: SignedCoverCandidate[];
+  error?: "author-rate-limit" | "rate-limit-unavailable";
 };
 
 function hasCoverSearchInput(values: CoverPickerValues) {
@@ -50,7 +51,9 @@ export function CoverPicker({
   const [selectedCandidateToken, setSelectedCandidateToken] = useState("");
   const [candidates, setCandidates] = useState<SignedCoverCandidate[]>([]);
   const [candidatesSearchKey, setCandidatesSearchKey] = useState("");
-  const [searchStatus, setSearchStatus] = useState<"idle" | "loading" | "empty" | "error">("idle");
+  const [searchStatus, setSearchStatus] = useState<
+    "idle" | "loading" | "empty" | "error" | "limited" | "unavailable"
+  >("idle");
   const [isPending, startTransition] = useTransition();
   const coverSearchKey = useMemo(
     () => JSON.stringify(values),
@@ -79,13 +82,21 @@ export function CoverPicker({
       }),
     });
 
+    const data = (await response.json()) as CoverCandidatesResponse;
+
+    if (response.status === 429 || data.error === "author-rate-limit") {
+      return { candidates: [], status: "limited" as const };
+    }
+
+    if (response.status === 503 || data.error === "rate-limit-unavailable") {
+      return { candidates: [], status: "unavailable" as const };
+    }
+
     if (!response.ok) {
       return null;
     }
 
-    const data = (await response.json()) as CoverCandidatesResponse;
-
-    return data.candidates ?? [];
+    return { candidates: data.candidates ?? [], status: "ok" as const };
   };
 
   const searchCandidates = () => {
@@ -99,17 +110,23 @@ export function CoverPicker({
       setSearchStatus("loading");
 
       try {
-        const nextCandidates = await fetchCandidates();
+        const result = await fetchCandidates();
 
-        if (!nextCandidates) {
+        if (!result) {
           setCandidates([]);
           setSearchStatus("error");
           return;
         }
 
-        setCandidates(nextCandidates);
+        setCandidates(result.candidates);
         setCandidatesSearchKey(coverSearchKey);
-        setSearchStatus(nextCandidates.length > 0 ? "idle" : "empty");
+        setSearchStatus(
+          result.status === "ok"
+            ? result.candidates.length > 0
+              ? "idle"
+              : "empty"
+            : result.status,
+        );
       } catch {
         setCandidates([]);
         setCandidatesSearchKey("");
@@ -125,14 +142,20 @@ export function CoverPicker({
         setSearchStatus("loading");
 
         void fetchCandidates()
-          .then((nextCandidates) => {
-            if (!isActive || !nextCandidates) {
+          .then((result) => {
+            if (!isActive || !result) {
               return;
             }
 
-            setCandidates(nextCandidates);
+            setCandidates(result.candidates);
             setCandidatesSearchKey(coverSearchKey);
-            setSearchStatus(nextCandidates.length > 0 ? "idle" : "empty");
+            setSearchStatus(
+              result.status === "ok"
+                ? result.candidates.length > 0
+                  ? "idle"
+                  : "empty"
+                : result.status,
+            );
           })
           .catch(() => {
             if (isActive) {
@@ -284,6 +307,16 @@ export function CoverPicker({
           {searchStatus === "error" ? (
             <p className="text-xs text-stone-500">
               Не удалось получить варианты. Ручная загрузка доступна.
+            </p>
+          ) : null}
+          {searchStatus === "limited" ? (
+            <p className="text-xs text-stone-500">
+              Лимит поиска исчерпан, попробуйте позже.
+            </p>
+          ) : null}
+          {searchStatus === "unavailable" ? (
+            <p className="text-xs text-stone-500">
+              Поиск временно недоступен. Можно загрузить файл вручную.
             </p>
           ) : null}
         </div>

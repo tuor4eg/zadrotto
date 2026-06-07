@@ -9,13 +9,13 @@ import {
   FIRST_EXPERIENCED_PRECISION_LABELS,
   FIRST_EXPERIENCED_PRECISIONS,
   type FirstExperiencedPrecision,
-} from "@/lib/author-media-experiences";
-import { formatFirstExperiencedInputValue } from "@/lib/experience-date";
+} from "@/lib/authors/media-experiences";
+import { formatFirstExperiencedInputValue } from "@/lib/authors/experience-date";
 import {
   getRatingTone,
   RATING_BUTTON_TONE_CLASS_NAMES,
   SELECTED_RATING_BUTTON_TONE_CLASS_NAMES,
-} from "@/lib/rating-tone";
+} from "@/lib/ratings/tone";
 
 type AuthorRatingFormProps = {
   mediaItemCode: string;

@@ -11,7 +11,7 @@ import {
   getAdminMediaCarriers,
   getAdminMediaCarrierTypeCounts,
 } from "@/db/queries/media-carriers";
-import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";

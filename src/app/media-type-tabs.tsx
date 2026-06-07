@@ -4,8 +4,8 @@ import { useMemo } from "react";
 import type { CSSProperties } from "react";
 
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
-import { cn } from "@/lib/utils";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import { cn } from "@/lib/common/utils";
 
 type MediaTypeTabsProps = {
   availableMediaTypes: MediaType[];

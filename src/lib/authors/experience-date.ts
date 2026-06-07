@@ -4,7 +4,7 @@ import "moment/locale/ru";
 import {
   FIRST_EXPERIENCED_PRECISIONS,
   type FirstExperiencedPrecision,
-} from "@/lib/author-media-experiences";
+} from "@/lib/authors/media-experiences";
 
 moment.locale("ru");
 

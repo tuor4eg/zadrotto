@@ -4,8 +4,8 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { reviewSubmittedAuthorMediaItem } from "@/db/queries/media-items";
-import { requireAdminUser } from "@/lib/admin-auth";
-import { getAdminFormErrorCode } from "@/lib/app-error-messages";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

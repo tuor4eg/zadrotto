@@ -13,20 +13,20 @@ import {
   filterAuthorMediaItems,
   parseAuthorMediaStatusFilter,
   parseAuthorMediaTypeFilter,
-} from "@/lib/author-media-filters";
-import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
+} from "@/lib/authors/media-filters";
+import { isAuthorEditablePublicationStatus } from "@/lib/forms/author-media";
 import {
   canAuthorDeleteMediaItem,
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
-} from "@/lib/author-media-publication";
-import { requireAuthor } from "@/lib/author-auth";
-import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media-types";
+} from "@/lib/authors/media-publication";
+import { requireAuthor } from "@/lib/auth/author-auth";
+import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import {
   PUBLICATION_STATUS_VALUE_LABELS,
   type PublicationStatus,
-} from "@/lib/publication-status";
-import { clampPage, getOffset, getTotalPages, parsePage, parsePageSize } from "@/lib/pagination";
+} from "@/lib/media/publication-status";
+import { clampPage, getOffset, getTotalPages, parsePage, parsePageSize } from "@/lib/common/pagination";
 import {
   deleteAuthorMediaItemAction,
   publishAuthorMediaItemAction,

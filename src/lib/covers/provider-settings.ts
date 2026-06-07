@@ -1,6 +1,6 @@
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import type { CoverProvider, CoverProviderCode } from "@/lib/covers/types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 export type CoverProviderMediaSetting = {
   mediaType: MediaType;

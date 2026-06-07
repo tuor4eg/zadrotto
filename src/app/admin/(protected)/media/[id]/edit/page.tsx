@@ -15,8 +15,8 @@ import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
-import { getMediaTypeLabel } from "@/lib/media-types";
-import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
+import { getMediaTypeLabel } from "@/lib/media/types";
+import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 
 type EditAdminMediaPageProps = {
   params: Promise<{

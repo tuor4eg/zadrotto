@@ -3,9 +3,9 @@
 import { redirect } from "next/navigation";
 
 import { getAdminUserByLogin, updateAdminLastLoginAt } from "@/db/queries/admin-users";
-import { setAdminSessionCookie } from "@/lib/admin-auth";
-import { getAdminFormErrorCode } from "@/lib/app-error-messages";
-import { verifyPassword } from "@/lib/password";
+import { setAdminSessionCookie } from "@/lib/auth/admin-auth";
+import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
+import { verifyPassword } from "@/lib/auth/password";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

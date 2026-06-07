@@ -2,9 +2,9 @@ import { and, asc, eq, exists, isNull, ne, notExists, or, sql, type SQL } from "
 
 import { db } from "@/db";
 import { franchises, mediaCarriers, mediaItems, ratings } from "@/db/schema";
-import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
-import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
-import { resolveCoverUrl } from "@/lib/storage";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
+import { resolveCoverUrl } from "@/lib/services/minio";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { sortMediaTypesByCount, type MediaTypeOption } from "../src/lib/media-types";
+import { sortMediaTypesByCount, type MediaTypeOption } from "../src/lib/media/types";
 
 const mediaTypes = [
   { code: "game", name: "Игры", description: null },

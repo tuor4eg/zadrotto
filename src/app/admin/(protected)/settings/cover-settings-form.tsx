@@ -8,14 +8,15 @@ import { Input, Label } from "@/components/ui/form";
 import {
   COVER_SETTINGS_FORM_LIMITS,
   formatCoverMaxMegabytes,
-} from "@/lib/cover-settings-form";
+} from "@/lib/forms/cover-settings";
 import {
   COVER_PROVIDER_LABELS,
   getCoverProviderSettingKey,
 } from "@/lib/covers/provider-settings";
-import type { MediaTypeOption } from "@/lib/media-types";
+import type { MediaTypeOption } from "@/lib/media/types";
 import type {
   CoverProviderCredentialStatus,
+  CoverProviderRateLimitValue,
   CoverProviderSettingsValue,
   CoverSettingsValue,
 } from "@/db/queries/cover-settings";
@@ -24,7 +25,7 @@ import {
   coverProviderRequiresCredentials,
   getCoverProviderCredentialDefinition,
 } from "@/lib/covers/credential-definitions";
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import {
   type UpdateCoverProviderCredentialsState,
@@ -48,11 +49,13 @@ const STORED_CREDENTIAL_MASK = "stored-credential";
 export function CoverSettingsForm({
   credentialStatuses,
   mediaTypes,
+  providerRateLimits,
   providerSettings,
   settings,
 }: {
   credentialStatuses: CoverProviderCredentialStatus[];
   mediaTypes: MediaTypeOption[];
+  providerRateLimits: CoverProviderRateLimitValue[];
   providerSettings: CoverProviderSettingsValue[];
   settings: CoverSettingsValue;
 }) {
@@ -122,6 +125,25 @@ export function CoverSettingsForm({
             disabled={isPending}
           />
         </div>
+        <fieldset className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+            Провайдеры в сутки
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {providerRateLimits.map((providerLimit) => (
+              <NumberField
+                key={providerLimit.providerCode}
+                id={`cover-provider-daily-limit-${providerLimit.providerCode}`}
+                label={COVER_PROVIDER_LABELS[providerLimit.providerCode]}
+                name={`providerSearchesPerDay:${providerLimit.providerCode}`}
+                min={COVER_SETTINGS_FORM_LIMITS.providerSearchesPerDay.min}
+                max={COVER_SETTINGS_FORM_LIMITS.providerSearchesPerDay.max}
+                defaultValue={providerLimit.searchesPerDay.toString()}
+                disabled={isPending}
+              />
+            ))}
+          </div>
+        </fieldset>
         <div>
           <Button type="submit" disabled={isPending}>
             <Save />

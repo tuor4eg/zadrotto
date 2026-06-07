@@ -12,13 +12,13 @@ import {
   removeMediaItemFromFranchise,
   updateFranchise,
 } from "@/db/queries/franchises";
-import { requireAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
   normalizeOptionalFranchiseString,
   parseRequiredFranchiseId,
-} from "@/lib/admin-franchise-form";
-import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/app-error-messages";
-import { generateEntityCode } from "@/lib/generated-code";
+} from "@/lib/forms/admin-franchise";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { generateEntityCode } from "@/lib/common/generated-code";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

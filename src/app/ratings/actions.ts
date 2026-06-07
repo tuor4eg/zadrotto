@@ -9,9 +9,9 @@ import {
 } from "@/db/queries/author-media-experiences";
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
-import { getCurrentAuthor } from "@/lib/author-auth";
-import { parseFirstExperiencedInput } from "@/lib/experience-date";
-import { parseRatingScoreInput } from "@/lib/rating-score";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { parseFirstExperiencedInput } from "@/lib/authors/experience-date";
+import { parseRatingScoreInput } from "@/lib/ratings/score";
 
 export type SaveAuthorRatingState = {
   error: string | null;

@@ -6,8 +6,8 @@ import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/author-auth";
-import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 
 type MediaItemPageProps = {
   params: Promise<{

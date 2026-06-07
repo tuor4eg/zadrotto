@@ -1,7 +1,7 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
-import { getMediaCarrierFrame, hasMediaCarrierFrame } from "@/lib/media-carrier-frame";
+import { getMediaCarrierFrame, hasMediaCarrierFrame } from "@/lib/media/carrier-frame";
 
 describe("media carrier frames", () => {
   it("resolves NES cartridge frame by media type and carrier code", () => {

@@ -8,7 +8,7 @@ import {
   getCoverProviderSettingKey,
 } from "@/lib/covers/provider-settings";
 import type { CoverProviderCode } from "@/lib/covers/types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 const BYTES_IN_MEGABYTE = 1024 * 1024;
 const CANDIDATE_LIMIT_MIN = 1;
@@ -19,6 +19,8 @@ const COVER_MAX_MEGABYTES_MIN = 1;
 const COVER_MAX_MEGABYTES_MAX = 25;
 const PROVIDER_PRIORITY_MIN = 1;
 const PROVIDER_PRIORITY_MAX = 999;
+const PROVIDER_DAILY_LIMIT_MIN = 1;
+const PROVIDER_DAILY_LIMIT_MAX = 100000;
 
 export type CoverSettingsFormInput = {
   candidateLimit: number;
@@ -31,6 +33,11 @@ export type CoverProviderSettingsFormInput = {
   providerCode: CoverProviderCode;
   enabled: boolean;
   priority: number;
+};
+
+export type CoverProviderRateLimitFormInput = {
+  providerCode: CoverProviderCode;
+  searchesPerDay: number;
 };
 
 export const COVER_SETTINGS_ERROR_MESSAGES = {
@@ -144,6 +151,35 @@ export function parseCoverProviderSettingsFormInput(formData: FormData) {
   };
 }
 
+export function parseCoverProviderRateLimitsFormInput(formData: FormData) {
+  const providerCodes = [...new Set(getCoverProviderDefaultSettings().map(
+    (setting) => setting.providerCode,
+  ))];
+  const limits: CoverProviderRateLimitFormInput[] = [];
+
+  for (const providerCode of providerCodes) {
+    const searchesPerDay = parseBoundedInteger({
+      value: String(formData.get(`providerSearchesPerDay:${providerCode}`) ?? ""),
+      min: PROVIDER_DAILY_LIMIT_MIN,
+      max: PROVIDER_DAILY_LIMIT_MAX,
+    });
+
+    if (!searchesPerDay.ok) {
+      return { ok: false as const, error: "invalid-limit" as const };
+    }
+
+    limits.push({
+      providerCode,
+      searchesPerDay: searchesPerDay.value,
+    });
+  }
+
+  return {
+    ok: true as const,
+    value: limits,
+  };
+}
+
 export const COVER_SETTINGS_FORM_LIMITS = {
   candidateLimit: {
     min: CANDIDATE_LIMIT_MIN,
@@ -159,5 +195,10 @@ export const COVER_SETTINGS_FORM_LIMITS = {
     min: COVER_MAX_MEGABYTES_MIN,
     max: COVER_MAX_MEGABYTES_MAX,
     defaultValue: DEFAULT_COVER_MAX_BYTES / BYTES_IN_MEGABYTE,
+  },
+  providerSearchesPerDay: {
+    min: PROVIDER_DAILY_LIMIT_MIN,
+    max: PROVIDER_DAILY_LIMIT_MAX,
+    defaultValue: 1000,
   },
 } as const;

@@ -7,7 +7,7 @@ import {
   parseAuthorMediaStatusFilter,
   parseAuthorMediaTypeFilter,
   type AuthorMediaFilterItem,
-} from "../src/lib/author-media-filters";
+} from "../src/lib/authors/media-filters";
 
 const items: AuthorMediaFilterItem[] = [
   {

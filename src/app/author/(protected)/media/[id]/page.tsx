@@ -8,18 +8,18 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { getAuthorMediaItemForView } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { isAuthorEditablePublicationStatus } from "@/lib/author-media-form";
+import { isAuthorEditablePublicationStatus } from "@/lib/forms/author-media";
 import {
   canAuthorDeleteMediaItem,
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
-} from "@/lib/author-media-publication";
-import { requireAuthor } from "@/lib/author-auth";
-import { getMediaCarrierFrame } from "@/lib/media-carrier-frame";
+} from "@/lib/authors/media-publication";
+import { requireAuthor } from "@/lib/auth/author-auth";
+import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import {
   PUBLICATION_STATUS_VALUE_LABELS,
   PUBLISHED_PUBLICATION_STATUS,
-} from "@/lib/publication-status";
+} from "@/lib/media/publication-status";
 import {
   deleteAuthorMediaItemAction,
   publishAuthorMediaItemAction,

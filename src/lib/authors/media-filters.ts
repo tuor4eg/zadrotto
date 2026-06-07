@@ -1,9 +1,9 @@
-import type { MediaType, MediaTypeOption } from "@/lib/media-types";
+import type { MediaType, MediaTypeOption } from "@/lib/media/types";
 import {
   PUBLICATION_STATUSES,
   PUBLISHED_PUBLICATION_STATUS,
   type PublicationStatus,
-} from "@/lib/publication-status";
+} from "@/lib/media/publication-status";
 
 export type AuthorMediaTypeFilter = MediaType | "all";
 export type AuthorMediaStatusFilter = PublicationStatus | "all";

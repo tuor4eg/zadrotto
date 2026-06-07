@@ -1,4 +1,4 @@
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 
 export function getAdminMediaErrorMessage(error?: string) {
   const formErrorMessage = getAdminFormErrorMessage(error);

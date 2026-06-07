@@ -1,5 +1,5 @@
-import type { PublicationStatus } from "@/lib/publication-status";
-import { generateEntityCode, slugifyCodePart } from "@/lib/generated-code";
+import type { PublicationStatus } from "@/lib/media/publication-status";
+import { generateEntityCode, slugifyCodePart } from "@/lib/common/generated-code";
 import { COVER_IMAGE_TYPES, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 
 export const AUTHOR_EDITABLE_PUBLICATION_STATUSES = [

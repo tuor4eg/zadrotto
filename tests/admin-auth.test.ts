@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createAdminSessionToken, verifyAdminSessionToken } from "../src/lib/admin-session";
-import { hashPassword, verifyPassword } from "../src/lib/password";
+import { createAdminSessionToken, verifyAdminSessionToken } from "../src/lib/auth/admin-session";
+import { hashPassword, verifyPassword } from "../src/lib/auth/password";
 
 const previousAdminSessionSecret = process.env.ADMIN_SESSION_SECRET;
 

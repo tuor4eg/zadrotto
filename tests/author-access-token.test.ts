@@ -4,11 +4,11 @@ import { describe, it } from "node:test";
 import {
   generateAuthorAccessToken,
   hashAuthorAccessToken,
-} from "../src/lib/author-access-token";
+} from "../src/lib/authors/access-token";
 import {
   canAssignAuthorAccessProfile,
   isAuthorAccessProfileCode,
-} from "../src/lib/author-access-profiles";
+} from "../src/lib/authors/access-profiles";
 
 describe("author access tokens", () => {
   it("generates opaque access tokens with a stable prefix", () => {

@@ -11,7 +11,7 @@ import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type MediaFormValues = {

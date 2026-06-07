@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { authorMediaExperiences } from "@/db/schema";
-import type { FirstExperiencedPrecision } from "@/lib/author-media-experiences";
+import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 
 export async function upsertAuthorMediaExperience(input: {
   authorId: number;

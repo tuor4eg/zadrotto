@@ -3,7 +3,6 @@ import {
   Archive,
   House,
   LogOut,
-  Settings,
   UserRound,
 } from "lucide-react";
 
@@ -12,12 +11,13 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
-import { requireAdminUser } from "@/lib/admin-auth";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
   AdminAuthorsMenu,
   AdminContentMenu,
   AdminMaterialsMenu,
   AdminRequestsMenu,
+  AdminToolsMenu,
 } from "./admin-nav-menu";
 import { AdminProgressBar } from "./admin-progress-bar";
 
@@ -62,13 +62,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               submittedMediaItemsCount={submittedMediaItemsCount}
               submittedReviewsCount={submittedReviewsCount}
             />
-            <Link
-              href="/admin/settings/administrator"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              <Settings />
-              Настройки
-            </Link>
+            <AdminToolsMenu />
             <Link
               href="/"
               className={buttonVariants({ variant: "outline", size: "sm" })}

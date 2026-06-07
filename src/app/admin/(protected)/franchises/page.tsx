@@ -7,7 +7,7 @@ import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminFranchises } from "@/db/queries/franchises";
-import { parsePage } from "@/lib/pagination";
+import { parsePage } from "@/lib/common/pagination";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { PageHeader, EmptyState } from "../admin-ui";
 import { deleteFranchiseAction } from "./actions";

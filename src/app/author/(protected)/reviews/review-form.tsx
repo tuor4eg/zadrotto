@@ -8,8 +8,8 @@ import { Input, Label, Textarea } from "@/components/ui/form";
 import {
   REVIEW_BODY_MAX_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
-} from "@/lib/contribution-review-form";
-import type { ContributionStatus } from "@/lib/contributions";
+} from "@/lib/forms/contribution-review";
+import type { ContributionStatus } from "@/lib/contributions/model";
 import { saveAuthorReviewAction, type SaveAuthorReviewState } from "./actions";
 
 type AuthorReviewFormProps = {

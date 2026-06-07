@@ -4,7 +4,7 @@ import { ArchiveNote } from "@/app/archive-note";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
-import { getCurrentAuthor } from "@/lib/author-auth";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
 
 type FranchisePageProps = {
   params: Promise<{

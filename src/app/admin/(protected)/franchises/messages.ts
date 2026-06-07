@@ -1,4 +1,4 @@
-import { getAdminFormErrorMessage } from "@/lib/app-error-messages";
+import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 
 export function formatMediaItemsCount(count: number) {
   const plural = new Intl.PluralRules("ru-RU").select(count);

@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { RedirectType, redirect } from "next/navigation";
 
-import { clearAdminSessionCookie, revokeCurrentAdminSession } from "@/lib/admin-auth";
+import { clearAdminSessionCookie, revokeCurrentAdminSession } from "@/lib/auth/admin-auth";
 
 export async function logoutAdmin() {
   await revokeCurrentAdminSession();

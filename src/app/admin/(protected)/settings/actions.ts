@@ -8,25 +8,27 @@ import {
 } from "@/db/queries/admin-users";
 import {
   getCoverProviderCredentialStatuses,
+  updateCoverProviderRateLimits,
   updateCoverProviderSettings,
   updateCoverProviderCredentials,
   updateCoverSettings,
 } from "@/db/queries/cover-settings";
-import { requireAdminUser, setAdminSessionCookie } from "@/lib/admin-auth";
+import { requireAdminUser, setAdminSessionCookie } from "@/lib/auth/admin-auth";
 import {
   ADMIN_PASSWORD_CHANGE_ERROR_MESSAGES,
   validateAdminPasswordChange,
-} from "@/lib/admin-settings";
-import { getAdminFormErrorCode, getAdminFormErrorMessage } from "@/lib/app-error-messages";
+} from "@/lib/admin/settings";
+import { getAdminFormErrorCode, getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 import {
   COVER_SETTINGS_ERROR_MESSAGES,
+  parseCoverProviderRateLimitsFormInput,
   parseCoverProviderSettingsFormInput,
   parseCoverSettingsFormInput,
-} from "@/lib/cover-settings-form";
+} from "@/lib/forms/cover-settings";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { isCoverProviderCode } from "@/lib/covers/types";
-import { hashPassword, verifyPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/auth/password";
 
 export type ChangeAdminPasswordState = {
   error: string | null;
@@ -148,8 +150,18 @@ export async function updateCoverSettingsAction(
     };
   }
 
+  const providerRateLimits = parseCoverProviderRateLimitsFormInput(formData);
+
+  if (!providerRateLimits.ok) {
+    return {
+      error: COVER_SETTINGS_ERROR_MESSAGES[providerRateLimits.error],
+      success: null,
+    };
+  }
+
   try {
     await updateCoverSettings(settings.value);
+    await updateCoverProviderRateLimits(providerRateLimits.value);
   } catch (error) {
     console.error(error);
 

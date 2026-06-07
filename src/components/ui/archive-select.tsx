@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 type ArchiveSelectOption<TValue extends string> = {
   icon?: React.ReactNode;

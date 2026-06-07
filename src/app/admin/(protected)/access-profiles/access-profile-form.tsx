@@ -2,7 +2,7 @@ import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
-import { formatUploadLimitMegabytes } from "@/lib/author-access-profile-form";
+import { formatUploadLimitMegabytes } from "@/lib/forms/author-access-profile";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type AccessProfileFormValues = {
@@ -13,6 +13,9 @@ type AccessProfileFormValues = {
   maxDraftMediaItemsPerDay?: number | null;
   maxUploadBytes?: number | null;
   maxFilesPerMediaItem?: number | null;
+  coverSearchesPerMinute?: number | null;
+  coverSearchesPerHour?: number | null;
+  coverSearchesPerDay?: number | null;
 };
 
 type AccessProfileFormProps = {
@@ -101,6 +104,27 @@ export function AccessProfileForm({
                 disabled
               />
             </LimitSection>
+
+            <LimitSection title="Обложки" columns={3}>
+              <LimitField
+                id="access-profile-cover-searches-minute"
+                label="Поисков в минуту"
+                name="coverSearchesPerMinute"
+                defaultValue={values?.coverSearchesPerMinute?.toString() ?? ""}
+              />
+              <LimitField
+                id="access-profile-cover-searches-hour"
+                label="Поисков в час"
+                name="coverSearchesPerHour"
+                defaultValue={values?.coverSearchesPerHour?.toString() ?? ""}
+              />
+              <LimitField
+                id="access-profile-cover-searches-day"
+                label="Поисков в сутки"
+                name="coverSearchesPerDay"
+                defaultValue={values?.coverSearchesPerDay?.toString() ?? ""}
+              />
+            </LimitSection>
           </div>
         </section>
       </div>
@@ -117,9 +141,11 @@ export function AccessProfileForm({
 
 function LimitSection({
   children,
+  columns = 2,
   title,
 }: {
   children: React.ReactNode;
+  columns?: 2 | 3;
   title: string;
 }) {
   return (
@@ -127,7 +153,7 @@ function LimitSection({
       <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
         {title}
       </legend>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className={columns === 3 ? "grid gap-4 sm:grid-cols-3" : "grid gap-4 sm:grid-cols-2"}>
         {children}
       </div>
     </fieldset>

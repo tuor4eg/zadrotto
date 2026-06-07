@@ -9,7 +9,7 @@ import {
   type CatalogSort,
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 type AdminMediaFiltersFormProps = {
   availableMediaTypes: Array<{

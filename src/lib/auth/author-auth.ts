@@ -7,8 +7,8 @@ import {
   AUTHOR_SESSION_MAX_AGE_SECONDS,
   createAuthorSessionToken,
   verifyAuthorSessionToken,
-} from "@/lib/author-session";
-import { shouldUseSecureCookies } from "@/lib/cookies";
+} from "@/lib/auth/author-session";
+import { shouldUseSecureCookies } from "@/lib/auth/cookies";
 
 export async function getCurrentAuthor() {
   const token = (await cookies()).get(AUTHOR_SESSION_COOKIE_NAME)?.value;

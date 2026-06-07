@@ -1,6 +1,6 @@
 import { forwardRef } from "react";
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/common/utils";
 
 export function Label({ className, ...props }: React.LabelHTMLAttributes<HTMLLabelElement>) {
   return (

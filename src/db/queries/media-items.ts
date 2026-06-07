@@ -34,11 +34,11 @@ import {
   mediaItems,
   ratings,
 } from "@/db/schema";
-import type { MediaType } from "@/lib/media-types";
-import type { PublicationStatus } from "@/lib/publication-status";
-import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/publication-status";
-import { clampPage, getOffset, getTotalPages } from "@/lib/pagination";
-import { resolveCoverUrl } from "@/lib/storage";
+import type { MediaType } from "@/lib/media/types";
+import type { PublicationStatus } from "@/lib/media/publication-status";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+import { resolveCoverUrl } from "@/lib/services/minio";
 import type { CoverSourceInput } from "@/lib/covers/types";
 
 const publishedMediaItemCondition = eq(

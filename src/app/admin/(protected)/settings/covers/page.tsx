@@ -2,6 +2,7 @@ import { ImageIcon } from "lucide-react";
 
 import {
   getCoverProviderCredentialStatuses,
+  getCoverProviderRateLimits,
   getCoverProviderSettings,
   getCoverSettings,
 } from "@/db/queries/cover-settings";
@@ -11,9 +12,16 @@ import { CoverSettingsForm } from "../cover-settings-form";
 import { SettingsSectionHeader } from "../settings-section-header";
 
 export default async function AdminSettingsCoversPage() {
-  const [coverSettings, coverProviderSettings, credentialStatuses, mediaTypes] = await Promise.all([
+  const [
+    coverSettings,
+    coverProviderSettings,
+    providerRateLimits,
+    credentialStatuses,
+    mediaTypes,
+  ] = await Promise.all([
     getCoverSettings(),
     getCoverProviderSettings(),
+    getCoverProviderRateLimits(),
     getCoverProviderCredentialStatuses(),
     getMediaTypeOptions(),
   ]);
@@ -39,6 +47,7 @@ export default async function AdminSettingsCoversPage() {
         <CoverSettingsForm
           credentialStatuses={credentialStatuses}
           mediaTypes={mediaTypes}
+          providerRateLimits={providerRateLimits}
           settings={coverSettings}
           providerSettings={availableProviderSettings}
         />

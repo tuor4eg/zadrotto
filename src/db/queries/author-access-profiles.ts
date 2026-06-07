@@ -2,11 +2,11 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { authorAccessProfiles, authors } from "@/db/schema";
-import type { AuthorAccessProfileFormInput } from "@/lib/author-access-profile-form";
+import type { AuthorAccessProfileFormInput } from "@/lib/forms/author-access-profile";
 import {
   REGULAR_AUTHOR_ACCESS_PROFILE_CODE,
   type AuthorAccessProfileCode,
-} from "@/lib/author-access-profiles";
+} from "@/lib/authors/access-profiles";
 
 const authorsCountSql = sql<number>`count(${authors.id})::int`;
 
@@ -22,6 +22,9 @@ export async function getAuthorAccessProfiles(input?: { assignableOnly?: boolean
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
+      coverSearchesPerMinute: authorAccessProfiles.coverSearchesPerMinute,
+      coverSearchesPerHour: authorAccessProfiles.coverSearchesPerHour,
+      coverSearchesPerDay: authorAccessProfiles.coverSearchesPerDay,
     })
     .from(authorAccessProfiles)
     .orderBy(asc(authorAccessProfiles.isSystem), asc(authorAccessProfiles.name));
@@ -41,6 +44,9 @@ export async function getAdminAuthorAccessProfiles() {
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
+      coverSearchesPerMinute: authorAccessProfiles.coverSearchesPerMinute,
+      coverSearchesPerHour: authorAccessProfiles.coverSearchesPerHour,
+      coverSearchesPerDay: authorAccessProfiles.coverSearchesPerDay,
       authorsCount: authorsCountSql,
     })
     .from(authorAccessProfiles)
@@ -55,6 +61,9 @@ export async function getAdminAuthorAccessProfiles() {
       authorAccessProfiles.maxDraftMediaItemsPerDay,
       authorAccessProfiles.maxUploadBytes,
       authorAccessProfiles.maxFilesPerMediaItem,
+      authorAccessProfiles.coverSearchesPerMinute,
+      authorAccessProfiles.coverSearchesPerHour,
+      authorAccessProfiles.coverSearchesPerDay,
     )
     .orderBy(asc(authorAccessProfiles.isSystem), asc(authorAccessProfiles.name));
 }
@@ -71,6 +80,9 @@ export async function getAuthorAccessProfileById(id: number) {
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
+      coverSearchesPerMinute: authorAccessProfiles.coverSearchesPerMinute,
+      coverSearchesPerHour: authorAccessProfiles.coverSearchesPerHour,
+      coverSearchesPerDay: authorAccessProfiles.coverSearchesPerDay,
     })
     .from(authorAccessProfiles)
     .where(eq(authorAccessProfiles.id, id))
@@ -92,6 +104,9 @@ export async function createAuthorAccessProfile(input: AuthorAccessProfileFormIn
       maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
       maxUploadBytes: input.maxUploadBytes,
       maxFilesPerMediaItem: input.maxFilesPerMediaItem,
+      coverSearchesPerMinute: input.coverSearchesPerMinute,
+      coverSearchesPerHour: input.coverSearchesPerHour,
+      coverSearchesPerDay: input.coverSearchesPerDay,
     })
     .returning({
       id: authorAccessProfiles.id,
@@ -112,6 +127,9 @@ export async function updateAuthorAccessProfile(input: AuthorAccessProfileFormIn
       maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
       maxUploadBytes: input.maxUploadBytes,
       maxFilesPerMediaItem: input.maxFilesPerMediaItem,
+      coverSearchesPerMinute: input.coverSearchesPerMinute,
+      coverSearchesPerHour: input.coverSearchesPerHour,
+      coverSearchesPerDay: input.coverSearchesPerDay,
       updatedAt: new Date(),
     })
     .where(eq(authorAccessProfiles.id, input.id))
@@ -164,6 +182,9 @@ export async function getAuthorAccessProfileByCode(code: AuthorAccessProfileCode
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,
       maxFilesPerMediaItem: authorAccessProfiles.maxFilesPerMediaItem,
+      coverSearchesPerMinute: authorAccessProfiles.coverSearchesPerMinute,
+      coverSearchesPerHour: authorAccessProfiles.coverSearchesPerHour,
+      coverSearchesPerDay: authorAccessProfiles.coverSearchesPerDay,
     })
     .from(authorAccessProfiles)
     .where(eq(authorAccessProfiles.code, code))

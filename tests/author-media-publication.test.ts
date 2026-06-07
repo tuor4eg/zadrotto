@@ -6,7 +6,7 @@ import {
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
   getPublicationStatusAfterAuthorSubmit,
-} from "../src/lib/author-media-publication";
+} from "../src/lib/authors/media-publication";
 
 describe("author media publication", () => {
   it("sends regular author submissions to review", () => {

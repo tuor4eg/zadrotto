@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createAuthorSessionToken, verifyAuthorSessionToken } from "../src/lib/author-session";
+import { createAuthorSessionToken, verifyAuthorSessionToken } from "../src/lib/auth/author-session";
 
 const previousAuthorSessionSecret = process.env.AUTHOR_SESSION_SECRET;
 

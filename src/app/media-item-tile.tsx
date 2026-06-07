@@ -1,13 +1,13 @@
 import Link from "next/link";
 
-import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { type MediaType } from "@/lib/media-types";
-import { formatScore } from "@/lib/rating-score";
+import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { type MediaType } from "@/lib/media/types";
+import { formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AUTHOR_RATING_TONE_CLASS_NAMES,
   getRatingTone,
-} from "@/lib/rating-tone";
+} from "@/lib/ratings/tone";
 
 type MediaItemTileItem = {
   averageScore: number | null;

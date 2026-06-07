@@ -7,7 +7,7 @@ import { getAdminContributionReviews } from "@/db/queries/contribution-reviews";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
-} from "@/lib/contributions";
+} from "@/lib/contributions/model";
 import { EmptyState, PageHeader } from "../../admin-ui";
 
 type AdminMaterialReviewsPageProps = {

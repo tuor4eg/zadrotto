@@ -1,4 +1,4 @@
-import type { MediaType } from "@/lib/media-types";
+import type { MediaType } from "@/lib/media/types";
 
 export type MediaCarrierFormInput = {
   description: string | null;

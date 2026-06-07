@@ -2,7 +2,7 @@ import Link from "next/link";
 
 import { logoutAuthor } from "@/app/author/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { requireAuthor } from "@/lib/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 
 type AuthorLayoutProps = {
   children: React.ReactNode;

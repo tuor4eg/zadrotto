@@ -1,8 +1,8 @@
 import { cookies } from "next/headers";
 
 import { canViewMediaItemCover } from "@/db/queries/media-items";
-import { AUTHOR_SESSION_COOKIE_NAME, verifyAuthorSessionToken } from "@/lib/author-session";
-import { fetchS3Object } from "@/lib/storage";
+import { AUTHOR_SESSION_COOKIE_NAME, verifyAuthorSessionToken } from "@/lib/auth/author-session";
+import { fetchS3Object } from "@/lib/services/minio";
 
 type CoverRouteContext = {
   params: Promise<{

@@ -3,7 +3,7 @@ import path from "node:path";
 
 import Papa from "papaparse";
 
-import { slugifyCodePart } from "@/lib/generated-code";
+import { slugifyCodePart } from "@/lib/common/generated-code";
 
 type CliArgs = {
   author: string;

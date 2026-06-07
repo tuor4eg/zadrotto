@@ -8,8 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { Tooltip } from "@/components/ui/tooltip";
 import { type getAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
-import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media-types";
-import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/publication-status";
+import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
+import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 import { addMediaItemToFranchiseAction } from "./actions";
 
 type AvailableMediaItem = Awaited<
