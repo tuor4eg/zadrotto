@@ -309,7 +309,12 @@ describe("redis fixed-window rate limits", () => {
 
   it("increments counters and denies requests over the limit", async () => {
     const counts = new Map<string, number>();
+    const ttls = new Map<string, number>();
     const fakeClient = {
+      async expire(nextKey: string, seconds: number) {
+        ttls.set(nextKey, seconds);
+        return true;
+      },
       multi() {
         let key = "";
 
@@ -321,11 +326,12 @@ describe("redis fixed-window rate limits", () => {
 
             return this;
           },
-          expire() {
+          ttl(nextKey: string) {
+            key = nextKey;
             return this;
           },
           async exec() {
-            return [counts.get(key) ?? 0, true];
+            return [counts.get(key) ?? 0, ttls.get(key) ?? -1];
           },
         };
       },

@@ -30,7 +30,7 @@ export type FixedWindowRateLimitInput = {
   now?: Date;
 };
 
-type RateLimitCounterClient = Pick<RedisClientType, "multi" | "eval">;
+type RateLimitCounterClient = Pick<RedisClientType, "eval" | "expire" | "multi">;
 
 const WINDOW_MS = {
   minute: 60 * 1000,
@@ -64,7 +64,7 @@ export function getFixedWindowRetryAfterSeconds(input: {
 
 export async function checkFixedWindowRateLimitWithClient(
   input: FixedWindowRateLimitInput,
-  client: Pick<RateLimitCounterClient, "multi">,
+  client: Pick<RateLimitCounterClient, "expire" | "multi">,
 ): Promise<RateLimitResult> {
   if (input.limit === null) {
     return {
@@ -84,13 +84,19 @@ export async function checkFixedWindowRateLimitWithClient(
   const results = await client
     .multi()
     .incr(key)
-    .expire(key, retryAfterSeconds, "NX")
+    .ttl(key)
     .exec();
   const rawCount = Array.isArray(results) ? results[0] : null;
+  const rawTtl = Array.isArray(results) ? results[1] : null;
   const count = typeof rawCount === "number" ? rawCount : Number(rawCount);
+  const ttl = typeof rawTtl === "number" ? rawTtl : Number(rawTtl);
 
   if (!Number.isFinite(count)) {
     return { ok: false, error: "unavailable" };
+  }
+
+  if (Number.isFinite(ttl) && ttl < 0) {
+    await client.expire(key, retryAfterSeconds);
   }
 
   if (count > input.limit) {
@@ -128,7 +134,9 @@ for index = 1, #KEYS do
   local retryAfter = tonumber(ARGV[(index - 1) * 2 + 2])
   local current = tonumber(redis.call("INCR", KEYS[index]))
 
-  redis.call("EXPIRE", KEYS[index], retryAfter, "NX")
+  if redis.call("TTL", KEYS[index]) < 0 then
+    redis.call("EXPIRE", KEYS[index], retryAfter)
+  end
 
   local remaining = limit - current
   if remaining < minRemaining then
