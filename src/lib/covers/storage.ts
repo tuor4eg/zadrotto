@@ -1,11 +1,12 @@
 import { randomUUID } from "node:crypto";
+import sharp from "sharp";
 
 import {
   buildAuthorCoverObjectKey,
   getCoverFileExtension,
   validateCoverFileInput,
 } from "@/lib/author-media-form";
-import { deleteS3Object, uploadS3Object } from "@/lib/storage";
+import { deleteS3Object, fetchS3Object, uploadS3Object } from "@/lib/storage";
 import { verifyCoverCandidateToken } from "@/lib/covers/candidates";
 import type { CoverCandidate, CoverSourceInput } from "@/lib/covers/types";
 
@@ -13,6 +14,7 @@ export type CoverUploadResult =
   | {
       ok: true;
       coverUrl: string | null;
+      coverThumbUrl: string | null;
       source: CoverSourceInput;
     }
   | {
@@ -28,6 +30,22 @@ function buildAdminCoverObjectKey(mediaItemCode: string, contentType: string) {
   }
 
   return `covers/media-items/${mediaItemCode}-${randomUUID().slice(0, 12)}.${extension}`;
+}
+
+export function buildCoverThumbObjectKey(objectKey: string | null) {
+  const normalizedObjectKey = objectKey?.trim();
+
+  if (!normalizedObjectKey) {
+    return null;
+  }
+
+  const extensionStart = normalizedObjectKey.lastIndexOf(".");
+
+  if (extensionStart <= 0) {
+    return `${normalizedObjectKey}-thumb.webp`;
+  }
+
+  return `${normalizedObjectKey.slice(0, extensionStart)}-thumb.webp`;
 }
 
 export function isS3ObjectKey(coverUrl: string | null) {
@@ -48,6 +66,70 @@ export async function deleteUploadedCoverIfNeeded(coverUrl: string | null) {
   await deleteS3Object({ objectKey: coverUrl! });
 }
 
+export async function deleteUploadedCoverFilesIfNeeded(input: {
+  coverUrl: string | null;
+  coverThumbUrl?: string | null;
+}) {
+  const results = await Promise.allSettled([
+    deleteUploadedCoverIfNeeded(input.coverUrl),
+    deleteUploadedCoverIfNeeded(input.coverThumbUrl ?? null),
+  ]);
+  const failedResult = results.find((result) => result.status === "rejected");
+
+  if (failedResult) {
+    throw failedResult.reason;
+  }
+}
+
+async function createCoverThumbBuffer(body: Buffer) {
+  try {
+    return await sharp(body)
+      .rotate()
+      .resize({
+        width: 240,
+        withoutEnlargement: true,
+      })
+      .webp({ quality: 72 })
+      .toBuffer();
+  } catch {
+    return null;
+  }
+}
+
+export async function createAndUploadCoverThumbFromObjectKey(coverUrl: string | null) {
+  if (!isS3ObjectKey(coverUrl)) {
+    return null;
+  }
+
+  const objectKey = coverUrl!.trim();
+  const thumbObjectKey = buildCoverThumbObjectKey(objectKey);
+
+  if (!thumbObjectKey) {
+    return null;
+  }
+
+  const response = await fetchS3Object({ objectKey });
+
+  if (!response) {
+    return null;
+  }
+
+  const body = Buffer.from(await response.arrayBuffer());
+  const thumbBody = await createCoverThumbBuffer(body);
+
+  if (!thumbBody) {
+    return null;
+  }
+
+  await uploadS3Object({
+    objectKey: thumbObjectKey,
+    body: thumbBody,
+    contentType: "image/webp",
+  });
+
+  return thumbObjectKey;
+}
+
 async function uploadCoverBuffer(input: {
   body: Buffer;
   contentType: string;
@@ -64,15 +146,33 @@ async function uploadCoverBuffer(input: {
       body: input.body,
       contentType: input.contentType,
     });
+
+    let uploadedThumbObjectKey: string | null = null;
+    const thumbObjectKey = buildCoverThumbObjectKey(input.objectKey);
+    const thumbBody = await createCoverThumbBuffer(input.body);
+
+    if (thumbObjectKey && thumbBody) {
+      try {
+        await uploadS3Object({
+          objectKey: thumbObjectKey,
+          body: thumbBody,
+          contentType: "image/webp",
+        });
+        uploadedThumbObjectKey = thumbObjectKey;
+      } catch (error) {
+        console.error(error);
+      }
+    }
+
+    return {
+      ok: true,
+      coverUrl: input.objectKey,
+      coverThumbUrl: uploadedThumbObjectKey,
+      source: input.source,
+    };
   } catch {
     return { ok: false, error: "cover-upload" };
   }
-
-  return {
-    ok: true,
-    coverUrl: input.objectKey,
-    source: input.source,
-  };
 }
 
 function getManualCoverSource(): CoverSourceInput {
@@ -93,6 +193,7 @@ export async function uploadManualCover(input: {
     return {
       ok: true,
       coverUrl: null,
+      coverThumbUrl: null,
       source: getManualCoverSource(),
     };
   }
@@ -212,6 +313,7 @@ export async function resolveCoverUpload(input: {
   return {
     ok: true,
     coverUrl: null,
+    coverThumbUrl: null,
     source: getManualCoverSource(),
   };
 }

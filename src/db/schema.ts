@@ -189,6 +189,7 @@ export const mediaItems = pgTable(
     mediaCarrierId: integer("media_carrier_id").references(() => mediaCarriers.id),
     releaseYear: integer("release_year"),
     coverUrl: text("cover_url"),
+    coverThumbUrl: text("cover_thumb_url"),
     coverSourceProvider: text("cover_source_provider"),
     coverSourceExternalId: text("cover_source_external_id"),
     coverSourcePageUrl: text("cover_source_page_url"),

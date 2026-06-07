@@ -233,6 +233,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
@@ -252,10 +253,15 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
     )
     .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
 
-  return items.map((item) => ({ ...item, coverUrl: resolveCoverUrl(item.coverUrl) }));
+  return items.map((item) => ({
+    ...item,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+  }));
 }
 
 export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {

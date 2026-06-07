@@ -92,6 +92,36 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
   return "outline" as const;
 }
 
+function AdminMediaCoverThumb({
+  coverUrl,
+  title,
+}: {
+  coverUrl: string | null;
+  title: string;
+}) {
+  if (!coverUrl) {
+    return (
+      <span
+        aria-label={`Обложка не добавлена: ${title}`}
+        className="inline-flex h-9 w-7 items-center justify-center rounded-sm border border-dashed border-stone-300 bg-stone-50 text-[9px] font-medium uppercase leading-none text-stone-400"
+        title="Обложка не добавлена"
+      >
+        нет
+      </span>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={coverUrl}
+      alt={`Обложка: ${title}`}
+      className="h-9 w-7 rounded-sm border border-stone-200 bg-stone-100 object-cover shadow-sm"
+      loading="lazy"
+    />
+  );
+}
+
 export default async function AdminMediaPage({ searchParams }: AdminMediaPageProps) {
   const [params, mediaTypes, mediaCarriers] = await Promise.all([
     searchParams,
@@ -203,6 +233,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
             <Table className="table-fixed">
               <THead>
                 <tr>
+                  <TH className="w-12 px-2 text-center">Обл.</TH>
                   <TH>Название</TH>
                   <TH className="hidden w-24 sm:table-cell">Тип</TH>
                   <TH className="hidden w-28 md:table-cell">Статус</TH>
@@ -212,6 +243,12 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
               <TBody>
                 {items.map((item) => (
                 <TR key={item.id}>
+                  <TD className="px-2 text-center">
+                    <AdminMediaCoverThumb
+                      coverUrl={item.coverThumbUrl ?? item.coverUrl}
+                      title={item.title}
+                    />
+                  </TD>
                   <TD className="min-w-0 overflow-hidden">
                     <div className="min-w-0 overflow-hidden">
                       <div className="truncate font-medium text-stone-950">{item.title}</div>

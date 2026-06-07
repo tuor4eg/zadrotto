@@ -11,6 +11,7 @@ import {
 
 type MediaItemTileItem = {
   averageScore: number | null;
+  coverThumbUrl?: string | null;
   coverUrl: string | null;
   id: number;
   mediaCarrierCode?: string | null;
@@ -135,11 +136,15 @@ export function MediaItemTile({
   const className = `group relative block aspect-square overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-red-900/60 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-red-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900/35 ${
     selected ? "border-red-900/70" : "border-stone-300/80"
   }`;
+  const tileCoverItem = {
+    ...item,
+    coverUrl: item.coverThumbUrl ?? item.coverUrl,
+  };
   const content = (
     <>
       <ArchiveCover
         carrierFrame={false}
-        item={item}
+        item={tileCoverItem}
         className="absolute inset-0 h-full w-full transition-transform duration-300 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"
       />
       <span aria-hidden="true" className="absolute inset-0 bg-stone-950/10" />

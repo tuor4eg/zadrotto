@@ -6,6 +6,7 @@ import {
   exists,
   gte,
   inArray,
+  isNotNull,
   isNull,
   ne,
   not,
@@ -269,6 +270,7 @@ const catalogMediaItemsQuery = (input: {
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -301,6 +303,7 @@ const catalogMediaItemsQuery = (input: {
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
       mediaItems.coverSourceProvider,
       mediaItems.coverSourcePageUrl,
     )
@@ -337,6 +340,7 @@ export async function getCatalogMediaItems(input: {
     items: items.map((item) => ({
       ...item,
       coverUrl: resolveCoverUrl(item.coverUrl),
+      coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
     })),
     page,
     pageSize: input.pageSize,
@@ -392,6 +396,7 @@ export async function getAuthorMediaItems(authorId: number) {
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
       updatedAt: mediaItems.updatedAt,
@@ -467,6 +472,7 @@ export async function getAdminMediaItems(input: {
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       publicationStatus: mediaItems.publicationStatus,
       createdByAuthorId: mediaItems.createdByAuthorId,
       authorName: authors.name,
@@ -495,6 +501,7 @@ export async function getAdminMediaItems(input: {
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
       mediaItems.publicationStatus,
       mediaItems.createdByAuthorId,
       authors.name,
@@ -513,12 +520,40 @@ export async function getAdminMediaItems(input: {
     items: items.map((item) => ({
       ...item,
       coverUrl: resolveCoverUrl(item.coverUrl),
+      coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
     })),
     page,
     pageSize: input.pageSize,
     totalCount,
     totalPages,
   };
+}
+
+export async function getMediaItemsMissingCoverThumb(input: { limit?: number } = {}) {
+  const query = db
+    .select({
+      id: mediaItems.id,
+      title: mediaItems.title,
+      coverUrl: mediaItems.coverUrl,
+    })
+    .from(mediaItems)
+    .where(and(isNotNull(mediaItems.coverUrl), isNull(mediaItems.coverThumbUrl)))
+    .orderBy(asc(mediaItems.id));
+
+  return input.limit ? query.limit(input.limit) : query;
+}
+
+export async function updateMediaItemCoverThumb(input: {
+  mediaItemId: number;
+  coverThumbUrl: string;
+}) {
+  await db
+    .update(mediaItems)
+    .set({
+      coverThumbUrl: input.coverThumbUrl,
+      updatedAt: new Date(),
+    })
+    .where(eq(mediaItems.id, input.mediaItemId));
 }
 
 export async function getAdminMediaTypeCounts(input?: { authorId?: number }) {
@@ -578,6 +613,7 @@ export type AuthorMediaItemInput = {
   mediaCarrierId: number | null;
   releaseYear: number | null;
   coverUrl: string | null;
+  coverThumbUrl: string | null;
   coverSource: CoverSourceInput;
 };
 
@@ -592,6 +628,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
     mediaCarrierId: input.mediaCarrierId,
     releaseYear: input.releaseYear,
     coverUrl: input.coverUrl,
+    coverThumbUrl: input.coverThumbUrl,
     coverSourceProvider: input.coverSource.provider,
     coverSourceExternalId: input.coverSource.externalId,
     coverSourcePageUrl: input.coverSource.pageUrl,
@@ -615,6 +652,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverThumbUrl: input.coverThumbUrl,
       coverSourceProvider: input.coverSource.provider,
       coverSourceExternalId: input.coverSource.externalId,
       coverSourcePageUrl: input.coverSource.pageUrl,
@@ -624,6 +662,8 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
     });
 
   return item;
@@ -641,6 +681,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
       mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
       coverSourceExternalId: mediaItems.coverSourceExternalId,
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
@@ -667,6 +708,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
       createdByAuthorId: mediaItems.createdByAuthorId,
@@ -682,6 +724,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
     ? {
         ...item,
         coverUrl: resolveCoverUrl(item.coverUrl),
+        coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       }
     : null;
 }
@@ -703,6 +746,7 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -731,12 +775,19 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
       mediaItems.publicationStatus,
       mediaItems.adminNote,
     )
     .limit(1);
 
-  return item ? { ...item, coverUrl: resolveCoverUrl(item.coverUrl) } : null;
+  return item
+    ? {
+        ...item,
+        coverUrl: resolveCoverUrl(item.coverUrl),
+        coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      }
+    : null;
 }
 
 export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "code"> & {
@@ -753,6 +804,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverThumbUrl: input.coverThumbUrl,
       coverSourceProvider: input.coverSource.provider,
       coverSourceExternalId: input.coverSource.externalId,
       coverSourcePageUrl: input.coverSource.pageUrl,
@@ -782,6 +834,7 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       mediaCarrierId: input.mediaCarrierId,
       releaseYear: input.releaseYear,
       coverUrl: input.coverUrl,
+      coverThumbUrl: input.coverThumbUrl,
       coverSourceProvider: input.coverSource.provider,
       coverSourceExternalId: input.coverSource.externalId,
       coverSourcePageUrl: input.coverSource.pageUrl,
@@ -869,6 +922,7 @@ export async function deleteAuthorDraftMediaItem(input: {
         id: mediaItems.id,
         code: mediaItems.code,
         coverUrl: mediaItems.coverUrl,
+        coverThumbUrl: mediaItems.coverThumbUrl,
         publicationStatus: mediaItems.publicationStatus,
       })
       .from(mediaItems)
@@ -907,6 +961,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       franchiseTitle: franchises.title,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       submittedAt: mediaItems.submittedAt,
       updatedAt: mediaItems.updatedAt,
       authorId: authors.id,
@@ -922,6 +977,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
   return items.map((item) => ({
     ...item,
     coverUrl: resolveCoverUrl(item.coverUrl),
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
   }));
 }
 
@@ -944,6 +1000,7 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
       coverSourceExternalId: mediaItems.coverSourceExternalId,
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
@@ -972,6 +1029,7 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       submittedAt: mediaItems.submittedAt,
       authorName: authors.name,
       authorCode: authors.code,
@@ -998,13 +1056,20 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
       mediaItems.submittedAt,
       authors.name,
       authors.code,
     )
     .limit(1);
 
-  return item ? { ...item, coverUrl: resolveCoverUrl(item.coverUrl) } : null;
+  return item
+    ? {
+        ...item,
+        coverUrl: resolveCoverUrl(item.coverUrl),
+        coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      }
+    : null;
 }
 
 export async function reviewSubmittedAuthorMediaItem(input: {
@@ -1085,7 +1150,12 @@ export async function canViewMediaItemCover(
   const [item] = await db
     .select({ id: mediaItems.id })
     .from(mediaItems)
-    .where(and(eq(mediaItems.coverUrl, objectKey), visibilityCondition))
+    .where(
+      and(
+        or(eq(mediaItems.coverUrl, objectKey), eq(mediaItems.coverThumbUrl, objectKey)),
+        visibilityCondition,
+      ),
+    )
     .limit(1);
 
   return Boolean(item);
@@ -1140,6 +1210,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -1169,12 +1240,19 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
       mediaItems.coverSourceProvider,
       mediaItems.coverSourcePageUrl,
     )
     .limit(1);
 
-  return item ? { ...item, coverUrl: resolveCoverUrl(item.coverUrl) } : null;
+  return item
+    ? {
+        ...item,
+        coverUrl: resolveCoverUrl(item.coverUrl),
+        coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      }
+    : null;
 }
 
 export async function getOtherMediaItemsFromFranchise(
@@ -1193,6 +1271,7 @@ export async function getOtherMediaItemsFromFranchise(
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
@@ -1217,9 +1296,14 @@ export async function getOtherMediaItemsFromFranchise(
       mediaCarriers.name,
       mediaItems.releaseYear,
       mediaItems.coverUrl,
+      mediaItems.coverThumbUrl,
     )
     .orderBy(sql`random()`)
     .limit(4);
 
-  return items.map((item) => ({ ...item, coverUrl: resolveCoverUrl(item.coverUrl) }));
+  return items.map((item) => ({
+    ...item,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+  }));
 }

@@ -13,7 +13,12 @@ import {
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { getCoverProvidersForMediaType, searchCoverCandidates } from "@/lib/covers/registry";
-import { isS3ObjectKey, resolveCoverUpload, uploadManualCover } from "@/lib/covers/storage";
+import {
+  buildCoverThumbObjectKey,
+  isS3ObjectKey,
+  resolveCoverUpload,
+  uploadManualCover,
+} from "@/lib/covers/storage";
 import type { CoverCandidate, CoverProvider, CoverSearchOptions } from "@/lib/covers/types";
 
 const baseCandidate = {
@@ -340,6 +345,14 @@ describe("cover storage helper", () => {
     assert.equal(isS3ObjectKey(null), false);
   });
 
+  it("builds cover thumbnail keys next to original cover keys", () => {
+    assert.equal(
+      buildCoverThumbObjectKey("covers/media-items/dune.jpg"),
+      "covers/media-items/dune-thumb.webp",
+    );
+    assert.equal(buildCoverThumbObjectKey(null), null);
+  });
+
   it("returns an empty manual source when no cover was selected", async () => {
     assert.deepEqual(
       await resolveCoverUpload({
@@ -350,6 +363,7 @@ describe("cover storage helper", () => {
       {
         ok: true,
         coverUrl: null,
+        coverThumbUrl: null,
         source: {
           provider: null,
           externalId: null,

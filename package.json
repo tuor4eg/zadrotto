@@ -13,6 +13,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed:admin": "tsx src/db/seed-admin.ts",
+    "covers:backfill-thumbs": "tsx tools/backfill-cover-thumbs.ts",
     "db:generate-games-import": "tsx tools/import-games-csv.ts --file pasha_games.csv --author pasha"
   },
   "dependencies": {
@@ -25,6 +26,7 @@
     "postgres": "^3.4.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "^0.34.5",
     "tailwind-merge": "^3.5.0"
   },
   "devDependencies": {

@@ -38,7 +38,7 @@ import {
   getPrivateMediaLimitWindowStart,
 } from "@/lib/author-private-media-limits";
 import {
-  deleteUploadedCoverIfNeeded,
+  deleteUploadedCoverFilesIfNeeded,
   isS3ObjectKey,
   resolveCoverUpload,
 } from "@/lib/covers/storage";
@@ -217,6 +217,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       authorId: author.id,
       code,
       coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
       coverSource: cover.source,
       limits: {
         maxDraftMediaItems: author.maxDraftMediaItems,
@@ -225,12 +226,18 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       ...form.value,
     });
   } catch (error) {
-    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch(console.error);
     throw error;
   }
 
   if (!result.ok) {
-    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch(console.error);
     redirect(`/author/media/new?error=${result.reason}`);
   }
 
@@ -290,12 +297,16 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   }
 
   const nextCoverUrl = removeCover ? null : (cover.coverUrl ?? item.coverUrl);
+  const nextCoverThumbUrl = removeCover ? null : (cover.coverThumbUrl ?? item.coverThumbUrl);
   const nextCoverSource =
     removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(item);
 
   if ((removeCover || cover.coverUrl) && isS3ObjectKey(item.coverUrl)) {
     try {
-      await deleteUploadedCoverIfNeeded(item.coverUrl);
+      await deleteUploadedCoverFilesIfNeeded({
+        coverUrl: item.coverUrl,
+        coverThumbUrl: item.coverThumbUrl,
+      });
     } catch {
       redirect(`/author/media/${mediaItemId}/edit?error=cover-delete`);
     }
@@ -305,6 +316,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     authorId: author.id,
     mediaItemId,
     coverUrl: nextCoverUrl,
+    coverThumbUrl: nextCoverThumbUrl,
     coverSource: nextCoverSource,
     ...form.value,
   });
@@ -419,7 +431,10 @@ export async function deleteAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=delete-locked");
   }
 
-  await deleteUploadedCoverIfNeeded(deletedItem.coverUrl).catch(console.error);
+  await deleteUploadedCoverFilesIfNeeded({
+    coverUrl: deletedItem.coverUrl,
+    coverThumbUrl: deletedItem.coverThumbUrl,
+  }).catch(console.error);
 
   revalidatePath("/author/media");
   revalidatePath(`/author/media/${mediaItemId}`);

@@ -25,7 +25,7 @@ import { validateMediaCarrierForMediaType } from "@/lib/media-carrier-form";
 import { requireAdminUser } from "@/lib/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/app-error-messages";
 import {
-  deleteUploadedCoverIfNeeded,
+  deleteUploadedCoverFilesIfNeeded,
   isS3ObjectKey,
   resolveCoverUpload,
 } from "@/lib/covers/storage";
@@ -229,12 +229,18 @@ export async function updateAdminMediaItemAction(formData: FormData) {
   }
 
   const nextCoverUrl = removeCover ? null : (cover.coverUrl ?? existingItem.coverUrl);
+  const nextCoverThumbUrl = removeCover
+    ? null
+    : (cover.coverThumbUrl ?? existingItem.coverThumbUrl);
   const nextCoverSource =
     removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(existingItem);
 
   if ((removeCover || cover.coverUrl) && isS3ObjectKey(existingItem.coverUrl)) {
     try {
-      await deleteUploadedCoverIfNeeded(existingItem.coverUrl);
+      await deleteUploadedCoverFilesIfNeeded({
+        coverUrl: existingItem.coverUrl,
+        coverThumbUrl: existingItem.coverThumbUrl,
+      });
     } catch {
       redirect(`/admin/media/${mediaItemId.value}/edit?error=cover-delete`);
     }
@@ -244,6 +250,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     const updatedItem = await updateAdminMediaItem({
       mediaItemId: mediaItemId.value,
       coverUrl: nextCoverUrl,
+      coverThumbUrl: nextCoverThumbUrl,
       coverSource: nextCoverSource,
       ...form.value,
     });
@@ -326,11 +333,15 @@ export async function createAdminMediaItemAction(formData: FormData) {
       authorId,
       code,
       coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
       coverSource: cover.source,
       ...mediaInput,
     });
   } catch (error) {
-    await deleteUploadedCoverIfNeeded(cover.coverUrl).catch(console.error);
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch(console.error);
     console.error(error);
     redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
   }
@@ -374,7 +385,10 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
 
   if (isS3ObjectKey(existingItem.coverUrl)) {
     try {
-      await deleteUploadedCoverIfNeeded(existingItem.coverUrl);
+      await deleteUploadedCoverFilesIfNeeded({
+        coverUrl: existingItem.coverUrl,
+        coverThumbUrl: existingItem.coverThumbUrl,
+      });
     } catch (error) {
       console.error(error);
     }

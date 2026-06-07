@@ -127,6 +127,13 @@
       "when": 1780826400000,
       "tag": "0017_cover_provider_credentials",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780830000000,
+      "tag": "0018_media_item_cover_thumbs",
+      "breakpoints": true
     }
   ]
 }
