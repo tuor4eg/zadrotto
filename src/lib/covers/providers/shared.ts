@@ -1,7 +1,5 @@
 import type { CoverSearchInput } from "@/lib/covers/types";
 
-export const COVER_SEARCH_LIMIT = 8;
-
 export function normalizeSearchQuery(input: CoverSearchInput) {
   return (input.originalTitle || input.title).trim();
 }

@@ -99,6 +99,34 @@
       "when": 1780776000000,
       "tag": "0013_media_item_cover_source",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780815600000,
+      "tag": "0014_cover_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1780819200000,
+      "tag": "0015_cover_provider_settings_by_media_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780822800000,
+      "tag": "0016_normalize_cover_provider_priorities",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780826400000,
+      "tag": "0017_cover_provider_credentials",
+      "breakpoints": true
     }
   ]
 }

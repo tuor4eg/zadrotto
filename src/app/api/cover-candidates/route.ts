@@ -1,5 +1,10 @@
 import { NextResponse } from "next/server";
 
+import {
+  getCoverProviderCredentialsForSearch,
+  getCoverProviderSettings,
+  getCoverSettings,
+} from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/admin-auth";
 import { getCurrentAuthor } from "@/lib/author-auth";
 import { createCoverCandidateToken } from "@/lib/covers/candidates";
@@ -45,12 +50,26 @@ export async function POST(request: Request) {
     return NextResponse.json({ candidates: [] });
   }
 
-  const candidates = await searchCoverCandidates({
-    title,
-    originalTitle,
-    mediaType,
-    releaseYear: normalizeReleaseYear(body.releaseYear),
-  });
+  const [coverSettings, providerSettings, providerCredentials] = await Promise.all([
+    getCoverSettings(),
+    getCoverProviderSettings(),
+    getCoverProviderCredentialsForSearch(),
+  ]);
+  const candidates = await searchCoverCandidates(
+    {
+      title,
+      originalTitle,
+      mediaType,
+      releaseYear: normalizeReleaseYear(body.releaseYear),
+    },
+    undefined,
+    {
+      candidateLimit: coverSettings.candidateLimit,
+      tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
+      providerCredentials,
+    },
+    providerSettings,
+  );
 
   return NextResponse.json({
     candidates: candidates.map((candidate) => ({

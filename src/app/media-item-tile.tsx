@@ -1,8 +1,8 @@
 import Link from "next/link";
 
 import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media-carrier-frame";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media-types";
-import { formatRatingsCount, formatScore } from "@/lib/rating-score";
+import { type MediaType } from "@/lib/media-types";
+import { formatScore } from "@/lib/rating-score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AUTHOR_RATING_TONE_CLASS_NAMES,
@@ -36,7 +36,6 @@ type MediaItemTileProps = {
   currentAuthorScore?: number | null;
   href?: string;
   item: MediaItemTileItem;
-  mediaTypes: MediaTypeOption[];
   onSelect?: () => void;
   selected?: boolean;
 };
@@ -125,7 +124,6 @@ export function MediaItemTile({
   currentAuthorScore,
   href,
   item,
-  mediaTypes,
   onSelect,
   selected = false,
 }: MediaItemTileProps) {
@@ -149,31 +147,24 @@ export function MediaItemTile({
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-stone-950/88 via-stone-950/44 to-transparent"
       />
-      <span className="absolute bottom-3 left-2.5 right-[4.25rem] flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
+      <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
         <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
           {item.title}
         </span>
-        <span className="mt-1 flex min-w-0 flex-wrap gap-x-1.5 gap-y-0.5 font-mono text-[10px] uppercase leading-4 tracking-[0.12em] text-stone-200">
-          <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
-          {item.releaseYear ? <span>•</span> : null}
-          {item.releaseYear ? <span>{item.releaseYear}</span> : null}
-          <span>•</span>
-          <span>{formatRatingsCount(item.ratingsCount)}</span>
-        </span>
       </span>
       <span
-        className={`absolute bottom-2 right-2 inline-flex h-8 items-center justify-center rounded-full border text-center shadow-sm ${averageRatingToneClassName} ${
-          shouldShowAuthorScore ? "gap-1.5 pl-2.5 pr-1" : "w-8"
+        className={`absolute right-2 top-2 inline-flex h-7 items-center justify-center rounded-full border text-center shadow-sm ${averageRatingToneClassName} ${
+          shouldShowAuthorScore ? "gap-1 pl-2 pr-1" : "w-7"
         }`}
       >
-        <span className="min-w-4 text-center font-mono text-sm leading-none tabular-nums">
+        <span className="min-w-3.5 text-center font-mono text-xs leading-none tabular-nums">
           {formatScore(item.averageScore)}
         </span>
         {shouldShowAuthorScore ? (
           <span
-            className={`grid size-7 place-items-center rounded-full border text-center shadow-sm ${authorRatingToneClassName}`}
+            className={`grid size-6 place-items-center rounded-full border text-center shadow-sm ${authorRatingToneClassName}`}
           >
-            <span className="min-w-4 text-center font-mono text-base leading-none tabular-nums">
+            <span className="min-w-3.5 text-center font-mono text-xs leading-none tabular-nums">
               {formatScore(currentAuthorScore)}
             </span>
           </span>

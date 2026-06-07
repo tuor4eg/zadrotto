@@ -1,7 +1,6 @@
 import type { CoverCandidate, CoverProvider } from "@/lib/covers/types";
 import {
   buildUrl,
-  COVER_SEARCH_LIMIT,
   fetchJson,
   getFirstYear,
   normalizeSearchQuery,
@@ -25,17 +24,17 @@ type GoogleBooksResponse = {
 export const googleBooksProvider: CoverProvider = {
   code: "google-books",
   mediaTypes: ["book"],
-  async searchCoverCandidates(input) {
+  async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
 
     if (!query) {
       return [];
     }
 
-    const apiKey = process.env.GOOGLE_BOOKS_API_KEY?.trim() ?? "";
+    const apiKey = options.providerCredentials?.["google-books"]?.apiKey?.trim() ?? "";
     const url = buildUrl("https://www.googleapis.com/books/v1/volumes", {
       q: `intitle:${query}`,
-      maxResults: COVER_SEARCH_LIMIT,
+      maxResults: options.candidateLimit,
       projection: "lite",
       key: apiKey,
     });
@@ -61,6 +60,6 @@ export const googleBooksProvider: CoverProvider = {
       });
     }
 
-    return candidates.slice(0, COVER_SEARCH_LIMIT);
+    return candidates.slice(0, options.candidateLimit);
   },
 };

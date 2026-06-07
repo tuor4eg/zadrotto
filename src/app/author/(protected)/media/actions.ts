@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
+import { getCoverSettings } from "@/db/queries/cover-settings";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
@@ -196,11 +197,13 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     title: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
+  const coverSettings = await getCoverSettings();
   const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: code,
     coverFile: getOptionalCoverFile(formData),
     candidateToken: getOptionalCoverCandidateToken(formData),
+    maxBytes: coverSettings.coverMaxBytes,
   });
 
   if (!cover.ok) {
@@ -273,11 +276,13 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=locked");
   }
 
+  const coverSettings = await getCoverSettings();
   const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: `media-${mediaItemId}`,
     coverFile: removeCover ? null : getOptionalCoverFile(formData),
     candidateToken: removeCover ? null : getOptionalCoverCandidateToken(formData),
+    maxBytes: coverSettings.coverMaxBytes,
   });
 
   if (!cover.ok) {

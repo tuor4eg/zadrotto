@@ -322,7 +322,6 @@ export function MediaItemsCatalog({
                 currentAuthor !== null ? item.currentAuthorScore : undefined
               }
               item={item}
-              mediaTypes={mediaTypes}
               onSelect={() => setSelectedId(item.id)}
               selected={selectedItem?.id === item.id}
             />

@@ -460,7 +460,6 @@ function ArchiveMediaItemDetails({
                         key={relatedItem.id}
                         currentAuthorScore={relatedItem.currentAuthorScore}
                         item={relatedItem}
-                        mediaTypes={mediaTypes}
                         href={`/media/${relatedItem.code}`}
                       />
                     ))}

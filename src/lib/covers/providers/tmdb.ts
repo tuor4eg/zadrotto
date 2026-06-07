@@ -1,13 +1,10 @@
 import type { CoverCandidate, CoverProvider } from "@/lib/covers/types";
 import {
   buildUrl,
-  COVER_SEARCH_LIMIT,
   fetchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
-
-const TMDB_RESULT_SCAN_LIMIT = 3;
 
 type TmdbSearchResponse = {
   results?: Array<{
@@ -91,8 +88,8 @@ export function createTmdbProvider(mediaType: "film" | "series"): CoverProvider 
   return {
     code: "tmdb",
     mediaTypes: [mediaType],
-    async searchCoverCandidates(input) {
-      const accessToken = process.env.TMDB_ACCESS_TOKEN?.trim();
+    async searchCoverCandidates(input, options) {
+      const accessToken = options.providerCredentials?.tmdb?.accessToken?.trim();
       const query = normalizeSearchQuery(input);
 
       if (!accessToken || !query) {
@@ -113,7 +110,7 @@ export function createTmdbProvider(mediaType: "film" | "series"): CoverProvider 
       const tmdbType = isSeries ? "tv" : "movie";
       const searchResults = (data?.results ?? [])
         .filter((item) => item.id)
-        .slice(0, TMDB_RESULT_SCAN_LIMIT);
+        .slice(0, options.tmdbResultScanLimit);
       const candidateGroups = await Promise.all(
         searchResults.map(async (item) => {
           const title = item.title ?? item.name ?? item.original_title ?? item.original_name ?? query;
@@ -130,7 +127,7 @@ export function createTmdbProvider(mediaType: "film" | "series"): CoverProvider 
           const selectedPosters =
             posters.length > 0 ? posters : item.poster_path ? [{ file_path: item.poster_path }] : [];
 
-          return selectedPosters.slice(0, COVER_SEARCH_LIMIT).map(
+          return selectedPosters.slice(0, options.candidateLimit).map(
             (poster) =>
               ({
                 id: `${tmdbType}:${item.id}:${poster.file_path}`,
@@ -147,7 +144,7 @@ export function createTmdbProvider(mediaType: "film" | "series"): CoverProvider 
         }),
       );
 
-      return candidateGroups.flat().slice(0, COVER_SEARCH_LIMIT);
+      return candidateGroups.flat().slice(0, options.candidateLimit);
     },
   };
 }

@@ -63,7 +63,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               submittedReviewsCount={submittedReviewsCount}
             />
             <Link
-              href="/admin/settings"
+              href="/admin/settings/administrator"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <Settings />

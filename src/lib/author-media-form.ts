@@ -1,14 +1,12 @@
 import type { PublicationStatus } from "@/lib/publication-status";
 import { generateEntityCode, slugifyCodePart } from "@/lib/generated-code";
+import { COVER_IMAGE_TYPES, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 
 export const AUTHOR_EDITABLE_PUBLICATION_STATUSES = [
   "private",
   "rejected",
 ] as const satisfies
   readonly PublicationStatus[];
-
-export const AUTHOR_COVER_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
-export const AUTHOR_COVER_MAX_BYTES = 5 * 1024 * 1024;
 
 export function isAuthorEditablePublicationStatus(status: PublicationStatus) {
   return AUTHOR_EDITABLE_PUBLICATION_STATUSES.some((editableStatus) => editableStatus === status);
@@ -39,6 +37,7 @@ export function getCoverFileExtension(contentType: string) {
 export function validateCoverFileInput(input: {
   size: number;
   type: string;
+  maxBytes?: number;
 }):
   | { ok: true }
   | { ok: false; error: "cover-too-large" | "cover-type" } {
@@ -46,11 +45,11 @@ export function validateCoverFileInput(input: {
     return { ok: true as const };
   }
 
-  if (input.size > AUTHOR_COVER_MAX_BYTES) {
+  if (input.size > (input.maxBytes ?? DEFAULT_COVER_MAX_BYTES)) {
     return { ok: false as const, error: "cover-too-large" };
   }
 
-  if (!AUTHOR_COVER_IMAGE_TYPES.some((contentType) => contentType === input.type)) {
+  if (!COVER_IMAGE_TYPES.some((contentType) => contentType === input.type)) {
     return { ok: false as const, error: "cover-type" };
   }
 

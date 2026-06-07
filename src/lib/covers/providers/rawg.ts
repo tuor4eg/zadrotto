@@ -1,7 +1,6 @@
 import type { CoverProvider } from "@/lib/covers/types";
 import {
   buildUrl,
-  COVER_SEARCH_LIMIT,
   fetchJson,
   getFirstYear,
   normalizeSearchQuery,
@@ -20,8 +19,8 @@ type RawgResponse = {
 export const rawgProvider: CoverProvider = {
   code: "rawg",
   mediaTypes: ["game"],
-  async searchCoverCandidates(input) {
-    const apiKey = process.env.RAWG_API_KEY?.trim();
+  async searchCoverCandidates(input, options) {
+    const apiKey = options.providerCredentials?.rawg?.apiKey?.trim();
     const query = normalizeSearchQuery(input);
 
     if (!apiKey || !query) {
@@ -31,14 +30,14 @@ export const rawgProvider: CoverProvider = {
     const url = buildUrl("https://api.rawg.io/api/games", {
       key: apiKey,
       search: query,
-      page_size: COVER_SEARCH_LIMIT,
+      page_size: options.candidateLimit,
       dates: input.releaseYear ? `${input.releaseYear}-01-01,${input.releaseYear}-12-31` : null,
     });
     const data = await fetchJson<RawgResponse>(url);
 
     return (data?.results ?? [])
       .filter((item) => item.id && item.background_image)
-      .slice(0, COVER_SEARCH_LIMIT)
+      .slice(0, options.candidateLimit)
       .map((item) => ({
         id: `game:${item.id}`,
         provider: "rawg",

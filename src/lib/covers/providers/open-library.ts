@@ -1,7 +1,6 @@
 import type { CoverProvider } from "@/lib/covers/types";
 import {
   buildUrl,
-  COVER_SEARCH_LIMIT,
   fetchJson,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -18,7 +17,7 @@ type OpenLibrarySearchResponse = {
 export const openLibraryProvider: CoverProvider = {
   code: "open-library",
   mediaTypes: ["book"],
-  async searchCoverCandidates(input) {
+  async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
 
     if (!query) {
@@ -27,13 +26,13 @@ export const openLibraryProvider: CoverProvider = {
 
     const url = buildUrl("https://openlibrary.org/search.json", {
       title: query,
-      limit: COVER_SEARCH_LIMIT,
+      limit: options.candidateLimit,
     });
     const data = await fetchJson<OpenLibrarySearchResponse>(url);
 
     return (data?.docs ?? [])
       .filter((item) => item.cover_i)
-      .slice(0, COVER_SEARCH_LIMIT)
+      .slice(0, options.candidateLimit)
       .map((item) => ({
         id: `work:${item.key ?? item.cover_i}`,
         provider: "open-library",

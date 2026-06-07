@@ -64,6 +64,53 @@ export const authorAccessProfiles = pgTable("author_access_profiles", {
   ...timestamps(),
 });
 
+export const coverSettings = pgTable(
+  "cover_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    candidateLimit: integer("candidate_limit").default(8).notNull(),
+    tmdbResultScanLimit: integer("tmdb_result_scan_limit").default(3).notNull(),
+    coverMaxBytes: integer("cover_max_bytes").default(5242880).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    check("cover_settings_singleton_id_check", sql`${table.id} = 1`),
+    check("cover_settings_candidate_limit_check", sql`${table.candidateLimit} >= 1`),
+    check("cover_settings_tmdb_scan_limit_check", sql`${table.tmdbResultScanLimit} >= 1`),
+    check("cover_settings_cover_max_bytes_check", sql`${table.coverMaxBytes} >= 1`),
+  ],
+);
+
+export const coverProviderSettings = pgTable(
+  "cover_provider_settings",
+  {
+    mediaType: text("media_type")
+      .notNull()
+      .references(() => mediaTypes.code),
+    providerCode: text("provider_code").notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    priority: integer("priority").default(100).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.mediaType, table.providerCode],
+      name: "cover_provider_settings_pk",
+    }),
+    check("cover_provider_settings_priority_check", sql`${table.priority} >= 1`),
+  ],
+);
+
+export const coverProviderCredentials = pgTable("cover_provider_credentials", {
+  providerCode: text("provider_code").primaryKey(),
+  encryptedPayload: text("encrypted_payload").notNull(),
+  keyHint: text("key_hint").notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+    onDelete: "set null",
+  }),
+  ...timestamps(),
+});
+
 export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
@@ -273,6 +320,12 @@ export type Franchise = typeof franchises.$inferSelect;
 export type NewFranchise = typeof franchises.$inferInsert;
 export type AuthorAccessProfile = typeof authorAccessProfiles.$inferSelect;
 export type NewAuthorAccessProfile = typeof authorAccessProfiles.$inferInsert;
+export type CoverSettings = typeof coverSettings.$inferSelect;
+export type NewCoverSettings = typeof coverSettings.$inferInsert;
+export type CoverProviderSettings = typeof coverProviderSettings.$inferSelect;
+export type NewCoverProviderSettings = typeof coverProviderSettings.$inferInsert;
+export type CoverProviderCredentials = typeof coverProviderCredentials.$inferSelect;
+export type NewCoverProviderCredentials = typeof coverProviderCredentials.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type AuthorAccessToken = typeof authorAccessTokens.$inferSelect;

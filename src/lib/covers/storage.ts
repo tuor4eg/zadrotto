@@ -87,6 +87,7 @@ export async function uploadManualCover(input: {
   authorId?: number;
   mediaItemCode: string;
   coverFile: File | null;
+  maxBytes?: number;
 }): Promise<CoverUploadResult> {
   if (!input.coverFile) {
     return {
@@ -99,6 +100,7 @@ export async function uploadManualCover(input: {
   const validation = validateCoverFileInput({
     size: input.coverFile.size,
     type: input.coverFile.type,
+    maxBytes: input.maxBytes,
   });
 
   if (!validation.ok) {
@@ -140,6 +142,7 @@ export async function uploadExternalCoverFromToken(input: {
   authorId?: number;
   mediaItemCode: string;
   token: string;
+  maxBytes?: number;
 }): Promise<CoverUploadResult> {
   const candidate = verifyCoverCandidateToken(input.token);
 
@@ -158,6 +161,7 @@ export async function uploadExternalCoverFromToken(input: {
   const validation = validateCoverFileInput({
     size: body.byteLength,
     type: contentType,
+    maxBytes: input.maxBytes,
   });
 
   if (!validation.ok) {
@@ -190,6 +194,7 @@ export async function resolveCoverUpload(input: {
   mediaItemCode: string;
   coverFile: File | null;
   candidateToken: string | null;
+  maxBytes?: number;
 }): Promise<CoverUploadResult> {
   if (input.coverFile) {
     return uploadManualCover(input);
@@ -200,6 +205,7 @@ export async function resolveCoverUpload(input: {
       authorId: input.authorId,
       mediaItemCode: input.mediaItemCode,
       token: input.candidateToken,
+      maxBytes: input.maxBytes,
     });
   }
 

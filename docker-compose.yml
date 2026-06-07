@@ -4,6 +4,9 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
+    dns:
+      - 1.1.1.1
+      - 8.8.8.8
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
@@ -11,6 +14,7 @@ services:
       ADMIN_SESSION_SECRET: ${ADMIN_SESSION_SECRET}
       AUTHOR_SESSION_SECRET: ${AUTHOR_SESSION_SECRET}
       COVER_CANDIDATE_SECRET: ${COVER_CANDIDATE_SECRET}
+      COVER_PROVIDER_CREDENTIALS_KEY: ${COVER_PROVIDER_CREDENTIALS_KEY}
       SECURE_COOKIES: ${SECURE_COOKIES:-false}
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_REGION: ${S3_REGION}
@@ -19,9 +23,6 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY}
       S3_FORCE_PATH_STYLE: ${S3_FORCE_PATH_STYLE:-true}
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
-      TMDB_ACCESS_TOKEN: ${TMDB_ACCESS_TOKEN}
-      RAWG_API_KEY: ${RAWG_API_KEY}
-      GOOGLE_BOOKS_API_KEY: ${GOOGLE_BOOKS_API_KEY}
 
   migrate:
     image: ghcr.io/tuor4eg/zadrotto-migrator:latest

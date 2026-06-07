@@ -6,6 +6,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { authorExistsById } from "@/db/queries/authors";
+import { getCoverSettings } from "@/db/queries/cover-settings";
 import { franchiseExistsById } from "@/db/queries/franchises";
 import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
@@ -215,10 +216,12 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect("/admin/media?error=invalid-media");
   }
 
+  const coverSettings = await getCoverSettings();
   const cover = await resolveCoverUpload({
     mediaItemCode: existingItem.code,
     coverFile: removeCover ? null : getOptionalCoverFile(formData),
     candidateToken: removeCover ? null : getOptionalCoverCandidateToken(formData),
+    maxBytes: coverSettings.coverMaxBytes,
   });
 
   if (!cover.ok) {
@@ -302,10 +305,12 @@ export async function createAdminMediaItemAction(formData: FormData) {
     name: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
+  const coverSettings = await getCoverSettings();
   const cover = await resolveCoverUpload({
     mediaItemCode: code,
     coverFile: getOptionalCoverFile(formData),
     candidateToken: getOptionalCoverCandidateToken(formData),
+    maxBytes: coverSettings.coverMaxBytes,
   });
 
   if (!cover.ok) {

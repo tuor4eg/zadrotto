@@ -1,6 +1,25 @@
 import type { MediaType } from "@/lib/media-types";
 
-export type CoverProviderCode = "tmdb" | "open-library" | "google-books" | "rawg" | "jikan";
+export type CoverProviderCode =
+  | "tmdb"
+  | "open-library"
+  | "google-books"
+  | "igdb"
+  | "rawg"
+  | "jikan";
+
+export const COVER_PROVIDER_CODES = [
+  "tmdb",
+  "open-library",
+  "google-books",
+  "igdb",
+  "rawg",
+  "jikan",
+] as const satisfies readonly CoverProviderCode[];
+
+export function isCoverProviderCode(value: string): value is CoverProviderCode {
+  return COVER_PROVIDER_CODES.some((providerCode) => providerCode === value);
+}
 
 export type CoverCandidate = {
   id: string;
@@ -25,10 +44,19 @@ export type CoverSearchInput = {
   releaseYear: number | null;
 };
 
+export type CoverSearchOptions = {
+  candidateLimit: number;
+  tmdbResultScanLimit: number;
+  providerCredentials?: Partial<Record<CoverProviderCode, Record<string, string>>>;
+};
+
 export type CoverProvider = {
   code: CoverProviderCode;
   mediaTypes: readonly MediaType[];
-  searchCoverCandidates(input: CoverSearchInput): Promise<CoverCandidate[]>;
+  searchCoverCandidates(
+    input: CoverSearchInput,
+    options: CoverSearchOptions,
+  ): Promise<CoverCandidate[]>;
 };
 
 export type CoverSourceInput = {
