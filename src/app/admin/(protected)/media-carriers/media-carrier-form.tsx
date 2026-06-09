@@ -1,15 +1,16 @@
 import { Save } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select, Textarea } from "@/components/ui/form";
+import { Input, Label, Textarea } from "@/components/ui/form";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type MediaCarrierFormValues = {
+  code?: string;
   description?: string | null;
   id?: number;
-  mediaType?: MediaType;
+  mediaTypes?: MediaType[];
   name?: string;
 };
 
@@ -30,6 +31,9 @@ export function MediaCarrierForm({
   successMessage,
   values,
 }: MediaCarrierFormProps) {
+  const selectedMediaTypes = new Set(
+    values?.mediaTypes ?? (mediaTypes[0] ? [mediaTypes[0].code] : []),
+  );
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
@@ -43,6 +47,19 @@ export function MediaCarrierForm({
 
       <div className="grid gap-4">
         <div className="flex flex-col gap-2">
+          <Label htmlFor="media-carrier-code">Код</Label>
+          <Input
+            id="media-carrier-code"
+            name="code"
+            type="text"
+            required
+            defaultValue={values?.code ?? ""}
+            placeholder="vhs"
+          />
+          <p className="text-xs leading-5 text-stone-500">Например: vhs, pc, nes.</p>
+        </div>
+
+        <div className="flex flex-col gap-2">
           <Label htmlFor="media-carrier-name">Название</Label>
           <Input
             id="media-carrier-name"
@@ -53,21 +70,26 @@ export function MediaCarrierForm({
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="media-carrier-type">Тип медиа</Label>
-          <Select
-            id="media-carrier-type"
-            name="mediaType"
-            required
-            defaultValue={values?.mediaType ?? mediaTypes[0]?.code ?? ""}
-          >
+        <fieldset className="flex flex-col gap-2">
+          <legend className="text-sm font-medium leading-none text-stone-700">Типы медиа</legend>
+          <div className="grid gap-2 rounded-md border border-stone-200 bg-white p-3 sm:grid-cols-2">
             {mediaTypes.map((mediaType) => (
-              <option key={mediaType.code} value={mediaType.code}>
+              <label
+                key={mediaType.code}
+                className="flex items-center gap-2 text-sm font-medium text-stone-700"
+              >
+                <input
+                  type="checkbox"
+                  name="mediaTypes"
+                  value={mediaType.code}
+                  defaultChecked={selectedMediaTypes.has(mediaType.code)}
+                  className="size-4 rounded border-stone-300 text-stone-950"
+                />
                 {mediaType.name}
-              </option>
+              </label>
             ))}
-          </Select>
-        </div>
+          </div>
+        </fieldset>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="media-carrier-description">Описание</Label>

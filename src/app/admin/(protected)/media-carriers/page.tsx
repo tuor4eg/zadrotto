@@ -9,6 +9,7 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getAdminMediaCarriers,
+  getAdminMediaCarrierTotalCount,
   getAdminMediaCarrierTypeCounts,
 } from "@/db/queries/media-carriers";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
@@ -45,11 +46,11 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
   const [params, mediaTypes] = await Promise.all([searchParams, getMediaTypeOptions()]);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
-  const [carriers, mediaTypeCounts] = await Promise.all([
+  const [carriers, mediaTypeCounts, totalCarriersCount] = await Promise.all([
     getAdminMediaCarriers({ mediaTypeFilter, searchQuery }),
     getAdminMediaCarrierTypeCounts(),
+    getAdminMediaCarrierTotalCount(),
   ]);
-  const totalCarriersCount = mediaTypeCounts.reduce((total, item) => total + item.count, 0);
   const errorMessage = getMediaCarrierErrorMessage(params.error);
   const successMessage = getSuccessMessage(params);
   const toastMessages = [
@@ -118,6 +119,9 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
                   <TR key={carrier.id}>
                     <TD className="min-w-0 overflow-hidden">
                       <div className="truncate font-medium text-stone-950">{carrier.name}</div>
+                      <div className="mt-1 truncate font-mono text-xs text-stone-500">
+                        {carrier.code}
+                      </div>
                       {carrier.description ? (
                         <div className="mt-1 truncate text-xs text-stone-500">
                           {carrier.description}
@@ -125,7 +129,13 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
                       ) : null}
                     </TD>
                     <TD>
-                      <Badge variant="outline">{getMediaTypeLabel(carrier.mediaType, mediaTypes)}</Badge>
+                      <div className="flex flex-wrap gap-1.5">
+                        {carrier.mediaTypes.map((mediaType) => (
+                          <Badge key={mediaType} variant="outline">
+                            {getMediaTypeLabel(mediaType, mediaTypes)}
+                          </Badge>
+                        ))}
+                      </div>
                     </TD>
                     <TD>
                       <Badge variant="outline">{carrier.mediaItemsCount}</Badge>

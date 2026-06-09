@@ -8,7 +8,9 @@ import {
   FolderOpen,
 } from "lucide-react";
 
+import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
+import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import {
   type AuthorRatingFilter,
   type CatalogSort,
@@ -30,11 +32,7 @@ import {
   type MediaType,
   type MediaTypeOption,
 } from "@/lib/media/types";
-import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
-import {
-  AVERAGE_RATING_TONE_CLASS_NAMES,
-  getRatingTone,
-} from "@/lib/ratings/tone";
+import { formatRatingsCount } from "@/lib/ratings/score";
 
 type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;
@@ -382,14 +380,18 @@ export function MediaItemsCatalog({
                 <div
                   className={
                     hasSelectedCarrierFrame
-                      ? "mt-3 overflow-hidden rounded-sm"
+                      ? "mt-3 overflow-visible rounded-sm"
                       : "mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
                   }
                 >
                   <div
                     className={
                       hasSelectedCarrierFrame
-                        ? "relative aspect-[4/3] overflow-visible rounded-sm"
+                        ? `relative ${
+                            selectedMediaCarrierFrame.compactViewportClassName ??
+                            selectedMediaCarrierFrame.viewportClassName ??
+                            selectedMediaCarrierFrame.aspectRatioClassName
+                          } overflow-visible rounded-sm`
                         : "relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800"
                     }
                   >
@@ -402,10 +404,18 @@ export function MediaItemsCatalog({
                           hasSelectedCarrierFrame ? "" : "media-image-lift-trigger"
                         }`}
                       >
-                        <ArchiveCover item={selectedItem} className="h-full w-full" />
+                        <ArchiveCover
+                          carrierFrameSize="compact"
+                          item={selectedItem}
+                          className="h-full w-full"
+                        />
                       </ImageViewer>
                     ) : (
-                      <ArchiveCover item={selectedItem} className="h-full w-full" />
+                      <ArchiveCover
+                        carrierFrameSize="compact"
+                        item={selectedItem}
+                        className="h-full w-full"
+                      />
                     )}
                     {!selectedItem.coverUrl && !hasSelectedCarrierFrame ? (
                       <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
@@ -422,7 +432,12 @@ export function MediaItemsCatalog({
                 />
 
                 <div className={`mt-3 ${selectedDisplayFontClassName} text-2xl leading-tight text-stone-950`}>
-                  {selectedItem.title}
+                  {selectedItem ? (
+                    <MediaCarrierDisplayTitle
+                      title={selectedItem.title}
+                      frame={selectedMediaCarrierFrame}
+                    />
+                  ) : null}
                 </div>
                 {selectedItem.originalTitle && selectedItem.originalTitle !== selectedItem.title ? (
                   <div className={`mt-2 ${selectedLabelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
@@ -439,19 +454,15 @@ export function MediaItemsCatalog({
                 </div>
 
                 <div className="mt-3 grid gap-2 border-t border-dashed border-stone-300 pt-3 sm:grid-cols-2">
-                  <div
-                    className={`rounded-md border p-2 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(selectedItem.averageScore)]}`}
-                  >
-                    <div className={`${selectedLabelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
-                      Оценка
-                    </div>
-                    <div className={`mt-1 ${selectedDisplayFontClassName} text-3xl tabular-nums`}>
-                      {formatScore(selectedItem.averageScore)}
-                    </div>
-                    <div className={`mt-1 ${selectedLabelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
-                      {formatRatingsCount(selectedItem.ratingsCount)}
-                    </div>
-                  </div>
+                  <ArchiveRatingPanel
+                    compact
+                    displayFontClassName={selectedDisplayFontClassName}
+                    label="Оценка архива"
+                    labelFontClassName={selectedLabelFontClassName}
+                    ratingPanelVariant={selectedMediaCarrierFrame?.ratingPanelVariant}
+                    ratingsCount={selectedItem.ratingsCount}
+                    score={selectedItem.averageScore}
+                  />
                   <MediaItemRatingDialog
                     mediaItemCode={selectedItem.code}
                     franchiseCode={selectedItem.franchiseCode}
@@ -464,6 +475,7 @@ export function MediaItemsCatalog({
                     currentAuthorScore={selectedItem.currentAuthorScore}
                     panelDisplayClassName={selectedMediaCarrierFrame?.displayFontClassName}
                     panelLabelClassName={selectedMediaCarrierFrame?.labelFontClassName}
+                    panelVariant={selectedMediaCarrierFrame?.ratingPanelVariant}
                     size="compact"
                   />
                 </div>

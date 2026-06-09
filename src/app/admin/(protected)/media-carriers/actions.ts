@@ -7,17 +7,18 @@ import {
   createMediaCarrier,
   deleteMediaCarrierIfUnused,
   getMediaCarrierById,
+  getMediaCarrierUsedMediaTypesById,
   updateMediaCarrier,
 } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
-import { generateEntityCode } from "@/lib/common/generated-code";
 import {
+  normalizeMediaCarrierCode,
   normalizeOptionalMediaCarrierString,
+  parseMediaCarrierFormMediaTypes,
   parseRequiredMediaCarrierId,
 } from "@/lib/forms/media-carrier";
-import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -25,26 +26,32 @@ function getFormString(formData: FormData, key: string) {
   return typeof value === "string" ? value.trim() : "";
 }
 
-function parseMediaType(value: string): MediaType | null {
-  return isMediaTypeCode(value) ? value : null;
-}
-
 function readMediaCarrierForm(formData: FormData) {
+  const code = normalizeMediaCarrierCode(getFormString(formData, "code"));
   const name = getFormString(formData, "name");
-  const mediaType = parseMediaType(getFormString(formData, "mediaType"));
+  const mediaTypes = parseMediaCarrierFormMediaTypes(formData.getAll("mediaTypes"));
 
-  if (!name || !mediaType) {
+  if (!code || !name || !mediaTypes) {
     return { ok: false as const, error: "required" };
   }
 
   return {
     ok: true as const,
     value: {
+      code,
       name,
-      mediaType,
+      mediaTypes,
       description: normalizeOptionalMediaCarrierString(getFormString(formData, "description")),
     },
   };
+}
+
+async function allMediaTypesExist(mediaTypes: readonly string[]) {
+  const results = await Promise.all(
+    mediaTypes.map((mediaType) => mediaTypeExistsByCode(mediaType)),
+  );
+
+  return results.every(Boolean);
 }
 
 function revalidateMediaCarrierSurfaces() {
@@ -63,15 +70,12 @@ export async function createMediaCarrierAction(formData: FormData) {
     redirect(`/admin/media-carriers/new?error=${input.error}`);
   }
 
-  if (!(await mediaTypeExistsByCode(input.value.mediaType))) {
+  if (!(await allMediaTypesExist(input.value.mediaTypes))) {
     redirect("/admin/media-carriers/new?error=required");
   }
 
   try {
-    await createMediaCarrier({
-      ...input.value,
-      code: generateEntityCode({ type: "carrier", name: input.value.name }),
-    });
+    await createMediaCarrier(input.value);
   } catch (error) {
     if (isUniqueViolation(error)) {
       redirect("/admin/media-carriers/new?error=duplicate-code");
@@ -99,7 +103,7 @@ export async function updateMediaCarrierAction(formData: FormData) {
     redirect(`/admin/media-carriers/${carrierId.value}/edit?error=${input.error}`);
   }
 
-  if (!(await mediaTypeExistsByCode(input.value.mediaType))) {
+  if (!(await allMediaTypesExist(input.value.mediaTypes))) {
     redirect(`/admin/media-carriers/${carrierId.value}/edit?error=required`);
   }
 
@@ -109,10 +113,12 @@ export async function updateMediaCarrierAction(formData: FormData) {
     redirect("/admin/media-carriers?error=invalid-carrier");
   }
 
-  if (
-    existingCarrier.mediaItemsCount > 0 &&
-    existingCarrier.mediaType !== input.value.mediaType
-  ) {
+  const usedMediaTypes = await getMediaCarrierUsedMediaTypesById(carrierId.value);
+  const removedUsedMediaType = usedMediaTypes.some(
+    (mediaType) => !input.value.mediaTypes.includes(mediaType),
+  );
+
+  if (removedUsedMediaType) {
     redirect(`/admin/media-carriers/${carrierId.value}/edit?error=carrier-has-media`);
   }
 
@@ -124,6 +130,10 @@ export async function updateMediaCarrierAction(formData: FormData) {
       ...input.value,
     });
   } catch (error) {
+    if (isUniqueViolation(error)) {
+      redirect(`/admin/media-carriers/${carrierId.value}/edit?error=duplicate-code`);
+    }
+
     console.error(error);
     redirect(`/admin/media-carriers/${carrierId.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }

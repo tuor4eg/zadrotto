@@ -8,7 +8,7 @@ export function getMediaCarrierErrorMessage(error?: string) {
   }
 
   if (error === "required") {
-    return "Заполни название и тип медиа.";
+    return "Заполни код, название и выбери хотя бы один тип медиа.";
   }
 
   if (error === "invalid-carrier") {
@@ -16,11 +16,11 @@ export function getMediaCarrierErrorMessage(error?: string) {
   }
 
   if (error === "duplicate-code") {
-    return "Носитель с таким названием уже существует.";
+    return "Носитель с таким кодом уже существует.";
   }
 
   if (error === "carrier-has-media") {
-    return "Нельзя удалить носитель или сменить его тип, пока он выбран у записей.";
+    return "Нельзя удалить носитель или убрать используемый тип медиа, пока он выбран у записей.";
   }
 
   return null;

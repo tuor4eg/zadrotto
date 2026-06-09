@@ -12,6 +12,18 @@ export const AUTHOR_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: "border-emerald-950/25 bg-emerald-700 text-emerald-50",
 };
 
+export const AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "border-red-400/60 text-red-300 shadow-[0_0_18px_rgba(252,165,165,0.12)]",
+  medium: "border-stone-300/60 text-stone-200 shadow-[0_0_18px_rgba(214,211,209,0.12)]",
+  good: "border-emerald-400/60 text-emerald-300 shadow-[0_0_18px_rgba(110,231,183,0.12)]",
+};
+
+export const AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "border-red-700/75 text-red-500 shadow-[0_0_18px_rgba(185,28,28,0.16)]",
+  medium: "border-stone-700/75 text-stone-400 shadow-[0_0_18px_rgba(68,64,60,0.18)]",
+  good: "border-emerald-700/75 text-emerald-500 shadow-[0_0_18px_rgba(4,120,87,0.16)]",
+};
+
 export const RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-950/20 bg-red-50/80 text-red-950 hover:border-red-700",
   medium: "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-950",

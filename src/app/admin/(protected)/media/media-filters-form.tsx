@@ -24,7 +24,7 @@ type AdminMediaFiltersFormProps = {
   mediaCarrierFilter: number | null;
   mediaCarriers: Array<{
     id: number;
-    mediaType: MediaType;
+    mediaTypes: MediaType[];
     name: string;
   }>;
   mediaTypeFilter: MediaTypeFilter;
@@ -178,7 +178,7 @@ export function AdminMediaFiltersForm({
   const availableMediaCarriers =
     mediaTypeFilter === "all"
       ? []
-      : mediaCarriers.filter((carrier) => carrier.mediaType === mediaTypeFilter);
+      : mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(mediaTypeFilter));
 
   return (
     <div className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">

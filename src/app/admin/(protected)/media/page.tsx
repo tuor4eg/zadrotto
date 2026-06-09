@@ -70,7 +70,7 @@ function parseMediaCarrierFilter(
   }
 
   return input.mediaCarriers.some(
-    (carrier) => carrier.id === parsed && carrier.mediaType === input.mediaTypeFilter,
+    (carrier) => carrier.id === parsed && carrier.mediaTypes.includes(input.mediaTypeFilter),
   )
     ? parsed
     : null;

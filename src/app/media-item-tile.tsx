@@ -22,6 +22,7 @@ type MediaItemTileItem = {
 };
 
 type ArchiveCoverProps = {
+  carrierFrameSize?: "default" | "compact";
   className?: string;
   carrierFrame?: boolean;
   item: {
@@ -41,24 +42,139 @@ type MediaItemTileProps = {
   selected?: boolean;
 };
 
+function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
+  const labelClassName = `relative z-10 inline-block rounded-sm px-2 py-1 text-center font-semibold uppercase shadow-[0_1px_0_rgba(255,255,255,0.45)] ${
+    frame.fontClassName ?? "font-mono tracking-[0.12em]"
+  }`;
+  const layerClassName = frame.coverLayer === "above-frame" ? "z-20" : "z-0";
+
+  if (frame.placeholderVariant === "dos-disk-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[2%] border border-stone-300/55 bg-[linear-gradient(180deg,#fffdf5_0%,#f2ecd8_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-0 top-[31%] h-px bg-blue-900/13 shadow-[0_1.05rem_0_rgba(30,58,138,0.13),0_2.1rem_0_rgba(30,58,138,0.13)]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute bottom-1.5 right-2 h-3 w-9 border-b border-r border-red-900/20"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-stone-50/80 text-[9px] leading-4 text-stone-950/72`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  if (frame.placeholderVariant === "eight-bit-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[1%] border border-stone-950/30 bg-[linear-gradient(180deg,#f8f4df_0%,#e2d8bf_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-3 top-2 h-px bg-stone-950/18 shadow-[0_0.55rem_0_rgba(28,25,23,0.14),0_1.1rem_0_rgba(28,25,23,0.1)]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute bottom-2 right-2 h-2.5 w-8 border-b border-r border-stone-950/18"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-stone-50/76 text-[8px] leading-4 text-stone-950/78`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  if (frame.placeholderVariant === "vhs-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[4%] border border-stone-950/14 bg-[linear-gradient(180deg,#f7f3ea_0%,#e3ded3_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-3 top-4 h-px bg-stone-950/12 shadow-[0_0.72rem_0_rgba(28,25,23,0.1),0_1.44rem_0_rgba(28,25,23,0.08)]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute bottom-3 left-3 right-3 h-px bg-stone-950/12"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-stone-50/78 text-[9px] leading-4 text-stone-950/72`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span
+      className={`absolute overflow-hidden rounded-[1%] border border-stone-950/28 bg-[linear-gradient(180deg,#f7f7f5_0%,#d7d3ca_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] ${layerClassName} ${frame.coverAreaClassName}`}
+    >
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-0 top-0 h-2 bg-stone-950/14"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute inset-x-3 bottom-2 h-px bg-stone-950/16 shadow-[0_-0.55rem_0_rgba(28,25,23,0.1)]"
+      />
+      <span className="relative z-10 grid h-full place-items-center">
+        <span
+          className={`${labelClassName} bg-stone-50/76 text-[9px] leading-4 text-stone-950/78`}
+        >
+          Нет изображения
+        </span>
+      </span>
+    </span>
+  );
+}
+
 function CartridgeCover({
+  carrierFrameSize = "default",
   className,
   frame,
   item,
 }: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
+  const coverLayerClassName =
+    frame.coverLayer === "above-frame" ? "z-20" : "z-0";
+  const sizeClassName =
+    carrierFrameSize === "compact"
+      ? frame.compactSizeClassName ?? frame.sizeClassName
+      : frame.sizeClassName;
+
   return (
     <div
       role="img"
       aria-label={
         item.coverUrl
-          ? `Обложка на картридже: ${item.title}`
+          ? `Обложка на носителе: ${item.title}`
           : `Обложка не добавлена: ${item.title}`
       }
       className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
     >
-      <span className={`relative block ${frame.aspectRatioClassName} w-[96%] max-w-full`}>
+      <span
+        className={`relative block ${frame.aspectRatioClassName} ${
+          sizeClassName ?? "w-[96%] max-w-full"
+        }`}
+      >
         {item.coverUrl ? (
-          <span className={`absolute overflow-hidden rounded-[2%] ${frame.coverAreaClassName}`}>
+          <span
+            className={`absolute overflow-hidden rounded-[2%] ${coverLayerClassName} ${frame.coverAreaClassName}`}
+          >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={item.coverUrl}
@@ -68,20 +184,14 @@ function CartridgeCover({
             />
           </span>
         ) : (
-          <span className={`absolute grid place-items-center px-4 ${frame.coverAreaClassName}`}>
-            <span
-              className={`rounded-sm bg-stone-50/70 px-3 py-2 text-center text-[10px] font-semibold uppercase leading-5 text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)] ${frame.fontClassName ?? "font-mono tracking-[0.18em]"}`}
-            >
-              Нет изображения
-            </span>
-          </span>
+          <MediaCarrierCoverPlaceholder frame={frame} />
         )}
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={frame.assetPath}
           alt=""
           aria-hidden="true"
-          className="absolute inset-0 h-full w-full object-contain"
+          className="absolute inset-0 z-10 h-full w-full object-contain"
         />
       </span>
     </div>
@@ -89,6 +199,7 @@ function CartridgeCover({
 }
 
 export function ArchiveCover({
+  carrierFrameSize = "default",
   carrierFrame = true,
   className,
   item,
@@ -97,7 +208,14 @@ export function ArchiveCover({
   const mediaCarrierFrame = carrierFrame ? getMediaCarrierFrame(item) : null;
 
   if (mediaCarrierFrame?.renderKind === "cartridge") {
-    return <CartridgeCover className={className} frame={mediaCarrierFrame} item={item} />;
+    return (
+      <CartridgeCover
+        carrierFrameSize={carrierFrameSize}
+        className={className}
+        frame={mediaCarrierFrame}
+        item={item}
+      />
+    );
   }
 
   if (item.coverUrl) {

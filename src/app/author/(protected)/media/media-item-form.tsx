@@ -52,7 +52,7 @@ export function MediaItemForm({
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
   const availableMediaCarriers = useMemo(
-    () => mediaCarriers.filter((carrier) => carrier.mediaType === selectedMediaType),
+    () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
   );
 
@@ -107,7 +107,7 @@ export function MediaItemForm({
                 !mediaCarriers.some(
                   (carrier) =>
                     String(carrier.id) === selectedMediaCarrierId &&
-                    carrier.mediaType === nextMediaType,
+                    carrier.mediaTypes.includes(nextMediaType),
                 )
               ) {
                 setSelectedMediaCarrierId("");

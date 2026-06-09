@@ -4,9 +4,13 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:webpack": "next dev --webpack",
     "build": "next build",
     "start": "next start",
     "test": "tsx --test tests/*.test.ts",
+    "typecheck": "tsc --noEmit --incremental --project tsconfig.typecheck.json",
+    "check": "npm run typecheck && npm run lint && npm test",
+    "clean:next": "rm -rf .next",
     "lint": "eslint",
     "hooks:install": "git config core.hooksPath .githooks",
     "db:generate": "drizzle-kit generate",

@@ -6,9 +6,15 @@ import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
+import {
+  DosTerminalRatingContent,
+  NesRatingPanelContent,
+  VhsRatingPanelContent,
+} from "@/app/media-rating-panel";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { formatFirstExperiencedDate } from "@/lib/authors/experience-date";
+import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { formatScore } from "@/lib/ratings/score";
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 
@@ -25,6 +31,7 @@ type MediaItemRatingDialogProps = {
   currentAuthorScore: number | null;
   panelDisplayClassName?: string;
   panelLabelClassName?: string;
+  panelVariant?: MediaCarrierRatingPanelVariant;
   size?: "card" | "compact";
 };
 
@@ -57,6 +64,7 @@ export function MediaItemRatingPanel({
   onOpen,
   panelDisplayClassName,
   panelLabelClassName,
+  panelVariant,
   size = "card",
 }: MediaItemRatingPanelProps) {
   const isCompact = size === "compact";
@@ -66,17 +74,22 @@ export function MediaItemRatingPanel({
   );
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
-  const ratingPanelClassName = isCompact
-    ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
-        currentAuthor
-          ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
-          : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
-      }`
-    : `group relative w-full cursor-pointer rounded-md border p-4 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(28,25,23,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
-        currentAuthor
-          ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
-          : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
-      }`;
+  const isDosTerminalPanel = panelVariant === "dos-terminal";
+  const isVhsPosterPanel = panelVariant === "vhs-poster";
+  const isStandalonePanel = isDosTerminalPanel || isVhsPosterPanel;
+  const ratingPanelClassName = isStandalonePanel
+    ? "group relative block w-full min-w-[82px] cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+    : isCompact
+      ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+          currentAuthor
+            ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
+            : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
+        }`
+      : `group relative w-full cursor-pointer rounded-md border p-4 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(28,25,23,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+          currentAuthor
+            ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
+            : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
+        }`;
   const labelClassName = isCompact
     ? `block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase ${
         currentAuthor ? "opacity-75" : "text-stone-500"
@@ -93,12 +106,44 @@ export function MediaItemRatingPanel({
       : `mt-2 block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
-  const content = (
+  const content = isDosTerminalPanel ? (
+    <DosTerminalRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix="Знакомство: "
+      footer="C:\\USER>"
+      label="Ваша оценка"
+      score={currentAuthor ? currentAuthorScore : null}
+      toneSource="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isVhsPosterPanel ? (
+    <VhsRatingPanelContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : panelVariant === "nes-hearts" ? (
+    <NesRatingPanelContent
+      compact={isCompact}
+      compactLabel="Моя"
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      displayFontClassName={panelDisplayClassName ?? "font-serif"}
+      emptyHelper="чтобы поставить оценку"
+      label="Ваша оценка"
+      labelFontClassName={panelLabelClassName ?? "font-mono tracking-[0.14em]"}
+      score={currentAuthor ? currentAuthorScore : null}
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : (
     <>
       <span className={labelClassName}>{isCompact ? "Моя" : "Ваша оценка"}</span>
-      <span className={valueClassName}>
-        {currentAuthor ? formatScore(currentAuthorScore) : "Войти"}
-      </span>
+      <span className={valueClassName}>{currentAuthor ? formatScore(currentAuthorScore) : "Войти"}</span>
       {!isCompact ? (
         currentAuthor ? (
           <>
@@ -247,6 +292,7 @@ export function MediaItemRatingDialog({
   currentAuthorScore,
   panelDisplayClassName,
   panelLabelClassName,
+  panelVariant,
   size = "card",
 }: MediaItemRatingDialogProps) {
   const [isOpen, setIsOpen] = useState(false);
@@ -264,6 +310,7 @@ export function MediaItemRatingDialog({
         onOpen={() => setIsOpen(true)}
         panelDisplayClassName={panelDisplayClassName}
         panelLabelClassName={panelLabelClassName}
+        panelVariant={panelVariant}
         size={size}
       />
 

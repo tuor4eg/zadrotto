@@ -1,12 +1,12 @@
 import { asc, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { mediaCarriers, mediaItems, mediaTypes } from "@/db/schema";
+import { mediaCarrierMediaTypes, mediaItems, mediaTypes } from "@/db/schema";
 import type { MediaTypeFormInput } from "@/lib/forms/media-type";
 import type { MediaTypeOption } from "@/lib/media/types";
 
 const mediaItemsCountSql = sql<number>`count(distinct ${mediaItems.id})::int`;
-const mediaCarriersCountSql = sql<number>`count(distinct ${mediaCarriers.id})::int`;
+const mediaCarriersCountSql = sql<number>`count(distinct ${mediaCarrierMediaTypes.mediaCarrierId})::int`;
 const otherMediaTypeLastSql = sql`case when ${mediaTypes.code} = 'other' then 1 else 0 end`;
 
 export async function getMediaTypeOptions(): Promise<MediaTypeOption[]> {
@@ -38,7 +38,7 @@ export async function getAdminMediaTypes() {
     })
     .from(mediaTypes)
     .leftJoin(mediaItems, eq(mediaItems.mediaType, mediaTypes.code))
-    .leftJoin(mediaCarriers, eq(mediaCarriers.mediaType, mediaTypes.code))
+    .leftJoin(mediaCarrierMediaTypes, eq(mediaCarrierMediaTypes.mediaType, mediaTypes.code))
     .groupBy(
       mediaTypes.id,
       mediaTypes.code,
@@ -60,7 +60,7 @@ export async function getMediaTypeById(id: number) {
     })
     .from(mediaTypes)
     .leftJoin(mediaItems, eq(mediaItems.mediaType, mediaTypes.code))
-    .leftJoin(mediaCarriers, eq(mediaCarriers.mediaType, mediaTypes.code))
+    .leftJoin(mediaCarrierMediaTypes, eq(mediaCarrierMediaTypes.mediaType, mediaTypes.code))
     .where(eq(mediaTypes.id, id))
     .groupBy(
       mediaTypes.id,

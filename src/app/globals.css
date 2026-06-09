@@ -24,6 +24,22 @@
   src: url("/fonts/dot-gothic-16-regular.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/oswald-regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Oswald";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/oswald-semibold.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -167,6 +183,33 @@ body {
 
 .media-carrier-font-sega {
   font-family: "DotGothic16", "Courier New", monospace;
+}
+
+.media-carrier-font-pc-dos {
+  font-family: "IBM Plex Mono", "Courier New", monospace;
+}
+
+.media-carrier-font-vhs {
+  font-family: "Oswald", "Arial Narrow", Arial, sans-serif;
+  letter-spacing: 0.02em;
+}
+
+@keyframes media-carrier-title-cursor-blink {
+  0%,
+  45% {
+    opacity: 1;
+  }
+
+  46%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.media-carrier-title-cursor {
+  display: inline-block;
+  margin-left: 0.04em;
+  animation: media-carrier-title-cursor-blink 1s steps(1, end) infinite;
 }
 
 .media-image-lift-trigger,

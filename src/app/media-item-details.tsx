@@ -1,7 +1,9 @@
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
+import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
+import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
@@ -306,7 +308,9 @@ function ArchiveMediaItemDetails({
                 <div
                   className={
                     hasCarrierFrame
-                      ? "relative aspect-[4/3] overflow-visible rounded-sm"
+                      ? `relative ${
+                          mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
+                        } overflow-visible rounded-sm`
                       : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
                   }
                 >
@@ -350,7 +354,7 @@ function ArchiveMediaItemDetails({
                       : "font-serif text-4xl leading-none text-stone-950 sm:text-6xl"
                   }
                 >
-                  {item.title}
+                  <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
                 </div>
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
@@ -392,22 +396,14 @@ function ArchiveMediaItemDetails({
               </dl>
 
               <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <div
-                  className={`rounded-md border p-4 text-center ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)]}`}
-                >
-                  <div className={`${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
-                    Оценка архива
-                  </div>
-                  <div className={`mt-2 ${displayFontClassName} text-4xl tabular-nums sm:text-5xl`}>
-                    {formatScore(item.averageScore)}
-                  </div>
-                  <div className="mt-2 flex justify-center">
-                    <DetailRatingStars score={item.averageScore} />
-                  </div>
-                  <div className={`mt-2 ${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
-                    {formatRatingsCount(item.ratingsCount)}
-                  </div>
-                </div>
+                <ArchiveRatingPanel
+                  displayFontClassName={displayFontClassName}
+                  label="Оценка архива"
+                  labelFontClassName={labelFontClassName}
+                  ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
+                  ratingsCount={item.ratingsCount}
+                  score={item.averageScore}
+                />
 
                 {ratingSlot ?? (
                   <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
@@ -475,16 +471,5 @@ function ArchiveMediaItemDetails({
         </div>
       </article>
     </div>
-  );
-}
-
-function DetailRatingStars({ score }: { score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span className="font-mono text-2xl leading-none tracking-[0.16em] text-current" aria-hidden="true">
-      {"★".repeat(filledStars)}
-      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
-    </span>
   );
 }

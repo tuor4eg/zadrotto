@@ -8,7 +8,7 @@ import { notFound, redirect } from "next/navigation";
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { franchiseExistsById } from "@/db/queries/franchises";
-import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
+import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   deleteAuthorDraftMediaItem,
@@ -118,13 +118,13 @@ async function validateMediaCarrier(input: {
   mediaCarrierId: number | null;
   mediaType: MediaType;
 }) {
-  const mediaCarrierMediaType = input.mediaCarrierId
-    ? await getMediaCarrierMediaTypeById(input.mediaCarrierId)
+  const mediaCarrierMediaTypes = input.mediaCarrierId
+    ? await getMediaCarrierSupportedMediaTypesById(input.mediaCarrierId)
     : null;
 
   return validateMediaCarrierForMediaType({
     mediaCarrierId: input.mediaCarrierId,
-    mediaCarrierMediaType,
+    mediaCarrierMediaTypes,
     mediaType: input.mediaType,
   });
 }

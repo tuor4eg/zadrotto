@@ -14,6 +14,8 @@ import {
 } from "../src/lib/forms/author-media";
 import { generateEntityCode, slugifyCodePart } from "../src/lib/common/generated-code";
 import {
+  normalizeMediaCarrierCode,
+  parseMediaCarrierFormMediaTypes,
   parseRequiredMediaCarrierId,
   validateMediaCarrierForMediaType,
 } from "../src/lib/forms/media-carrier";
@@ -103,7 +105,7 @@ describe("author media form helpers", () => {
     assert.deepEqual(
       validateMediaCarrierForMediaType({
         mediaCarrierId: null,
-        mediaCarrierMediaType: null,
+        mediaCarrierMediaTypes: null,
         mediaType: "film",
       }),
       { ok: true },
@@ -111,7 +113,7 @@ describe("author media form helpers", () => {
     assert.deepEqual(
       validateMediaCarrierForMediaType({
         mediaCarrierId: 1,
-        mediaCarrierMediaType: null,
+        mediaCarrierMediaTypes: null,
         mediaType: "film",
       }),
       { ok: false, error: "invalid-carrier" },
@@ -119,7 +121,7 @@ describe("author media form helpers", () => {
     assert.deepEqual(
       validateMediaCarrierForMediaType({
         mediaCarrierId: 1,
-        mediaCarrierMediaType: "game",
+        mediaCarrierMediaTypes: ["game"],
         mediaType: "film",
       }),
       { ok: false, error: "carrier-media-type" },
@@ -127,11 +129,34 @@ describe("author media form helpers", () => {
     assert.deepEqual(
       validateMediaCarrierForMediaType({
         mediaCarrierId: 1,
-        mediaCarrierMediaType: "game",
+        mediaCarrierMediaTypes: ["film", "series", "anime"],
+        mediaType: "series",
+      }),
+      { ok: true },
+    );
+    assert.deepEqual(
+      validateMediaCarrierForMediaType({
+        mediaCarrierId: 1,
+        mediaCarrierMediaTypes: ["game"],
         mediaType: "game",
       }),
       { ok: true },
     );
+  });
+
+  it("parses media carrier form media types", () => {
+    assert.deepEqual(parseMediaCarrierFormMediaTypes(["film", "series", "film"]), [
+      "film",
+      "series",
+    ]);
+    assert.equal(parseMediaCarrierFormMediaTypes([]), null);
+    assert.equal(parseMediaCarrierFormMediaTypes(["film", "bad value"]), null);
+    assert.equal(parseMediaCarrierFormMediaTypes(["film", {} as FormDataEntryValue]), null);
+  });
+
+  it("normalizes media carrier codes", () => {
+    assert.equal(normalizeMediaCarrierCode(" VHS Tape "), "vhs-tape");
+    assert.equal(normalizeMediaCarrierCode("  "), "");
   });
 
   it("builds an ascii slug base from a title with a stable fallback", () => {

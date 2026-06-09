@@ -141,6 +141,13 @@
       "when": 1780833600000,
       "tag": "0019_cover_search_rate_limits",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780916400000,
+      "tag": "0020_media_carrier_media_types",
+      "breakpoints": true
     }
   ]
 }

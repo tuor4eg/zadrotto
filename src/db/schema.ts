@@ -178,14 +178,27 @@ export const mediaCarriers = pgTable(
     id: serial("id").primaryKey(),
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
-    mediaType: text("media_type")
-      .notNull()
-      .references(() => mediaTypes.code),
     description: text("description"),
     ...timestamps(),
   },
+);
+
+export const mediaCarrierMediaTypes = pgTable(
+  "media_carrier_media_types",
+  {
+    mediaCarrierId: integer("media_carrier_id")
+      .notNull()
+      .references(() => mediaCarriers.id, { onDelete: "cascade" }),
+    mediaType: text("media_type")
+      .notNull()
+      .references(() => mediaTypes.code),
+  },
   (table) => [
-    index("media_carriers_media_type_idx").on(table.mediaType),
+    primaryKey({
+      columns: [table.mediaCarrierId, table.mediaType],
+      name: "media_carrier_media_types_pk",
+    }),
+    index("media_carrier_media_types_media_type_idx").on(table.mediaType),
   ],
 );
 

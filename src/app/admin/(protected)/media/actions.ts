@@ -8,7 +8,7 @@ import { redirect } from "next/navigation";
 import { authorExistsById } from "@/db/queries/authors";
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { franchiseExistsById } from "@/db/queries/franchises";
-import { getMediaCarrierMediaTypeById } from "@/db/queries/media-carriers";
+import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   createAdminMediaItem,
@@ -128,13 +128,13 @@ async function validateMediaCarrier(input: {
   mediaCarrierId: number | null;
   mediaType: MediaType;
 }) {
-  const mediaCarrierMediaType = input.mediaCarrierId
-    ? await getMediaCarrierMediaTypeById(input.mediaCarrierId)
+  const mediaCarrierMediaTypes = input.mediaCarrierId
+    ? await getMediaCarrierSupportedMediaTypesById(input.mediaCarrierId)
     : null;
 
   return validateMediaCarrierForMediaType({
     mediaCarrierId: input.mediaCarrierId,
-    mediaCarrierMediaType,
+    mediaCarrierMediaTypes,
     mediaType: input.mediaType,
   });
 }

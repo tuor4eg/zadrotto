@@ -3,9 +3,7 @@ VALUES
   ('arcade', 'Arcade', 'game', NULL),
   ('book', 'Book', 'book', NULL),
   ('comic-book', 'Comic Book', 'comic', NULL),
-  ('dvd-anime', 'DVD', 'anime', NULL),
-  ('dvd-film', 'DVD', 'film', NULL),
-  ('dvd-series', 'DVD', 'series', NULL),
+  ('dvd', 'DVD', 'film', NULL),
   ('gamecube', 'GameCube', 'game', NULL),
   ('mobile', 'Mobile', 'game', NULL),
   ('n64', 'N64', 'game', NULL),
@@ -17,8 +15,7 @@ VALUES
   ('ps4', 'PS4', 'game', NULL),
   ('sega', 'Sega', 'game', NULL),
   ('snes', 'SNES', 'game', NULL),
-  ('streaming-film', 'Streaming', 'film', NULL),
-  ('streaming-series', 'Streaming', 'series', NULL),
+  ('streaming', 'Streaming', 'film', NULL),
   ('switch', 'Switch', 'game', NULL),
   ('wii', 'Wii', 'game', NULL),
   ('zx-spectrum', 'ZX Spectrum', 'game', NULL)
@@ -1016,14 +1013,14 @@ WHERE media_items.media_type = 'game'
 --> statement-breakpoint
 WITH starter_media_carriers(media_code, carrier_code) AS (
 VALUES
-  ('the-matrix', 'dvd-film'),
-  ('twin-peaks-season-1', 'dvd-series'),
+  ('the-matrix', 'dvd'),
+  ('twin-peaks-season-1', 'dvd'),
   ('dune', 'book'),
-  ('dune-part-one', 'streaming-film'),
+  ('dune-part-one', 'streaming'),
   ('watchmen', 'comic-book'),
-  ('neon-genesis-evangelion', 'dvd-anime'),
-  ('the-matrix-reloaded', 'dvd-film'),
-  ('twin-peaks-the-return', 'streaming-series')
+  ('neon-genesis-evangelion', 'dvd'),
+  ('the-matrix-reloaded', 'dvd'),
+  ('twin-peaks-the-return', 'streaming')
 )
 UPDATE media_items
 SET

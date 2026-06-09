@@ -64,6 +64,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               currentAuthorScore={item.currentAuthorScore}
               panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
               panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
+              panelVariant={mediaCarrierFrame?.ratingPanelVariant}
             />
           }
         />
