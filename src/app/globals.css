@@ -189,6 +189,10 @@ body {
   font-family: "IBM Plex Mono", "Courier New", monospace;
 }
 
+.media-carrier-font-pc-win9x {
+  font-family: Tahoma, Verdana, "MS Sans Serif", Arial, sans-serif;
+}
+
 .media-carrier-font-vhs {
   font-family: "Oswald", "Arial Narrow", Arial, sans-serif;
   letter-spacing: 0.02em;

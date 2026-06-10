@@ -10,6 +10,7 @@ import {
   DosTerminalRatingContent,
   NesRatingPanelContent,
   VhsRatingPanelContent,
+  Win9xRatingContent,
 } from "@/app/media-rating-panel";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
@@ -76,7 +77,8 @@ export function MediaItemRatingPanel({
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const isDosTerminalPanel = panelVariant === "dos-terminal";
   const isVhsPosterPanel = panelVariant === "vhs-poster";
-  const isStandalonePanel = isDosTerminalPanel || isVhsPosterPanel;
+  const isWin9xWindowPanel = panelVariant === "win9x-window";
+  const isStandalonePanel = isDosTerminalPanel || isVhsPosterPanel || isWin9xWindowPanel;
   const ratingPanelClassName = isStandalonePanel
     ? "group relative block w-full min-w-[82px] cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
@@ -123,6 +125,16 @@ export function MediaItemRatingPanel({
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
       label={isCompact ? "Моя" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isWin9xWindowPanel ? (
+    <Win9xRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}

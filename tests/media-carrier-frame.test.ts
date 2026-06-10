@@ -84,11 +84,40 @@ describe("media carrier frames", () => {
       false,
     );
     assert.equal(
-      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 1997 }),
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: null }),
       false,
     );
+  });
+
+  it("resolves PC Win9x jewel frame after the DOS release year period", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({
+        mediaType: "game",
+        mediaCarrierCode: "pc",
+        releaseYear: 1997,
+      }),
+      {
+        assetPath: "/mediaCarriers/game/pc/win9x/jewel.png",
+        aspectRatioClassName: "aspect-[10/9]",
+        coverAreaClassName: "left-[12.2%] top-[9.6%] h-[87.6%] w-[65.1%]",
+        displayFontClassName: "media-carrier-font-pc-win9x",
+        fontClassName: "media-carrier-font-pc-win9x",
+        labelFontClassName: "media-carrier-font-pc-win9x",
+        placeholderVariant: "win9x-jewel-label",
+        ratingPanelVariant: "win9x-window",
+        renderKind: "cartridge",
+        titleIconHeight: 123,
+        titleIconPath: "/mediaCarriers/game/pc/win9x/folder.png",
+        titleIconWidth: 160,
+        titleTemplate: "C:\\{title}",
+      },
+    );
     assert.equal(
-      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: null }),
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2003 }),
+      true,
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2004 }),
       false,
     );
   });
@@ -134,5 +163,9 @@ describe("media carrier frames", () => {
       "C:\\Dune II: The Building of a Dynasty>",
     );
     assert.equal(formatMediaCarrierTitle("Sonic the Hedgehog", getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "sega" })), "Sonic the Hedgehog");
+    assert.equal(
+      formatMediaCarrierTitle("Fallout", getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 1997 })),
+      "C:\\Fallout",
+    );
   });
 });

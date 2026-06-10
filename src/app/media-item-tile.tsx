@@ -120,6 +120,22 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
     );
   }
 
+  if (frame.placeholderVariant === "win9x-jewel-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[1%] border border-stone-950/35 bg-[#c0c0c0] p-1.5 shadow-[inset_1px_1px_0_rgba(255,255,255,0.9),inset_-1px_-1px_0_rgba(0,0,0,0.32)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-stone-100/90 text-[9px] leading-4 text-stone-950/78 shadow-[inset_1px_1px_0_rgba(255,255,255,0.85),inset_-1px_-1px_0_rgba(0,0,0,0.22)]`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
   return (
     <span
       className={`absolute overflow-hidden rounded-[1%] border border-stone-950/28 bg-[linear-gradient(180deg,#f7f7f5_0%,#d7d3ca_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] ${layerClassName} ${frame.coverAreaClassName}`}

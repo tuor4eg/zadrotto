@@ -6,11 +6,18 @@ export type MediaCarrierFramePlaceholderVariant =
   | "dos-disk-label"
   | "eight-bit-label"
   | "sixteen-bit-label"
+  | "win9x-jewel-label"
   | "vhs-label";
-export type MediaCarrierRatingPanelVariant = "dos-terminal" | "nes-hearts" | "vhs-poster";
+export type MediaCarrierRatingPanelVariant =
+  | "dos-terminal"
+  | "nes-hearts"
+  | "vhs-poster"
+  | "win9x-window";
 
 const PC_DOS_RELEASE_YEAR_FROM = 1981;
 const PC_DOS_RELEASE_YEAR_TO = 1996;
+const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
+const PC_WIN9X_RELEASE_YEAR_TO = 2003;
 
 export type MediaCarrierFrame = {
   assetPath: string;
@@ -26,7 +33,10 @@ export type MediaCarrierFrame = {
   ratingPanelVariant?: MediaCarrierRatingPanelVariant;
   renderKind: MediaCarrierFrameRenderKind;
   sizeClassName?: string;
+  titleIconHeight?: number;
   titleCursor?: string;
+  titleIconPath?: string;
+  titleIconWidth?: number;
   titleTemplate?: string;
   viewportClassName?: string;
 };
@@ -61,6 +71,21 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
     titleCursor: "_",
     titleTemplate: "C:\\{title}>",
+  },
+  "game/pc/win9x": {
+    assetPath: "/mediaCarriers/game/pc/win9x/jewel.png",
+    aspectRatioClassName: "aspect-[10/9]",
+    coverAreaClassName: "left-[12.2%] top-[9.6%] h-[87.6%] w-[65.1%]",
+    displayFontClassName: "media-carrier-font-pc-win9x",
+    fontClassName: "media-carrier-font-pc-win9x",
+    labelFontClassName: "media-carrier-font-pc-win9x",
+    placeholderVariant: "win9x-jewel-label",
+    ratingPanelVariant: "win9x-window",
+    renderKind: "cartridge",
+    titleIconHeight: 123,
+    titleIconPath: "/mediaCarriers/game/pc/win9x/folder.png",
+    titleIconWidth: 160,
+    titleTemplate: "C:\\{title}",
   },
   "game/sega": {
     assetPath: "/mediaCarriers/game/sega/cartridge.png",
@@ -109,6 +134,15 @@ function isPcDosReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isPcWin9xReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= PC_WIN9X_RELEASE_YEAR_FROM &&
+    releaseYear <= PC_WIN9X_RELEASE_YEAR_TO
+  );
+}
+
 export function getMediaCarrierFrame(
   item: MediaCarrierFrameInput,
 ): MediaCarrierFrame | null {
@@ -116,10 +150,15 @@ export function getMediaCarrierFrame(
     return null;
   }
 
-  if (
-    `${item.mediaType}/${item.mediaCarrierCode}` === "game/pc" &&
-    !isPcDosReleaseYear(item.releaseYear)
-  ) {
+  if (`${item.mediaType}/${item.mediaCarrierCode}` === "game/pc") {
+    if (isPcDosReleaseYear(item.releaseYear)) {
+      return MEDIA_CARRIER_FRAMES["game/pc"] ?? null;
+    }
+
+    if (isPcWin9xReleaseYear(item.releaseYear)) {
+      return MEDIA_CARRIER_FRAMES["game/pc/win9x"] ?? null;
+    }
+
     return null;
   }
 

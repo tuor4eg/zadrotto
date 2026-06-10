@@ -3,7 +3,9 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
+  AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
+  AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES,
   getRatingTone,
 } from "@/lib/ratings/tone";
 
@@ -20,6 +22,16 @@ type DosTerminalRatingContentProps = {
   label: string;
   score: number | null;
   toneSource?: "average" | "author";
+  value?: string;
+};
+
+type Win9xRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
   value?: string;
 };
 
@@ -71,6 +83,90 @@ function RatingHearts({ score }: { score: number | null }) {
           <img src={NES_HEART_PATH} alt="" className="h-5 w-auto object-contain" />
         </span>
       ))}
+    </span>
+  );
+}
+
+function Win9xRatingStars({ className, score, compact = false }: { className?: string; compact?: boolean; score: number | null }) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`whitespace-nowrap leading-none ${
+        compact ? "text-xl tracking-[0.08em]" : "text-3xl tracking-[0.12em]"
+      } ${className ?? ""}`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
+      ))}
+    </span>
+  );
+}
+
+export function Win9xRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: Win9xRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const titleBarClassName =
+    tone === "author"
+      ? "bg-gradient-to-r from-[#005f5f] to-[#078080]"
+      : "bg-gradient-to-r from-[#061c86] to-[#163ca8]";
+  const panelPaddingClassName = compact ? "px-2 pb-2 pt-1.5" : "px-3 pb-3 pt-2";
+  const valueClassName = compact ? "text-4xl leading-none" : "text-6xl leading-none";
+  const detailText = detail ?? "";
+  const ratingTone = getRatingTone(score);
+  const ratingToneClassName =
+    tone === "author"
+      ? AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES[ratingTone]
+      : AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES[ratingTone];
+
+  return (
+    <span
+      className={`media-carrier-font-pc-win9x block min-h-full border border-[#202020] bg-[#d6d2c8] text-center text-[#111] shadow-[0_0_0_1px_#f4f1e8,2px_2px_0_#5f5b54,inset_2px_2px_0_#ffffff,inset_-2px_-2px_0_#7b776f] ${
+        compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
+      }`}
+    >
+      <span className={`flex items-center justify-between gap-2 px-1 py-1 text-left text-white ${titleBarClassName}`}>
+        <span
+          className={`block truncate uppercase ${
+            compact ? "text-[9px] leading-3" : "text-[11px] leading-4"
+          }`}
+        >
+          {label}
+        </span>
+        <span
+          aria-hidden="true"
+          className={`grid shrink-0 place-items-center border border-[#1f1f1f] bg-[#c7c3b9] text-[#111] shadow-[inset_1px_1px_0_#fff,inset_-1px_-1px_0_#6f6a62] ${
+            compact ? "size-3 text-[9px] leading-none" : "size-5 text-sm leading-none"
+          }`}
+        >
+          ×
+        </span>
+      </span>
+      <span className={`flex flex-col items-center justify-between ${panelPaddingClassName} ${ratingToneClassName}`}>
+        <span className={`${valueClassName} block tabular-nums`}>
+          {value ?? formatScore(score)}
+        </span>
+        {!hasValueOverride ? (
+          <span className={compact ? "mt-1 block" : "mt-2 block"}>
+            <Win9xRatingStars compact={compact} score={score} />
+          </span>
+        ) : null}
+        <span
+          className={`block min-h-5 uppercase ${
+            compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+          } ${detailText ? "" : "opacity-0"}`}
+        >
+          {detailText ? `${detailPrefix}${detailText}` : "—"}
+        </span>
+      </span>
     </span>
   );
 }
@@ -316,6 +412,18 @@ export function ArchiveRatingPanel({
   if (ratingPanelVariant === "vhs-poster") {
     return (
       <VhsRatingPanelContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "win9x-window") {
+    return (
+      <Win9xRatingContent
         compact={compact}
         detail={formatRatingsCount(ratingsCount)}
         label={label}

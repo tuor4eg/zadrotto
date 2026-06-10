@@ -24,6 +24,18 @@ export const AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES: Record<RatingTone, string>
   good: "border-emerald-700/75 text-emerald-500 shadow-[0_0_18px_rgba(4,120,87,0.16)]",
 };
 
+export const AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-900/80",
+  medium: "text-stone-800",
+  good: "text-emerald-900/80",
+};
+
+export const AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-700",
+  medium: "text-stone-950",
+  good: "text-emerald-700",
+};
+
 export const RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-950/20 bg-red-50/80 text-red-950 hover:border-red-700",
   medium: "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-950",
