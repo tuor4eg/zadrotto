@@ -265,19 +265,27 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
 }
 
 export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
-  return db
+  const items = await db
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
+      coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
       releaseYear: mediaItems.releaseYear,
       publicationStatus: mediaItems.publicationStatus,
     })
     .from(mediaItems)
     .where(eq(mediaItems.franchiseId, franchiseId))
     .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
+
+  return items.map((item) => ({
+    ...item,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+  }));
 }
 
 export async function getAdminMediaItemsAvailableForFranchise(franchiseId: number) {

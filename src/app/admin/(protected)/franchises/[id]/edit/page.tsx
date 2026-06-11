@@ -38,6 +38,36 @@ function parseFranchiseId(value: string) {
   return Number.isInteger(id) && id > 0 ? id : null;
 }
 
+function AdminFranchiseMediaCoverThumb({
+  coverUrl,
+  title,
+}: {
+  coverUrl: string | null;
+  title: string;
+}) {
+  if (!coverUrl) {
+    return (
+      <span
+        aria-label={`Обложка не добавлена: ${title}`}
+        className="inline-flex h-9 w-7 shrink-0 items-center justify-center rounded-sm border border-dashed border-stone-300 bg-stone-50 text-[9px] font-medium uppercase leading-none text-stone-400"
+        title="Обложка не добавлена"
+      >
+        нет
+      </span>
+    );
+  }
+
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={coverUrl}
+      alt={`Обложка: ${title}`}
+      className="h-9 w-7 shrink-0 rounded-sm border border-stone-200 bg-stone-100 object-cover shadow-sm"
+      loading="lazy"
+    />
+  );
+}
+
 export default async function EditFranchisePage({
   params,
   searchParams,
@@ -118,7 +148,12 @@ export default async function EditFranchisePage({
           ) : (
             <div className="divide-y divide-stone-100 rounded-lg border border-stone-200">
               {mediaItems.map((item) => (
-                <div key={item.id} className="flex items-start gap-2 p-3">
+                <div key={item.id} className="flex items-center gap-2 p-3">
+                  <AdminFranchiseMediaCoverThumb
+                    coverUrl={item.coverThumbUrl ?? item.coverUrl}
+                    title={item.title}
+                  />
+
                   <Link
                     href={`/admin/media/${item.id}/edit`}
                     className="min-w-0 flex-1 rounded-md outline-none transition-colors hover:text-stone-700 focus-visible:ring-2 focus-visible:ring-stone-900/20"

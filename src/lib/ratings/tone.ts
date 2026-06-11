@@ -36,6 +36,18 @@ export const AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = 
   good: "text-emerald-700",
 };
 
+export const AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-800",
+  medium: "text-sky-800",
+  good: "text-emerald-800",
+};
+
+export const AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-700",
+  medium: "text-sky-700",
+  good: "text-emerald-700",
+};
+
 export const RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-950/20 bg-red-50/80 text-red-950 hover:border-red-700",
   medium: "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-950",

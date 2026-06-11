@@ -3,8 +3,10 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
+  AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
+  AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
   AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES,
   getRatingTone,
 } from "@/lib/ratings/tone";
@@ -35,6 +37,16 @@ type Win9xRatingContentProps = {
   value?: string;
 };
 
+type WinDvdAeroRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
 type ArchiveRatingPanelProps = {
   compact?: boolean;
   displayFontClassName: string;
@@ -48,6 +60,8 @@ type ArchiveRatingPanelProps = {
 const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.png";
 const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/rating_all.png";
 const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/rating_my.png";
+const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.png";
+const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.png";
 
 function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
@@ -165,6 +179,115 @@ export function Win9xRatingContent({
           } ${detailText ? "" : "opacity-0"}`}
         >
           {detailText ? `${detailPrefix}${detailText}` : "—"}
+        </span>
+      </span>
+    </span>
+  );
+}
+
+function WinDvdAeroRatingMarks({
+  compact = false,
+  score,
+  toneClassName,
+}: {
+  compact?: boolean;
+  score: number | null;
+  toneClassName: string;
+}) {
+  const filledMarks = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`whitespace-nowrap leading-none ${compact ? "text-xl tracking-[0.06em]" : "text-3xl tracking-[0.1em]"}`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span
+          key={index}
+          className={index < filledMarks ? `${toneClassName} drop-shadow-[0_1px_0_rgba(255,255,255,0.78)]` : "text-slate-400/70"}
+        >
+          ★
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function WinDvdAeroRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: WinDvdAeroRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const ratingTone = getRatingTone(score);
+  const ratingToneClassName =
+    tone === "author"
+      ? AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone]
+      : AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone];
+
+  return (
+    <span
+      className={`media-carrier-font-pc-windvd block overflow-hidden rounded-xl border border-sky-900/30 bg-[linear-gradient(180deg,rgba(235,249,255,0.94),rgba(210,229,240,0.86))] text-left text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.88)] backdrop-blur ${
+        compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
+      }`}
+    >
+      <span className="flex items-center gap-2 border-b border-sky-700/25 bg-[linear-gradient(180deg,rgba(235,249,255,0.95),rgba(92,156,202,0.72)_52%,rgba(220,239,250,0.92))] px-2 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={WINDVD_AERO_ICON_PATH}
+          alt=""
+          className={compact ? "size-4 shrink-0" : "size-6 shrink-0"}
+          aria-hidden="true"
+        />
+        <span className={`block flex-1 truncate uppercase text-slate-900 ${compact ? "text-[9px]" : "text-xs"}`}>
+          {label}
+        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={WINDVD_AERO_BUTTONS_PATH}
+          alt=""
+          className={compact ? "h-3 w-auto shrink-0 self-start" : "h-5 w-auto shrink-0 self-start"}
+          aria-hidden="true"
+        />
+      </span>
+      <span className={compact ? "block px-1.5 pb-1.5 pt-0" : "block px-2 pb-2 pt-0"}>
+        <span
+          className={`flex flex-col items-center justify-between rounded-lg border border-sky-700/24 bg-transparent text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.46)] ${
+            compact ? "px-1.5 py-2" : "px-3 py-3"
+          }`}
+        >
+        <span
+          className={`grid place-items-center rounded-xl border border-current/35 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.98)_0%,rgba(226,244,255,0.86)_45%,rgba(125,201,239,0.72)_100%)] shadow-[0_10px_24px_rgba(14,165,233,0.18),inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-10px_18px_rgba(3,105,161,0.12)] ${
+            compact ? "size-14 text-4xl" : "size-20 text-6xl"
+          } ${ratingToneClassName} font-semibold leading-none tabular-nums`}
+        >
+          {value ?? formatScore(score)}
+        </span>
+        {!hasValueOverride ? (
+          <span className={compact ? "mt-1 block" : "mt-2 block"}>
+            <WinDvdAeroRatingMarks
+              compact={compact}
+              score={score}
+              toneClassName={ratingToneClassName}
+            />
+          </span>
+        ) : (
+          <span className={`${compact ? "mt-1 text-xs" : "mt-2 text-sm"} uppercase text-red-900`}>
+            чтобы поставить оценку
+          </span>
+        )}
+        <span
+          className={`block min-h-5 uppercase text-slate-800 ${
+            compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+          } ${detailText ? "" : "opacity-0"}`}
+        >
+          {detailText ? `${detailPrefix}${detailText}` : "—"}
+        </span>
         </span>
       </span>
     </span>
@@ -424,6 +547,18 @@ export function ArchiveRatingPanel({
   if (ratingPanelVariant === "win9x-window") {
     return (
       <Win9xRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "windvd-aero") {
+    return (
+      <WinDvdAeroRatingContent
         compact={compact}
         detail={formatRatingsCount(ratingsCount)}
         label={label}

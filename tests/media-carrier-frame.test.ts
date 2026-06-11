@@ -118,6 +118,43 @@ describe("media carrier frames", () => {
     );
     assert.equal(
       hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2004 }),
+      true,
+    );
+  });
+
+  it("resolves PC Windows DVD frame after the Win9x release year period", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({
+        mediaType: "game",
+        mediaCarrierCode: "pc",
+        releaseYear: 2004,
+      }),
+      {
+        assetPath: "/mediaCarriers/game/pc/windvd/dvd.png",
+        aspectRatioClassName: "aspect-[3/4]",
+        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+        compactViewportClassName: "h-[min(32vh,300px)]",
+        coverAreaClassName: "left-[2.4%] top-[13.2%] h-[84.5%] w-[95.1%]",
+        displayFontClassName: "media-carrier-font-pc-windvd",
+        fontClassName: "media-carrier-font-pc-windvd",
+        labelFontClassName: "media-carrier-font-pc-windvd",
+        placeholderVariant: "win9x-jewel-label",
+        ratingPanelVariant: "windvd-aero",
+        renderKind: "cartridge",
+        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+        titleIconHeight: 124,
+        titleIconPath: "/mediaCarriers/game/pc/windvd/folder.png",
+        titleIconWidth: 128,
+        titleTemplate: "C ▸ {title}",
+        viewportClassName: "h-[min(58vh,520px)]",
+      },
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2012 }),
+      true,
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2013 }),
       false,
     );
   });
@@ -166,6 +203,10 @@ describe("media carrier frames", () => {
     assert.equal(
       formatMediaCarrierTitle("Fallout", getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 1997 })),
       "C:\\Fallout",
+    );
+    assert.equal(
+      formatMediaCarrierTitle("Mass Effect", getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2008 })),
+      "C ▸ Mass Effect",
     );
   });
 });

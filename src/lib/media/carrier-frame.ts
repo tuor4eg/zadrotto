@@ -12,12 +12,15 @@ export type MediaCarrierRatingPanelVariant =
   | "dos-terminal"
   | "nes-hearts"
   | "vhs-poster"
-  | "win9x-window";
+  | "win9x-window"
+  | "windvd-aero";
 
 const PC_DOS_RELEASE_YEAR_FROM = 1981;
 const PC_DOS_RELEASE_YEAR_TO = 1996;
 const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
 const PC_WIN9X_RELEASE_YEAR_TO = 2003;
+const PC_WINDVD_RELEASE_YEAR_FROM = PC_WIN9X_RELEASE_YEAR_TO + 1;
+const PC_WINDVD_RELEASE_YEAR_TO = 2012;
 
 export type MediaCarrierFrame = {
   assetPath: string;
@@ -87,6 +90,25 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     titleIconWidth: 160,
     titleTemplate: "C:\\{title}",
   },
+  "game/pc/windvd": {
+    assetPath: "/mediaCarriers/game/pc/windvd/dvd.png",
+    aspectRatioClassName: "aspect-[3/4]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[2.4%] top-[13.2%] h-[84.5%] w-[95.1%]",
+    displayFontClassName: "media-carrier-font-pc-windvd",
+    fontClassName: "media-carrier-font-pc-windvd",
+    labelFontClassName: "media-carrier-font-pc-windvd",
+    placeholderVariant: "win9x-jewel-label",
+    ratingPanelVariant: "windvd-aero",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    titleIconHeight: 124,
+    titleIconPath: "/mediaCarriers/game/pc/windvd/folder.png",
+    titleIconWidth: 128,
+    titleTemplate: "C ▸ {title}",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
   "game/sega": {
     assetPath: "/mediaCarriers/game/sega/cartridge.png",
     aspectRatioClassName: "aspect-[4/3]",
@@ -143,6 +165,15 @@ function isPcWin9xReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isPcWinDvdReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= PC_WINDVD_RELEASE_YEAR_FROM &&
+    releaseYear <= PC_WINDVD_RELEASE_YEAR_TO
+  );
+}
+
 export function getMediaCarrierFrame(
   item: MediaCarrierFrameInput,
 ): MediaCarrierFrame | null {
@@ -157,6 +188,10 @@ export function getMediaCarrierFrame(
 
     if (isPcWin9xReleaseYear(item.releaseYear)) {
       return MEDIA_CARRIER_FRAMES["game/pc/win9x"] ?? null;
+    }
+
+    if (isPcWinDvdReleaseYear(item.releaseYear)) {
+      return MEDIA_CARRIER_FRAMES["game/pc/windvd"] ?? null;
     }
 
     return null;

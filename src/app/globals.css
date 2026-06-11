@@ -40,6 +40,14 @@
   src: url("/fonts/oswald-semibold.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "Noto Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("/fonts/noto-sans.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -191,6 +199,10 @@ body {
 
 .media-carrier-font-pc-win9x {
   font-family: Tahoma, Verdana, "MS Sans Serif", Arial, sans-serif;
+}
+
+.media-carrier-font-pc-windvd {
+  font-family: "Noto Sans", Arial, Helvetica, sans-serif;
 }
 
 .media-carrier-font-vhs {
