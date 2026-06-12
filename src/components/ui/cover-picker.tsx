@@ -6,6 +6,7 @@ import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { CoverPreview } from "@/app/author/(protected)/media/cover-preview";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/common/utils";
+import { COVER_IMAGE_TYPES, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import type { SignedCoverCandidate } from "@/lib/covers/types";
 
 const EMPTY_FILE_LABEL = "Файл не выбран";
@@ -22,6 +23,8 @@ type CoverPickerValues = {
 type CoverPickerProps = {
   inputId: string;
   initialPreviewUrl?: string | null;
+  maxFileBytes?: number;
+  onFileRejected?: (error: "cover-too-large" | "cover-type") => void;
   values: CoverPickerValues;
   thumbnailClassName?: string;
 };
@@ -38,6 +41,8 @@ function hasCoverSearchInput(values: CoverPickerValues) {
 export function CoverPicker({
   inputId,
   initialPreviewUrl,
+  maxFileBytes = DEFAULT_COVER_MAX_BYTES,
+  onFileRejected,
   values,
   thumbnailClassName = "h-28 w-20 rounded object-cover",
 }: CoverPickerProps) {
@@ -63,6 +68,8 @@ export function CoverPicker({
   const isSearching = searchStatus === "loading" || isPending;
   const visibleCandidates =
     hasCoverSearchInput(values) && candidatesSearchKey === coverSearchKey ? candidates : [];
+  const isSupportedFileType = (file: File) =>
+    COVER_IMAGE_TYPES.some((type) => type === file.type);
 
   useEffect(() => {
     return () => {
@@ -195,6 +202,19 @@ export function CoverPicker({
           className="sr-only"
           onChange={(event) => {
             const file = event.target.files?.[0] ?? null;
+
+            if (file && !isSupportedFileType(file)) {
+              event.currentTarget.value = "";
+              onFileRejected?.("cover-type");
+              return;
+            }
+
+            if (file && file.size > maxFileBytes) {
+              event.currentTarget.value = "";
+              onFileRejected?.("cover-too-large");
+              return;
+            }
+
             const nextPreviewUrl = file ? URL.createObjectURL(file) : null;
 
             setIsCoverRemoved(false);

@@ -11,6 +11,8 @@ import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
 import { resolveCoverUrl } from "@/lib/services/minio";
+import { AuthorToasts, type AuthorToast } from "../author-toasts";
+import { getAuthorMediaFormErrorMessage } from "./messages";
 
 type MediaItemFormValues = {
   id?: number;
@@ -51,13 +53,17 @@ export function MediaItemForm({
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
+  const [localErrorToast, setLocalErrorToast] = useState<AuthorToast | null>(null);
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
   );
+  const toastMessages = localErrorToast ? [localErrorToast] : [];
 
   return (
     <form action={action} className="grid gap-5" noValidate>
+      <AuthorToasts messages={toastMessages} />
+
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -188,6 +194,13 @@ export function MediaItemForm({
               originalTitle,
               mediaType: selectedMediaType,
               releaseYear,
+            }}
+            onFileRejected={(error) => {
+              setLocalErrorToast({
+                id: `${error}-${Date.now()}`,
+                tone: "error",
+                text: getAuthorMediaFormErrorMessage(error) ?? "Не удалось выбрать обложку.",
+              });
             }}
             thumbnailClassName="h-28 w-20 object-cover"
           />

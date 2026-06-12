@@ -13,6 +13,7 @@ import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
+import { getAdminMediaErrorMessage } from "./messages";
 
 type MediaFormValues = {
   id?: number;
@@ -62,6 +63,7 @@ export function AdminMediaForm({
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
+  const [localErrorToast, setLocalErrorToast] = useState<AdminToast | null>(null);
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
@@ -69,6 +71,7 @@ export function AdminMediaForm({
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+    ...(localErrorToast ? [localErrorToast] : []),
   ] satisfies AdminToast[];
 
   return (
@@ -212,6 +215,13 @@ export function AdminMediaForm({
               originalTitle,
               mediaType: selectedMediaType,
               releaseYear,
+            }}
+            onFileRejected={(error) => {
+              setLocalErrorToast({
+                id: `${error}-${Date.now()}`,
+                tone: "error",
+                text: getAdminMediaErrorMessage(error) ?? "Не удалось выбрать обложку.",
+              });
             }}
           />
           <p className="text-xs text-stone-500">JPG, PNG или WebP до 5 МБ.</p>
