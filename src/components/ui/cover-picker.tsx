@@ -20,6 +20,8 @@ type CoverPickerValues = {
   releaseYear: string;
 };
 
+type CoverSearchValues = Pick<CoverPickerValues, "title" | "originalTitle" | "mediaType">;
+
 type CoverPickerProps = {
   inputId: string;
   initialPreviewUrl?: string | null;
@@ -34,7 +36,7 @@ type CoverCandidatesResponse = {
   error?: "author-rate-limit" | "rate-limit-unavailable";
 };
 
-function hasCoverSearchInput(values: CoverPickerValues) {
+function hasCoverSearchInput(values: CoverSearchValues) {
   return Boolean((values.originalTitle || values.title).trim() && values.mediaType.trim());
 }
 
@@ -60,14 +62,24 @@ export function CoverPicker({
     "idle" | "loading" | "empty" | "error" | "limited" | "unavailable"
   >("idle");
   const [isPending, startTransition] = useTransition();
-  const coverSearchKey = useMemo(
-    () => JSON.stringify(values),
-    [values],
+  const coverSearchValues = useMemo(
+    () => ({
+      title: values.title,
+      originalTitle: values.originalTitle,
+      mediaType: values.mediaType,
+    }),
+    [values.mediaType, values.originalTitle, values.title],
   );
-  const shouldSearch = !previewUrl && hasCoverSearchInput(values);
+  const coverSearchKey = useMemo(
+    () => JSON.stringify(coverSearchValues),
+    [coverSearchValues],
+  );
+  const shouldSearch = !previewUrl && hasCoverSearchInput(coverSearchValues);
   const isSearching = searchStatus === "loading" || isPending;
   const visibleCandidates =
-    hasCoverSearchInput(values) && candidatesSearchKey === coverSearchKey ? candidates : [];
+    hasCoverSearchInput(coverSearchValues) && candidatesSearchKey === coverSearchKey
+      ? candidates
+      : [];
   const isSupportedFileType = (file: File) =>
     COVER_IMAGE_TYPES.some((type) => type === file.type);
 
@@ -83,10 +95,7 @@ export function CoverPicker({
     const response = await fetch("/api/cover-candidates", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        ...values,
-        releaseYear: values.releaseYear ? Number(values.releaseYear) : null,
-      }),
+      body: JSON.stringify(coverSearchValues),
     });
 
     const data = (await response.json()) as CoverCandidatesResponse;
@@ -107,7 +116,7 @@ export function CoverPicker({
   };
 
   const searchCandidates = () => {
-    if (!hasCoverSearchInput(values)) {
+    if (!hasCoverSearchInput(coverSearchValues)) {
       setCandidates([]);
       setSearchStatus("idle");
       return;
@@ -247,17 +256,19 @@ export function CoverPicker({
             Удалить обложку
           </Button>
         ) : null}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={searchCandidates}
-          disabled={!hasCoverSearchInput(values) || isSearching}
-          title={isSearching ? "Идет поиск..." : "Обновить варианты"}
-        >
-          <RefreshCw className={cn("size-4", isSearching ? "animate-spin" : "")} />
-          {isSearching ? "Идет поиск..." : "Обновить варианты"}
-        </Button>
+        {!previewUrl ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={searchCandidates}
+            disabled={!hasCoverSearchInput(coverSearchValues) || isSearching}
+            title={isSearching ? "Идет поиск..." : "Обновить варианты"}
+          >
+            <RefreshCw className={cn("size-4", isSearching ? "animate-spin" : "")} />
+            {isSearching ? "Идет поиск..." : "Обновить варианты"}
+          </Button>
+        ) : null}
         <span className="min-w-0 truncate text-sm text-stone-500">{fileName}</span>
       </div>
 

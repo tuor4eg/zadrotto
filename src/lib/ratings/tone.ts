@@ -48,6 +48,30 @@ export const AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> =
   good: "text-emerald-700",
 };
 
+export const AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-800",
+  medium: "text-stone-700",
+  good: "text-emerald-800",
+};
+
+export const AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-700",
+  medium: "text-stone-700",
+  good: "text-emerald-700",
+};
+
+export const AVERAGE_PS1_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-800",
+  medium: "text-stone-300",
+  good: "text-emerald-800",
+};
+
+export const AUTHOR_PS1_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-700",
+  medium: "text-stone-300",
+  good: "text-emerald-700",
+};
+
 export const RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-950/20 bg-red-50/80 text-red-950 hover:border-red-700",
   medium: "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-stone-950",

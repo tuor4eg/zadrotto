@@ -20,23 +20,10 @@ type CoverCandidatesRequestBody = {
   title?: unknown;
   originalTitle?: unknown;
   mediaType?: unknown;
-  releaseYear?: unknown;
 };
 
 function normalizeOptionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function normalizeReleaseYear(value: unknown) {
-  if (value === null || value === undefined || value === "") {
-    return null;
-  }
-
-  const numberValue = typeof value === "number" ? value : Number(value);
-
-  return Number.isInteger(numberValue) && numberValue >= 0 && numberValue <= 9999
-    ? numberValue
-    : null;
 }
 
 export async function POST(request: Request) {
@@ -82,7 +69,7 @@ export async function POST(request: Request) {
       title,
       originalTitle,
       mediaType,
-      releaseYear: normalizeReleaseYear(body.releaseYear),
+      releaseYear: null,
     },
     undefined,
     {

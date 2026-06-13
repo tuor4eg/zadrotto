@@ -54,6 +54,27 @@ describe("media carrier frames", () => {
     );
   });
 
+  it("resolves PS1 jewel frame by carrier code", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "ps1" }),
+      {
+        assetPath: "/mediaCarriers/game/ps1/jewel.png",
+        aspectRatioClassName: "aspect-[209/208]",
+        coverAreaClassName: "left-[19.7%] top-[1.9%] h-[95%] w-[76.8%]",
+        displayFontClassName: "media-carrier-font-ps1",
+        fontClassName: "media-carrier-font-ps1",
+        labelFontClassName: "media-carrier-font-ps1",
+        placeholderVariant: "win9x-jewel-label",
+        ratingPanelVariant: "ps1-memory-card",
+        renderKind: "cartridge",
+      },
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "ps1", releaseYear: 1995 }),
+      true,
+    );
+  });
+
   it("resolves PC DOS disk frame only inside the DOS release year period", () => {
     assert.deepEqual(
       getMediaCarrierFrame({
@@ -159,11 +180,11 @@ describe("media carrier frames", () => {
     );
   });
 
-  it("resolves VHS frame only for films for now", () => {
+  it("resolves film carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs" }),
       {
-        assetPath: "/mediaCarriers/video/vhs.png",
+        assetPath: "/mediaCarriers/video/vhs/vhs.png",
         aspectRatioClassName: "aspect-[767/1463]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
@@ -179,7 +200,26 @@ describe("media carrier frames", () => {
         viewportClassName: "h-[min(58vh,520px)]",
       },
     );
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
+      {
+        assetPath: "/mediaCarriers/video/dvd/dvd.png",
+        aspectRatioClassName: "aspect-[357/490]",
+        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+        compactViewportClassName: "h-[min(32vh,300px)]",
+        coverAreaClassName: "left-[4.8%] top-[8%] h-[90.8%] w-[90.4%]",
+        displayFontClassName: "media-carrier-font-film-dvd",
+        fontClassName: "media-carrier-font-film-dvd",
+        labelFontClassName: "media-carrier-font-film-dvd",
+        placeholderVariant: "dvd-label",
+        ratingPanelVariant: "dvd-menu",
+        renderKind: "cartridge",
+        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+        viewportClassName: "h-[min(58vh,520px)]",
+      },
+    );
     assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "vhs" }), false);
+    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }), false);
   });
 
   it("keeps unknown carriers and empty carrier values frameless", () => {

@@ -8,7 +8,9 @@ import { Check, X } from "lucide-react";
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import {
   DosTerminalRatingContent,
+  DvdMenuRatingContent,
   NesRatingPanelContent,
+  Ps1RatingPanelContent,
   VhsRatingPanelContent,
   WinDvdAeroRatingContent,
   Win9xRatingContent,
@@ -80,10 +82,17 @@ export function MediaItemRatingPanel({
   const isVhsPosterPanel = panelVariant === "vhs-poster";
   const isWin9xWindowPanel = panelVariant === "win9x-window";
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
+  const isPs1MemoryCardPanel = panelVariant === "ps1-memory-card";
+  const isDvdMenuPanel = panelVariant === "dvd-menu";
   const isStandalonePanel =
-    isDosTerminalPanel || isVhsPosterPanel || isWin9xWindowPanel || isWinDvdAeroPanel;
+    isDvdMenuPanel ||
+    isDosTerminalPanel ||
+    isVhsPosterPanel ||
+    isWin9xWindowPanel ||
+    isWinDvdAeroPanel ||
+    isPs1MemoryCardPanel;
   const ratingPanelClassName = isStandalonePanel
-    ? "group relative block w-full min-w-[82px] cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+    ? "group relative block h-full w-full min-w-[82px] cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
       ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor
@@ -152,6 +161,26 @@ export function MediaItemRatingPanel({
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
     />
+  ) : isDvdMenuPanel ? (
+    <DvdMenuRatingContent
+      compact={isCompact}
+      footerLabel="Chapter"
+      footerValue={currentAuthor && firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : undefined}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isPs1MemoryCardPanel ? (
+    <Ps1RatingPanelContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
   ) : panelVariant === "nes-hearts" ? (
     <NesRatingPanelContent
       compact={isCompact}
@@ -175,20 +204,18 @@ export function MediaItemRatingPanel({
             <span className="mt-2 flex justify-center">
               <RatingStars score={currentAuthorScore} />
             </span>
-            {firstExperiencedDate ? (
-              <span className={`mt-3 block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase opacity-75`}>
-                Знакомство: {firstExperiencedDate}
-              </span>
-            ) : null}
+            <span className={`mt-3 block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase ${firstExperiencedDate ? "opacity-75" : "opacity-0"}`}>
+              {firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : "—"}
+            </span>
           </>
         ) : (
           <span className="mt-3 block text-sm leading-5 text-stone-600">
             чтобы поставить оценку
           </span>
         )
-      ) : currentAuthor && firstExperiencedDate ? (
-        <span className={`mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.08em]"} text-[9px] uppercase opacity-75`}>
-          {firstExperiencedDate}
+      ) : currentAuthor ? (
+        <span className={`mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.08em]"} text-[9px] uppercase ${firstExperiencedDate ? "opacity-75" : "opacity-0"}`}>
+          {firstExperiencedDate ?? "—"}
         </span>
       ) : null}
     </>

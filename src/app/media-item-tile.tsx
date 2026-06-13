@@ -72,6 +72,26 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
     );
   }
 
+  if (frame.placeholderVariant === "dvd-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[1%] border border-stone-950/16 bg-[linear-gradient(180deg,#f9fafb_0%,#f4f4f1_58%,#dfdbd2_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.75)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-4 top-4 h-px bg-stone-950/12 shadow-[0_0.72rem_0_rgba(28,25,23,0.1),0_1.44rem_0_rgba(28,25,23,0.08)]"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-stone-50/82 text-[9px] leading-4 text-stone-950/72`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
   if (frame.placeholderVariant === "eight-bit-label") {
     return (
       <span

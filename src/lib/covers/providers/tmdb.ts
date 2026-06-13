@@ -102,7 +102,6 @@ export function createTmdbProvider(mediaType: "film" | "series"): CoverProvider 
         include_adult: false,
         language: "ru-RU",
         page: 1,
-        [isSeries ? "first_air_date_year" : "primary_release_year"]: input.releaseYear,
       });
       const data = await fetchJson<TmdbSearchResponse>(url, {
         headers: { Authorization: `Bearer ${accessToken}` },

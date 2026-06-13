@@ -31,7 +31,6 @@ export const rawgProvider: CoverProvider = {
       key: apiKey,
       search: query,
       page_size: options.candidateLimit,
-      dates: input.releaseYear ? `${input.releaseYear}-01-01,${input.releaseYear}-12-31` : null,
     });
     const data = await fetchJson<RawgResponse>(url);
 

@@ -66,17 +66,6 @@ function escapeIgdbSearchQuery(value: string) {
   return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
 }
 
-function getReleaseYearCondition(releaseYear: number | null) {
-  if (!releaseYear) {
-    return "cover != null";
-  }
-
-  const yearStart = Math.floor(Date.UTC(releaseYear, 0, 1) / 1000);
-  const nextYearStart = Math.floor(Date.UTC(releaseYear + 1, 0, 1) / 1000);
-
-  return `cover != null & first_release_date >= ${yearStart} & first_release_date < ${nextYearStart}`;
-}
-
 function buildIgdbImageUrl(imageId: string) {
   return `https://images.igdb.com/igdb/image/upload/t_cover_big_2x/${imageId}.jpg`;
 }
@@ -118,7 +107,7 @@ export const igdbProvider: CoverProvider = {
       body: [
         "fields name,slug,url,first_release_date,rating,total_rating,cover.image_id,cover.width,cover.height;",
         `search "${escapeIgdbSearchQuery(query)}";`,
-        `where ${getReleaseYearCondition(input.releaseYear)};`,
+        "where cover != null;",
         `limit ${options.candidateLimit};`,
       ].join(" "),
     });

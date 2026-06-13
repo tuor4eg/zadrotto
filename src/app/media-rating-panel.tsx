@@ -1,10 +1,14 @@
 import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
+  AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AVERAGE_RATING_TONE_CLASS_NAMES,
+  AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
+  AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
+  AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
   AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
   AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES,
@@ -47,6 +51,28 @@ type WinDvdAeroRatingContentProps = {
   value?: string;
 };
 
+type DvdMenuRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  footerLabel: string;
+  footerValue?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
+type Ps1RatingPanelContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
 type ArchiveRatingPanelProps = {
   compact?: boolean;
   displayFontClassName: string;
@@ -58,8 +84,9 @@ type ArchiveRatingPanelProps = {
 };
 
 const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.png";
-const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/rating_all.png";
-const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/rating_my.png";
+const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_all.png";
+const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_my.png";
+const PS1_LOGO_PATH = "/mediaCarriers/game/ps1/ps1_logo.png";
 const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.png";
 const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.png";
 
@@ -95,6 +122,76 @@ function RatingHearts({ score }: { score: number | null }) {
         <span key={index} className={index < filledHearts ? "" : "opacity-25 grayscale"}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={NES_HEART_PATH} alt="" className="h-5 w-auto object-contain" />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Ps1RatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center leading-none text-[#183047] drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] ${
+        compact ? "gap-0.5 text-lg" : "gap-1 text-2xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index} className={index < filledStars ? "" : "text-stone-950/35"}>
+          {index < filledStars ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function Ps1ButtonMarks({ compact = false }: { compact?: boolean }) {
+  const marks = [
+    {
+      className: "text-emerald-700",
+      shape: "triangle",
+    },
+    {
+      className: "text-red-800",
+      shape: "circle",
+    },
+    {
+      className: "text-[#17355b]",
+      shape: "cross",
+    },
+    {
+      className: "text-purple-800",
+      shape: "square",
+    },
+  ] as const;
+  const iconClassName = compact ? "size-3" : "size-4";
+  const strokeWidth = compact ? 2.6 : 2.8;
+
+  return (
+    <span
+      className={`flex items-center justify-between ${
+        compact ? "px-1" : "px-4"
+      }`}
+      aria-hidden="true"
+    >
+      {marks.map((mark) => (
+        <span
+          key={mark.shape}
+          className={`grid place-items-center ${compact ? "size-3.5" : "size-5"} ${mark.className}`}
+        >
+          <svg className={iconClassName} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={strokeWidth}>
+            {mark.shape === "triangle" ? <path d="M12 4 4 20h16L12 4Z" strokeLinejoin="round" /> : null}
+            {mark.shape === "circle" ? <circle cx="12" cy="12" r="7" /> : null}
+            {mark.shape === "cross" ? (
+              <>
+                <path d="m6 6 12 12" strokeLinecap="round" />
+                <path d="M18 6 6 18" strokeLinecap="round" />
+              </>
+            ) : null}
+            {mark.shape === "square" ? <rect x="5" y="5" width="14" height="14" /> : null}
+          </svg>
         </span>
       ))}
     </span>
@@ -185,6 +282,87 @@ export function Win9xRatingContent({
   );
 }
 
+export function Ps1RatingPanelContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: Ps1RatingPanelContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const valueText = value ?? formatScore(score);
+  const ratingTone = getRatingTone(score);
+  const valueClassName =
+    tone === "author"
+      ? AUTHOR_PS1_RATING_TONE_CLASS_NAMES[ratingTone]
+      : AVERAGE_PS1_RATING_TONE_CLASS_NAMES[ratingTone];
+
+  return (
+    <span
+      className={`media-carrier-font-ps1 relative mx-auto block w-full overflow-hidden rounded-[1.15rem] border border-stone-950/28 bg-[linear-gradient(180deg,#cfc5b4_0%,#b9ad9a_52%,#a4937d_100%)] text-stone-950 shadow-[0_10px_18px_rgba(28,25,23,0.28),inset_2px_2px_0_rgba(255,255,255,0.24),inset_-2px_-2px_0_rgba(61,48,35,0.22)] ${
+        compact ? "min-h-[6.25rem] max-w-[10rem] px-2 py-2" : "min-h-[10.5rem] max-w-[15.5rem] px-3 py-3"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-40 mix-blend-multiply [background-image:linear-gradient(90deg,rgba(92,73,52,0.12)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.18)_1px,transparent_1px)] [background-size:9px_9px]"
+      />
+      <span className="relative z-10 flex h-full flex-col justify-between gap-2">
+        <span className="flex items-start gap-2">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={PS1_LOGO_PATH}
+            alt=""
+            className={compact ? "h-5 w-auto shrink-0" : "h-7 w-auto shrink-0"}
+            aria-hidden="true"
+          />
+          <span
+            className={`block flex-1 text-center uppercase leading-tight ${
+              compact ? "text-[9px]" : "text-[13px]"
+            }`}
+          >
+            {label}
+          </span>
+        </span>
+
+        <span className="relative flex items-center justify-center">
+          <span className={`absolute left-0 grid gap-0.5 ${compact ? "hidden" : ""}`} aria-hidden="true">
+            {Array.from({ length: 4 }, (_, index) => (
+              <span key={index} className="block h-0.5 w-5 rounded-full bg-stone-700/62 shadow-[0_1px_0_rgba(255,255,255,0.35)]" />
+            ))}
+          </span>
+          <span
+            className={`grid place-items-center rounded-sm border border-stone-950/55 bg-[#090c0b] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.06),inset_0_0_18px_rgba(0,0,0,0.7)] ${
+              compact ? "size-10 text-4xl" : "aspect-square w-[4.15rem] text-7xl"
+            } ${valueClassName} leading-none tabular-nums`}
+          >
+            {valueText}
+          </span>
+        </span>
+
+        {!hasValueOverride ? (
+          <span className="block text-center">
+            <Ps1RatingStars compact={compact} score={score} />
+          </span>
+        ) : null}
+
+        <span
+          className={`block min-h-4 text-center uppercase text-stone-700 ${
+            compact ? "text-[8px] leading-3" : "text-[10px] leading-4"
+          } ${detailText && !hasValueOverride ? "" : "opacity-0"}`}
+        >
+          {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+        </span>
+
+        <Ps1ButtonMarks compact={compact} />
+      </span>
+    </span>
+  );
+}
+
 function WinDvdAeroRatingMarks({
   compact = false,
   score,
@@ -209,6 +387,136 @@ function WinDvdAeroRatingMarks({
           ★
         </span>
       ))}
+    </span>
+  );
+}
+
+function DvdMenuRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center leading-none ${
+        compact ? "gap-0.5 text-2xl" : "gap-1 text-4xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span
+          key={index}
+          className={
+            index < filledStars
+              ? "text-slate-600 drop-shadow-[0_1px_0_rgba(255,255,255,0.82)]"
+              : "text-stone-400/70 drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]"
+          }
+        >
+          {index < filledStars ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function DvdMenuRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  footerLabel,
+  footerValue,
+  label,
+  score,
+  tone,
+  value,
+}: DvdMenuRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const footerText = footerValue ?? (detailText ? `${detailPrefix}${detailText}` : "");
+  const ratingTone = getRatingTone(score);
+  const ratingToneClassName =
+    tone === "author"
+      ? AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES[ratingTone]
+      : AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES[ratingTone];
+
+  return (
+    <span
+      className={`media-carrier-font-film-dvd relative mx-auto block h-full w-full overflow-hidden rounded-md border border-slate-500/45 bg-[linear-gradient(180deg,#f2f3f1_0%,#e7e8e6_48%,#d9dad7_100%)] text-slate-700 shadow-[0_10px_18px_rgba(15,23,42,0.18),inset_1px_1px_0_rgba(255,255,255,0.88),inset_-1px_-1px_0_rgba(71,85,105,0.18)] ${
+        compact ? "min-h-[6.25rem] max-w-[13rem] p-1.5" : "min-h-[10.5rem] max-w-[17rem] p-2"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-55 [background-image:linear-gradient(90deg,rgba(15,23,42,0.05)_1px,transparent_1px),linear-gradient(180deg,rgba(255,255,255,0.72)_1px,transparent_1px)] [background-size:8px_8px]"
+      />
+      <span className="relative z-10 flex h-full flex-col gap-1.5">
+        <span
+          className={`flex items-center gap-2 border-b border-slate-400/55 px-1 uppercase ${
+            compact ? "pb-1 text-[9px] leading-3" : "pb-1.5 text-xs leading-4"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={`h-0 w-0 border-y-transparent border-l-slate-700 ${
+              compact ? "border-y-[0.25rem] border-l-[0.42rem]" : "border-y-[0.34rem] border-l-[0.58rem]"
+            }`}
+          />
+          <span className="block flex-1 truncate tracking-[0.08em]">{label}</span>
+          <span className="shrink-0 text-[0.78em] tracking-[0.1em] text-slate-500">MENU</span>
+        </span>
+
+        <span
+          className={`flex flex-1 flex-col items-center justify-between rounded border border-slate-400/55 bg-[linear-gradient(180deg,rgba(250,250,248,0.92),rgba(229,230,226,0.72))] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-12px_22px_rgba(148,163,184,0.12)] ${
+            compact ? "px-2 py-1.5" : "px-3 py-2"
+          }`}
+        >
+          <span
+            className={`block font-bold leading-none tabular-nums drop-shadow-[0_1px_0_rgba(255,255,255,0.82)] ${
+              hasValueOverride
+                ? compact
+                  ? "text-lg"
+                  : "text-2xl"
+                : compact
+                  ? "text-5xl"
+                  : "text-7xl"
+            } ${ratingToneClassName}`}
+          >
+            {value ?? formatScore(score)}
+          </span>
+          {!hasValueOverride ? (
+            <DvdMenuRatingStars compact={compact} score={score} />
+          ) : (
+            <span className={`${compact ? "text-[9px]" : "text-xs"} uppercase tracking-[0.08em] text-red-900`}>
+              чтобы поставить оценку
+            </span>
+          )}
+        </span>
+
+        <span
+          className={`flex items-center gap-2 px-1 uppercase tracking-[0.08em] text-slate-600 ${
+            compact ? "text-[8px] leading-3" : "text-[10px] leading-4"
+          }`}
+        >
+          <span
+            aria-hidden="true"
+            className={
+              tone === "author"
+                ? `h-0 w-0 border-y-transparent border-l-slate-600 ${
+                    compact ? "border-y-[0.32rem] border-l-[0.56rem]" : "border-y-[0.42rem] border-l-[0.72rem]"
+                  }`
+                : `grid shrink-0 place-items-center rounded-full border border-slate-400 bg-[radial-gradient(circle_at_36%_34%,#f8fafc_0%,#d4d8d8_45%,#a7adb1_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] ${
+                    compact ? "size-4" : "size-6"
+                  }`
+            }
+          >
+            {tone === "archive" ? (
+              <span className={`rounded-full border border-slate-500/50 ${compact ? "size-1" : "size-1.5"}`} />
+            ) : null}
+          </span>
+          <span className="shrink-0">{footerLabel}</span>
+          <span className={`min-w-0 flex-1 truncate text-right ${footerText && !hasValueOverride ? "" : "opacity-0"}`}>
+            {footerText && !hasValueOverride ? footerText : "—"}
+          </span>
+        </span>
+      </span>
     </span>
   );
 }
@@ -335,8 +643,8 @@ export function DosTerminalRatingContent({
         <RatingStars score={score} variant="terminal" />
       </span>
       <span
-        className={`relative z-10 block min-h-4 text-center text-[10px] uppercase leading-4 opacity-85 ${
-          detailText ? "" : "opacity-0"
+        className={`relative z-10 block min-h-4 text-center text-[10px] uppercase leading-4 ${
+          detailText ? "opacity-85" : "opacity-0"
         }`}
       >
         {detailText ? `${detailPrefix}${detailText}` : "—"}
@@ -407,18 +715,16 @@ export function NesRatingPanelContent({
             <span className="mt-2 flex justify-center">
               <RatingHearts score={score} />
             </span>
-            {detail ? (
-              <span className={`mt-3 block ${labelFontClassName} text-[10px] uppercase opacity-75`}>
-                {detailPrefix}{detail}
-              </span>
-            ) : null}
+            <span className={`mt-3 block ${labelFontClassName} text-[10px] uppercase ${detail ? "opacity-75" : "opacity-0"}`}>
+              {detail ? `${detailPrefix}${detail}` : "—"}
+            </span>
           </>
         )
-      ) : !hasValueOverride && detail ? (
+      ) : !hasValueOverride ? (
         <span
-          className={`mt-1 block ${labelFontClassName} text-[9px] uppercase opacity-75`}
+          className={`mt-1 block ${labelFontClassName} text-[9px] uppercase ${detail ? "opacity-75" : "opacity-0"}`}
         >
-          {detailPrefix}{detail}
+          {detail ? `${detailPrefix}${detail}` : "—"}
         </span>
       ) : null}
     </>
@@ -500,6 +806,19 @@ export function ArchiveRatingPanel({
   ratingsCount,
   score,
 }: ArchiveRatingPanelProps) {
+  if (ratingPanelVariant === "dvd-menu") {
+    return (
+      <DvdMenuRatingContent
+        compact={compact}
+        footerLabel="Feature"
+        footerValue={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
   if (ratingPanelVariant === "dos-terminal") {
     return (
       <DosTerminalRatingContent
@@ -529,6 +848,18 @@ export function ArchiveRatingPanel({
           score={score}
         />
       </div>
+    );
+  }
+
+  if (ratingPanelVariant === "ps1-memory-card") {
+    return (
+      <Ps1RatingPanelContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
     );
   }
 

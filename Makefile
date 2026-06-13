@@ -1,10 +1,14 @@
 IMAGE ?= ghcr.io/tuor4eg/zadrotto:latest
 MIGRATOR_IMAGE ?= ghcr.io/tuor4eg/zadrotto-migrator:latest
 
-.PHONY: push deploy migrate seed-admin
+.PHONY: push clean-next deploy migrate seed-admin
+
+# Drop local Next.js build/cache artifacts before building Docker images.
+clean-next:
+	npm run clean:next
 
 # Build images locally and push them to the registry.
-push:
+push: clean-next
 	docker build -t $(IMAGE) .
 	docker build \
 		--target migrator \

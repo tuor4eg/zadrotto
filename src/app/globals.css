@@ -48,6 +48,30 @@
   src: url("/fonts/noto-sans.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/roboto-condensed-regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Roboto Condensed";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/roboto-condensed-bold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Russo One";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/russo-one-regular.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -205,9 +229,17 @@ body {
   font-family: "Noto Sans", Arial, Helvetica, sans-serif;
 }
 
+.media-carrier-font-film-dvd {
+  font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+}
+
 .media-carrier-font-vhs {
   font-family: "Oswald", "Arial Narrow", Arial, sans-serif;
   letter-spacing: 0.02em;
+}
+
+.media-carrier-font-ps1 {
+  font-family: "Russo One", "Noto Sans", Arial, sans-serif;
 }
 
 @keyframes media-carrier-title-cursor-blink {

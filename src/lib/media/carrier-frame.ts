@@ -3,14 +3,17 @@ import type { MediaType } from "@/lib/media/types";
 export type MediaCarrierFrameRenderKind = "cartridge";
 export type MediaCarrierFrameCoverLayer = "above-frame" | "below-frame";
 export type MediaCarrierFramePlaceholderVariant =
+  | "dvd-label"
   | "dos-disk-label"
   | "eight-bit-label"
   | "sixteen-bit-label"
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
+  | "dvd-menu"
   | "dos-terminal"
   | "nes-hearts"
+  | "ps1-memory-card"
   | "vhs-poster"
   | "win9x-window"
   | "windvd-aero";
@@ -109,6 +112,17 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     titleTemplate: "C ▸ {title}",
     viewportClassName: "h-[min(58vh,520px)]",
   },
+  "game/ps1": {
+    assetPath: "/mediaCarriers/game/ps1/jewel.png",
+    aspectRatioClassName: "aspect-[209/208]",
+    coverAreaClassName: "left-[19.7%] top-[1.9%] h-[95%] w-[76.8%]",
+    displayFontClassName: "media-carrier-font-ps1",
+    fontClassName: "media-carrier-font-ps1",
+    labelFontClassName: "media-carrier-font-ps1",
+    placeholderVariant: "win9x-jewel-label",
+    ratingPanelVariant: "ps1-memory-card",
+    renderKind: "cartridge",
+  },
   "game/sega": {
     assetPath: "/mediaCarriers/game/sega/cartridge.png",
     aspectRatioClassName: "aspect-[4/3]",
@@ -130,7 +144,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "film/vhs": {
-    assetPath: "/mediaCarriers/video/vhs.png",
+    assetPath: "/mediaCarriers/video/vhs/vhs.png",
     aspectRatioClassName: "aspect-[767/1463]",
     coverAreaClassName: "left-[24.8%] top-[30.4%] h-[38.2%] w-[51.6%]",
     coverLayer: "above-frame",
@@ -142,6 +156,21 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
     compactViewportClassName: "h-[min(32vh,300px)]",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
+  "film/dvd": {
+    assetPath: "/mediaCarriers/video/dvd/dvd.png",
+    aspectRatioClassName: "aspect-[357/490]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[4.8%] top-[8%] h-[90.8%] w-[90.4%]",
+    displayFontClassName: "media-carrier-font-film-dvd",
+    fontClassName: "media-carrier-font-film-dvd",
+    labelFontClassName: "media-carrier-font-film-dvd",
+    placeholderVariant: "dvd-label",
+    ratingPanelVariant: "dvd-menu",
+    renderKind: "cartridge",
     sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
     viewportClassName: "h-[min(58vh,520px)]",
   },
