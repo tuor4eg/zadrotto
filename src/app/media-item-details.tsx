@@ -395,29 +395,33 @@ function ArchiveMediaItemDetails({
                 </div>
               </dl>
 
-              <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                <ArchiveRatingPanel
-                  displayFontClassName={displayFontClassName}
-                  label="Оценка архива"
-                  labelFontClassName={labelFontClassName}
-                  ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
-                  ratingsCount={item.ratingsCount}
-                  score={item.averageScore}
-                />
+              <div className="mt-6 grid min-w-0 gap-3 sm:grid-cols-2">
+                <div className="min-w-0">
+                  <ArchiveRatingPanel
+                    displayFontClassName={displayFontClassName}
+                    label="Оценка архива"
+                    labelFontClassName={labelFontClassName}
+                    ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
+                    ratingsCount={item.ratingsCount}
+                    score={item.averageScore}
+                  />
+                </div>
 
-                {ratingSlot ?? (
-                  <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
-                    <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
-                      Оценок
+                <div className="min-w-0">
+                  {ratingSlot ?? (
+                    <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-4 text-center">
+                      <div className="font-mono text-xs uppercase tracking-[0.14em] text-stone-500">
+                        Оценок
+                      </div>
+                      <div className="mt-2 font-serif text-5xl tabular-nums text-stone-950">
+                        {item.ratingsCount}
+                      </div>
+                      <div className="mt-2 font-mono text-xs text-stone-500">
+                        {formatRatingsCount(item.ratingsCount)}
+                      </div>
                     </div>
-                    <div className="mt-2 font-serif text-5xl tabular-nums text-stone-950">
-                      {item.ratingsCount}
-                    </div>
-                    <div className="mt-2 font-mono text-xs text-stone-500">
-                      {formatRatingsCount(item.ratingsCount)}
-                    </div>
-                  </div>
-                )}
+                  )}
+                </div>
 
                 <div className="mt-6 sm:col-span-2">
                   <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />

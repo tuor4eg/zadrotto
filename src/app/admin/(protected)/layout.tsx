@@ -16,6 +16,7 @@ import {
   AdminAuthorsMenu,
   AdminContentMenu,
   AdminMaterialsMenu,
+  AdminMobileNavMenu,
   AdminRequestsMenu,
   AdminToolsMenu,
 } from "./admin-nav-menu";
@@ -39,15 +40,28 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-medium uppercase tracking-[0.18em] text-stone-500">
-              Админка
-            </p>
-            <h1 className="mt-2 text-3xl font-semibold tracking-tight text-stone-950">
+            <h1 className="text-3xl font-semibold tracking-tight text-stone-950">
               Панель управления
             </h1>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
+          <AdminMobileNavMenu
+            submittedMediaItemsCount={submittedMediaItemsCount}
+            submittedReviewsCount={submittedReviewsCount}
+            logoutSlot={
+              <form action={logoutAdmin}>
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-950"
+                >
+                  <LogOut className="size-4" />
+                  Выйти
+                </button>
+              </form>
+            }
+          />
+
+          <div className="hidden flex-wrap items-center gap-2 md:flex">
             <Link
               href="/admin"
               className={buttonVariants({ variant: "outline", size: "sm" })}

@@ -101,34 +101,33 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
       ) : carriers.length === 0 ? (
         <EmptyState>{hasActiveFilters ? "По этим фильтрам носителей нет." : "Носителей нет."}</EmptyState>
       ) : (
-        <TableWrap>
-          <Table className="table-fixed">
-            <THead>
-              <tr>
-                <TH>Носитель</TH>
-                <TH className="w-32">Тип</TH>
-                <TH className="w-28">Записи</TH>
-                <TH className="w-28 px-2 text-right">Действия</TH>
-              </tr>
-            </THead>
-            <TBody>
-              {carriers.map((carrier) => {
-                const canDelete = carrier.mediaItemsCount === 0;
+        <>
+          <div className="grid gap-3 sm:hidden">
+            {carriers.map((carrier) => {
+              const canDelete = carrier.mediaItemsCount === 0;
 
-                return (
-                  <TR key={carrier.id}>
-                    <TD className="min-w-0 overflow-hidden">
-                      <div className="truncate font-medium text-stone-950">{carrier.name}</div>
-                      <div className="mt-1 truncate font-mono text-xs text-stone-500">
-                        {carrier.code}
+              return (
+                <div
+                  key={carrier.id}
+                  className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="min-w-0">
+                    <div className="truncate font-medium text-stone-950">{carrier.name}</div>
+                    <div className="mt-1 truncate font-mono text-xs text-stone-500">
+                      {carrier.code}
+                    </div>
+                    {carrier.description ? (
+                      <div className="mt-1 text-xs leading-5 text-stone-500">
+                        {carrier.description}
                       </div>
-                      {carrier.description ? (
-                        <div className="mt-1 truncate text-xs text-stone-500">
-                          {carrier.description}
-                        </div>
-                      ) : null}
-                    </TD>
-                    <TD>
+                    ) : null}
+                  </div>
+
+                  <div className="mt-4 grid gap-3 text-sm">
+                    <div>
+                      <div className="mb-1.5 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
+                        Типы
+                      </div>
                       <div className="flex flex-wrap gap-1.5">
                         {carrier.mediaTypes.map((mediaType) => (
                           <Badge key={mediaType} variant="outline">
@@ -136,11 +135,16 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
                           </Badge>
                         ))}
                       </div>
-                    </TD>
-                    <TD>
-                      <Badge variant="outline">{carrier.mediaItemsCount}</Badge>
-                    </TD>
-                    <TD className="px-2">
+                    </div>
+
+                    <div className="flex items-center justify-between gap-3 border-t border-stone-100 pt-3">
+                      <div>
+                        <div className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
+                          Записи
+                        </div>
+                        <Badge variant="outline">{carrier.mediaItemsCount}</Badge>
+                      </div>
+
                       <div className="flex flex-nowrap justify-end gap-1.5">
                         <Tooltip label="Изменить">
                           <Link
@@ -172,13 +176,92 @@ export default async function MediaCarriersPage({ searchParams }: MediaCarriersP
                           />
                         </Tooltip>
                       </div>
-                    </TD>
-                  </TR>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableWrap>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <TableWrap className="hidden sm:block">
+            <Table className="table-fixed">
+              <THead>
+                <tr>
+                  <TH>Носитель</TH>
+                  <TH className="w-32">Тип</TH>
+                  <TH className="w-28">Записи</TH>
+                  <TH className="w-28 px-2 text-right">Действия</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {carriers.map((carrier) => {
+                  const canDelete = carrier.mediaItemsCount === 0;
+
+                  return (
+                    <TR key={carrier.id}>
+                      <TD className="min-w-0 overflow-hidden">
+                        <div className="truncate font-medium text-stone-950">{carrier.name}</div>
+                        <div className="mt-1 truncate font-mono text-xs text-stone-500">
+                          {carrier.code}
+                        </div>
+                        {carrier.description ? (
+                          <div className="mt-1 truncate text-xs text-stone-500">
+                            {carrier.description}
+                          </div>
+                        ) : null}
+                      </TD>
+                      <TD>
+                        <div className="flex flex-wrap gap-1.5">
+                          {carrier.mediaTypes.map((mediaType) => (
+                            <Badge key={mediaType} variant="outline">
+                              {getMediaTypeLabel(mediaType, mediaTypes)}
+                            </Badge>
+                          ))}
+                        </div>
+                      </TD>
+                      <TD>
+                        <Badge variant="outline">{carrier.mediaItemsCount}</Badge>
+                      </TD>
+                      <TD className="px-2">
+                        <div className="flex flex-nowrap justify-end gap-1.5">
+                          <Tooltip label="Изменить">
+                            <Link
+                              href={`/admin/media-carriers/${carrier.id}/edit`}
+                              className={buttonVariants({ variant: "outline", size: "icon" })}
+                              aria-label={`Изменить носитель ${carrier.name}`}
+                            >
+                              <Edit3 />
+                            </Link>
+                          </Tooltip>
+                          <Tooltip
+                            label={
+                              canDelete
+                                ? "Удалить"
+                                : "Нельзя удалить: носитель выбран в записях"
+                            }
+                          >
+                            <ConfirmAction
+                              action={deleteMediaCarrierAction}
+                              disabled={!canDelete}
+                              fields={[{ name: "carrierId", value: carrier.id }]}
+                              title="Удалить носитель?"
+                              description={`Носитель «${carrier.name}» будет удален. Это возможно только если он не выбран ни у одной записи.`}
+                              triggerLabel="Удалить"
+                              triggerAriaLabel={`Удалить носитель ${carrier.name}`}
+                              triggerIcon={<Trash2 />}
+                              triggerSize="icon"
+                              confirmLabel="Удалить носитель"
+                            />
+                          </Tooltip>
+                        </div>
+                      </TD>
+                    </TR>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </TableWrap>
+        </>
       )}
     </div>
   );

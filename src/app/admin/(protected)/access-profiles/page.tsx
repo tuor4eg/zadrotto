@@ -32,6 +32,42 @@ function getSuccessMessage(input: { created?: string; deleted?: string }) {
   return null;
 }
 
+function AccessProfileActions({
+  canDelete,
+  profile,
+}: {
+  canDelete: boolean;
+  profile: Awaited<ReturnType<typeof getAdminAuthorAccessProfiles>>[number];
+}) {
+  return (
+    <div className="flex flex-nowrap justify-end gap-1.5">
+      <Tooltip label="Изменить">
+        <Link
+          href={`/admin/access-profiles/${profile.id}/edit`}
+          className={buttonVariants({ variant: "outline", size: "icon" })}
+          aria-label={`Изменить профиль ${profile.name}`}
+        >
+          <Edit3 />
+        </Link>
+      </Tooltip>
+      <Tooltip label={canDelete ? "Удалить" : "Нельзя удалить: профиль назначен авторам"}>
+        <ConfirmAction
+          action={deleteAuthorAccessProfileAction}
+          disabled={!canDelete}
+          fields={[{ name: "profileId", value: profile.id }]}
+          title="Удалить профиль?"
+          description={`Профиль «${profile.name}» будет удален. Это возможно только если он не назначен ни одному автору.`}
+          triggerLabel="Удалить"
+          triggerAriaLabel={`Удалить профиль ${profile.name}`}
+          triggerIcon={<Trash2 />}
+          triggerSize="icon"
+          confirmLabel="Удалить профиль"
+        />
+      </Tooltip>
+    </div>
+  );
+}
+
 export default async function AccessProfilesPage({ searchParams }: AccessProfilesPageProps) {
   const [profiles, params] = await Promise.all([
     getAdminAuthorAccessProfiles(),
@@ -68,74 +104,75 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
       {profiles.length === 0 ? (
         <EmptyState>Профили доступа пока не добавлены.</EmptyState>
       ) : (
-        <TableWrap>
-          <Table className="table-fixed">
-            <THead>
-              <tr>
-                <TH>Профиль</TH>
-                <TH className="w-36">Публикация</TH>
-                <TH className="w-28">Авторы</TH>
-                <TH className="w-28 px-2 text-right">Действия</TH>
-              </tr>
-            </THead>
-            <TBody>
-              {profiles.map((profile) => {
-                const canDelete = profile.authorsCount === 0;
+        <>
+          <div className="grid gap-3 sm:hidden">
+            {profiles.map((profile) => {
+              const canDelete = profile.authorsCount === 0;
 
-                return (
-                  <TR key={profile.id}>
-                    <TD className="min-w-0 overflow-hidden">
-                      <div className="truncate font-medium text-stone-950">{profile.name}</div>
-                    </TD>
-                    <TD>
+              return (
+                <div
+                  key={profile.id}
+                  className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
+                >
+                  <div className="min-w-0">
+                    <div className="break-words font-medium text-stone-950">{profile.name}</div>
+                    <div className="mt-2 flex flex-wrap gap-1.5">
                       <Badge
                         variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}
                       >
                         {profile.canPublishMediaWithoutReview ? "Без проверки" : "Через проверку"}
                       </Badge>
-                    </TD>
-                    <TD>
-                      <Badge variant="outline">{profile.authorsCount}</Badge>
-                    </TD>
-                    <TD className="px-2">
-                      <div className="flex flex-nowrap justify-end gap-1.5">
-                        <Tooltip label="Изменить">
-                          <Link
-                            href={`/admin/access-profiles/${profile.id}/edit`}
-                            className={buttonVariants({ variant: "outline", size: "icon" })}
-                            aria-label={`Изменить профиль ${profile.name}`}
-                          >
-                            <Edit3 />
-                          </Link>
-                        </Tooltip>
-                        <Tooltip
-                          label={
-                            canDelete
-                              ? "Удалить"
-                              : "Нельзя удалить: профиль назначен авторам"
-                          }
+                      <Badge variant="outline">{profile.authorsCount} авторов</Badge>
+                    </div>
+                  </div>
+
+                  <div className="mt-4 border-t border-stone-100 pt-3">
+                    <AccessProfileActions canDelete={canDelete} profile={profile} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          <TableWrap className="hidden sm:block">
+            <Table className="table-fixed">
+              <THead>
+                <tr>
+                  <TH>Профиль</TH>
+                  <TH className="w-36">Публикация</TH>
+                  <TH className="w-28">Авторы</TH>
+                  <TH className="w-28 px-2 text-right">Действия</TH>
+                </tr>
+              </THead>
+              <TBody>
+                {profiles.map((profile) => {
+                  const canDelete = profile.authorsCount === 0;
+
+                  return (
+                    <TR key={profile.id}>
+                      <TD className="min-w-0 overflow-hidden">
+                        <div className="truncate font-medium text-stone-950">{profile.name}</div>
+                      </TD>
+                      <TD>
+                        <Badge
+                          variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}
                         >
-                          <ConfirmAction
-                            action={deleteAuthorAccessProfileAction}
-                            disabled={!canDelete}
-                            fields={[{ name: "profileId", value: profile.id }]}
-                            title="Удалить профиль?"
-                            description={`Профиль «${profile.name}» будет удален. Это возможно только если он не назначен ни одному автору.`}
-                            triggerLabel="Удалить"
-                            triggerAriaLabel={`Удалить профиль ${profile.name}`}
-                            triggerIcon={<Trash2 />}
-                            triggerSize="icon"
-                            confirmLabel="Удалить профиль"
-                          />
-                        </Tooltip>
-                      </div>
-                    </TD>
-                  </TR>
-                );
-              })}
-            </TBody>
-          </Table>
-        </TableWrap>
+                          {profile.canPublishMediaWithoutReview ? "Без проверки" : "Через проверку"}
+                        </Badge>
+                      </TD>
+                      <TD>
+                        <Badge variant="outline">{profile.authorsCount}</Badge>
+                      </TD>
+                      <TD className="px-2">
+                        <AccessProfileActions canDelete={canDelete} profile={profile} />
+                      </TD>
+                    </TR>
+                  );
+                })}
+              </TBody>
+            </Table>
+          </TableWrap>
+        </>
       )}
     </div>
   );

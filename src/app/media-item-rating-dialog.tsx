@@ -92,7 +92,7 @@ export function MediaItemRatingPanel({
     isWinDvdAeroPanel ||
     isPs1MemoryCardPanel;
   const ratingPanelClassName = isStandalonePanel
-    ? "group relative block h-full w-full min-w-[82px] cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+    ? "group relative block h-full w-full min-w-0 cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
       ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor

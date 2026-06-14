@@ -304,12 +304,14 @@ export async function upsertAuthorReview(input: {
 }
 
 export async function getAdminContributionReviews(input: {
+  authorId?: number | null;
   status?: ContributionStatus | "all";
 }) {
   const statusCondition =
     input.status && input.status !== "all"
       ? eq(contributions.status, input.status)
       : inArray(contributions.status, ["submitted", "published", "rejected", "hidden"]);
+  const authorCondition = input.authorId ? eq(contributions.authorId, input.authorId) : undefined;
 
   return db
     .select({
@@ -330,7 +332,7 @@ export async function getAdminContributionReviews(input: {
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
     .innerJoin(authors, eq(authors.id, contributions.authorId))
     .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
-    .where(and(eq(contributions.type, "review"), statusCondition))
+    .where(and(eq(contributions.type, "review"), statusCondition, authorCondition))
     .orderBy(desc(contributions.submittedAt), desc(contributions.updatedAt), desc(contributions.id));
 }
 

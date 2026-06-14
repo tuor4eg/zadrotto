@@ -366,7 +366,7 @@ export function CatalogHeaderControls({
         }
         side="bottom"
       >
-        <div ref={filtersRootRef} className="relative">
+        <div ref={filtersRootRef} className="relative min-w-0">
           <button
             type="button"
             aria-label={getFiltersTooltip(authorRatingFilter, yearFilter, yearMode, currentAuthor)}
@@ -384,7 +384,7 @@ export function CatalogHeaderControls({
             <div
               id={filtersMenuId}
               role="menu"
-              className="archive-paper-surface absolute right-0 top-full z-[80] mt-2 w-[min(19rem,calc(100vw-2rem))] rounded-md border border-stone-500/70 p-2 shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
+              className="archive-paper-surface fixed inset-x-3 top-[5.25rem] z-[80] w-auto rounded-md border border-stone-500/70 p-2 shadow-[0_14px_26px_rgba(28,25,23,0.24)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(19rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-1.5rem)]"
             >
               {currentAuthor ? (
                 <div className="grid gap-1">

@@ -39,7 +39,7 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
           <ArchiveBackLink
-            className="top-10"
+            className="sm:top-10"
             href="/"
             label="Назад к картотеке"
             tooltipLabel="К картотеке"

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -14,6 +14,7 @@ export type DeleteAuthorResult =
   | "has-data"
   | "last-system-author"
   | "not-found";
+export type AuthorActivityFilter = "active" | "blocked";
 
 const authorUsageCountSql = sql<number>`(
   count(distinct ${ratings.id}) +
@@ -27,13 +28,27 @@ function authorUsageCountByIdSql(authorId: number) {
   )::int`;
 }
 
-export async function getAuthors() {
+export async function getAuthors(input?: {
+  accessProfileId?: number | null;
+  activity?: AuthorActivityFilter | "all";
+}) {
+  const activityCondition =
+    input?.activity === "active"
+      ? isNull(authors.blockedAt)
+      : input?.activity === "blocked"
+        ? isNotNull(authors.blockedAt)
+        : undefined;
+  const accessProfileCondition = input?.accessProfileId
+    ? eq(authors.accessProfileId, input.accessProfileId)
+    : undefined;
+
   return db
     .select({
       id: authors.id,
       code: authors.code,
       name: authors.name,
       isSystem: authors.isSystem,
+      accessProfileId: authorAccessProfiles.id,
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
@@ -43,11 +58,13 @@ export async function getAuthors() {
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
     .leftJoin(ratings, eq(ratings.authorId, authors.id))
     .leftJoin(mediaItems, eq(mediaItems.createdByAuthorId, authors.id))
+    .where(and(activityCondition, accessProfileCondition))
     .groupBy(
       authors.id,
       authors.code,
       authors.name,
       authors.isSystem,
+      authorAccessProfiles.id,
       authorAccessProfiles.name,
       authors.createdAt,
       authors.blockedAt,

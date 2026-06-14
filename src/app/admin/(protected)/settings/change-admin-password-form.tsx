@@ -16,7 +16,7 @@ const initialState: ChangeAdminPasswordState = {
   success: null,
 };
 
-export function ChangeAdminPasswordForm() {
+export function ChangeAdminPasswordForm({ adminLogin }: { adminLogin: string }) {
   const [state, formAction, isPending] = useActionState(
     changeAdminPasswordAction,
     initialState,
@@ -36,6 +36,13 @@ export function ChangeAdminPasswordForm() {
   return (
     <form ref={formRef} action={formAction} className="grid gap-5" autoComplete="off" noValidate>
       <AdminToasts messages={toastMessages} />
+      <input
+        type="hidden"
+        name="username"
+        value={adminLogin}
+        autoComplete="username"
+        readOnly
+      />
 
       <div className="grid gap-4">
         <div className="flex flex-col gap-2">

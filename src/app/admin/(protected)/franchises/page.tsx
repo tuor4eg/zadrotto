@@ -12,7 +12,7 @@ import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { PageHeader, EmptyState } from "../admin-ui";
 import { deleteFranchiseAction } from "./actions";
 import { AdminFranchiseFiltersForm } from "./franchise-filters-form";
-import { formatMediaItemsCount, getFranchiseErrorMessage } from "./messages";
+import { getFranchiseErrorMessage } from "./messages";
 
 type AdminFranchisesPageProps = {
   searchParams: Promise<{
@@ -89,7 +89,7 @@ export default async function AdminFranchisesPage({
               <THead>
                 <tr>
                   <TH>Название</TH>
-                  <TH className="w-28">Записи</TH>
+                  <TH className="w-20">Записи</TH>
                   <TH className="w-28 px-2 text-right">Действия</TH>
                 </tr>
               </THead>
@@ -105,7 +105,7 @@ export default async function AdminFranchisesPage({
                       ) : null}
                     </TD>
                     <TD>
-                      <Badge variant="outline">{formatMediaItemsCount(franchise.mediaItemsCount)}</Badge>
+                      <Badge variant="outline">{franchise.mediaItemsCount}</Badge>
                     </TD>
                     <TD className="px-2">
                       <div className="flex flex-nowrap justify-end gap-1.5">
