@@ -91,15 +91,16 @@ export function MediaItemRatingPanel({
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
     isPs1MemoryCardPanel;
+  const tooltipClassName = "flex h-full w-full";
   const ratingPanelClassName = isStandalonePanel
     ? "group relative block h-full w-full min-w-0 cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
-      ? `group relative block w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+      ? `group relative block h-full w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor
             ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
             : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
         }`
-      : `group relative w-full cursor-pointer rounded-md border p-4 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(28,25,23,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+      : `group relative h-full w-full cursor-pointer rounded-md border p-4 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_14px_30px_rgba(28,25,23,0.2)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor
             ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
             : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
@@ -223,7 +224,7 @@ export function MediaItemRatingPanel({
 
   if (!currentAuthor) {
     return (
-      <ArchiveTooltip label={tooltip} className="w-full">
+      <ArchiveTooltip label={tooltip} className={tooltipClassName}>
         <Link
           href="/author/login"
           className={ratingPanelClassName}
@@ -237,7 +238,7 @@ export function MediaItemRatingPanel({
   }
 
   return (
-    <ArchiveTooltip label={tooltip} className="w-full">
+    <ArchiveTooltip label={tooltip} className={tooltipClassName}>
       <button
         type="button"
         onClick={(event) => {

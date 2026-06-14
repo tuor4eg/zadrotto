@@ -39,7 +39,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <AdminProgressBar />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div>
+          <div className="pl-12 md:pl-0">
             <h1 className="text-3xl font-semibold tracking-tight text-stone-950">
               Панель управления
             </h1>

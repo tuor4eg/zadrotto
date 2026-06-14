@@ -328,7 +328,7 @@ export function CatalogHeaderControls({
         className={`relative ${
           compact
             ? "min-w-0 flex-1 basis-auto"
-            : "w-full basis-full lg:w-[210px] lg:basis-auto"
+            : "min-w-0 flex-1 basis-auto lg:w-[210px] lg:flex-none lg:basis-auto"
         }`}
       >
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />

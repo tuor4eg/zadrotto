@@ -155,7 +155,7 @@ export function MediaTypeTabs({
   );
 
   return (
-    <div className="archive-scrollbar relative max-w-full overflow-x-auto overflow-y-hidden rounded-t-[18px] pl-1 pr-1 pt-2 lg:overflow-visible lg:pr-4">
+    <div className="archive-scrollbar archive-tabs-scrollbar relative max-w-full overflow-x-auto overflow-y-hidden rounded-t-[18px] pl-1 pr-1 pt-2 lg:overflow-visible lg:pr-4">
       <div className="relative z-10 flex min-h-16 min-w-0 items-end gap-1.5">
         <div
           role="tablist"

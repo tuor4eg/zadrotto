@@ -53,6 +53,7 @@ type MediaItemDetailsProps = {
   adjacentShelfSlot?: React.ReactNode;
   meta?: React.ReactNode;
   mediaTypes: MediaTypeOption[];
+  compactRatingSlot?: React.ReactNode;
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
   relatedItems?: RelatedMediaItem[];
@@ -87,6 +88,7 @@ export function MediaItemDetails({
   adjacentShelfSlot,
   meta,
   mediaTypes,
+  compactRatingSlot,
   ratingSlot,
   noteSlot,
   relatedItems = [],
@@ -100,6 +102,7 @@ export function MediaItemDetails({
         adjacentShelfSlot={adjacentShelfSlot}
         meta={meta}
         mediaTypes={mediaTypes}
+        compactRatingSlot={compactRatingSlot}
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
         relatedItems={relatedItems}
@@ -253,6 +256,7 @@ function ArchiveMediaItemDetails({
   adjacentShelfSlot,
   meta,
   mediaTypes,
+  compactRatingSlot,
   ratingSlot,
   noteSlot,
   relatedItems,
@@ -395,7 +399,37 @@ function ArchiveMediaItemDetails({
                 </div>
               </dl>
 
-              <div className="mt-6 grid min-w-0 gap-3 sm:grid-cols-2">
+              <div className="mt-6 grid min-w-0 grid-cols-2 items-stretch gap-2 sm:hidden">
+                <div className="h-full min-w-0">
+                  <ArchiveRatingPanel
+                    compact
+                    displayFontClassName={displayFontClassName}
+                    label="Оценка архива"
+                    labelFontClassName={labelFontClassName}
+                    ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
+                    ratingsCount={item.ratingsCount}
+                    score={item.averageScore}
+                  />
+                </div>
+
+                <div className="h-full min-w-0">
+                  {compactRatingSlot ?? ratingSlot ?? (
+                    <div className="h-full rounded-md border border-stone-300/80 bg-stone-50/45 p-2 text-center">
+                      <div className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
+                        Оценок
+                      </div>
+                      <div className="mt-1 font-serif text-3xl tabular-nums text-stone-950">
+                        {item.ratingsCount}
+                      </div>
+                      <div className="mt-1 font-mono text-[10px] text-stone-500">
+                        {formatRatingsCount(item.ratingsCount)}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-6 hidden min-w-0 gap-3 sm:grid sm:grid-cols-2">
                 <div className="min-w-0">
                   <ArchiveRatingPanel
                     displayFontClassName={displayFontClassName}
@@ -422,10 +456,10 @@ function ArchiveMediaItemDetails({
                     </div>
                   )}
                 </div>
+              </div>
 
-                <div className="mt-6 sm:col-span-2">
-                  <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
-                </div>
+              <div className="mt-6">
+                <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
               </div>
 
               <div className="mt-6 flex flex-col gap-3">

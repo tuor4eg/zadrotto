@@ -250,21 +250,27 @@ export function AdminMobileNavMenu({
   }
 
   return (
-    <div ref={rootRef} className="relative md:hidden">
+    <div ref={rootRef} className="md:hidden">
       <button
         type="button"
         aria-label={isOpen ? "Закрыть меню админки" : "Открыть меню админки"}
+        aria-controls="admin-mobile-nav-panel"
         aria-expanded={isOpen}
         onClick={() => setIsOpen((current) => !current)}
-        className={buttonVariants({ variant: "outline", size: "sm" })}
+        className={`${buttonVariants({ variant: "outline", size: "icon" })} fixed left-4 top-4 z-50 shadow-sm md:hidden`}
       >
         {isOpen ? <X /> : <Menu />}
-        Меню
       </button>
 
       {isOpen ? (
-        <div className="absolute right-0 top-full z-40 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-lg border border-stone-200 bg-white p-2 shadow-xl">
-          <div className="grid gap-1">
+        <div
+          id="admin-mobile-nav-panel"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Меню админки"
+          className="fixed inset-0 z-40 overflow-y-auto bg-white px-4 pb-6 pt-16 md:hidden"
+        >
+          <div className="mx-auto grid w-full max-w-md gap-1">
             <Link
               href="/admin"
               onClick={closeMenu}

@@ -154,7 +154,7 @@ export function MediaCatalogPreview({
           <span>{formatRatingsCount(item.ratingsCount)}</span>
         </div>
 
-        <div className="mt-3 grid gap-2 border-t border-dashed border-stone-300 pt-3 sm:grid-cols-2">
+        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">
           <ArchiveRatingPanel
             compact
             displayFontClassName={displayFontClassName}

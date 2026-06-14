@@ -48,8 +48,18 @@ export function CatalogStickyHeader({
   useEffect(() => {
     const compactScrollY = 72;
     const expandedScrollY = 12;
+    const largeViewportQuery = window.matchMedia("(min-width: 1024px)");
 
     function updateCompactState() {
+      if (!largeViewportQuery.matches) {
+        if (isCompactRef.current) {
+          isCompactRef.current = false;
+          setIsCompact(false);
+        }
+
+        return;
+      }
+
       const shouldBeCompact = isCompactRef.current
         ? window.scrollY > expandedScrollY
         : window.scrollY > compactScrollY;
@@ -92,11 +102,11 @@ export function CatalogStickyHeader({
       href="/admin"
       aria-label="Админка"
       className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
-        isCompact ? "w-9 px-0" : "gap-2 px-3"
+        isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       }`}
     >
       <Shield className="size-4" />
-      <span className={isCompact ? "sr-only" : undefined}>Админка</span>
+      <span className={isCompact ? "sr-only" : "sr-only lg:not-sr-only"}>Админка</span>
     </Link>
   ) : null;
   const authorLink = (
@@ -104,29 +114,29 @@ export function CatalogStickyHeader({
       href={currentAuthor ? "/author" : "/author/login"}
       aria-label={authorLinkLabel}
       className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
-        isCompact ? "w-9 px-0" : "gap-2 px-3"
+        isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       }`}
     >
       <UserCircle className="size-5" />
-      <span className={isCompact ? "sr-only" : undefined}>{authorLinkLabel}</span>
+      <span className={isCompact ? "sr-only" : "sr-only lg:not-sr-only"}>{authorLinkLabel}</span>
     </Link>
   );
 
   return (
     <header
-      className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 transition-[max-width,padding,width] duration-200 ${
+      className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 lg:transition-[max-width,padding,width] lg:duration-200 ${
         isCompact
           ? "ml-auto w-full max-w-[320px] flex-wrap justify-end px-2 pb-2 pt-4 lg:flex-nowrap"
-          : "w-full flex-wrap justify-between py-4 pl-5 pr-4"
+          : "ml-auto w-full max-w-[320px] flex-wrap justify-end px-2 pb-2 pt-4 lg:max-w-none lg:justify-between lg:py-4 lg:pl-5 lg:pr-4"
       }`}
     >
       <div
-        className={`min-w-0 items-center gap-4 overflow-hidden transition-[max-width,opacity,transform] duration-200 ${
+        className={`min-w-0 items-center gap-4 overflow-hidden lg:transition-[max-width,opacity,transform] lg:duration-200 ${
           isCompact
             ? "hidden"
-            : "flex max-w-[720px] translate-x-0 opacity-100"
+            : "hidden lg:flex lg:max-w-[720px] lg:translate-x-0 lg:opacity-100"
         }`}
-        aria-hidden={isCompact}
+        aria-hidden={isCompact ? true : undefined}
       >
         <div className="grid size-16 shrink-0 place-items-center border border-stone-400/70 bg-stone-100/60 text-center font-mono text-sm font-semibold leading-5 text-stone-950 shadow-[inset_0_0_0_1px_rgba(68,64,60,0.16)]">
           Ж. К.
@@ -147,7 +157,7 @@ export function CatalogStickyHeader({
         className={`flex items-center gap-2 text-sm ${
           isCompact
             ? "w-full min-w-0 flex-nowrap justify-end"
-            : "w-full flex-wrap justify-start sm:items-start lg:w-auto lg:shrink-0 lg:items-center lg:justify-end"
+            : "w-full min-w-0 flex-nowrap justify-end lg:w-auto lg:shrink-0 lg:flex-wrap lg:items-center"
         }`}
       >
         <CatalogHeaderControls

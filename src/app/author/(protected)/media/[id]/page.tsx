@@ -127,6 +127,21 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           panelVariant={mediaCarrierFrame?.ratingPanelVariant}
         />
       }
+      compactRatingSlot={
+        <MediaItemRatingDialog
+          mediaItemCode={item.code}
+          franchiseCode={item.franchiseCode}
+          title={item.title}
+          currentAuthor={{ name: author.name, code: author.code }}
+          currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
+          currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
+          currentAuthorScore={item.currentAuthorScore}
+          panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
+          panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
+          panelVariant={mediaCarrierFrame?.ratingPanelVariant}
+          size="compact"
+        />
+      }
       noteSlot={
         item.adminNote ? (
           <Alert>

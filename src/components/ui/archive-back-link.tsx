@@ -20,7 +20,7 @@ export function ArchiveBackLink({
     <ArchiveTooltip
       label={tooltipLabel}
       className={cn(
-        "!absolute left-3 top-0 h-11 w-11 -translate-y-1/2 sm:left-[-4rem] sm:top-7 sm:h-20 sm:w-16 sm:translate-y-0",
+        "hidden sm:absolute sm:left-[-4rem] sm:top-7 sm:inline-flex sm:h-20 sm:w-16",
         className,
       )}
       side="top"

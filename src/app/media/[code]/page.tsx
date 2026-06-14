@@ -67,6 +67,23 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               panelVariant={mediaCarrierFrame?.ratingPanelVariant}
             />
           }
+          compactRatingSlot={
+            <MediaItemRatingDialog
+              mediaItemCode={item.code}
+              franchiseCode={item.franchiseCode}
+              title={item.title}
+              currentAuthor={
+                currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
+              }
+              currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
+              currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
+              currentAuthorScore={item.currentAuthorScore}
+              panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
+              panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
+              panelVariant={mediaCarrierFrame?.ratingPanelVariant}
+              size="compact"
+            />
+          }
         />
       </div>
     </main>

@@ -229,8 +229,13 @@ export function Win9xRatingContent({
     tone === "author"
       ? "bg-gradient-to-r from-[#005f5f] to-[#078080]"
       : "bg-gradient-to-r from-[#061c86] to-[#163ca8]";
-  const panelPaddingClassName = compact ? "px-2 pb-2 pt-1.5" : "px-3 pb-3 pt-2";
-  const valueClassName = compact ? "text-4xl leading-none" : "text-6xl leading-none";
+  const panelPaddingClassName = compact ? "flex-1 px-2 pb-2 pt-1.5" : "px-3 pb-3 pt-2";
+  const panelJustifyClassName = hasValueOverride ? "justify-center" : "justify-between";
+  const valueClassName = compact
+    ? hasValueOverride
+      ? "max-w-full whitespace-nowrap text-[1.65rem] leading-none"
+      : "text-4xl leading-none"
+    : "text-6xl leading-none";
   const detailText = detail ?? "";
   const ratingTone = getRatingTone(score);
   const ratingToneClassName =
@@ -240,7 +245,7 @@ export function Win9xRatingContent({
 
   return (
     <span
-      className={`media-carrier-font-pc-win9x block min-h-full border border-[#202020] bg-[#d6d2c8] text-center text-[#111] shadow-[0_0_0_1px_#f4f1e8,2px_2px_0_#5f5b54,inset_2px_2px_0_#ffffff,inset_-2px_-2px_0_#7b776f] ${
+      className={`media-carrier-font-pc-win9x flex min-h-full flex-col overflow-hidden border border-[#202020] bg-[#d6d2c8] text-center text-[#111] shadow-[0_0_0_1px_#f4f1e8,2px_2px_0_#5f5b54,inset_2px_2px_0_#ffffff,inset_-2px_-2px_0_#7b776f] ${
         compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
       }`}
     >
@@ -261,7 +266,7 @@ export function Win9xRatingContent({
           ×
         </span>
       </span>
-      <span className={`flex flex-col items-center justify-between ${panelPaddingClassName} ${ratingToneClassName}`}>
+      <span className={`flex flex-col items-center ${panelJustifyClassName} ${panelPaddingClassName} ${ratingToneClassName}`}>
         <span className={`${valueClassName} block tabular-nums`}>
           {value ?? formatScore(score)}
         </span>
@@ -270,13 +275,15 @@ export function Win9xRatingContent({
             <Win9xRatingStars compact={compact} score={score} />
           </span>
         ) : null}
-        <span
-          className={`block min-h-5 uppercase ${
-            compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
-          } ${detailText ? "" : "opacity-0"}`}
-        >
-          {detailText ? `${detailPrefix}${detailText}` : "—"}
-        </span>
+        {!hasValueOverride ? (
+          <span
+            className={`block min-h-5 uppercase ${
+              compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+            } ${detailText ? "" : "opacity-0"}`}
+          >
+            {detailText ? `${detailPrefix}${detailText}` : "—"}
+          </span>
+        ) : null}
       </span>
     </span>
   );
@@ -299,10 +306,17 @@ export function Ps1RatingPanelContent({
     tone === "author"
       ? AUTHOR_PS1_RATING_TONE_CLASS_NAMES[ratingTone]
       : AVERAGE_PS1_RATING_TONE_CLASS_NAMES[ratingTone];
+  const valueBoxClassName = hasValueOverride
+    ? compact
+      ? "h-10 w-full max-w-[7.5rem] px-2 text-2xl"
+      : "h-[4.15rem] w-full max-w-[10.5rem] px-3 text-5xl"
+    : compact
+      ? "size-10 text-4xl"
+      : "aspect-square w-[4.15rem] text-7xl";
 
   return (
     <span
-      className={`media-carrier-font-ps1 relative mx-auto block w-full overflow-hidden rounded-[1.15rem] border border-stone-950/28 bg-[linear-gradient(180deg,#cfc5b4_0%,#b9ad9a_52%,#a4937d_100%)] text-stone-950 shadow-[0_10px_18px_rgba(28,25,23,0.28),inset_2px_2px_0_rgba(255,255,255,0.24),inset_-2px_-2px_0_rgba(61,48,35,0.22)] ${
+      className={`media-carrier-font-ps1 relative mx-auto block h-full w-full overflow-hidden rounded-[1.15rem] border border-stone-950/28 bg-[linear-gradient(180deg,#cfc5b4_0%,#b9ad9a_52%,#a4937d_100%)] text-stone-950 shadow-[0_10px_18px_rgba(28,25,23,0.28),inset_2px_2px_0_rgba(255,255,255,0.24),inset_-2px_-2px_0_rgba(61,48,35,0.22)] ${
         compact ? "min-h-[6.25rem] max-w-[10rem] px-2 py-2" : "min-h-[10.5rem] max-w-[15.5rem] px-3 py-3"
       }`}
     >
@@ -336,7 +350,7 @@ export function Ps1RatingPanelContent({
           </span>
           <span
             className={`grid place-items-center rounded-sm border border-stone-950/55 bg-[#090c0b] shadow-[inset_0_0_0_2px_rgba(255,255,255,0.06),inset_0_0_18px_rgba(0,0,0,0.7)] ${
-              compact ? "size-10 text-4xl" : "aspect-square w-[4.15rem] text-7xl"
+              valueBoxClassName
             } ${valueClassName} leading-none tabular-nums`}
           >
             {valueText}
@@ -537,10 +551,22 @@ export function WinDvdAeroRatingContent({
     tone === "author"
       ? AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone]
       : AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone];
+  const valueBoxClassName = hasValueOverride
+    ? compact
+      ? "h-14 w-full max-w-[5.75rem] px-1 text-[1.75rem]"
+      : "h-20 w-full max-w-[12rem] px-3 text-5xl"
+    : compact
+      ? "size-14 text-4xl"
+      : "size-20 text-6xl";
+  const contentJustifyClassName = hasValueOverride
+    ? compact
+      ? "justify-center"
+      : "justify-start"
+    : "justify-between";
 
   return (
     <span
-      className={`media-carrier-font-pc-windvd block overflow-hidden rounded-xl border border-sky-900/30 bg-[linear-gradient(180deg,rgba(235,249,255,0.94),rgba(210,229,240,0.86))] text-left text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.88)] backdrop-blur ${
+      className={`media-carrier-font-pc-windvd flex h-full flex-col overflow-hidden rounded-xl border border-sky-900/30 bg-[linear-gradient(180deg,rgba(235,249,255,0.94),rgba(210,229,240,0.86))] text-left text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.88)] backdrop-blur ${
         compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
       }`}
     >
@@ -552,29 +578,42 @@ export function WinDvdAeroRatingContent({
           className={compact ? "size-4 shrink-0" : "size-6 shrink-0"}
           aria-hidden="true"
         />
-        <span className={`block flex-1 truncate uppercase text-slate-900 ${compact ? "text-[9px]" : "text-xs"}`}>
-          {label}
-        </span>
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={WINDVD_AERO_BUTTONS_PATH}
-          alt=""
-          className={compact ? "h-3 w-auto shrink-0 self-start" : "h-5 w-auto shrink-0 self-start"}
-          aria-hidden="true"
-        />
-      </span>
-      <span className={compact ? "block px-1.5 pb-1.5 pt-0" : "block px-2 pb-2 pt-0"}>
         <span
-          className={`flex flex-col items-center justify-between rounded-lg border border-sky-700/24 bg-transparent text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.46)] ${
-            compact ? "px-1.5 py-2" : "px-3 py-3"
+          className={`block min-w-0 flex-1 uppercase text-slate-900 ${
+            compact ? "text-[8px] leading-3" : "truncate text-xs"
           }`}
         >
+          {label}
+        </span>
+        {!compact ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={WINDVD_AERO_BUTTONS_PATH}
+            alt=""
+            className="h-5 w-auto shrink-0 self-start"
+            aria-hidden="true"
+          />
+        ) : null}
+      </span>
+      <span className={compact ? "flex flex-1 px-1.5 pb-1.5 pt-0" : "flex flex-1 px-2 pb-2 pt-0"}>
         <span
-          className={`grid place-items-center rounded-xl border border-current/35 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.98)_0%,rgba(226,244,255,0.86)_45%,rgba(125,201,239,0.72)_100%)] shadow-[0_10px_24px_rgba(14,165,233,0.18),inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-10px_18px_rgba(3,105,161,0.12)] ${
-            compact ? "size-14 text-4xl" : "size-20 text-6xl"
-          } ${ratingToneClassName} font-semibold leading-none tabular-nums`}
+          className={`flex min-h-0 flex-1 flex-col items-center rounded-lg border border-sky-700/24 bg-transparent text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.46)] ${
+            compact ? "px-1.5 py-2" : "px-3 py-3"
+          } ${contentJustifyClassName}`}
         >
-          {value ?? formatScore(score)}
+        <span className="flex w-full flex-col items-center">
+          <span
+            className={`grid place-items-center rounded-xl border border-current/35 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.98)_0%,rgba(226,244,255,0.86)_45%,rgba(125,201,239,0.72)_100%)] shadow-[0_10px_24px_rgba(14,165,233,0.18),inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-10px_18px_rgba(3,105,161,0.12)] ${
+              valueBoxClassName
+            } ${ratingToneClassName} font-semibold leading-none tabular-nums`}
+          >
+            {value ?? formatScore(score)}
+          </span>
+          {hasValueOverride ? (
+            <span className={`${compact ? "mt-1 text-xs" : "mt-3 text-sm"} uppercase text-red-900`}>
+              чтобы поставить оценку
+            </span>
+          ) : null}
         </span>
         {!hasValueOverride ? (
           <span className={compact ? "mt-1 block" : "mt-2 block"}>
@@ -584,18 +623,16 @@ export function WinDvdAeroRatingContent({
               toneClassName={ratingToneClassName}
             />
           </span>
-        ) : (
-          <span className={`${compact ? "mt-1 text-xs" : "mt-2 text-sm"} uppercase text-red-900`}>
-            чтобы поставить оценку
+        ) : null}
+        {!hasValueOverride ? (
+          <span
+            className={`block min-h-5 uppercase text-slate-800 ${
+              compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+            } ${detailText ? "" : "opacity-0"}`}
+          >
+            {detailText ? `${detailPrefix}${detailText}` : "—"}
           </span>
-        )}
-        <span
-          className={`block min-h-5 uppercase text-slate-800 ${
-            compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
-          } ${detailText ? "" : "opacity-0"}`}
-        >
-          {detailText ? `${detailPrefix}${detailText}` : "—"}
-        </span>
+        ) : null}
         </span>
       </span>
     </span>
@@ -901,7 +938,7 @@ export function ArchiveRatingPanel({
 
   return (
     <div
-      className={`rounded-md border text-center ${
+      className={`h-full rounded-md border text-center ${
         compact ? "p-2" : "p-4"
       } ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]}`}
     >
