@@ -1,7 +1,11 @@
 import Link from "next/link";
 
 import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media/carrier-frame";
-import { type MediaType } from "@/lib/media/types";
+import {
+  getMediaTypeLabel,
+  type MediaType,
+  type MediaTypeOption,
+} from "@/lib/media/types";
 import { formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TONE_CLASS_NAMES,
@@ -38,8 +42,10 @@ type MediaItemTileProps = {
   currentAuthorScore?: number | null;
   href?: string;
   item: MediaItemTileItem;
+  mediaTypes?: readonly MediaTypeOption[];
   onSelect?: () => void;
   selected?: boolean;
+  showMediaTypeLabel?: boolean;
 };
 
 function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
@@ -279,15 +285,21 @@ export function MediaItemTile({
   currentAuthorScore,
   href,
   item,
+  mediaTypes = [],
   onSelect,
   selected = false,
+  showMediaTypeLabel = false,
 }: MediaItemTileProps) {
   const shouldShowAuthorScore = currentAuthorScore !== undefined && currentAuthorScore !== null;
+  const mediaTypeLabel =
+    showMediaTypeLabel && mediaTypes.length > 0
+      ? getMediaTypeLabel(item.mediaType, mediaTypes)
+      : null;
   const averageRatingToneClassName =
     AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)];
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore ?? null)];
-  const className = `group relative block aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-red-900/60 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-red-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900/35 ${
+  const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-red-900/60 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-red-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900/35 ${
     selected ? "border-red-900/70" : "border-stone-300/80"
   }`;
   const tileCoverItem = {
@@ -306,6 +318,14 @@ export function MediaItemTile({
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-stone-950/88 via-stone-950/44 to-transparent"
       />
+      {mediaTypeLabel ? (
+        <span
+          className="absolute left-2 top-2 max-w-[calc(100%-3.5rem)] truncate rounded-sm border border-stone-50/30 bg-stone-950/62 px-1.5 py-1 font-mono text-[10px] font-semibold uppercase leading-none tracking-[0.08em] text-stone-50 shadow-sm backdrop-blur-[1px]"
+          title={mediaTypeLabel}
+        >
+          {mediaTypeLabel}
+        </span>
+      ) : null}
       <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
         <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
           {item.title}
@@ -332,9 +352,27 @@ export function MediaItemTile({
     </>
   );
 
+  if (href && onSelect) {
+    return (
+      <>
+        <Link href={href} className={`block xl:hidden ${className}`}>
+          {content}
+        </Link>
+        <button
+          type="button"
+          onClick={onSelect}
+          className={`hidden xl:block ${className}`}
+          aria-pressed={selected}
+        >
+          {content}
+        </button>
+      </>
+    );
+  }
+
   if (href) {
     return (
-      <Link href={href} className={className}>
+      <Link href={href} className={`block ${className}`}>
         {content}
       </Link>
     );
@@ -344,7 +382,7 @@ export function MediaItemTile({
     <button
       type="button"
       onClick={onSelect}
-      className={className}
+      className={`block ${className}`}
       aria-pressed={selected}
     >
       {content}

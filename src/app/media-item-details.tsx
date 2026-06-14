@@ -457,6 +457,8 @@ function ArchiveMediaItemDetails({
                         currentAuthorScore={relatedItem.currentAuthorScore}
                         item={relatedItem}
                         href={`/media/${relatedItem.code}`}
+                        mediaTypes={mediaTypes}
+                        showMediaTypeLabel
                       />
                     ))}
                   </div>

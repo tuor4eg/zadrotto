@@ -18,6 +18,9 @@ Keep the codebase simple, layered, and easy to change.
 - Do not create abstractions before there is a real repeated pattern.
 - Keep feature-specific code close to the feature.
 - Move code to shared modules only when it is reused or clearly belongs to the project core.
+- Put reusable public archive UI patterns in `src/components/archive`.
+- Keep feature-specific archive content, such as media previews or rating panels, close to the feature in `src/app` unless it is reused outside that feature.
+- Put adaptive interaction rules in the shared layout or pattern component when the same behavior should stay consistent across archive screens.
 - Maximum reuse of existing code and patterns is preferred over adding new abstractions or modules.
 - If you create UI pattern check could it be reused in other places as component of helper.
 - UI should be in Russian everywhere.

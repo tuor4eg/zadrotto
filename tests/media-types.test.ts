@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { sortMediaTypesByCount, type MediaTypeOption } from "../src/lib/media/types";
+import {
+  getMediaTypeLabel,
+  sortMediaTypesByCount,
+  type MediaTypeOption,
+} from "../src/lib/media/types";
 
 const mediaTypes = [
   { code: "game", name: "Игры", description: null },
@@ -32,6 +36,19 @@ describe("sortMediaTypesByCount", () => {
     assert.deepEqual(
       mediaTypes.map((mediaType) => mediaType.code),
       ["game", "film", "book", "other"],
+    );
+  });
+});
+
+describe("getMediaTypeLabel", () => {
+  it("returns the configured media type name", () => {
+    assert.equal(getMediaTypeLabel("film", mediaTypes), "Фильмы");
+  });
+
+  it("fails loudly for an unknown media type", () => {
+    assert.throws(
+      () => getMediaTypeLabel("podcast", mediaTypes),
+      /Unknown media type: podcast/,
     );
   });
 });

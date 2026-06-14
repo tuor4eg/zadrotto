@@ -4,6 +4,7 @@ import { ArchiveNote } from "@/app/archive-note";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
+import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 
 type FranchisePageProps = {
@@ -27,7 +28,10 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
     notFound();
   }
 
-  const currentAuthor = await getCurrentAuthor();
+  const [currentAuthor, mediaTypes] = await Promise.all([
+    getCurrentAuthor(),
+    getMediaTypeOptions(),
+  ]);
   const items = await getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id);
 
   return (
@@ -86,6 +90,8 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
                     }
                     item={item}
                     href={`/media/${item.code}`}
+                    mediaTypes={mediaTypes}
+                    showMediaTypeLabel
                   />
                 ))}
               </div>
