@@ -89,8 +89,8 @@ export default async function Home({ searchParams }: HomeProps) {
   ]);
 
   return (
-    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
-      <div className="mx-auto flex min-h-[calc(100vh-2rem)] w-full max-w-[1480px] flex-col gap-3">
+    <main className="archive-page archive-catalog-page min-h-screen text-stone-950">
+      <div className="archive-catalog-shell mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <CatalogStickyHeader
           authorRatingFilter={authorRatingFilter}
           currentAdminUser={Boolean(currentAdminUser)}

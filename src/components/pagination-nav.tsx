@@ -31,7 +31,7 @@ const VARIANT_STYLES = {
     page: "text-stone-500",
     input: "border-stone-300 bg-white text-stone-700 focus:border-stone-950",
     button:
-      "border-stone-300 bg-white text-stone-700 hover:border-stone-950 hover:text-stone-950",
+      "border-stone-300 bg-white text-stone-700 hover:text-stone-950",
     enabled:
       "border-stone-300 bg-white text-stone-700 hover:border-stone-950 hover:text-stone-950",
     disabled: "border-stone-200 bg-stone-50 text-stone-300",
@@ -43,7 +43,7 @@ const VARIANT_STYLES = {
     input:
       "border-stone-300/80 bg-stone-50/70 text-stone-800 focus:border-stone-950",
     button:
-      "border-stone-400/80 bg-stone-100/50 text-stone-800 hover:border-stone-950 hover:bg-stone-50 hover:text-stone-950",
+      "border-stone-400/80 bg-stone-100/50 text-stone-800 hover:bg-stone-50 hover:text-stone-950",
     enabled:
       "border-stone-400/80 bg-stone-100/50 text-stone-800 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)] hover:border-stone-950 hover:bg-stone-50 hover:text-stone-950",
     disabled: "border-stone-300/60 bg-stone-100/25 text-stone-400",
@@ -189,6 +189,31 @@ export function PaginationNav({
             />
           </form>
         ) : null}
+        {totalPages > 1 && showPageJump ? (
+          <form action={basePath} className="flex items-center" method="get" noValidate>
+            <HiddenSearchParams exclude={["page"]} searchParams={searchParams} />
+            <label className="sr-only" htmlFor="pagination-page">
+              Номер страницы
+            </label>
+            <div className="relative">
+              <input
+                className={`w-20 pr-10 ${controlClassName} ${styles.input}`}
+                defaultValue={page}
+                id="pagination-page"
+                inputMode="numeric"
+                name="page"
+                type="text"
+              />
+              <button
+                aria-label="Перейти к странице"
+                className={`${pageJumpButtonClassName} ${styles.button}`}
+                type="submit"
+              >
+                <CornerDownLeft className="size-4" />
+              </button>
+            </div>
+          </form>
+        ) : null}
       </div>
       {totalPages > 1 ? (
         <div className="flex flex-wrap items-center gap-2">
@@ -227,31 +252,6 @@ export function PaginationNav({
           >
             <ChevronsRight className="size-4" />
           </PageLink>
-          {showPageJump ? (
-            <form action={basePath} className="flex items-center" method="get" noValidate>
-              <HiddenSearchParams exclude={["page"]} searchParams={searchParams} />
-              <label className="sr-only" htmlFor="pagination-page">
-                Номер страницы
-              </label>
-              <div className="relative">
-                <input
-                  className={`w-20 pr-10 ${controlClassName} ${styles.input}`}
-                  defaultValue={page}
-                  id="pagination-page"
-                  inputMode="numeric"
-                  name="page"
-                  type="text"
-                />
-                <button
-                  aria-label="Перейти к странице"
-                  className={`${pageJumpButtonClassName} ${styles.button}`}
-                  type="submit"
-                >
-                  <CornerDownLeft className="size-4" />
-                </button>
-              </div>
-            </form>
-          ) : null}
         </div>
       ) : null}
     </nav>

@@ -153,8 +153,8 @@ describe("media carrier frames", () => {
       {
         assetPath: "/mediaCarriers/game/pc/windvd/dvd.png",
         aspectRatioClassName: "aspect-[3/4]",
-        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
-        compactViewportClassName: "h-[min(32vh,300px)]",
+        compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
+        compactViewportClassName: "h-[min(28vh,260px)] max-w-full sm:h-[min(32vh,300px)]",
         coverAreaClassName: "left-[2.4%] top-[13.2%] h-[84.5%] w-[95.1%]",
         displayFontClassName: "media-carrier-font-pc-windvd",
         fontClassName: "media-carrier-font-pc-windvd",
@@ -162,12 +162,12 @@ describe("media carrier frames", () => {
         placeholderVariant: "win9x-jewel-label",
         ratingPanelVariant: "windvd-aero",
         renderKind: "cartridge",
-        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+        sizeClassName: "h-[min(44vh,380px)] w-auto max-w-full sm:h-[min(58vh,520px)]",
         titleIconHeight: 124,
         titleIconPath: "/mediaCarriers/game/pc/windvd/folder.png",
         titleIconWidth: 128,
         titleTemplate: "C ▸ {title}",
-        viewportClassName: "h-[min(58vh,520px)]",
+        viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
       },
     );
     assert.equal(

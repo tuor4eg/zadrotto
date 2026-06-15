@@ -59,6 +59,32 @@ type MediaItemDetailsProps = {
   relatedItems?: RelatedMediaItem[];
 };
 
+function FranchiseRelatedTitle({
+  franchiseCode,
+  variant,
+}: {
+  franchiseCode?: string | null;
+  variant: "default" | "archive";
+}) {
+  const linkClassName =
+    variant === "archive"
+      ? "text-stone-700 underline decoration-stone-400 underline-offset-4 transition-colors hover:text-stone-950"
+      : "text-zinc-600 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-950";
+
+  return (
+    <>
+      Еще из этой{" "}
+      {franchiseCode ? (
+        <Link href={`/franchises/${franchiseCode}`} className={linkClassName}>
+          серии
+        </Link>
+      ) : (
+        "серии"
+      )}
+    </>
+  );
+}
+
 function CoverSourceAttribution({
   provider,
   pageUrl,
@@ -219,7 +245,10 @@ export function MediaItemDetails({
               {item.franchiseTitle ? (
                 <div className="flex flex-col gap-2 normal-case tracking-normal">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    Еще из этой серии
+                    <FranchiseRelatedTitle
+                      franchiseCode={item.franchiseCode}
+                      variant="default"
+                    />
                   </div>
                   {relatedItems.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -485,7 +514,10 @@ function ArchiveMediaItemDetails({
             {item.franchiseTitle ? (
               <section>
                 <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  Еще из этой серии
+                  <FranchiseRelatedTitle
+                    franchiseCode={item.franchiseCode}
+                    variant="archive"
+                  />
                 </div>
                 {relatedItems.length > 0 ? (
                   <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
