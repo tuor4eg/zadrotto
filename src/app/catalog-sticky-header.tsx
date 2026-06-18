@@ -126,8 +126,8 @@ export function CatalogStickyHeader({
     <header
       className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 lg:transition-[max-width,padding,width] lg:duration-200 ${
         isCompact
-          ? "ml-auto w-full max-w-[320px] flex-wrap justify-end px-2 pb-2 pt-4 lg:flex-nowrap"
-          : "ml-auto w-full max-w-[320px] flex-wrap justify-end px-2 pb-2 pt-4 lg:max-w-none lg:justify-between lg:py-4 lg:pl-5 lg:pr-4"
+          ? "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mt-0 lg:max-w-[320px] lg:flex-nowrap lg:justify-end lg:pb-2 lg:pt-4"
+          : "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mt-0 lg:justify-between lg:py-4 lg:pl-5 lg:pr-4"
       }`}
     >
       <div
@@ -156,8 +156,8 @@ export function CatalogStickyHeader({
       <div
         className={`flex items-center gap-2 text-sm ${
           isCompact
-            ? "w-full min-w-0 flex-nowrap justify-end"
-            : "w-full min-w-0 flex-nowrap justify-end lg:w-auto lg:shrink-0 lg:flex-wrap lg:items-center"
+            ? "w-full min-w-0 flex-nowrap justify-center lg:justify-end"
+            : "w-full min-w-0 flex-nowrap justify-center lg:w-auto lg:shrink-0 lg:flex-wrap lg:items-center lg:justify-end"
         }`}
       >
         <CatalogHeaderControls
