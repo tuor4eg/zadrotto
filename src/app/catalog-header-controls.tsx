@@ -315,10 +315,10 @@ export function CatalogHeaderControls({
 
   return (
     <div
-      className={`contents ${
+      className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-hidden ${
         compact
           ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2"
-          : "lg:flex lg:w-auto lg:flex-wrap lg:items-center lg:gap-2"
+          : "lg:contents"
       }`}
     >
       <label className="sr-only" htmlFor="header-catalog-search">
@@ -337,7 +337,7 @@ export function CatalogHeaderControls({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="archive-search-input h-9 w-full appearance-none rounded-md border border-stone-300/80 bg-stone-50/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
+          className="archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 bg-stone-50/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
           placeholder="Поиск"
         />
         {search ? (

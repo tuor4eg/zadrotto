@@ -23,7 +23,10 @@ export default async function NewMediaTypePage({ searchParams }: NewMediaTypePag
         title="Новый тип"
         description="Тип записи для каталога и форм добавления."
         aside={
-          <Link href="/admin/media-types" className={buttonVariants({ variant: "outline" })}>
+          <Link
+            href="/admin/media-types"
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
+          >
             <ArrowLeft />
             Назад
           </Link>

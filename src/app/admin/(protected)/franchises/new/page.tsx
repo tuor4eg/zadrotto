@@ -23,13 +23,13 @@ export default async function NewFranchisePage({ searchParams }: NewFranchisePag
         title="Новая серия"
         description="Базовая карточка серии для будущих связей с записями."
         aside={
-        <Link
-          href="/admin/franchises"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          <ArrowLeft />
-          Назад
-        </Link>
+          <Link
+            href="/admin/franchises"
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
+          >
+            <ArrowLeft />
+            Назад
+          </Link>
         }
       />
 

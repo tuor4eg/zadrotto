@@ -29,7 +29,7 @@ export default async function NewAuthorPage({ searchParams }: NewAuthorPageProps
         aside={
           <Link
             href="/admin/authors"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

@@ -31,7 +31,7 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
       <div className="mx-auto flex min-h-[calc(100vh-3rem)] w-full max-w-sm flex-col justify-center gap-6">
         <Link
           href="/"
-          className={buttonVariants({ variant: "ghost", size: "sm" })}
+          className={`${buttonVariants({ variant: "ghost", size: "sm" })} max-sm:hidden`}
         >
           <ArrowLeft />
           К архиву

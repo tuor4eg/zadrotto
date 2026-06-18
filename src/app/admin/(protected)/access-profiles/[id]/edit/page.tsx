@@ -51,7 +51,7 @@ export default async function EditAccessProfilePage({
         aside={
           <Link
             href="/admin/access-profiles"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

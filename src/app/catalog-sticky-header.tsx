@@ -126,7 +126,7 @@ export function CatalogStickyHeader({
     <header
       className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 lg:transition-[max-width,padding,width] lg:duration-200 ${
         isCompact
-          ? "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mt-0 lg:max-w-[320px] lg:flex-nowrap lg:justify-end lg:pb-2 lg:pt-4"
+          ? "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mr-0 lg:mt-0 lg:max-w-[320px] lg:flex-nowrap lg:justify-end lg:pb-2 lg:pt-4"
           : "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mt-0 lg:justify-between lg:py-4 lg:pl-5 lg:pr-4"
       }`}
     >
@@ -154,10 +154,14 @@ export function CatalogStickyHeader({
       </div>
 
       <div
-        className={`flex items-center gap-2 text-sm ${
+        className={`grid w-full min-w-0 items-center gap-2 text-sm ${
+          currentAdminUser
+            ? "grid-cols-[minmax(0,1fr)_2.25rem_2.25rem]"
+            : "grid-cols-[minmax(0,1fr)_2.25rem]"
+        } ${
           isCompact
-            ? "w-full min-w-0 flex-nowrap justify-center lg:justify-end"
-            : "w-full min-w-0 flex-nowrap justify-center lg:w-auto lg:shrink-0 lg:flex-wrap lg:items-center lg:justify-end"
+            ? "lg:flex lg:flex-nowrap lg:justify-end"
+            : "lg:flex lg:w-auto lg:shrink-0 lg:flex-wrap lg:items-center lg:justify-end"
         }`}
       >
         <CatalogHeaderControls
@@ -173,14 +177,14 @@ export function CatalogStickyHeader({
           yearMode={yearMode}
         />
         {adminLink && isCompact ? (
-          <ArchiveTooltip label="Админка" side="bottom">
+          <ArchiveTooltip className="min-w-0" label="Админка" side="bottom">
             {adminLink}
           </ArchiveTooltip>
         ) : (
           adminLink
         )}
         {isCompact ? (
-          <ArchiveTooltip label={authorLinkLabel} side="bottom">
+          <ArchiveTooltip className="min-w-0" label={authorLinkLabel} side="bottom">
             {authorLink}
           </ArchiveTooltip>
         ) : (

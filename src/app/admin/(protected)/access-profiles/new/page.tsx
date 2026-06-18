@@ -27,7 +27,7 @@ export default async function NewAccessProfilePage({
         aside={
           <Link
             href="/admin/access-profiles"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

@@ -67,7 +67,7 @@ export default async function AdminMediaReviewItemPage({
   return (
     <MediaItemDetails
       item={item}
-      backLink={{ href: "/admin/media-review", label: "Назад к заявкам" }}
+      backLink={{ href: "/admin/media-review", label: "Назад к заявкам", hideOnMobile: true }}
       mediaTypes={mediaTypes}
       meta={<span>На проверке</span>}
       actions={

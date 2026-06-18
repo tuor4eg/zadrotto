@@ -56,7 +56,7 @@ export default async function EditAuthorPage({
           aside={
             <Link
               href="/admin/authors"
-              className={buttonVariants({ variant: "outline" })}
+              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
             >
               <ArrowLeft />
               Назад

@@ -26,7 +26,7 @@ export default async function NewMediaCarrierPage({ searchParams }: NewMediaCarr
         aside={
           <Link
             href="/admin/media-carriers"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

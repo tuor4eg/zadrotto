@@ -60,7 +60,10 @@ export default async function AdminReviewRequestPage({ params }: AdminReviewRequ
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap gap-2">
-        <Link href="/admin/reviews" className={buttonVariants({ variant: "outline", size: "sm" })}>
+        <Link
+          href="/admin/reviews"
+          className={`${buttonVariants({ variant: "outline", size: "sm" })} max-sm:hidden`}
+        >
           Назад к заявкам
         </Link>
         <ReviewButton contributionId={review.id} decision="published">

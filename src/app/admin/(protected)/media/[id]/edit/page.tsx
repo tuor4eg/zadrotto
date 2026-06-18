@@ -62,7 +62,7 @@ export default async function EditAdminMediaPage({
           aside={
             <Link
               href="/admin/media"
-              className={buttonVariants({ variant: "outline" })}
+              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
             >
               <ArrowLeft />
               Назад

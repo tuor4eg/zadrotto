@@ -99,7 +99,7 @@ export default async function EditFranchisePage({
           aside={
             <Link
               href="/admin/franchises"
-              className={buttonVariants({ variant: "outline" })}
+              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
             >
               <ArrowLeft />
               Назад

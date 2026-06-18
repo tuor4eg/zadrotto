@@ -35,7 +35,7 @@ export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaP
         aside={
           <Link
             href="/admin/media"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

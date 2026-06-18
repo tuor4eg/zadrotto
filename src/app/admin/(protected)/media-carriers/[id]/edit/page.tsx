@@ -56,7 +56,7 @@ export default async function EditMediaCarrierPage({
         aside={
           <Link
             href="/admin/media-carriers"
-            className={buttonVariants({ variant: "outline" })}
+            className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />
             Назад

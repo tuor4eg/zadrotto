@@ -82,7 +82,7 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
           <div className="flex flex-wrap gap-2">
             <Link
               href="/admin/authors"
-              className={buttonVariants({ variant: "outline" })}
+              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
             >
               <ArrowLeft />
               Авторы

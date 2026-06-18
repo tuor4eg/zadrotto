@@ -47,6 +47,7 @@ type MediaItemDetailsProps = {
   backLink: {
     href: string;
     label: string;
+    hideOnMobile?: boolean;
   };
   variant?: "default" | "archive";
   actions?: React.ReactNode;
@@ -143,7 +144,9 @@ export function MediaItemDetails({
       <div className="flex flex-wrap gap-2">
         <Link
           href={backLink.href}
-          className="w-fit border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+          className={`w-fit border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950 ${
+            backLink.hideOnMobile ? "max-sm:hidden" : ""
+          }`}
         >
           {backLink.label}
         </Link>
