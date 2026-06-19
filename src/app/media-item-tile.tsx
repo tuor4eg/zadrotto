@@ -33,6 +33,7 @@ type ArchiveCoverProps = {
     coverUrl: string | null;
     mediaCarrierCode?: string | null;
     mediaType?: MediaType;
+    releaseYear?: number | null;
     title: string;
   };
   mode?: "cover" | "contain";
@@ -138,6 +139,30 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
         <span className="relative z-10 grid h-full place-items-center">
           <span
             className={`${labelClassName} bg-stone-50/78 text-[9px] leading-4 text-stone-950/72`}
+          >
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  if (frame.placeholderVariant === "reel-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[7%] border border-stone-950/18 bg-[linear-gradient(180deg,#efe4ca_0%,#d9c6a2_100%)] px-3 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.55)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 opacity-55 [background-image:radial-gradient(circle_at_22%_16%,rgba(68,64,60,0.18)_0_1px,transparent_1px),radial-gradient(circle_at_68%_54%,rgba(68,64,60,0.12)_0_1px,transparent_1px)] [background-size:9px_9px,13px_13px]"
+        />
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-5 top-5 h-px bg-stone-950/22 shadow-[0_1.05rem_0_rgba(28,25,23,0.14),0_2.1rem_0_rgba(28,25,23,0.1)]"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span
+            className={`${labelClassName} bg-[#efe4ca]/80 text-[12px] leading-4 text-stone-950/72`}
           >
             Нет изображения
           </span>

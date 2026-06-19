@@ -65,6 +65,14 @@
 }
 
 @font-face {
+  font-family: "Alumni Sans";
+  font-style: normal;
+  font-weight: 900;
+  font-display: swap;
+  src: url("/fonts/alumni-sans-black.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "Russo One";
   font-style: normal;
   font-weight: 400;
@@ -261,6 +269,17 @@ body {
 
 .media-carrier-font-film-dvd {
   font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+}
+
+.media-carrier-font-film-reel {
+  font-family: "Alumni Sans", "Arial Narrow", Arial, sans-serif;
+  font-weight: 900;
+  letter-spacing: 0;
+}
+
+.media-carrier-font-film-reel-label {
+  font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+  letter-spacing: 0.12em;
 }
 
 .media-carrier-font-vhs {

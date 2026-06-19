@@ -6,18 +6,21 @@ export type MediaCarrierFramePlaceholderVariant =
   | "dvd-label"
   | "dos-disk-label"
   | "eight-bit-label"
+  | "reel-label"
   | "sixteen-bit-label"
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
   | "dvd-menu"
   | "dos-terminal"
+  | "film-strip"
   | "nes-hearts"
   | "ps1-memory-card"
   | "vhs-poster"
   | "win9x-window"
   | "windvd-aero";
 
+const FILM_REEL_RELEASE_YEAR_TO = 1979;
 const PC_DOS_RELEASE_YEAR_FROM = 1981;
 const PC_DOS_RELEASE_YEAR_TO = 1996;
 const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
@@ -174,7 +177,30 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
     viewportClassName: "h-[min(58vh,520px)]",
   },
+  "film/reel": {
+    assetPath: "/mediaCarriers/video/reel/reel.png",
+    aspectRatioClassName: "aspect-[1000/1040]",
+    compactSizeClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+    compactViewportClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+    coverAreaClassName: "left-[21.4%] top-[7.6%] h-[64.8%] w-[41.8%]",
+    displayFontClassName: "media-carrier-font-film-reel",
+    fontClassName: "media-carrier-font-film-reel",
+    labelFontClassName: "media-carrier-font-film-reel-label",
+    placeholderVariant: "reel-label",
+    ratingPanelVariant: "film-strip",
+    renderKind: "cartridge",
+    sizeClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
+    viewportClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
+  },
 };
+
+function isFilmReelReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear <= FILM_REEL_RELEASE_YEAR_TO
+  );
+}
 
 function isPcDosReleaseYear(releaseYear?: number | null) {
   return (
@@ -206,7 +232,15 @@ function isPcWinDvdReleaseYear(releaseYear?: number | null) {
 export function getMediaCarrierFrame(
   item: MediaCarrierFrameInput,
 ): MediaCarrierFrame | null {
-  if (!item.mediaType || !item.mediaCarrierCode) {
+  if (!item.mediaType) {
+    return null;
+  }
+
+  if (item.mediaType === "film" && isFilmReelReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["film/reel"] ?? null;
+  }
+
+  if (!item.mediaCarrierCode) {
     return null;
   }
 

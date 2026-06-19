@@ -1073,6 +1073,44 @@ export async function reviewSubmittedAuthorMediaItem(input: {
   return item ?? null;
 }
 
+export async function updateAdminMediaItemPublicationStatus(input: {
+  mediaItemId: number;
+  nextStatus: Extract<PublicationStatus, "private" | "published">;
+}) {
+  const now = new Date();
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      publicationStatus: input.nextStatus,
+      submittedAt: null,
+      reviewedAt: input.nextStatus === "published" ? now : null,
+      reviewedByAdminId: null,
+      adminNote: null,
+      updatedAt: now,
+    })
+    .where(eq(mediaItems.id, input.mediaItemId))
+    .returning({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      franchiseId: mediaItems.franchiseId,
+      franchiseCode: sql<string | null>`(
+        select ${franchises.code}
+        from ${franchises}
+        where ${franchises.id} = ${mediaItems.franchiseId}
+        limit 1
+      )`,
+      createdByAuthorId: mediaItems.createdByAuthorId,
+      publicationStatus: mediaItems.publicationStatus,
+      coverUrl: mediaItems.coverUrl,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourceExternalId: mediaItems.coverSourceExternalId,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
+    });
+
+  return item ?? null;
+}
+
 export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
   const [item] = await db
     .delete(mediaItems)

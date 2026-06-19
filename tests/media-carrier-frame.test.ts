@@ -222,6 +222,35 @@ describe("media carrier frames", () => {
     assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }), false);
   });
 
+  it("uses reel frame for films released before 1980 when no carrier is selected", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1979 }),
+      {
+        assetPath: "/mediaCarriers/video/reel/reel.png",
+        aspectRatioClassName: "aspect-[1000/1040]",
+        compactSizeClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+        compactViewportClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+        coverAreaClassName: "left-[21.4%] top-[7.6%] h-[64.8%] w-[41.8%]",
+        displayFontClassName: "media-carrier-font-film-reel",
+        fontClassName: "media-carrier-font-film-reel",
+        labelFontClassName: "media-carrier-font-film-reel-label",
+        placeholderVariant: "reel-label",
+        ratingPanelVariant: "film-strip",
+        renderKind: "cartridge",
+        sizeClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
+        viewportClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
+      },
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1980 }),
+      false,
+    );
+    assert.equal(
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs", releaseYear: 1979 })?.assetPath,
+      "/mediaCarriers/video/vhs/vhs.png",
+    );
+  });
+
   it("keeps unknown carriers and empty carrier values frameless", () => {
     assert.equal(hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc" }), false);
     assert.equal(hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: null }), false);

@@ -15,6 +15,7 @@ import {
   deleteAdminMediaItemIfUnrated,
   getAdminMediaItemIdentityById,
   updateAdminMediaItem,
+  updateAdminMediaItemPublicationStatus,
 } from "@/db/queries/media-items";
 import {
   normalizeOptionalFormString,
@@ -396,4 +397,38 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
 
   revalidateMediaSurfaces(existingItem);
   redirect("/admin/media?deleted=1");
+}
+
+export async function updateAdminMediaItemPublicationStatusAction(formData: FormData) {
+  await requireAdminUser();
+
+  const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
+  const nextStatus = getFormString(formData, "nextStatus");
+
+  if (!mediaItemId.ok || (nextStatus !== "private" && nextStatus !== "published")) {
+    redirect("/admin/media?error=invalid-media");
+  }
+
+  let item;
+
+  try {
+    item = await updateAdminMediaItemPublicationStatus({
+      mediaItemId: mediaItemId.value,
+      nextStatus,
+    });
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!item) {
+    redirect("/admin/media?error=invalid-media");
+  }
+
+  revalidateMediaSurfaces(item);
+  redirect(
+    `/admin/media/${mediaItemId.value}/edit?updated=${
+      nextStatus === "published" ? "published" : "unpublished"
+    }`,
+  );
 }

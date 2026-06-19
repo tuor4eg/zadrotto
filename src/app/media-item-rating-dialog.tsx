@@ -9,6 +9,7 @@ import { AuthorRatingForm } from "@/app/author-rating-form";
 import {
   DosTerminalRatingContent,
   DvdMenuRatingContent,
+  FilmStripRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
   VhsRatingPanelContent,
@@ -79,6 +80,7 @@ export function MediaItemRatingPanel({
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const isDosTerminalPanel = panelVariant === "dos-terminal";
+  const isFilmStripPanel = panelVariant === "film-strip";
   const isVhsPosterPanel = panelVariant === "vhs-poster";
   const isWin9xWindowPanel = panelVariant === "win9x-window";
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
@@ -87,6 +89,7 @@ export function MediaItemRatingPanel({
   const isStandalonePanel =
     isDvdMenuPanel ||
     isDosTerminalPanel ||
+    isFilmStripPanel ||
     isVhsPosterPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
@@ -130,6 +133,15 @@ export function MediaItemRatingPanel({
       label="Ваша оценка"
       score={currentAuthor ? currentAuthorScore : null}
       toneSource="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isFilmStripPanel ? (
+    <FilmStripRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : isVhsPosterPanel ? (

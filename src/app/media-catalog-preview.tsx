@@ -84,7 +84,7 @@ export function MediaCatalogPreview({
           className={
             hasCarrierFrame
               ? "mt-3 overflow-visible rounded-sm"
-              : "mt-3 overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
+              : "mt-3 mx-auto w-full max-w-[13rem] overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
           }
         >
           <div
@@ -95,7 +95,7 @@ export function MediaCatalogPreview({
                     mediaCarrierFrame.viewportClassName ??
                     mediaCarrierFrame.aspectRatioClassName
                   } overflow-visible rounded-sm`
-                : "relative aspect-[4/3] overflow-hidden rounded-sm bg-stone-800"
+                : "relative aspect-[2/3] overflow-hidden rounded-sm bg-stone-800"
             }
           >
             {item.coverUrl ? (

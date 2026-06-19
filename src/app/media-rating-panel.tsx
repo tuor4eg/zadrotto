@@ -63,6 +63,15 @@ type DvdMenuRatingContentProps = {
   value?: string;
 };
 
+type FilmStripRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  value?: string;
+};
+
 type Ps1RatingPanelContentProps = {
   compact?: boolean;
   detail?: string;
@@ -427,6 +436,124 @@ function DvdMenuRatingStars({ compact = false, score }: { compact?: boolean; sco
           {index < filledStars ? "★" : "☆"}
         </span>
       ))}
+    </span>
+  );
+}
+
+function FilmStripPerforations({ compact = false }: { compact?: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex w-full justify-between ${compact ? "px-2" : "px-3"}`}
+    >
+      {Array.from({ length: 8 }, (_, index) => (
+        <span
+          key={index}
+          className={`block rounded-[1px] bg-[#e8d9b8] shadow-[inset_0_1px_1px_rgba(255,255,255,0.5),0_0_2px_rgba(0,0,0,0.55)] ${
+            compact ? "h-2 w-2" : "h-3 w-3"
+          }`}
+        />
+      ))}
+    </span>
+  );
+}
+
+function FilmStripRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center text-[#1b1712] ${
+        compact ? "gap-0.5 text-base" : "gap-1.5 text-3xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
+      ))}
+    </span>
+  );
+}
+
+export function FilmStripRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  value,
+}: FilmStripRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+
+  return (
+    <span
+      className={`relative mx-auto flex h-full w-full min-w-0 max-w-full flex-col overflow-hidden rounded-md border border-[#21170e] bg-[#15120d] text-center text-[#23150d] shadow-[0_12px_22px_rgba(28,25,23,0.24),inset_0_0_0_1px_rgba(255,255,255,0.12)] ${
+        compact ? "min-h-[5.25rem] p-1" : "min-h-[8rem] max-w-[14.5rem] p-2"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.14)_0_1px,transparent_1px),radial-gradient(circle_at_72%_64%,rgba(255,255,255,0.1)_0_1px,transparent_1px)] [background-size:7px_7px,11px_11px]"
+      />
+      <span className={`relative z-10 flex h-full min-w-0 flex-col ${compact ? "gap-1" : "gap-1.5"}`}>
+        <span className="flex items-center justify-between px-1 text-[8px] leading-none text-[#d0ad62]">
+          <span>11A ▶</span>
+          <span>12</span>
+        </span>
+        <FilmStripPerforations compact={compact} />
+        <span
+          className={`flex min-w-0 flex-1 flex-col items-center justify-between border border-[#6b4a2c]/28 bg-[linear-gradient(180deg,#f1e6c9_0%,#dcc79f_100%)] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-12px_22px_rgba(88,49,23,0.08)] ${
+            compact ? "px-1.5 py-1.5" : "px-2.5 py-2"
+          }`}
+        >
+          <span
+            className={`media-carrier-font-film-reel-label flex w-full min-w-0 items-center gap-2 uppercase text-[#4f2f1d] ${
+              compact ? "text-[7px] leading-3" : "text-[10px] leading-4"
+            }`}
+          >
+            <span aria-hidden="true" className="h-px flex-1 bg-[#7a5132]/36" />
+            <span className="min-w-0 truncate">{label}</span>
+            <span aria-hidden="true" className="h-px flex-1 bg-[#7a5132]/36" />
+          </span>
+          <span
+            className={`media-carrier-font-film-reel block max-w-full leading-none tabular-nums text-[#4a1309] ${
+              hasValueOverride
+                ? compact
+                  ? "text-[1.85rem]"
+                  : "text-[2.65rem]"
+                : compact
+                  ? "text-[3.25rem]"
+                  : "text-[4.6rem]"
+            }`}
+          >
+            {value ?? formatScore(score)}
+          </span>
+          {!hasValueOverride ? (
+            <FilmStripRatingStars compact={compact} score={score} />
+          ) : (
+            <span
+              className={`media-carrier-font-film-reel-label uppercase text-[#6d3d24] ${
+                compact ? "text-[7px] leading-3" : "text-[9px] leading-4"
+              }`}
+            >
+              чтобы поставить оценку
+            </span>
+          )}
+          <span
+            className={`media-carrier-font-film-reel-label block min-h-4 uppercase text-[#6d3d24] ${
+              compact ? "text-[6px] leading-3" : "text-[8px] leading-4"
+            } ${detailText && !hasValueOverride ? "" : "opacity-0"}`}
+          >
+            {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+          </span>
+        </span>
+        <FilmStripPerforations compact={compact} />
+        <span className="flex items-center justify-between px-1 text-[8px] leading-none text-[#d0ad62]">
+          <span>11A ▶</span>
+          <span>{hasValueOverride ? "12" : detailText}</span>
+        </span>
+      </span>
     </span>
   );
 }
@@ -865,6 +992,17 @@ export function ArchiveRatingPanel({
         label={label}
         score={score}
         toneSource="average"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "film-strip") {
+    return (
+      <FilmStripRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
       />
     );
   }

@@ -1,13 +1,17 @@
 import Link from "next/link";
-import { ArrowLeft, FileText } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, FileText, RotateCcw } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { EmptyState, PageHeader } from "@/app/admin/(protected)/admin-ui";
-import { updateAdminMediaItemAction } from "@/app/admin/(protected)/media/actions";
+import {
+  updateAdminMediaItemAction,
+  updateAdminMediaItemPublicationStatusAction,
+} from "@/app/admin/(protected)/media/actions";
 import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
 import { getAuthorOptions } from "@/db/queries/authors";
@@ -28,6 +32,45 @@ type EditAdminMediaPageProps = {
     updated?: string;
   }>;
 };
+
+function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LABELS) {
+  if (status === "published") {
+    return "positive" as const;
+  }
+
+  if (status === "submitted") {
+    return "warning" as const;
+  }
+
+  if (status === "rejected") {
+    return "destructive" as const;
+  }
+
+  return "outline" as const;
+}
+
+function PublicationStatusButton({
+  mediaItemId,
+  published,
+}: {
+  mediaItemId: number;
+  published: boolean;
+}) {
+  return (
+    <form action={updateAdminMediaItemPublicationStatusAction}>
+      <input type="hidden" name="mediaItemId" value={mediaItemId} />
+      <input type="hidden" name="nextStatus" value={published ? "private" : "published"} />
+      <Button
+        type="submit"
+        variant={published ? "destructive" : "positive"}
+        className="w-full"
+      >
+        {published ? <EyeOff /> : <RotateCcw />}
+        {published ? "Снять с публикации" : "Вернуть на публикацию"}
+      </Button>
+    </form>
+  );
+}
 
 export default async function EditAdminMediaPage({
   params,
@@ -52,6 +95,18 @@ export default async function EditAdminMediaPage({
   if (!item) {
     notFound();
   }
+
+  const isPublished = item.publicationStatus === "published";
+  const successMessage =
+    query.created === "1"
+      ? "Запись создана."
+      : query.updated === "1"
+        ? "Запись сохранена."
+        : query.updated === "published"
+          ? "Запись опубликована."
+          : query.updated === "unpublished"
+            ? "Запись снята с публикации."
+            : null;
 
   return (
     <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
@@ -88,13 +143,7 @@ export default async function EditAdminMediaPage({
               requireAuthor
               values={item}
               errorMessage={getAdminMediaErrorMessage(query.error)}
-              successMessage={
-                query.created === "1"
-                  ? "Запись создана."
-                  : query.updated === "1"
-                    ? "Запись сохранена."
-                    : null
-              }
+              successMessage={successMessage}
             />
           </CardContent>
         </Card>
@@ -113,12 +162,29 @@ export default async function EditAdminMediaPage({
 
           <div className="flex flex-wrap gap-2">
             <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
-            <Badge
-              variant={item.publicationStatus === "published" ? "positive" : item.publicationStatus === "submitted" ? "warning" : item.publicationStatus === "rejected" ? "destructive" : "outline"}
-            >
+            <Badge variant={getStatusBadgeVariant(item.publicationStatus)}>
               {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}
             </Badge>
             {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
+          </div>
+
+          <div className="grid gap-2 border-t border-stone-100 pt-4">
+            {isPublished ? (
+              <Link
+                href={`/media/${item.code}`}
+                className={`${buttonVariants({ variant: "outline" })} w-full`}
+              >
+                <Eye />
+                Смотреть на сайте
+              </Link>
+            ) : (
+              <Button type="button" variant="outline" disabled className="w-full">
+                <Eye />
+                Карточка не опубликована
+              </Button>
+            )}
+
+            <PublicationStatusButton mediaItemId={item.id} published={isPublished} />
           </div>
 
           <div className="space-y-2 text-sm text-stone-600">

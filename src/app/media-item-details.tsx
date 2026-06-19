@@ -318,14 +318,14 @@ function ArchiveMediaItemDetails({
             className="pointer-events-none absolute -top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-3 sm:right-6 sm:h-28 lg:-top-4 lg:right-8 lg:h-32"
           />
 
-          <div className="relative px-6 pb-6 pt-[3.75rem]">
+          <div className="relative min-w-0 px-6 pb-6 pt-[3.75rem]">
             <div className={`${labelFontClassName} text-sm uppercase leading-7 text-stone-950`}>
               Досье
             </div>
             <div
               className={
                 hasCarrierFrame
-                  ? "mt-6 mx-auto max-w-[420px]"
+                  ? "mt-6 mx-auto max-w-full sm:max-w-[420px]"
                   : "mt-6 mx-auto max-w-[360px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
               }
             >
@@ -344,7 +344,7 @@ function ArchiveMediaItemDetails({
                 <div
                   className={
                     hasCarrierFrame
-                      ? `relative ${
+                      ? `relative max-w-full ${
                           mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
                         } overflow-visible rounded-sm`
                       : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
