@@ -5,6 +5,7 @@ import {
   date,
   index,
   integer,
+  jsonb,
   pgEnum,
   pgTable,
   primaryKey,
@@ -153,6 +154,43 @@ export const adminUsers = pgTable("admin_users", {
   ...timestamps(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 });
+
+export const adminActivityLogs = pgTable(
+  "admin_activity_logs",
+  {
+    id: serial("id").primaryKey(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    actorType: text("actor_type").notNull(),
+    adminUserId: integer("admin_user_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    authorId: integer("author_id").references(() => authors.id, {
+      onDelete: "set null",
+    }),
+    action: text("action").notNull(),
+    entityType: text("entity_type"),
+    entityId: integer("entity_id"),
+    entityLabel: text("entity_label"),
+    status: text("status").notNull(),
+    severity: text("severity").default("info").notNull(),
+    message: text("message"),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    metadata: jsonb("metadata").$type<Record<string, unknown> | null>(),
+  },
+  (table) => [
+    index("admin_activity_logs_created_at_idx").on(table.createdAt),
+    index("admin_activity_logs_actor_admin_idx").on(table.actorType, table.adminUserId),
+    index("admin_activity_logs_actor_author_idx").on(table.actorType, table.authorId),
+    index("admin_activity_logs_entity_idx").on(table.entityType, table.entityId),
+    index("admin_activity_logs_action_idx").on(table.action),
+    index("admin_activity_logs_severity_idx").on(table.severity),
+    check(
+      "admin_activity_logs_severity_check",
+      sql`${table.severity} in ('info', 'warning', 'critical')`,
+    ),
+  ],
+);
 
 export const authorAccessTokens = pgTable(
   "author_access_tokens",
@@ -360,6 +398,8 @@ export type CoverProviderCredentials = typeof coverProviderCredentials.$inferSel
 export type NewCoverProviderCredentials = typeof coverProviderCredentials.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
+export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;
+export type NewAdminActivityLog = typeof adminActivityLogs.$inferInsert;
 export type AuthorAccessToken = typeof authorAccessTokens.$inferSelect;
 export type NewAuthorAccessToken = typeof authorAccessTokens.$inferInsert;
 export type Author = typeof authors.$inferSelect;

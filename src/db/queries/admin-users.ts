@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { adminUsers } from "@/db/schema";
@@ -55,6 +55,16 @@ export async function getAdminUsersCount() {
     .from(adminUsers);
 
   return row?.count ?? 0;
+}
+
+export async function getAdminUserOptions() {
+  return db
+    .select({
+      id: adminUsers.id,
+      login: adminUsers.login,
+    })
+    .from(adminUsers)
+    .orderBy(asc(adminUsers.login));
 }
 
 export async function createAdminUser(login: string, passwordHash: string) {

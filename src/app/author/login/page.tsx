@@ -22,7 +22,14 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
   }
 
   const { error } = await searchParams;
-  const hasInvalidTokenError = error === "invalid";
+  const errorMessage =
+    error === "invalid"
+      ? "Неверный токен доступа."
+      : error === "rate-limit"
+        ? "Слишком много попыток входа. Попробуй позже."
+        : error === "rate-limit-unavailable"
+          ? "Вход временно недоступен. Попробуй позже."
+          : null;
 
   return (
     <main className="archive-page min-h-screen px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -57,9 +64,9 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
               />
             </div>
 
-            {hasInvalidTokenError ? (
+            {errorMessage ? (
               <Alert variant="destructive">
-                Неверный токен доступа.
+                {errorMessage}
               </Alert>
             ) : null}
 

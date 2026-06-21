@@ -32,6 +32,7 @@ import {
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { generateEntityCode } from "@/lib/common/generated-code";
+import { logActivity } from "@/lib/activity-logs/server";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
@@ -179,7 +180,7 @@ function getCoverSourceFromItem(item: {
 }
 
 export async function updateAdminMediaItemAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
   const removeCover = shouldRemoveCover(formData);
@@ -268,6 +269,21 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   if (nextIdentity) {
     revalidateMediaSurfaces(nextIdentity);
+    await logActivity({
+      action: "media.updated",
+      actorType: "admin",
+      adminUserId: adminUser.id,
+      entityType: "media-item",
+      entityId: mediaItemId.value,
+      entityLabel: form.value.title,
+      message: "Запись изменена.",
+      metadata: {
+        mediaType: form.value.mediaType,
+        franchiseId: form.value.franchiseId,
+        mediaCarrierId: form.value.mediaCarrierId,
+        authorId: form.value.authorId,
+      },
+    });
 
     if (existingItem.franchiseCode && existingItem.franchiseCode !== nextIdentity.franchiseCode) {
       revalidatePath(`/franchises/${existingItem.franchiseCode}`);
@@ -278,7 +294,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 }
 
 export async function createAdminMediaItemAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const form = readMediaForm(formData, { requireAuthor: true });
 
@@ -353,11 +369,27 @@ export async function createAdminMediaItemAction(formData: FormData) {
     revalidateMediaSurfaces(identity);
   }
 
+  await logActivity({
+    action: "media.created",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "media-item",
+    entityId: item.id,
+    entityLabel: form.value.title,
+    message: "Запись создана.",
+    metadata: {
+      mediaType: form.value.mediaType,
+      franchiseId: form.value.franchiseId,
+      mediaCarrierId: form.value.mediaCarrierId,
+      authorId: form.value.authorId,
+    },
+  });
+
   redirect(`/admin/media/${item.id}/edit?created=1`);
 }
 
 export async function deleteAdminMediaItemAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
 
@@ -396,11 +428,20 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
   }
 
   revalidateMediaSurfaces(existingItem);
+  await logActivity({
+    action: "media.deleted",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "media-item",
+    entityId: existingItem.id,
+    entityLabel: existingItem.title,
+    message: "Запись удалена.",
+  });
   redirect("/admin/media?deleted=1");
 }
 
 export async function updateAdminMediaItemPublicationStatusAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
   const nextStatus = getFormString(formData, "nextStatus");
@@ -426,6 +467,15 @@ export async function updateAdminMediaItemPublicationStatusAction(formData: Form
   }
 
   revalidateMediaSurfaces(item);
+  await logActivity({
+    action: nextStatus === "published" ? "media.published" : "media.unpublished",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "media-item",
+    entityId: item.id,
+    entityLabel: item.title,
+    message: nextStatus === "published" ? "Запись опубликована." : "Запись снята с публикации.",
+  });
   redirect(
     `/admin/media/${mediaItemId.value}/edit?updated=${
       nextStatus === "published" ? "published" : "unpublished"

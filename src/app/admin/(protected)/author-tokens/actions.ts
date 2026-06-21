@@ -15,6 +15,7 @@ import {
   getAdminFormErrorMessage,
 } from "@/lib/common/app-error-messages";
 import { generateAuthorAccessToken, hashAuthorAccessToken } from "@/lib/authors/access-token";
+import { logActivity } from "@/lib/activity-logs/server";
 
 export type CreateAuthorTokenState = {
   accessToken: string | null;
@@ -74,6 +75,18 @@ export async function createAuthorTokenAction(
   }
 
   revalidatePath("/admin/author-tokens");
+  await logActivity({
+    action: "author-token.created",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author-token",
+    entityLabel: label,
+    message: "Токен автора создан.",
+    metadata: {
+      authorId,
+      label,
+    },
+  });
 
   return {
     accessToken,
@@ -82,7 +95,7 @@ export async function createAuthorTokenAction(
 }
 
 export async function revokeAuthorTokenAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const tokenId = getFormNumber(formData, "tokenId");
 
@@ -96,11 +109,19 @@ export async function revokeAuthorTokenAction(formData: FormData) {
   }
 
   revalidatePath("/admin/author-tokens");
+  await logActivity({
+    action: "author-token.revoked",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author-token",
+    entityId: tokenId,
+    message: "Токен автора отозван.",
+  });
   redirect("/admin/author-tokens?updated=revoked");
 }
 
 export async function restoreAuthorTokenAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const tokenId = getFormNumber(formData, "tokenId");
 
@@ -114,11 +135,19 @@ export async function restoreAuthorTokenAction(formData: FormData) {
   }
 
   revalidatePath("/admin/author-tokens");
+  await logActivity({
+    action: "author-token.restored",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author-token",
+    entityId: tokenId,
+    message: "Токен автора восстановлен.",
+  });
   redirect("/admin/author-tokens?updated=restored");
 }
 
 export async function deleteAuthorTokenAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const tokenId = getFormNumber(formData, "tokenId");
 
@@ -132,5 +161,13 @@ export async function deleteAuthorTokenAction(formData: FormData) {
   }
 
   revalidatePath("/admin/author-tokens");
+  await logActivity({
+    action: "author-token.deleted",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author-token",
+    entityId: tokenId,
+    message: "Токен автора удален.",
+  });
   redirect("/admin/author-tokens?updated=deleted");
 }

@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { reviewContributionReview } from "@/db/queries/contribution-reviews";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
+import { logActivity } from "@/lib/activity-logs/server";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -48,6 +49,29 @@ export async function reviewContributionReviewAction(formData: FormData) {
   revalidatePath("/admin", "layout");
   revalidatePath("/author/reviews");
   revalidatePath(`/media/${result.mediaItemCode}`);
+  await logActivity({
+    action:
+      decision === "published"
+        ? "review.approved"
+        : decision === "rejected"
+          ? "review.rejected"
+          : "review.hidden",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "review",
+    entityId: result.id,
+    entityLabel: result.mediaItemTitle,
+    message:
+      decision === "published"
+        ? "Рецензия одобрена."
+        : decision === "rejected"
+          ? "Рецензия отклонена."
+          : "Рецензия скрыта.",
+    metadata: {
+      mediaItemId: result.mediaItemId,
+      mediaItemCode: result.mediaItemCode,
+    },
+  });
 
   redirect(`/admin/reviews?${decision}=1`);
 }

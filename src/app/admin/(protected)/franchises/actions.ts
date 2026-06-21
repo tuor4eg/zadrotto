@@ -19,6 +19,7 @@ import {
 } from "@/lib/forms/admin-franchise";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { generateEntityCode } from "@/lib/common/generated-code";
+import { logActivity } from "@/lib/activity-logs/server";
 
 export type CreateInlineFranchiseState = {
   error: string | null;
@@ -70,7 +71,7 @@ function parseRequiredPositiveInteger(value: string) {
 }
 
 export async function createFranchiseAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const input = getFranchiseInput(formData);
 
@@ -78,8 +79,10 @@ export async function createFranchiseAction(formData: FormData) {
     redirect(`/admin/franchises/new?error=${input.error}`);
   }
 
+  let franchise;
+
   try {
-    await createFranchise({
+    franchise = await createFranchise({
       ...input.value,
       code: generateEntityCode({ type: "series", name: input.value.title }),
     });
@@ -93,6 +96,15 @@ export async function createFranchiseAction(formData: FormData) {
   }
 
   revalidateFranchiseSurfaces();
+  await logActivity({
+    action: "franchise.created",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Серия создана.",
+  });
   redirect("/admin/franchises?created=1");
 }
 
@@ -100,7 +112,7 @@ export async function createInlineFranchiseAction(
   _previousState: CreateInlineFranchiseState,
   formData: FormData,
 ): Promise<CreateInlineFranchiseState> {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const input = getFranchiseInput(formData);
 
@@ -127,6 +139,16 @@ export async function createInlineFranchiseAction(
   revalidateFranchiseSurfaces();
   revalidatePath("/admin/media");
   revalidatePath("/admin/media/new");
+  await logActivity({
+    action: "franchise.created",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Серия создана.",
+    metadata: { source: "inline-media-form" },
+  });
 
   return {
     error: null,
@@ -139,7 +161,7 @@ export async function createInlineFranchiseAction(
 }
 
 export async function updateFranchiseAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const id = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
   const input = getFranchiseInput(formData);
@@ -152,8 +174,10 @@ export async function updateFranchiseAction(formData: FormData) {
     redirect(`/admin/franchises/${id.value}/edit?error=${input.error}`);
   }
 
+  let franchise;
+
   try {
-    const franchise = await updateFranchise({
+    franchise = await updateFranchise({
       id: id.value,
       ...input.value,
     });
@@ -171,11 +195,20 @@ export async function updateFranchiseAction(formData: FormData) {
   }
 
   revalidateFranchiseSurfaces();
+  await logActivity({
+    action: "franchise.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Серия изменена.",
+  });
   redirect(`/admin/franchises/${id.value}/edit?updated=1`);
 }
 
 export async function deleteFranchiseAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const id = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
 
@@ -197,11 +230,20 @@ export async function deleteFranchiseAction(formData: FormData) {
   }
 
   revalidateFranchiseSurfaces();
+  await logActivity({
+    action: "franchise.deleted",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Серия удалена.",
+  });
   redirect("/admin/franchises?deleted=1");
 }
 
 export async function addMediaItemToFranchiseAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const franchiseId = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
   const mediaItemId = parseRequiredPositiveInteger(getFormString(formData, "mediaItemId"));
@@ -254,11 +296,25 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
     revalidatePath(`/franchises/${itemBeforeUpdate.franchiseCode}`);
   }
 
+  await logActivity({
+    action: "franchise.media.attached",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Запись привязана к серии.",
+    metadata: {
+      mediaItemId: item.id,
+      mediaItemTitle: item.title,
+      previousFranchiseId: itemBeforeUpdate.franchiseId,
+    },
+  });
   redirect(`/admin/franchises/${franchiseId.value}/edit?attached=1`);
 }
 
 export async function removeMediaItemFromFranchiseAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const franchiseId = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
   const mediaItemId = parseRequiredPositiveInteger(getFormString(formData, "mediaItemId"));
@@ -296,5 +352,18 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
   revalidatePath(`/franchises/${franchise.code}`);
   revalidatePath(`/media/${item.code}`);
 
+  await logActivity({
+    action: "franchise.media.detached",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Запись отвязана от серии.",
+    metadata: {
+      mediaItemId: item.id,
+      mediaItemTitle: item.title,
+    },
+  });
   redirect(`/admin/franchises/${franchiseId.value}/edit?detached=1`);
 }

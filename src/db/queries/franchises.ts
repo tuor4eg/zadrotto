@@ -170,6 +170,7 @@ export async function createFranchise(input: {
     .returning({
       id: franchises.id,
       code: franchises.code,
+      title: franchises.title,
     });
 
   return franchise;
@@ -193,6 +194,7 @@ export async function updateFranchise(input: {
     .returning({
       id: franchises.id,
       code: franchises.code,
+      title: franchises.title,
     });
 
   return franchise ?? null;
@@ -215,6 +217,7 @@ export async function deleteFranchiseIfEmpty(id: number) {
     .returning({
       id: franchises.id,
       code: franchises.code,
+      title: franchises.title,
     });
 
   return franchise ?? null;
@@ -313,6 +316,7 @@ export async function getAdminMediaItemFranchiseIdentityById(id: number) {
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
     })
@@ -343,6 +347,7 @@ export async function addMediaItemToFranchise(input: {
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
     });
 
   return item ?? null;
@@ -367,6 +372,7 @@ export async function removeMediaItemFromFranchise(input: {
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
     });
 
   return item ?? null;

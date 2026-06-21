@@ -2,7 +2,7 @@ import type { RedisClientType } from "redis";
 
 import { getRedisClient } from "@/lib/services/redis";
 
-export type RateLimitWindow = "minute" | "hour" | "day";
+export type RateLimitWindow = "minute" | "quarter-hour" | "hour" | "day";
 
 export type RateLimitResult =
   | {
@@ -34,6 +34,7 @@ type RateLimitCounterClient = Pick<RedisClientType, "eval" | "expire" | "multi">
 
 const WINDOW_MS = {
   minute: 60 * 1000,
+  "quarter-hour": 15 * 60 * 1000,
   hour: 60 * 60 * 1000,
   day: 24 * 60 * 60 * 1000,
 } as const satisfies Record<RateLimitWindow, number>;

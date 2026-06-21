@@ -24,7 +24,13 @@ export default async function AdminLoginPage({ searchParams }: AdminLoginPagePro
   const { error } = await searchParams;
   const errorMessage =
     getAdminFormErrorMessage(error) ??
-    (error === "invalid" ? "Неверный логин или пароль." : null);
+    (error === "invalid"
+      ? "Неверный логин или пароль."
+      : error === "rate-limit"
+        ? "Слишком много попыток входа. Попробуй позже."
+        : error === "rate-limit-unavailable"
+          ? "Вход временно недоступен. Попробуй позже."
+          : null);
 
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">

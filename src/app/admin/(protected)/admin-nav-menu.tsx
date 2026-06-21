@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import {
   Archive,
+  Activity,
   ChevronDown,
   FileClock,
   FileText,
@@ -112,6 +113,7 @@ function getAdminNavGroups({
       items: [
         { href: "/admin/settings/administrator", icon: Settings, label: "Настройки" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
+        { href: "/admin/tools/activity", icon: Activity, label: "Журнал" },
       ],
     },
   ];

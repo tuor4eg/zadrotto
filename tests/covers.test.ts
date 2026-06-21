@@ -305,6 +305,17 @@ describe("redis fixed-window rate limits", () => {
       "cover-search:author:7:minute:1780827300000",
     );
     assert.equal(getFixedWindowRetryAfterSeconds({ now, window: "minute" }), 30);
+    assert.equal(
+      getFixedWindowRateLimitKey({
+        keyPrefix: "auth:admin:identity",
+        subject: "127.0.0.1:admin",
+        window: "quarter-hour",
+        limit: 5,
+        now,
+      }),
+      "auth:admin:identity:127.0.0.1:admin:quarter-hour:1780827300000",
+    );
+    assert.equal(getFixedWindowRetryAfterSeconds({ now, window: "quarter-hour" }), 870);
   });
 
   it("increments counters and denies requests over the limit", async () => {

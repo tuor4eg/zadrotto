@@ -967,6 +967,7 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
       franchiseId: mediaItems.franchiseId,
       franchiseCode: franchises.code,
       createdByAuthorId: mediaItems.createdByAuthorId,
@@ -1067,6 +1068,7 @@ export async function reviewSubmittedAuthorMediaItem(input: {
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
       publicationStatus: mediaItems.publicationStatus,
     });
 
@@ -1092,6 +1094,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
       franchiseId: mediaItems.franchiseId,
       franchiseCode: sql<string | null>`(
         select ${franchises.code}
@@ -1128,6 +1131,7 @@ export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
     });
 
   return item ?? null;

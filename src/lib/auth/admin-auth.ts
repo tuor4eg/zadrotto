@@ -62,7 +62,10 @@ export async function revokeCurrentAdminSession() {
 
   if (payload?.type === "admin") {
     await revokeAdminSessions(payload.adminId);
+    return payload.adminId;
   }
+
+  return null;
 }
 
 export async function clearAdminSessionCookie() {

@@ -16,6 +16,7 @@ import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { canAssignAuthorAccessProfile } from "@/lib/authors/access-profiles";
 import { generateEntityCode } from "@/lib/common/generated-code";
+import { logActivity } from "@/lib/activity-logs/server";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -30,7 +31,7 @@ function getFormNumber(formData: FormData, key: string) {
 }
 
 export async function createAuthorAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const name = getFormString(formData, "name");
   const accessProfileId = getFormNumber(formData, "accessProfileId");
@@ -52,8 +53,10 @@ export async function createAuthorAction(formData: FormData) {
     redirect("/admin/authors/new?error=invalid-profile");
   }
 
+  let author;
+
   try {
-    await createAuthor({
+    author = await createAuthor({
       name,
       code: generateEntityCode({ type: "author", name }),
       accessProfileId,
@@ -68,11 +71,21 @@ export async function createAuthorAction(formData: FormData) {
   }
 
   revalidatePath("/admin/authors");
+  await logActivity({
+    action: "author.created",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: name,
+    message: "Автор создан.",
+    metadata: { accessProfileId },
+  });
   redirect("/admin/authors?created=1");
 }
 
 export async function updateAuthorAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const authorId = getFormNumber(formData, "authorId");
   const name = getFormString(formData, "name");
@@ -122,6 +135,16 @@ export async function updateAuthorAction(formData: FormData) {
   revalidatePath("/admin/authors");
   revalidatePath(`/admin/authors/${authorId}/edit`);
   revalidatePath("/", "layout");
+  await logActivity({
+    action: "author.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: name,
+    message: "Автор изменен.",
+    metadata: { accessProfileId },
+  });
   redirect(`/admin/authors/${authorId}/edit?updated=1`);
 }
 
@@ -161,15 +184,30 @@ export async function blockAuthorAction(formData: FormData) {
 
   revalidatePath("/admin/authors");
   revalidatePath(`/admin/authors/${authorId}/edit`);
+  await logActivity({
+    action: "author.blocked",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: existingAuthor.name,
+    message: "Автор заблокирован.",
+  });
   redirect("/admin/authors?updated=blocked");
 }
 
 export async function unblockAuthorAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const authorId = getFormNumber(formData, "authorId");
 
   if (!authorId) {
+    redirect("/admin/authors?error=invalid-author");
+  }
+
+  const existingAuthor = await getAuthorById(authorId);
+
+  if (!existingAuthor) {
     redirect("/admin/authors?error=invalid-author");
   }
 
@@ -188,11 +226,20 @@ export async function unblockAuthorAction(formData: FormData) {
 
   revalidatePath("/admin/authors");
   revalidatePath(`/admin/authors/${authorId}/edit`);
+  await logActivity({
+    action: "author.unblocked",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: existingAuthor.name,
+    message: "Автор разблокирован.",
+  });
   redirect("/admin/authors?updated=unblocked");
 }
 
 export async function deleteAuthorAction(formData: FormData) {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const authorId = getFormNumber(formData, "authorId");
 
@@ -228,5 +275,14 @@ export async function deleteAuthorAction(formData: FormData) {
   }
 
   revalidatePath("/admin/authors");
+  await logActivity({
+    action: "author.deleted",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: author.name,
+    message: "Автор удален.",
+  });
   redirect("/admin/authors?updated=deleted");
 }

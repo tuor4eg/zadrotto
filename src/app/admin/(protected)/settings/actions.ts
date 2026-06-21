@@ -29,6 +29,7 @@ import { coverProviderRequiresCredentials } from "@/lib/covers/credential-defini
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { isCoverProviderCode } from "@/lib/covers/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { logActivity } from "@/lib/activity-logs/server";
 
 export type ChangeAdminPasswordState = {
   error: string | null;
@@ -96,6 +97,13 @@ export async function changeAdminPasswordAction(
       : false;
 
     if (!credentials || !isValidCurrentPassword) {
+      await logActivity({
+        action: "admin.password.changed",
+        actorType: "admin",
+        adminUserId: adminUser.id,
+        status: "failure",
+        message: "Неверный текущий пароль при смене пароля.",
+      });
       return {
         error: "Текущий пароль указан неверно.",
         success: null,
@@ -113,6 +121,12 @@ export async function changeAdminPasswordAction(
     }
 
     await setAdminSessionCookie(adminUser.id, sessionInvalidatedAt.getTime());
+    await logActivity({
+      action: "admin.password.changed",
+      actorType: "admin",
+      adminUserId: adminUser.id,
+      message: "Пароль админа обновлен.",
+    });
   } catch (error) {
     console.error(error);
 
@@ -135,7 +149,7 @@ export async function updateCoverSettingsAction(
   _previousState: UpdateCoverSettingsState,
   formData: FormData,
 ): Promise<UpdateCoverSettingsState> {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const settings = parseCoverSettingsFormInput({
     candidateLimit: getFormString(formData, "candidateLimit"),
@@ -173,6 +187,20 @@ export async function updateCoverSettingsAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/settings/covers");
+  await logActivity({
+    action: "cover-settings.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "cover-settings",
+    entityId: 1,
+    message: "Лимиты обложек обновлены.",
+    metadata: {
+      candidateLimit: settings.value.candidateLimit,
+      tmdbResultScanLimit: settings.value.tmdbResultScanLimit,
+      coverMaxBytes: settings.value.coverMaxBytes,
+      providerRateLimitsCount: providerRateLimits.value.length,
+    },
+  });
 
   return {
     error: null,
@@ -184,7 +212,7 @@ export async function updateCoverProviderSettingsAction(
   _previousState: UpdateCoverProviderSettingsState,
   formData: FormData,
 ): Promise<UpdateCoverProviderSettingsState> {
-  await requireAdminUser();
+  const adminUser = await requireAdminUser();
 
   const providerSettings = parseCoverProviderSettingsFormInput(formData);
 
@@ -226,6 +254,16 @@ export async function updateCoverProviderSettingsAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/settings/covers");
+  await logActivity({
+    action: "cover-providers.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "cover-provider",
+    message: "Провайдеры обложек обновлены.",
+    metadata: {
+      providersCount: providerSettings.value.length,
+    },
+  });
 
   return {
     error: null,
@@ -288,6 +326,17 @@ export async function updateCoverProviderCredentialsAction(
 
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/settings/covers");
+  await logActivity({
+    action: "cover-provider-credentials.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "cover-provider",
+    entityLabel: providerCode,
+    message: "Авторизация провайдера сохранена.",
+    metadata: {
+      providerCode,
+    },
+  });
 
   return {
     error: null,

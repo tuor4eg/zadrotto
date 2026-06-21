@@ -408,11 +408,14 @@ export async function reviewContributionReview(input: {
     const [mediaItem] = await tx
       .select({
         code: mediaItems.code,
+        title: mediaItems.title,
       })
       .from(mediaItems)
       .where(eq(mediaItems.id, review.mediaItemId))
       .limit(1);
 
-    return mediaItem ? { ...review, mediaItemCode: mediaItem.code } : null;
+    return mediaItem
+      ? { ...review, mediaItemCode: mediaItem.code, mediaItemTitle: mediaItem.title }
+      : null;
   });
 }

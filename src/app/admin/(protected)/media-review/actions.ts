@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { reviewSubmittedAuthorMediaItem } from "@/db/queries/media-items";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
+import { logActivity } from "@/lib/activity-logs/server";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -47,6 +48,18 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
   revalidatePath("/admin", "layout");
   revalidatePath(`/admin/media-review/${mediaItemId}`);
   revalidatePath("/author/media");
+  await logActivity({
+    action: item.publicationStatus === "published" ? "media-review.approved" : "media-review.rejected",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "media-item",
+    entityId: item.id,
+    entityLabel: item.title,
+    message:
+      item.publicationStatus === "published"
+        ? "Заявка записи одобрена."
+        : "Заявка записи отклонена.",
+  });
 
   if (item.publicationStatus === "published") {
     revalidatePath("/");
