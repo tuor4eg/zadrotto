@@ -13,7 +13,9 @@ import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
+import { InlineFranchiseDialog } from "./inline-franchise-dialog";
 import { getAdminMediaErrorMessage } from "./messages";
+import { SearchableFranchiseSelect } from "./searchable-franchise-select";
 
 type MediaFormValues = {
   id?: number;
@@ -63,6 +65,11 @@ export function AdminMediaForm({
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState(
+    values?.franchiseId ? String(values.franchiseId) : "",
+  );
+  const [franchiseOptions, setFranchiseOptions] = useState(franchises);
+  const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
   const [localErrorToast, setLocalErrorToast] = useState<AdminToast | null>(null);
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
@@ -155,20 +162,33 @@ export function AdminMediaForm({
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="admin-media-franchise">Серия</Label>
-          <Select
-            id="admin-media-franchise"
-            name="franchiseId"
-            defaultValue={values?.franchiseId ?? ""}
-          >
-            <option value="">Без серии</option>
-            {franchises.map((franchise) => (
-              <option key={franchise.id} value={franchise.id}>
-                {franchise.originalTitle
-                  ? `${franchise.title} / ${franchise.originalTitle}`
-                  : franchise.title}
-              </option>
-            ))}
-          </Select>
+          <div className="flex items-center gap-2">
+            <SearchableFranchiseSelect
+              key={franchiseSelectResetKey}
+              id="admin-media-franchise"
+              name="franchiseId"
+              options={franchiseOptions}
+              value={selectedFranchiseId}
+              onChange={setSelectedFranchiseId}
+            />
+            <InlineFranchiseDialog
+              onCreated={(franchise) => {
+                setFranchiseOptions((currentFranchises) => {
+                  const nextFranchises = currentFranchises.some(
+                    (currentFranchise) => currentFranchise.id === franchise.id,
+                  )
+                    ? currentFranchises
+                    : [...currentFranchises, franchise];
+
+                  return [...nextFranchises].sort((left, right) =>
+                    left.title.localeCompare(right.title, "ru"),
+                  );
+                });
+                setSelectedFranchiseId(String(franchise.id));
+                setFranchiseSelectResetKey((currentKey) => currentKey + 1);
+              }}
+            />
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">

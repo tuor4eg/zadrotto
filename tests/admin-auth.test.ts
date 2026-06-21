@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { createHmac } from "node:crypto";
 import { describe, it } from "node:test";
 
 import { createAdminSessionToken, verifyAdminSessionToken } from "../src/lib/auth/admin-session";
@@ -16,6 +17,27 @@ function restoreAdminSessionSecret() {
   } else {
     process.env.ADMIN_SESSION_SECRET = previousAdminSessionSecret;
   }
+}
+
+function createLegacyAdminSessionToken(input: {
+  adminId: number;
+  sessionUpdatedAt: number;
+  secret: string;
+}) {
+  const header = Buffer.from(JSON.stringify({ alg: "HS256", typ: "JWT" })).toString("base64url");
+  const payload = Buffer.from(
+    JSON.stringify({
+      type: "admin",
+      adminId: input.adminId,
+      sessionUpdatedAt: input.sessionUpdatedAt,
+      iat: Math.floor(Date.now() / 1000),
+      exp: Math.floor(Date.now() / 1000) + 60,
+    }),
+  ).toString("base64url");
+  const content = `${header}.${payload}`;
+  const signature = createHmac("sha256", input.secret).update(content).digest("base64url");
+
+  return `${content}.${signature}`;
 }
 
 describe("password hashing", () => {
@@ -42,7 +64,7 @@ describe("admin session JWT", () => {
 
     assert.equal(payload?.type, "admin");
     assert.equal(payload?.adminId, 42);
-    assert.equal(payload?.sessionUpdatedAt, 123456789);
+    assert.equal(payload?.sessionInvalidatedAt, 123456789);
 
     restoreAdminSessionSecret();
   });
@@ -54,6 +76,21 @@ describe("admin session JWT", () => {
     const tamperedToken = `${token.slice(0, -1)}x`;
 
     assert.equal(verifyAdminSessionToken(tamperedToken), null);
+
+    restoreAdminSessionSecret();
+  });
+
+  it("accepts the previous sessionUpdatedAt payload field", () => {
+    withAdminSessionSecret("test-secret");
+
+    const token = createLegacyAdminSessionToken({
+      adminId: 42,
+      sessionUpdatedAt: 123456789,
+      secret: "test-secret",
+    });
+    const payload = verifyAdminSessionToken(token);
+
+    assert.equal(payload?.sessionInvalidatedAt, 123456789);
 
     restoreAdminSessionSecret();
   });

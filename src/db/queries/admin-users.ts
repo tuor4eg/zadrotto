@@ -23,6 +23,7 @@ export async function getAdminUserById(id: number) {
     .select({
       id: adminUsers.id,
       login: adminUsers.login,
+      sessionInvalidatedAt: adminUsers.sessionInvalidatedAt,
       updatedAt: adminUsers.updatedAt,
       lastLoginAt: adminUsers.lastLoginAt,
     })
@@ -74,22 +75,27 @@ export async function updateAdminLastLoginAt(id: number) {
     .update(adminUsers)
     .set({ lastLoginAt: now, updatedAt: now })
     .where(eq(adminUsers.id, id))
-    .returning({ updatedAt: adminUsers.updatedAt });
+    .returning({ sessionInvalidatedAt: adminUsers.sessionInvalidatedAt });
 
-  return adminUser?.updatedAt ?? now;
+  return adminUser?.sessionInvalidatedAt ?? now;
 }
 
 export async function updateAdminPasswordHash(id: number, passwordHash: string) {
   const now = new Date();
   const [adminUser] = await db
     .update(adminUsers)
-    .set({ passwordHash, updatedAt: now })
+    .set({ passwordHash, sessionInvalidatedAt: now, updatedAt: now })
     .where(eq(adminUsers.id, id))
-    .returning({ updatedAt: adminUsers.updatedAt });
+    .returning({ sessionInvalidatedAt: adminUsers.sessionInvalidatedAt });
 
-  return adminUser?.updatedAt ?? null;
+  return adminUser?.sessionInvalidatedAt ?? null;
 }
 
 export async function revokeAdminSessions(id: number) {
-  await db.update(adminUsers).set({ updatedAt: new Date() }).where(eq(adminUsers.id, id));
+  const now = new Date();
+
+  await db
+    .update(adminUsers)
+    .set({ sessionInvalidatedAt: now, updatedAt: now })
+    .where(eq(adminUsers.id, id));
 }

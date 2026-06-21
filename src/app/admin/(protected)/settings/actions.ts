@@ -103,16 +103,16 @@ export async function changeAdminPasswordAction(
     }
 
     const passwordHash = await hashPassword(newPassword);
-    const updatedAt = await updateAdminPasswordHash(adminUser.id, passwordHash);
+    const sessionInvalidatedAt = await updateAdminPasswordHash(adminUser.id, passwordHash);
 
-    if (!updatedAt) {
+    if (!sessionInvalidatedAt) {
       return {
         error: "Админ не найден.",
         success: null,
       };
     }
 
-    await setAdminSessionCookie(adminUser.id, updatedAt.getTime());
+    await setAdminSessionCookie(adminUser.id, sessionInvalidatedAt.getTime());
   } catch (error) {
     console.error(error);
 

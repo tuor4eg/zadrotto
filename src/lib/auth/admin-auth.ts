@@ -25,7 +25,7 @@ export async function getCurrentAdminUser() {
 
   const adminUser = await getAdminUserById(payload.adminId);
 
-  if (!adminUser || adminUser.updatedAt.getTime() !== payload.sessionUpdatedAt) {
+  if (!adminUser || adminUser.sessionInvalidatedAt.getTime() !== payload.sessionInvalidatedAt) {
     return null;
   }
 
@@ -42,8 +42,8 @@ export async function requireAdminUser() {
   return adminUser;
 }
 
-export async function setAdminSessionCookie(adminId: number, sessionUpdatedAt: number) {
-  const token = createAdminSessionToken(adminId, sessionUpdatedAt);
+export async function setAdminSessionCookie(adminId: number, sessionInvalidatedAt: number) {
+  const token = createAdminSessionToken(adminId, sessionInvalidatedAt);
 
   (await cookies()).set({
     name: ADMIN_SESSION_COOKIE_NAME,

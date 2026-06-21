@@ -147,6 +147,9 @@ export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),
   login: text("login").notNull().unique(),
   passwordHash: text("password_hash").notNull(),
+  sessionInvalidatedAt: timestamp("session_invalidated_at", { withTimezone: true })
+    .defaultNow()
+    .notNull(),
   ...timestamps(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 });

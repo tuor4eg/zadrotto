@@ -20,6 +20,15 @@ import {
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { generateEntityCode } from "@/lib/common/generated-code";
 
+export type CreateInlineFranchiseState = {
+  error: string | null;
+  franchise: {
+    id: number;
+    title: string;
+    originalTitle: string | null;
+  } | null;
+};
+
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
 
@@ -85,6 +94,48 @@ export async function createFranchiseAction(formData: FormData) {
 
   revalidateFranchiseSurfaces();
   redirect("/admin/franchises?created=1");
+}
+
+export async function createInlineFranchiseAction(
+  _previousState: CreateInlineFranchiseState,
+  formData: FormData,
+): Promise<CreateInlineFranchiseState> {
+  await requireAdminUser();
+
+  const input = getFranchiseInput(formData);
+
+  if (!input.ok) {
+    return { error: input.error, franchise: null };
+  }
+
+  let franchise;
+
+  try {
+    franchise = await createFranchise({
+      ...input.value,
+      code: generateEntityCode({ type: "series", name: input.value.title }),
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return { error: "duplicate-code", franchise: null };
+    }
+
+    console.error(error);
+    return { error: getAdminFormErrorCode(error), franchise: null };
+  }
+
+  revalidateFranchiseSurfaces();
+  revalidatePath("/admin/media");
+  revalidatePath("/admin/media/new");
+
+  return {
+    error: null,
+    franchise: {
+      id: franchise.id,
+      title: input.value.title,
+      originalTitle: input.value.originalTitle,
+    },
+  };
 }
 
 export async function updateFranchiseAction(formData: FormData) {

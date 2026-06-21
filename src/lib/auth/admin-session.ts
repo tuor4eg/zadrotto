@@ -6,7 +6,7 @@ export const ADMIN_SESSION_MAX_AGE_SECONDS = 60 * 60 * 24 * 7;
 type AdminSessionPayload = {
   type: "admin";
   adminId: number;
-  sessionUpdatedAt: number;
+  sessionInvalidatedAt: number;
   iat: number;
   exp: number;
 };
@@ -44,30 +44,49 @@ function isValidSignature(content: string, signature: string) {
   );
 }
 
-function isAdminSessionPayload(payload: unknown): payload is AdminSessionPayload {
+function normalizeAdminSessionPayload(payload: unknown): AdminSessionPayload | null {
   if (!payload || typeof payload !== "object") {
-    return false;
+    return null;
   }
 
-  const maybePayload = payload as Partial<AdminSessionPayload>;
+  const maybePayload = payload as Partial<AdminSessionPayload> & {
+    sessionUpdatedAt?: unknown;
+  };
+  const adminId = maybePayload.adminId;
+  const sessionInvalidatedAt =
+    typeof maybePayload.sessionInvalidatedAt === "number"
+      ? maybePayload.sessionInvalidatedAt
+      : maybePayload.sessionUpdatedAt;
 
-  return (
+  if (
     maybePayload.type === "admin" &&
-    Number.isInteger(maybePayload.adminId) &&
-    Number.isInteger(maybePayload.sessionUpdatedAt) &&
+    typeof adminId === "number" &&
+    Number.isInteger(adminId) &&
+    typeof sessionInvalidatedAt === "number" &&
+    Number.isInteger(sessionInvalidatedAt) &&
     typeof maybePayload.exp === "number" &&
     typeof maybePayload.iat === "number"
-  );
+  ) {
+    return {
+      type: "admin",
+      adminId,
+      sessionInvalidatedAt,
+      iat: maybePayload.iat,
+      exp: maybePayload.exp,
+    };
+  }
+
+  return null;
 }
 
-export function createAdminSessionToken(adminId: number, sessionUpdatedAt: number) {
+export function createAdminSessionToken(adminId: number, sessionInvalidatedAt: number) {
   const now = Math.floor(Date.now() / 1000);
   const header = encodeBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
   const payload = encodeBase64Url(
     JSON.stringify({
       type: "admin",
       adminId,
-      sessionUpdatedAt,
+      sessionInvalidatedAt,
       iat: now,
       exp: now + ADMIN_SESSION_MAX_AGE_SECONDS,
     } satisfies AdminSessionPayload),
@@ -92,17 +111,18 @@ export function verifyAdminSessionToken(token: string) {
     if (
       !decodedHeader ||
       typeof decodedHeader !== "object" ||
-      (decodedHeader as { alg?: unknown }).alg !== "HS256" ||
-      !isAdminSessionPayload(decodedPayload)
+      (decodedHeader as { alg?: unknown }).alg !== "HS256"
     ) {
       return null;
     }
 
-    if (decodedPayload.exp <= Math.floor(Date.now() / 1000)) {
+    const normalizedPayload = normalizeAdminSessionPayload(decodedPayload);
+
+    if (!normalizedPayload || normalizedPayload.exp <= Math.floor(Date.now() / 1000)) {
       return null;
     }
 
-    return decodedPayload;
+    return normalizedPayload;
   } catch {
     return null;
   }
