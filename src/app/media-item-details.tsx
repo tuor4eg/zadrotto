@@ -315,10 +315,10 @@ function ArchiveMediaItemDetails({
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-3 sm:right-6 sm:h-28 lg:-top-4 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute -top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-22 sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
-          <div className="relative min-w-0 px-6 pb-6 pt-[3.75rem]">
+          <div className="relative min-w-0 px-6 pb-6 pt-3">
             <div className={`${labelFontClassName} text-sm uppercase leading-7 text-stone-950`}>
               Досье
             </div>
@@ -380,7 +380,7 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
-          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-8 sm:px-8 sm:pb-8 sm:pt-8">
+          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:-mt-4">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
                 <div

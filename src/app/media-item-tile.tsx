@@ -147,6 +147,24 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
     );
   }
 
+  if (frame.placeholderVariant === "tv-screen-label") {
+    return (
+      <span
+        className={`absolute overflow-hidden rounded-[8%] bg-stone-950 px-3 py-2 shadow-[inset_0_0_22px_rgba(255,255,255,0.08)] ${layerClassName} ${frame.coverAreaClassName}`}
+      >
+        <span
+          aria-hidden="true"
+          className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(68,64,60,0.35)_0%,rgba(12,10,9,0.94)_68%)]"
+        />
+        <span className="relative z-10 grid h-full place-items-center">
+          <span className={`${labelClassName} bg-stone-50/80 font-mono text-[9px] leading-4 text-stone-950/72`}>
+            Нет изображения
+          </span>
+        </span>
+      </span>
+    );
+  }
+
   if (frame.placeholderVariant === "reel-label") {
     return (
       <span

@@ -251,6 +251,31 @@ describe("media carrier frames", () => {
     );
   });
 
+  it("uses TV frame for series released before 2004 when no carrier is selected", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2003 }),
+      {
+        assetPath: "/mediaCarriers/video/tv/tv.png",
+        aspectRatioClassName: "aspect-[1033/910]",
+        compactSizeClassName: "w-[min(100%,20rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+        compactViewportClassName: "w-[min(100%,20rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+        coverAreaClassName: "left-[9.2%] top-[10.7%] h-[63.8%] w-[81.9%]",
+        placeholderVariant: "tv-screen-label",
+        renderKind: "cartridge",
+        sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+        viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+      },
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 }),
+      false,
+    );
+    assert.equal(
+      hasMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: "dvd", releaseYear: 2003 }),
+      false,
+    );
+  });
+
   it("keeps unknown carriers and empty carrier values frameless", () => {
     assert.equal(hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc" }), false);
     assert.equal(hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: null }), false);

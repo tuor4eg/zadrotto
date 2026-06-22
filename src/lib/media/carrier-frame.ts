@@ -8,6 +8,7 @@ export type MediaCarrierFramePlaceholderVariant =
   | "eight-bit-label"
   | "reel-label"
   | "sixteen-bit-label"
+  | "tv-screen-label"
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
@@ -27,6 +28,7 @@ const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
 const PC_WIN9X_RELEASE_YEAR_TO = 2003;
 const PC_WINDVD_RELEASE_YEAR_FROM = PC_WIN9X_RELEASE_YEAR_TO + 1;
 const PC_WINDVD_RELEASE_YEAR_TO = 2012;
+const SERIES_TV_RELEASE_YEAR_TO = 2003;
 
 export type MediaCarrierFrame = {
   assetPath: string;
@@ -192,6 +194,17 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     sizeClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
     viewportClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
   },
+  "series/tv": {
+    assetPath: "/mediaCarriers/video/tv/tv.png",
+    aspectRatioClassName: "aspect-[1033/910]",
+    compactSizeClassName: "w-[min(100%,20rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+    compactViewportClassName: "w-[min(100%,20rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+    coverAreaClassName: "left-[9.2%] top-[10.7%] h-[63.8%] w-[81.9%]",
+    placeholderVariant: "tv-screen-label",
+    renderKind: "cartridge",
+    sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+    viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+  },
 };
 
 function isFilmReelReleaseYear(releaseYear?: number | null) {
@@ -229,6 +242,14 @@ function isPcWinDvdReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isSeriesTvReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear <= SERIES_TV_RELEASE_YEAR_TO
+  );
+}
+
 export function getMediaCarrierFrame(
   item: MediaCarrierFrameInput,
 ): MediaCarrierFrame | null {
@@ -238,6 +259,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "film" && isFilmReelReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["film/reel"] ?? null;
+  }
+
+  if (item.mediaType === "series" && isSeriesTvReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["series/tv"] ?? null;
   }
 
   if (!item.mediaCarrierCode) {
