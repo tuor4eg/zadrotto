@@ -80,6 +80,22 @@
   src: url("/fonts/russo-one-regular.ttf") format("truetype");
 }
 
+@font-face {
+  font-family: "PT Serif";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/pt-serif-regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "PT Serif";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/pt-serif-bold.ttf") format("truetype");
+}
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
@@ -289,6 +305,10 @@ body {
 
 .media-carrier-font-ps1 {
   font-family: "Russo One", "Noto Sans", Arial, sans-serif;
+}
+
+.media-carrier-font-tv-guide {
+  font-family: "PT Serif", Georgia, "Times New Roman", serif;
 }
 
 @keyframes media-carrier-title-cursor-blink {

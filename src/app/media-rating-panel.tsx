@@ -82,6 +82,16 @@ type Ps1RatingPanelContentProps = {
   value?: string;
 };
 
+type TvGuideRatingContentProps = {
+  channel: string;
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  value?: string;
+};
+
 type ArchiveRatingPanelProps = {
   compact?: boolean;
   displayFontClassName: string;
@@ -961,6 +971,120 @@ export function VhsRatingPanelContent({
   );
 }
 
+function TvGuideRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`font-bold leading-none text-current ${
+        compact ? "text-xl tracking-[0.1em]" : "text-2xl tracking-[0.16em]"
+      }`}
+      aria-hidden="true"
+    >
+      {"★".repeat(filledStars)}
+      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
+    </span>
+  );
+}
+
+export function TvGuideRatingContent({
+  channel,
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  value,
+}: TvGuideRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const cardClassName = `media-carrier-font-tv-guide relative mx-auto block h-full w-full overflow-hidden bg-[#e3d2ad] text-black shadow-[0_8px_16px_rgba(28,25,23,0.12)] ${
+    compact ? "min-h-[6.25rem] max-w-[14rem] p-2" : "min-h-[10.5rem] max-w-[18rem] p-3"
+  }`;
+
+  if (compact) {
+    return (
+      <span className={cardClassName}>
+        <span className="relative z-10 flex h-full min-w-0 flex-col justify-between px-2 pb-2 pt-1.5">
+          <span className="block border-b-2 border-black pb-1 text-center text-[10px] font-bold uppercase leading-none">
+            {label}
+          </span>
+          <span className="mt-1 flex min-w-0 items-center justify-center gap-1 text-[9px] font-bold uppercase leading-3">
+            <span>22:00</span>
+            <span aria-hidden="true">·</span>
+            <span>{channel} ТВ</span>
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
+            <span
+              className={`block max-w-full font-bold italic leading-none tabular-nums ${
+                hasValueOverride ? "text-lg" : "text-5xl"
+              }`}
+            >
+              {value ?? formatScore(score)}
+            </span>
+            {!hasValueOverride ? (
+              <span className="mt-2">
+                <TvGuideRatingStars compact score={score} />
+              </span>
+            ) : (
+              <span className="mt-2 block text-[8px] font-bold uppercase">чтобы поставить оценку</span>
+            )}
+          </span>
+          <span
+            className={`block min-h-4 text-center text-[9px] font-bold uppercase leading-4 ${
+              detailText && !hasValueOverride ? "" : "opacity-0"
+            }`}
+          >
+            {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={cardClassName}>
+      <span className="relative z-10 flex h-full min-w-0 flex-col justify-between px-2 pb-2 pt-1.5">
+        <span className="block border-b-2 border-black pb-1.5 text-center text-sm font-bold uppercase leading-none">
+          {label}
+        </span>
+        <span className="grid min-h-0 flex-1 grid-cols-[2.2rem_minmax(0,1fr)_2.15rem]">
+          <span className="border-r border-black pt-1 text-left text-xs font-bold">22:00</span>
+          <span className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
+            <span
+              className={`block max-w-full font-bold italic leading-none tabular-nums ${
+                hasValueOverride ? "text-2xl" : "text-7xl"
+              }`}
+            >
+              {value ?? formatScore(score)}
+            </span>
+            {!hasValueOverride ? (
+              <span className="mt-3">
+                <TvGuideRatingStars score={score} />
+              </span>
+            ) : (
+              <span className="mt-2 block text-[10px] font-bold uppercase">чтобы поставить оценку</span>
+            )}
+          </span>
+          <span className="flex justify-end border-l border-black pl-1 pt-1">
+            <span className="grid h-11 w-9 place-items-center border-2 border-black bg-transparent text-2xl font-bold leading-none text-black">
+              <span>{channel}</span>
+              <span className="text-[8px] leading-none">ТВ</span>
+            </span>
+          </span>
+        </span>
+        <span
+          className={`block min-h-4 text-center text-xs font-bold uppercase leading-4 ${
+            detailText && !hasValueOverride ? "" : "opacity-0"
+          }`}
+        >
+          {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function ArchiveRatingPanel({
   compact = false,
   displayFontClassName,
@@ -1046,6 +1170,18 @@ export function ArchiveRatingPanel({
         label={label}
         score={score}
         tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "tv-guide") {
+    return (
+      <TvGuideRatingContent
+        channel="2"
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
       />
     );
   }

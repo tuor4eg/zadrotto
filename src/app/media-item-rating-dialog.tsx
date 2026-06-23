@@ -12,6 +12,7 @@ import {
   FilmStripRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
+  TvGuideRatingContent,
   VhsRatingPanelContent,
   WinDvdAeroRatingContent,
   Win9xRatingContent,
@@ -82,6 +83,7 @@ export function MediaItemRatingPanel({
   const isDosTerminalPanel = panelVariant === "dos-terminal";
   const isFilmStripPanel = panelVariant === "film-strip";
   const isVhsPosterPanel = panelVariant === "vhs-poster";
+  const isTvGuidePanel = panelVariant === "tv-guide";
   const isWin9xWindowPanel = panelVariant === "win9x-window";
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
   const isPs1MemoryCardPanel = panelVariant === "ps1-memory-card";
@@ -90,6 +92,7 @@ export function MediaItemRatingPanel({
     isDvdMenuPanel ||
     isDosTerminalPanel ||
     isFilmStripPanel ||
+    isTvGuidePanel ||
     isVhsPosterPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
@@ -152,6 +155,16 @@ export function MediaItemRatingPanel({
       label={isCompact ? "Моя" : "Ваша оценка"}
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isTvGuidePanel ? (
+    <TvGuideRatingContent
+      channel="5"
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : isWin9xWindowPanel ? (

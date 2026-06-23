@@ -157,7 +157,7 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
           className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(68,64,60,0.35)_0%,rgba(12,10,9,0.94)_68%)]"
         />
         <span className="relative z-10 grid h-full place-items-center">
-          <span className={`${labelClassName} bg-stone-50/80 font-mono text-[9px] leading-4 text-stone-950/72`}>
+          <span className={`${labelClassName} bg-stone-50/80 text-[9px] leading-4 text-stone-950/72`}>
             Нет изображения
           </span>
         </span>
