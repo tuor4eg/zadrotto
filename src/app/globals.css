@@ -49,6 +49,38 @@
 }
 
 @font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/inter-regular.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/inter-medium.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/inter-semibold.ttf") format("truetype");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("/fonts/inter-bold.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "Roboto Condensed";
   font-style: normal;
   font-weight: 400;
@@ -281,6 +313,10 @@ body {
 
 .media-carrier-font-pc-windvd {
   font-family: "Noto Sans", Arial, Helvetica, sans-serif;
+}
+
+.media-carrier-font-pc-steam {
+  font-family: "Inter", Arial, Helvetica, sans-serif;
 }
 
 .media-carrier-font-film-dvd {

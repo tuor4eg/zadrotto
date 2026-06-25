@@ -12,6 +12,7 @@ import {
   FilmStripRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
+  SteamAchievementRatingContent,
   TvGuideRatingContent,
   VhsRatingPanelContent,
   WinDvdAeroRatingContent,
@@ -87,6 +88,7 @@ export function MediaItemRatingPanel({
   const isWin9xWindowPanel = panelVariant === "win9x-window";
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
   const isPs1MemoryCardPanel = panelVariant === "ps1-memory-card";
+  const isSteamAchievementPanel = panelVariant === "steam-achievement";
   const isDvdMenuPanel = panelVariant === "dvd-menu";
   const isStandalonePanel =
     isDvdMenuPanel ||
@@ -94,6 +96,7 @@ export function MediaItemRatingPanel({
     isFilmStripPanel ||
     isTvGuidePanel ||
     isVhsPosterPanel ||
+    isSteamAchievementPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
     isPs1MemoryCardPanel;
@@ -185,6 +188,15 @@ export function MediaItemRatingPanel({
       label={isCompact ? "Моя оценка" : "Ваша оценка"}
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isSteamAchievementPanel ? (
+    <SteamAchievementRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : isDvdMenuPanel ? (

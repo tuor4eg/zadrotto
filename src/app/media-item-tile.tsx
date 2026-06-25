@@ -283,6 +283,72 @@ function CartridgeCover({
   );
 }
 
+function CoverOverlayCover({
+  carrierFrameSize = "default",
+  className,
+  frame,
+  item,
+}: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
+  const sizeClassName =
+    carrierFrameSize === "compact"
+      ? frame.compactSizeClassName ?? frame.sizeClassName
+      : frame.sizeClassName;
+
+  return (
+    <div
+      role="img"
+      aria-label={
+        item.coverUrl
+          ? `Обложка: ${item.title}`
+          : `Обложка не добавлена: ${item.title}`
+      }
+      className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
+    >
+      <span
+        className={`relative block overflow-hidden rounded-[2%] bg-stone-900 shadow-[0_10px_24px_rgba(15,23,42,0.24)] ${frame.aspectRatioClassName} ${
+          sizeClassName ?? "w-[96%] max-w-full"
+        }`}
+      >
+        {item.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.coverUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <MediaCarrierCoverPlaceholder frame={frame} />
+        )}
+        {frame.topGradientClassName ? (
+          <span
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-0 top-0 z-20 ${frame.topGradientClassName}`}
+          />
+        ) : null}
+        {frame.topLogoPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={frame.topLogoPath}
+            alt=""
+            aria-hidden="true"
+            className={`pointer-events-none absolute z-30 h-auto ${frame.topLogoClassName ?? ""}`}
+          />
+        ) : null}
+        {frame.bottomOverlayPath ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={frame.bottomOverlayPath}
+            alt=""
+            aria-hidden="true"
+            className={`pointer-events-none absolute inset-x-0 bottom-0 z-30 w-full ${frame.bottomOverlayClassName ?? ""}`}
+          />
+        ) : null}
+      </span>
+    </div>
+  );
+}
+
 export function ArchiveCover({
   carrierFrameSize = "default",
   carrierFrame = true,
@@ -291,6 +357,17 @@ export function ArchiveCover({
   mode = "cover",
 }: ArchiveCoverProps) {
   const mediaCarrierFrame = carrierFrame ? getMediaCarrierFrame(item) : null;
+
+  if (mediaCarrierFrame?.renderKind === "cover-overlay") {
+    return (
+      <CoverOverlayCover
+        carrierFrameSize={carrierFrameSize}
+        className={className}
+        frame={mediaCarrierFrame}
+        item={item}
+      />
+    );
+  }
 
   if (mediaCarrierFrame?.renderKind === "cartridge") {
     return (

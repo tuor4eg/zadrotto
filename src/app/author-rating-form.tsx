@@ -201,6 +201,12 @@ export function AuthorRatingForm({
     ...experienceParts,
     year: experienceParts.year || String(currentYear),
   };
+  const submittedExperienceValue =
+    selectedExperienceValue ||
+    buildExperienceValue({
+      ...visibleExperienceParts,
+      precision: selectedExperiencePrecision,
+    });
   const yearOptions = Array.from(
     { length: currentYear - MIN_EXPERIENCE_YEAR + 1 },
     (_, index) => String(currentYear - index),
@@ -267,7 +273,7 @@ export function AuthorRatingForm({
       ) : null}
       {showExperienceFields ? (
         <>
-          <input type="hidden" name="firstExperiencedValue" value={selectedExperienceValue} />
+          <input type="hidden" name="firstExperiencedValue" value={submittedExperienceValue} />
           <input
             type="hidden"
             name="firstExperiencedPrecision"

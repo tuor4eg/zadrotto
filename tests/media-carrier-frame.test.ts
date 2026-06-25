@@ -176,7 +176,37 @@ describe("media carrier frames", () => {
     );
     assert.equal(
       hasMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2013 }),
-      false,
+      true,
+    );
+  });
+
+  it("resolves PC Steam cover overlay after the Windows DVD release year period", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({
+        mediaType: "game",
+        mediaCarrierCode: "pc",
+        releaseYear: 2013,
+      }),
+      {
+        assetPath: "/mediaCarriers/game/pc/steam/steam.jpg",
+        aspectRatioClassName: "aspect-[3/4]",
+        bottomOverlayClassName: "h-auto",
+        bottomOverlayPath: "/mediaCarriers/game/pc/steam/steam.jpg",
+        compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
+        compactViewportClassName: "h-[min(28vh,260px)] max-w-full sm:h-[min(32vh,300px)]",
+        coverAreaClassName: "inset-0",
+        displayFontClassName: "media-carrier-font-pc-steam",
+        fontClassName: "media-carrier-font-pc-steam",
+        labelFontClassName: "media-carrier-font-pc-steam",
+        placeholderVariant: "win9x-jewel-label",
+        ratingPanelVariant: "steam-achievement",
+        renderKind: "cover-overlay",
+        sizeClassName: "h-[min(44vh,380px)] w-auto max-w-full sm:h-[min(58vh,520px)]",
+        topGradientClassName: "h-[30%] bg-gradient-to-b from-black/56 via-black/20 to-transparent",
+        topLogoClassName: "left-[2%] top-[2%] w-[17%]",
+        topLogoPath: "/mediaCarriers/game/pc/steam/steam-logo.png",
+        viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
+      },
     );
   });
 

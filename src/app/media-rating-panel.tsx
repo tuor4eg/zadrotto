@@ -51,6 +51,15 @@ type WinDvdAeroRatingContentProps = {
   value?: string;
 };
 
+type SteamAchievementRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  value?: string;
+};
+
 type DvdMenuRatingContentProps = {
   compact?: boolean;
   detail?: string;
@@ -420,6 +429,148 @@ function WinDvdAeroRatingMarks({
           ★
         </span>
       ))}
+    </span>
+  );
+}
+
+function SteamAchievementIcon({
+  compact = false,
+  displayScore,
+}: {
+  compact?: boolean;
+  displayScore?: string;
+}) {
+  const scoreClassName =
+    compact && displayScore && displayScore.length > 1
+      ? "text-[1.35rem]"
+      : compact
+        ? "text-[1.7rem]"
+        : "text-[2.35rem]";
+
+  return (
+    <span
+      className={`grid shrink-0 place-items-center border border-cyan-400/70 bg-[radial-gradient(circle_at_50%_42%,rgba(19,41,54,0.82)_0%,rgba(5,13,20,0.98)_70%)] text-cyan-400 shadow-[inset_0_0_0_1px_rgba(103,232,249,0.16),inset_0_0_22px_rgba(34,211,238,0.2),0_0_14px_rgba(34,211,238,0.16)] ${
+        compact ? "size-10 self-center" : "size-[4.6rem] self-center"
+      }`}
+      aria-hidden="true"
+    >
+      {displayScore !== undefined ? (
+        <span
+          className={`font-semibold leading-none tabular-nums drop-shadow-[0_0_10px_rgba(34,211,238,0.45)] ${scoreClassName}`}
+        >
+          {displayScore}
+        </span>
+      ) : (
+        <svg
+          viewBox="0 0 64 64"
+          className={compact ? "size-8" : "size-12"}
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="4"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <circle cx="32" cy="22" r="10" />
+          <path d="M14 52c3.4-10.4 10-15.6 18-15.6S46.6 41.6 50 52" />
+        </svg>
+      )}
+    </span>
+  );
+}
+
+function SteamAchievementStars({
+  compact = false,
+  score,
+}: {
+  compact?: boolean;
+  score: number | null;
+}) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center leading-none text-cyan-400 ${
+        compact ? "gap-0.5 text-lg" : "gap-1.5 text-2xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index} className={index < filledStars ? "drop-shadow-[0_0_7px_rgba(34,211,238,0.52)]" : "text-cyan-500/45"}>
+          {index < filledStars ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+export function SteamAchievementRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  value,
+}: SteamAchievementRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+
+  return (
+    <span
+      className={`media-carrier-font-pc-steam relative mx-auto flex h-full w-full min-w-0 overflow-hidden border border-cyan-500/28 bg-[linear-gradient(180deg,#123144_0%,#0b2230_48%,#081720_100%)] text-left text-slate-200 shadow-[0_10px_22px_rgba(4,13,20,0.26),inset_0_0_0_1px_rgba(125,211,252,0.08)] ${
+        compact
+          ? "min-h-[7.5rem] flex-col items-center gap-1.5 px-2 py-2 text-center"
+          : "min-h-[10.5rem] max-w-[17.5rem] gap-3 px-3 py-3"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(14,165,233,0.08)_0%,transparent_32%,rgba(14,165,233,0.05)_100%)]"
+      />
+      <SteamAchievementIcon
+        compact={compact}
+        displayScore={!hasValueOverride ? formatScore(score) : undefined}
+      />
+      <span
+        className={`relative z-10 flex min-w-0 flex-1 flex-col ${
+          compact ? "w-full items-center" : ""
+        } ${hasValueOverride ? "justify-center" : compact ? "justify-between" : "justify-center gap-3"}`}
+      >
+        <span
+          className={`block max-w-full truncate uppercase tracking-[0.08em] text-slate-200 ${
+            compact ? "text-[9px] leading-3" : "text-xs leading-4"
+          }`}
+        >
+          {label}
+        </span>
+
+        {hasValueOverride ? (
+          <>
+            <span className={`block max-w-full text-slate-300 ${compact ? "mt-1 text-[9px] leading-3" : "mt-2 text-xs leading-4"}`}>
+              Войдите, чтобы поставить оценку
+            </span>
+            <span
+              className={`mt-2 inline-flex w-fit items-center border border-cyan-500/55 bg-[#082231] font-semibold uppercase tracking-[0.08em] text-cyan-400 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)] ${
+                compact ? "px-2 py-1 text-[8px] leading-3" : "px-3 py-1.5 text-[10px] leading-4"
+              }`}
+            >
+              Войти в аккаунт
+              <span className="ml-1" aria-hidden="true">›</span>
+            </span>
+          </>
+        ) : (
+          <>
+            <SteamAchievementStars compact={compact} score={score} />
+            <span
+              className={`block min-h-4 max-w-full text-slate-300 ${
+                compact ? "text-[9px] leading-3" : "text-xs leading-4"
+              } ${detailText ? "" : "opacity-0"}`}
+              title={detailText ? `${detailPrefix}${detailText}` : undefined}
+            >
+              {detailText ? `${detailPrefix}${detailText}` : "—"}
+            </span>
+          </>
+        )}
+      </span>
     </span>
   );
 }
@@ -1158,6 +1309,17 @@ export function ArchiveRatingPanel({
         label={label}
         score={score}
         tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "steam-achievement") {
+    return (
+      <SteamAchievementRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
       />
     );
   }

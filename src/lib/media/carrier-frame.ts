@@ -1,6 +1,6 @@
 import type { MediaType } from "@/lib/media/types";
 
-export type MediaCarrierFrameRenderKind = "cartridge";
+export type MediaCarrierFrameRenderKind = "cartridge" | "cover-overlay";
 export type MediaCarrierFrameCoverLayer = "above-frame" | "below-frame";
 export type MediaCarrierFramePlaceholderVariant =
   | "dvd-label"
@@ -17,6 +17,7 @@ export type MediaCarrierRatingPanelVariant =
   | "film-strip"
   | "nes-hearts"
   | "ps1-memory-card"
+  | "steam-achievement"
   | "tv-guide"
   | "vhs-poster"
   | "win9x-window"
@@ -29,11 +30,14 @@ const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
 const PC_WIN9X_RELEASE_YEAR_TO = 2003;
 const PC_WINDVD_RELEASE_YEAR_FROM = PC_WIN9X_RELEASE_YEAR_TO + 1;
 const PC_WINDVD_RELEASE_YEAR_TO = 2012;
+const PC_STEAM_RELEASE_YEAR_FROM = PC_WINDVD_RELEASE_YEAR_TO + 1;
 const SERIES_TV_RELEASE_YEAR_TO = 2003;
 
 export type MediaCarrierFrame = {
   assetPath: string;
   aspectRatioClassName: string;
+  bottomOverlayClassName?: string;
+  bottomOverlayPath?: string;
   compactSizeClassName?: string;
   compactViewportClassName?: string;
   coverLayer?: MediaCarrierFrameCoverLayer;
@@ -45,11 +49,14 @@ export type MediaCarrierFrame = {
   ratingPanelVariant?: MediaCarrierRatingPanelVariant;
   renderKind: MediaCarrierFrameRenderKind;
   sizeClassName?: string;
+  topGradientClassName?: string;
   titleIconHeight?: number;
   titleCursor?: string;
   titleIconPath?: string;
   titleIconWidth?: number;
   titleTemplate?: string;
+  topLogoClassName?: string;
+  topLogoPath?: string;
   viewportClassName?: string;
 };
 
@@ -116,6 +123,26 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     titleIconPath: "/mediaCarriers/game/pc/windvd/folder.png",
     titleIconWidth: 128,
     titleTemplate: "C ▸ {title}",
+    viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
+  },
+  "game/pc/steam": {
+    assetPath: "/mediaCarriers/game/pc/steam/steam.jpg",
+    aspectRatioClassName: "aspect-[3/4]",
+    bottomOverlayClassName: "h-auto",
+    bottomOverlayPath: "/mediaCarriers/game/pc/steam/steam.jpg",
+    compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
+    compactViewportClassName: "h-[min(28vh,260px)] max-w-full sm:h-[min(32vh,300px)]",
+    coverAreaClassName: "inset-0",
+    displayFontClassName: "media-carrier-font-pc-steam",
+    fontClassName: "media-carrier-font-pc-steam",
+    labelFontClassName: "media-carrier-font-pc-steam",
+    placeholderVariant: "win9x-jewel-label",
+    ratingPanelVariant: "steam-achievement",
+    renderKind: "cover-overlay",
+    sizeClassName: "h-[min(44vh,380px)] w-auto max-w-full sm:h-[min(58vh,520px)]",
+    topGradientClassName: "h-[30%] bg-gradient-to-b from-black/56 via-black/20 to-transparent",
+    topLogoClassName: "left-[2%] top-[2%] w-[17%]",
+    topLogoPath: "/mediaCarriers/game/pc/steam/steam-logo.png",
     viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
   },
   "game/ps1": {
@@ -247,6 +274,14 @@ function isPcWinDvdReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isPcSteamReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= PC_STEAM_RELEASE_YEAR_FROM
+  );
+}
+
 function isSeriesTvReleaseYear(releaseYear?: number | null) {
   return (
     releaseYear !== null &&
@@ -285,6 +320,10 @@ export function getMediaCarrierFrame(
 
     if (isPcWinDvdReleaseYear(item.releaseYear)) {
       return MEDIA_CARRIER_FRAMES["game/pc/windvd"] ?? null;
+    }
+
+    if (isPcSteamReleaseYear(item.releaseYear)) {
+      return MEDIA_CARRIER_FRAMES["game/pc/steam"] ?? null;
     }
 
     return null;
