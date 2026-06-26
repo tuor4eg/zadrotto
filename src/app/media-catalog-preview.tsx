@@ -174,6 +174,7 @@ export function MediaCatalogPreview({
               item.currentAuthorFirstExperiencedPrecision
             }
             currentAuthorScore={item.currentAuthorScore}
+            releaseYear={item.releaseYear}
             panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
             panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
             panelVariant={mediaCarrierFrame?.ratingPanelVariant}

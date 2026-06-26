@@ -6,12 +6,14 @@ import { useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
+import { SearchableFranchiseSelect } from "@/components/ui/searchable-franchise-select";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
+import { InlineFranchiseDialog } from "./inline-franchise-dialog";
 import { getAuthorMediaFormErrorMessage } from "./messages";
 
 type MediaItemFormValues = {
@@ -32,6 +34,7 @@ type MediaItemFormProps = {
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
+  canCreateFranchise?: boolean;
   values?: MediaItemFormValues;
   error?: string;
 };
@@ -42,6 +45,7 @@ export function MediaItemForm({
   franchises,
   mediaCarriers,
   mediaTypes,
+  canCreateFranchise = false,
   values,
 }: MediaItemFormProps) {
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
@@ -53,6 +57,11 @@ export function MediaItemForm({
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
+  const [selectedFranchiseId, setSelectedFranchiseId] = useState(
+    values?.franchiseId ? String(values.franchiseId) : "",
+  );
+  const [franchiseOptions, setFranchiseOptions] = useState(franchises);
+  const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
   const [localErrorToast, setLocalErrorToast] = useState<AuthorToast | null>(null);
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
@@ -151,20 +160,35 @@ export function MediaItemForm({
           <Label htmlFor="author-media-franchise">
             Серия
           </Label>
-          <Select
-            id="author-media-franchise"
-            name="franchiseId"
-            defaultValue={values?.franchiseId ?? ""}
-          >
-            <option value="">Без серии</option>
-            {franchises.map((franchise) => (
-              <option key={franchise.id} value={franchise.id}>
-                {franchise.originalTitle
-                  ? `${franchise.title} / ${franchise.originalTitle}`
-                  : franchise.title}
-              </option>
-            ))}
-          </Select>
+          <div className="flex items-center gap-2">
+            <SearchableFranchiseSelect
+              key={franchiseSelectResetKey}
+              id="author-media-franchise"
+              name="franchiseId"
+              options={franchiseOptions}
+              value={selectedFranchiseId}
+              onChange={setSelectedFranchiseId}
+            />
+            {canCreateFranchise ? (
+              <InlineFranchiseDialog
+                onCreated={(franchise) => {
+                  setFranchiseOptions((currentFranchises) => {
+                    const nextFranchises = currentFranchises.some(
+                      (currentFranchise) => currentFranchise.id === franchise.id,
+                    )
+                      ? currentFranchises
+                      : [...currentFranchises, franchise];
+
+                    return [...nextFranchises].sort((left, right) =>
+                      left.title.localeCompare(right.title, "ru"),
+                    );
+                  });
+                  setSelectedFranchiseId(String(franchise.id));
+                  setFranchiseSelectResetKey((currentKey) => currentKey + 1);
+                }}
+              />
+            ) : null}
+          </div>
         </div>
 
         <div className="flex flex-col gap-2">

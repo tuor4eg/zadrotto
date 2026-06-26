@@ -11,6 +11,14 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Выбранная серия не найдена.";
   }
 
+  if (error === "duplicate-code") {
+    return "Серия с таким названием уже существует.";
+  }
+
+  if (error === "forbidden") {
+    return "Создавать серии могут только доверенные авторы.";
+  }
+
   if (error === "invalid-carrier") {
     return "Выбранный носитель не найден.";
   }

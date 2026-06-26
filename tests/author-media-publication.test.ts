@@ -2,9 +2,11 @@ import { describe, it } from "node:test";
 import assert from "node:assert/strict";
 
 import {
+  canAuthorCreateFranchise,
   canAuthorDeleteMediaItem,
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
+  getAuthorMediaPublicationConfirmDescription,
   getPublicationStatusAfterAuthorSubmit,
 } from "../src/lib/authors/media-publication";
 
@@ -20,6 +22,29 @@ describe("author media publication", () => {
     assert.equal(
       getPublicationStatusAfterAuthorSubmit({ canPublishMediaWithoutReview: true }),
       "published",
+    );
+  });
+
+  it("allows franchise creation only when author can publish without review", () => {
+    assert.equal(canAuthorCreateFranchise({ canPublishMediaWithoutReview: false }), false);
+    assert.equal(canAuthorCreateFranchise({ canPublishMediaWithoutReview: true }), true);
+  });
+
+  it("mentions admin review only for authors who cannot publish immediately", () => {
+    assert.equal(
+      getAuthorMediaPublicationConfirmDescription({
+        canPublishMediaWithoutReview: false,
+        title: "The Legend of heroes: Trails in the sky the 2nd chapter",
+      }),
+      "Если администратор одобрит «The Legend of heroes: Trails in the sky the 2nd chapter», запись попадет в общую базу и пропадет из черновиков. После этого ты уже не сможешь ее редактировать или удалить из предложений.",
+    );
+
+    assert.equal(
+      getAuthorMediaPublicationConfirmDescription({
+        canPublishMediaWithoutReview: true,
+        title: "The Legend of heroes: Trails in the sky the 2nd chapter",
+      }),
+      "Запись «The Legend of heroes: Trails in the sky the 2nd chapter» сразу попадет в общую базу и пропадет из черновиков. После этого ты уже не сможешь ее редактировать или удалить из предложений.",
     );
   });
 

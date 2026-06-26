@@ -36,6 +36,7 @@ type MediaItemRatingDialogProps = {
   currentAuthorFirstExperiencedAt?: Date | string | null;
   currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
   currentAuthorScore: number | null;
+  releaseYear?: number | null;
   panelDisplayClassName?: string;
   panelLabelClassName?: string;
   panelVariant?: MediaCarrierRatingPanelVariant;
@@ -300,6 +301,7 @@ export function MediaItemRatingModal({
   franchiseCode,
   mediaItemCode,
   onClose,
+  releaseYear,
   title,
 }: MediaItemRatingModalProps) {
   return (
@@ -359,6 +361,7 @@ export function MediaItemRatingModal({
             currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
             currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
             currentAuthorScore={currentAuthorScore}
+            releaseYear={releaseYear}
             variant="archive"
             inlineSaveButton={false}
             showLabel={false}
@@ -380,6 +383,7 @@ export function MediaItemRatingDialog({
   currentAuthorFirstExperiencedAt,
   currentAuthorFirstExperiencedPrecision,
   currentAuthorScore,
+  releaseYear,
   panelDisplayClassName,
   panelLabelClassName,
   panelVariant,
@@ -414,6 +418,7 @@ export function MediaItemRatingDialog({
               currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
               currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
               currentAuthorScore={currentAuthorScore}
+              releaseYear={releaseYear}
               formId="media-item-rating-form"
               onClose={() => setIsOpen(false)}
             />,

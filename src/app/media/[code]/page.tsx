@@ -62,6 +62,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
               currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
               currentAuthorScore={item.currentAuthorScore}
+              releaseYear={item.releaseYear}
               panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
               panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
               panelVariant={mediaCarrierFrame?.ratingPanelVariant}
@@ -78,6 +79,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
               currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
               currentAuthorScore={item.currentAuthorScore}
+              releaseYear={item.releaseYear}
               panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
               panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
               panelVariant={mediaCarrierFrame?.ratingPanelVariant}

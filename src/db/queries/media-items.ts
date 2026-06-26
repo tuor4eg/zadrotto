@@ -1194,6 +1194,7 @@ export async function getMediaItemIdentityForAuthorRating(code: string, authorId
       id: mediaItems.id,
       code: mediaItems.code,
       franchiseCode: franchises.code,
+      releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
     .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))

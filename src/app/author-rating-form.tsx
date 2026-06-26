@@ -10,7 +10,10 @@ import {
   FIRST_EXPERIENCED_PRECISIONS,
   type FirstExperiencedPrecision,
 } from "@/lib/authors/media-experiences";
-import { formatFirstExperiencedInputValue } from "@/lib/authors/experience-date";
+import {
+  buildFirstExperiencedYearOptions,
+  formatFirstExperiencedInputValue,
+} from "@/lib/authors/experience-date";
 import {
   getRatingTone,
   RATING_BUTTON_TONE_CLASS_NAMES,
@@ -27,6 +30,7 @@ type AuthorRatingFormProps = {
   currentAuthorScore: number | null;
   currentAuthorFirstExperiencedAt?: Date | string | null;
   currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
+  releaseYear?: number | null;
   compact?: boolean;
   variant?: "default" | "archive";
   autoSubmitOnSelect?: boolean;
@@ -109,6 +113,7 @@ export function AuthorRatingForm({
   currentAuthorScore,
   currentAuthorFirstExperiencedAt = null,
   currentAuthorFirstExperiencedPrecision = null,
+  releaseYear = null,
   compact = false,
   variant = "default",
   autoSubmitOnSelect = false,
@@ -207,14 +212,12 @@ export function AuthorRatingForm({
       ...visibleExperienceParts,
       precision: selectedExperiencePrecision,
     });
-  const yearOptions = Array.from(
-    { length: currentYear - MIN_EXPERIENCE_YEAR + 1 },
-    (_, index) => String(currentYear - index),
-  );
-  const visibleYearOptions =
-    experienceParts.year && !yearOptions.includes(experienceParts.year)
-      ? [experienceParts.year, ...yearOptions]
-      : yearOptions;
+  const visibleYearOptions = buildFirstExperiencedYearOptions({
+    currentYear,
+    minYear: MIN_EXPERIENCE_YEAR,
+    releaseYear,
+    selectedYear: experienceParts.year,
+  });
   const yearSelectOptions = visibleYearOptions.map((year) => ({ label: year, value: year }));
   const monthDayCount = getDaysInMonth(
     visibleExperienceParts.year,

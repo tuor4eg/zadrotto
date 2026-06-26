@@ -19,6 +19,7 @@ import {
   canAuthorDeleteMediaItem,
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
+  getAuthorMediaPublicationConfirmDescription,
 } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
@@ -299,7 +300,10 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
                           action={publishAuthorMediaItemAction}
                           confirmLabel="Отправить"
                           confirmVariant="positive"
-                          description={`Если администратор одобрит «${item.title}», запись попадет в общую базу и пропадет из черновиков. После этого ты уже не сможешь ее редактировать или удалить из предложений.`}
+                          description={getAuthorMediaPublicationConfirmDescription({
+                            canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+                            title: item.title,
+                          })}
                           fields={[{ name: "mediaItemId", value: item.id }]}
                           title="Отправить на публикацию?"
                           triggerAriaLabel={`Отправить на публикацию ${item.title}`}

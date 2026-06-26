@@ -99,3 +99,40 @@ export function parseFirstExperiencedInput(
     firstExperiencedPrecision: normalizedPrecision,
   };
 }
+
+export function buildFirstExperiencedYearOptions(input: {
+  currentYear: number;
+  minYear: number;
+  releaseYear?: number | null;
+  selectedYear?: string;
+}) {
+  const releaseYear =
+    typeof input.releaseYear === "number" && Number.isInteger(input.releaseYear)
+      ? input.releaseYear
+      : null;
+  const firstYear =
+    releaseYear !== null && releaseYear <= input.currentYear
+      ? Math.max(input.minYear, releaseYear)
+      : input.minYear;
+  const yearOptions = Array.from(
+    { length: Math.max(0, input.currentYear - firstYear + 1) },
+    (_, index) => String(input.currentYear - index),
+  );
+
+  return input.selectedYear && !yearOptions.includes(input.selectedYear)
+    ? [input.selectedYear, ...yearOptions]
+    : yearOptions;
+}
+
+export function isFirstExperienceBeforeRelease(input: {
+  firstExperiencedAt: string;
+  releaseYear?: number | null;
+}) {
+  if (typeof input.releaseYear !== "number" || !Number.isInteger(input.releaseYear)) {
+    return false;
+  }
+
+  const firstExperiencedYear = Number(input.firstExperiencedAt.slice(0, 4));
+
+  return Number.isInteger(firstExperiencedYear) && firstExperiencedYear < input.releaseYear;
+}

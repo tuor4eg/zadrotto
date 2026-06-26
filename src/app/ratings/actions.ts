@@ -10,7 +10,10 @@ import {
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { parseFirstExperiencedInput } from "@/lib/authors/experience-date";
+import {
+  isFirstExperienceBeforeRelease,
+  parseFirstExperiencedInput,
+} from "@/lib/authors/experience-date";
 import { parseRatingScoreInput } from "@/lib/ratings/score";
 
 export type SaveAuthorRatingState = {
@@ -93,6 +96,16 @@ export async function saveAuthorRatingAction(
 
   if (shouldUpdateExperience && firstExperiencedValue && !firstExperience) {
     return { error: "Проверь дату знакомства." };
+  }
+
+  if (
+    firstExperience &&
+    isFirstExperienceBeforeRelease({
+      firstExperiencedAt: firstExperience.firstExperiencedAt,
+      releaseYear: mediaItem.releaseYear,
+    })
+  ) {
+    return { error: "Год знакомства не может быть раньше года выхода." };
   }
 
   await upsertAuthorRating({

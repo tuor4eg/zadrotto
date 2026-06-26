@@ -6,6 +6,7 @@ import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
+import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { isAuthorEditablePublicationStatus } from "@/lib/forms/author-media";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
@@ -83,6 +84,9 @@ export default async function EditAuthorMediaPage({
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            canCreateFranchise={canAuthorCreateFranchise({
+              canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+            })}
             values={item}
           />
         </CardContent>

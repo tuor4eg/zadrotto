@@ -13,6 +13,7 @@ import {
   canAuthorDeleteMediaItem,
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
+  getAuthorMediaPublicationConfirmDescription,
 } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
@@ -83,7 +84,10 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
               className="w-fit"
               confirmLabel="Отправить"
               confirmVariant="positive"
-              description={`Если администратор одобрит «${item.title}», запись попадет в общую базу и пропадет из черновиков. После этого ты уже не сможешь ее редактировать или удалить из предложений.`}
+              description={getAuthorMediaPublicationConfirmDescription({
+                canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+                title: item.title,
+              })}
               fields={[{ name: "mediaItemId", value: item.id }]}
               title="Отправить на публикацию?"
               triggerLabel="Опубликовать"
@@ -122,6 +126,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
           currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
           currentAuthorScore={item.currentAuthorScore}
+          releaseYear={item.releaseYear}
           panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
           panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
           panelVariant={mediaCarrierFrame?.ratingPanelVariant}
@@ -136,6 +141,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
           currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
           currentAuthorFirstExperiencedPrecision={item.currentAuthorFirstExperiencedPrecision}
           currentAuthorScore={item.currentAuthorScore}
+          releaseYear={item.releaseYear}
           panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
           panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
           panelVariant={mediaCarrierFrame?.ratingPanelVariant}

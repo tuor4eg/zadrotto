@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { getCoverSettings } from "@/db/queries/cover-settings";
-import { franchiseExistsById } from "@/db/queries/franchises";
+import { createFranchise, franchiseExistsById } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
@@ -29,10 +29,14 @@ import {
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { validateMediaCarrierForMediaType } from "@/lib/forms/media-carrier";
 import {
+  canAuthorCreateFranchise,
   canAuthorDeleteMediaItem,
   canAuthorWithdrawPublicationRequest,
   getPublicationStatusAfterAuthorSubmit,
 } from "@/lib/authors/media-publication";
+import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
+import { generateEntityCode } from "@/lib/common/generated-code";
+import { logActivity } from "@/lib/activity-logs/server";
 import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
@@ -44,6 +48,15 @@ import {
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
+
+export type CreateAuthorInlineFranchiseState = {
+  error: string | null;
+  franchise: {
+    id: number;
+    title: string;
+    originalTitle: string | null;
+  } | null;
+};
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -67,6 +80,23 @@ function getOptionalCoverCandidateToken(formData: FormData) {
 
 function shouldRemoveCover(formData: FormData) {
   return getFormString(formData, "coverAction") === "remove";
+}
+
+function readFranchiseForm(formData: FormData) {
+  const title = getFormString(formData, "title");
+
+  if (!title) {
+    return { ok: false as const, error: "required" };
+  }
+
+  return {
+    ok: true as const,
+    value: {
+      title,
+      originalTitle: normalizeOptionalFormString(getFormString(formData, "originalTitle")),
+      description: normalizeOptionalFormString(getFormString(formData, "description")),
+    },
+  };
 }
 
 function readAuthorMediaForm(formData: FormData) {
@@ -161,6 +191,66 @@ function getCoverSourceFromItem(item: {
     provider: item.coverSourceProvider as CoverSourceInput["provider"],
     externalId: item.coverSourceExternalId,
     pageUrl: item.coverSourcePageUrl,
+  };
+}
+
+export async function createAuthorInlineFranchiseAction(
+  _previousState: CreateAuthorInlineFranchiseState,
+  formData: FormData,
+): Promise<CreateAuthorInlineFranchiseState> {
+  const author = await requireAuthor();
+
+  if (!canAuthorCreateFranchise({
+    canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+  })) {
+    return { error: "forbidden", franchise: null };
+  }
+
+  const input = readFranchiseForm(formData);
+
+  if (!input.ok) {
+    return { error: input.error, franchise: null };
+  }
+
+  let franchise;
+
+  try {
+    franchise = await createFranchise({
+      ...input.value,
+      code: generateEntityCode({ type: "series", name: input.value.title }),
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) {
+      return { error: "duplicate-code", franchise: null };
+    }
+
+    console.error(error);
+    return { error: getAdminFormErrorCode(error), franchise: null };
+  }
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/franchises");
+  revalidatePath("/admin/media");
+  revalidatePath("/author/media/new");
+  revalidatePath("/author/media", "layout");
+  await logActivity({
+    action: "franchise.created",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "franchise",
+    entityId: franchise.id,
+    entityLabel: franchise.title,
+    message: "Серия создана автором.",
+    metadata: { source: "author-inline-media-form" },
+  });
+
+  return {
+    error: null,
+    franchise: {
+      id: franchise.id,
+      title: input.value.title,
+      originalTitle: input.value.originalTitle,
+    },
   };
 }
 

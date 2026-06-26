@@ -436,9 +436,11 @@ function WinDvdAeroRatingMarks({
 function SteamAchievementIcon({
   compact = false,
   displayScore,
+  toneClassName,
 }: {
   compact?: boolean;
   displayScore?: string;
+  toneClassName: string;
 }) {
   const scoreClassName =
     compact && displayScore && displayScore.length > 1
@@ -449,7 +451,7 @@ function SteamAchievementIcon({
 
   return (
     <span
-      className={`grid shrink-0 place-items-center border border-cyan-400/70 bg-[radial-gradient(circle_at_50%_42%,rgba(19,41,54,0.82)_0%,rgba(5,13,20,0.98)_70%)] text-cyan-400 shadow-[inset_0_0_0_1px_rgba(103,232,249,0.16),inset_0_0_22px_rgba(34,211,238,0.2),0_0_14px_rgba(34,211,238,0.16)] ${
+      className={`grid shrink-0 place-items-center border bg-[radial-gradient(circle_at_50%_42%,rgba(19,41,54,0.82)_0%,rgba(5,13,20,0.98)_70%)] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08),inset_0_0_22px_rgba(255,255,255,0.08),0_0_14px_rgba(255,255,255,0.08)] ${toneClassName} ${
         compact ? "size-10 self-center" : "size-[4.6rem] self-center"
       }`}
       aria-hidden="true"
@@ -481,21 +483,23 @@ function SteamAchievementIcon({
 function SteamAchievementStars({
   compact = false,
   score,
+  toneClassName,
 }: {
   compact?: boolean;
   score: number | null;
+  toneClassName: string;
 }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
     <span
-      className={`inline-flex items-center leading-none text-cyan-400 ${
+      className={`inline-flex items-center leading-none ${toneClassName} ${
         compact ? "gap-0.5 text-lg" : "gap-1.5 text-2xl"
       }`}
       aria-hidden="true"
     >
       {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < filledStars ? "drop-shadow-[0_0_7px_rgba(34,211,238,0.52)]" : "text-cyan-500/45"}>
+        <span key={index} className={index < filledStars ? "drop-shadow-[0_0_7px_rgba(255,255,255,0.18)]" : "text-slate-500/70"}>
           {index < filledStars ? "★" : "☆"}
         </span>
       ))}
@@ -513,10 +517,15 @@ export function SteamAchievementRatingContent({
 }: SteamAchievementRatingContentProps) {
   const hasValueOverride = value !== undefined;
   const detailText = detail ?? "";
+  const steamToneClassName = {
+    bad: "border-red-500/70 text-red-400",
+    medium: "border-stone-400/70 text-stone-300",
+    good: "border-emerald-400/70 text-emerald-400",
+  }[getRatingTone(score)];
 
   return (
     <span
-      className={`media-carrier-font-pc-steam relative mx-auto flex h-full w-full min-w-0 overflow-hidden border border-cyan-500/28 bg-[linear-gradient(180deg,#123144_0%,#0b2230_48%,#081720_100%)] text-left text-slate-200 shadow-[0_10px_22px_rgba(4,13,20,0.26),inset_0_0_0_1px_rgba(125,211,252,0.08)] ${
+      className={`media-carrier-font-pc-steam relative mx-auto flex h-full w-full min-w-0 overflow-hidden border bg-[linear-gradient(180deg,#123144_0%,#0b2230_48%,#081720_100%)] text-left text-slate-200 shadow-[0_10px_22px_rgba(4,13,20,0.26),inset_0_0_0_1px_rgba(125,211,252,0.08)] ${steamToneClassName} ${
         compact
           ? "min-h-[7.5rem] flex-col items-center gap-1.5 px-2 py-2 text-center"
           : "min-h-[10.5rem] max-w-[17.5rem] gap-3 px-3 py-3"
@@ -529,6 +538,7 @@ export function SteamAchievementRatingContent({
       <SteamAchievementIcon
         compact={compact}
         displayScore={!hasValueOverride ? formatScore(score) : undefined}
+        toneClassName={steamToneClassName}
       />
       <span
         className={`relative z-10 flex min-w-0 flex-1 flex-col ${
@@ -549,7 +559,7 @@ export function SteamAchievementRatingContent({
               Войдите, чтобы поставить оценку
             </span>
             <span
-              className={`mt-2 inline-flex w-fit items-center border border-cyan-500/55 bg-[#082231] font-semibold uppercase tracking-[0.08em] text-cyan-400 shadow-[inset_0_0_0_1px_rgba(34,211,238,0.12)] ${
+              className={`mt-2 inline-flex w-fit items-center border bg-[#082231] font-semibold uppercase tracking-[0.08em] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)] ${steamToneClassName} ${
                 compact ? "px-2 py-1 text-[8px] leading-3" : "px-3 py-1.5 text-[10px] leading-4"
               }`}
             >
@@ -559,7 +569,11 @@ export function SteamAchievementRatingContent({
           </>
         ) : (
           <>
-            <SteamAchievementStars compact={compact} score={score} />
+            <SteamAchievementStars
+              compact={compact}
+              score={score}
+              toneClassName={steamToneClassName}
+            />
             <span
               className={`block min-h-4 max-w-full text-slate-300 ${
                 compact ? "text-[9px] leading-3" : "text-xs leading-4"

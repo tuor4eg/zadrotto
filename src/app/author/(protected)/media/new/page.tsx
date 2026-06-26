@@ -2,6 +2,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
 import { MediaItemForm } from "../media-item-form";
@@ -14,8 +16,9 @@ type NewAuthorMediaPageProps = {
 };
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
-  const [{ error }, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [{ error }, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     searchParams,
+    requireAuthor(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
@@ -47,6 +50,9 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            canCreateFranchise={canAuthorCreateFranchise({
+              canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+            })}
           />
         </CardContent>
       </Card>

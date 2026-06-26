@@ -2,8 +2,10 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  buildFirstExperiencedYearOptions,
   formatFirstExperiencedDate,
   formatFirstExperiencedInputValue,
+  isFirstExperienceBeforeRelease,
   parseFirstExperiencedInput,
 } from "../src/lib/authors/experience-date";
 
@@ -45,5 +47,37 @@ describe("formatFirstExperiencedDate", () => {
     assert.equal(parseFirstExperiencedInput("1991-03", "year"), null);
     assert.equal(parseFirstExperiencedInput("1991", "month"), null);
     assert.equal(parseFirstExperiencedInput("1991-03-05", "unknown"), null);
+  });
+
+  it("limits first experience year options to release year when known", () => {
+    assert.deepEqual(buildFirstExperiencedYearOptions({
+      currentYear: 2026,
+      minYear: 1950,
+      releaseYear: 2020,
+    }), ["2026", "2025", "2024", "2023", "2022", "2021", "2020"]);
+  });
+
+  it("keeps existing out-of-range first experience year visible", () => {
+    assert.deepEqual(buildFirstExperiencedYearOptions({
+      currentYear: 2026,
+      minYear: 1950,
+      releaseYear: 2020,
+      selectedYear: "2018",
+    }), ["2018", "2026", "2025", "2024", "2023", "2022", "2021", "2020"]);
+  });
+
+  it("detects first experience dates before release year", () => {
+    assert.equal(isFirstExperienceBeforeRelease({
+      firstExperiencedAt: "2018-01-01",
+      releaseYear: 2020,
+    }), true);
+    assert.equal(isFirstExperienceBeforeRelease({
+      firstExperiencedAt: "2020-01-01",
+      releaseYear: 2020,
+    }), false);
+    assert.equal(isFirstExperienceBeforeRelease({
+      firstExperiencedAt: "2018-01-01",
+      releaseYear: null,
+    }), false);
   });
 });
