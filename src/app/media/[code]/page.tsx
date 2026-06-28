@@ -4,7 +4,7 @@ import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
-import { getMediaItemByCode, getOtherMediaItemsFromFranchise } from "@/db/queries/media-items";
+import { getMediaItemByCode, getOtherMediaItemsFromFranchises } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
@@ -25,9 +25,14 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   }
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
+  const firstFranchiseCode = item.franchises[0]?.code ?? null;
   const [relatedItems, reviews, mediaTypes] = await Promise.all([
-    item.franchiseId
-      ? getOtherMediaItemsFromFranchise(item.franchiseId, item.id, currentAuthor?.id)
+    item.franchises.length > 0
+      ? getOtherMediaItemsFromFranchises(
+          item.franchises.map((franchise) => franchise.id),
+          item.id,
+          currentAuthor?.id,
+        )
       : [],
     getPublishedReviewsForMediaItem(item.id),
     getMediaTypeOptions(),
@@ -54,7 +59,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           ratingSlot={
             <MediaItemRatingDialog
               mediaItemCode={item.code}
-              franchiseCode={item.franchiseCode}
+              franchiseCode={firstFranchiseCode}
               title={item.title}
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
@@ -71,7 +76,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           compactRatingSlot={
             <MediaItemRatingDialog
               mediaItemCode={item.code}
-              franchiseCode={item.franchiseCode}
+              franchiseCode={firstFranchiseCode}
               title={item.title}
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null

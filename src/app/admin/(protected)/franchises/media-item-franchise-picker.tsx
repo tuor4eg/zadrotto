@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { AlertTriangle, Plus, Search, X } from "lucide-react";
+import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -35,7 +35,7 @@ function itemMatchesSearch(
     item.title,
     item.originalTitle,
     item.code,
-    item.franchiseTitle,
+    ...item.franchises.map((franchise) => franchise.title),
     item.releaseYear?.toString(),
     getMediaTypeLabel(item.mediaType, mediaTypes),
     PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus],
@@ -53,7 +53,6 @@ export function MediaItemFranchisePicker({
   mediaTypes,
 }: MediaItemFranchisePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const [itemToMove, setItemToMove] = useState<AvailableMediaItem | null>(null);
   const normalizedSearchValue = normalizeSearchValue(searchValue);
   const visibleItems = useMemo(() => {
     if (!normalizedSearchValue) {
@@ -96,22 +95,13 @@ export function MediaItemFranchisePicker({
                 <div className="mt-2 flex flex-wrap gap-2">
                   <Badge variant="outline">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                   {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
-                  {item.franchiseTitle ? (
-                    <Badge variant="default">Сейчас: {item.franchiseTitle}</Badge>
-                  ) : null}
+                  {item.franchises.map((franchise) => (
+                    <Badge key={franchise.id} variant="default">{franchise.title}</Badge>
+                  ))}
                 </div>
               </div>
 
-              <form
-                action={addMediaItemToFranchiseAction}
-                className="shrink-0"
-                onSubmit={(event) => {
-                  if (item.franchiseTitle) {
-                    event.preventDefault();
-                    setItemToMove(item);
-                  }
-                }}
-              >
+              <form action={addMediaItemToFranchiseAction} className="shrink-0">
                 <input type="hidden" name="franchiseId" value={franchiseId} />
                 <input type="hidden" name="mediaItemId" value={item.id} />
                 <Tooltip label="Добавить в серию">
@@ -129,64 +119,6 @@ export function MediaItemFranchisePicker({
           ))}
         </div>
       )}
-
-      {itemToMove ? (
-        <div
-          aria-labelledby="move-media-item-title"
-          aria-modal="true"
-          className="fixed inset-0 z-50 grid place-items-center bg-stone-950/35 p-4"
-          role="dialog"
-        >
-          <div className="w-full max-w-md rounded-lg border border-stone-200 bg-white p-5 shadow-xl">
-            <div className="flex items-start gap-3">
-              <div className="flex size-9 shrink-0 items-center justify-center rounded-md bg-amber-50 text-amber-700">
-                <AlertTriangle className="size-4" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  id="move-media-item-title"
-                  className="text-base font-semibold text-stone-950"
-                >
-                  Перенести запись в эту серию?
-                </div>
-                <p className="mt-2 text-sm leading-6 text-stone-600">
-                  Запись <span className="font-medium text-stone-950">{itemToMove.title}</span>{" "}
-                  уже находится в серии{" "}
-                  <span className="font-medium text-stone-950">{itemToMove.franchiseTitle}</span>.
-                  После переноса она будет убрана из старой серии.
-                </p>
-              </div>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon"
-                aria-label="Закрыть диалог"
-                onClick={() => setItemToMove(null)}
-              >
-                <X />
-              </Button>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setItemToMove(null)}
-              >
-                Отмена
-              </Button>
-              <form action={addMediaItemToFranchiseAction}>
-                <input type="hidden" name="franchiseId" value={franchiseId} />
-                <input type="hidden" name="mediaItemId" value={itemToMove.id} />
-                <Button type="submit" variant="positive">
-                  <Plus />
-                  Перенести
-                </Button>
-              </form>
-            </div>
-          </div>
-        </div>
-      ) : null}
     </div>
   );
 }

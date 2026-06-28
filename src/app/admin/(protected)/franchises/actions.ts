@@ -287,13 +287,9 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
   revalidatePath(`/franchises/${franchise.code}`);
   revalidatePath(`/media/${item.code}`);
 
-  if (
-    itemBeforeUpdate.franchiseId &&
-    itemBeforeUpdate.franchiseId !== franchiseId.value &&
-    itemBeforeUpdate.franchiseCode
-  ) {
-    revalidatePath(`/admin/franchises/${itemBeforeUpdate.franchiseId}/edit`);
-    revalidatePath(`/franchises/${itemBeforeUpdate.franchiseCode}`);
+  for (const existingFranchise of itemBeforeUpdate.franchises) {
+    revalidatePath(`/admin/franchises/${existingFranchise.id}/edit`);
+    revalidatePath(`/franchises/${existingFranchise.code}`);
   }
 
   await logActivity({
@@ -307,7 +303,10 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
     metadata: {
       mediaItemId: item.id,
       mediaItemTitle: item.title,
-      previousFranchiseId: itemBeforeUpdate.franchiseId,
+      franchiseIds: [
+        ...itemBeforeUpdate.franchises.map((existingFranchise) => existingFranchise.id),
+        franchiseId.value,
+      ],
     },
   });
   redirect(`/admin/franchises/${franchiseId.value}/edit?attached=1`);

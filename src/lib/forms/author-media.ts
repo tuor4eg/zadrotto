@@ -115,6 +115,26 @@ export function parseOptionalPositiveInteger(value: string) {
     : { ok: false as const };
 }
 
+export function parsePositiveIntegerList(values: FormDataEntryValue[]) {
+  const parsedValues: number[] = [];
+
+  for (const value of values) {
+    if (typeof value !== "string") {
+      return { ok: false as const };
+    }
+
+    const parsedValue = parseOptionalPositiveInteger(value);
+
+    if (!parsedValue.ok || parsedValue.value === null) {
+      return { ok: false as const };
+    }
+
+    parsedValues.push(parsedValue.value);
+  }
+
+  return { ok: true as const, value: [...new Set(parsedValues)] };
+}
+
 export function slugifyMediaTitle(title: string) {
   return slugifyCodePart(title);
 }

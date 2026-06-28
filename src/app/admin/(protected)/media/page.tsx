@@ -307,8 +307,10 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
 
                 <div className="mt-4 grid gap-3 border-t border-stone-100 pt-3">
                   <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-500">
-                    {item.franchiseTitle ? (
-                      <span className="break-words">Серия: {item.franchiseTitle}</span>
+                    {item.franchises.length > 0 ? (
+                      <span className="break-words">
+                        Серии: {item.franchises.map((franchise) => franchise.title).join(", ")}
+                      </span>
                     ) : null}
                     {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                     {item.mediaCarrierName ? (
@@ -358,8 +360,10 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                           </div>
                         ) : null}
                         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-stone-500">
-                          {item.franchiseTitle ? (
-                            <span className="truncate">Серия: {item.franchiseTitle}</span>
+                          {item.franchises.length > 0 ? (
+                            <span className="truncate">
+                              Серии: {item.franchises.map((franchise) => franchise.title).join(", ")}
+                            </span>
                           ) : null}
                           {item.releaseYear ? <span>{item.releaseYear}</span> : null}
                           {item.mediaCarrierName ? (

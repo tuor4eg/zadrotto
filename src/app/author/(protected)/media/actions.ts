@@ -7,7 +7,7 @@ import { notFound, redirect } from "next/navigation";
 
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { getCoverSettings } from "@/db/queries/cover-settings";
-import { createFranchise, franchiseExistsById } from "@/db/queries/franchises";
+import { createFranchise, franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
@@ -24,6 +24,7 @@ import {
   isAuthorEditablePublicationStatus,
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
+  parsePositiveIntegerList,
   parseOptionalReleaseYear,
 } from "@/lib/forms/author-media";
 import { requireAuthor } from "@/lib/auth/author-auth";
@@ -103,7 +104,7 @@ function readAuthorMediaForm(formData: FormData) {
   const title = getFormString(formData, "title");
   const mediaType = parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
-  const franchiseId = parseOptionalPositiveInteger(getFormString(formData, "franchiseId"));
+  const franchiseIds = parsePositiveIntegerList(formData.getAll("franchiseIds"));
   const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
 
   if (!title || !mediaType) {
@@ -114,7 +115,7 @@ function readAuthorMediaForm(formData: FormData) {
     return { ok: false as const, error: "invalid-year" };
   }
 
-  if (!franchiseId.ok) {
+  if (!franchiseIds.ok) {
     return { ok: false as const, error: "invalid-franchise" };
   }
 
@@ -129,15 +130,15 @@ function readAuthorMediaForm(formData: FormData) {
       originalTitle: normalizeOptionalFormString(getFormString(formData, "originalTitle")),
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
-      franchiseId: franchiseId.value,
+      franchiseIds: franchiseIds.value,
       mediaCarrierId: mediaCarrierId.value,
       releaseYear: releaseYear.value,
     },
   };
 }
 
-async function isKnownFranchise(franchiseId: number | null) {
-  return franchiseId === null || franchiseExistsById(franchiseId);
+async function areKnownFranchises(franchiseIds: number[]) {
+  return franchiseIdsExist(franchiseIds);
 }
 
 async function isKnownMediaType(mediaType: MediaType) {
@@ -262,7 +263,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/new?error=${form.error}`);
   }
 
-  if (!(await isKnownFranchise(form.value.franchiseId))) {
+  if (!(await areKnownFranchises(form.value.franchiseIds))) {
     redirect("/author/media/new?error=invalid-franchise");
   }
 
@@ -349,7 +350,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=${form.error}`);
   }
 
-  if (!(await isKnownFranchise(form.value.franchiseId))) {
+  if (!(await areKnownFranchises(form.value.franchiseIds))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
   }
 

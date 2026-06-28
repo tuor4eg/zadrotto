@@ -29,15 +29,15 @@ function getFormString(formData: FormData, key: string) {
 function revalidateRatingPaths(input: {
   mediaItemId: number;
   mediaItemCode: string;
-  franchiseCode: string;
+  franchiseCodes: string[];
 }) {
   revalidatePath("/");
   revalidatePath(`/media/${input.mediaItemCode}`);
   revalidatePath(`/author/media/${input.mediaItemId}`);
   revalidatePath("/author/media");
 
-  if (input.franchiseCode) {
-    revalidatePath(`/franchises/${input.franchiseCode}`);
+  for (const franchiseCode of input.franchiseCodes) {
+    revalidatePath(`/franchises/${franchiseCode}`);
   }
 }
 
@@ -52,7 +52,6 @@ export async function saveAuthorRatingAction(
   }
 
   const mediaItemCode = getFormString(formData, "mediaItemCode");
-  const franchiseCode = getFormString(formData, "franchiseCode");
   const intent = getFormString(formData, "intent");
   const score = parseRatingScoreInput(formData.get("score"));
   const shouldUpdateExperience = formData.has("firstExperiencedValue");
@@ -68,7 +67,7 @@ export async function saveAuthorRatingAction(
   if (!mediaItem) {
     return { error: "Запись архива не найдена." };
   }
-  const relatedFranchiseCode = franchiseCode || mediaItem.franchiseCode || "";
+  const relatedFranchiseCodes = mediaItem.franchises.map((franchise) => franchise.code);
 
   if (intent === "delete") {
     await deleteAuthorRating({
@@ -79,7 +78,7 @@ export async function saveAuthorRatingAction(
     revalidateRatingPaths({
       mediaItemId: mediaItem.id,
       mediaItemCode: mediaItem.code,
-      franchiseCode: relatedFranchiseCode,
+      franchiseCodes: relatedFranchiseCodes,
     });
 
     return { error: null };
@@ -132,7 +131,7 @@ export async function saveAuthorRatingAction(
   revalidateRatingPaths({
     mediaItemId: mediaItem.id,
     mediaItemCode: mediaItem.code,
-    franchiseCode: relatedFranchiseCode,
+    franchiseCodes: relatedFranchiseCodes,
   });
 
   return { error: null };

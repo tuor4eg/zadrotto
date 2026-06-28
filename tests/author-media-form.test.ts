@@ -8,6 +8,7 @@ import {
   isAuthorEditablePublicationStatus,
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
+  parsePositiveIntegerList,
   parseOptionalReleaseYear,
   slugifyMediaTitle,
   validateCoverFileInput,
@@ -91,6 +92,14 @@ describe("author media form helpers", () => {
     assert.deepEqual(parseOptionalPositiveInteger("0"), { ok: false });
     assert.deepEqual(parseOptionalPositiveInteger("-1"), { ok: false });
     assert.deepEqual(parseOptionalPositiveInteger("1.5"), { ok: false });
+  });
+
+  it("parses repeated franchise ids as a unique positive integer list", () => {
+    assert.deepEqual(parsePositiveIntegerList([]), { ok: true, value: [] });
+    assert.deepEqual(parsePositiveIntegerList(["2", "7", "2"]), { ok: true, value: [2, 7] });
+    assert.deepEqual(parsePositiveIntegerList(["0"]), { ok: false });
+    assert.deepEqual(parsePositiveIntegerList(["bad"]), { ok: false });
+    assert.deepEqual(parsePositiveIntegerList([{} as FormDataEntryValue]), { ok: false });
   });
 
   it("parses required media carrier ids", () => {

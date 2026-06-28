@@ -65,6 +65,7 @@ export function MediaCatalogPreview({
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const firstFranchiseCode = item.franchises[0]?.code ?? null;
 
   return (
     <div className="relative flex flex-1 p-3 sm:p-4">
@@ -166,7 +167,7 @@ export function MediaCatalogPreview({
           />
           <MediaItemRatingDialog
             mediaItemCode={item.code}
-            franchiseCode={item.franchiseCode}
+            franchiseCode={firstFranchiseCode}
             title={item.title}
             currentAuthor={currentAuthor}
             currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
@@ -182,17 +183,22 @@ export function MediaCatalogPreview({
           />
         </div>
 
-        {item.franchiseTitle && item.franchiseCode ? (
+        {item.franchises.length > 0 ? (
           <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
             <div className={`${labelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
-              Серия
+              Серии
             </div>
-            <Link
-              href={`/franchises/${item.franchiseCode}`}
-              className="mt-1 inline-block font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-            >
-              {item.franchiseTitle}
-            </Link>
+            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
+              {item.franchises.map((franchise) => (
+                <Link
+                  key={franchise.id}
+                  href={`/franchises/${franchise.code}`}
+                  className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                >
+                  {franchise.title}
+                </Link>
+              ))}
+            </div>
           </div>
         ) : null}
 

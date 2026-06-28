@@ -30,6 +30,7 @@ import {
   authorMediaExperiences,
   authors,
   franchises,
+  mediaItemFranchises,
   mediaCarriers,
   mediaItems,
   ratings,
@@ -45,6 +46,86 @@ const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
   PUBLISHED_PUBLICATION_STATUS,
 );
+
+export type MediaItemFranchiseLink = {
+  id: number;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+};
+
+export function normalizeMediaItemFranchises(
+  franchisesValue: MediaItemFranchiseLink[] | null,
+) {
+  if (!franchisesValue) {
+    return [];
+  }
+
+  const seenIds = new Set<number>();
+
+  return franchisesValue.filter((franchise) => {
+    if (seenIds.has(franchise.id)) {
+      return false;
+    }
+
+    seenIds.add(franchise.id);
+    return true;
+  });
+}
+
+const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<MediaItemFranchiseLink[]>`coalesce((
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', ${franchises.id},
+      'code', ${franchises.code},
+      'title', ${franchises.title},
+      'originalTitle', ${franchises.originalTitle}
+    )
+    order by ${franchises.title}, ${franchises.code}
+  )
+  from ${mediaItemFranchises}
+  inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
+  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+), '[]'::jsonb)`;
+
+const franchiseIdsSql = (mediaItemId = mediaItems.id) => sql<number[]>`coalesce((
+  select array_agg(${mediaItemFranchises.franchiseId} order by ${franchises.title}, ${franchises.code})
+  from ${mediaItemFranchises}
+  inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
+  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+), array[]::integer[])`;
+
+function withResolvedFranchises<T extends { franchises: MediaItemFranchiseLink[] | null }>(
+  item: T,
+) {
+  return {
+    ...item,
+    franchises: normalizeMediaItemFranchises(item.franchises),
+  };
+}
+
+export async function setMediaItemFranchisesForExecutor(
+  executor: Pick<typeof db, "delete" | "insert"> | Pick<DbTransaction, "delete" | "insert">,
+  mediaItemId: number,
+  franchiseIds: number[],
+) {
+  const uniqueFranchiseIds = [...new Set(franchiseIds)];
+
+  await executor
+    .delete(mediaItemFranchises)
+    .where(eq(mediaItemFranchises.mediaItemId, mediaItemId));
+
+  if (uniqueFranchiseIds.length === 0) {
+    return;
+  }
+
+  await executor.insert(mediaItemFranchises).values(
+    uniqueFranchiseIds.map((franchiseId) => ({
+      mediaItemId,
+      franchiseId,
+    })),
+  );
+}
 
 const currentAuthorScoreSql = (currentAuthorId?: number) =>
   currentAuthorId
@@ -262,9 +343,7 @@ const catalogMediaItemsQuery = (input: {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -273,7 +352,7 @@ const catalogMediaItemsQuery = (input: {
       coverSourceProvider: mediaItems.coverSourceProvider,
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
       currentAuthorRatedAt: currentAuthorRatedAtSql(input.currentAuthorId),
       currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(
@@ -284,7 +363,6 @@ const catalogMediaItemsQuery = (input: {
       ),
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(input.filterCondition)
@@ -295,9 +373,6 @@ const catalogMediaItemsQuery = (input: {
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
-      mediaItems.franchiseId,
-      franchises.code,
-      franchises.title,
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
@@ -337,7 +412,7 @@ export async function getCatalogMediaItems(input: {
 
   return {
     items: items.map((item) => ({
-      ...item,
+      ...withResolvedFranchises(item),
       coverUrl: resolveCoverUrl(item.coverUrl),
       coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
     })),
@@ -464,9 +539,7 @@ export async function getAdminMediaItems(input: {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -481,7 +554,6 @@ export async function getAdminMediaItems(input: {
       currentAuthorScore: sql<number | null>`null`,
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
@@ -493,9 +565,6 @@ export async function getAdminMediaItems(input: {
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
-      mediaItems.franchiseId,
-      franchises.code,
-      franchises.title,
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
@@ -517,7 +586,7 @@ export async function getAdminMediaItems(input: {
 
   return {
     items: items.map((item) => ({
-      ...item,
+      ...withResolvedFranchises(item),
       coverUrl: resolveCoverUrl(item.coverUrl),
       coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
     })),
@@ -581,7 +650,7 @@ export type AuthorMediaItemInput = {
   originalTitle: string | null;
   description: string | null;
   mediaType: MediaType;
-  franchiseId: number | null;
+  franchiseIds: number[];
   mediaCarrierId: number | null;
   releaseYear: number | null;
   coverUrl: string | null;
@@ -590,55 +659,64 @@ export type AuthorMediaItemInput = {
 };
 
 export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
-  await db.insert(mediaItems).values({
-    code: input.code,
-    title: input.title,
-    originalTitle: input.originalTitle,
-    description: input.description,
-    mediaType: input.mediaType,
-    franchiseId: input.franchiseId,
-    mediaCarrierId: input.mediaCarrierId,
-    releaseYear: input.releaseYear,
-    coverUrl: input.coverUrl,
-    coverThumbUrl: input.coverThumbUrl,
-    coverSourceProvider: input.coverSource.provider,
-    coverSourceExternalId: input.coverSource.externalId,
-    coverSourcePageUrl: input.coverSource.pageUrl,
-    createdByAuthorId: input.authorId,
-    publicationStatus: "private",
+  await db.transaction(async (tx) => {
+    const [item] = await tx
+      .insert(mediaItems)
+      .values({
+        code: input.code,
+        title: input.title,
+        originalTitle: input.originalTitle,
+        description: input.description,
+        mediaType: input.mediaType,
+        mediaCarrierId: input.mediaCarrierId,
+        releaseYear: input.releaseYear,
+        coverUrl: input.coverUrl,
+        coverThumbUrl: input.coverThumbUrl,
+        coverSourceProvider: input.coverSource.provider,
+        coverSourceExternalId: input.coverSource.externalId,
+        coverSourcePageUrl: input.coverSource.pageUrl,
+        createdByAuthorId: input.authorId,
+        publicationStatus: "private",
+      })
+      .returning({ id: mediaItems.id });
+
+    await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
   });
 }
 
 export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId"> & {
   authorId: number;
 }) {
-  const [item] = await db
-    .insert(mediaItems)
-    .values({
-      code: input.code,
-      title: input.title,
-      originalTitle: input.originalTitle,
-      description: input.description,
-      mediaType: input.mediaType,
-      franchiseId: input.franchiseId,
-      mediaCarrierId: input.mediaCarrierId,
-      releaseYear: input.releaseYear,
-      coverUrl: input.coverUrl,
-      coverThumbUrl: input.coverThumbUrl,
-      coverSourceProvider: input.coverSource.provider,
-      coverSourceExternalId: input.coverSource.externalId,
-      coverSourcePageUrl: input.coverSource.pageUrl,
-      createdByAuthorId: input.authorId,
-      publicationStatus: "published",
-    })
-    .returning({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      coverUrl: mediaItems.coverUrl,
-      coverThumbUrl: mediaItems.coverThumbUrl,
-    });
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .insert(mediaItems)
+      .values({
+        code: input.code,
+        title: input.title,
+        originalTitle: input.originalTitle,
+        description: input.description,
+        mediaType: input.mediaType,
+        mediaCarrierId: input.mediaCarrierId,
+        releaseYear: input.releaseYear,
+        coverUrl: input.coverUrl,
+        coverThumbUrl: input.coverThumbUrl,
+        coverSourceProvider: input.coverSource.provider,
+        coverSourceExternalId: input.coverSource.externalId,
+        coverSourcePageUrl: input.coverSource.pageUrl,
+        createdByAuthorId: input.authorId,
+        publicationStatus: "published",
+      })
+      .returning({
+        id: mediaItems.id,
+        code: mediaItems.code,
+        coverUrl: mediaItems.coverUrl,
+        coverThumbUrl: mediaItems.coverThumbUrl,
+      });
 
-  return item;
+    await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
+
+    return item;
+  });
 }
 
 export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: number) {
@@ -649,7 +727,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
+      franchiseIds: franchiseIdsSql(),
       mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
@@ -676,7 +754,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
+      franchiseIds: franchiseIdsSql(),
       mediaCarrierId: mediaItems.mediaCarrierId,
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
@@ -710,9 +788,7 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       mediaCarrierId: mediaItems.mediaCarrierId,
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
@@ -728,7 +804,6 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(authorId),
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.createdByAuthorId, authorId)))
@@ -739,9 +814,6 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
-      mediaItems.franchiseId,
-      franchises.code,
-      franchises.title,
       mediaItems.mediaCarrierId,
       mediaCarriers.code,
       mediaCarriers.name,
@@ -755,7 +827,7 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
 
   return item
     ? {
-        ...item,
+        ...withResolvedFranchises(item),
         coverUrl: resolveCoverUrl(item.coverUrl),
         coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       }
@@ -765,61 +837,71 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
 export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "code"> & {
   mediaItemId: number;
 }) {
-  await db
-    .update(mediaItems)
-    .set({
-      title: input.title,
-      originalTitle: input.originalTitle,
-      description: input.description,
-      mediaType: input.mediaType,
-      franchiseId: input.franchiseId,
-      mediaCarrierId: input.mediaCarrierId,
-      releaseYear: input.releaseYear,
-      coverUrl: input.coverUrl,
-      coverThumbUrl: input.coverThumbUrl,
-      coverSourceProvider: input.coverSource.provider,
-      coverSourceExternalId: input.coverSource.externalId,
-      coverSourcePageUrl: input.coverSource.pageUrl,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(mediaItems.id, input.mediaItemId),
-        eq(mediaItems.createdByAuthorId, input.authorId),
-        not(publishedMediaItemCondition),
-      ),
-    );
+  await db.transaction(async (tx) => {
+    await tx
+      .update(mediaItems)
+      .set({
+        title: input.title,
+        originalTitle: input.originalTitle,
+        description: input.description,
+        mediaType: input.mediaType,
+        mediaCarrierId: input.mediaCarrierId,
+        releaseYear: input.releaseYear,
+        coverUrl: input.coverUrl,
+        coverThumbUrl: input.coverThumbUrl,
+        coverSourceProvider: input.coverSource.provider,
+        coverSourceExternalId: input.coverSource.externalId,
+        coverSourcePageUrl: input.coverSource.pageUrl,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaItems.id, input.mediaItemId),
+          eq(mediaItems.createdByAuthorId, input.authorId),
+          not(publishedMediaItemCondition),
+        ),
+      );
+
+    await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
+  });
 }
 
 export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId" | "code"> & {
   mediaItemId: number;
   authorId: number | null;
 }) {
-  const [item] = await db
-    .update(mediaItems)
-    .set({
-      title: input.title,
-      originalTitle: input.originalTitle,
-      description: input.description,
-      mediaType: input.mediaType,
-      franchiseId: input.franchiseId,
-      mediaCarrierId: input.mediaCarrierId,
-      releaseYear: input.releaseYear,
-      coverUrl: input.coverUrl,
-      coverThumbUrl: input.coverThumbUrl,
-      coverSourceProvider: input.coverSource.provider,
-      coverSourceExternalId: input.coverSource.externalId,
-      coverSourcePageUrl: input.coverSource.pageUrl,
-      createdByAuthorId: input.authorId,
-      updatedAt: new Date(),
-    })
-    .where(eq(mediaItems.id, input.mediaItemId))
-    .returning({
-      id: mediaItems.id,
-      code: mediaItems.code,
-    });
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .update(mediaItems)
+      .set({
+        title: input.title,
+        originalTitle: input.originalTitle,
+        description: input.description,
+        mediaType: input.mediaType,
+        mediaCarrierId: input.mediaCarrierId,
+        releaseYear: input.releaseYear,
+        coverUrl: input.coverUrl,
+        coverThumbUrl: input.coverThumbUrl,
+        coverSourceProvider: input.coverSource.provider,
+        coverSourceExternalId: input.coverSource.externalId,
+        coverSourcePageUrl: input.coverSource.pageUrl,
+        createdByAuthorId: input.authorId,
+        updatedAt: new Date(),
+      })
+      .where(eq(mediaItems.id, input.mediaItemId))
+      .returning({
+        id: mediaItems.id,
+        code: mediaItems.code,
+      });
 
-  return item ?? null;
+    if (!item) {
+      return null;
+    }
+
+    await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
+
+    return item;
+  });
 }
 
 export async function submitAuthorMediaItemForPublication(input: {
@@ -930,7 +1012,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
@@ -942,12 +1024,11 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
     })
     .from(mediaItems)
     .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .where(eq(mediaItems.publicationStatus, "submitted"))
     .orderBy(desc(mediaItems.submittedAt), desc(mediaItems.updatedAt));
 
   return items.map((item) => ({
-    ...item,
+    ...withResolvedFranchises(item),
     coverUrl: resolveCoverUrl(item.coverUrl),
     coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
   }));
@@ -968,8 +1049,7 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
+      franchises: franchisesJsonSql(),
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
@@ -979,11 +1059,10 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .where(eq(mediaItems.id, mediaItemId))
     .limit(1);
 
-  return item ?? null;
+  return item ? withResolvedFranchises(item) : null;
 }
 
 export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: number) {
@@ -995,9 +1074,7 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -1011,7 +1088,6 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
     })
     .from(mediaItems)
     .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, "submitted")))
@@ -1022,9 +1098,6 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
-      mediaItems.franchiseId,
-      franchises.code,
-      franchises.title,
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
@@ -1038,7 +1111,7 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
 
   return item
     ? {
-        ...item,
+        ...withResolvedFranchises(item),
         coverUrl: resolveCoverUrl(item.coverUrl),
         coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       }
@@ -1095,13 +1168,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: sql<string | null>`(
-        select ${franchises.code}
-        from ${franchises}
-        where ${franchises.id} = ${mediaItems.franchiseId}
-        limit 1
-      )`,
+      franchises: franchisesJsonSql(),
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
@@ -1111,7 +1178,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
     });
 
-  return item ?? null;
+  return item ? withResolvedFranchises(item) : null;
 }
 
 export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
@@ -1193,11 +1260,10 @@ export async function getMediaItemIdentityForAuthorRating(code: string, authorId
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
-      franchiseCode: franchises.code,
+      franchises: franchisesJsonSql(),
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .where(
       and(
         eq(mediaItems.code, code),
@@ -1206,7 +1272,7 @@ export async function getMediaItemIdentityForAuthorRating(code: string, authorId
     )
     .limit(1);
 
-  return item ?? null;
+  return item ? withResolvedFranchises(item) : null;
 }
 
 export async function getMediaItemByCode(code: string, currentAuthorId?: number) {
@@ -1218,9 +1284,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -1237,7 +1301,6 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       ),
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
@@ -1248,9 +1311,6 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaItems.originalTitle,
       mediaItems.description,
       mediaItems.mediaType,
-      mediaItems.franchiseId,
-      franchises.code,
-      franchises.title,
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
@@ -1263,18 +1323,22 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
 
   return item
     ? {
-        ...item,
+        ...withResolvedFranchises(item),
         coverUrl: resolveCoverUrl(item.coverUrl),
         coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       }
     : null;
 }
 
-export async function getOtherMediaItemsFromFranchise(
-  franchiseId: number,
+export async function getOtherMediaItemsFromFranchises(
+  franchiseIds: number[],
   currentMediaItemId: number,
   currentAuthorId?: number,
 ) {
+  if (franchiseIds.length === 0) {
+    return [];
+  }
+
   const items = await db
     .select({
       id: mediaItems.id,
@@ -1288,15 +1352,16 @@ export async function getOtherMediaItemsFromFranchise(
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
+    .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
-        eq(mediaItems.franchiseId, franchiseId),
+        inArray(mediaItemFranchises.franchiseId, franchiseIds),
         ne(mediaItems.id, currentMediaItemId),
         publishedMediaItemCondition,
       ),

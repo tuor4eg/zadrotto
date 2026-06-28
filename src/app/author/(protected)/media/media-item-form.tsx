@@ -6,7 +6,7 @@ import { useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
-import { SearchableFranchiseSelect } from "@/components/ui/searchable-franchise-select";
+import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -22,7 +22,7 @@ type MediaItemFormValues = {
   originalTitle?: string | null;
   description?: string | null;
   mediaType?: MediaType;
-  franchiseId?: number | null;
+  franchiseIds?: number[];
   mediaCarrierId?: number | null;
   releaseYear?: number | null;
   coverUrl?: string | null;
@@ -57,8 +57,8 @@ export function MediaItemForm({
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
   );
-  const [selectedFranchiseId, setSelectedFranchiseId] = useState(
-    values?.franchiseId ? String(values.franchiseId) : "",
+  const [selectedFranchiseIds, setSelectedFranchiseIds] = useState(
+    values?.franchiseIds?.map(String) ?? [],
   );
   const [franchiseOptions, setFranchiseOptions] = useState(franchises);
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
@@ -161,13 +161,13 @@ export function MediaItemForm({
             Серия
           </Label>
           <div className="flex items-center gap-2">
-            <SearchableFranchiseSelect
+            <SearchableFranchiseMultiSelect
               key={franchiseSelectResetKey}
               id="author-media-franchise"
-              name="franchiseId"
+              name="franchiseIds"
               options={franchiseOptions}
-              value={selectedFranchiseId}
-              onChange={setSelectedFranchiseId}
+              value={selectedFranchiseIds}
+              onChange={setSelectedFranchiseIds}
             />
             {canCreateFranchise ? (
               <InlineFranchiseDialog
@@ -183,7 +183,11 @@ export function MediaItemForm({
                       left.title.localeCompare(right.title, "ru"),
                     );
                   });
-                  setSelectedFranchiseId(String(franchise.id));
+                  setSelectedFranchiseIds((currentIds) =>
+                    currentIds.includes(String(franchise.id))
+                      ? currentIds
+                      : [...currentIds, String(franchise.id)],
+                  );
                   setFranchiseSelectResetKey((currentKey) => currentKey + 1);
                 }}
               />

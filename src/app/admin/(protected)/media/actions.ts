@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 
 import { authorExistsById } from "@/db/queries/authors";
 import { getCoverSettings } from "@/db/queries/cover-settings";
-import { franchiseExistsById } from "@/db/queries/franchises";
+import { franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
@@ -20,6 +20,7 @@ import {
 import {
   normalizeOptionalFormString,
   parseOptionalPositiveInteger,
+  parsePositiveIntegerList,
   parseOptionalReleaseYear,
 } from "@/lib/forms/author-media";
 import { validateMediaCarrierForMediaType } from "@/lib/forms/media-carrier";
@@ -71,7 +72,7 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
   const title = getFormString(formData, "title");
   const mediaType = parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
-  const franchiseId = parseOptionalPositiveInteger(getFormString(formData, "franchiseId"));
+  const franchiseIds = parsePositiveIntegerList(formData.getAll("franchiseIds"));
   const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
   const authorId = parseOptionalPositiveInteger(getFormString(formData, "authorId"));
 
@@ -83,7 +84,7 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
     return { ok: false as const, error: "invalid-year" };
   }
 
-  if (!franchiseId.ok) {
+  if (!franchiseIds.ok) {
     return { ok: false as const, error: "invalid-franchise" };
   }
 
@@ -106,7 +107,7 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
       originalTitle: normalizeOptionalFormString(getFormString(formData, "originalTitle")),
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
-      franchiseId: franchiseId.value,
+      franchiseIds: franchiseIds.value,
       mediaCarrierId: mediaCarrierId.value,
       authorId: authorId.value,
       releaseYear: releaseYear.value,
@@ -114,8 +115,8 @@ function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }
   };
 }
 
-async function isKnownFranchise(franchiseId: number | null) {
-  return franchiseId === null || franchiseExistsById(franchiseId);
+async function areKnownFranchises(franchiseIds: number[]) {
+  return franchiseIdsExist(franchiseIds);
 }
 
 async function isKnownAuthor(authorId: number | null) {
@@ -144,8 +145,7 @@ async function validateMediaCarrier(input: {
 function revalidateMediaSurfaces(input: {
   id: number;
   code: string;
-  franchiseId: number | null;
-  franchiseCode: string | null;
+  franchises: { id: number; code: string }[];
 }) {
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${input.id}/edit`);
@@ -158,12 +158,9 @@ function revalidateMediaSurfaces(input: {
   revalidatePath("/");
   revalidatePath(`/media/${input.code}`);
 
-  if (input.franchiseCode) {
-    revalidatePath(`/franchises/${input.franchiseCode}`);
-  }
-
-  if (input.franchiseId) {
-    revalidatePath(`/admin/franchises/${input.franchiseId}/edit`);
+  for (const franchise of input.franchises) {
+    revalidatePath(`/franchises/${franchise.code}`);
+    revalidatePath(`/admin/franchises/${franchise.id}/edit`);
   }
 }
 
@@ -194,7 +191,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${form.error}`);
   }
 
-  if (!(await isKnownFranchise(form.value.franchiseId))) {
+  if (!(await areKnownFranchises(form.value.franchiseIds))) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-franchise`);
   }
 
@@ -279,14 +276,17 @@ export async function updateAdminMediaItemAction(formData: FormData) {
       message: "Запись изменена.",
       metadata: {
         mediaType: form.value.mediaType,
-        franchiseId: form.value.franchiseId,
+        franchiseIds: form.value.franchiseIds,
         mediaCarrierId: form.value.mediaCarrierId,
         authorId: form.value.authorId,
       },
     });
 
-    if (existingItem.franchiseCode && existingItem.franchiseCode !== nextIdentity.franchiseCode) {
-      revalidatePath(`/franchises/${existingItem.franchiseCode}`);
+    for (const franchise of existingItem.franchises) {
+      if (!nextIdentity.franchises.some((nextFranchise) => nextFranchise.id === franchise.id)) {
+        revalidatePath(`/admin/franchises/${franchise.id}/edit`);
+        revalidatePath(`/franchises/${franchise.code}`);
+      }
     }
   }
 
@@ -306,7 +306,7 @@ export async function createAdminMediaItemAction(formData: FormData) {
     redirect("/admin/media/new?error=author-required");
   }
 
-  if (!(await isKnownFranchise(form.value.franchiseId))) {
+  if (!(await areKnownFranchises(form.value.franchiseIds))) {
     redirect("/admin/media/new?error=invalid-franchise");
   }
 
@@ -379,7 +379,7 @@ export async function createAdminMediaItemAction(formData: FormData) {
     message: "Запись создана.",
     metadata: {
       mediaType: form.value.mediaType,
-      franchiseId: form.value.franchiseId,
+      franchiseIds: form.value.franchiseIds,
       mediaCarrierId: form.value.mediaCarrierId,
       authorId: form.value.authorId,
     },

@@ -60,6 +60,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
   const canWithdrawPublication = canAuthorWithdrawPublicationRequest(item.publicationStatus);
   const canDelete = canAuthorDeleteMediaItem(item.publicationStatus);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
+  const firstFranchiseCode = item.franchises[0]?.code ?? null;
 
   return (
     <MediaItemDetails
@@ -120,7 +121,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
       ratingSlot={
         <MediaItemRatingDialog
           mediaItemCode={item.code}
-          franchiseCode={item.franchiseCode}
+          franchiseCode={firstFranchiseCode}
           title={item.title}
           currentAuthor={{ name: author.name, code: author.code }}
           currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
@@ -135,7 +136,7 @@ export default async function AuthorMediaViewPage({ params }: AuthorMediaViewPag
       compactRatingSlot={
         <MediaItemRatingDialog
           mediaItemCode={item.code}
-          franchiseCode={item.franchiseCode}
+          franchiseCode={firstFranchiseCode}
           title={item.title}
           currentAuthor={{ name: author.name, code: author.code }}
           currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}

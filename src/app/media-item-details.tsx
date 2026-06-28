@@ -18,8 +18,12 @@ type MediaItemDetailsItem = {
   originalTitle: string | null;
   description: string | null;
   mediaType: MediaType;
-  franchiseCode?: string | null;
-  franchiseTitle?: string | null;
+  franchises: Array<{
+    id: number;
+    code: string;
+    title: string;
+    originalTitle: string | null;
+  }>;
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
   coverUrl: string | null;
@@ -60,30 +64,30 @@ type MediaItemDetailsProps = {
   relatedItems?: RelatedMediaItem[];
 };
 
-function FranchiseRelatedTitle({
-  franchiseCode,
-  variant,
+function FranchiseLinks({
+  franchises,
+  className,
 }: {
-  franchiseCode?: string | null;
-  variant: "default" | "archive";
+  franchises: MediaItemDetailsItem["franchises"];
+  className: string;
 }) {
-  const linkClassName =
-    variant === "archive"
-      ? "text-stone-700 underline decoration-stone-400 underline-offset-4 transition-colors hover:text-stone-950"
-      : "text-zinc-600 underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-950";
+  if (franchises.length === 0) {
+    return <>—</>;
+  }
 
   return (
-    <>
-      Еще из этой{" "}
-      {franchiseCode ? (
-        <Link href={`/franchises/${franchiseCode}`} className={linkClassName}>
-          серии
+    <div className="flex flex-wrap gap-1.5">
+      {franchises.map((franchise) => (
+        <Link key={franchise.id} href={`/franchises/${franchise.code}`} className={className}>
+          {franchise.title}
         </Link>
-      ) : (
-        "серии"
-      )}
-    </>
+      ))}
+    </div>
   );
+}
+
+function FranchiseRelatedTitle() {
+  return <>Еще из этих серий</>;
 }
 
 function CoverSourceAttribution({
@@ -184,19 +188,14 @@ export function MediaItemDetails({
                 {meta}
               </div>
 
-              {item.franchiseTitle ? (
-                item.franchiseCode ? (
-                  <Link
-                    href={`/franchises/${item.franchiseCode}`}
-                    className="w-fit border border-zinc-200 px-3 py-2 text-sm text-zinc-500 transition-colors hover:border-zinc-950 hover:text-zinc-950"
-                  >
-                    Серия: <span className="font-medium text-zinc-800">{item.franchiseTitle}</span>
-                  </Link>
-                ) : (
-                  <div className="w-fit border border-zinc-200 px-3 py-2 text-sm text-zinc-500">
-                    Серия: <span className="font-medium text-zinc-800">{item.franchiseTitle}</span>
-                  </div>
-                )
+              {item.franchises.length > 0 ? (
+                <div className="flex flex-wrap gap-1.5 text-sm text-zinc-500">
+                  <span className="border border-zinc-200 px-3 py-2">Серии:</span>
+                  <FranchiseLinks
+                    franchises={item.franchises}
+                    className="border border-zinc-200 px-3 py-2 font-medium text-zinc-800 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                  />
+                </div>
               ) : null}
 
               <div className="flex flex-col gap-2">
@@ -245,13 +244,10 @@ export function MediaItemDetails({
                 )}
               </div>
 
-              {item.franchiseTitle ? (
+              {item.franchises.length > 0 ? (
                 <div className="flex flex-col gap-2 normal-case tracking-normal">
                   <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    <FranchiseRelatedTitle
-                      franchiseCode={item.franchiseCode}
-                      variant="default"
-                    />
+                    <FranchiseRelatedTitle />
                   </div>
                   {relatedItems.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
@@ -415,18 +411,10 @@ function ArchiveMediaItemDetails({
                     Серия
                   </dt>
                   <dd className="mt-1">
-                    {item.franchiseTitle && item.franchiseCode ? (
-                      <Link
-                        href={`/franchises/${item.franchiseCode}`}
-                        className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-                      >
-                        {item.franchiseTitle}
-                      </Link>
-                    ) : item.franchiseTitle ? (
-                      item.franchiseTitle
-                    ) : (
-                      "—"
-                    )}
+                    <FranchiseLinks
+                      franchises={item.franchises}
+                      className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                    />
                   </dd>
                 </div>
               </dl>
@@ -514,13 +502,10 @@ function ArchiveMediaItemDetails({
               )}
             </section>
 
-            {item.franchiseTitle ? (
+            {item.franchises.length > 0 ? (
               <section>
                 <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  <FranchiseRelatedTitle
-                    franchiseCode={item.franchiseCode}
-                    variant="archive"
-                  />
+                  <FranchiseRelatedTitle />
                 </div>
                 {relatedItems.length > 0 ? (
                   <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">

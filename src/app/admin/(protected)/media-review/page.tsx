@@ -161,9 +161,9 @@ export default async function AdminMediaReviewPage({
                     <div className="flex flex-wrap items-center gap-1.5">
                       <Badge variant="default">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                       {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
-                      {item.franchiseTitle ? (
-                        <Badge variant="outline">{item.franchiseTitle}</Badge>
-                      ) : null}
+                      {item.franchises.map((franchise) => (
+                        <Badge key={franchise.id} variant="outline">{franchise.title}</Badge>
+                      ))}
                     </div>
                     <h3 className="mt-2 break-words font-semibold leading-5 text-stone-950">
                       {item.title}
@@ -232,9 +232,9 @@ export default async function AdminMediaReviewPage({
                       <div className="flex flex-wrap items-center gap-1.5">
                         <Badge variant="default">{getMediaTypeLabel(item.mediaType, mediaTypes)}</Badge>
                         {item.releaseYear ? <Badge variant="outline">{item.releaseYear}</Badge> : null}
-                        {item.franchiseTitle ? (
-                          <Badge variant="outline">{item.franchiseTitle}</Badge>
-                        ) : null}
+                        {item.franchises.map((franchise) => (
+                          <Badge key={franchise.id} variant="outline">{franchise.title}</Badge>
+                        ))}
                       </div>
                       <h3 className="mt-1 truncate font-semibold leading-5 text-stone-950">
                         {item.title}

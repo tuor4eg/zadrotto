@@ -254,7 +254,6 @@ export const mediaItems = pgTable(
     mediaType: text("media_type")
       .notNull()
       .references(() => mediaTypes.code),
-    franchiseId: integer("franchise_id").references(() => franchises.id),
     mediaCarrierId: integer("media_carrier_id").references(() => mediaCarriers.id),
     releaseYear: integer("release_year"),
     coverUrl: text("cover_url"),
@@ -278,8 +277,26 @@ export const mediaItems = pgTable(
     index("media_items_release_year_idx").on(table.releaseYear),
     index("media_items_title_idx").on(table.title),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
-    index("media_items_franchise_id_idx").on(table.franchiseId),
     index("media_items_media_carrier_id_idx").on(table.mediaCarrierId),
+  ],
+);
+
+export const mediaItemFranchises = pgTable(
+  "media_item_franchises",
+  {
+    mediaItemId: integer("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    franchiseId: integer("franchise_id")
+      .notNull()
+      .references(() => franchises.id, { onDelete: "cascade" }),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.mediaItemId, table.franchiseId],
+      name: "media_item_franchises_pk",
+    }),
+    index("media_item_franchises_franchise_id_idx").on(table.franchiseId),
   ],
 );
 
@@ -406,6 +423,8 @@ export type Author = typeof authors.$inferSelect;
 export type NewAuthor = typeof authors.$inferInsert;
 export type MediaItem = typeof mediaItems.$inferSelect;
 export type NewMediaItem = typeof mediaItems.$inferInsert;
+export type MediaItemFranchise = typeof mediaItemFranchises.$inferSelect;
+export type NewMediaItemFranchise = typeof mediaItemFranchises.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
 export type AuthorMediaExperience = typeof authorMediaExperiences.$inferSelect;

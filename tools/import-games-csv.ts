@@ -286,7 +286,6 @@ created_media_items AS (
     original_title,
     description,
     media_type,
-    franchise_id,
     release_year,
     cover_url,
     created_by_author_id,
@@ -298,7 +297,6 @@ created_media_items AS (
     NULL,
     resolved_games.description,
     'game',
-    resolved_games.franchise_id,
     resolved_games.release_year,
     NULL,
     resolved_games.author_id,
@@ -313,14 +311,12 @@ updated_media_items AS (
   SET
     description = COALESCE(media_items.description, resolved_games.description),
     release_year = COALESCE(media_items.release_year, resolved_games.release_year),
-    franchise_id = COALESCE(media_items.franchise_id, resolved_games.franchise_id),
     updated_at = now()
   FROM resolved_games
   WHERE media_items.title = resolved_games.title
     AND (
       media_items.description IS NULL
       OR media_items.release_year IS NULL
-      OR (media_items.franchise_id IS NULL AND resolved_games.franchise_id IS NOT NULL)
   )
   RETURNING media_items.id
 ),
@@ -328,6 +324,21 @@ resolved_media_items AS (
   SELECT id, title FROM existing_media_items
   UNION ALL
   SELECT id, title FROM created_media_items
+),
+media_item_franchise_targets AS (
+  SELECT
+    resolved_media_items.id AS media_item_id,
+    resolved_games.franchise_id
+  FROM resolved_games
+  INNER JOIN resolved_media_items ON resolved_media_items.title = resolved_games.title
+  WHERE resolved_games.franchise_id IS NOT NULL
+),
+inserted_media_item_franchises AS (
+  INSERT INTO media_item_franchises (media_item_id, franchise_id)
+  SELECT media_item_id, franchise_id
+  FROM media_item_franchise_targets
+  ON CONFLICT DO NOTHING
+  RETURNING media_item_id
 ),
 rating_targets AS (
   SELECT

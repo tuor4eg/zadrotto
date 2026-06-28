@@ -1,7 +1,7 @@
-import { and, asc, eq, exists, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
-import { franchises, mediaCarriers, mediaItems, ratings } from "@/db/schema";
+import { franchises, mediaCarriers, mediaItemFranchises, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -22,6 +22,28 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
       )`
     : sql<number | null>`null`;
 
+type FranchiseLink = {
+  id: number;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+};
+
+const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`coalesce((
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', ${franchises.id},
+      'code', ${franchises.code},
+      'title', ${franchises.title},
+      'originalTitle', ${franchises.originalTitle}
+    )
+    order by ${franchises.title}, ${franchises.code}
+  )
+  from ${mediaItemFranchises}
+  inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
+  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+), '[]'::jsonb)`;
+
 export async function getFranchiseByCode(code: string) {
   const [franchise] = await db
     .select({
@@ -39,7 +61,16 @@ export async function getFranchiseByCode(code: string) {
           db
             .select({ id: mediaItems.id })
             .from(mediaItems)
-            .where(and(eq(mediaItems.franchiseId, franchises.id), publishedMediaItemCondition)),
+            .innerJoin(
+              mediaItemFranchises,
+              eq(mediaItemFranchises.mediaItemId, mediaItems.id),
+            )
+            .where(
+              and(
+                eq(mediaItemFranchises.franchiseId, franchises.id),
+                publishedMediaItemCondition,
+              ),
+            ),
         ),
       ),
     )
@@ -106,10 +137,10 @@ export async function getAdminFranchises(input: {
       code: franchises.code,
       title: franchises.title,
       originalTitle: franchises.originalTitle,
-      mediaItemsCount: sql<number>`count(${mediaItems.id})::int`,
+      mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int`,
     })
     .from(franchises)
-    .leftJoin(mediaItems, eq(mediaItems.franchiseId, franchises.id))
+    .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
     .where(filterCondition)
     .groupBy(
       franchises.id,
@@ -156,6 +187,21 @@ export async function franchiseExistsById(id: number) {
     .limit(1);
 
   return Boolean(franchise);
+}
+
+export async function franchiseIdsExist(ids: number[]) {
+  const uniqueIds = [...new Set(ids)];
+
+  if (uniqueIds.length === 0) {
+    return true;
+  }
+
+  const rows = await db
+    .select({ id: franchises.id })
+    .from(franchises)
+    .where(inArray(franchises.id, uniqueIds));
+
+  return rows.length === uniqueIds.length;
 }
 
 export async function createFranchise(input: {
@@ -208,9 +254,9 @@ export async function deleteFranchiseIfEmpty(id: number) {
         eq(franchises.id, id),
         notExists(
           db
-            .select({ id: mediaItems.id })
-            .from(mediaItems)
-            .where(eq(mediaItems.franchiseId, franchises.id)),
+            .select({ id: mediaItemFranchises.mediaItemId })
+            .from(mediaItemFranchises)
+            .where(eq(mediaItemFranchises.franchiseId, franchises.id)),
         ),
       ),
     )
@@ -242,9 +288,10 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
     })
     .from(mediaItems)
+    .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(and(eq(mediaItems.franchiseId, franchiseId), publishedMediaItemCondition))
+    .where(and(eq(mediaItemFranchises.franchiseId, franchiseId), publishedMediaItemCondition))
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -281,7 +328,8 @@ export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
       publicationStatus: mediaItems.publicationStatus,
     })
     .from(mediaItems)
-    .where(eq(mediaItems.franchiseId, franchiseId))
+    .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
+    .where(eq(mediaItemFranchises.franchiseId, franchiseId))
     .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
 
   return items.map((item) => ({
@@ -301,13 +349,22 @@ export async function getAdminMediaItemsAvailableForFranchise(franchiseId: numbe
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
       publicationStatus: mediaItems.publicationStatus,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
-      franchiseTitle: franchises.title,
+      franchises: franchisesJsonSql(),
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
-    .where(or(isNull(mediaItems.franchiseId), ne(mediaItems.franchiseId, franchiseId)))
+    .where(
+      notExists(
+        db
+          .select({ mediaItemId: mediaItemFranchises.mediaItemId })
+          .from(mediaItemFranchises)
+          .where(
+            and(
+              eq(mediaItemFranchises.mediaItemId, mediaItems.id),
+              eq(mediaItemFranchises.franchiseId, franchiseId),
+            ),
+          ),
+      ),
+    )
     .orderBy(asc(mediaItems.title), asc(mediaItems.code));
 }
 
@@ -317,11 +374,9 @@ export async function getAdminMediaItemFranchiseIdentityById(id: number) {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
-      franchiseId: mediaItems.franchiseId,
-      franchiseCode: franchises.code,
+      franchises: franchisesJsonSql(),
     })
     .from(mediaItems)
-    .leftJoin(franchises, eq(franchises.id, mediaItems.franchiseId))
     .where(eq(mediaItems.id, id))
     .limit(1);
 
@@ -333,24 +388,31 @@ export async function addMediaItemToFranchise(input: {
   mediaItemId: number;
 }) {
   const [item] = await db
-    .update(mediaItems)
-    .set({
+    .insert(mediaItemFranchises)
+    .values({
+      mediaItemId: input.mediaItemId,
       franchiseId: input.franchiseId,
-      updatedAt: new Date(),
     })
-    .where(
-      and(
-        eq(mediaItems.id, input.mediaItemId),
-        or(isNull(mediaItems.franchiseId), ne(mediaItems.franchiseId, input.franchiseId)),
-      ),
-    )
+    .onConflictDoNothing()
+    .returning({
+      id: mediaItemFranchises.mediaItemId,
+    });
+
+  if (!item) {
+    return null;
+  }
+
+  const [mediaItem] = await db
+    .update(mediaItems)
+    .set({ updatedAt: new Date() })
+    .where(eq(mediaItems.id, input.mediaItemId))
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
     });
 
-  return item ?? null;
+  return mediaItem ?? null;
 }
 
 export async function removeMediaItemFromFranchise(input: {
@@ -358,24 +420,32 @@ export async function removeMediaItemFromFranchise(input: {
   mediaItemId: number;
 }) {
   const [item] = await db
-    .update(mediaItems)
-    .set({
-      franchiseId: null,
-      updatedAt: new Date(),
-    })
+    .delete(mediaItemFranchises)
     .where(
       and(
-        eq(mediaItems.id, input.mediaItemId),
-        eq(mediaItems.franchiseId, input.franchiseId),
+        eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+        eq(mediaItemFranchises.franchiseId, input.franchiseId),
       ),
     )
+    .returning({
+      id: mediaItemFranchises.mediaItemId,
+    });
+
+  if (!item) {
+    return null;
+  }
+
+  const [mediaItem] = await db
+    .update(mediaItems)
+    .set({ updatedAt: new Date() })
+    .where(eq(mediaItems.id, input.mediaItemId))
     .returning({
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
     });
 
-  return item ?? null;
+  return mediaItem ?? null;
 }
 
 export type FranchiseMediaItem = Awaited<

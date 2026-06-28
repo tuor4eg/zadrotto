@@ -1,7 +1,10 @@
 import { mediaItems } from "@/db/schema";
 import { lockAuthorForTransaction, runInTransaction } from "@/db/transaction";
 import type { AuthorMediaItemInput } from "@/db/queries/media-items";
-import { getAuthorPrivateMediaItemLimitUsageForExecutor } from "@/db/queries/media-items";
+import {
+  getAuthorPrivateMediaItemLimitUsageForExecutor,
+  setMediaItemFranchisesForExecutor,
+} from "@/db/queries/media-items";
 import {
   checkAuthorPrivateMediaLimit,
   getPrivateMediaLimitWindowStart,
@@ -46,7 +49,6 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
         originalTitle: input.originalTitle,
         description: input.description,
         mediaType: input.mediaType,
-        franchiseId: input.franchiseId,
         mediaCarrierId: input.mediaCarrierId,
         releaseYear: input.releaseYear,
         coverUrl: input.coverUrl,
@@ -65,6 +67,8 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
     if (!item) {
       throw new Error("Failed to create author media item");
     }
+
+    await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
 
     return { ok: true, item };
   });
