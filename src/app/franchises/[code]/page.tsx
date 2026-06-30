@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 
 import { ArchiveNote } from "@/app/archive-note";
 import { MediaItemTile } from "@/app/media-item-tile";
@@ -6,6 +7,7 @@ import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 type FranchisePageProps = {
   params: Promise<{
@@ -13,11 +15,46 @@ type FranchisePageProps = {
   }>;
 };
 
+type FranchiseMediaItem = Awaited<ReturnType<typeof getMediaItemsByFranchiseId>>[number];
+
+type FranchiseMediaSection = {
+  count: number;
+  id: string;
+  items: FranchiseMediaItem[];
+  label: string;
+  mediaType: MediaType;
+};
+
 function formatMediaItemsCount(count: number) {
   const plural = new Intl.PluralRules("ru-RU").select(count);
   const label = plural === "one" ? "запись" : plural === "few" ? "записи" : "записей";
 
   return `${count} ${label}`;
+}
+
+function getFranchiseMediaSections(
+  items: FranchiseMediaItem[],
+  mediaTypes: MediaTypeOption[],
+): FranchiseMediaSection[] {
+  const itemsByMediaType = new Map<MediaType, FranchiseMediaItem[]>();
+
+  for (const item of items) {
+    itemsByMediaType.set(item.mediaType, [...(itemsByMediaType.get(item.mediaType) ?? []), item]);
+  }
+
+  return mediaTypes
+    .map((mediaType) => {
+      const sectionItems = itemsByMediaType.get(mediaType.code) ?? [];
+
+      return {
+        count: sectionItems.length,
+        id: `section-${mediaType.code}`,
+        items: sectionItems,
+        label: getMediaTypeLabel(mediaType.code, mediaTypes),
+        mediaType: mediaType.code,
+      };
+    })
+    .filter((section) => section.count > 0);
 }
 
 export default async function FranchisePage({ params }: FranchisePageProps) {
@@ -33,6 +70,7 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
     getMediaTypeOptions(),
   ]);
   const items = await getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id);
+  const sections = getFranchiseMediaSections(items, mediaTypes);
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -72,31 +110,54 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
           </div>
 
           <div className="p-6 sm:p-8">
-            <ArchiveNote text={franchise.description} />
+            <ArchiveNote text={franchise.description} maxWidthClassName="max-w-none" />
           </div>
 
-          <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-4">
-            {items.length === 0 ? (
+          {items.length === 0 ? (
+            <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-4">
               <div className="rounded-md border border-stone-300/80 bg-stone-50/45 p-5 text-sm text-stone-600">
                 В этой серии пока нет записей.
               </div>
-            ) : (
-              <div className="grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
-                {items.map((item) => (
-                  <MediaItemTile
-                    key={item.id}
-                    currentAuthorScore={
-                      currentAuthor ? item.currentAuthorScore : undefined
-                    }
-                    item={item}
-                    href={`/media/${item.code}`}
-                    mediaTypes={mediaTypes}
-                    showMediaTypeLabel
-                  />
+            </div>
+          ) : null}
+          {sections.length > 0 ? (
+            <div className="relative z-20 px-6 pb-7 pt-3 sm:px-8 sm:pb-8">
+              <div className="flex flex-col gap-3">
+                {sections.map((section) => (
+                  <details
+                    key={section.mediaType}
+                    id={section.id}
+                    className="group/section scroll-mt-5 rounded-sm border border-stone-300/70 bg-stone-50/30 shadow-[inset_0_1px_0_rgba(255,255,255,0.5)]"
+                    open
+                  >
+                    <summary className="flex cursor-pointer list-none items-center gap-2 px-3 py-2 transition-colors hover:bg-stone-100/45 [&::-webkit-details-marker]:hidden">
+                      <h2 className="min-w-0 truncate font-mono text-xs font-semibold uppercase tracking-[0.12em] text-stone-800">
+                        {section.label}
+                      </h2>
+                      <span className="font-mono text-[11px] tabular-nums text-stone-500">
+                        {section.count}
+                      </span>
+                      <span className="h-px min-w-6 flex-1 bg-stone-300/80" />
+                      <ChevronDown className="size-4 shrink-0 text-stone-500 transition-transform group-open/section:rotate-180" />
+                    </summary>
+
+                    <div className="grid grid-cols-3 content-start gap-2.5 border-t border-stone-300/70 p-3 md:grid-cols-4 xl:grid-cols-6">
+                      {section.items.map((item) => (
+                        <MediaItemTile
+                          key={item.id}
+                          currentAuthorScore={currentAuthor ? item.currentAuthorScore : undefined}
+                          item={item}
+                          href={`/media/${item.code}`}
+                          mediaTypes={mediaTypes}
+                          showMediaTypeLabel={sections.length > 1}
+                        />
+                      ))}
+                    </div>
+                  </details>
                 ))}
               </div>
-            )}
-          </div>
+            </div>
+          ) : null}
         </section>
       </div>
     </main>

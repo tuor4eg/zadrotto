@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Edit3, Eye, Plus, Send, Trash2, Undo2 } from "lucide-react";
+import { Edit3, Plus, Send, Trash2, Undo2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -274,15 +274,6 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
                   </div>
 
                   <div className="flex shrink-0 flex-wrap gap-1.5 md:justify-end">
-                    <Tooltip label="Смотреть">
-                      <Link
-                        href={`/author/media/${item.id}`}
-                        className={buttonVariants({ variant: "outline", size: "icon" })}
-                        aria-label={`Смотреть предложение ${item.title}`}
-                      >
-                        <Eye />
-                      </Link>
-                    </Tooltip>
                     {isEditable ? (
                       <Tooltip label="Править">
                         <Link

@@ -46,6 +46,11 @@ type RelatedMediaItem = {
   currentAuthorScore: number | null;
 };
 
+type RelatedFranchiseSection = {
+  franchise: MediaItemDetailsItem["franchises"][number];
+  items: RelatedMediaItem[];
+};
+
 type MediaItemDetailsProps = {
   item: MediaItemDetailsItem;
   backLink: {
@@ -62,6 +67,7 @@ type MediaItemDetailsProps = {
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
   relatedItems?: RelatedMediaItem[];
+  relatedFranchiseSections?: RelatedFranchiseSection[];
 };
 
 function FranchiseLinks({
@@ -86,8 +92,25 @@ function FranchiseLinks({
   );
 }
 
-function FranchiseRelatedTitle() {
-  return <>Еще из этих серий</>;
+function FranchiseRelatedTitle({
+  franchise,
+  linkClassName,
+}: {
+  franchise?: MediaItemDetailsItem["franchises"][number];
+  linkClassName?: string;
+}) {
+  if (!franchise) {
+    return <>Еще из этих серий</>;
+  }
+
+  return (
+    <>
+      Еще из серии{" "}
+      <Link href={`/franchises/${franchise.code}`} className={linkClassName}>
+        {franchise.title}
+      </Link>
+    </>
+  );
 }
 
 function CoverSourceAttribution({
@@ -123,7 +146,19 @@ export function MediaItemDetails({
   ratingSlot,
   noteSlot,
   relatedItems = [],
+  relatedFranchiseSections,
 }: MediaItemDetailsProps) {
+  const resolvedRelatedFranchiseSections =
+    relatedFranchiseSections ??
+    (item.franchises.length > 0
+      ? [
+          {
+            franchise: item.franchises[0],
+            items: relatedItems,
+          },
+        ]
+      : []);
+
   if (variant === "archive") {
     return (
       <ArchiveMediaItemDetails
@@ -136,7 +171,7 @@ export function MediaItemDetails({
         compactRatingSlot={compactRatingSlot}
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
-        relatedItems={relatedItems}
+        relatedFranchiseSections={resolvedRelatedFranchiseSections}
       />
     );
   }
@@ -244,29 +279,36 @@ export function MediaItemDetails({
                 )}
               </div>
 
-              {item.franchises.length > 0 ? (
+              {resolvedRelatedFranchiseSections.length > 0 ? (
                 <div className="flex flex-col gap-2 normal-case tracking-normal">
-                  <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    <FranchiseRelatedTitle />
-                  </div>
-                  {relatedItems.length > 0 ? (
-                    <div className="flex flex-wrap gap-2">
-                      {relatedItems.map((relatedItem) => (
-                        <Link
-                          key={relatedItem.id}
-                          href={`/media/${relatedItem.code}`}
-                          className="border border-zinc-200 px-2 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
-                        >
-                          {relatedItem.title}
-                          {relatedItem.releaseYear ? `, ${relatedItem.releaseYear}` : ""}
-                        </Link>
-                      ))}
+                  {resolvedRelatedFranchiseSections.map((section) => (
+                    <div key={section.franchise.id} className="flex flex-col gap-2">
+                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                        <FranchiseRelatedTitle
+                          franchise={section.franchise}
+                          linkClassName="underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-950 hover:decoration-zinc-950"
+                        />
+                      </div>
+                      {section.items.length > 0 ? (
+                        <div className="flex flex-wrap gap-2">
+                          {section.items.map((relatedItem) => (
+                            <Link
+                              key={relatedItem.id}
+                              href={`/media/${relatedItem.code}`}
+                              className="border border-zinc-200 px-2 py-1 text-xs text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                            >
+                              {relatedItem.title}
+                              {relatedItem.releaseYear ? `, ${relatedItem.releaseYear}` : ""}
+                            </Link>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="px-3 py-2 text-xs text-zinc-500">
+                          Других тайтлов серии пока нет.
+                        </div>
+                      )}
                     </div>
-                  ) : (
-                    <div className="px-3 py-2 text-xs text-zinc-500">
-                      Других тайтлов серии пока нет.
-                    </div>
-                  )}
+                  ))}
                 </div>
               ) : null}
             </div>
@@ -287,8 +329,10 @@ function ArchiveMediaItemDetails({
   compactRatingSlot,
   ratingSlot,
   noteSlot,
-  relatedItems,
-}: Omit<MediaItemDetailsProps, "variant"> & { relatedItems: RelatedMediaItem[] }) {
+  relatedFranchiseSections,
+}: Omit<MediaItemDetailsProps, "relatedItems" | "variant"> & {
+  relatedFranchiseSections: RelatedFranchiseSection[];
+}) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
@@ -502,30 +546,37 @@ function ArchiveMediaItemDetails({
               )}
             </section>
 
-            {item.franchises.length > 0 ? (
-              <section>
-                <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                  <FranchiseRelatedTitle />
-                </div>
-                {relatedItems.length > 0 ? (
-                  <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
-                    {relatedItems.map((relatedItem) => (
-                      <MediaItemTile
-                        key={relatedItem.id}
-                        currentAuthorScore={relatedItem.currentAuthorScore}
-                        item={relatedItem}
-                        href={`/media/${relatedItem.code}`}
-                        mediaTypes={mediaTypes}
-                        showMediaTypeLabel
+            {relatedFranchiseSections.length > 0 ? (
+              <div className="flex flex-col gap-6">
+                {relatedFranchiseSections.map((section) => (
+                  <section key={section.franchise.id}>
+                    <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                      <FranchiseRelatedTitle
+                        franchise={section.franchise}
+                        linkClassName="underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950 hover:decoration-stone-950"
                       />
-                    ))}
-                  </div>
-                ) : (
-                  <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
-                    Других тайтлов серии пока нет.
-                  </div>
-                )}
-              </section>
+                    </div>
+                    {section.items.length > 0 ? (
+                      <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
+                        {section.items.map((relatedItem) => (
+                          <MediaItemTile
+                            key={relatedItem.id}
+                            currentAuthorScore={relatedItem.currentAuthorScore}
+                            item={relatedItem}
+                            href={`/media/${relatedItem.code}`}
+                            mediaTypes={mediaTypes}
+                            showMediaTypeLabel
+                          />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
+                        Других тайтлов серии пока нет.
+                      </div>
+                    )}
+                  </section>
+                ))}
+              </div>
             ) : null}
           </div>
         </div>

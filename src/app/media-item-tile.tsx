@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Play, Plus } from "lucide-react";
 
 import { getMediaCarrierFrame, type MediaCarrierFrame } from "@/lib/media/carrier-frame";
 import {
@@ -349,6 +350,136 @@ function CoverOverlayCover({
   );
 }
 
+function StreamingCover({
+  carrierFrameSize = "default",
+  className,
+  frame,
+  item,
+}: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
+  const sizeClassName =
+    carrierFrameSize === "compact"
+      ? frame.compactSizeClassName ?? frame.sizeClassName
+      : frame.sizeClassName;
+  const progressLabel = frame.streamingProgressLabel ?? "Продолжить просмотр";
+
+  return (
+    <div
+      role="img"
+      aria-label={
+        item.coverUrl
+          ? `Стриминговая обложка: ${item.title}`
+          : `Обложка не добавлена: ${item.title}`
+      }
+      className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
+    >
+      <span
+        className={`relative block overflow-hidden rounded-[3%] border border-white/12 bg-stone-950 shadow-[0_14px_30px_rgba(15,23,42,0.28),0_0_0_1px_rgba(255,255,255,0.08)] ${frame.fontClassName ?? ""} ${frame.aspectRatioClassName} ${
+          sizeClassName ?? "w-[96%] max-w-full"
+        }`}
+      >
+        {item.coverUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={item.coverUrl}
+            alt=""
+            aria-hidden="true"
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+        ) : (
+          <MediaCarrierCoverPlaceholder frame={frame} />
+        )}
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 bg-[linear-gradient(180deg,rgba(0,0,0,0.54)_0%,rgba(0,0,0,0.08)_24%,rgba(0,0,0,0.06)_56%,rgba(0,0,0,0.74)_100%)]"
+        />
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-20 rounded-[3%] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15),inset_0_0_24px_rgba(255,255,255,0.08)]"
+        />
+        <span className="absolute left-[7%] right-[7%] top-[5.5%] z-30 flex items-start justify-between gap-3">
+          {frame.streamingTopBadgeLabel ? (
+            <span className="rounded-[0.32rem] bg-indigo-500/78 px-2 py-1 text-[clamp(0.44rem,2.2vw,0.68rem)] font-semibold uppercase leading-none tracking-[0.08em] text-indigo-50 shadow-[0_1px_5px_rgba(0,0,0,0.24)]">
+              {frame.streamingTopBadgeLabel}
+            </span>
+          ) : (
+            <span aria-hidden="true" />
+          )}
+          <span className="flex items-center gap-2 text-[clamp(0.44rem,2.1vw,0.66rem)] font-semibold uppercase leading-none tracking-[0.08em] text-white/88">
+            <span>4K</span>
+            <span>HDR</span>
+          </span>
+        </span>
+        <span className="absolute bottom-[5.5%] left-[7%] right-[7%] z-30">
+          <span className="mb-[5%] flex items-center gap-[5%]">
+            <span className="grid aspect-square w-[15%] shrink-0 place-items-center rounded-full bg-white text-stone-950 shadow-[0_4px_12px_rgba(0,0,0,0.28)]">
+              <Play className="ml-[7%] h-[45%] w-[45%] fill-current" strokeWidth={2.8} />
+            </span>
+            <span className="min-w-0 flex-1 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
+              <span className="block truncate text-[clamp(0.5rem,2.4vw,0.78rem)] font-semibold leading-tight">
+                Продолжить просмотр
+              </span>
+              <span className="mt-0.5 block truncate text-[clamp(0.42rem,2vw,0.64rem)] leading-tight text-white/78">
+                {progressLabel}
+              </span>
+            </span>
+            <span className="grid aspect-square w-[11.5%] shrink-0 place-items-center rounded-full border border-white/72 bg-black/16 text-white shadow-[0_2px_8px_rgba(0,0,0,0.24)]">
+              <Plus className="h-[58%] w-[58%]" strokeWidth={2.2} />
+            </span>
+          </span>
+          <span className="block h-[0.2rem] overflow-hidden rounded-full bg-white/25 shadow-[0_1px_4px_rgba(0,0,0,0.25)]">
+            <span className="block h-full w-[49%] rounded-full bg-white" />
+          </span>
+        </span>
+      </span>
+    </div>
+  );
+}
+
+function PackagedArchiveCover({
+  className,
+  frame,
+  item,
+  mode = "cover",
+}: Pick<ArchiveCoverProps, "className" | "item" | "mode"> & { frame: MediaCarrierFrame }) {
+  const position = className?.includes("absolute") ? "absolute" : "relative";
+  const label = item.coverUrl
+    ? `Обложка в пленке: ${item.title}`
+    : `Обложка не добавлена: ${item.title}`;
+
+  return (
+    <div
+      role="img"
+      aria-label={label}
+      className={`media-carrier-lift-trigger grid place-items-center overflow-visible ${className ?? ""}`}
+      style={{ position }}
+    >
+      <span className="relative block h-full w-full">
+        <span
+          className={`absolute overflow-hidden bg-[radial-gradient(circle_at_50%_28%,#fff8e8_0,#ead8b7_42%,#bfa277_100%)] ${frame.coverAreaClassName}`}
+        >
+          {item.coverUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={item.coverUrl}
+              alt=""
+              aria-hidden="true"
+              className="absolute inset-0 h-full w-full"
+              style={{ objectFit: mode }}
+            />
+          ) : null}
+        </span>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={frame.assetPath}
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 z-10 h-full w-full object-fill drop-shadow-[0_2px_3px_rgba(28,25,23,0.22)]"
+        />
+      </span>
+    </div>
+  );
+}
+
 export function ArchiveCover({
   carrierFrameSize = "default",
   carrierFrame = true,
@@ -358,9 +489,31 @@ export function ArchiveCover({
 }: ArchiveCoverProps) {
   const mediaCarrierFrame = carrierFrame ? getMediaCarrierFrame(item) : null;
 
+  if (mediaCarrierFrame?.renderKind === "packaged-cover") {
+    return (
+      <PackagedArchiveCover
+        className={className}
+        frame={mediaCarrierFrame}
+        item={item}
+        mode={mode}
+      />
+    );
+  }
+
   if (mediaCarrierFrame?.renderKind === "cover-overlay") {
     return (
       <CoverOverlayCover
+        carrierFrameSize={carrierFrameSize}
+        className={className}
+        frame={mediaCarrierFrame}
+        item={item}
+      />
+    );
+  }
+
+  if (mediaCarrierFrame?.renderKind === "streaming-cover") {
+    return (
+      <StreamingCover
         carrierFrameSize={carrierFrameSize}
         className={className}
         frame={mediaCarrierFrame}

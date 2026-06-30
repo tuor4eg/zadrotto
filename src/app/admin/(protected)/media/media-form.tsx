@@ -162,7 +162,7 @@ export function AdminMediaForm({
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="admin-media-franchise">Серия</Label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <SearchableFranchiseMultiSelect
               key={franchiseSelectResetKey}
               id="admin-media-franchise"

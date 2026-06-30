@@ -91,7 +91,7 @@ export function MediaCatalogPreview({
           <div
             className={
               hasCarrierFrame
-                ? `relative ${
+                ? `relative mx-auto ${
                     mediaCarrierFrame.compactViewportClassName ??
                     mediaCarrierFrame.viewportClassName ??
                     mediaCarrierFrame.aspectRatioClassName
@@ -176,8 +176,8 @@ export function MediaCatalogPreview({
             }
             currentAuthorScore={item.currentAuthorScore}
             releaseYear={item.releaseYear}
-            panelDisplayClassName={mediaCarrierFrame?.displayFontClassName}
-            panelLabelClassName={mediaCarrierFrame?.labelFontClassName}
+            panelDisplayClassName={displayFontClassName}
+            panelLabelClassName={labelFontClassName}
             panelVariant={mediaCarrierFrame?.ratingPanelVariant}
             size="compact"
           />

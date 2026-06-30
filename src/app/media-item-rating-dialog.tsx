@@ -7,12 +7,14 @@ import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import {
+  ComicCardRatingContent,
   DosTerminalRatingContent,
   DvdMenuRatingContent,
   FilmStripRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
   SteamAchievementRatingContent,
+  StreamingRatingContent,
   TvGuideRatingContent,
   VhsRatingPanelContent,
   WinDvdAeroRatingContent,
@@ -90,14 +92,18 @@ export function MediaItemRatingPanel({
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
   const isPs1MemoryCardPanel = panelVariant === "ps1-memory-card";
   const isSteamAchievementPanel = panelVariant === "steam-achievement";
+  const isStreamingCardPanel = panelVariant === "streaming-card";
   const isDvdMenuPanel = panelVariant === "dvd-menu";
+  const isComicCardPanel = panelVariant === "comic-card";
   const isStandalonePanel =
+    isComicCardPanel ||
     isDvdMenuPanel ||
     isDosTerminalPanel ||
     isFilmStripPanel ||
     isTvGuidePanel ||
     isVhsPosterPanel ||
     isSteamAchievementPanel ||
+    isStreamingCardPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
     isPs1MemoryCardPanel;
@@ -200,11 +206,31 @@ export function MediaItemRatingPanel({
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
+  ) : isStreamingCardPanel ? (
+    <StreamingRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
   ) : isDvdMenuPanel ? (
     <DvdMenuRatingContent
       compact={isCompact}
       footerLabel="Chapter"
       footerValue={currentAuthor && firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : undefined}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isComicCardPanel ? (
+    <ComicCardRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
       label={isCompact ? "Моя оценка" : "Ваша оценка"}
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"

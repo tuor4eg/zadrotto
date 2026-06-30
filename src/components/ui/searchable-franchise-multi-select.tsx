@@ -94,27 +94,6 @@ export function SearchableFranchiseMultiSelect({
         <input key={selectedId} type="hidden" name={name} value={selectedId} />
       ))}
 
-      {selectedOptions.length > 0 ? (
-        <div className="mb-2 flex flex-wrap gap-1.5">
-          {selectedOptions.map((option) => (
-            <span
-              key={option.id}
-              className="inline-flex max-w-full items-center gap-1 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700"
-            >
-              <span className="truncate">{option.title}</span>
-              <button
-                type="button"
-                className="rounded-sm text-stone-400 transition-colors hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20"
-                aria-label={`Убрать серию ${option.title}`}
-                onClick={() => toggleOption(option)}
-              >
-                <X className="size-3.5" />
-              </button>
-            </span>
-          ))}
-        </div>
-      ) : null}
-
       <div className="relative">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
         <Input
@@ -141,6 +120,27 @@ export function SearchableFranchiseMultiSelect({
           }}
         />
       </div>
+
+      {selectedOptions.length > 0 ? (
+        <div className="mt-2 flex flex-wrap gap-1.5">
+          {selectedOptions.map((option) => (
+            <span
+              key={option.id}
+              className="inline-flex max-w-full items-center gap-1 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700"
+            >
+              <span className="truncate">{option.title}</span>
+              <button
+                type="button"
+                className="rounded-sm text-stone-400 transition-colors hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20"
+                aria-label={`Убрать серию ${option.title}`}
+                onClick={() => toggleOption(option)}
+              >
+                <X className="size-3.5" />
+              </button>
+            </span>
+          ))}
+        </div>
+      ) : null}
 
       {open ? (
         <div

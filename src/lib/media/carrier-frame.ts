@@ -1,6 +1,10 @@
 import type { MediaType } from "@/lib/media/types";
 
-export type MediaCarrierFrameRenderKind = "cartridge" | "cover-overlay";
+export type MediaCarrierFrameRenderKind =
+  | "cartridge"
+  | "cover-overlay"
+  | "packaged-cover"
+  | "streaming-cover";
 export type MediaCarrierFrameCoverLayer = "above-frame" | "below-frame";
 export type MediaCarrierFramePlaceholderVariant =
   | "dvd-label"
@@ -12,12 +16,14 @@ export type MediaCarrierFramePlaceholderVariant =
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
+  | "comic-card"
   | "dvd-menu"
   | "dos-terminal"
   | "film-strip"
   | "nes-hearts"
   | "ps1-memory-card"
   | "steam-achievement"
+  | "streaming-card"
   | "tv-guide"
   | "vhs-poster"
   | "win9x-window"
@@ -49,6 +55,8 @@ export type MediaCarrierFrame = {
   ratingPanelVariant?: MediaCarrierRatingPanelVariant;
   renderKind: MediaCarrierFrameRenderKind;
   sizeClassName?: string;
+  streamingProgressLabel?: string;
+  streamingTopBadgeLabel?: string;
   topGradientClassName?: string;
   titleIconHeight?: number;
   titleCursor?: string;
@@ -67,6 +75,20 @@ type MediaCarrierFrameInput = {
 };
 
 const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
+  "comic/comic-book": {
+    assetPath: "/mediaCarriers/comic/pp.png",
+    aspectRatioClassName: "aspect-[619/960]",
+    compactViewportClassName: "aspect-[619/960] w-full max-w-[13rem]",
+    coverAreaClassName: "left-[3.5%] top-[2.8%] h-[94.4%] w-[93%]",
+    displayFontClassName: "media-carrier-font-comic",
+    fontClassName: "media-carrier-font-comic",
+    labelFontClassName: "media-carrier-font-comic",
+    placeholderVariant: "dvd-label",
+    ratingPanelVariant: "comic-card",
+    renderKind: "packaged-cover",
+    sizeClassName: "w-full max-w-[360px]",
+    viewportClassName: "aspect-[619/960] w-full max-w-[360px]",
+  },
   "game/nes": {
     assetPath: "/mediaCarriers/game/nes/cartridge.png",
     aspectRatioClassName: "aspect-[3/2]",
@@ -222,6 +244,22 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     sizeClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
     viewportClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
   },
+  "film/streaming": {
+    assetPath: "",
+    aspectRatioClassName: "aspect-[2/3]",
+    compactSizeClassName: "h-[min(30vh,280px)] w-auto max-w-full sm:h-[min(34vh,320px)]",
+    compactViewportClassName: "h-[min(30vh,280px)] max-w-full sm:h-[min(34vh,320px)]",
+    coverAreaClassName: "inset-0",
+    displayFontClassName: "media-carrier-font-streaming",
+    fontClassName: "media-carrier-font-streaming",
+    labelFontClassName: "media-carrier-font-streaming",
+    placeholderVariant: "tv-screen-label",
+    ratingPanelVariant: "streaming-card",
+    renderKind: "streaming-cover",
+    sizeClassName: "h-[min(48vh,420px)] w-auto max-w-full sm:h-[min(62vh,560px)]",
+    streamingProgressLabel: "2 ч 15 мин",
+    viewportClassName: "h-[min(48vh,420px)] max-w-full sm:h-[min(62vh,560px)]",
+  },
   "series/tv": {
     assetPath: "/mediaCarriers/video/tv/tv.png",
     aspectRatioClassName: "aspect-[1033/910]",
@@ -236,6 +274,23 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
     sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
     viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+  },
+  "series/streaming": {
+    assetPath: "",
+    aspectRatioClassName: "aspect-[2/3]",
+    compactSizeClassName: "h-[min(30vh,280px)] w-auto max-w-full sm:h-[min(34vh,320px)]",
+    compactViewportClassName: "h-[min(30vh,280px)] max-w-full sm:h-[min(34vh,320px)]",
+    coverAreaClassName: "inset-0",
+    displayFontClassName: "media-carrier-font-streaming",
+    fontClassName: "media-carrier-font-streaming",
+    labelFontClassName: "media-carrier-font-streaming",
+    placeholderVariant: "tv-screen-label",
+    ratingPanelVariant: "streaming-card",
+    renderKind: "streaming-cover",
+    sizeClassName: "h-[min(48vh,420px)] w-auto max-w-full sm:h-[min(62vh,560px)]",
+    streamingProgressLabel: "Серия 3 из 8",
+    streamingTopBadgeLabel: "Новый сезон",
+    viewportClassName: "h-[min(48vh,420px)] max-w-full sm:h-[min(62vh,560px)]",
   },
 };
 
@@ -303,6 +358,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "series" && isSeriesTvReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["series/tv"] ?? null;
+  }
+
+  if (item.mediaType === "comic" && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["comic/comic-book"] ?? null;
   }
 
   if (!item.mediaCarrierCode) {

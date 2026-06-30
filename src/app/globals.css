@@ -105,6 +105,22 @@
 }
 
 @font-face {
+  font-family: "Bangers Cyrillic";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/bangerscyrillic.otf") format("opentype");
+}
+
+@font-face {
+  font-family: "Bangers";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/bangers-regular.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "Russo One";
   font-style: normal;
   font-weight: 400;
@@ -343,8 +359,17 @@ body {
   font-family: "Russo One", "Noto Sans", Arial, sans-serif;
 }
 
+.media-carrier-font-comic {
+  font-family: "Bangers Cyrillic", "Bangers", "Noto Sans", Arial, sans-serif !important;
+  font-style: normal;
+}
+
 .media-carrier-font-tv-guide {
   font-family: "PT Serif", Georgia, "Times New Roman", serif;
+}
+
+.media-carrier-font-streaming {
+  font-family: "Inter", Arial, Helvetica, sans-serif;
 }
 
 @keyframes media-carrier-title-cursor-blink {

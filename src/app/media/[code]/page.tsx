@@ -26,14 +26,13 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const firstFranchiseCode = item.franchises[0]?.code ?? null;
-  const [relatedItems, reviews, mediaTypes] = await Promise.all([
-    item.franchises.length > 0
-      ? getOtherMediaItemsFromFranchises(
-          item.franchises.map((franchise) => franchise.id),
-          item.id,
-          currentAuthor?.id,
-        )
-      : [],
+  const [relatedFranchiseSections, reviews, mediaTypes] = await Promise.all([
+    Promise.all(
+      item.franchises.map(async (franchise) => ({
+        franchise,
+        items: await getOtherMediaItemsFromFranchises([franchise.id], item.id, currentAuthor?.id),
+      })),
+    ),
     getPublishedReviewsForMediaItem(item.id),
     getMediaTypeOptions(),
   ]);
@@ -46,7 +45,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           variant="archive"
           backLink={{ href: "/", label: "Назад к картотеке" }}
           mediaTypes={mediaTypes}
-          relatedItems={relatedItems}
+          relatedFranchiseSections={relatedFranchiseSections}
           adjacentShelfSlot={
             <MediaItemReviews
               mediaItemId={item.id}

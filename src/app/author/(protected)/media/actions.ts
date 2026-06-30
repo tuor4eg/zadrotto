@@ -448,7 +448,6 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   }
 
   revalidatePath("/author/media");
-  revalidatePath(`/author/media/${mediaItemId}`);
 
   if (updatedItem.publicationStatus === "published") {
     revalidatePath("/");
@@ -489,7 +488,6 @@ export async function withdrawAuthorMediaItemAction(formData: FormData) {
   }
 
   revalidatePath("/author/media");
-  revalidatePath(`/author/media/${mediaItemId}`);
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
   redirect("/author/media?withdrawn=1");
@@ -528,6 +526,5 @@ export async function deleteAuthorMediaItemAction(formData: FormData) {
   }).catch(console.error);
 
   revalidatePath("/author/media");
-  revalidatePath(`/author/media/${mediaItemId}`);
   redirect("/author/media?deleted=1");
 }

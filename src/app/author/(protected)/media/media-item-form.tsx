@@ -160,7 +160,7 @@ export function MediaItemForm({
           <Label htmlFor="author-media-franchise">
             Серия
           </Label>
-          <div className="flex items-center gap-2">
+          <div className="flex items-start gap-2">
             <SearchableFranchiseMultiSelect
               key={franchiseSelectResetKey}
               id="author-media-franchise"

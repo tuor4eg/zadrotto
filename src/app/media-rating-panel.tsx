@@ -1,14 +1,19 @@
 import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
+import { Bookmark, Info, Lock, PlusCircle } from "lucide-react";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
+  AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
+  AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
+  AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
+  AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
   AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
   AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES,
@@ -60,12 +65,32 @@ type SteamAchievementRatingContentProps = {
   value?: string;
 };
 
+type StreamingRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
 type DvdMenuRatingContentProps = {
   compact?: boolean;
   detail?: string;
   detailPrefix?: string;
   footerLabel: string;
   footerValue?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
+type ComicCardRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
   label: string;
   score: number | null;
   tone: "archive" | "author";
@@ -117,6 +142,9 @@ const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_my.pn
 const PS1_LOGO_PATH = "/mediaCarriers/game/ps1/ps1_logo.png";
 const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.png";
 const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.png";
+const COMIC_ARCHIVE_BURST_PATH = "/mediaCarriers/comic/star.png";
+const COMIC_AUTHOR_BURST_PATH = "/mediaCarriers/comic/bam.png";
+const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.png";
 
 function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
@@ -152,6 +180,142 @@ function RatingHearts({ score }: { score: number | null }) {
           <img src={NES_HEART_PATH} alt="" className="h-5 w-auto object-contain" />
         </span>
       ))}
+    </span>
+  );
+}
+
+function ComicRatingStars({
+  compact = false,
+  score,
+  toneClassName,
+}: {
+  compact?: boolean;
+  score: number | null;
+  toneClassName: string;
+}) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center leading-none text-black ${
+        compact ? "gap-0.5 text-lg" : "gap-1 text-3xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index} className={index < filledStars ? toneClassName : "text-stone-950/35"}>
+          {index < filledStars ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function ComicBurst({ compact = false, src }: { compact?: boolean; src: string }) {
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img
+      src={src}
+      alt=""
+      aria-hidden="true"
+      className={`pointer-events-none object-contain drop-shadow-[2px_2px_0_rgba(0,0,0,0.22)] ${
+        compact ? "size-12" : "size-[5.1rem]"
+      }`}
+    />
+  );
+}
+
+export function ComicCardRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: ComicCardRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const burstPath = hasValueOverride
+    ? COMIC_SIGNIN_BURST_PATH
+    : tone === "author"
+      ? COMIC_AUTHOR_BURST_PATH
+      : COMIC_ARCHIVE_BURST_PATH;
+  const ratingTone = getRatingTone(score);
+  const accentClassName =
+    tone === "author" ? "bg-[#d43a28]" : "bg-[#2b90ad]";
+  const accentHalftoneClassName =
+    "[background-image:radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.24)_1px,transparent_1.6px)] [background-size:5px_5px]";
+  const titleClassName =
+    tone === "author" ? "bg-[#d43a28]" : "bg-[#e7c333]";
+  const footerClassName =
+    tone === "author" ? "bg-[#e2bd22]" : "bg-[#efe3be]";
+  const ratingToneClassName =
+    tone === "author"
+      ? AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES[ratingTone]
+      : AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES[ratingTone];
+
+  return (
+    <span
+      className={`media-carrier-font-comic relative mx-auto block h-full w-full overflow-hidden border-2 border-black bg-[#f2e6cd] text-center text-black shadow-[3px_3px_0_rgba(0,0,0,0.24),inset_0_0_0_2px_rgba(255,255,255,0.34)] ${
+        compact ? "min-h-[6.25rem] max-w-[13rem]" : "min-h-[10.5rem] max-w-[18rem]"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_1px_1px,rgba(0,0,0,0.16)_1px,transparent_1.5px)] [background-size:6px_6px]"
+      />
+      <span
+        aria-hidden="true"
+        className={`absolute bottom-0 left-0 top-0 border-r-2 border-black ${accentClassName} ${accentHalftoneClassName} ${compact ? "w-10" : "w-[4.35rem]"}`}
+      />
+      <span className={`relative z-10 flex h-full min-w-0 flex-col ${compact ? "pl-10" : "pl-[4.35rem]"}`}>
+        <span
+          className={`truncate border-b-2 border-black px-2 text-center font-bold uppercase leading-none ${titleClassName} ${
+            compact ? "py-1.5 text-[10px]" : "py-2 text-base"
+          }`}
+        >
+          {label}
+        </span>
+        <span
+          className={`relative flex min-w-0 flex-1 items-center justify-center border-b-2 border-black ${
+            compact ? "px-2 py-2" : "px-4 py-3"
+          }`}
+        >
+          <span className={`absolute ${compact ? "-left-9 top-1.5" : "-left-[3.95rem] top-3"}`}>
+            <ComicBurst compact={compact} src={burstPath} />
+          </span>
+          {hasValueOverride ? (
+            <span className={`block max-w-full font-bold uppercase leading-tight ${compact ? "text-[11px]" : "text-xl"}`}>
+              Войдите,
+              <br />
+              чтобы поставить
+              <br />
+              оценку
+            </span>
+          ) : (
+            <span className="flex min-w-0 flex-col items-center justify-center">
+              <span className={`block leading-none tabular-nums ${ratingToneClassName} ${compact ? "text-5xl" : "text-7xl"}`}>
+                {formatScore(score)}
+              </span>
+              <span className={compact ? "mt-1" : "mt-3"}>
+                <ComicRatingStars compact={compact} score={score} toneClassName={ratingToneClassName} />
+              </span>
+            </span>
+          )}
+        </span>
+        <span
+          className={`block min-h-5 truncate border-t border-black px-2 font-bold uppercase leading-5 ${footerClassName} ${
+            compact ? "text-[10px]" : "text-sm"
+          } ${detailText || hasValueOverride ? "" : "opacity-90"}`}
+        >
+          {hasValueOverride
+            ? "Войти в аккаунт"
+            : detailText
+              ? `${detailPrefix}${detailText}`
+              : "—"}
+        </span>
+      </span>
     </span>
   );
 }
@@ -585,6 +749,145 @@ export function SteamAchievementRatingContent({
           </>
         )}
       </span>
+    </span>
+  );
+}
+
+function StreamingRatingStars({
+  compact = false,
+  score,
+  toneClassName,
+}: {
+  compact?: boolean;
+  score: number | null;
+  toneClassName: string;
+}) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center leading-none ${toneClassName} ${
+        compact ? "gap-1 text-xl" : "gap-2 text-4xl"
+      }`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span
+          key={index}
+          className={index < filledStars ? "drop-shadow-[0_0_10px_rgba(99,102,241,0.34)]" : "text-slate-500/72"}
+        >
+          {index < filledStars ? "★" : "☆"}
+        </span>
+      ))}
+    </span>
+  );
+}
+
+function getStreamingRatingCaption(score: number | null) {
+  if (score === null) {
+    return "Нет оценки";
+  }
+
+  return {
+    bad: "Слабо",
+    medium: "Нормально",
+    good: "Отлично",
+  }[getRatingTone(score)];
+}
+
+export function StreamingRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: StreamingRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const toneClassName =
+    tone === "archive"
+      ? AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+      : AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+
+  return (
+    <span
+      className={`media-carrier-font-streaming relative mx-auto flex h-full w-full min-w-0 overflow-hidden rounded-lg border border-white/8 bg-[linear-gradient(180deg,#172023_0%,#101719_52%,#090e10_100%)] text-left text-slate-200 shadow-[0_10px_24px_rgba(4,8,11,0.32),inset_0_1px_0_rgba(255,255,255,0.05)] ${
+        compact
+          ? "min-h-[7.4rem] max-w-[16rem] flex-col px-3 py-3"
+          : "min-h-[11.2rem] max-w-[22rem] flex-col px-5 py-4"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className={`pointer-events-none absolute inset-y-0 left-0 w-px ${toneClassName} bg-current shadow-[0_0_16px_currentColor]`}
+      />
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_0%_70%,var(--streaming-rating-glow,rgba(99,102,241,0.18))_0%,transparent_36%),linear-gradient(180deg,rgba(255,255,255,0.045)_0%,transparent_30%)]"
+      />
+      <span className="relative z-10 flex items-start justify-between gap-3 border-b border-white/6 pb-2">
+        <span
+          className={`truncate font-semibold uppercase tracking-[0.09em] text-slate-300 ${
+            compact ? "text-[9px] leading-3" : "text-xs leading-4"
+          }`}
+        >
+          {label}
+        </span>
+        {tone === "archive" ? (
+          <span className="flex shrink-0 items-center gap-2 text-slate-400">
+            <Info className={compact ? "size-3" : "size-3.5"} strokeWidth={2} />
+            <span className={compact ? "text-[9px] leading-3" : "text-[10px] leading-4"}>
+              {detailText}
+            </span>
+          </span>
+        ) : (
+          <Lock className={`shrink-0 text-slate-400 ${compact ? "size-3" : "size-3.5"}`} strokeWidth={2.4} />
+        )}
+      </span>
+
+      {hasValueOverride ? (
+        <span className="relative z-10 flex min-h-0 flex-1 flex-col">
+          <span className={`text-center font-bold text-slate-300 ${compact ? "mt-3 text-2xl" : "mt-4 text-3xl"}`}>
+            {value}
+          </span>
+          <span className={`mt-2 text-center text-slate-400 ${compact ? "text-[9px] leading-3" : "text-xs leading-4"}`}>
+            чтобы поставить оценку
+          </span>
+          <span
+            className={`mt-3 block rounded-md bg-indigo-500 text-center font-semibold text-white shadow-[0_8px_18px_rgba(79,70,229,0.24)] ${
+              compact ? "px-3 py-1.5 text-[10px] leading-4" : "px-4 py-2 text-sm leading-5"
+            }`}
+          >
+            Войти в аккаунт
+          </span>
+          <span className={`mt-auto flex items-center justify-between pt-3 text-slate-300 ${compact ? "text-[9px]" : "text-xs"}`}>
+            <span className="inline-flex min-w-0 items-center gap-2">
+              <PlusCircle className={compact ? "size-3" : "size-4"} strokeWidth={2} />
+              <span className="truncate">В мой список</span>
+            </span>
+            <Bookmark className={compact ? "size-3" : "size-4"} strokeWidth={2} />
+          </span>
+        </span>
+      ) : (
+        <span className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+          <span className={`block font-bold tabular-nums ${toneClassName} ${compact ? "text-4xl" : "text-6xl"}`}>
+            {formatScore(score)}
+          </span>
+          <span className={compact ? "mt-2" : "mt-4"}>
+            <StreamingRatingStars compact={compact} score={score} toneClassName={toneClassName} />
+          </span>
+          <span
+            className={`block min-h-4 max-w-full truncate font-semibold uppercase tracking-[0.06em] ${toneClassName} ${
+              compact ? "mt-2 text-[9px] leading-3" : "mt-4 text-xs leading-4"
+            } ${detailText ? "" : "opacity-0"}`}
+            title={detailText ? `${detailPrefix}${detailText}` : undefined}
+          >
+            {tone === "archive" ? getStreamingRatingCaption(score) : detailText ? `${detailPrefix}${detailText}` : "—"}
+          </span>
+        </span>
+      )}
     </span>
   );
 }
@@ -1259,6 +1562,18 @@ export function ArchiveRatingPanel({
   ratingsCount,
   score,
 }: ArchiveRatingPanelProps) {
+  if (ratingPanelVariant === "comic-card") {
+    return (
+      <ComicCardRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
   if (ratingPanelVariant === "dvd-menu") {
     return (
       <DvdMenuRatingContent
@@ -1334,6 +1649,18 @@ export function ArchiveRatingPanel({
         detail={formatRatingsCount(ratingsCount)}
         label={label}
         score={score}
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "streaming-card") {
+    return (
+      <StreamingRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
       />
     );
   }

@@ -104,6 +104,18 @@ Prefer simple, reversible decisions while the project is still early and may cha
 
 Respond to the user in Russian unless asked otherwise.
 
+## Verification
+
+Do not run `npm run build` automatically after routine UI/code changes. In this project the Next.js/Turbopack production build can be heavy enough to freeze or crash VS Code.
+
+Prefer lighter checks first:
+
+- inspect the focused diff;
+- use `rg` to verify imports/usages;
+- run targeted tests or type/lint checks only when they are available and relevant.
+
+Ask the user before running `npm run build`, unless they explicitly requested a production build check.
+
 ## Skills
 
 Read `.codex/SKILLS_INDEX.md` when choosing a skill.
@@ -111,6 +123,8 @@ Open a skill file only when it directly matches the task.
 Do not scan all skill files.
 
 Use a skill only when the task clearly matches it.
+
+The `media-carrier-skins` skill is mandatory for any work on media carrier visual skins: cover/frame assets, placeholders, cover geometry, carrier fonts, hover effects, rating panel styling, or archive presentation tied to a carrier/media type.
 
 Do not scan all skills for every task.
 
