@@ -30,6 +30,11 @@ export type MediaCarrierRatingPanelVariant =
   | "windvd-aero";
 
 const FILM_REEL_RELEASE_YEAR_TO = 1979;
+const FILM_VHS_RELEASE_YEAR_FROM = FILM_REEL_RELEASE_YEAR_TO + 1;
+const FILM_VHS_RELEASE_YEAR_TO = 2002;
+const FILM_DVD_RELEASE_YEAR_FROM = FILM_VHS_RELEASE_YEAR_TO + 1;
+const FILM_DVD_RELEASE_YEAR_TO = 2012;
+const FILM_STREAMING_RELEASE_YEAR_FROM = FILM_DVD_RELEASE_YEAR_TO + 1;
 const PC_DOS_RELEASE_YEAR_FROM = 1981;
 const PC_DOS_RELEASE_YEAR_TO = 1996;
 const PC_WIN9X_RELEASE_YEAR_FROM = PC_DOS_RELEASE_YEAR_TO + 1;
@@ -38,6 +43,7 @@ const PC_WINDVD_RELEASE_YEAR_FROM = PC_WIN9X_RELEASE_YEAR_TO + 1;
 const PC_WINDVD_RELEASE_YEAR_TO = 2012;
 const PC_STEAM_RELEASE_YEAR_FROM = PC_WINDVD_RELEASE_YEAR_TO + 1;
 const SERIES_TV_RELEASE_YEAR_TO = 2003;
+const SERIES_STREAMING_RELEASE_YEAR_FROM = 2013;
 
 export type MediaCarrierFrame = {
   assetPath: string;
@@ -302,6 +308,32 @@ function isFilmReelReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isFilmVhsReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= FILM_VHS_RELEASE_YEAR_FROM &&
+    releaseYear <= FILM_VHS_RELEASE_YEAR_TO
+  );
+}
+
+function isFilmDvdReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= FILM_DVD_RELEASE_YEAR_FROM &&
+    releaseYear <= FILM_DVD_RELEASE_YEAR_TO
+  );
+}
+
+function isFilmStreamingReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= FILM_STREAMING_RELEASE_YEAR_FROM
+  );
+}
+
 function isPcDosReleaseYear(releaseYear?: number | null) {
   return (
     releaseYear !== null &&
@@ -345,6 +377,14 @@ function isSeriesTvReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isSeriesStreamingReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= SERIES_STREAMING_RELEASE_YEAR_FROM
+  );
+}
+
 export function getMediaCarrierFrame(
   item: MediaCarrierFrameInput,
 ): MediaCarrierFrame | null {
@@ -356,8 +396,24 @@ export function getMediaCarrierFrame(
     return MEDIA_CARRIER_FRAMES["film/reel"] ?? null;
   }
 
+  if (item.mediaType === "film" && isFilmVhsReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["film/vhs"] ?? null;
+  }
+
+  if (item.mediaType === "film" && isFilmDvdReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["film/dvd"] ?? null;
+  }
+
+  if (item.mediaType === "film" && isFilmStreamingReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["film/streaming"] ?? null;
+  }
+
   if (item.mediaType === "series" && isSeriesTvReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["series/tv"] ?? null;
+  }
+
+  if (item.mediaType === "series" && isSeriesStreamingReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["series/streaming"] ?? null;
   }
 
   if (item.mediaType === "comic" && !item.mediaCarrierCode) {
