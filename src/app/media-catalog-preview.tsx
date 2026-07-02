@@ -14,7 +14,6 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
-import { formatRatingsCount } from "@/lib/ratings/score";
 
 type MediaCatalogPreviewProps = {
   currentAuthor: {
@@ -151,8 +150,6 @@ export function MediaCatalogPreview({
           <span>{getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase()}</span>
           {item.releaseYear ? <span>•</span> : null}
           {item.releaseYear ? <span>{item.releaseYear}</span> : null}
-          <span>•</span>
-          <span>{formatRatingsCount(item.ratingsCount)}</span>
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">

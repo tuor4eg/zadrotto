@@ -4,6 +4,7 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
+  AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
   AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES,
@@ -12,6 +13,7 @@ import {
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
+  AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
   AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
@@ -123,6 +125,17 @@ type TvGuideRatingContentProps = {
   detailPrefix?: string;
   label: string;
   score: number | null;
+  value?: string;
+};
+
+type ModernTvGuideRatingContentProps = {
+  channel: string;
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
   value?: string;
 };
 
@@ -1455,6 +1468,112 @@ function TvGuideRatingStars({ compact = false, score }: { compact?: boolean; sco
   );
 }
 
+export function ModernTvGuideRatingContent({
+  channel,
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: ModernTvGuideRatingContentProps) {
+  const hasValueOverride = value !== undefined;
+  const detailText = detail ?? "";
+  const isNumericChannel = /^\d+$/.test(channel);
+  const headerClassName =
+    tone === "author"
+      ? "bg-red-800 text-stone-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]"
+      : "bg-blue-900 text-stone-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.28)]";
+  const scoreClassName =
+    tone === "author"
+      ? AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+      : AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+  const cardClassName = `media-carrier-font-modern-tv relative mx-auto block h-full w-full overflow-hidden border border-stone-400/70 bg-[#f4ecdd] text-stone-950 shadow-[0_10px_18px_rgba(28,25,23,0.18),inset_0_1px_0_rgba(255,255,255,0.78)] ${
+    compact ? "min-h-[6.25rem] max-w-[14rem] p-1.5" : "min-h-[10.5rem] max-w-[18rem] p-2"
+  }`;
+
+  if (compact) {
+    return (
+      <span className={cardClassName}>
+        <span aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.54),rgba(255,255,255,0)_42%),radial-gradient(circle_at_20%_8%,rgba(255,255,255,0.42),transparent_30%)]" />
+        <span className={`relative z-10 block px-2 py-1 text-center text-[10px] font-bold uppercase leading-none tracking-[0.06em] ${headerClassName}`}>
+          {label}
+        </span>
+        <span className="relative z-10 flex h-[calc(100%-1.45rem)] min-w-0 flex-col justify-between px-1.5 pb-1 pt-1.5">
+          <span className="flex min-w-0 items-start justify-between gap-2">
+            <span className="text-left text-[10px] font-bold leading-3">
+              <span className="block">22:00</span>
+              <span className="block text-[9px] font-normal">воскресенье</span>
+            </span>
+            <span className="grid h-8 w-8 shrink-0 content-center justify-items-center gap-0.5 border border-stone-500/55 bg-stone-50/60 px-0.5 py-1 text-center text-sm font-bold leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.7)]">
+              {isNumericChannel ? <span className="text-[6px] uppercase leading-none">ТВ</span> : null}
+              <span className={`max-w-full truncate ${isNumericChannel ? "text-sm" : "text-[10px]"}`}>
+                {channel}
+              </span>
+              {isNumericChannel ? null : <span className="text-[7px] uppercase leading-none">ТВ</span>}
+            </span>
+          </span>
+          <span className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
+            <span className={`block max-w-full font-bold italic leading-none tabular-nums ${scoreClassName} ${hasValueOverride ? "text-lg" : "text-5xl"}`}>
+              {value ?? formatScore(score)}
+            </span>
+            {!hasValueOverride ? (
+              <span className="mt-1.5">
+                <TvGuideRatingStars compact score={score} />
+              </span>
+            ) : (
+              <span className="mt-1.5 block text-[8px] font-bold uppercase">чтобы поставить оценку</span>
+            )}
+          </span>
+          <span className={`block border-t border-dotted border-stone-500/35 pt-1 text-center text-[9px] font-bold uppercase leading-3 ${detailText && !hasValueOverride ? "" : "opacity-0"}`}>
+            {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+          </span>
+        </span>
+      </span>
+    );
+  }
+
+  return (
+    <span className={cardClassName}>
+      <span aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.58),rgba(255,255,255,0)_38%),radial-gradient(circle_at_18%_8%,rgba(255,255,255,0.5),transparent_28%)]" />
+      <span className={`relative z-10 block px-3 py-2 text-center text-base font-bold uppercase leading-none tracking-[0.06em] ${headerClassName}`}>
+        {label}
+      </span>
+      <span className="relative z-10 grid min-h-0 flex-1 grid-cols-[4.3rem_minmax(0,1fr)_3.4rem] px-3 pb-2 pt-3">
+        <span className="text-left text-sm font-bold leading-4">
+          <span className="block">22:00</span>
+          <span className="block text-xs font-normal">воскресенье</span>
+        </span>
+        <span className="flex min-w-0 flex-col items-center justify-center text-center">
+          <span className={`block max-w-full font-bold italic leading-none tabular-nums ${scoreClassName} ${hasValueOverride ? "text-2xl" : "text-7xl"}`}>
+            {value ?? formatScore(score)}
+          </span>
+          {!hasValueOverride ? (
+            <span className="mt-3">
+              <TvGuideRatingStars score={score} />
+            </span>
+          ) : (
+            <span className="mt-2 block text-[10px] font-bold uppercase">чтобы поставить оценку</span>
+          )}
+        </span>
+        <span className="flex justify-end border-l border-dotted border-stone-500/45 pl-2">
+          <span className="grid h-12 w-10 content-center justify-items-center gap-0.5 border border-stone-500/65 bg-stone-50/68 px-0.5 py-1.5 text-center text-xl font-bold leading-none shadow-[inset_0_1px_0_rgba(255,255,255,0.72)]">
+            {isNumericChannel ? <span className="text-[7px] uppercase leading-none">ТВ</span> : null}
+            <span className={`max-w-full truncate ${isNumericChannel ? "text-xl" : "text-xs"}`}>
+              {channel}
+            </span>
+            {isNumericChannel ? null : <span className="text-[8px] uppercase leading-none">ТВ</span>}
+          </span>
+        </span>
+      </span>
+      <span className={`relative z-10 mx-3 block border-t border-dotted border-stone-500/35 py-2 text-center text-xs font-bold uppercase leading-4 ${detailText && !hasValueOverride ? "" : "opacity-0"}`}>
+        {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
+      </span>
+    </span>
+  );
+}
+
 export function TvGuideRatingContent({
   channel,
   compact = false,
@@ -1656,6 +1775,19 @@ export function ArchiveRatingPanel({
   if (ratingPanelVariant === "streaming-card") {
     return (
       <StreamingRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "modern-tv-guide") {
+    return (
+      <ModernTvGuideRatingContent
+        channel="3"
         compact={compact}
         detail={formatRatingsCount(ratingsCount)}
         label={label}

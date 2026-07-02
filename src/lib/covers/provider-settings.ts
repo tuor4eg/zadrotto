@@ -1,5 +1,5 @@
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
-import type { CoverProvider, CoverProviderCode } from "@/lib/covers/types";
+import type { CoverProviderCode, MediaProvider } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
 
 export type CoverProviderMediaSetting = {
@@ -26,7 +26,7 @@ export function getCoverProviderSettingKey(input: {
 }
 
 export function getCoverProviderDefaultSettings(
-  providers: readonly CoverProvider[] = COVER_PROVIDERS,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
 ): CoverProviderMediaSetting[] {
   const prioritiesByMediaType = new Map<MediaType, number>();
   const settingsByKey = new Map<string, CoverProviderMediaSetting>();

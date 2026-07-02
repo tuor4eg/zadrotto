@@ -13,14 +13,26 @@ import {
 } from "@/lib/covers/candidates";
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
-import { getCoverProvidersForMediaType, searchCoverCandidates } from "@/lib/covers/registry";
+import {
+  getCoverProvidersForMediaType,
+  getTitleProvidersForMediaType,
+  getTitleMetadata,
+  searchCoverCandidates,
+  searchTitleCandidates,
+} from "@/lib/covers/registry";
 import {
   buildCoverThumbObjectKey,
   isS3ObjectKey,
   resolveCoverUpload,
   uploadManualCover,
 } from "@/lib/covers/storage";
-import type { CoverCandidate, CoverProvider, CoverSearchOptions } from "@/lib/covers/types";
+import type {
+  CoverCandidate,
+  CoverProvider,
+  CoverSearchOptions,
+  MediaProvider,
+} from "@/lib/covers/types";
+import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
 import {
   checkFixedWindowRateLimitWithClient,
   getFixedWindowRateLimitKey,
@@ -60,6 +72,49 @@ describe("cover candidates", () => {
 
     assert.deepEqual(verifyCoverCandidateToken(token), baseCandidate);
     assert.equal(verifyCoverCandidateToken(`${token}x`), null);
+  });
+});
+
+describe("media metadata refresh source", () => {
+  it("uses existing metadata source before cover source", () => {
+    assert.deepEqual(
+      getMediaMetadataRefreshSource({
+        mediaType: "film",
+        metadata: {
+          sourceProvider: "tmdb",
+          sourceExternalId: "123",
+        },
+        coverSource: {
+          provider: "rawg",
+          externalId: "game:7",
+          pageUrl: "https://rawg.io/games/example",
+        },
+      }),
+      {
+        provider: "tmdb",
+        externalId: "123",
+        mediaType: "film",
+      },
+    );
+  });
+
+  it("recovers TMDB metadata source from a legacy cover source", () => {
+    assert.deepEqual(
+      getMediaMetadataRefreshSource({
+        mediaType: "series",
+        metadata: null,
+        coverSource: {
+          provider: "tmdb",
+          externalId: "tv:456:/poster.jpg",
+          pageUrl: "https://www.themoviedb.org/tv/456",
+        },
+      }),
+      {
+        provider: "tmdb",
+        externalId: "456",
+        mediaType: "series",
+      },
+    );
   });
 });
 
@@ -192,6 +247,134 @@ describe("cover provider registry", () => {
       [],
     );
     assert.equal(calls, 0);
+  });
+
+  it("searches title candidates through providers with title capability", async () => {
+    const titleProviders = [
+      {
+        code: "open-library",
+        mediaTypes: ["book"],
+        async searchTitleCandidates(input) {
+          return [
+            {
+              id: "work:/works/OL27448W",
+              provider: "open-library",
+              externalId: "/works/OL27448W",
+              mediaType: input.mediaType,
+              title: input.query,
+              originalTitle: null,
+              description: null,
+              coverUrl: null,
+              sourcePageUrl: "https://openlibrary.org/works/OL27448W",
+              releaseYear: 1965,
+            },
+          ];
+        },
+      },
+      {
+        code: "google-books",
+        mediaTypes: ["book"],
+        async searchCoverCandidates() {
+          return [baseCandidate];
+        },
+      },
+      {
+        code: "jikan",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          throw new Error("provider is down");
+        },
+      },
+    ] satisfies MediaProvider[];
+
+    assert.deepEqual(
+      getTitleProvidersForMediaType("book", titleProviders).map((provider) => provider.code),
+      ["open-library"],
+    );
+    assert.deepEqual(
+      await searchTitleCandidates(
+        { mediaType: "book", query: " Dune " },
+        titleProviders,
+        customOptions,
+      ),
+      [
+        {
+          id: "work:/works/OL27448W",
+          provider: "open-library",
+          externalId: "/works/OL27448W",
+          mediaType: "book",
+          title: "Dune",
+          originalTitle: null,
+          description: null,
+          coverUrl: null,
+          sourcePageUrl: "https://openlibrary.org/works/OL27448W",
+          releaseYear: 1965,
+        },
+      ],
+    );
+  });
+
+  it("gets title metadata from provider detail capability", async () => {
+    const metadataProviders = [
+      {
+        code: "tmdb",
+        mediaTypes: ["film"],
+        async getTitleMetadata(input) {
+          return {
+            provider: "tmdb",
+            externalId: input.externalId,
+            sourceUrl: "https://www.themoviedb.org/movie/1",
+            facts: {
+              runtimeMinutes: 136,
+              emptyValue: null,
+            },
+          };
+        },
+      },
+    ] satisfies MediaProvider[];
+
+    assert.deepEqual(
+      await getTitleMetadata(
+        {
+          provider: "tmdb",
+          externalId: "1",
+          mediaType: "film",
+        },
+        metadataProviders,
+        {
+          ...customOptions,
+          providerCredentials: {
+            tmdb: { accessToken: "test-token" },
+          },
+        },
+      ),
+      {
+        provider: "tmdb",
+        externalId: "1",
+        sourceUrl: "https://www.themoviedb.org/movie/1",
+        facts: {
+          runtimeMinutes: 136,
+        },
+      },
+    );
+    assert.equal(
+      await getTitleMetadata(
+        {
+          provider: "tmdb",
+          externalId: "1",
+          mediaType: "film",
+        },
+        metadataProviders,
+        {
+          ...customOptions,
+          providerCredentials: {
+            tmdb: { accessToken: "test-token" },
+          },
+          beforeProviderSearch: async () => false,
+        },
+      ),
+      null,
+    );
   });
 });
 

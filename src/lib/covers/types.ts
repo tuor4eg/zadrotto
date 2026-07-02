@@ -1,12 +1,14 @@
 import type { MediaType } from "@/lib/media/types";
 
-export type CoverProviderCode =
+export type MediaProviderCode =
   | "tmdb"
   | "open-library"
   | "google-books"
   | "igdb"
   | "rawg"
   | "jikan";
+
+export type CoverProviderCode = MediaProviderCode;
 
 export const COVER_PROVIDER_CODES = [
   "tmdb",
@@ -15,7 +17,7 @@ export const COVER_PROVIDER_CODES = [
   "igdb",
   "rawg",
   "jikan",
-] as const satisfies readonly CoverProviderCode[];
+] as const satisfies readonly MediaProviderCode[];
 
 export function isCoverProviderCode(value: string): value is CoverProviderCode {
   return COVER_PROVIDER_CODES.some((providerCode) => providerCode === value);
@@ -44,16 +46,67 @@ export type CoverSearchInput = {
   releaseYear: number | null;
 };
 
-export type CoverSearchOptions = {
-  candidateLimit: number;
-  tmdbResultScanLimit: number;
-  providerCredentials?: Partial<Record<CoverProviderCode, Record<string, string>>>;
-  beforeProviderSearch?: (providerCode: CoverProviderCode) => Promise<boolean>;
+export type TitleSearchInput = {
+  query: string;
+  mediaType: MediaType;
 };
 
-export type CoverProvider = {
-  code: CoverProviderCode;
+export type TitleMetadataInput = {
+  provider: MediaProviderCode;
+  externalId: string;
+  mediaType: MediaType;
+};
+
+export type MediaTitleCandidate = {
+  id: string;
+  provider: MediaProviderCode;
+  externalId: string;
+  mediaType: MediaType;
+  title: string;
+  originalTitle: string | null;
+  description: string | null;
+  coverUrl: string | null;
+  sourcePageUrl: string | null;
+  releaseYear: number | null;
+  confidence?: number;
+};
+
+export type MediaTitleMetadata = {
+  provider: MediaProviderCode;
+  externalId: string;
+  sourceUrl: string | null;
+  facts: Record<string, unknown>;
+};
+
+export type ProviderSearchOptions = {
+  candidateLimit: number;
+  tmdbResultScanLimit: number;
+  providerCredentials?: Partial<Record<MediaProviderCode, Record<string, string>>>;
+  beforeProviderSearch?: (providerCode: MediaProviderCode) => Promise<boolean>;
+};
+
+export type CoverSearchOptions = ProviderSearchOptions;
+export type TitleSearchOptions = ProviderSearchOptions;
+export type TitleMetadataOptions = ProviderSearchOptions;
+
+export type MediaProvider = {
+  code: MediaProviderCode;
   mediaTypes: readonly MediaType[];
+  searchCoverCandidates?(
+    input: CoverSearchInput,
+    options: CoverSearchOptions,
+  ): Promise<CoverCandidate[]>;
+  searchTitleCandidates?(
+    input: TitleSearchInput,
+    options: TitleSearchOptions,
+  ): Promise<MediaTitleCandidate[]>;
+  getTitleMetadata?(
+    input: TitleMetadataInput,
+    options: TitleMetadataOptions,
+  ): Promise<MediaTitleMetadata | null>;
+};
+
+export type CoverProvider = MediaProvider & {
   searchCoverCandidates(
     input: CoverSearchInput,
     options: CoverSearchOptions,

@@ -1,4 +1,4 @@
-import type { CoverProvider } from "@/lib/covers/types";
+import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
@@ -11,12 +11,91 @@ type OpenLibrarySearchResponse = {
     title?: string;
     first_publish_year?: number;
     cover_i?: number;
+    author_name?: string[];
   }>;
 };
 
-export const openLibraryProvider: CoverProvider = {
+type OpenLibraryWorkResponse = {
+  authors?: Array<{
+    author?: {
+      key?: string;
+    };
+  }>;
+};
+
+type OpenLibraryAuthorResponse = {
+  name?: string;
+};
+
+function getOpenLibraryKey(externalId: string) {
+  return externalId.startsWith("/") ? externalId : null;
+}
+
+export const openLibraryProvider: MediaProvider = {
   code: "open-library",
   mediaTypes: ["book"],
+  async searchTitleCandidates(input, options) {
+    const query = normalizeSearchQuery(input);
+
+    if (!query) {
+      return [];
+    }
+
+    const url = buildUrl("https://openlibrary.org/search.json", {
+      title: query,
+      limit: options.candidateLimit,
+    });
+    const data = await fetchJson<OpenLibrarySearchResponse>(url);
+
+    return (data?.docs ?? [])
+      .filter((item) => item.key || item.title)
+      .slice(0, options.candidateLimit)
+      .map((item) => ({
+        id: `work:${item.key ?? item.title}`,
+        provider: "open-library",
+        externalId: item.key ?? item.title ?? query,
+        mediaType: input.mediaType,
+        title: item.title ?? query,
+        originalTitle: null,
+        description: item.author_name?.length ? item.author_name.join(", ") : null,
+        coverUrl: item.cover_i ? `https://covers.openlibrary.org/b/id/${item.cover_i}-L.jpg` : null,
+        sourcePageUrl: item.key ? `https://openlibrary.org${item.key}` : null,
+        releaseYear: item.first_publish_year ?? null,
+      }));
+  },
+  async getTitleMetadata(input) {
+    const workKey = getOpenLibraryKey(input.externalId);
+
+    if (!workKey) {
+      return null;
+    }
+
+    const work = await fetchJson<OpenLibraryWorkResponse>(
+      new URL(`https://openlibrary.org${workKey}.json`),
+    );
+    const authorKeys = (work?.authors ?? [])
+      .map((author) => author.author?.key)
+      .filter((key): key is string => Boolean(key))
+      .slice(0, 8);
+    const authors = await Promise.all(
+      authorKeys.map(async (authorKey) => {
+        const author = await fetchJson<OpenLibraryAuthorResponse>(
+          new URL(`https://openlibrary.org${authorKey}.json`),
+        );
+
+        return author?.name ?? null;
+      }),
+    );
+
+    return {
+      provider: "open-library",
+      externalId: input.externalId,
+      sourceUrl: `https://openlibrary.org${workKey}`,
+      facts: {
+        authors: [...new Set(authors.filter((author): author is string => Boolean(author)))],
+      },
+    };
+  },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
 

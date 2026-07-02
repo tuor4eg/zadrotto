@@ -1,6 +1,10 @@
-import type { CoverSearchInput } from "@/lib/covers/types";
+import type { CoverSearchInput, TitleSearchInput } from "@/lib/covers/types";
 
-export function normalizeSearchQuery(input: CoverSearchInput) {
+export function normalizeSearchQuery(input: CoverSearchInput | TitleSearchInput) {
+  if ("query" in input) {
+    return input.query.trim();
+  }
+
   return (input.originalTitle || input.title).trim();
 }
 

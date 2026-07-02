@@ -4,6 +4,7 @@ import { Alert } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
@@ -42,7 +43,10 @@ export default async function EditAuthorMediaPage({
     notFound();
   }
 
-  const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
+  const [item, metadata] = await Promise.all([
+    getAuthorMediaItemForEdit(author.id, mediaItemId),
+    getMediaItemMetadata(mediaItemId),
+  ]);
   const errorMessage = getAuthorMediaFormErrorMessage(error);
 
   if (!item) {
@@ -88,6 +92,7 @@ export default async function EditAuthorMediaPage({
               canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
             })}
             values={item}
+            metadata={metadata}
           />
         </CardContent>
       </Card>

@@ -72,6 +72,18 @@ export const AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES: Record<RatingTone, strin
   good: "text-emerald-700",
 };
 
+export const AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-800",
+  medium: "text-blue-900",
+  good: "text-blue-900",
+};
+
+export const AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-800",
+  medium: "text-red-800",
+  good: "text-red-800",
+};
+
 export const AVERAGE_PS1_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "text-red-800",
   medium: "text-stone-300",

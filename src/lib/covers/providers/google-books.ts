@@ -1,4 +1,4 @@
-import type { CoverCandidate, CoverProvider } from "@/lib/covers/types";
+import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
@@ -6,24 +6,90 @@ import {
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
 
+type GoogleBookImageLinks = {
+  thumbnail?: string;
+  smallThumbnail?: string;
+};
+
 type GoogleBooksResponse = {
   items?: Array<{
     id?: string;
     volumeInfo?: {
       title?: string;
+      subtitle?: string;
+      authors?: string[];
+      description?: string;
       publishedDate?: string;
       infoLink?: string;
-      imageLinks?: {
-        thumbnail?: string;
-        smallThumbnail?: string;
-      };
+      imageLinks?: GoogleBookImageLinks;
     };
   }>;
 };
 
-export const googleBooksProvider: CoverProvider = {
+type GoogleBookDetailsResponse = NonNullable<GoogleBooksResponse["items"]>[number];
+
+function getGoogleBookImageUrl(imageLinks: GoogleBookImageLinks | undefined) {
+  return (
+    (imageLinks?.thumbnail ?? imageLinks?.smallThumbnail ?? null)?.replace(/^http:\/\//i, "https://") ??
+    null
+  );
+}
+
+export const googleBooksProvider: MediaProvider = {
   code: "google-books",
   mediaTypes: ["book"],
+  async searchTitleCandidates(input, options) {
+    const query = normalizeSearchQuery(input);
+
+    if (!query) {
+      return [];
+    }
+
+    const apiKey = options.providerCredentials?.["google-books"]?.apiKey?.trim() ?? "";
+    const url = buildUrl("https://www.googleapis.com/books/v1/volumes", {
+      q: `intitle:${query}`,
+      maxResults: options.candidateLimit,
+      projection: "lite",
+      key: apiKey,
+    });
+    const data = await fetchJson<GoogleBooksResponse>(url);
+
+    return (data?.items ?? [])
+      .filter((item) => item.id)
+      .slice(0, options.candidateLimit)
+      .map((item) => ({
+        id: `volume:${item.id}`,
+        provider: "google-books",
+        externalId: item.id!,
+        mediaType: input.mediaType,
+        title: item.volumeInfo?.title ?? query,
+        originalTitle: item.volumeInfo?.subtitle ?? null,
+        description: item.volumeInfo?.description ?? null,
+        coverUrl: getGoogleBookImageUrl(item.volumeInfo?.imageLinks),
+        sourcePageUrl: item.volumeInfo?.infoLink ?? null,
+        releaseYear: getFirstYear(item.volumeInfo?.publishedDate) ?? null,
+      }));
+  },
+  async getTitleMetadata(input, options) {
+    const apiKey = options.providerCredentials?.["google-books"]?.apiKey?.trim() ?? "";
+    const url = buildUrl(`https://www.googleapis.com/books/v1/volumes/${input.externalId}`, {
+      key: apiKey,
+    });
+    const details = await fetchJson<GoogleBookDetailsResponse>(url);
+
+    if (!details?.id) {
+      return null;
+    }
+
+    return {
+      provider: "google-books",
+      externalId: input.externalId,
+      sourceUrl: details.volumeInfo?.infoLink ?? null,
+      facts: {
+        authors: details.volumeInfo?.authors ?? null,
+      },
+    };
+  },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
 
@@ -43,8 +109,7 @@ export const googleBooksProvider: CoverProvider = {
     const candidates: CoverCandidate[] = [];
 
     for (const item of data?.items ?? []) {
-      const imageUrl =
-        item.volumeInfo?.imageLinks?.thumbnail ?? item.volumeInfo?.imageLinks?.smallThumbnail;
+      const imageUrl = getGoogleBookImageUrl(item.volumeInfo?.imageLinks);
 
       if (!imageUrl || !item.id) {
         continue;
@@ -54,7 +119,7 @@ export const googleBooksProvider: CoverProvider = {
         id: `volume:${item.id}`,
         provider: "google-books",
         title: item.volumeInfo?.title ?? query,
-        imageUrl: imageUrl.replace(/^http:\/\//i, "https://"),
+        imageUrl,
         sourcePageUrl: item.volumeInfo?.infoLink ?? null,
         year: getFirstYear(item.volumeInfo?.publishedDate),
       });

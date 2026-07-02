@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ImageIcon, ShieldCheck } from "lucide-react";
+import { ServerCog, ShieldCheck } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -14,8 +14,8 @@ const SETTINGS_NAV_ITEMS = [
   },
   {
     href: "/admin/settings/covers",
-    label: "Обложки",
-    icon: ImageIcon,
+    label: "Провайдеры",
+    icon: ServerCog,
   },
 ] as const;
 

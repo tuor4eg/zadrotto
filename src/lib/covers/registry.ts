@@ -10,10 +10,17 @@ import {
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import type {
-  CoverProvider,
   CoverProviderCode,
   CoverSearchInput,
   CoverSearchOptions,
+  MediaProvider,
+  MediaProviderCode,
+  MediaTitleCandidate,
+  MediaTitleMetadata,
+  TitleSearchInput,
+  TitleSearchOptions,
+  TitleMetadataInput,
+  TitleMetadataOptions,
 } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
 
@@ -39,7 +46,7 @@ function getProviderSettingsMap(
 
 export function getConfiguredCoverProviders(
   mediaType: string,
-  providers: readonly CoverProvider[] = COVER_PROVIDERS,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   const settingsByProviderCode = getProviderSettingsMap(providerSettings);
@@ -75,15 +82,38 @@ export function getConfiguredCoverProviders(
 
 export function getCoverProvidersForMediaType(
   mediaType: string,
-  providers: readonly CoverProvider[] = COVER_PROVIDERS,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
-  return getConfiguredCoverProviders(mediaType, providers, providerSettings);
+  return getConfiguredCoverProviders(mediaType, providers, providerSettings).filter(
+    (provider) => provider.searchCoverCandidates,
+  );
+}
+
+export function getTitleProvidersForMediaType(
+  mediaType: string,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
+) {
+  return getConfiguredCoverProviders(mediaType, providers, providerSettings).filter(
+    (provider) => provider.searchTitleCandidates,
+  );
+}
+
+export function getMetadataProviderForMediaType(
+  mediaType: string,
+  providerCode: MediaProviderCode,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
+) {
+  return getConfiguredCoverProviders(mediaType, providers, providerSettings).find(
+    (provider) => provider.code === providerCode && provider.getTitleMetadata,
+  );
 }
 
 export async function searchCoverCandidates(
   input: CoverSearchInput,
-  providers: readonly CoverProvider[] = COVER_PROVIDERS,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
   options: CoverSearchOptions = DEFAULT_COVER_SEARCH_OPTIONS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
@@ -102,15 +132,16 @@ export async function searchCoverCandidates(
           Boolean(options.providerCredentials?.[provider.code]),
       )
       .map(async (provider) => {
+        const searchCoverCandidates = provider.searchCoverCandidates;
         const canSearch = options.beforeProviderSearch
           ? await options.beforeProviderSearch(provider.code)
           : true;
 
-        if (!canSearch) {
+        if (!canSearch || !searchCoverCandidates) {
           return [];
         }
 
-        return provider.searchCoverCandidates(
+        return searchCoverCandidates(
           {
             ...input,
             title: normalizedTitle,
@@ -124,4 +155,131 @@ export async function searchCoverCandidates(
   return normalizeCoverCandidates(
     settledResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
   ).slice(0, options.candidateLimit);
+}
+
+function normalizeTitleCandidates(candidates: MediaTitleCandidate[]) {
+  const seen = new Set<string>();
+  const normalized: MediaTitleCandidate[] = [];
+
+  for (const candidate of candidates) {
+    const title = candidate.title.trim();
+    const originalTitle = candidate.originalTitle?.trim() || null;
+    const identity = `${candidate.provider}:${candidate.externalId}`;
+
+    if (!title || seen.has(identity)) {
+      continue;
+    }
+
+    seen.add(identity);
+    normalized.push({
+      ...candidate,
+      title,
+      originalTitle,
+      description: candidate.description?.trim() || null,
+    });
+  }
+
+  return normalized;
+}
+
+export async function searchTitleCandidates(
+  input: TitleSearchInput,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  options: TitleSearchOptions = DEFAULT_COVER_SEARCH_OPTIONS,
+  providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
+) {
+  const query = input.query.trim();
+
+  if (!query) {
+    return [];
+  }
+
+  const settledResults = await Promise.allSettled(
+    getTitleProvidersForMediaType(input.mediaType, providers, providerSettings)
+      .filter(
+        (provider) =>
+          !coverProviderRequiresCredentials(provider.code) ||
+          Boolean(options.providerCredentials?.[provider.code]),
+      )
+      .map(async (provider) => {
+        const canSearch = options.beforeProviderSearch
+          ? await options.beforeProviderSearch(provider.code)
+          : true;
+
+        if (!canSearch || !provider.searchTitleCandidates) {
+          return [];
+        }
+
+        return provider.searchTitleCandidates({ ...input, query }, options);
+      }),
+  );
+
+  return normalizeTitleCandidates(
+    settledResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+  ).slice(0, options.candidateLimit);
+}
+
+function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
+  if (!metadata) {
+    return null;
+  }
+
+  const facts = Object.fromEntries(
+    Object.entries(metadata.facts).filter(([, value]) => {
+      if (value === null || value === undefined) {
+        return false;
+      }
+
+      if (typeof value === "string") {
+        return value.trim().length > 0;
+      }
+
+      if (Array.isArray(value)) {
+        return value.length > 0;
+      }
+
+      return true;
+    }),
+  );
+
+  if (Object.keys(facts).length === 0) {
+    return null;
+  }
+
+  return {
+    ...metadata,
+    facts,
+  };
+}
+
+export async function getTitleMetadata(
+  input: TitleMetadataInput,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  options: TitleMetadataOptions = DEFAULT_COVER_SEARCH_OPTIONS,
+  providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
+) {
+  const provider = getMetadataProviderForMediaType(
+    input.mediaType,
+    input.provider,
+    providers,
+    providerSettings,
+  );
+
+  if (
+    !provider?.getTitleMetadata ||
+    (coverProviderRequiresCredentials(provider.code) &&
+      !options.providerCredentials?.[provider.code])
+  ) {
+    return null;
+  }
+
+  const canSearch = options.beforeProviderSearch
+    ? await options.beforeProviderSearch(provider.code)
+    : true;
+
+  if (!canSearch) {
+    return null;
+  }
+
+  return normalizeTitleMetadata(await provider.getTitleMetadata(input, options));
 }

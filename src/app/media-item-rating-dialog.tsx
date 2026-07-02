@@ -11,6 +11,7 @@ import {
   DosTerminalRatingContent,
   DvdMenuRatingContent,
   FilmStripRatingContent,
+  ModernTvGuideRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
   SteamAchievementRatingContent,
@@ -86,6 +87,7 @@ export function MediaItemRatingPanel({
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
   const isDosTerminalPanel = panelVariant === "dos-terminal";
   const isFilmStripPanel = panelVariant === "film-strip";
+  const isModernTvGuidePanel = panelVariant === "modern-tv-guide";
   const isVhsPosterPanel = panelVariant === "vhs-poster";
   const isTvGuidePanel = panelVariant === "tv-guide";
   const isWin9xWindowPanel = panelVariant === "win9x-window";
@@ -100,6 +102,7 @@ export function MediaItemRatingPanel({
     isDvdMenuPanel ||
     isDosTerminalPanel ||
     isFilmStripPanel ||
+    isModernTvGuidePanel ||
     isTvGuidePanel ||
     isVhsPosterPanel ||
     isSteamAchievementPanel ||
@@ -175,6 +178,17 @@ export function MediaItemRatingPanel({
       detailPrefix={isCompact ? "" : "Знакомство: "}
       label={isCompact ? "Моя оценка" : "Ваша оценка"}
       score={currentAuthor ? currentAuthorScore : null}
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isModernTvGuidePanel ? (
+    <ModernTvGuideRatingContent
+      channel="REN"
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : isWin9xWindowPanel ? (

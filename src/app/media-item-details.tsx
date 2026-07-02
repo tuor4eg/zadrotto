@@ -1,3 +1,4 @@
+import { Fragment } from "react";
 import Link from "next/link";
 
 import { ArchiveNote } from "@/app/archive-note";
@@ -26,6 +27,7 @@ type MediaItemDetailsItem = {
   }>;
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
+  metadataFacts?: Record<string, unknown> | null;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
   coverSourcePageUrl?: string | null;
@@ -134,6 +136,123 @@ function CoverSourceAttribution({
   );
 }
 
+function getPositiveIntegerFact(facts: Record<string, unknown> | null | undefined, key: string) {
+  const value = facts?.[key];
+
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function getStringListFact(facts: Record<string, unknown> | null | undefined, key: string) {
+  const value = facts?.[key];
+
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  return [...new Set(value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))];
+}
+
+function formatFactList(values: string[], maxVisibleItems = 3) {
+  if (values.length <= maxVisibleItems) {
+    return values.join(", ");
+  }
+
+  return `${values.slice(0, maxVisibleItems).join(", ")} +${values.length - maxVisibleItems}`;
+}
+
+function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
+  const plural = new Intl.PluralRules("ru-RU").select(value);
+  const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
+
+  return `${value} ${label}`;
+}
+
+function formatMediaItemRuntime(value: number) {
+  return `${value} мин.`;
+}
+
+function formatAirYears(firstAirYear: number | null, lastAirYear: number | null) {
+  if (firstAirYear && lastAirYear) {
+    return firstAirYear === lastAirYear ? String(firstAirYear) : `${firstAirYear}-${lastAirYear}`;
+  }
+
+  if (firstAirYear) {
+    return `с ${firstAirYear}`;
+  }
+
+  if (lastAirYear) {
+    return `до ${lastAirYear}`;
+  }
+
+  return null;
+}
+
+function getMediaItemDetailsYearLabel(item: MediaItemDetailsItem) {
+  if (item.mediaType === "series") {
+    const airYears = formatAirYears(
+      getPositiveIntegerFact(item.metadataFacts, "firstAirYear"),
+      getPositiveIntegerFact(item.metadataFacts, "lastAirYear"),
+    );
+
+    if (airYears) {
+      return airYears;
+    }
+  }
+
+  return item.releaseYear ? String(item.releaseYear) : null;
+}
+
+function getMediaItemDetailsMetaLabels(item: MediaItemDetailsItem) {
+  const facts = item.metadataFacts;
+
+  if (item.mediaType === "film") {
+    const runtimeMinutes = getPositiveIntegerFact(facts, "runtimeMinutes");
+
+    return runtimeMinutes ? [formatMediaItemRuntime(runtimeMinutes)] : [];
+  }
+
+  if (item.mediaType === "game") {
+    const developers = getStringListFact(facts, "developers");
+    const genres = getStringListFact(facts, "genres");
+
+    return [
+      developers.length > 0 ? formatFactList(developers) : null,
+      genres.length > 0 ? formatFactList(genres) : null,
+    ].filter((value): value is string => Boolean(value));
+  }
+
+  if (item.mediaType !== "series") {
+    return [];
+  }
+
+  const seasonCount = getPositiveIntegerFact(facts, "seasonCount");
+  const episodeCount = getPositiveIntegerFact(facts, "episodeCount");
+  const averageEpisodeRuntimeMinutes = getPositiveIntegerFact(
+    facts,
+    "averageEpisodeRuntimeMinutes",
+  );
+
+  return [
+    seasonCount
+      ? formatPluralCount(seasonCount, {
+          one: "сезон",
+          few: "сезона",
+          many: "сезонов",
+        })
+      : null,
+    episodeCount
+      ? formatPluralCount(episodeCount, {
+          one: "серия",
+          few: "серии",
+          many: "серий",
+        })
+      : null,
+    averageEpisodeRuntimeMinutes
+      ? `${formatMediaItemRuntime(averageEpisodeRuntimeMinutes)}/серия`
+      : null,
+  ].filter((value): value is string => Boolean(value));
+}
+
 export function MediaItemDetails({
   item,
   backLink,
@@ -148,6 +267,8 @@ export function MediaItemDetails({
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
+  const detailsYearLabel = getMediaItemDetailsYearLabel(item);
+  const detailsMetaLabels = getMediaItemDetailsMetaLabels(item);
   const resolvedRelatedFranchiseSections =
     relatedFranchiseSections ??
     (item.franchises.length > 0
@@ -219,7 +340,10 @@ export function MediaItemDetails({
             <div className="flex flex-col gap-5">
               <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
                 <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
-                {item.releaseYear ? <span>{item.releaseYear}</span> : null}
+                {detailsYearLabel ? <span>{detailsYearLabel}</span> : null}
+                {detailsMetaLabels.map((label) => (
+                  <span key={label}>{label}</span>
+                ))}
                 {meta}
               </div>
 
@@ -337,6 +461,8 @@ function ArchiveMediaItemDetails({
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const detailsYearLabel = getMediaItemDetailsYearLabel(item);
+  const detailsMetaLabels = getMediaItemDetailsMetaLabels(item);
 
   return (
     <div className="flex flex-col gap-3">
@@ -441,27 +567,33 @@ function ArchiveMediaItemDetails({
 
               <div className={`mt-5 flex flex-wrap gap-3 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
                 <span>{getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase()}</span>
-                {item.releaseYear ? <span>•</span> : null}
-                {item.releaseYear ? <span>{item.releaseYear}</span> : null}
+                {detailsYearLabel ? <span>•</span> : null}
+                {detailsYearLabel ? <span>{detailsYearLabel}</span> : null}
+                {detailsMetaLabels.map((label) => (
+                  <Fragment key={label}>
+                    <span>•</span>
+                    <span>{label}</span>
+                  </Fragment>
+                ))}
                 {meta ? <span>•</span> : null}
                 {meta}
-                <span>•</span>
-                <span>{formatRatingsCount(item.ratingsCount)}</span>
               </div>
 
-              <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
-                <div>
-                  <dt className={`${labelFontClassName} text-xs font-semibold uppercase leading-6 text-stone-600`}>
-                    Серия
-                  </dt>
-                  <dd className="mt-1">
-                    <FranchiseLinks
-                      franchises={item.franchises}
-                      className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-                    />
-                  </dd>
-                </div>
-              </dl>
+              {item.franchises.length > 0 ? (
+                <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
+                  <div>
+                    <dt className={`${labelFontClassName} text-xs font-semibold uppercase leading-6 text-stone-600`}>
+                      Серия
+                    </dt>
+                    <dd className="mt-1">
+                      <FranchiseLinks
+                        franchises={item.franchises}
+                        className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                      />
+                    </dd>
+                  </div>
+                </dl>
+              ) : null}
 
               <div className="mt-6 grid min-w-0 grid-cols-2 items-stretch gap-2 sm:hidden">
                 <div className="h-full min-w-0">

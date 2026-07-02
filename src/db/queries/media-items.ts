@@ -31,6 +31,7 @@ import {
   authors,
   franchises,
   mediaItemFranchises,
+  mediaItemMetadata,
   mediaCarriers,
   mediaItems,
   ratings,
@@ -347,6 +348,7 @@ const catalogMediaItemsQuery = (input: {
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
+      metadataFacts: mediaItemMetadata.facts,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
@@ -364,6 +366,7 @@ const catalogMediaItemsQuery = (input: {
     })
     .from(mediaItems)
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(input.filterCondition)
     .groupBy(
@@ -376,6 +379,7 @@ const catalogMediaItemsQuery = (input: {
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
+      mediaItemMetadata.facts,
       mediaItems.coverUrl,
       mediaItems.coverThumbUrl,
       mediaItems.coverSourceProvider,
@@ -471,6 +475,9 @@ export async function getAuthorMediaItems(authorId: number) {
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourceExternalId: mediaItems.coverSourceExternalId,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
       updatedAt: mediaItems.updatedAt,
@@ -759,6 +766,9 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
+      coverSourceProvider: mediaItems.coverSourceProvider,
+      coverSourceExternalId: mediaItems.coverSourceExternalId,
+      coverSourcePageUrl: mediaItems.coverSourcePageUrl,
       publicationStatus: mediaItems.publicationStatus,
       adminNote: mediaItems.adminNote,
       createdByAuthorId: mediaItems.createdByAuthorId,
@@ -1049,6 +1059,7 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
+      mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(),
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
@@ -1288,6 +1299,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
+      metadataFacts: mediaItemMetadata.facts,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
@@ -1302,6 +1314,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
     })
     .from(mediaItems)
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
     .groupBy(
@@ -1314,6 +1327,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       mediaCarriers.code,
       mediaCarriers.name,
       mediaItems.releaseYear,
+      mediaItemMetadata.facts,
       mediaItems.coverUrl,
       mediaItems.coverThumbUrl,
       mediaItems.coverSourceProvider,

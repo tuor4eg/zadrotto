@@ -9,6 +9,7 @@ import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/auth
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { createFranchise, franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
+import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   deleteAuthorDraftMediaItem,
@@ -48,6 +49,7 @@ import {
   resolveCoverUpload,
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
+import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 export type CreateAuthorInlineFranchiseState = {
@@ -79,6 +81,10 @@ function getOptionalCoverCandidateToken(formData: FormData) {
   return normalizeOptionalFormString(getFormString(formData, "coverCandidateToken"));
 }
 
+function getOptionalMetadataCandidateToken(formData: FormData) {
+  return normalizeOptionalFormString(getFormString(formData, "metadataCandidateToken"));
+}
+
 function shouldRemoveCover(formData: FormData) {
   return getFormString(formData, "coverAction") === "remove";
 }
@@ -100,9 +106,9 @@ function readFranchiseForm(formData: FormData) {
   };
 }
 
-function readAuthorMediaForm(formData: FormData) {
+function readAuthorMediaForm(formData: FormData, options?: { mediaType?: MediaType }) {
   const title = getFormString(formData, "title");
-  const mediaType = parseMediaType(getFormString(formData, "mediaType"));
+  const mediaType = options?.mediaType ?? parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
   const franchiseIds = parsePositiveIntegerList(formData.getAll("franchiseIds"));
   const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
@@ -195,6 +201,36 @@ function getCoverSourceFromItem(item: {
   };
 }
 
+async function saveMediaItemMetadataFromForm(formData: FormData, mediaItemId: number) {
+  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
+
+  if (!metadataCandidateToken) {
+    return { ok: true as const };
+  }
+
+  const metadata = verifyMediaMetadataCandidateToken(metadataCandidateToken);
+
+  if (!metadata) {
+    return { ok: false as const };
+  }
+
+  await upsertMediaItemMetadata({
+    mediaItemId,
+    facts: metadata.facts,
+    sourceProvider: metadata.provider,
+    sourceExternalId: metadata.externalId,
+    sourceUrl: metadata.sourceUrl,
+  });
+
+  return { ok: true as const };
+}
+
+function hasValidMediaItemMetadataToken(formData: FormData) {
+  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
+
+  return !metadataCandidateToken || Boolean(verifyMediaMetadataCandidateToken(metadataCandidateToken));
+}
+
 export async function createAuthorInlineFranchiseAction(
   _previousState: CreateAuthorInlineFranchiseState,
   formData: FormData,
@@ -261,6 +297,10 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   if (!form.ok) {
     redirect(`/author/media/new?error=${form.error}`);
+  }
+
+  if (!hasValidMediaItemMetadataToken(formData)) {
+    redirect("/author/media/new?error=invalid-metadata");
   }
 
   if (!(await areKnownFranchises(form.value.franchiseIds))) {
@@ -332,6 +372,12 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/new?error=${result.reason}`);
   }
 
+  const metadata = await saveMediaItemMetadataFromForm(formData, result.item.id);
+
+  if (!metadata.ok) {
+    redirect("/author/media/new?error=invalid-metadata");
+  }
+
   revalidatePath("/author/media");
   redirect("/author/media?created=1");
 }
@@ -340,14 +386,25 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   const author = await requireAuthor();
   const mediaItemId = Number(getFormString(formData, "mediaItemId"));
   const removeCover = shouldRemoveCover(formData);
-  const form = readAuthorMediaForm(formData);
 
   if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
     notFound();
   }
 
+  const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
+
+  if (!item) {
+    notFound();
+  }
+
+  const form = readAuthorMediaForm(formData, { mediaType: item.mediaType });
+
   if (!form.ok) {
     redirect(`/author/media/${mediaItemId}/edit?error=${form.error}`);
+  }
+
+  if (!hasValidMediaItemMetadataToken(formData)) {
+    redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
   }
 
   if (!(await areKnownFranchises(form.value.franchiseIds))) {
@@ -362,12 +419,6 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
 
   if (!mediaCarrier.ok) {
     redirect(`/author/media/${mediaItemId}/edit?error=${mediaCarrier.error}`);
-  }
-
-  const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
-
-  if (!item) {
-    notFound();
   }
 
   if (!isAuthorEditablePublicationStatus(item.publicationStatus)) {
@@ -411,6 +462,12 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     coverSource: nextCoverSource,
     ...form.value,
   });
+
+  const metadata = await saveMediaItemMetadataFromForm(formData, mediaItemId);
+
+  if (!metadata.ok) {
+    redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
+  }
 
   revalidatePath("/author/media");
   redirect("/author/media?updated=1");

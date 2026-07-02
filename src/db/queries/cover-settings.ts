@@ -2,9 +2,9 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
-  coverProviderCredentials,
-  coverProviderRateLimits,
-  coverProviderSettings,
+  providerCredentials,
+  providerRateLimits,
+  providerSettings,
   coverSettings,
 } from "@/db/schema";
 import {
@@ -103,10 +103,10 @@ async function ensureCoverProviderSettingsExistDisabled(providerCode: CoverProvi
   }
 
   await db
-    .insert(coverProviderSettings)
+    .insert(providerSettings)
     .values(values)
     .onConflictDoNothing({
-      target: [coverProviderSettings.mediaType, coverProviderSettings.providerCode],
+      target: [providerSettings.mediaType, providerSettings.providerCode],
     });
 }
 
@@ -179,16 +179,16 @@ export async function getCoverProviderSettings(): Promise<CoverProviderSettingsV
   try {
     rows = await db
       .select({
-        mediaType: coverProviderSettings.mediaType,
-        providerCode: coverProviderSettings.providerCode,
-        enabled: coverProviderSettings.enabled,
-        priority: coverProviderSettings.priority,
+        mediaType: providerSettings.mediaType,
+        providerCode: providerSettings.providerCode,
+        enabled: providerSettings.enabled,
+        priority: providerSettings.priority,
       })
-      .from(coverProviderSettings)
+      .from(providerSettings)
       .orderBy(
-        asc(coverProviderSettings.mediaType),
-        asc(coverProviderSettings.priority),
-        asc(coverProviderSettings.providerCode),
+        asc(providerSettings.mediaType),
+        asc(providerSettings.priority),
+        asc(providerSettings.providerCode),
       );
   } catch (error) {
     if (isMissingMediaTypeColumnError(error)) {
@@ -233,10 +233,10 @@ export async function updateCoverProviderSettings(
 
   if (values.length > 0) {
     await db
-      .insert(coverProviderSettings)
+      .insert(providerSettings)
       .values(values)
       .onConflictDoUpdate({
-        target: [coverProviderSettings.mediaType, coverProviderSettings.providerCode],
+        target: [providerSettings.mediaType, providerSettings.providerCode],
         set: {
           enabled: sql`excluded.enabled`,
           priority: sql`excluded.priority`,
@@ -251,10 +251,10 @@ export async function updateCoverProviderSettings(
 export async function getCoverProviderRateLimits(): Promise<CoverProviderRateLimitValue[]> {
   const rows = await db
     .select({
-      providerCode: coverProviderRateLimits.providerCode,
-      searchesPerDay: coverProviderRateLimits.searchesPerDay,
+      providerCode: providerRateLimits.providerCode,
+      searchesPerDay: providerRateLimits.searchesPerDay,
     })
-    .from(coverProviderRateLimits);
+    .from(providerRateLimits);
   const rowsByProviderCode = new Map(
     rows
       .filter((row): row is CoverProviderRateLimitValue => isKnownProviderCode(row.providerCode))
@@ -281,10 +281,10 @@ export async function updateCoverProviderRateLimits(
 
   if (values.length > 0) {
     await db
-      .insert(coverProviderRateLimits)
+      .insert(providerRateLimits)
       .values(values)
       .onConflictDoUpdate({
-        target: coverProviderRateLimits.providerCode,
+        target: providerRateLimits.providerCode,
         set: {
           searchesPerDay: sql`excluded.searches_per_day`,
           updatedAt: sql`excluded.updated_at`,
@@ -300,11 +300,11 @@ export async function getCoverProviderCredentialStatuses(): Promise<
 > {
   const rows = await db
     .select({
-      providerCode: coverProviderCredentials.providerCode,
-      keyHint: coverProviderCredentials.keyHint,
-      updatedAt: coverProviderCredentials.updatedAt,
+      providerCode: providerCredentials.providerCode,
+      keyHint: providerCredentials.keyHint,
+      updatedAt: providerCredentials.updatedAt,
     })
-    .from(coverProviderCredentials);
+    .from(providerCredentials);
   const rowsByProviderCode = new Map(
     rows
       .filter((row): row is {
@@ -330,10 +330,10 @@ export async function getCoverProviderCredentialStatuses(): Promise<
 export async function getCoverProviderCredentialsForSearch() {
   const rows = await db
     .select({
-      providerCode: coverProviderCredentials.providerCode,
-      encryptedPayload: coverProviderCredentials.encryptedPayload,
+      providerCode: providerCredentials.providerCode,
+      encryptedPayload: providerCredentials.encryptedPayload,
     })
-    .from(coverProviderCredentials);
+    .from(providerCredentials);
   const credentials: Partial<Record<CoverProviderCode, Record<string, string>>> = {};
 
   for (const row of rows) {
@@ -374,7 +374,7 @@ export async function updateCoverProviderCredentials(input: {
   const keyHint = getCoverProviderCredentialHint(parsed.value);
 
   await db
-    .insert(coverProviderCredentials)
+    .insert(providerCredentials)
     .values({
       providerCode: input.providerCode,
       encryptedPayload,
@@ -383,7 +383,7 @@ export async function updateCoverProviderCredentials(input: {
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: coverProviderCredentials.providerCode,
+      target: providerCredentials.providerCode,
       set: {
         encryptedPayload,
         keyHint,

@@ -20,6 +20,7 @@ export type MediaCarrierRatingPanelVariant =
   | "dvd-menu"
   | "dos-terminal"
   | "film-strip"
+  | "modern-tv-guide"
   | "nes-hearts"
   | "ps1-memory-card"
   | "steam-achievement"
@@ -43,6 +44,8 @@ const PC_WINDVD_RELEASE_YEAR_FROM = PC_WIN9X_RELEASE_YEAR_TO + 1;
 const PC_WINDVD_RELEASE_YEAR_TO = 2012;
 const PC_STEAM_RELEASE_YEAR_FROM = PC_WINDVD_RELEASE_YEAR_TO + 1;
 const SERIES_TV_RELEASE_YEAR_TO = 2003;
+const SERIES_MODERN_TV_RELEASE_YEAR_FROM = SERIES_TV_RELEASE_YEAR_TO + 1;
+const SERIES_MODERN_TV_RELEASE_YEAR_TO = 2012;
 const SERIES_STREAMING_RELEASE_YEAR_FROM = 2013;
 
 export type MediaCarrierFrame = {
@@ -281,6 +284,21 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
     viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
   },
+  "series/modern-tv": {
+    assetPath: "/mediaCarriers/video/moderntv/tv.png",
+    aspectRatioClassName: "aspect-[820/713]",
+    compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
+    compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
+    coverAreaClassName: "left-[7.1%] top-[6.9%] h-[69%] w-[85.9%]",
+    displayFontClassName: "media-carrier-font-modern-tv",
+    fontClassName: "media-carrier-font-modern-tv",
+    labelFontClassName: "media-carrier-font-modern-tv",
+    placeholderVariant: "tv-screen-label",
+    ratingPanelVariant: "modern-tv-guide",
+    renderKind: "cartridge",
+    sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+    viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
+  },
   "series/streaming": {
     assetPath: "",
     aspectRatioClassName: "aspect-[2/3]",
@@ -377,6 +395,15 @@ function isSeriesTvReleaseYear(releaseYear?: number | null) {
   );
 }
 
+function isSeriesModernTvReleaseYear(releaseYear?: number | null) {
+  return (
+    releaseYear !== null &&
+    releaseYear !== undefined &&
+    releaseYear >= SERIES_MODERN_TV_RELEASE_YEAR_FROM &&
+    releaseYear <= SERIES_MODERN_TV_RELEASE_YEAR_TO
+  );
+}
+
 function isSeriesStreamingReleaseYear(releaseYear?: number | null) {
   return (
     releaseYear !== null &&
@@ -410,6 +437,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "series" && isSeriesTvReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["series/tv"] ?? null;
+  }
+
+  if (item.mediaType === "series" && isSeriesModernTvReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["series/modern-tv"] ?? null;
   }
 
   if (item.mediaType === "series" && isSeriesStreamingReleaseYear(item.releaseYear) && !item.mediaCarrierCode) {

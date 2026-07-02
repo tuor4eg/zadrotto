@@ -59,5 +59,9 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Не удалось удалить обложку.";
   }
 
+  if (error === "invalid-metadata") {
+    return "Не удалось сохранить факты тайтла. Выбери тайтл у провайдера еще раз.";
+  }
+
   return null;
 }

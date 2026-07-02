@@ -17,6 +17,7 @@ import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/message
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
 import { getMediaTypeLabel } from "@/lib/media/types";
@@ -90,7 +91,10 @@ export default async function EditAdminMediaPage({
     notFound();
   }
 
-  const item = await getAdminMediaItemForEdit(mediaItemId);
+  const [item, metadata] = await Promise.all([
+    getAdminMediaItemForEdit(mediaItemId),
+    getMediaItemMetadata(mediaItemId),
+  ]);
 
   if (!item) {
     notFound();
@@ -142,6 +146,7 @@ export default async function EditAdminMediaPage({
               mediaTypes={mediaTypes}
               requireAuthor
               values={item}
+              metadata={metadata}
               errorMessage={getAdminMediaErrorMessage(query.error)}
               successMessage={successMessage}
             />

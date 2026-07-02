@@ -193,7 +193,7 @@ export async function updateCoverSettingsAction(
     adminUserId: adminUser.id,
     entityType: "cover-settings",
     entityId: 1,
-    message: "Лимиты обложек обновлены.",
+    message: "Параметры провайдеров обновлены.",
     metadata: {
       candidateLimit: settings.value.candidateLimit,
       tmdbResultScanLimit: settings.value.tmdbResultScanLimit,
@@ -204,7 +204,7 @@ export async function updateCoverSettingsAction(
 
   return {
     error: null,
-    success: "Лимиты обложек обновлены.",
+    success: "Параметры провайдеров обновлены.",
   };
 }
 
@@ -259,7 +259,7 @@ export async function updateCoverProviderSettingsAction(
     actorType: "admin",
     adminUserId: adminUser.id,
     entityType: "cover-provider",
-    message: "Провайдеры обложек обновлены.",
+    message: "Провайдеры обновлены.",
     metadata: {
       providersCount: providerSettings.value.length,
     },

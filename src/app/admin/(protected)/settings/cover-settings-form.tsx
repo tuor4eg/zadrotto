@@ -95,39 +95,10 @@ export function CoverSettingsForm({
         className="grid gap-4 rounded-md border border-stone-200 bg-stone-50/60 p-4"
         noValidate
       >
-        <h3 className="text-sm font-semibold text-stone-950">Лимиты</h3>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <NumberField
-            id="cover-candidate-limit"
-            label="Вариантов"
-            name="candidateLimit"
-            min={COVER_SETTINGS_FORM_LIMITS.candidateLimit.min}
-            max={COVER_SETTINGS_FORM_LIMITS.candidateLimit.max}
-            defaultValue={settings.candidateLimit.toString()}
-            disabled={isPending}
-          />
-          <NumberField
-            id="cover-tmdb-scan-limit"
-            label="TMDB-скан"
-            name="tmdbResultScanLimit"
-            min={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.min}
-            max={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.max}
-            defaultValue={settings.tmdbResultScanLimit.toString()}
-            disabled={isPending}
-          />
-          <NumberField
-            id="cover-max-megabytes"
-            label="Размер, МБ"
-            name="coverMaxMegabytes"
-            min={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.min}
-            max={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.max}
-            defaultValue={formatCoverMaxMegabytes(settings.coverMaxBytes)}
-            disabled={isPending}
-          />
-        </div>
+        <h3 className="text-sm font-semibold text-stone-950">Общие лимиты</h3>
         <fieldset className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
           <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Провайдеры в сутки
+            Внешние запросы
           </legend>
           <div className="grid gap-4 sm:grid-cols-3">
             {providerRateLimits.map((providerLimit) => (
@@ -144,6 +115,40 @@ export function CoverSettingsForm({
             ))}
           </div>
         </fieldset>
+        <fieldset className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
+          <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
+            Обложки
+          </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <NumberField
+              id="cover-candidate-limit"
+              label="Вариантов"
+              name="candidateLimit"
+              min={COVER_SETTINGS_FORM_LIMITS.candidateLimit.min}
+              max={COVER_SETTINGS_FORM_LIMITS.candidateLimit.max}
+              defaultValue={settings.candidateLimit.toString()}
+              disabled={isPending}
+            />
+            <NumberField
+              id="cover-tmdb-scan-limit"
+              label="TMDB-скан"
+              name="tmdbResultScanLimit"
+              min={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.min}
+              max={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.max}
+              defaultValue={settings.tmdbResultScanLimit.toString()}
+              disabled={isPending}
+            />
+            <NumberField
+              id="cover-max-megabytes"
+              label="Размер, МБ"
+              name="coverMaxMegabytes"
+              min={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.min}
+              max={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.max}
+              defaultValue={formatCoverMaxMegabytes(settings.coverMaxBytes)}
+              disabled={isPending}
+            />
+          </div>
+        </fieldset>
         <div>
           <Button type="submit" disabled={isPending}>
             <Save />
@@ -154,7 +159,7 @@ export function CoverSettingsForm({
 
       <section className="grid gap-4 rounded-md border border-stone-200 bg-white p-4">
         <div>
-          <h3 className="text-sm font-semibold text-stone-950">Провайдеры</h3>
+          <h3 className="text-sm font-semibold text-stone-950">Провайдеры по типам медиа</h3>
         </div>
 
         <div className="grid gap-4">

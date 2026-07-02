@@ -1,4 +1,4 @@
-import { ImageIcon } from "lucide-react";
+import { ServerCog } from "lucide-react";
 
 import {
   getCoverProviderCredentialStatuses,
@@ -39,9 +39,9 @@ export default async function AdminSettingsCoversPage() {
   return (
     <section>
       <SettingsSectionHeader
-        icon={<ImageIcon />}
-        title="Обложки"
-        description="Лимиты поиска и порядок внешних источников для подбора обложек."
+        icon={<ServerCog />}
+        title="Провайдеры"
+        description="Общие лимиты внешних поисков, авторизация и параметры подбора обложек."
       />
       <div className="mt-5">
         <CoverSettingsForm

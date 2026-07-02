@@ -23,6 +23,7 @@ type CoverPickerValues = {
 type CoverSearchValues = Pick<CoverPickerValues, "title" | "originalTitle" | "mediaType">;
 
 type CoverPickerProps = {
+  canSearchCandidates?: boolean;
   inputId: string;
   initialPreviewUrl?: string | null;
   maxFileBytes?: number;
@@ -41,6 +42,7 @@ function hasCoverSearchInput(values: CoverSearchValues) {
 }
 
 export function CoverPicker({
+  canSearchCandidates = true,
   inputId,
   initialPreviewUrl,
   maxFileBytes = DEFAULT_COVER_MAX_BYTES,
@@ -74,10 +76,11 @@ export function CoverPicker({
     () => JSON.stringify(coverSearchValues),
     [coverSearchValues],
   );
-  const shouldSearch = !previewUrl && hasCoverSearchInput(coverSearchValues);
+  const hasSearchInput = hasCoverSearchInput(coverSearchValues);
+  const shouldSearch = canSearchCandidates && !previewUrl && hasSearchInput;
   const isSearching = searchStatus === "loading" || isPending;
   const visibleCandidates =
-    hasCoverSearchInput(coverSearchValues) && candidatesSearchKey === coverSearchKey
+    canSearchCandidates && hasSearchInput && candidatesSearchKey === coverSearchKey
       ? candidates
       : [];
   const isSupportedFileType = (file: File) =>
@@ -116,7 +119,7 @@ export function CoverPicker({
   };
 
   const searchCandidates = () => {
-    if (!hasCoverSearchInput(coverSearchValues)) {
+    if (!canSearchCandidates || !hasSearchInput) {
       setCandidates([]);
       setSearchStatus("idle");
       return;
@@ -262,7 +265,7 @@ export function CoverPicker({
             variant="outline"
             size="sm"
             onClick={searchCandidates}
-            disabled={!hasCoverSearchInput(coverSearchValues) || isSearching}
+            disabled={!canSearchCandidates || !hasSearchInput || isSearching}
             title={isSearching ? "Идет поиск..." : "Обновить варианты"}
           >
             <RefreshCw className={cn("size-4", isSearching ? "animate-spin" : "")} />

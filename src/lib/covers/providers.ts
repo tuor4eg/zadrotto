@@ -1,4 +1,4 @@
-import type { CoverProvider } from "@/lib/covers/types";
+import type { MediaProvider } from "@/lib/covers/types";
 import { googleBooksProvider } from "@/lib/covers/providers/google-books";
 import { igdbProvider } from "@/lib/covers/providers/igdb";
 import { jikanProvider } from "@/lib/covers/providers/jikan";
@@ -14,4 +14,4 @@ export const COVER_PROVIDERS = [
   igdbProvider,
   rawgProvider,
   jikanProvider,
-] as const satisfies readonly CoverProvider[];
+] as const satisfies readonly MediaProvider[];

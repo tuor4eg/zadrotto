@@ -339,6 +339,10 @@ body {
   font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
 }
 
+.media-carrier-font-modern-tv {
+  font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
+}
+
 .media-carrier-font-film-reel {
   font-family: "Alumni Sans", "Arial Narrow", Arial, sans-serif;
   font-weight: 900;
@@ -362,6 +366,8 @@ body {
 .media-carrier-font-comic {
   font-family: "Bangers Cyrillic", "Bangers", "Noto Sans", Arial, sans-serif !important;
   font-style: normal;
+  font-weight: 400 !important;
+  font-synthesis-weight: none;
 }
 
 .media-carrier-font-tv-guide {

@@ -43,6 +43,10 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Не удалось удалить обложку из хранилища. Проверь S3-настройки.";
   }
 
+  if (error === "invalid-metadata") {
+    return "Не удалось сохранить факты тайтла. Выбери тайтл у провайдера еще раз.";
+  }
+
   if (error === "total-limit") {
     return "Достигнут общий лимит черновиков для твоего профиля.";
   }

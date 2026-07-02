@@ -85,8 +85,8 @@ export const coverSettings = pgTable(
   ],
 );
 
-export const coverProviderSettings = pgTable(
-  "cover_provider_settings",
+export const providerSettings = pgTable(
+  "provider_settings",
   {
     mediaType: text("media_type")
       .notNull()
@@ -99,31 +99,44 @@ export const coverProviderSettings = pgTable(
   (table) => [
     primaryKey({
       columns: [table.mediaType, table.providerCode],
-      name: "cover_provider_settings_pk",
+      name: "provider_settings_pk",
     }),
-    check("cover_provider_settings_priority_check", sql`${table.priority} >= 1`),
+    check("provider_settings_priority_check", sql`${table.priority} >= 1`),
   ],
 );
 
-export const coverProviderCredentials = pgTable("cover_provider_credentials", {
-  providerCode: text("provider_code").primaryKey(),
-  encryptedPayload: text("encrypted_payload").notNull(),
-  keyHint: text("key_hint").notNull(),
-  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
-    onDelete: "set null",
-  }),
-  ...timestamps(),
-});
-
-export const coverProviderRateLimits = pgTable(
-  "cover_provider_rate_limits",
+export const providerCredentials = pgTable(
+  "provider_credentials",
   {
-    providerCode: text("provider_code").primaryKey(),
+    providerCode: text("provider_code").notNull(),
+    encryptedPayload: text("encrypted_payload").notNull(),
+    keyHint: text("key_hint").notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.providerCode],
+      name: "provider_credentials_pk",
+    }),
+  ],
+);
+
+export const providerRateLimits = pgTable(
+  "provider_rate_limits",
+  {
+    providerCode: text("provider_code").notNull(),
     searchesPerDay: integer("searches_per_day").default(1000).notNull(),
     ...timestamps(),
   },
   (table) => [
-    check("cover_provider_rate_limits_searches_per_day_check", sql`${table.searchesPerDay} >= 1`),
+    primaryKey({
+      columns: [table.providerCode],
+      name: "provider_rate_limits_pk",
+    }),
+    check("provider_rate_limits_searches_per_day_check", sql`${table.searchesPerDay} >= 1`),
   ],
 );
 
@@ -281,6 +294,21 @@ export const mediaItems = pgTable(
   ],
 );
 
+export const mediaItemMetadata = pgTable("media_item_metadata", {
+  mediaItemId: integer("media_item_id")
+    .primaryKey()
+    .references(() => mediaItems.id, { onDelete: "cascade" }),
+  facts: jsonb("facts")
+    .$type<Record<string, unknown>>()
+    .default(sql`'{}'::jsonb`)
+    .notNull(),
+  sourceProvider: text("source_provider"),
+  sourceExternalId: text("source_external_id"),
+  sourceUrl: text("source_url"),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }),
+  ...timestamps(),
+});
+
 export const mediaItemFranchises = pgTable(
   "media_item_franchises",
   {
@@ -409,10 +437,10 @@ export type AuthorAccessProfile = typeof authorAccessProfiles.$inferSelect;
 export type NewAuthorAccessProfile = typeof authorAccessProfiles.$inferInsert;
 export type CoverSettings = typeof coverSettings.$inferSelect;
 export type NewCoverSettings = typeof coverSettings.$inferInsert;
-export type CoverProviderSettings = typeof coverProviderSettings.$inferSelect;
-export type NewCoverProviderSettings = typeof coverProviderSettings.$inferInsert;
-export type CoverProviderCredentials = typeof coverProviderCredentials.$inferSelect;
-export type NewCoverProviderCredentials = typeof coverProviderCredentials.$inferInsert;
+export type ProviderSettings = typeof providerSettings.$inferSelect;
+export type NewProviderSettings = typeof providerSettings.$inferInsert;
+export type ProviderCredentials = typeof providerCredentials.$inferSelect;
+export type NewProviderCredentials = typeof providerCredentials.$inferInsert;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;
@@ -423,6 +451,8 @@ export type Author = typeof authors.$inferSelect;
 export type NewAuthor = typeof authors.$inferInsert;
 export type MediaItem = typeof mediaItems.$inferSelect;
 export type NewMediaItem = typeof mediaItems.$inferInsert;
+export type MediaItemMetadata = typeof mediaItemMetadata.$inferSelect;
+export type NewMediaItemMetadata = typeof mediaItemMetadata.$inferInsert;
 export type MediaItemFranchise = typeof mediaItemFranchises.$inferSelect;
 export type NewMediaItemFranchise = typeof mediaItemFranchises.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;

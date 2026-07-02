@@ -21,6 +21,7 @@ type MediaItemTileItem = {
   id: number;
   mediaCarrierCode?: string | null;
   mediaType: MediaType;
+  metadataFacts?: Record<string, unknown> | null;
   releaseYear: number | null;
   ratingsCount: number;
   title: string;
@@ -34,6 +35,7 @@ type ArchiveCoverProps = {
     coverUrl: string | null;
     mediaCarrierCode?: string | null;
     mediaType?: MediaType;
+    metadataFacts?: Record<string, unknown> | null;
     releaseYear?: number | null;
     title: string;
   };
@@ -350,6 +352,82 @@ function CoverOverlayCover({
   );
 }
 
+function getPositiveIntegerFact(facts: Record<string, unknown> | null | undefined, key: string) {
+  const value = facts?.[key];
+
+  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
+}
+
+function formatRuntimeLabel(minutes: number) {
+  if (minutes < 60) {
+    return `${minutes} мин`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const restMinutes = minutes % 60;
+
+  return restMinutes > 0 ? `${hours} ч ${restMinutes} мин` : `${hours} ч`;
+}
+
+function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
+  const plural = new Intl.PluralRules("ru-RU").select(value);
+  const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
+
+  return `${value} ${label}`;
+}
+
+function getStableIntegerInRange(seed: string, min: number, max: number) {
+  let hash = 0;
+
+  for (const char of seed) {
+    hash = (hash * 31 + char.charCodeAt(0)) >>> 0;
+  }
+
+  return min + (hash % (max - min + 1));
+}
+
+function getStreamingProgressLabel(item: ArchiveCoverProps["item"]) {
+  if (item.mediaType === "film") {
+    const runtimeMinutes = getPositiveIntegerFact(item.metadataFacts, "runtimeMinutes");
+
+    return runtimeMinutes ? formatRuntimeLabel(runtimeMinutes) : null;
+  }
+
+  if (item.mediaType === "series") {
+    const episodeCount = getPositiveIntegerFact(item.metadataFacts, "episodeCount");
+
+    if (!episodeCount) {
+      return null;
+    }
+
+    const episodeNumber = getStableIntegerInRange(
+      `${item.title}:${item.releaseYear ?? ""}:${episodeCount}`,
+      1,
+      episodeCount,
+    );
+
+    return `Серия ${episodeNumber} из ${episodeCount}`;
+  }
+
+  return null;
+}
+
+function getStreamingTopBadgeLabel(item: ArchiveCoverProps["item"]) {
+  if (item.mediaType !== "series") {
+    return null;
+  }
+
+  const seasonCount = getPositiveIntegerFact(item.metadataFacts, "seasonCount");
+
+  return seasonCount
+    ? formatPluralCount(seasonCount, {
+        one: "сезон",
+        few: "сезона",
+        many: "сезонов",
+      })
+    : null;
+}
+
 function StreamingCover({
   carrierFrameSize = "default",
   className,
@@ -360,7 +438,9 @@ function StreamingCover({
     carrierFrameSize === "compact"
       ? frame.compactSizeClassName ?? frame.sizeClassName
       : frame.sizeClassName;
-  const progressLabel = frame.streamingProgressLabel ?? "Продолжить просмотр";
+  const progressLabel =
+    getStreamingProgressLabel(item) ?? frame.streamingProgressLabel ?? "Продолжить просмотр";
+  const topBadgeLabel = getStreamingTopBadgeLabel(item) ?? frame.streamingTopBadgeLabel;
 
   return (
     <div
@@ -397,9 +477,9 @@ function StreamingCover({
           className="pointer-events-none absolute inset-0 z-20 rounded-[3%] shadow-[inset_0_0_0_1px_rgba(255,255,255,0.15),inset_0_0_24px_rgba(255,255,255,0.08)]"
         />
         <span className="absolute left-[7%] right-[7%] top-[5.5%] z-30 flex items-start justify-between gap-3">
-          {frame.streamingTopBadgeLabel ? (
+          {topBadgeLabel ? (
             <span className="rounded-[0.32rem] bg-indigo-500/78 px-2 py-1 text-[clamp(0.44rem,2.2vw,0.68rem)] font-semibold uppercase leading-none tracking-[0.08em] text-indigo-50 shadow-[0_1px_5px_rgba(0,0,0,0.24)]">
-              {frame.streamingTopBadgeLabel}
+              {topBadgeLabel}
             </span>
           ) : (
             <span aria-hidden="true" />

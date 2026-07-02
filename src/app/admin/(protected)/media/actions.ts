@@ -9,6 +9,7 @@ import { authorExistsById } from "@/db/queries/authors";
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
+import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   createAdminMediaItem,
@@ -34,6 +35,7 @@ import {
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
+import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
@@ -64,13 +66,20 @@ function getOptionalCoverCandidateToken(formData: FormData) {
   return normalizeOptionalFormString(getFormString(formData, "coverCandidateToken"));
 }
 
+function getOptionalMetadataCandidateToken(formData: FormData) {
+  return normalizeOptionalFormString(getFormString(formData, "metadataCandidateToken"));
+}
+
 function shouldRemoveCover(formData: FormData) {
   return getFormString(formData, "coverAction") === "remove";
 }
 
-function readMediaForm(formData: FormData, options?: { requireAuthor?: boolean }) {
+function readMediaForm(
+  formData: FormData,
+  options?: { mediaType?: MediaType; requireAuthor?: boolean },
+) {
   const title = getFormString(formData, "title");
-  const mediaType = parseMediaType(getFormString(formData, "mediaType"));
+  const mediaType = options?.mediaType ?? parseMediaType(getFormString(formData, "mediaType"));
   const releaseYear = parseOptionalReleaseYear(getFormString(formData, "releaseYear"));
   const franchiseIds = parsePositiveIntegerList(formData.getAll("franchiseIds"));
   const mediaCarrierId = parseOptionalPositiveInteger(getFormString(formData, "mediaCarrierId"));
@@ -176,19 +185,63 @@ function getCoverSourceFromItem(item: {
   };
 }
 
+async function saveMediaItemMetadataFromForm(formData: FormData, mediaItemId: number) {
+  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
+
+  if (!metadataCandidateToken) {
+    return { ok: true as const };
+  }
+
+  const metadata = verifyMediaMetadataCandidateToken(metadataCandidateToken);
+
+  if (!metadata) {
+    return { ok: false as const };
+  }
+
+  await upsertMediaItemMetadata({
+    mediaItemId,
+    facts: metadata.facts,
+    sourceProvider: metadata.provider,
+    sourceExternalId: metadata.externalId,
+    sourceUrl: metadata.sourceUrl,
+  });
+
+  return { ok: true as const };
+}
+
+function hasValidMediaItemMetadataToken(formData: FormData) {
+  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
+
+  return !metadataCandidateToken || Boolean(verifyMediaMetadataCandidateToken(metadataCandidateToken));
+}
+
 export async function updateAdminMediaItemAction(formData: FormData) {
   const adminUser = await requireAdminUser();
 
   const mediaItemId = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
   const removeCover = shouldRemoveCover(formData);
-  const form = readMediaForm(formData, { requireAuthor: true });
 
   if (!mediaItemId.ok) {
     redirect("/admin/media?error=invalid-media");
   }
 
+  const existingItem = await getAdminMediaItemIdentityById(mediaItemId.value);
+
+  if (!existingItem) {
+    redirect("/admin/media?error=invalid-media");
+  }
+
+  const form = readMediaForm(formData, {
+    mediaType: existingItem.mediaType,
+    requireAuthor: true,
+  });
+
   if (!form.ok) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${form.error}`);
+  }
+
+  if (!hasValidMediaItemMetadataToken(formData)) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
   }
 
   if (!(await areKnownFranchises(form.value.franchiseIds))) {
@@ -207,12 +260,6 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownAuthor(form.value.authorId))) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-author`);
-  }
-
-  const existingItem = await getAdminMediaItemIdentityById(mediaItemId.value);
-
-  if (!existingItem) {
-    redirect("/admin/media?error=invalid-media");
   }
 
   const coverSettings = await getCoverSettings();
@@ -262,6 +309,12 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }
 
+  const metadata = await saveMediaItemMetadataFromForm(formData, mediaItemId.value);
+
+  if (!metadata.ok) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
+  }
+
   const nextIdentity = await getAdminMediaItemIdentityById(mediaItemId.value);
 
   if (nextIdentity) {
@@ -300,6 +353,10 @@ export async function createAdminMediaItemAction(formData: FormData) {
 
   if (!form.ok) {
     redirect(`/admin/media/new?error=${form.error}`);
+  }
+
+  if (!hasValidMediaItemMetadataToken(formData)) {
+    redirect("/admin/media/new?error=invalid-metadata");
   }
 
   if (form.value.authorId === null) {
@@ -361,6 +418,12 @@ export async function createAdminMediaItemAction(formData: FormData) {
     }).catch(console.error);
     console.error(error);
     redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  const metadata = await saveMediaItemMetadataFromForm(formData, item.id);
+
+  if (!metadata.ok) {
+    redirect("/admin/media/new?error=invalid-metadata");
   }
 
   const identity = await getAdminMediaItemIdentityById(item.id);
