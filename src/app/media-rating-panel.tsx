@@ -2,6 +2,7 @@ import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { Bookmark, Info, Lock, PlusCircle } from "lucide-react";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
+  AVERAGE_BOOK_NOTE_RATING_TONE_CLASS_NAMES,
   AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
@@ -11,6 +12,7 @@ import {
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
+  AUTHOR_BOOK_NOTE_RATING_TONE_CLASS_NAMES,
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
@@ -90,6 +92,16 @@ type DvdMenuRatingContentProps = {
 };
 
 type ComicCardRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+};
+
+type BookNoteRatingContentProps = {
   compact?: boolean;
   detail?: string;
   detailPrefix?: string;
@@ -194,6 +206,110 @@ function RatingHearts({ score }: { score: number | null }) {
         </span>
       ))}
     </span>
+  );
+}
+
+function BookNoteRatingStars({
+  compact = false,
+  score,
+  toneClassName,
+}: {
+  compact?: boolean;
+  score: number | null;
+  toneClassName: string;
+}) {
+  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
+
+  return (
+    <span
+      className={`inline-flex items-center justify-center leading-none ${
+        compact ? "gap-1 text-xl" : "gap-3 text-[2rem]"
+      } ${toneClassName}`}
+      aria-hidden="true"
+    >
+      {Array.from({ length: 5 }, (_, index) => (
+        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
+      ))}
+    </span>
+  );
+}
+
+export function BookNoteRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: BookNoteRatingContentProps) {
+  const detailText = detail ? `${detailPrefix}${detail}` : null;
+  const ratingToneClassName =
+    tone === "archive"
+      ? AVERAGE_BOOK_NOTE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+      : AUTHOR_BOOK_NOTE_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+  const hasScore = value === undefined;
+
+  return (
+    <div
+      className={`relative flex h-full min-h-full flex-col overflow-hidden rounded-md border border-stone-300/80 bg-[#f5ebd9]/92 text-blue-950 shadow-[0_10px_24px_rgba(68,64,60,0.14),inset_0_1px_0_rgba(255,255,255,0.62)] ${
+        compact ? "px-3 py-2.5" : "px-5 py-4"
+      }`}
+    >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_10%,rgba(255,255,255,0.7)_0,rgba(255,255,255,0)_36%),linear-gradient(105deg,rgba(92,64,36,0.06),rgba(255,255,255,0)_34%,rgba(92,64,36,0.07))]"
+      />
+      <div className={`relative flex items-center ${compact ? "gap-2" : "gap-3"}`}>
+        <Bookmark className={compact ? "size-4" : "size-5"} strokeWidth={1.8} />
+        <span
+          className={`font-mono font-semibold uppercase tracking-[0.18em] ${
+            compact ? "text-[0.58rem]" : "text-[0.72rem]"
+          }`}
+        >
+          {label}
+        </span>
+      </div>
+
+      {hasScore ? (
+        <div className={`relative flex flex-1 flex-col items-center justify-center text-center ${compact ? "mt-2" : "mt-4"}`}>
+          <div className={`font-serif tabular-nums ${ratingToneClassName} ${compact ? "text-3xl" : "text-6xl leading-none"}`}>
+            {formatScore(score)}
+          </div>
+          {!compact ? (
+            <div className="mt-4">
+              <BookNoteRatingStars score={score} toneClassName={ratingToneClassName} />
+            </div>
+          ) : null}
+          <div className={`font-serif text-stone-700 ${compact ? "mt-1 text-xs" : "mt-4 text-sm"}`}>
+            {detailText ?? "—"}
+          </div>
+        </div>
+      ) : (
+        <div className={`relative flex flex-1 flex-col items-center justify-center text-center ${compact ? "mt-2 gap-2" : "mt-4 gap-4"}`}>
+          <div className={`max-w-[13rem] font-serif text-stone-950 ${compact ? "text-xs leading-4" : "text-base leading-5"}`}>
+            Войдите, чтобы оставить свою оценку
+          </div>
+          <span
+            className={`inline-flex w-full items-center justify-center rounded-[0.25rem] bg-blue-950 text-stone-50 shadow-[inset_0_1px_0_rgba(255,255,255,0.18)] ${
+              compact ? "min-h-8 px-3 text-xs" : "min-h-10 px-4 text-sm"
+            }`}
+          >
+            {value}
+          </span>
+        </div>
+      )}
+
+      {!compact ? (
+        <div className="relative mt-3 flex items-center justify-between border-t border-blue-950/12 pt-3 font-serif text-sm text-blue-950/82">
+          <span className="inline-flex items-center gap-2">
+            <PlusCircle className="size-5" strokeWidth={1.6} />
+            Добавить на полку
+          </span>
+          <Bookmark className="size-4" strokeWidth={1.6} />
+        </div>
+      ) : null}
+    </div>
   );
 }
 
@@ -1681,6 +1797,18 @@ export function ArchiveRatingPanel({
   ratingsCount,
   score,
 }: ArchiveRatingPanelProps) {
+  if (ratingPanelVariant === "book-note") {
+    return (
+      <BookNoteRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
   if (ratingPanelVariant === "comic-card") {
     return (
       <ComicCardRatingContent

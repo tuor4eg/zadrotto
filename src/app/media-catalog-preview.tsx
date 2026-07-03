@@ -13,6 +13,7 @@ import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { formatAuthorsFact } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCatalogPreviewProps = {
@@ -65,6 +66,11 @@ export function MediaCatalogPreview({
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
   const firstFranchiseCode = item.franchises[0]?.code ?? null;
+  const metaItems = [
+    getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase(),
+    item.releaseYear ? String(item.releaseYear) : null,
+    formatAuthorsFact(item.metadataFacts),
+  ].filter((value): value is string => Boolean(value));
 
   return (
     <div className="relative flex flex-1 p-3 sm:p-4">
@@ -146,10 +152,13 @@ export function MediaCatalogPreview({
           </div>
         ) : null}
 
-        <div className={`mt-3 flex flex-wrap gap-2 ${labelFontClassName} text-xs leading-5 text-stone-800`}>
-          <span>{getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase()}</span>
-          {item.releaseYear ? <span>•</span> : null}
-          {item.releaseYear ? <span>{item.releaseYear}</span> : null}
+        <div className={`mt-3 flex flex-wrap gap-x-2 gap-y-1 ${labelFontClassName} text-xs leading-5 text-stone-800`}>
+          {metaItems.map((metaItem, index) => (
+            <span key={`${metaItem}-${index}`} className="inline-flex min-w-0 items-center gap-2">
+              {index > 0 ? <span aria-hidden="true">•</span> : null}
+              <span className="min-w-0 truncate">{metaItem}</span>
+            </span>
+          ))}
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">

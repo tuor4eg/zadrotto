@@ -16,6 +16,7 @@ export type MediaCarrierFramePlaceholderVariant =
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
+  | "book-note"
   | "comic-card"
   | "dvd-menu"
   | "dos-terminal"
@@ -84,6 +85,18 @@ type MediaCarrierFrameInput = {
 };
 
 const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
+  "book/book": {
+    assetPath: "/mediaCarriers/book/book.png",
+    aspectRatioClassName: "aspect-[679/1000]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[13.2%] top-[3.5%] h-[88.4%] w-[82.2%]",
+    placeholderVariant: "dvd-label",
+    ratingPanelVariant: "book-note",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
   "comic/comic-book": {
     assetPath: "/mediaCarriers/comic/pp.png",
     aspectRatioClassName: "aspect-[619/960]",
@@ -449,6 +462,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "comic" && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["comic/comic-book"] ?? null;
+  }
+
+  if (item.mediaType === "book" && !item.mediaCarrierCode) {
+    return MEDIA_CARRIER_FRAMES["book/book"] ?? null;
   }
 
   if (!item.mediaCarrierCode) {

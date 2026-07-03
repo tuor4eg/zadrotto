@@ -8,6 +8,7 @@ import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { formatAuthorsFact, formatFactList, getStringListFact } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
@@ -142,24 +143,6 @@ function getPositiveIntegerFact(facts: Record<string, unknown> | null | undefine
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
-function getStringListFact(facts: Record<string, unknown> | null | undefined, key: string) {
-  const value = facts?.[key];
-
-  if (!Array.isArray(value)) {
-    return [];
-  }
-
-  return [...new Set(value.map((item) => (typeof item === "string" ? item.trim() : "")).filter(Boolean))];
-}
-
-function formatFactList(values: string[], maxVisibleItems = 3) {
-  if (values.length <= maxVisibleItems) {
-    return values.join(", ");
-  }
-
-  return `${values.slice(0, maxVisibleItems).join(", ")} +${values.length - maxVisibleItems}`;
-}
-
 function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
   const plural = new Intl.PluralRules("ru-RU").select(value);
   const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
@@ -219,6 +202,12 @@ function getMediaItemDetailsMetaLabels(item: MediaItemDetailsItem) {
       developers.length > 0 ? formatFactList(developers) : null,
       genres.length > 0 ? formatFactList(genres) : null,
     ].filter((value): value is string => Boolean(value));
+  }
+
+  if (item.mediaType === "book" || item.mediaType === "comic") {
+    const authors = formatAuthorsFact(facts);
+
+    return authors ? [authors] : [];
   }
 
   if (item.mediaType !== "series") {

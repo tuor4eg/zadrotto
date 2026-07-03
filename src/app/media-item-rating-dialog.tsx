@@ -7,6 +7,7 @@ import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import {
+  BookNoteRatingContent,
   ComicCardRatingContent,
   DosTerminalRatingContent,
   DvdMenuRatingContent,
@@ -97,7 +98,9 @@ export function MediaItemRatingPanel({
   const isStreamingCardPanel = panelVariant === "streaming-card";
   const isDvdMenuPanel = panelVariant === "dvd-menu";
   const isComicCardPanel = panelVariant === "comic-card";
+  const isBookNotePanel = panelVariant === "book-note";
   const isStandalonePanel =
+    isBookNotePanel ||
     isComicCardPanel ||
     isDvdMenuPanel ||
     isDosTerminalPanel ||
@@ -140,7 +143,17 @@ export function MediaItemRatingPanel({
       : `mt-2 block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
-  const content = isDosTerminalPanel ? (
+  const content = isBookNotePanel ? (
+    <BookNoteRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти в аккаунт"}
+    />
+  ) : isDosTerminalPanel ? (
     <DosTerminalRatingContent
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
