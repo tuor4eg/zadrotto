@@ -25,6 +25,7 @@ import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { EmptyState } from "../../admin-ui";
 import { SettingsSectionHeader } from "../../settings/settings-section-header";
 import { ActivityFilters } from "./activity-filters";
+import { ActivityLogTime } from "./activity-log-time";
 
 type AdminActivityPageProps = {
   searchParams: Promise<{
@@ -66,13 +67,6 @@ function parseActorIdFilter(value: string | undefined) {
   const parsedValue = Number(value);
 
   return Number.isSafeInteger(parsedValue) && parsedValue > 0 ? parsedValue : null;
-}
-
-function formatActivityDate(value: Date) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    dateStyle: "short",
-    timeStyle: "medium",
-  }).format(value);
 }
 
 function getActorLabel(item: ActivityLogItem) {
@@ -245,7 +239,7 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                         {getActivityActionLabel(item.action)}
                       </div>
                       <div className="mt-1 text-xs text-stone-500">
-                        {formatActivityDate(item.createdAt)}
+                        <ActivityLogTime value={item.createdAt.toISOString()} />
                       </div>
                     </div>
                     <Badge variant={getStatusBadgeVariant(item.status)}>
@@ -283,7 +277,7 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                   {logs.items.map((item) => (
                     <TR key={item.id}>
                       <TD className="whitespace-nowrap text-stone-500">
-                        {formatActivityDate(item.createdAt)}
+                        <ActivityLogTime value={item.createdAt.toISOString()} />
                       </TD>
                       <TD className="whitespace-nowrap text-stone-700">{getActorLabel(item)}</TD>
                       <TD className="font-medium text-stone-950">

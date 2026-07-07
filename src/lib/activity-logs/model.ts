@@ -198,6 +198,25 @@ export function getActivityEntityTypeLabel(entityType: string | null) {
     : entityType;
 }
 
+export function formatActivityLogDate(
+  value: Date | string,
+  options?: {
+    timeZone?: string;
+  },
+) {
+  const date = value instanceof Date ? value : new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return "—";
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    dateStyle: "short",
+    timeStyle: "medium",
+    timeZone: options?.timeZone,
+  }).format(date);
+}
+
 function isSecretMetadataKey(key: string) {
   const normalizedKey = key.replace(/[^a-z0-9]/gi, "").toLowerCase();
 

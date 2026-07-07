@@ -3,6 +3,7 @@ import { describe, it } from "node:test";
 
 import {
   ACTIVITY_SEVERITY_LABELS,
+  formatActivityLogDate,
   getDefaultActivitySeverity,
   getActivityActionLabel,
   getActivityEntityTypeLabel,
@@ -57,6 +58,22 @@ describe("activity log labels", () => {
     assert.equal(getActivityActionLabel("custom.action"), "custom.action");
     assert.equal(getActivityEntityTypeLabel("custom-entity"), "custom-entity");
     assert.equal(getActivityEntityTypeLabel(null), null);
+  });
+});
+
+describe("activity log date formatting", () => {
+  it("formats timestamps in a provided display timezone", () => {
+    const value = "2026-06-21T12:00:00.000Z";
+
+    assert.equal(formatActivityLogDate(value, { timeZone: "UTC" }), "21.06.2026, 12:00:00");
+    assert.equal(
+      formatActivityLogDate(value, { timeZone: "Europe/Moscow" }),
+      "21.06.2026, 15:00:00",
+    );
+  });
+
+  it("returns a placeholder for invalid timestamps", () => {
+    assert.equal(formatActivityLogDate("not-a-date"), "—");
   });
 });
 
