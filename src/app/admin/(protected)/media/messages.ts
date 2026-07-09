@@ -39,8 +39,8 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Не удалось найти запись.";
   }
 
-  if (error === "rated") {
-    return "Удалять можно только записи без оценок.";
+  if (error === "published-delete") {
+    return "Опубликованную запись сначала нужно снять с публикации.";
   }
 
   if (error === "cover-type") {

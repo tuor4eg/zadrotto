@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, FileText, RotateCcw } from "lucide-react";
+import { ArrowLeft, Eye, EyeOff, FileText, RotateCcw, Trash2 } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
@@ -7,8 +7,11 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/ui/confirm-action";
+import { Tooltip } from "@/components/ui/tooltip";
 import { EmptyState, PageHeader } from "@/app/admin/(protected)/admin-ui";
 import {
+  deleteAdminMediaItemAction,
   updateAdminMediaItemAction,
   updateAdminMediaItemPublicationStatusAction,
 } from "@/app/admin/(protected)/media/actions";
@@ -190,6 +193,28 @@ export default async function EditAdminMediaPage({
             )}
 
             <PublicationStatusButton mediaItemId={item.id} published={isPublished} />
+            <Tooltip
+              className="w-full"
+              label={
+                isPublished
+                  ? "Сначала снимите запись с публикации"
+                  : "Удалить вместе со связанными материалами"
+              }
+            >
+              <ConfirmAction
+                action={deleteAdminMediaItemAction}
+                disabled={isPublished}
+                confirmLabel="Удалить"
+                description={`Запись «${item.title}» будет удалена вместе со связанными оценками, рецензиями и пользовательскими отметками. Это действие нельзя отменить.`}
+                fields={[{ name: "mediaItemId", value: item.id }]}
+                title="Удалить запись?"
+                triggerAriaLabel={`Удалить запись ${item.title}`}
+                triggerIcon={<Trash2 />}
+                triggerLabel="Удалить"
+                triggerVariant="destructive"
+                className="w-full"
+              />
+            </Tooltip>
           </div>
 
           <div className="space-y-2 text-sm text-stone-600">

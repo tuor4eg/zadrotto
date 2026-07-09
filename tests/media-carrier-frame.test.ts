@@ -272,8 +272,8 @@ describe("media carrier frames", () => {
       },
     );
     assert.equal(
-      hasMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1980 }),
-      false,
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1980 })?.assetPath,
+      "/mediaCarriers/video/vhs/vhs.png",
     );
     assert.equal(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs", releaseYear: 1979 })?.assetPath,
@@ -301,8 +301,8 @@ describe("media carrier frames", () => {
       },
     );
     assert.equal(
-      hasMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 }),
-      false,
+      getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 })?.assetPath,
+      "/mediaCarriers/video/moderntv/tv.png",
     );
     assert.equal(
       hasMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: "dvd", releaseYear: 2003 }),

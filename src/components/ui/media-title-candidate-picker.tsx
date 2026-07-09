@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { Search } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 import type { MediaTitleCandidate } from "@/lib/covers/types";
@@ -62,6 +63,12 @@ export function MediaTitleCandidatePicker({
     canSearch && !shouldSuppressSearch && candidateSearchKey === searchKey
       ? candidates
       : [];
+  const isPreparingSearch =
+    canSearch &&
+    !shouldSuppressSearch &&
+    candidateSearchKey !== searchKey &&
+    status !== "loading";
+  const isSearching = status === "loading" || isPreparingSearch;
 
   useEffect(() => {
     if (!canSearch || shouldSuppressSearch) {
@@ -189,18 +196,42 @@ export function MediaTitleCandidatePicker({
         </div>
       ) : null}
 
-      <p
-        className={cn(
-          "mt-2 text-xs text-stone-500",
-          status === "idle" && "sr-only",
-        )}
-      >
-        {status === "loading" ? "Ищу тайтлы у провайдеров..." : null}
-        {status === "empty" ? "Подходящие тайтлы не найдены." : null}
-        {status === "error" ? "Не удалось получить варианты тайтла." : null}
-        {status === "limited" ? "Лимит поиска исчерпан, попробуйте позже." : null}
-        {status === "unavailable" ? "Поиск временно недоступен." : null}
-      </p>
+      {isSearching ? (
+        <div
+          role="status"
+          aria-live="polite"
+          className="mt-2 overflow-hidden rounded-md border border-amber-300 bg-amber-50 text-amber-950 shadow-sm"
+        >
+          <div className="flex items-center gap-2 px-3 py-2">
+            <span className="grid size-7 shrink-0 place-items-center rounded-full bg-amber-500 text-white shadow-[0_0_18px_rgba(245,158,11,0.45)]">
+              <Search className="size-4 animate-pulse" />
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-semibold">
+                Ищем тайтлы
+              </span>
+              <span className="block truncate text-xs text-amber-800">
+                Проверяем провайдеров по названию
+              </span>
+            </span>
+          </div>
+          <div className="h-1.5 overflow-hidden bg-amber-200">
+            <div className="title-search-progress h-full w-2/5 rounded-r-full bg-amber-600 shadow-[0_0_14px_rgba(217,119,6,0.65)]" />
+          </div>
+        </div>
+      ) : (
+        <p
+          className={cn(
+            "mt-2 text-xs text-stone-500",
+            status === "idle" && "sr-only",
+          )}
+        >
+          {status === "empty" ? "Подходящие тайтлы не найдены." : null}
+          {status === "error" ? "Не удалось получить варианты тайтла." : null}
+          {status === "limited" ? "Лимит поиска исчерпан, попробуйте позже." : null}
+          {status === "unavailable" ? "Поиск временно недоступен." : null}
+        </p>
+      )}
     </div>
   );
 }

@@ -325,7 +325,7 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
                           action={deleteAuthorMediaItemAction}
                           fields={[{ name: "mediaItemId", value: item.id }]}
                           title="Удалить черновик?"
-                          description={`Запись «${item.title}» будет удалена из твоих предложений. Это действие нельзя отменить.`}
+                          description={`Запись «${item.title}», твоя оценка и дата знакомства будут удалены из черновиков. Это действие нельзя отменить.`}
                           triggerIcon={<Trash2 />}
                           triggerLabel="Удалить"
                           triggerAriaLabel={`Удалить черновик ${item.title}`}

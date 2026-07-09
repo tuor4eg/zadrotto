@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Pencil, Unlink } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Unlink } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getAdminFranchiseById,
@@ -14,7 +15,11 @@ import {
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
-import { removeMediaItemFromFranchiseAction, updateFranchiseAction } from "../../actions";
+import {
+  deleteFranchiseAction,
+  removeMediaItemFromFranchiseAction,
+  updateFranchiseAction,
+} from "../../actions";
 import { EmptyState, PageHeader } from "../../../admin-ui";
 import { FranchiseForm } from "../../franchise-form";
 import { MediaItemFranchisePicker } from "../../media-item-franchise-picker";
@@ -90,6 +95,8 @@ export default async function EditFranchisePage({
     notFound();
   }
 
+  const canDelete = mediaItems.length === 0;
+
   return (
     <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
       <section className="min-w-0">
@@ -124,6 +131,34 @@ export default async function EditFranchisePage({
                       : null
               }
             />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-5">
+          <CardContent className="grid gap-3 pt-5">
+            <div>
+              <h2 className="text-sm font-medium text-stone-950">Удаление серии</h2>
+              <p className="mt-1 text-sm leading-6 text-stone-600">
+                Серию можно удалить только если к ней не привязаны записи.
+              </p>
+            </div>
+            <Tooltip
+              className="w-full"
+              label={canDelete ? "Удалить" : "Нельзя удалить: есть записи"}
+            >
+              <ConfirmAction
+                action={deleteFranchiseAction}
+                disabled={!canDelete}
+                fields={[{ name: "franchiseId", value: franchise.id }]}
+                title="Удалить серию?"
+                description={`Серия «${franchise.title}» будет удалена. Это возможно только если к ней не привязаны записи.`}
+                triggerLabel="Удалить серию"
+                triggerAriaLabel={`Удалить серию ${franchise.title}`}
+                triggerIcon={<Trash2 />}
+                confirmLabel="Удалить серию"
+                className="w-full"
+              />
+            </Tooltip>
           </CardContent>
         </Card>
       </section>

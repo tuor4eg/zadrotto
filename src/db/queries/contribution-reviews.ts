@@ -419,3 +419,38 @@ export async function reviewContributionReview(input: {
       : null;
   });
 }
+
+export async function deleteHiddenContributionReview(contributionId: number) {
+  return db.transaction(async (tx) => {
+    const [review] = await tx
+      .delete(contributions)
+      .where(
+        and(
+          eq(contributions.id, contributionId),
+          eq(contributions.type, "review"),
+          eq(contributions.status, "hidden"),
+        ),
+      )
+      .returning({
+        id: contributions.id,
+        mediaItemId: contributions.primaryMediaItemId,
+      });
+
+    if (!review) {
+      return null;
+    }
+
+    const [mediaItem] = await tx
+      .select({
+        code: mediaItems.code,
+        title: mediaItems.title,
+      })
+      .from(mediaItems)
+      .where(eq(mediaItems.id, review.mediaItemId))
+      .limit(1);
+
+    return mediaItem
+      ? { ...review, mediaItemCode: mediaItem.code, mediaItemTitle: mediaItem.title }
+      : null;
+  });
+}

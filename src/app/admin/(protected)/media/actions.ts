@@ -13,7 +13,7 @@ import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   createAdminMediaItem,
-  deleteAdminMediaItemIfUnrated,
+  deleteAdminUnpublishedMediaItemWithRelatedData,
   getAdminMediaItemIdentityById,
   updateAdminMediaItem,
   updateAdminMediaItemPublicationStatus,
@@ -469,14 +469,14 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
   let deletedItem;
 
   try {
-    deletedItem = await deleteAdminMediaItemIfUnrated(mediaItemId.value);
+    deletedItem = await deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId.value);
   } catch (error) {
     console.error(error);
     redirect(`/admin/media?error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!deletedItem) {
-    redirect("/admin/media?error=rated");
+    redirect("/admin/media?error=published-delete");
   }
 
   if (isS3ObjectKey(existingItem.coverUrl)) {
@@ -498,7 +498,10 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
     entityType: "media-item",
     entityId: existingItem.id,
     entityLabel: existingItem.title,
-    message: "Запись удалена.",
+    message: "Непубличная запись удалена вместе со связанными материалами.",
+    metadata: {
+      publicationStatus: existingItem.publicationStatus,
+    },
   });
   redirect("/admin/media?deleted=1");
 }

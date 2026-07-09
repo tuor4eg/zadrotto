@@ -6,11 +6,13 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
+import { upsertAuthorMediaExperience } from "@/db/queries/author-media-experiences";
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { createFranchise, franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
+import { upsertAuthorRating } from "@/db/queries/ratings";
 import {
   deleteAuthorDraftMediaItem,
   getAuthorPrivateMediaItemLimitUsage,
@@ -36,6 +38,10 @@ import {
   canAuthorWithdrawPublicationRequest,
   getPublicationStatusAfterAuthorSubmit,
 } from "@/lib/authors/media-publication";
+import {
+  isFirstExperienceBeforeRelease,
+  parseFirstExperiencedInput,
+} from "@/lib/authors/experience-date";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
@@ -51,6 +57,7 @@ import {
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
+import { parseRatingScoreInput } from "@/lib/ratings/score";
 
 export type CreateAuthorInlineFranchiseState = {
   error: string | null;
@@ -65,6 +72,112 @@ function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+function getSafeRelativeRedirect(value: string, fallback: string) {
+  if (
+    !value ||
+    !value.startsWith("/") ||
+    value.startsWith("//") ||
+    value.includes("\\") ||
+    value.includes("\n")
+  ) {
+    return fallback;
+  }
+
+  return value;
+}
+
+function appendRedirectParam(path: string, key: string, value: string) {
+  const [pathnameWithSearch, hash = ""] = path.split("#", 2);
+  const [pathname, search = ""] = pathnameWithSearch.split("?", 2);
+  const searchParams = new URLSearchParams(search);
+
+  searchParams.set(key, value);
+
+  const queryString = searchParams.toString();
+  const nextPath = queryString ? `${pathname}?${queryString}` : pathname;
+
+  return hash ? `${nextPath}#${hash}` : nextPath;
+}
+
+function getCreateSuccessRedirect(formData: FormData, key: string, fallback: string) {
+  return getSafeRelativeRedirect(
+    getFormString(formData, key),
+    fallback,
+  );
+}
+
+function getCreateErrorParamName(formData: FormData) {
+  const errorParamName = getFormString(formData, "errorParamName");
+
+  return /^[a-zA-Z][a-zA-Z0-9-]*$/.test(errorParamName) ? errorParamName : "error";
+}
+
+function getCreateErrorRedirect(formData: FormData, error: string) {
+  const errorRedirectTo = getSafeRelativeRedirect(
+    getFormString(formData, "errorRedirectTo"),
+    "/author/media/new",
+  );
+
+  return appendRedirectParam(errorRedirectTo, getCreateErrorParamName(formData), error);
+}
+
+function getCreateIntent(formData: FormData) {
+  return getFormString(formData, "intent") === "submit" ? "submit" : "draft";
+}
+
+function readCreateRatingScore(formData: FormData) {
+  if (!formData.has("ratingScore")) {
+    return { ok: true as const, value: null };
+  }
+
+  const score = parseRatingScoreInput(formData.get("ratingScore"));
+
+  if (score === null) {
+    return { ok: false as const, error: "invalid-rating" };
+  }
+
+  return { ok: true as const, value: score };
+}
+
+function readCreateFirstExperience(
+  formData: FormData,
+  input: {
+    releaseYear: number | null;
+    shouldSave: boolean;
+  },
+) {
+  if (!input.shouldSave) {
+    return { ok: true as const, value: null };
+  }
+
+  const firstExperiencedValue = getFormString(formData, "firstExperiencedValue");
+  const firstExperiencedPrecision = getFormString(formData, "firstExperiencedPrecision");
+
+  if (!firstExperiencedValue && !firstExperiencedPrecision) {
+    return { ok: true as const, value: null };
+  }
+
+  const firstExperience = parseFirstExperiencedInput(
+    firstExperiencedValue,
+    firstExperiencedPrecision,
+  );
+
+  if (!firstExperience) {
+    return { ok: false as const, error: "invalid-experience" };
+  }
+
+  if (
+    isFirstExperienceBeforeRelease({
+      firstExperiencedAt: firstExperience.firstExperiencedAt,
+      releaseYear: input.releaseYear,
+    })
+  ) {
+    return { ok: false as const, error: "experience-before-release" };
+  }
+
+  return { ok: true as const, value: firstExperience };
 }
 
 function parseMediaType(value: string): MediaType | null {
@@ -294,33 +407,48 @@ export async function createAuthorInlineFranchiseAction(
 export async function createAuthorMediaItemAction(formData: FormData) {
   const author = await requireAuthor();
   const form = readAuthorMediaForm(formData);
+  const ratingScore = readCreateRatingScore(formData);
+  const createIntent = getCreateIntent(formData);
 
   if (!form.ok) {
-    redirect(`/author/media/new?error=${form.error}`);
+    redirect(getCreateErrorRedirect(formData, form.error));
+  }
+
+  if (!ratingScore.ok) {
+    redirect(getCreateErrorRedirect(formData, ratingScore.error));
+  }
+
+  const firstExperience = readCreateFirstExperience(formData, {
+    releaseYear: form.value.releaseYear,
+    shouldSave: ratingScore.value !== null,
+  });
+
+  if (!firstExperience.ok) {
+    redirect(getCreateErrorRedirect(formData, firstExperience.error));
   }
 
   if (!hasValidMediaItemMetadataToken(formData)) {
-    redirect("/author/media/new?error=invalid-metadata");
+    redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
   }
 
   if (!(await areKnownFranchises(form.value.franchiseIds))) {
-    redirect("/author/media/new?error=invalid-franchise");
+    redirect(getCreateErrorRedirect(formData, "invalid-franchise"));
   }
 
   if (!(await isKnownMediaType(form.value.mediaType))) {
-    redirect("/author/media/new?error=required");
+    redirect(getCreateErrorRedirect(formData, "required"));
   }
 
   const mediaCarrier = await validateMediaCarrier(form.value);
 
   if (!mediaCarrier.ok) {
-    redirect(`/author/media/new?error=${mediaCarrier.error}`);
+    redirect(getCreateErrorRedirect(formData, mediaCarrier.error));
   }
 
   const limit = await canCreatePrivateMediaItem(author);
 
   if (!limit.ok) {
-    redirect(`/author/media/new?error=${limit.reason}`);
+    redirect(getCreateErrorRedirect(formData, limit.reason));
   }
 
   const code = buildAuthorMediaCode({
@@ -338,7 +466,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
   });
 
   if (!cover.ok) {
-    redirect(`/author/media/new?error=${cover.error}`);
+    redirect(getCreateErrorRedirect(formData, cover.error));
   }
 
   let result;
@@ -369,17 +497,65 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       coverUrl: cover.coverUrl,
       coverThumbUrl: cover.coverThumbUrl,
     }).catch(console.error);
-    redirect(`/author/media/new?error=${result.reason}`);
+    redirect(getCreateErrorRedirect(formData, result.reason));
   }
 
   const metadata = await saveMediaItemMetadataFromForm(formData, result.item.id);
 
   if (!metadata.ok) {
-    redirect("/author/media/new?error=invalid-metadata");
+    redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
+  }
+
+  if (ratingScore.value !== null) {
+    await upsertAuthorRating({
+      authorId: author.id,
+      mediaItemId: result.item.id,
+      score: ratingScore.value,
+    });
+
+    if (firstExperience.value) {
+      await upsertAuthorMediaExperience({
+        authorId: author.id,
+        mediaItemId: result.item.id,
+        ...firstExperience.value,
+      });
+    }
+
+    revalidatePath("/author");
   }
 
   revalidatePath("/author/media");
-  redirect("/author/media?created=1");
+
+  if (createIntent === "draft") {
+    redirect(getCreateSuccessRedirect(formData, "successRedirectTo", "/author/media?created=1"));
+  }
+
+  const nextStatus = getPublicationStatusAfterAuthorSubmit({
+    canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+  });
+  const updatedItem = await submitAuthorMediaItemForPublication({
+    authorId: author.id,
+    mediaItemId: result.item.id,
+    nextStatus,
+  });
+
+  if (!updatedItem) {
+    redirect(getCreateErrorRedirect(formData, "publish-locked"));
+  }
+
+  if (updatedItem.publicationStatus === "published") {
+    revalidatePath("/");
+    revalidatePath(`/media/${updatedItem.code}`);
+    redirect(
+      getCreateSuccessRedirect(formData, "publishedSuccessRedirectTo", "/author/media?published=1"),
+    );
+  }
+
+  revalidatePath("/admin/media-review");
+  revalidatePath("/admin", "layout");
+  redirect(
+    getCreateSuccessRedirect(formData, "submittedSuccessRedirectTo", "/author/media?submitted=1"),
+  );
 }
 
 export async function updateAuthorMediaItemAction(formData: FormData) {

@@ -67,6 +67,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 2001,
     averageScore: 80,
     ratingsCount: 2,
+    currentAuthorScore: 70,
     currentAuthorRatedAt: new Date("2026-01-02T00:00:00Z"),
     currentAuthorFirstExperiencedAt: "2001-01-01",
   },
@@ -77,6 +78,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: null,
     averageScore: 95,
     ratingsCount: 1,
+    currentAuthorScore: null,
     currentAuthorRatedAt: null,
     currentAuthorFirstExperiencedAt: null,
   },
@@ -87,6 +89,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 1999,
     averageScore: null,
     ratingsCount: 7,
+    currentAuthorScore: 90,
     currentAuthorRatedAt: new Date("2026-01-03T00:00:00Z"),
     currentAuthorFirstExperiencedAt: "1999-01-01",
   },
@@ -97,6 +100,7 @@ const sortableItems: TestSortableItem[] = [
     releaseYear: 1999,
     averageScore: 95,
     ratingsCount: 3,
+    currentAuthorScore: 100,
     currentAuthorRatedAt: new Date("2026-01-01T00:00:00Z"),
     currentAuthorFirstExperiencedAt: "1998-01-01",
   },
@@ -180,7 +184,7 @@ describe("filterCatalogItems", () => {
 describe("parseCatalogSort", () => {
   it("keeps known catalog sort values and falls back to title", () => {
     assert.equal(parseCatalogSort("release_year"), "release_year");
-    assert.equal(parseCatalogSort("my_rating_order"), "my_rating_order");
+    assert.equal(parseCatalogSort("my_rating_score"), "my_rating_score");
     assert.equal(parseCatalogSort("my_first_experience_year"), "my_first_experience_year");
     assert.equal(parseCatalogSort("unknown"), "title");
     assert.equal(parseCatalogSort(null), "title");
@@ -272,10 +276,14 @@ describe("sortCatalogItems", () => {
     );
   });
 
-  it("sorts by current author rating time descending", () => {
+  it("sorts by current author score with empty scores last", () => {
     assert.deepEqual(
-      sortCatalogItems(sortableItems, "my_rating_order").map((item) => item.id),
-      [3, 1, 4, 2],
+      sortCatalogItems(sortableItems, "my_rating_score").map((item) => item.id),
+      [4, 3, 1, 2],
+    );
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "my_rating_score", "asc").map((item) => item.id),
+      [1, 3, 4, 2],
     );
   });
 

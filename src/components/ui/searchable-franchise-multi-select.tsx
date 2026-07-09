@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Search, X } from "lucide-react";
-import { useEffect, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
@@ -41,14 +41,34 @@ export function SearchableFranchiseMultiSelect({
 }: SearchableFranchiseMultiSelectProps) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [open, setOpen] = useState(false);
+  const [scrollShadow, setScrollShadow] = useState({
+    bottom: false,
+    top: false,
+  });
   const selectedIds = useMemo(() => new Set(value), [value]);
   const selectedOptions = options.filter((option) => selectedIds.has(String(option.id)));
   const visibleOptions = useMemo(
     () => options.filter((option) => matchesSearch(option, normalizeSearchValue(query))),
     [options, query],
   );
+  const updateScrollShadow = useCallback(() => {
+    const scrollArea = scrollAreaRef.current;
+
+    if (!scrollArea) {
+      setScrollShadow({ bottom: false, top: false });
+      return;
+    }
+
+    const maxScrollTop = scrollArea.scrollHeight - scrollArea.clientHeight;
+
+    setScrollShadow({
+      bottom: scrollArea.scrollTop < maxScrollTop - 1,
+      top: scrollArea.scrollTop > 1,
+    });
+  }, []);
 
   useEffect(() => {
     if (!open) {
@@ -75,6 +95,16 @@ export function SearchableFranchiseMultiSelect({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(updateScrollShadow);
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [open, selectedOptions.length, updateScrollShadow, visibleOptions.length]);
 
   function toggleOption(option: SearchableFranchiseOption) {
     const optionId = String(option.id);
@@ -146,59 +176,77 @@ export function SearchableFranchiseMultiSelect({
         <div
           id={listboxId}
           role="listbox"
-          className="absolute left-0 right-0 top-full z-40 mt-1 max-h-72 overflow-y-auto rounded-md border border-stone-200 bg-white p-1 shadow-lg"
+          className="absolute left-0 right-0 top-full z-40 mt-1 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg"
         >
-          {selectedOptions.length > 0 ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="mb-1 h-9 w-full justify-start px-2.5 text-sm text-stone-600"
-              onMouseDown={(event) => {
-                event.preventDefault();
-                onChange([]);
-                setQuery("");
-              }}
-            >
-              Без серии
-            </Button>
-          ) : null}
+          <div
+            ref={scrollAreaRef}
+            className="max-h-72 overflow-y-auto p-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onScroll={updateScrollShadow}
+          >
+            {selectedOptions.length > 0 ? (
+              <Button
+                type="button"
+                variant="ghost"
+                className="mb-1 h-9 w-full justify-start px-2.5 text-sm text-stone-600"
+                onMouseDown={(event) => {
+                  event.preventDefault();
+                  onChange([]);
+                  setQuery("");
+                }}
+              >
+                Без серии
+              </Button>
+            ) : null}
 
-          {visibleOptions.length > 0 ? (
-            visibleOptions.map((option) => {
-              const selected = selectedIds.has(String(option.id));
+            {visibleOptions.length > 0 ? (
+              visibleOptions.map((option) => {
+                const selected = selectedIds.has(String(option.id));
 
-              return (
-                <button
-                  key={option.id}
-                  type="button"
-                  role="option"
-                  aria-selected={selected}
-                  className={cn(
-                    "flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-stone-100",
-                    selected ? "text-stone-950" : "text-stone-700",
-                  )}
-                  onMouseDown={(event) => {
-                    event.preventDefault();
-                    toggleOption(option);
-                  }}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate font-medium">{option.title}</span>
-                    {option.originalTitle ? (
-                      <span className="mt-0.5 block truncate text-xs text-stone-500">
-                        {option.originalTitle}
-                      </span>
-                    ) : null}
-                  </span>
-                  <Check
-                    className={cn("size-4 shrink-0", selected ? "opacity-100" : "opacity-0")}
-                  />
-                </button>
-              );
-            })
-          ) : (
-            <div className="px-2.5 py-3 text-sm text-stone-500">Серий по этому поиску нет.</div>
-          )}
+                return (
+                  <button
+                    key={option.id}
+                    type="button"
+                    role="option"
+                    aria-selected={selected}
+                    className={cn(
+                      "flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-stone-100",
+                      selected ? "text-stone-950" : "text-stone-700",
+                    )}
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      toggleOption(option);
+                    }}
+                  >
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{option.title}</span>
+                      {option.originalTitle ? (
+                        <span className="mt-0.5 block truncate text-xs text-stone-500">
+                          {option.originalTitle}
+                        </span>
+                      ) : null}
+                    </span>
+                    <Check
+                      className={cn("size-4 shrink-0", selected ? "opacity-100" : "opacity-0")}
+                    />
+                  </button>
+                );
+              })
+            ) : (
+              <div className="px-2.5 py-3 text-sm text-stone-500">Серий по этому поиску нет.</div>
+            )}
+          </div>
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-stone-950/12 to-transparent transition-opacity",
+              scrollShadow.top ? "opacity-100" : "opacity-0",
+            )}
+          />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-stone-950/12 to-transparent transition-opacity",
+              scrollShadow.bottom ? "opacity-100" : "opacity-0",
+            )}
+          />
         </div>
       ) : null}
     </div>

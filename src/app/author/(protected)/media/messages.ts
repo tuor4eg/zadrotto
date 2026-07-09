@@ -47,12 +47,28 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Не удалось сохранить факты тайтла. Выбери тайтл у провайдера еще раз.";
   }
 
+  if (error === "invalid-rating") {
+    return "Оценка должна быть целым числом от 1 до 10.";
+  }
+
+  if (error === "invalid-experience") {
+    return "Проверь дату знакомства.";
+  }
+
+  if (error === "experience-before-release") {
+    return "Год знакомства не может быть раньше года выхода.";
+  }
+
   if (error === "total-limit") {
     return "Достигнут общий лимит черновиков для твоего профиля.";
   }
 
   if (error === "daily-limit") {
     return "Достигнут суточный лимит черновиков для твоего профиля.";
+  }
+
+  if (error === "publish-locked") {
+    return "Запись создана, но ее не удалось сразу отправить на публикацию.";
   }
 
   return null;

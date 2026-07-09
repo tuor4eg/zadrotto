@@ -205,6 +205,24 @@ body {
   }
 }
 
+.title-search-progress {
+  animation: title-search-progress 1.1s ease-in-out infinite;
+}
+
+@keyframes title-search-progress {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  55% {
+    transform: translateX(95%);
+  }
+
+  100% {
+    transform: translateX(260%);
+  }
+}
+
 .archive-page {
   background:
     radial-gradient(circle at 18% 10%, rgb(var(--archive-bg-glow-primary) / 16%), transparent 28rem),

@@ -48,7 +48,7 @@ export function ReviewFiltersForm({
       const nextSearchParams = new URLSearchParams(searchParams.toString());
 
       if (nextFilters.status !== undefined) {
-        updateFilterParam(nextSearchParams, "status", nextFilters.status, "published");
+        updateFilterParam(nextSearchParams, "status", nextFilters.status, "all");
       }
 
       if (nextFilters.author !== undefined) {

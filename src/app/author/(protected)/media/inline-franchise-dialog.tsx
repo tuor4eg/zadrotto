@@ -61,7 +61,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
 
   const dialog = open ? (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/45 p-4"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-stone-950/45 p-4"
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isPending) {
@@ -161,6 +161,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
         type="button"
         variant="outline"
         size="icon"
+        className="h-10 w-10 shrink-0"
         aria-label="Добавить серию"
         onClick={() => setOpen(true)}
       >

@@ -24,6 +24,9 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
     getMediaTypeOptions(),
   ]);
   const errorMessage = getAuthorMediaFormErrorMessage(error);
+  const createAndSubmitLabel = author.canPublishMediaWithoutReview
+    ? "Опубликовать"
+    : "Отправить на модерацию";
 
   return (
     <div className="grid gap-6">
@@ -37,19 +40,17 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
       />
       <div>
         <h2 className="font-serif text-3xl leading-none text-stone-950">Новая запись</h2>
-        <p className="mt-2 text-sm text-stone-600">
-          Запись сохранится черновиком и не появится в публичном архиве.
-        </p>
       </div>
 
       <Card>
         <CardContent className="p-4 sm:p-5">
           <MediaItemForm
             action={createAuthorMediaItemAction}
-            submitLabel="Создать"
+            submitLabel="Сохранить черновик"
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            createAndSubmitLabel={createAndSubmitLabel}
             canCreateFranchise={canAuthorCreateFranchise({
               canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
             })}

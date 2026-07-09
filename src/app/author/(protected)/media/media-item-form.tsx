@@ -12,10 +12,13 @@ import {
   type MediaMetadataFactsValue,
 } from "@/components/ui/media-metadata-facts";
 import { MediaTitleCandidatePicker } from "@/components/ui/media-title-candidate-picker";
+import { RatingExperienceFields } from "@/components/ui/rating-experience-fields";
+import { RatingScoreButtons } from "@/components/ui/rating-score-buttons";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
+import { cn } from "@/lib/common/utils";
 import type { MediaTitleCandidate } from "@/lib/covers/types";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
@@ -45,9 +48,17 @@ type MediaItemFormProps = {
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
+  cancelHref?: string;
   canCreateFranchise?: boolean;
+  createAndSubmitLabel?: string;
+  errorParamName?: string;
+  errorRedirectTo?: string;
+  publishedSuccessRedirectTo?: string;
+  submittedSuccessRedirectTo?: string;
   values?: MediaItemFormValues;
   metadata?: MediaMetadataFactsValue | null;
+  onCancel?: () => void;
+  successRedirectTo?: string;
   error?: string;
 };
 
@@ -149,24 +160,39 @@ function getRankedMetadataRefreshCandidates(
 export function MediaItemForm({
   action,
   submitLabel,
+  cancelHref = "/author/media",
   franchises,
   mediaCarriers,
   mediaTypes,
   canCreateFranchise = false,
+  createAndSubmitLabel,
+  errorParamName,
+  errorRedirectTo,
+  publishedSuccessRedirectTo,
+  submittedSuccessRedirectTo,
   values,
   metadata = null,
+  onCancel,
+  successRedirectTo,
 }: MediaItemFormProps) {
+  const isEditing = Boolean(values?.id);
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
     values?.mediaType ?? mediaTypes[0]?.code ?? "",
   );
-  const isEditing = Boolean(values?.id);
   const selectedMediaTypeLabel = selectedMediaType
     ? getMediaTypeLabel(selectedMediaType, mediaTypes)
     : "Тип не выбран";
   const [title, setTitle] = useState(values?.title ?? "");
   const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
   const [description, setDescription] = useState(values?.description ?? "");
-  const [releaseYear, setReleaseYear] = useState(values?.releaseYear ? String(values.releaseYear) : "");
+  const [releaseYear, setReleaseYear] = useState(() =>
+    values?.releaseYear != null
+      ? String(values.releaseYear)
+      : isEditing
+        ? ""
+        : String(new Date().getFullYear()),
+  );
+  const [initialRatingScore, setInitialRatingScore] = useState<number | null>(null);
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
@@ -195,6 +221,25 @@ export function MediaItemForm({
     },
   });
   const canRefreshMetadata = Boolean(metadataRefreshSource) || title.trim().length >= 2;
+  const selectedReleaseYear = /^\d+$/.test(releaseYear) ? Number(releaseYear) : null;
+
+  function selectMediaType(nextMediaType: MediaType) {
+    setSelectedMediaType(nextMediaType);
+    setCanSearchCoverCandidates(false);
+    setSelectedMetadata(null);
+    setMetadataCandidateToken("");
+
+    if (
+      selectedMediaCarrierId &&
+      !mediaCarriers.some(
+        (carrier) =>
+          String(carrier.id) === selectedMediaCarrierId &&
+          carrier.mediaTypes.includes(nextMediaType),
+      )
+    ) {
+      setSelectedMediaCarrierId("");
+    }
+  }
 
   async function refreshMetadata() {
     if (!canRefreshMetadata || isRefreshingMetadata) {
@@ -259,10 +304,25 @@ export function MediaItemForm({
       <AuthorToasts messages={toastMessages} />
 
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
+      {successRedirectTo ? (
+        <input type="hidden" name="successRedirectTo" value={successRedirectTo} />
+      ) : null}
+      {submittedSuccessRedirectTo ? (
+        <input type="hidden" name="submittedSuccessRedirectTo" value={submittedSuccessRedirectTo} />
+      ) : null}
+      {publishedSuccessRedirectTo ? (
+        <input type="hidden" name="publishedSuccessRedirectTo" value={publishedSuccessRedirectTo} />
+      ) : null}
+      {errorRedirectTo ? (
+        <input type="hidden" name="errorRedirectTo" value={errorRedirectTo} />
+      ) : null}
+      {errorParamName ? (
+        <input type="hidden" name="errorParamName" value={errorParamName} />
+      ) : null}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
-          <Label htmlFor={isEditing ? undefined : "author-media-type"}>
+          <Label id="author-media-type-label" htmlFor={isEditing ? undefined : "author-media-type"}>
             Тип медиа
           </Label>
           {isEditing ? (
@@ -271,37 +331,34 @@ export function MediaItemForm({
             </div>
           ) : (
             <>
-              <Select
+              <input
                 id="author-media-type"
                 name="mediaType"
                 required
+                type="hidden"
                 value={selectedMediaType}
-                onChange={(event) => {
-                  const nextMediaType = event.currentTarget.value as MediaType;
-
-                  setSelectedMediaType(nextMediaType);
-                  setCanSearchCoverCandidates(false);
-                  setSelectedMetadata(null);
-                  setMetadataCandidateToken("");
-
-                  if (
-                    selectedMediaCarrierId &&
-                    !mediaCarriers.some(
-                      (carrier) =>
-                        String(carrier.id) === selectedMediaCarrierId &&
-                        carrier.mediaTypes.includes(nextMediaType),
-                    )
-                  ) {
-                    setSelectedMediaCarrierId("");
-                  }
-                }}
+              />
+              <div
+                aria-labelledby="author-media-type-label"
+                className="flex flex-wrap gap-2"
               >
                 {mediaTypes.map((mediaType) => (
-                  <option key={mediaType.code} value={mediaType.code}>
+                  <button
+                    key={mediaType.code}
+                    type="button"
+                    className={cn(
+                      "rounded-md border px-3 py-2 text-sm font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950",
+                      selectedMediaType === mediaType.code
+                        ? "border-stone-950 bg-stone-950 text-stone-50"
+                        : "border-stone-200 bg-white text-stone-700 hover:border-stone-400 hover:bg-stone-50 hover:text-stone-950",
+                    )}
+                    aria-pressed={selectedMediaType === mediaType.code}
+                    onClick={() => selectMediaType(mediaType.code)}
+                  >
                     {mediaType.name}
-                  </option>
+                  </button>
                 ))}
-              </Select>
+              </div>
               <p className="text-xs text-stone-500">
                 Тип выбирается при создании записи и потом не меняется.
               </p>
@@ -473,6 +530,33 @@ export function MediaItemForm({
           />
         </div>
 
+        {!isEditing ? (
+          <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
+            <div className="rounded-md border border-stone-300/80 bg-stone-50/50 p-3">
+              <div className="flex flex-col gap-5">
+                <div>
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    Моя оценка
+                  </span>
+                </div>
+                {initialRatingScore !== null ? (
+                  <input type="hidden" name="ratingScore" value={initialRatingScore / 10} />
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <RatingScoreButtons
+                    selectedScore={initialRatingScore}
+                    variant="archive"
+                    onScoreClick={(score, { isSelected }) => {
+                      setInitialRatingScore(isSelected ? null : score);
+                    }}
+                  />
+                </div>
+                <RatingExperienceFields releaseYear={selectedReleaseYear} variant="archive" />
+              </div>
+            </div>
+          </div>
+        ) : null}
+
         <div className="sm:col-span-2 lg:col-span-3">
           <input type="hidden" name="metadataCandidateToken" value={metadataCandidateToken} />
           {isEditing ? (
@@ -499,15 +583,26 @@ export function MediaItemForm({
       </div>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit">
+        <Button type="submit" name="intent" value="draft">
           {submitLabel}
         </Button>
-        <Link
-          href="/author/media"
-          className={buttonVariants({ variant: "outline" })}
-        >
-          Отмена
-        </Link>
+        {!isEditing && createAndSubmitLabel ? (
+          <Button type="submit" variant="positive" name="intent" value="submit">
+            {createAndSubmitLabel}
+          </Button>
+        ) : null}
+        {onCancel ? (
+          <Button type="button" variant="outline" onClick={onCancel}>
+            Отмена
+          </Button>
+        ) : (
+          <Link
+            href={cancelHref}
+            className={buttonVariants({ variant: "outline" })}
+          >
+            Отмена
+          </Link>
+        )}
       </div>
     </form>
   );

@@ -8,6 +8,7 @@ import {
 } from "@/app/media-items-catalog-logic";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants, Button } from "@/components/ui/button";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
@@ -135,6 +136,8 @@ function AdminMediaCoverThumb({
 }
 
 function AdminMediaItemActions({ item }: { item: AdminMediaItem }) {
+  const canDelete = item.publicationStatus !== "published";
+
   return (
     <div className="flex flex-nowrap justify-end gap-1.5">
       <Tooltip label="Изменить">
@@ -146,21 +149,35 @@ function AdminMediaItemActions({ item }: { item: AdminMediaItem }) {
           <Edit3 />
         </Link>
       </Tooltip>
-      <form action={deleteAdminMediaItemAction} className="shrink-0">
-        <input type="hidden" name="mediaItemId" value={item.id} />
-        <Tooltip label={item.ratingsCount > 0 ? "Нельзя удалить: есть оценки" : "Удалить"}>
+      {canDelete ? (
+        <Tooltip label="Удалить вместе со связанными материалами">
+          <ConfirmAction
+            action={deleteAdminMediaItemAction}
+            className="shrink-0"
+            confirmLabel="Удалить"
+            description={`Запись «${item.title}» будет удалена вместе со связанными оценками, рецензиями и пользовательскими отметками. Это действие нельзя отменить.`}
+            fields={[{ name: "mediaItemId", value: item.id }]}
+            title="Удалить запись?"
+            triggerAriaLabel={`Удалить запись ${item.title}`}
+            triggerIcon={<Trash2 />}
+            triggerLabel="Удалить"
+            triggerSize="icon"
+          />
+        </Tooltip>
+      ) : (
+        <Tooltip label="Сначала снимите запись с публикации">
           <Button
-            type="submit"
+            type="button"
             variant="destructive"
             size="icon"
-            disabled={item.ratingsCount > 0}
+            disabled
             className="shrink-0"
             aria-label={`Удалить запись ${item.title}`}
           >
             <Trash2 />
           </Button>
         </Tooltip>
-      </form>
+      )}
     </div>
   );
 }

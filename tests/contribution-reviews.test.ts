@@ -72,3 +72,18 @@ describe("author contribution migration", () => {
     assert.match(migration, /WHERE "contributions"\."type" = 'review'/);
   });
 });
+
+describe("admin review deletion query", () => {
+  it("deletes only hidden reviews", () => {
+    const querySource = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
+    const start = querySource.indexOf("export async function deleteHiddenContributionReview");
+
+    assert.notEqual(start, -1);
+
+    const source = querySource.slice(start);
+
+    assert.match(source, /eq\(contributions\.type, "review"\)/);
+    assert.match(source, /eq\(contributions\.status, "hidden"\)/);
+    assert.match(source, /\.delete\(contributions\)/);
+  });
+});

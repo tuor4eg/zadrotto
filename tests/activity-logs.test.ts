@@ -49,6 +49,7 @@ describe("activity log metadata", () => {
 describe("activity log labels", () => {
   it("returns Russian labels for known actions and entity types", () => {
     assert.equal(getActivityActionLabel("admin.login"), "Вход админа");
+    assert.equal(getActivityActionLabel("review.deleted"), "Рецензия удалена");
     assert.equal(getActivityActionLabel("franchise.media.attached"), "Запись добавлена в серию");
     assert.equal(getActivityEntityTypeLabel("media-item"), "Запись");
     assert.equal(ACTIVITY_SEVERITY_LABELS.critical, "Критично");
@@ -99,6 +100,13 @@ describe("activity log severity", () => {
     assert.equal(
       getDefaultActivitySeverity({
         action: "author-token.deleted",
+        status: "success",
+      }),
+      "critical",
+    );
+    assert.equal(
+      getDefaultActivitySeverity({
+        action: "review.deleted",
         status: "success",
       }),
       "critical",

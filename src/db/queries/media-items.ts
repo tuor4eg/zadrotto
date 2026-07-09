@@ -9,7 +9,6 @@ import {
   isNull,
   ne,
   not,
-  notExists,
   or,
   sql,
   type SQL,
@@ -29,6 +28,8 @@ import type { DbTransaction } from "@/db/transaction";
 import {
   authorMediaExperiences,
   authors,
+  contributionMediaItems,
+  contributions,
   franchises,
   mediaItemFranchises,
   mediaItemMetadata,
@@ -302,11 +303,11 @@ function catalogOrderBy(
     ];
   }
 
-  if (sort === "my_rating_order" && currentAuthorId) {
+  if (sort === "my_rating_score" && currentAuthorId) {
     return [
       direction === "asc"
-        ? sql`${currentAuthorRatedAtSql(currentAuthorId)} asc nulls last`
-        : sql`${currentAuthorRatedAtSql(currentAuthorId)} desc nulls last`,
+        ? sql`${currentAuthorScoreSql(currentAuthorId)} asc nulls last`
+        : sql`${currentAuthorScoreSql(currentAuthorId)} desc nulls last`,
       asc(mediaItems.title),
     ];
   }
@@ -1192,27 +1193,40 @@ export async function updateAdminMediaItemPublicationStatus(input: {
   return item ? withResolvedFranchises(item) : null;
 }
 
-export async function deleteAdminMediaItemIfUnrated(mediaItemId: number) {
-  const [item] = await db
-    .delete(mediaItems)
-    .where(
-      and(
-        eq(mediaItems.id, mediaItemId),
-        notExists(
-          db
-            .select({ id: ratings.id })
-            .from(ratings)
-            .where(eq(ratings.mediaItemId, mediaItems.id)),
+export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId: number) {
+  return db.transaction(async (tx) => {
+    const [item] = await tx
+      .select({
+        id: mediaItems.id,
+        code: mediaItems.code,
+        title: mediaItems.title,
+        publicationStatus: mediaItems.publicationStatus,
+      })
+      .from(mediaItems)
+      .where(
+        and(
+          eq(mediaItems.id, mediaItemId),
+          ne(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         ),
-      ),
-    )
-    .returning({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-    });
+      )
+      .limit(1);
 
-  return item ?? null;
+    if (!item) {
+      return null;
+    }
+
+    await tx
+      .delete(contributionMediaItems)
+      .where(eq(contributionMediaItems.mediaItemId, mediaItemId));
+    await tx.delete(contributions).where(eq(contributions.primaryMediaItemId, mediaItemId));
+    await tx
+      .delete(authorMediaExperiences)
+      .where(eq(authorMediaExperiences.mediaItemId, mediaItemId));
+    await tx.delete(ratings).where(eq(ratings.mediaItemId, mediaItemId));
+    await tx.delete(mediaItems).where(eq(mediaItems.id, mediaItemId));
+
+    return item;
+  });
 }
 
 export async function canViewMediaItemCover(

@@ -4,6 +4,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 
 import { MediaCatalogPreview } from "@/app/media-catalog-preview";
+import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/app/archive-author-media-suggestion";
 import {
   type AuthorRatingFilter,
   type CatalogSort,
@@ -199,7 +200,20 @@ export function MediaItemsCatalog({
     >
       {items.length === 0 ? (
         <div className="col-span-full rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
-          Ничего не найдено.
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <span>Ничего не найдено.</span>
+            {currentAuthor ? (
+              <button
+                type="button"
+                className="inline-flex h-9 items-center justify-center rounded-md border border-stone-300/80 bg-white px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+                onClick={() => {
+                  window.dispatchEvent(new Event(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT));
+                }}
+              >
+                Предложить тайтл
+              </button>
+            ) : null}
+          </div>
         </div>
       ) : null}
       {items.map((item) => (

@@ -39,7 +39,7 @@ const SORT_LABELS: Record<CatalogSort, string> = {
   release_year: "По году",
   average_score: "По средней оценке",
   ratings_count: "По количеству оценок",
-  my_rating_order: "По порядку оценки",
+  my_rating_score: "По моей оценке",
   my_first_experience_year: "По году знакомства",
 };
 
