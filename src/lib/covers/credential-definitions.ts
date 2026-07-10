@@ -33,6 +33,15 @@ export const COVER_PROVIDER_CREDENTIAL_DEFINITIONS = [
     ],
   },
   {
+    providerCode: "comic-vine",
+    fields: [
+      {
+        name: "apiKey",
+        label: "API key",
+      },
+    ],
+  },
+  {
     providerCode: "igdb",
     fields: [
       {

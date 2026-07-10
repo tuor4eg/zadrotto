@@ -13,6 +13,7 @@ import {
 } from "@/lib/covers/candidates";
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
+import { getCoverProviderDefaultSettings } from "@/lib/covers/provider-settings";
 import {
   getCoverProvidersForMediaType,
   getTitleProvidersForMediaType,
@@ -159,6 +160,19 @@ describe("cover provider registry", () => {
     assert.deepEqual(
       getCoverProvidersForMediaType("comic", providers).map((provider) => provider.code),
       [],
+    );
+  });
+
+  it("includes ComicVine as the default comic provider", () => {
+    assert.deepEqual(
+      getCoverProviderDefaultSettings()
+        .filter((provider) => provider.mediaType === "comic")
+        .map((provider) => ({
+          providerCode: provider.providerCode,
+          enabled: provider.enabled,
+          priority: provider.priority,
+        })),
+      [{ providerCode: "comic-vine", enabled: true, priority: 10 }],
     );
   });
 
@@ -414,6 +428,7 @@ describe("cover settings form", () => {
     for (const [mediaType, providerCode] of [
       ["film", "tmdb"],
       ["series", "tmdb"],
+      ["comic", "comic-vine"],
       ["book", "open-library"],
       ["book", "google-books"],
       ["game", "igdb"],
@@ -454,6 +469,7 @@ describe("cover settings form", () => {
 
     for (const providerCode of [
       "tmdb",
+      "comic-vine",
       "open-library",
       "google-books",
       "igdb",
@@ -607,6 +623,36 @@ describe("cover provider credential validation", () => {
     } finally {
       globalThis.fetch = originalFetch;
     }
+  });
+
+  it("validates ComicVine credentials through API status code", async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ url: string; userAgent?: string | null }> = [];
+
+    globalThis.fetch = async (input, init) => {
+      requests.push({
+        url: String(input),
+        userAgent: new Headers(init?.headers).get("User-Agent"),
+      });
+
+      return new Response(JSON.stringify({ status_code: 1 }), { status: 200 });
+    };
+
+    try {
+      assert.deepEqual(
+        await validateCoverProviderCredentials({
+          providerCode: "comic-vine",
+          values: { apiKey: "comic-key" },
+        }),
+        { ok: true },
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+
+    assert.equal(requests.length, 1);
+    assert.equal(requests[0].url.includes("api_key=comic-key"), true);
+    assert.equal(requests[0].userAgent, "zadrotto/1.0 comic archive");
   });
 
   it("treats failed validation requests as provider unavailability", async () => {

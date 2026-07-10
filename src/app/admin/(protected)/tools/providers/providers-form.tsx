@@ -1,68 +1,48 @@
 "use client";
 
 import { GripVertical, KeyRound, Power, PowerOff, Save, X } from "lucide-react";
-import { useActionState, useId, useState, useTransition } from "react";
+import { useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
+import { Tooltip } from "@/components/ui/tooltip";
+import type {
+  CoverProviderCredentialStatus,
+  CoverProviderSettingsValue,
+} from "@/db/queries/cover-settings";
+import { cn } from "@/lib/common/utils";
 import {
-  COVER_SETTINGS_FORM_LIMITS,
-  formatCoverMaxMegabytes,
-} from "@/lib/forms/cover-settings";
+  coverProviderRequiresCredentials,
+  getCoverProviderCredentialDefinition,
+} from "@/lib/covers/credential-definitions";
 import {
   COVER_PROVIDER_LABELS,
   getCoverProviderSettingKey,
 } from "@/lib/covers/provider-settings";
 import type { MediaTypeOption } from "@/lib/media/types";
-import type {
-  CoverProviderCredentialStatus,
-  CoverProviderRateLimitValue,
-  CoverProviderSettingsValue,
-  CoverSettingsValue,
-} from "@/db/queries/cover-settings";
-import { Tooltip } from "@/components/ui/tooltip";
-import {
-  coverProviderRequiresCredentials,
-  getCoverProviderCredentialDefinition,
-} from "@/lib/covers/credential-definitions";
-import { cn } from "@/lib/common/utils";
-import { AdminToasts, type AdminToast } from "../admin-toasts";
+import { AdminToasts, type AdminToast } from "../../admin-toasts";
 import {
   type UpdateCoverProviderCredentialsState,
   type UpdateCoverProviderSettingsState,
-  type UpdateCoverSettingsState,
   updateCoverProviderCredentialsAction,
   updateCoverProviderSettingsAction,
-  updateCoverSettingsAction,
-} from "./actions";
+} from "../../settings/actions";
 
-const initialState: UpdateCoverSettingsState = {
-  error: null,
-  success: null,
-};
 const initialProviderState: UpdateCoverProviderSettingsState = {
   error: null,
   success: null,
 };
 const STORED_CREDENTIAL_MASK = "stored-credential";
 
-export function CoverSettingsForm({
+export function ProvidersForm({
   credentialStatuses,
   mediaTypes,
-  providerRateLimits,
   providerSettings,
-  settings,
 }: {
   credentialStatuses: CoverProviderCredentialStatus[];
   mediaTypes: MediaTypeOption[];
-  providerRateLimits: CoverProviderRateLimitValue[];
   providerSettings: CoverProviderSettingsValue[];
-  settings: CoverSettingsValue;
 }) {
-  const [state, formAction, isPending] = useActionState(
-    updateCoverSettingsAction,
-    initialState,
-  );
   const [providerState, setProviderState] =
     useState<UpdateCoverProviderSettingsState>(initialProviderState);
   const [isProviderPending, startProviderTransition] = useTransition();
@@ -76,8 +56,6 @@ export function CoverSettingsForm({
     useState<CoverProviderSettingsValue | null>(null);
   const [draggedProviderKey, setDraggedProviderKey] = useState<string | null>(null);
   const toastMessages = [
-    ...(state.success ? [{ id: "success", tone: "success" as const, text: state.success }] : []),
-    ...(state.error ? [{ id: "error", tone: "error" as const, text: state.error }] : []),
     ...(providerState.success
       ? [{ id: "provider-success", tone: "success" as const, text: providerState.success }]
       : []),
@@ -90,78 +68,7 @@ export function CoverSettingsForm({
     <div className="grid gap-5">
       <AdminToasts messages={toastMessages} />
 
-      <form
-        action={formAction}
-        className="grid gap-4 rounded-md border border-stone-200 bg-stone-50/60 p-4"
-        noValidate
-      >
-        <h3 className="text-sm font-semibold text-stone-950">Общие лимиты</h3>
-        <fieldset className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Внешние запросы
-          </legend>
-          <div className="grid gap-4 sm:grid-cols-3">
-            {providerRateLimits.map((providerLimit) => (
-              <NumberField
-                key={providerLimit.providerCode}
-                id={`cover-provider-daily-limit-${providerLimit.providerCode}`}
-                label={COVER_PROVIDER_LABELS[providerLimit.providerCode]}
-                name={`providerSearchesPerDay:${providerLimit.providerCode}`}
-                min={COVER_SETTINGS_FORM_LIMITS.providerSearchesPerDay.min}
-                max={COVER_SETTINGS_FORM_LIMITS.providerSearchesPerDay.max}
-                defaultValue={providerLimit.searchesPerDay.toString()}
-                disabled={isPending}
-              />
-            ))}
-          </div>
-        </fieldset>
-        <fieldset className="grid gap-3 rounded-md border border-stone-200 bg-white p-3">
-          <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
-            Обложки
-          </legend>
-          <div className="grid gap-4 sm:grid-cols-3">
-            <NumberField
-              id="cover-candidate-limit"
-              label="Вариантов"
-              name="candidateLimit"
-              min={COVER_SETTINGS_FORM_LIMITS.candidateLimit.min}
-              max={COVER_SETTINGS_FORM_LIMITS.candidateLimit.max}
-              defaultValue={settings.candidateLimit.toString()}
-              disabled={isPending}
-            />
-            <NumberField
-              id="cover-tmdb-scan-limit"
-              label="TMDB-скан"
-              name="tmdbResultScanLimit"
-              min={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.min}
-              max={COVER_SETTINGS_FORM_LIMITS.tmdbResultScanLimit.max}
-              defaultValue={settings.tmdbResultScanLimit.toString()}
-              disabled={isPending}
-            />
-            <NumberField
-              id="cover-max-megabytes"
-              label="Размер, МБ"
-              name="coverMaxMegabytes"
-              min={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.min}
-              max={COVER_SETTINGS_FORM_LIMITS.coverMaxMegabytes.max}
-              defaultValue={formatCoverMaxMegabytes(settings.coverMaxBytes)}
-              disabled={isPending}
-            />
-          </div>
-        </fieldset>
-        <div>
-          <Button type="submit" disabled={isPending}>
-            <Save />
-            {isPending ? "Сохраняем" : "Сохранить"}
-          </Button>
-        </div>
-      </form>
-
       <section className="grid gap-4 rounded-md border border-stone-200 bg-white p-4">
-        <div>
-          <h3 className="text-sm font-semibold text-stone-950">Провайдеры по типам медиа</h3>
-        </div>
-
         <div className="grid gap-4">
           {providerGroups.map((group) => (
             <fieldset
@@ -571,39 +478,4 @@ function groupProviderSettings(providerSettings: readonly CoverProviderSettingsV
     mediaType,
     providers,
   }));
-}
-
-function NumberField({
-  defaultValue,
-  disabled,
-  id,
-  label,
-  max,
-  min,
-  name,
-}: {
-  defaultValue: string;
-  disabled?: boolean;
-  id: string;
-  label: string;
-  max: number;
-  min: number;
-  name: string;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        name={name}
-        type="number"
-        min={min}
-        max={max}
-        step="1"
-        inputMode="numeric"
-        defaultValue={defaultValue}
-        disabled={disabled}
-      />
-    </div>
-  );
 }

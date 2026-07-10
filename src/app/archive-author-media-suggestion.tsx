@@ -134,7 +134,7 @@ export function ArchiveAuthorMediaSuggestion({
       <ArchiveTooltip label="Предложить тайтл" side="right">
         <button
           type="button"
-          className="grid size-14 place-items-center rounded-full border border-stone-950/80 bg-stone-950 text-stone-50 shadow-[0_18px_36px_rgba(28,25,23,0.3)] transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+          className="grid size-14 place-items-center rounded-full border-2 border-[#d9c7a5] bg-stone-950 text-stone-50 shadow-[0_18px_36px_rgba(28,25,23,0.3)] transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9c7a5]"
           aria-label="Предложить тайтл"
           onClick={() => openModal()}
         >

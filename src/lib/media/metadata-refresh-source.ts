@@ -22,6 +22,7 @@ export type MediaMetadataRefreshSourceInput = {
 
 const MEDIA_PROVIDER_CODES = [
   "tmdb",
+  "comic-vine",
   "open-library",
   "google-books",
   "igdb",
@@ -61,6 +62,10 @@ function getJikanExternalIdFromUrl(value: string | null | undefined) {
   return value?.match(/myanimelist\.net\/anime\/(\d+)/i)?.[1] ?? null;
 }
 
+function getComicVineExternalIdFromUrl(value: string | null | undefined) {
+  return value?.match(/comicvine\.gamespot\.com\/[^/]+\/4050-(\d+)/i)?.[1] ?? null;
+}
+
 function normalizeMetadataExternalId(
   provider: MediaProviderCode,
   externalId: string | null | undefined,
@@ -86,6 +91,14 @@ function normalizeMetadataExternalId(
       getColonPartExternalId(value, "anime") ??
       (value && /^\d+$/.test(value) ? value : null) ??
       getJikanExternalIdFromUrl(pageUrl)
+    );
+  }
+
+  if (provider === "comic-vine") {
+    return (
+      getColonPartExternalId(value, "volume") ??
+      (value && /^\d+$/.test(value) ? value : null) ??
+      getComicVineExternalIdFromUrl(pageUrl)
     );
   }
 

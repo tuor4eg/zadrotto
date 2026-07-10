@@ -17,6 +17,7 @@ import {
   Newspaper,
   Settings,
   ServerCog,
+  Plug,
   ShieldCheck,
   Tags,
   Wrench,
@@ -112,6 +113,7 @@ function getAdminNavGroups({
       label: "Инструменты",
       items: [
         { href: "/admin/settings/administrator", icon: Settings, label: "Настройки" },
+        { href: "/admin/tools/providers", icon: Plug, label: "Провайдеры" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
         { href: "/admin/tools/activity", icon: Activity, label: "Журнал" },
       ],

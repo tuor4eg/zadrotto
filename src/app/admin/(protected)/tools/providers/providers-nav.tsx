@@ -2,29 +2,34 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { Gauge, ServerCog } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
-const SETTINGS_NAV_ITEMS = [
+const PROVIDER_NAV_ITEMS = [
   {
-    href: "/admin/settings/administrator",
-    label: "Администратор",
-    icon: ShieldCheck,
+    href: "/admin/tools/providers",
+    label: "Провайдеры",
+    icon: ServerCog,
+  },
+  {
+    href: "/admin/tools/providers/limits",
+    label: "Лимиты",
+    icon: Gauge,
   },
 ] as const;
 
-export function SettingsNav() {
+export function ProvidersNav() {
   const pathname = usePathname();
 
   return (
     <nav
-      aria-label="Разделы настроек"
+      aria-label="Настройки провайдеров"
       className="flex gap-2 overflow-x-auto rounded-md border border-stone-200 bg-white p-2 lg:grid lg:overflow-visible"
     >
-      {SETTINGS_NAV_ITEMS.map((item) => {
+      {PROVIDER_NAV_ITEMS.map((item) => {
         const Icon = item.icon;
-        const isActive = pathname === item.href || pathname.startsWith(`${item.href}/`);
+        const isActive = pathname === item.href;
 
         return (
           <Link

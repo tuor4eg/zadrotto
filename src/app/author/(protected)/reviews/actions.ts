@@ -13,6 +13,7 @@ import {
   getReviewFormErrorMessage,
   parseReviewFormInput,
 } from "@/lib/forms/contribution-review";
+import { logActivity } from "@/lib/activity-logs/server";
 
 export type SaveAuthorReviewState = {
   error: string | null;
@@ -106,6 +107,21 @@ export async function saveAuthorReviewAction(
       values,
     };
   }
+
+  await logActivity({
+    action: contributionId ? "review.updated" : "review.created",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "review",
+    entityId: result.id,
+    entityLabel: form.value.title,
+    message: contributionId ? "Рецензия изменена автором." : "Рецензия создана автором.",
+    metadata: {
+      mediaItemId,
+      mediaItemCode: mediaItem.code,
+      publicationStatus: status,
+    },
+  });
 
   revalidatePath(`/media/${mediaItem.code}`);
   revalidatePath("/author/reviews");

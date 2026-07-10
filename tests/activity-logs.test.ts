@@ -50,6 +50,8 @@ describe("activity log labels", () => {
   it("returns Russian labels for known actions and entity types", () => {
     assert.equal(getActivityActionLabel("admin.login"), "Вход админа");
     assert.equal(getActivityActionLabel("review.deleted"), "Рецензия удалена");
+    assert.equal(getActivityActionLabel("media.submitted"), "Запись отправлена на модерацию");
+    assert.equal(getActivityActionLabel("review.created"), "Рецензия создана");
     assert.equal(getActivityActionLabel("franchise.media.attached"), "Запись добавлена в серию");
     assert.equal(getActivityEntityTypeLabel("media-item"), "Запись");
     assert.equal(ACTIVITY_SEVERITY_LABELS.critical, "Критично");

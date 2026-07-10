@@ -18,6 +18,7 @@ import {
   getAuthorPrivateMediaItemLimitUsage,
   getAuthorMediaItemForEdit,
   getAuthorMediaItemForView,
+  findPublishedMediaItemDuplicateCandidates,
   submitAuthorMediaItemForPublication,
   updateAuthorMediaItem,
   withdrawAuthorMediaItemFromReview,
@@ -56,6 +57,10 @@ import {
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
+import {
+  isExactMediaItemDuplicate,
+  verifyMediaItemDuplicateAcknowledgementToken,
+} from "@/lib/media/media-item-duplicates";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 import { parseRatingScoreInput } from "@/lib/ratings/score";
 
@@ -344,6 +349,44 @@ function hasValidMediaItemMetadataToken(formData: FormData) {
   return !metadataCandidateToken || Boolean(verifyMediaMetadataCandidateToken(metadataCandidateToken));
 }
 
+async function validateMediaItemDuplicateCheck(
+  formData: FormData,
+  input: {
+    mediaType: MediaType;
+    originalTitle: string | null;
+    releaseYear: number | null;
+    title: string;
+  },
+) {
+  const matches = await findPublishedMediaItemDuplicateCandidates(input);
+  const exactMatches = matches.filter((match) => isExactMediaItemDuplicate(input, match));
+
+  if (exactMatches.length > 0) {
+    return { ok: false as const, error: "duplicate-media-exact" };
+  }
+
+  const possibleMatches = matches.filter((match) => !exactMatches.includes(match));
+
+  if (possibleMatches.length === 0) {
+    return { ok: true as const };
+  }
+
+  const isAcknowledged = getFormString(formData, "mediaDuplicateAcknowledged") === "1";
+  const acknowledgementToken = getFormString(formData, "mediaDuplicateCheckToken");
+
+  if (
+    !isAcknowledged ||
+    !verifyMediaItemDuplicateAcknowledgementToken(acknowledgementToken, {
+      form: input,
+      matches: possibleMatches,
+    })
+  ) {
+    return { ok: false as const, error: "duplicate-media-possible" };
+  }
+
+  return { ok: true as const };
+}
+
 export async function createAuthorInlineFranchiseAction(
   _previousState: CreateAuthorInlineFranchiseState,
   formData: FormData,
@@ -445,6 +488,12 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, mediaCarrier.error));
   }
 
+  const duplicateCheck = await validateMediaItemDuplicateCheck(formData, form.value);
+
+  if (!duplicateCheck.ok) {
+    redirect(getCreateErrorRedirect(formData, duplicateCheck.error));
+  }
+
   const limit = await canCreatePrivateMediaItem(author);
 
   if (!limit.ok) {
@@ -506,6 +555,22 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
   }
 
+  await logActivity({
+    action: "media.created",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: result.item.id,
+    entityLabel: form.value.title,
+    message: "Запись создана автором.",
+    metadata: {
+      mediaType: form.value.mediaType,
+      franchiseIds: form.value.franchiseIds,
+      mediaCarrierId: form.value.mediaCarrierId,
+      publicationStatus: "private",
+    },
+  });
+
   if (ratingScore.value !== null) {
     await upsertAuthorRating({
       authorId: author.id,
@@ -544,6 +609,15 @@ export async function createAuthorMediaItemAction(formData: FormData) {
   }
 
   if (updatedItem.publicationStatus === "published") {
+    await logActivity({
+      action: "media.published",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: updatedItem.id,
+      entityLabel: form.value.title,
+      message: "Запись опубликована автором.",
+    });
     revalidatePath("/");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect(
@@ -553,6 +627,15 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
+  await logActivity({
+    action: "media.submitted",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: updatedItem.id,
+    entityLabel: form.value.title,
+    message: "Запись отправлена автором на модерацию.",
+  });
   redirect(
     getCreateSuccessRedirect(formData, "submittedSuccessRedirectTo", "/author/media?submitted=1"),
   );
@@ -645,6 +728,21 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
   }
 
+  await logActivity({
+    action: "media.updated",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: mediaItemId,
+    entityLabel: form.value.title,
+    message: "Запись изменена автором.",
+    metadata: {
+      mediaType: form.value.mediaType,
+      franchiseIds: form.value.franchiseIds,
+      mediaCarrierId: form.value.mediaCarrierId,
+    },
+  });
+
   revalidatePath("/author/media");
   redirect("/author/media?updated=1");
 }
@@ -683,6 +781,15 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   revalidatePath("/author/media");
 
   if (updatedItem.publicationStatus === "published") {
+    await logActivity({
+      action: "media.published",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: updatedItem.id,
+      entityLabel: item.title,
+      message: "Запись опубликована автором.",
+    });
     revalidatePath("/");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect("/author/media?published=1");
@@ -690,6 +797,15 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
+  await logActivity({
+    action: "media.submitted",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: updatedItem.id,
+    entityLabel: item.title,
+    message: "Запись отправлена автором на модерацию.",
+  });
   redirect("/author/media?submitted=1");
 }
 
@@ -723,6 +839,15 @@ export async function withdrawAuthorMediaItemAction(formData: FormData) {
   revalidatePath("/author/media");
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
+  await logActivity({
+    action: "media.withdrawn",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: updatedItem.id,
+    entityLabel: item.title,
+    message: "Заявка записи отозвана автором.",
+  });
   redirect("/author/media?withdrawn=1");
 }
 
@@ -759,5 +884,17 @@ export async function deleteAuthorMediaItemAction(formData: FormData) {
   }).catch(console.error);
 
   revalidatePath("/author/media");
+  await logActivity({
+    action: "media.deleted",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "media-item",
+    entityId: deletedItem.id,
+    entityLabel: item.title,
+    message: "Непубличная запись удалена автором.",
+    metadata: {
+      publicationStatus: deletedItem.publicationStatus,
+    },
+  });
   redirect("/author/media?deleted=1");
 }

@@ -43,6 +43,10 @@ import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import type { CoverSourceInput } from "@/lib/covers/types";
+import type {
+  MediaItemDuplicateCheckInput,
+  MediaItemDuplicateMatch,
+} from "@/lib/media/media-item-duplicates";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -649,6 +653,58 @@ export async function getAuthorPrivateMediaItemLimitUsage(input: {
   since: Date;
 }) {
   return getAuthorPrivateMediaItemLimitUsageForExecutor(db, input);
+}
+
+function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) {
+  const searchTerms = [input.title, input.originalTitle]
+    .map((value) => value?.trim().toLowerCase() ?? "")
+    .filter((value) => value.length >= 2);
+
+  if (searchTerms.length === 0) {
+    return undefined;
+  }
+
+  return or(
+    ...searchTerms.flatMap((searchTerm) => {
+      const pattern = `%${searchTerm}%`;
+
+      return [
+        sql`lower(${mediaItems.title}) like ${pattern}`,
+        sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
+        sql`lower(${mediaItems.code}) like ${pattern}`,
+      ];
+    }),
+  );
+}
+
+export async function findPublishedMediaItemDuplicateCandidates(
+  input: MediaItemDuplicateCheckInput,
+): Promise<MediaItemDuplicateMatch[]> {
+  const searchCondition = mediaItemDuplicateSearchCondition(input);
+
+  if (!searchCondition) {
+    return [];
+  }
+
+  return db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      mediaType: mediaItems.mediaType,
+      releaseYear: mediaItems.releaseYear,
+    })
+    .from(mediaItems)
+    .where(
+      and(
+        publishedMediaItemCondition,
+        eq(mediaItems.mediaType, input.mediaType),
+        searchCondition,
+      ),
+    )
+    .orderBy(asc(mediaItems.title), asc(mediaItems.code))
+    .limit(10);
 }
 
 export type AuthorMediaItemInput = {

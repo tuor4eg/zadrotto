@@ -98,6 +98,36 @@ async function validateGoogleBooksCredentials(credentials: Record<string, string
     : ({ ok: false, error: getCredentialsValidationError(response.response) } as const);
 }
 
+async function validateComicVineCredentials(credentials: Record<string, string>) {
+  const url = buildUrl("https://comicvine.gamespot.com/api/volumes/", {
+    api_key: credentials.apiKey,
+    format: "json",
+    limit: 1,
+    field_list: "id",
+  });
+  const response = await fetchWithValidationTimeout(url, {
+    headers: {
+      "User-Agent": "zadrotto/1.0 comic archive",
+    },
+  });
+
+  if (!response.ok) {
+    return response;
+  }
+
+  if (!response.response.ok) {
+    return { ok: false as const, error: getCredentialsValidationError(response.response) };
+  }
+
+  const data = (await response.response.json().catch(() => null)) as {
+    status_code?: number;
+  } | null;
+
+  return data?.status_code === 1
+    ? ({ ok: true } as const)
+    : ({ ok: false, error: "invalid-credentials" } as const);
+}
+
 async function validateRawgCredentials(credentials: Record<string, string>) {
   const url = buildUrl("https://api.rawg.io/api/games", {
     key: credentials.apiKey,
@@ -170,6 +200,8 @@ export async function validateCoverProviderCredentials(input: {
       return validateTmdbCredentials(parsed.value);
     case "google-books":
       return validateGoogleBooksCredentials(parsed.value);
+    case "comic-vine":
+      return validateComicVineCredentials(parsed.value);
     case "igdb":
       return validateIgdbCredentials(parsed.value);
     case "rawg":

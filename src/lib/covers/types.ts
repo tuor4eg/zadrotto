@@ -2,6 +2,7 @@ import type { MediaType } from "@/lib/media/types";
 
 export type MediaProviderCode =
   | "tmdb"
+  | "comic-vine"
   | "open-library"
   | "google-books"
   | "igdb"
@@ -12,6 +13,7 @@ export type CoverProviderCode = MediaProviderCode;
 
 export const COVER_PROVIDER_CODES = [
   "tmdb",
+  "comic-vine",
   "open-library",
   "google-books",
   "igdb",

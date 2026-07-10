@@ -15,6 +15,14 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Серия с таким названием уже существует.";
   }
 
+  if (error === "duplicate-media-exact") {
+    return "Такой тайтл уже есть в архиве. Открой существующую запись вместо создания дубля.";
+  }
+
+  if (error === "duplicate-media-possible") {
+    return "Проверь похожие тайтлы в архиве и подтверди, что создаешь другую запись.";
+  }
+
   if (error === "forbidden") {
     return "Создавать серии могут только доверенные авторы.";
   }

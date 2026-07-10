@@ -186,7 +186,7 @@ export async function updateCoverSettingsAction(
   }
 
   revalidatePath("/admin", "layout");
-  revalidatePath("/admin/settings/covers");
+  revalidatePath("/admin/tools/providers/limits");
   await logActivity({
     action: "cover-settings.updated",
     actorType: "admin",
@@ -253,7 +253,7 @@ export async function updateCoverProviderSettingsAction(
   }
 
   revalidatePath("/admin", "layout");
-  revalidatePath("/admin/settings/covers");
+  revalidatePath("/admin/tools/providers");
   await logActivity({
     action: "cover-providers.updated",
     actorType: "admin",
@@ -325,7 +325,7 @@ export async function updateCoverProviderCredentialsAction(
   }
 
   revalidatePath("/admin", "layout");
-  revalidatePath("/admin/settings/covers");
+  revalidatePath("/admin/tools/providers");
   await logActivity({
     action: "cover-provider-credentials.updated",
     actorType: "admin",

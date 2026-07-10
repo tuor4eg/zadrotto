@@ -89,8 +89,9 @@ function getActivityEntityAdminHref(input: {
     case "author-token":
       return "/admin/author-tokens";
     case "cover-provider":
+      return "/admin/tools/providers";
     case "cover-settings":
-      return "/admin/settings/covers";
+      return "/admin/tools/providers/limits";
     case "franchise":
       return input.entityId ? `/admin/franchises/${input.entityId}/edit` : null;
     case "media-item":

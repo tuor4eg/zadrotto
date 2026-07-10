@@ -11,6 +11,7 @@ export type CoverProviderMediaSetting = {
 
 export const COVER_PROVIDER_LABELS = {
   tmdb: "TMDB",
+  "comic-vine": "ComicVine",
   "open-library": "Open Library",
   "google-books": "Google Books",
   igdb: "IGDB",
