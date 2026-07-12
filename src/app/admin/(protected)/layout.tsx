@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import {
   Archive,
@@ -39,7 +40,14 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <AdminProgressBar />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
-          <div className="pl-12 md:pl-0">
+          <div className="flex items-center gap-3 pl-12 md:pl-0">
+            <Image
+              src="/site-logo.png"
+              alt=""
+              width={48}
+              height={48}
+              className="size-12 shrink-0 object-contain"
+            />
             <h1 className="text-3xl font-semibold tracking-tight text-stone-950">
               Панель управления
             </h1>

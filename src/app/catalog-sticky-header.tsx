@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -106,7 +107,7 @@ export function CatalogStickyHeader({
     <Link
       href="/admin"
       aria-label="Админка"
-      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+      className={`archive-control-surface inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
         isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       }`}
     >
@@ -118,7 +119,7 @@ export function CatalogStickyHeader({
     <Link
       href="/author"
       aria-label={authorLinkLabel}
-      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+      className={`archive-control-surface inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
         isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       }`}
     >
@@ -130,7 +131,7 @@ export function CatalogStickyHeader({
       type="button"
       onClick={() => setIsLoginOpen(true)}
       aria-label={authorLinkLabel}
-      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+      className={`archive-control-surface inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
         isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       }`}
     >
@@ -156,10 +157,15 @@ export function CatalogStickyHeader({
         }`}
         aria-hidden={isCompact ? true : undefined}
       >
-        <div className="grid size-16 shrink-0 place-items-center border border-stone-400/70 bg-stone-100/60 text-center font-mono text-sm font-semibold leading-5 text-stone-950 shadow-[inset_0_0_0_1px_rgba(68,64,60,0.16)]">
-          Ж. К.
-          <br />
-          Н. Б.
+        <div className="grid size-16 shrink-0 place-items-center">
+          <Image
+            src="/site-logo.png"
+            alt="Журнал, которого не было"
+            width={64}
+            height={64}
+            className="size-16 object-contain"
+            priority
+          />
         </div>
         <div className="min-w-0">
           <h1 className="pt-5 font-serif text-3xl leading-none text-stone-950 sm:text-5xl">

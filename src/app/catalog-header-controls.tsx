@@ -337,7 +337,7 @@ export function CatalogHeaderControls({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 bg-stone-50/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
+          className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
           placeholder="Поиск"
         />
         {search ? (
@@ -374,7 +374,7 @@ export function CatalogHeaderControls({
             aria-expanded={openSelect === "filters"}
             aria-controls={filtersMenuId}
             onClick={() => setOpenSelect(openSelect === "filters" ? null : "filters")}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            className="archive-control-surface inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
           >
             {yearFilter === null ? <Library className="size-4" /> : <Calendar className="size-4" />}
             <ChevronDown className="sr-only" />

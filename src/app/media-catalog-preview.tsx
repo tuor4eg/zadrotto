@@ -81,7 +81,7 @@ export function MediaCatalogPreview({
         aria-hidden="true"
         className="pointer-events-none absolute -top-1 right-4 z-30 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
       />
-      <div className="relative -ml-2 flex flex-1 rotate-[0.35deg] flex-col border border-stone-400/70 bg-[linear-gradient(135deg,rgb(var(--archive-paper-start)),rgb(var(--archive-paper-end)))] p-3 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-4">
+      <div className="archive-control-surface relative -ml-2 flex flex-1 rotate-[0.35deg] flex-col border border-stone-400/70 p-3 shadow-[0_15px_32px_rgba(28,25,23,0.20),inset_0_0_0_1px_rgba(255,255,255,0.45)] sm:p-4">
         <div className={`${labelFontClassName} text-sm uppercase leading-6 text-stone-950`}>
           Досье
         </div>

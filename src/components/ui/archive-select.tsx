@@ -80,7 +80,7 @@ export function ArchiveSelect<TValue extends string>({
         aria-controls={selectId}
         onClick={() => updateOpen(!isOpen)}
         className={cn(
-          "inline-flex h-9 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950",
+          "archive-control-surface inline-flex h-9 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950",
           compact ? "w-9 px-0" : "min-w-[190px] gap-2 px-3",
           triggerClassName,
         )}
