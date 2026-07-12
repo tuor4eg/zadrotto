@@ -9,7 +9,9 @@ clean-next:
 
 # Build images locally and push them to the registry.
 push: clean-next
-	docker build -t $(IMAGE) .
+	@set -a; . ./.env; set +a; \
+		test -n "$$SITE_URL" || { echo "SITE_URL is required in .env"; exit 1; }; \
+		docker build --build-arg SITE_URL="$$SITE_URL" -t $(IMAGE) .
 	docker build \
 		--target migrator \
 		-t $(MIGRATOR_IMAGE) .
