@@ -1,12 +1,14 @@
 "use client";
 
-import Link from "next/link";
-import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
+import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import {
+  AnimeMangaRatingContent,
   BookNoteRatingContent,
   ComicCardRatingContent,
   DosTerminalRatingContent,
@@ -99,7 +101,9 @@ export function MediaItemRatingPanel({
   const isDvdMenuPanel = panelVariant === "dvd-menu";
   const isComicCardPanel = panelVariant === "comic-card";
   const isBookNotePanel = panelVariant === "book-note";
+  const isAnimeMangaPanel = panelVariant === "anime-manga";
   const isStandalonePanel =
+    isAnimeMangaPanel ||
     isBookNotePanel ||
     isComicCardPanel ||
     isDvdMenuPanel ||
@@ -143,7 +147,17 @@ export function MediaItemRatingPanel({
       : `mt-2 block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
-  const content = isBookNotePanel ? (
+  const content = isAnimeMangaPanel ? (
+    <AnimeMangaRatingContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isBookNotePanel ? (
     <BookNoteRatingContent
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
@@ -316,14 +330,17 @@ export function MediaItemRatingPanel({
   if (!currentAuthor) {
     return (
       <ArchiveTooltip label={tooltip} className={tooltipClassName}>
-        <Link
-          href="/author/login"
+        <button
+          type="button"
           className={ratingPanelClassName}
           aria-label="Войти как автор, чтобы поставить оценку"
-          onClick={(event) => event.stopPropagation()}
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen?.();
+          }}
         >
           {content}
-        </Link>
+        </button>
       </ArchiveTooltip>
     );
   }
@@ -442,7 +459,17 @@ export function MediaItemRatingDialog({
   panelVariant,
   size = "card",
 }: MediaItemRatingDialogProps) {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
+
+  useEffect(() => {
+    if (currentAuthor && openRatingAfterLogin) {
+      setOpenRatingAfterLogin(false);
+      setIsOpen(true);
+    }
+  }, [currentAuthor, openRatingAfterLogin]);
 
   return (
     <>
@@ -454,7 +481,7 @@ export function MediaItemRatingDialog({
         currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
         currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
         currentAuthorScore={currentAuthorScore}
-        onOpen={() => setIsOpen(true)}
+        onOpen={() => currentAuthor ? setIsOpen(true) : setIsLoginOpen(true)}
         panelDisplayClassName={panelDisplayClassName}
         panelLabelClassName={panelLabelClassName}
         panelVariant={panelVariant}
@@ -474,6 +501,19 @@ export function MediaItemRatingDialog({
               releaseYear={releaseYear}
               formId="media-item-rating-form"
               onClose={() => setIsOpen(false)}
+            />,
+            document.body,
+          )
+        : null}
+      {isLoginOpen
+        ? createPortal(
+            <AuthorLoginModal
+              onClose={() => setIsLoginOpen(false)}
+              onSuccess={() => {
+                setIsLoginOpen(false);
+                setOpenRatingAfterLogin(true);
+                router.refresh();
+              }}
             />,
             document.body,
           )

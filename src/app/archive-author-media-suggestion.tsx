@@ -11,6 +11,7 @@ import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaType } from "@/lib/media/types";
+import type { MediaTypeFilter } from "./media-items-catalog-logic";
 
 type ArchiveAuthorMediaSuggestionProps = {
   action: (formData: FormData) => void | Promise<void>;
@@ -18,6 +19,7 @@ type ArchiveAuthorMediaSuggestionProps = {
   canPublishMediaWithoutReview: boolean;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
+  mediaTypeFilter: MediaTypeFilter;
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
   searchQuery: string;
 };
@@ -57,6 +59,7 @@ export function ArchiveAuthorMediaSuggestion({
   canPublishMediaWithoutReview,
   franchises,
   mediaCarriers,
+  mediaTypeFilter,
   mediaTypes,
   searchQuery,
 }: ArchiveAuthorMediaSuggestionProps) {
@@ -64,6 +67,10 @@ export function ArchiveAuthorMediaSuggestion({
   const searchParams = useSearchParams();
   const [modalState, setModalState] = useState<SuggestionModalState | null>(null);
   const defaultMediaType = mediaTypes[0]?.code ?? null;
+  const selectedMediaType =
+    mediaTypeFilter !== "all" && mediaTypes.some(({ code }) => code === mediaTypeFilter)
+      ? mediaTypeFilter
+      : defaultMediaType;
   const currentArchivePath = useMemo(
     () => getCurrentArchivePath(pathname, searchParams),
     [pathname, searchParams],
@@ -84,7 +91,11 @@ export function ArchiveAuthorMediaSuggestion({
     ? "Опубликовать"
     : "Отправить на модерацию";
 
-  const openModal = useCallback((mediaType: MediaType | null = defaultMediaType) => {
+  const openModal = useCallback((requestedMediaType: MediaTypeFilter | null = selectedMediaType) => {
+    const mediaType = mediaTypes.some(({ code }) => code === requestedMediaType)
+      ? (requestedMediaType as MediaType)
+      : selectedMediaType;
+
     if (!mediaType) {
       return;
     }
@@ -93,11 +104,12 @@ export function ArchiveAuthorMediaSuggestion({
       mediaType,
       title: searchQuery,
     });
-  }, [defaultMediaType, searchQuery]);
+  }, [mediaTypes, searchQuery, selectedMediaType]);
 
   useEffect(() => {
-    function handleSuggestRequest() {
-      openModal();
+    function handleSuggestRequest(event: Event) {
+      const mediaType = (event as CustomEvent<{ mediaType?: MediaTypeFilter }>).detail?.mediaType;
+      openModal(mediaType ?? selectedMediaType);
     }
 
     window.addEventListener(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT, handleSuggestRequest);
@@ -105,7 +117,7 @@ export function ArchiveAuthorMediaSuggestion({
     return () => {
       window.removeEventListener(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT, handleSuggestRequest);
     };
-  }, [openModal]);
+  }, [openModal, selectedMediaType]);
 
   useEffect(() => {
     if (!modalState) {

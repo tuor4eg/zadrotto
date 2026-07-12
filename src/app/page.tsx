@@ -188,6 +188,7 @@ export default async function Home({ searchParams }: HomeProps) {
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
           franchises={authorMediaSuggestionData.franchises}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
+          mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypes}
           searchQuery={searchQuery}
         />

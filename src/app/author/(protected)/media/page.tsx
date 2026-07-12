@@ -187,7 +187,11 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
             {items.length} всего
           </Badge>
           <Link
-            href="/author/media/new"
+            href={
+              mediaTypeFilter === "all"
+                ? "/author/media/new"
+                : `/author/media/new?type=${encodeURIComponent(mediaTypeFilter)}`
+            }
             className={buttonVariants({ size: "sm" })}
           >
             <Plus />

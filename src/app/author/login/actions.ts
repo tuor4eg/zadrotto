@@ -22,6 +22,26 @@ function getFormString(formData: FormData, key: string) {
 }
 
 export async function loginAuthor(formData: FormData) {
+  const result = await loginAuthorInline(null, formData);
+
+  if (!result.ok) {
+    redirect(`/author/login?error=${result.error}`);
+  }
+
+  redirect("/author");
+}
+
+export type AuthorLoginState =
+  | { ok: false; error: "invalid" | "rate-limit" | "rate-limit-unavailable" }
+  | { ok: true }
+  | null;
+
+type AuthorLoginResult = Exclude<AuthorLoginState, null>;
+
+export async function loginAuthorInline(
+  _previousState: AuthorLoginState,
+  formData: FormData,
+): Promise<AuthorLoginResult> {
   const accessToken = getFormString(formData, "accessToken");
   const tokenHash = accessToken ? hashAuthorAccessToken(accessToken) : "";
   const rateLimit = await checkAuthRateLimit({
@@ -45,11 +65,10 @@ export async function loginAuthor(formData: FormData) {
         credentialProvided: Boolean(accessToken),
       },
     });
-    redirect(
-      `/author/login?error=${
-        rateLimit.reason === "limited" ? "rate-limit" : "rate-limit-unavailable"
-      }`,
-    );
+    return {
+      ok: false,
+      error: rateLimit.reason === "limited" ? "rate-limit" : "rate-limit-unavailable",
+    };
   }
 
   const tokenRecord = tokenHash ? await getAuthorByAccessTokenHash(tokenHash) : null;
@@ -64,7 +83,7 @@ export async function loginAuthor(formData: FormData) {
         credentialProvided: Boolean(accessToken),
       },
     });
-    redirect("/author/login?error=invalid");
+    return { ok: false, error: "invalid" };
   }
 
   await updateAuthorAccessTokenLastUsedAt(tokenRecord.id);
@@ -76,5 +95,5 @@ export async function loginAuthor(formData: FormData) {
     message: "Автор вошел по токену доступа.",
   });
 
-  redirect("/author");
+  return { ok: true };
 }

@@ -3,6 +3,7 @@ import { Bookmark, Info, Lock, PlusCircle } from "lucide-react";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_BOOK_NOTE_RATING_TONE_CLASS_NAMES,
+  AVERAGE_ANIME_RATING_TONE_CLASS_NAMES,
   AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
@@ -13,6 +14,7 @@ import {
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
   AVERAGE_WIN9X_RATING_TONE_CLASS_NAMES,
   AUTHOR_BOOK_NOTE_RATING_TONE_CLASS_NAMES,
+  AUTHOR_ANIME_RATING_TONE_CLASS_NAMES,
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
@@ -27,6 +29,16 @@ import {
 type RatingStarsProps = {
   score: number | null;
   variant?: "plain" | "terminal";
+};
+
+type AnimeMangaRatingContentProps = {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
 };
 
 type DosTerminalRatingContentProps = {
@@ -170,6 +182,8 @@ const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.png";
 const COMIC_ARCHIVE_BURST_PATH = "/mediaCarriers/comic/star.png";
 const COMIC_AUTHOR_BURST_PATH = "/mediaCarriers/comic/bam.png";
 const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.png";
+const ANIME_ARCHIVE_RATING_ART_PATH = "/mediaCarriers/anime/robot.webp";
+const ANIME_AUTHOR_RATING_ART_PATH = "/mediaCarriers/anime/kawai.webp";
 
 function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
@@ -205,6 +219,73 @@ function RatingHearts({ score }: { score: number | null }) {
           <img src={NES_HEART_PATH} alt="" className="h-5 w-auto object-contain" />
         </span>
       ))}
+    </span>
+  );
+}
+
+export function AnimeMangaRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: AnimeMangaRatingContentProps) {
+  const toneClassName =
+    tone === "archive"
+      ? AVERAGE_ANIME_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+      : AUTHOR_ANIME_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+  const artPath =
+    tone === "archive" ? ANIME_ARCHIVE_RATING_ART_PATH : ANIME_AUTHOR_RATING_ART_PATH;
+  const isSignIn = Boolean(value);
+  const footerLabel = tone === "archive" ? "ACTION LEVEL" : isSignIn ? "JOIN THE RANKS" : "PILOT FILE";
+
+  return (
+    <span
+      className={`relative flex h-full min-h-0 w-full flex-col overflow-hidden border-2 border-black bg-[#f4f0e6] text-black shadow-[3px_4px_0_#111] [clip-path:polygon(0_7px,7px_0,calc(100%_-_5px)_0,100%_5px,100%_calc(100%_-_7px),calc(100%_-_7px)_100%,5px_100%,0_calc(100%_-_5px))] ${
+        compact ? "pt-6" : "pt-8"
+      }`}
+    >
+      <span className="absolute left-0 top-0 z-20 size-0 border-b-[13px] border-l-[13px] border-b-transparent border-l-black" />
+      <span className="absolute bottom-0 left-0 z-20 size-0 border-l-[13px] border-t-[13px] border-l-black border-t-transparent" />
+      <span className="absolute left-4 top-2 z-10 font-mono text-[9px] font-black uppercase tracking-[0.14em] text-black">
+        {label}
+      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        alt=""
+        aria-hidden="true"
+        className={`pointer-events-none absolute bottom-6 left-0 object-cover object-left ${
+          compact ? "h-[78%] w-full" : "h-[84%] w-full"
+        }`}
+        src={artPath}
+      />
+      <span className="pointer-events-none absolute bottom-7 right-3 z-[2] flex -rotate-[18deg] gap-1" aria-hidden="true">
+        <span className="h-7 w-1.5 bg-red-700" />
+        <span className="h-9 w-1.5 bg-red-700" />
+        <span className="h-6 w-1.5 bg-red-700" />
+      </span>
+      <span className="relative z-[1] flex flex-1 flex-col items-center justify-center px-4 text-center">
+        <span className={`${compact ? "text-3xl" : "text-6xl"} block font-black leading-none tabular-nums ${isSignIn ? "text-black" : toneClassName}`}>
+          {value ?? formatScore(score)}
+        </span>
+        {isSignIn ? (
+          <span className="mt-1 block max-w-[11rem] font-mono text-[9px] font-bold uppercase leading-3 tracking-[0.08em] text-black">
+            чтобы поставить оценку
+          </span>
+        ) : (
+          <span className={`block text-black ${compact ? "mt-0 scale-75" : "mt-2"}`}>
+            <RatingStars score={score} />
+          </span>
+        )}
+      </span>
+      <span className="relative z-[3] flex min-h-6 items-center justify-between gap-2 border-t-2 border-black bg-[#f4f0e6] px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.1em] text-black">
+        <span>{footerLabel}</span>
+        <span className="truncate text-right font-bold tracking-normal">
+          {detail ? `${detailPrefix}${detail}` : "// 00"}
+        </span>
+      </span>
     </span>
   );
 }
@@ -1797,6 +1878,18 @@ export function ArchiveRatingPanel({
   ratingsCount,
   score,
 }: ArchiveRatingPanelProps) {
+  if (ratingPanelVariant === "anime-manga") {
+    return (
+      <AnimeMangaRatingContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
   if (ratingPanelVariant === "book-note") {
     return (
       <BookNoteRatingContent

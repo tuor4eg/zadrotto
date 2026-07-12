@@ -14,6 +14,7 @@ import {
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { getCoverProviderDefaultSettings } from "@/lib/covers/provider-settings";
+import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
 import {
   getCoverProvidersForMediaType,
   getTitleProvidersForMediaType,
@@ -174,6 +175,102 @@ describe("cover provider registry", () => {
         })),
       [{ providerCode: "comic-vine", enabled: true, priority: 10 }],
     );
+  });
+
+  it("uses Jikan before TMDB as the default anime providers", () => {
+    assert.deepEqual(
+      getCoverProviderDefaultSettings().filter((provider) => provider.mediaType === "anime"),
+      [
+        { mediaType: "anime", providerCode: "jikan", enabled: true, priority: 10 },
+        { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 20 },
+      ],
+    );
+  });
+
+  it("uses TMDB TV endpoints and TV metadata for anime", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+    const requestedPaths: string[] = [];
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+      requestedPaths.push(url.pathname);
+
+      if (url.pathname === "/3/search/tv") {
+        return Response.json({
+          results: [
+            {
+              id: 42,
+              name: "Аниме",
+              original_name: "Anime",
+              first_air_date: "2024-01-01",
+            },
+          ],
+        });
+      }
+
+      return Response.json({
+        episode_run_time: [24],
+        first_air_date: "2024-01-01",
+        genres: [{ name: "Animation" }],
+        networks: [{ name: "TV Tokyo" }],
+        number_of_episodes: 12,
+        number_of_seasons: 1,
+      });
+    };
+
+    try {
+      assert.deepEqual(
+        await provider.searchTitleCandidates?.(
+          { mediaType: "anime", query: "Anime" },
+          {
+            ...customOptions,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        ),
+        [
+          {
+            id: "tv:42",
+            provider: "tmdb",
+            externalId: "42",
+            mediaType: "anime",
+            title: "Аниме",
+            originalTitle: "Anime",
+            description: null,
+            coverUrl: null,
+            sourcePageUrl: "https://www.themoviedb.org/tv/42",
+            releaseYear: 2024,
+            confidence: undefined,
+          },
+        ],
+      );
+      assert.deepEqual(
+        await provider.getTitleMetadata?.(
+          { provider: "tmdb", externalId: "42", mediaType: "anime" },
+          {
+            ...customOptions,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        ),
+        {
+          provider: "tmdb",
+          externalId: "42",
+          sourceUrl: "https://www.themoviedb.org/tv/42",
+          facts: {
+            seasonCount: 1,
+            episodeCount: 12,
+            averageEpisodeRuntimeMinutes: 24,
+            genres: ["Animation"],
+            networks: ["TV Tokyo"],
+            firstAirYear: 2024,
+            lastAirYear: null,
+          },
+        },
+      );
+      assert.deepEqual(requestedPaths, ["/3/search/tv", "/3/tv/42"]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("returns successful provider results when another provider fails", async () => {
@@ -434,6 +531,7 @@ describe("cover settings form", () => {
       ["game", "igdb"],
       ["game", "rawg"],
       ["anime", "jikan"],
+      ["anime", "tmdb"],
     ]) {
       const settingKey = `${mediaType}:${providerCode}`;
 

@@ -1,9 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Shield, UserCircle } from "lucide-react";
 
+import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type {
   AuthorRatingFilter,
@@ -40,7 +43,9 @@ export function CatalogStickyHeader({
   yearFilter,
   yearMode,
 }: CatalogStickyHeaderProps) {
+  const router = useRouter();
   const [isCompact, setIsCompact] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
   const isCompactRef = useRef(false);
   const frameRef = useRef<number | null>(null);
   const authorLinkLabel = currentAuthor ? "Профиль" : "Войти";
@@ -109,9 +114,9 @@ export function CatalogStickyHeader({
       <span className={isCompact ? "sr-only" : "sr-only lg:not-sr-only"}>Админка</span>
     </Link>
   ) : null;
-  const authorLink = (
+  const authorLink = currentAuthor ? (
     <Link
-      href={currentAuthor ? "/author" : "/author/login"}
+      href="/author"
       aria-label={authorLinkLabel}
       className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
         isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
@@ -120,9 +125,22 @@ export function CatalogStickyHeader({
       <UserCircle className="size-5" />
       <span className={isCompact ? "sr-only" : "sr-only lg:not-sr-only"}>{authorLinkLabel}</span>
     </Link>
+  ) : (
+    <button
+      type="button"
+      onClick={() => setIsLoginOpen(true)}
+      aria-label={authorLinkLabel}
+      className={`inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 bg-stone-50/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+        isCompact ? "w-9 px-0" : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
+      }`}
+    >
+      <UserCircle className="size-5" />
+      <span className={isCompact ? "sr-only" : "sr-only lg:not-sr-only"}>{authorLinkLabel}</span>
+    </button>
   );
 
   return (
+    <>
     <header
       className={`archive-paper archive-panel archive-stack archive-stack-bottom archive-sticky-header flex items-center gap-4 lg:transition-[max-width,padding,width] lg:duration-200 ${
         isCompact
@@ -192,5 +210,18 @@ export function CatalogStickyHeader({
         )}
       </div>
     </header>
+    {isLoginOpen
+      ? createPortal(
+          <AuthorLoginModal
+            onClose={() => setIsLoginOpen(false)}
+            onSuccess={() => {
+              setIsLoginOpen(false);
+              router.refresh();
+            }}
+          />,
+          document.body,
+        )
+      : null}
+    </>
   );
 }

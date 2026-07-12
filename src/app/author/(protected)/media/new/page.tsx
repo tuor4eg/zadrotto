@@ -4,6 +4,7 @@ import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
+import { parseAuthorMediaTypeFilter } from "@/lib/authors/media-filters";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
 import { MediaItemForm } from "../media-item-form";
@@ -12,17 +13,20 @@ import { getAuthorMediaFormErrorMessage } from "../messages";
 type NewAuthorMediaPageProps = {
   searchParams: Promise<{
     error?: string;
+    type?: string;
   }>;
 };
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
-  const [{ error }, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [params, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     searchParams,
     requireAuthor(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
   ]);
+  const { error } = params;
+  const initialMediaType = parseAuthorMediaTypeFilter(params.type, mediaTypes);
   const errorMessage = getAuthorMediaFormErrorMessage(error);
   const createAndSubmitLabel = author.canPublishMediaWithoutReview
     ? "Опубликовать"
@@ -50,6 +54,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            values={initialMediaType === "all" ? undefined : { mediaType: initialMediaType }}
             createAndSubmitLabel={createAndSubmitLabel}
             canCreateFranchise={canAuthorCreateFranchise({
               canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,

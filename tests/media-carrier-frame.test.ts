@@ -248,8 +248,8 @@ describe("media carrier frames", () => {
         viewportClassName: "h-[min(58vh,520px)]",
       },
     );
-    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "vhs" }), false);
-    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }), false);
+    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "vhs" }), true);
+    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }), true);
   });
 
   it("uses reel frame for films released before 1980 when no carrier is selected", () => {
@@ -279,6 +279,25 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs", releaseYear: 1979 })?.assetPath,
       "/mediaCarriers/video/vhs/vhs.png",
     );
+  });
+
+  it("uses the anime frame regardless of the selected carrier", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }),
+      {
+        assetPath: "/mediaCarriers/anime/anime.webp",
+        aspectRatioClassName: "aspect-[954/1346]",
+        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+        compactViewportClassName: "h-[min(32vh,300px)]",
+        coverAreaClassName: "left-[9.9%] top-[7.7%] h-[86.5%] w-[86.2%]",
+        placeholderVariant: "dvd-label",
+        ratingPanelVariant: "anime-manga",
+        renderKind: "cartridge",
+        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+        viewportClassName: "h-[min(58vh,520px)]",
+      },
+    );
+    assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: null }), true);
   });
 
   it("uses TV frame for series released before 2004 when no carrier is selected", () => {

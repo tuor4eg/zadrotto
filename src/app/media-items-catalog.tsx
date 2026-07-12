@@ -207,7 +207,11 @@ export function MediaItemsCatalog({
                 type="button"
                 className="inline-flex h-9 items-center justify-center rounded-md border border-stone-300/80 bg-white px-3 font-mono text-xs font-semibold uppercase tracking-[0.12em] text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
                 onClick={() => {
-                  window.dispatchEvent(new Event(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT));
+                  window.dispatchEvent(
+                    new CustomEvent(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT, {
+                      detail: { mediaType: mediaTypeFilter },
+                    }),
+                  );
                 }}
               >
                 Предложить тайтл

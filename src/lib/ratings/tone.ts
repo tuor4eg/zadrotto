@@ -12,6 +12,18 @@ export const AUTHOR_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: "border-emerald-950/25 bg-emerald-700 text-emerald-50",
 };
 
+export const AVERAGE_ANIME_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-950",
+  medium: "text-red-800",
+  good: "text-red-700",
+};
+
+export const AUTHOR_ANIME_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-950",
+  medium: "text-red-800",
+  good: "text-red-700",
+};
+
 export const AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-400/60 text-red-300 shadow-[0_0_18px_rgba(252,165,165,0.12)]",
   medium: "border-stone-300/60 text-stone-200 shadow-[0_0_18px_rgba(214,211,209,0.12)]",

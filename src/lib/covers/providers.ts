@@ -16,4 +16,5 @@ export const COVER_PROVIDERS = [
   igdbProvider,
   rawgProvider,
   jikanProvider,
+  createTmdbProvider("anime"),
 ] as const satisfies readonly MediaProvider[];

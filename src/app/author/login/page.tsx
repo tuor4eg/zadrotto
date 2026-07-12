@@ -1,12 +1,10 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { Alert } from "@/components/ui/alert";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/form";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { loginAuthor } from "./actions";
+import { AuthorLoginForm } from "./author-login-form";
 
 type AuthorLoginPageProps = {
   searchParams: Promise<{
@@ -22,14 +20,10 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
   }
 
   const { error } = await searchParams;
-  const errorMessage =
-    error === "invalid"
-      ? "Неверный токен доступа."
-      : error === "rate-limit"
-        ? "Слишком много попыток входа. Попробуй позже."
-        : error === "rate-limit-unavailable"
-          ? "Вход временно недоступен. Попробуй позже."
-          : null;
+  const initialError =
+    error === "invalid" || error === "rate-limit" || error === "rate-limit-unavailable"
+      ? error
+      : null;
 
   return (
     <main className="archive-page min-h-screen px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -50,30 +44,7 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
           </CardHeader>
 
           <CardContent>
-          <form action={loginAuthor} className="flex flex-col gap-4" noValidate>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="author-access-token">
-                Токен доступа
-              </Label>
-              <Input
-                id="author-access-token"
-                name="accessToken"
-                type="password"
-                autoComplete="off"
-                required
-              />
-            </div>
-
-            {errorMessage ? (
-              <Alert variant="destructive">
-                {errorMessage}
-              </Alert>
-            ) : null}
-
-            <Button type="submit">
-              Войти
-            </Button>
-          </form>
+            <AuthorLoginForm initialError={initialError} redirectOnSuccess />
           </CardContent>
         </Card>
       </div>

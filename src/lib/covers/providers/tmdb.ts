@@ -117,8 +117,10 @@ function sortTmdbPosters(
   });
 }
 
-function getTmdbType(mediaType: "film" | "series") {
-  return mediaType === "series" ? "tv" : "movie";
+type TmdbMediaType = "anime" | "film" | "series";
+
+function getTmdbType(mediaType: TmdbMediaType) {
+  return mediaType === "film" ? "movie" : "tv";
 }
 
 function getTmdbTitle(
@@ -174,7 +176,7 @@ function getTmdbAverageEpisodeRuntimeMinutes(details: TmdbSeriesDetailsResponse)
   return null;
 }
 
-function createTmdbClient(input: { accessToken: string; mediaType: "film" | "series" }) {
+function createTmdbClient(input: { accessToken: string; mediaType: TmdbMediaType }) {
   const tmdbType = getTmdbType(input.mediaType);
   const headers = { Authorization: `Bearer ${input.accessToken}` };
 
@@ -213,7 +215,7 @@ function createTmdbClient(input: { accessToken: string; mediaType: "film" | "ser
   };
 }
 
-export function createTmdbProvider(mediaType: "film" | "series"): MediaProvider {
+export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
   return {
     code: "tmdb",
     mediaTypes: [mediaType],
