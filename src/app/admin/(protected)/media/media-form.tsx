@@ -1,7 +1,7 @@
 "use client";
 
-import { RefreshCw, Save } from "lucide-react";
-import { useMemo, useState } from "react";
+import { RefreshCw, Save, Search } from "lucide-react";
+import { useMemo, useRef, useState } from "react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
@@ -19,6 +19,7 @@ import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaTitleCandidate } from "@/lib/covers/types";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
+import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { InlineFranchiseDialog } from "./inline-franchise-dialog";
@@ -177,6 +178,9 @@ export function AdminMediaForm({
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
+  const metadataRequestVersionRef = useRef(0);
+  const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
+  const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
@@ -212,6 +216,8 @@ export function AdminMediaForm({
       return;
     }
 
+    const requestVersion = metadataRequestVersionRef.current + 1;
+    metadataRequestVersionRef.current = requestVersion;
     setIsRefreshingMetadata(true);
     setLocalErrorToast(null);
 
@@ -258,8 +264,10 @@ export function AdminMediaForm({
         return;
       }
 
-      setSelectedMetadata(nextMetadata);
-      setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
+      if (metadataRequestVersionRef.current === requestVersion) {
+        setSelectedMetadata(nextMetadata);
+        setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
+      }
     } finally {
       setIsRefreshingMetadata(false);
     }
@@ -319,13 +327,31 @@ export function AdminMediaForm({
         </div>
 
         <div className="flex flex-col gap-2 md:col-span-2">
-          <Label htmlFor="admin-media-title">Название</Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="admin-media-title">Название</Label>
+            {isEditing ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={title.trim().length < 2}
+                onClick={() => {
+                  setTitleProviderSearchKey((key) => key + 1);
+                  setIsTitleProviderSearchOpen(true);
+                }}
+              >
+                <Search className="size-4" />
+                Найти у провайдера
+              </Button>
+            ) : null}
+          </div>
           <Input
             id="admin-media-title"
             name="title"
             type="text"
             value={title}
             onChange={(event) => {
+              metadataRequestVersionRef.current += 1;
               setTitle(event.currentTarget.value);
               setCanSearchCoverCandidates(isEditing);
               setSelectedMetadata(isEditing ? metadata : null);
@@ -333,23 +359,39 @@ export function AdminMediaForm({
             }}
             required
           />
-          {!isEditing ? (
+          {isTitleProviderSearchOpen ? (
             <MediaTitleCandidatePicker
+              key={titleProviderSearchKey}
               mediaType={selectedMediaType}
               query={title}
               onSelect={(candidate) => {
-                setTitle(candidate.title);
-                setOriginalTitle(candidate.originalTitle ?? "");
-                setReleaseYear(candidate.releaseYear ? String(candidate.releaseYear) : "");
-                setDescription(candidate.description ?? "");
+                const nextFields = getMediaTitleCandidateFormFields(
+                  candidate,
+                  { description, originalTitle, releaseYear, title },
+                  isEditing,
+                );
+                setTitle(nextFields.title);
+                setOriginalTitle(nextFields.originalTitle);
+                setReleaseYear(nextFields.releaseYear);
+                setDescription(nextFields.description);
                 setCanSearchCoverCandidates(true);
-                setSelectedMetadata(null);
-                setMetadataCandidateToken("");
+                const requestVersion = metadataRequestVersionRef.current + 1;
+                metadataRequestVersionRef.current = requestVersion;
+                if (!isEditing) {
+                  setSelectedMetadata(null);
+                  setMetadataCandidateToken("");
+                }
+                if (isEditing) setIsTitleProviderSearchOpen(false);
 
-                void fetchMediaTitleMetadata(candidate).then((metadata) => {
-                  setSelectedMetadata(metadata);
-                  setMetadataCandidateToken(metadata?.metadataCandidateToken ?? "");
-                });
+                void fetchMediaTitleMetadata(candidate)
+                  .then((metadata) => {
+                    if (metadataRequestVersionRef.current !== requestVersion || !metadata) {
+                      return;
+                    }
+                    setSelectedMetadata(metadata);
+                    setMetadataCandidateToken(metadata.metadataCandidateToken ?? "");
+                  })
+                  .catch(() => undefined);
               }}
             />
           ) : null}

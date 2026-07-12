@@ -1,10 +1,15 @@
+import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
-import { getMediaItemByCode, getOtherMediaItemsFromFranchises } from "@/db/queries/media-items";
+import {
+  getMediaItemByCode,
+  getOtherMediaItemsFromFranchises,
+  getPublicMediaItemMetadataByCode,
+} from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
@@ -14,6 +19,37 @@ type MediaItemPageProps = {
     code: string;
   }>;
 };
+
+const mediaItemDescriptionFallback = "Архивная карточка тайтла, оценки и заметки.";
+
+export async function generateMetadata({ params }: MediaItemPageProps): Promise<Metadata> {
+  const { code } = await params;
+  const item = await getPublicMediaItemMetadataByCode(code);
+
+  if (!item) {
+    return {};
+  }
+
+  const description = item.description?.trim() || mediaItemDescriptionFallback;
+  const images = item.coverUrl ? [item.coverUrl] : undefined;
+
+  return {
+    title: item.title,
+    description,
+    openGraph: {
+      type: "website",
+      title: item.title,
+      description,
+      images,
+    },
+    twitter: {
+      card: item.coverUrl ? "summary_large_image" : "summary",
+      title: item.title,
+      description,
+      images,
+    },
+  };
+}
 
 export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const { code } = await params;

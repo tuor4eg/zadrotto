@@ -1336,6 +1336,25 @@ export async function getMediaItemIdentityByCode(code: string) {
   return item ?? null;
 }
 
+export async function getPublicMediaItemMetadataByCode(code: string) {
+  const [item] = await db
+    .select({
+      title: mediaItems.title,
+      description: mediaItems.description,
+      coverUrl: mediaItems.coverUrl,
+    })
+    .from(mediaItems)
+    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
+    .limit(1);
+
+  return item
+    ? {
+        ...item,
+        coverUrl: resolveCoverUrl(item.coverUrl),
+      }
+    : null;
+}
+
 export async function getMediaItemIdentityForAuthorRating(code: string, authorId: number) {
   const [item] = await db
     .select({

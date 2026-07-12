@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { AlertTriangle, Loader2, RefreshCw, Search } from "lucide-react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
@@ -21,6 +21,7 @@ import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import { cn } from "@/lib/common/utils";
 import type { MediaTitleCandidate } from "@/lib/covers/types";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
+import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
@@ -238,6 +239,9 @@ export function MediaItemForm({
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
+  const metadataRequestVersionRef = useRef(0);
+  const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
+  const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
   const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
     values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
@@ -390,6 +394,8 @@ export function MediaItemForm({
       return;
     }
 
+    const requestVersion = metadataRequestVersionRef.current + 1;
+    metadataRequestVersionRef.current = requestVersion;
     setIsRefreshingMetadata(true);
     setLocalErrorToast(null);
 
@@ -436,8 +442,10 @@ export function MediaItemForm({
         return;
       }
 
-      setSelectedMetadata(nextMetadata);
-      setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
+      if (metadataRequestVersionRef.current === requestVersion) {
+        setSelectedMetadata(nextMetadata);
+        setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
+      }
     } finally {
       setIsRefreshingMetadata(false);
     }
@@ -516,9 +524,24 @@ export function MediaItemForm({
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
-          <Label htmlFor="author-media-title">
-            Название
-          </Label>
+          <div className="flex items-center justify-between gap-3">
+            <Label htmlFor="author-media-title">Название</Label>
+            {isEditing ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={title.trim().length < 2}
+                onClick={() => {
+                  setTitleProviderSearchKey((key) => key + 1);
+                  setIsTitleProviderSearchOpen(true);
+                }}
+              >
+                <Search className="size-4" />
+                Найти у провайдера
+              </Button>
+            ) : null}
+          </div>
           <Input
             id="author-media-title"
             name="title"
@@ -526,6 +549,7 @@ export function MediaItemForm({
             required
             value={title}
             onChange={(event) => {
+              metadataRequestVersionRef.current += 1;
               setTitle(event.currentTarget.value);
               setDuplicateAcknowledged(false);
               setDuplicateStatus("idle");
@@ -534,25 +558,41 @@ export function MediaItemForm({
               setMetadataCandidateToken("");
             }}
           />
-          {!isEditing ? (
+          {isTitleProviderSearchOpen ? (
             <MediaTitleCandidatePicker
+              key={titleProviderSearchKey}
               mediaType={selectedMediaType}
               query={title}
               onSelect={(candidate) => {
-                setTitle(candidate.title);
-                setOriginalTitle(candidate.originalTitle ?? "");
-                setReleaseYear(candidate.releaseYear ? String(candidate.releaseYear) : "");
-                setDescription(candidate.description ?? "");
+                const nextFields = getMediaTitleCandidateFormFields(
+                  candidate,
+                  { description, originalTitle, releaseYear, title },
+                  isEditing,
+                );
+                setTitle(nextFields.title);
+                setOriginalTitle(nextFields.originalTitle);
+                setReleaseYear(nextFields.releaseYear);
+                setDescription(nextFields.description);
                 setDuplicateAcknowledged(false);
                 setDuplicateStatus("idle");
                 setCanSearchCoverCandidates(true);
-                setSelectedMetadata(null);
-                setMetadataCandidateToken("");
+                const requestVersion = metadataRequestVersionRef.current + 1;
+                metadataRequestVersionRef.current = requestVersion;
+                if (!isEditing) {
+                  setSelectedMetadata(null);
+                  setMetadataCandidateToken("");
+                }
+                if (isEditing) setIsTitleProviderSearchOpen(false);
 
-                void fetchMediaTitleMetadata(candidate).then((metadata) => {
-                  setSelectedMetadata(metadata);
-                  setMetadataCandidateToken(metadata?.metadataCandidateToken ?? "");
-                });
+                void fetchMediaTitleMetadata(candidate)
+                  .then((metadata) => {
+                    if (metadataRequestVersionRef.current !== requestVersion || !metadata) {
+                      return;
+                    }
+                    setSelectedMetadata(metadata);
+                    setMetadataCandidateToken(metadata.metadataCandidateToken ?? "");
+                  })
+                  .catch(() => undefined);
               }}
             />
           ) : null}

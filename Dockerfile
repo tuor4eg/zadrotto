@@ -19,6 +19,8 @@ COPY tools ./tools
 
 # Build Next.js in CI.
 FROM base AS builder
+ARG SITE_URL
+ENV SITE_URL=$SITE_URL
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build

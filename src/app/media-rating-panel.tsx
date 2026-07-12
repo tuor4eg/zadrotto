@@ -1536,8 +1536,8 @@ export function NesRatingPanelContent({
   return (
     <>
       <span
-        className={`${labelFontClassName} block ${
-          compact ? "text-[10px]" : "text-xs"
+        className={`${labelFontClassName} ${
+          compact ? "flex min-h-8 items-end justify-center text-[10px] leading-4" : "block text-xs"
         } uppercase ${hasValueOverride ? "text-stone-500" : "opacity-75"}`}
       >
         {compact ? compactLabel ?? label : label}
@@ -1549,7 +1549,7 @@ export function NesRatingPanelContent({
                 compact ? "text-xs" : "text-sm"
               } uppercase text-red-900`
             : `block ${displayFontClassName} ${
-                compact ? "mt-1 text-3xl" : "mt-2 text-5xl"
+                compact ? "mt-1 text-3xl leading-none" : "mt-2 text-5xl"
               } tabular-nums`
         }
       >
@@ -1574,7 +1574,7 @@ export function NesRatingPanelContent({
         )
       ) : !hasValueOverride ? (
         <span
-          className={`mt-1 block ${labelFontClassName} text-[9px] uppercase ${detail ? "opacity-75" : "opacity-0"}`}
+          className={`mt-1 block min-h-4 ${labelFontClassName} text-[9px] uppercase leading-4 ${detail ? "opacity-75" : "opacity-0"}`}
         >
           {detail ? `${detailPrefix}${detail}` : "—"}
         </span>

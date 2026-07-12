@@ -151,11 +151,11 @@ export const RATING_BAR_TONE_CLASS_NAMES: Record<RatingTone, string> = {
 };
 
 export function getRatingTone(score: number | null): RatingTone {
-  if (score !== null && score <= 30) {
+  if (score !== null && score <= 40) {
     return "bad";
   }
 
-  if (score !== null && score >= 70) {
+  if (score !== null && score >= 80) {
     return "good";
   }
 
