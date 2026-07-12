@@ -15,6 +15,7 @@ export function AuthorLoginModal({ onClose, onSuccess }: AuthorLoginModalProps) 
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
+    const previouslyFocusedElement = previouslyFocusedElementRef.current;
     document.body.style.overflow = "hidden";
 
     function handleKeyDown(event: KeyboardEvent) {
@@ -52,7 +53,7 @@ export function AuthorLoginModal({ onClose, onSuccess }: AuthorLoginModalProps) 
     return () => {
       document.removeEventListener("keydown", handleKeyDown);
       document.body.style.overflow = previousOverflow;
-      previouslyFocusedElementRef.current?.focus();
+      previouslyFocusedElement?.focus();
     };
   }, [onClose]);
 

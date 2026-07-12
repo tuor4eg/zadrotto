@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { createPortal } from "react-dom";
 import { Check, X } from "lucide-react";
 
@@ -463,13 +463,7 @@ export function MediaItemRatingDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
-
-  useEffect(() => {
-    if (currentAuthor && openRatingAfterLogin) {
-      setOpenRatingAfterLogin(false);
-      setIsOpen(true);
-    }
-  }, [currentAuthor, openRatingAfterLogin]);
+  const isRatingOpen = isOpen || Boolean(currentAuthor && openRatingAfterLogin);
 
   return (
     <>
@@ -488,7 +482,7 @@ export function MediaItemRatingDialog({
         size={size}
       />
 
-      {isOpen
+      {isRatingOpen
         ? createPortal(
             <MediaItemRatingModal
               mediaItemCode={mediaItemCode}
@@ -500,7 +494,10 @@ export function MediaItemRatingDialog({
               currentAuthorScore={currentAuthorScore}
               releaseYear={releaseYear}
               formId="media-item-rating-form"
-              onClose={() => setIsOpen(false)}
+              onClose={() => {
+                setIsOpen(false);
+                setOpenRatingAfterLogin(false);
+              }}
             />,
             document.body,
           )

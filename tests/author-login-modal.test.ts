@@ -32,7 +32,11 @@ describe("author login modal contracts", () => {
     assert.match(ratingDialogSource, /setOpenRatingAfterLogin\(true\);\s*router\.refresh\(\)/);
     assert.match(
       ratingDialogSource,
-      /if \(currentAuthor && openRatingAfterLogin\) \{\s*setOpenRatingAfterLogin\(false\);\s*setIsOpen\(true\)/,
+      /const isRatingOpen = isOpen \|\| Boolean\(currentAuthor && openRatingAfterLogin\)/,
+    );
+    assert.match(
+      ratingDialogSource,
+      /onClose=\{\(\) => \{\s*setIsOpen\(false\);\s*setOpenRatingAfterLogin\(false\);\s*\}\}/,
     );
   });
 });
