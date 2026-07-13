@@ -18,6 +18,7 @@ import {
 
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import type {
   AuthorRatingFilter,
   CatalogSort,
@@ -174,13 +175,10 @@ export function CatalogHeaderControls({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchQuery);
   const [openSelect, setOpenSelect] = useState<"filters" | "sort" | null>(null);
   const [, startTransition] = useTransition();
   const filtersMenuId = useId();
   const filtersRootRef = useRef<HTMLDivElement>(null);
-  const isFirstSearchSync = useRef(true);
-  const previousSearchQuery = useRef(searchQuery);
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
     ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
   );
@@ -263,6 +261,10 @@ export function CatalogHeaderControls({
     },
     [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection, yearFilter, yearMode],
   );
+  const { draft: search, setDraft: setSearch } = useDebouncedSearchDraft({
+    searchQuery,
+    onSearch: (query) => replaceFilters({ q: query }),
+  });
 
   useEffect(() => {
     if (openSelect !== "filters") {
@@ -289,29 +291,6 @@ export function CatalogHeaderControls({
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [openSelect]);
-
-  useEffect(() => {
-    if (previousSearchQuery.current !== searchQuery) {
-      previousSearchQuery.current = searchQuery;
-      setSearch(searchQuery);
-      return;
-    }
-
-    if (isFirstSearchSync.current) {
-      isFirstSearchSync.current = false;
-      return;
-    }
-
-    if (search === searchQuery) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      replaceFilters({ q: search });
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search, searchQuery]);
 
   return (
     <div

@@ -5,10 +5,9 @@ import { ArchiveNote } from "@/app/archive-note";
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
-import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
-import { formatAuthorsFact, formatFactList, getStringListFact } from "@/lib/media/metadata-facts";
+import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
@@ -56,7 +55,7 @@ type RelatedFranchiseSection = {
 
 type MediaItemDetailsProps = {
   item: MediaItemDetailsItem;
-  backLink: {
+  backLink?: {
     href: string;
     label: string;
     hideOnMobile?: boolean;
@@ -64,6 +63,7 @@ type MediaItemDetailsProps = {
   variant?: "default" | "archive";
   actions?: React.ReactNode;
   adjacentShelfSlot?: React.ReactNode;
+  breadcrumbSlot?: React.ReactNode;
   meta?: React.ReactNode;
   mediaTypes: MediaTypeOption[];
   compactRatingSlot?: React.ReactNode;
@@ -137,117 +137,13 @@ function CoverSourceAttribution({
   );
 }
 
-function getPositiveIntegerFact(facts: Record<string, unknown> | null | undefined, key: string) {
-  const value = facts?.[key];
-
-  return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
-}
-
-function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
-  const plural = new Intl.PluralRules("ru-RU").select(value);
-  const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
-
-  return `${value} ${label}`;
-}
-
-function formatMediaItemRuntime(value: number) {
-  return `${value} мин.`;
-}
-
-function formatAirYears(firstAirYear: number | null, lastAirYear: number | null) {
-  if (firstAirYear && lastAirYear) {
-    return firstAirYear === lastAirYear ? String(firstAirYear) : `${firstAirYear}-${lastAirYear}`;
-  }
-
-  if (firstAirYear) {
-    return `с ${firstAirYear}`;
-  }
-
-  if (lastAirYear) {
-    return `до ${lastAirYear}`;
-  }
-
-  return null;
-}
-
-function getMediaItemDetailsYearLabel(item: MediaItemDetailsItem) {
-  if (item.mediaType === "series") {
-    const airYears = formatAirYears(
-      getPositiveIntegerFact(item.metadataFacts, "firstAirYear"),
-      getPositiveIntegerFact(item.metadataFacts, "lastAirYear"),
-    );
-
-    if (airYears) {
-      return airYears;
-    }
-  }
-
-  return item.releaseYear ? String(item.releaseYear) : null;
-}
-
-function getMediaItemDetailsMetaLabels(item: MediaItemDetailsItem) {
-  const facts = item.metadataFacts;
-
-  if (item.mediaType === "film") {
-    const runtimeMinutes = getPositiveIntegerFact(facts, "runtimeMinutes");
-
-    return runtimeMinutes ? [formatMediaItemRuntime(runtimeMinutes)] : [];
-  }
-
-  if (item.mediaType === "game") {
-    const developers = getStringListFact(facts, "developers");
-    const genres = getStringListFact(facts, "genres");
-
-    return [
-      developers.length > 0 ? formatFactList(developers) : null,
-      genres.length > 0 ? formatFactList(genres) : null,
-    ].filter((value): value is string => Boolean(value));
-  }
-
-  if (item.mediaType === "book" || item.mediaType === "comic") {
-    const authors = formatAuthorsFact(facts);
-
-    return authors ? [authors] : [];
-  }
-
-  if (item.mediaType !== "series") {
-    return [];
-  }
-
-  const seasonCount = getPositiveIntegerFact(facts, "seasonCount");
-  const episodeCount = getPositiveIntegerFact(facts, "episodeCount");
-  const averageEpisodeRuntimeMinutes = getPositiveIntegerFact(
-    facts,
-    "averageEpisodeRuntimeMinutes",
-  );
-
-  return [
-    seasonCount
-      ? formatPluralCount(seasonCount, {
-          one: "сезон",
-          few: "сезона",
-          many: "сезонов",
-        })
-      : null,
-    episodeCount
-      ? formatPluralCount(episodeCount, {
-          one: "серия",
-          few: "серии",
-          many: "серий",
-        })
-      : null,
-    averageEpisodeRuntimeMinutes
-      ? `${formatMediaItemRuntime(averageEpisodeRuntimeMinutes)}/серия`
-      : null,
-  ].filter((value): value is string => Boolean(value));
-}
-
 export function MediaItemDetails({
   item,
   backLink,
   variant = "default",
   actions,
   adjacentShelfSlot,
+  breadcrumbSlot,
   meta,
   mediaTypes,
   compactRatingSlot,
@@ -256,8 +152,10 @@ export function MediaItemDetails({
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
-  const detailsYearLabel = getMediaItemDetailsYearLabel(item);
-  const detailsMetaLabels = getMediaItemDetailsMetaLabels(item);
+  const [, detailsYearLabel, ...detailsMetaLabels] = getMediaItemSummaryParts({
+    ...item,
+    mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
+  });
   const resolvedRelatedFranchiseSections =
     relatedFranchiseSections ??
     (item.franchises.length > 0
@@ -273,9 +171,9 @@ export function MediaItemDetails({
     return (
       <ArchiveMediaItemDetails
         item={item}
-        backLink={backLink}
         actions={actions}
         adjacentShelfSlot={adjacentShelfSlot}
+        breadcrumbSlot={breadcrumbSlot}
         meta={meta}
         mediaTypes={mediaTypes}
         compactRatingSlot={compactRatingSlot}
@@ -291,14 +189,16 @@ export function MediaItemDetails({
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap gap-2">
-        <Link
-          href={backLink.href}
-          className={`w-fit border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950 ${
-            backLink.hideOnMobile ? "max-sm:hidden" : ""
-          }`}
-        >
-          {backLink.label}
-        </Link>
+        {backLink ? (
+          <Link
+            href={backLink.href}
+            className={`w-fit border border-zinc-300 bg-white px-3 py-2 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-600 transition-colors hover:border-zinc-950 hover:text-zinc-950 ${
+              backLink.hideOnMobile ? "max-sm:hidden" : ""
+            }`}
+          >
+            {backLink.label}
+          </Link>
+        ) : null}
         {actions}
       </div>
 
@@ -434,48 +334,47 @@ export function MediaItemDetails({
 
 function ArchiveMediaItemDetails({
   item,
-  backLink,
   actions,
   adjacentShelfSlot,
+  breadcrumbSlot,
   meta,
   mediaTypes,
   compactRatingSlot,
   ratingSlot,
   noteSlot,
   relatedFranchiseSections,
-}: Omit<MediaItemDetailsProps, "relatedItems" | "variant"> & {
+}: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
   relatedFranchiseSections: RelatedFranchiseSection[];
 }) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
-  const detailsYearLabel = getMediaItemDetailsYearLabel(item);
-  const detailsMetaLabels = getMediaItemDetailsMetaLabels(item);
+  const [, detailsYearLabel, ...detailsMetaLabels] = getMediaItemSummaryParts({
+    ...item,
+    mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
+  });
 
   return (
     <div className="flex flex-col gap-3">
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
-        <ArchiveBackLink
-          href={backLink.href}
-          label={backLink.label}
-          tooltipLabel="К картотеке"
-        />
-
-        <div className="relative z-10 grid lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
+        <div className="relative z-10 grid pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute -top-2 right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-top-22 sm:right-6 sm:h-28 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute top-[68px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-[-12px] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
           <div className="relative min-w-0 px-6 pb-6 pt-3">
-            <div className={`${labelFontClassName} text-sm uppercase leading-7 text-stone-950`}>
-              Досье
+            <div
+              className={`${labelFontClassName} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
+            >
+              <div className="shrink-0 uppercase">Досье</div>
+              {breadcrumbSlot}
             </div>
             <div
               className={
@@ -535,7 +434,7 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
-          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:-mt-4">
+          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:-mt-2">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
                 <div

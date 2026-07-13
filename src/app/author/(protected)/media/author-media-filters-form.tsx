@@ -1,7 +1,7 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
@@ -11,6 +11,7 @@ import {
   type AuthorMediaTypeFilter,
 } from "@/lib/authors/media-filters";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
+import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import {
   PUBLICATION_STATUS_LABELS,
   type PublicationStatus,
@@ -46,10 +47,7 @@ export function AuthorMediaFiltersForm({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
-  const isFirstSearchSync = useRef(true);
-  const previousSearchQuery = useRef(searchQuery);
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -91,36 +89,21 @@ export function AuthorMediaFiltersForm({
     },
     [pathname, router, searchParams],
   );
+  const {
+    draft: search,
+    resetDraft: resetSearch,
+    setDraft: setSearch,
+  } = useDebouncedSearchDraft({
+    searchQuery,
+    onSearch: (query) => replaceFilters({ q: query }),
+  });
 
   function resetFilters() {
-    setSearch("");
+    resetSearch();
     startTransition(() => {
       router.replace(pathname, { scroll: false });
     });
   }
-
-  useEffect(() => {
-    if (previousSearchQuery.current !== searchQuery) {
-      previousSearchQuery.current = searchQuery;
-      setSearch(searchQuery);
-      return;
-    }
-
-    if (isFirstSearchSync.current) {
-      isFirstSearchSync.current = false;
-      return;
-    }
-
-    if (search === searchQuery) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      replaceFilters({ q: search });
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search, searchQuery]);
 
   return (
     <div className="grid gap-3 rounded-lg border border-stone-200 bg-white/80 p-3 shadow-sm lg:grid-cols-[minmax(220px,1fr)_190px_190px_auto]">

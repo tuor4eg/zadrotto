@@ -35,6 +35,7 @@ import {
   mediaItemMetadata,
   mediaCarriers,
   mediaItems,
+  mediaTypes,
   ratings,
 } from "@/db/schema";
 import type { MediaType } from "@/lib/media/types";
@@ -1340,10 +1341,15 @@ export async function getPublicMediaItemMetadataByCode(code: string) {
   const [item] = await db
     .select({
       title: mediaItems.title,
-      description: mediaItems.description,
       coverUrl: mediaItems.coverUrl,
+      mediaType: mediaItems.mediaType,
+      mediaTypeLabel: mediaTypes.name,
+      metadataFacts: mediaItemMetadata.facts,
+      releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
     .limit(1);
 

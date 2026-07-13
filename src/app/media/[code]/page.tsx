@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
@@ -13,14 +14,14 @@ import {
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
+import { getMediaTypeLabel } from "@/lib/media/types";
 
 type MediaItemPageProps = {
   params: Promise<{
     code: string;
   }>;
 };
-
-const mediaItemDescriptionFallback = "Архивная карточка тайтла, оценки и заметки.";
 
 export async function generateMetadata({ params }: MediaItemPageProps): Promise<Metadata> {
   const { code } = await params;
@@ -30,7 +31,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
     return {};
   }
 
-  const description = item.description?.trim() || mediaItemDescriptionFallback;
+  const description = formatMediaItemSummary(item);
   const images = item.coverUrl ? [item.coverUrl] : undefined;
 
   return {
@@ -72,14 +73,49 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     getPublishedReviewsForMediaItem(item.id),
     getMediaTypeOptions(),
   ]);
-
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto w-full max-w-6xl">
         <MediaItemDetails
           item={item}
           variant="archive"
-          backLink={{ href: "/", label: "Назад к картотеке" }}
+          breadcrumbSlot={
+            <nav
+              aria-label="Хлебные крошки"
+              className="min-w-0 flex-1 text-xs leading-5 text-stone-600"
+            >
+              <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
+                <li>
+                  <Link
+                    className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                    href="/"
+                  >
+                    Главная
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-stone-400">
+                  /
+                </li>
+                <li>
+                  <Link
+                    className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                    href={`/?type=${encodeURIComponent(item.mediaType)}`}
+                  >
+                    {getMediaTypeLabel(item.mediaType, mediaTypes)}
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-stone-400">
+                  /
+                </li>
+                <li
+                  className="min-w-0 max-w-full flex-1 truncate text-stone-800"
+                  aria-current="page"
+                >
+                  {item.title}
+                </li>
+              </ol>
+            </nav>
+          }
           mediaTypes={mediaTypes}
           relatedFranchiseSections={relatedFranchiseSections}
           adjacentShelfSlot={

@@ -1,9 +1,9 @@
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
 import { ArchiveNote } from "@/app/archive-note";
 import { MediaItemTile } from "@/app/media-item-tile";
-import { ArchiveBackLink } from "@/components/ui/archive-back-link";
 import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -75,18 +75,37 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
-        <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
-          <ArchiveBackLink
-            className="sm:top-10"
-            href="/"
-            label="Назад к картотеке"
-            tooltipLabel="К картотеке"
-          />
-
+        <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible pt-8">
           <div className="archive-franchise-sticker">
-            <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-red-800">
-              Серия
-            </p>
+            <div className="flex min-w-0 items-center gap-3 font-mono text-xs">
+              <p className="shrink-0 font-semibold uppercase tracking-[0.18em] text-red-800">
+                Серия
+              </p>
+              <nav
+                aria-label="Хлебные крошки"
+                className="min-w-0 flex-1 leading-5 text-stone-600"
+              >
+                <ol className="flex min-w-0 items-center gap-x-2">
+                  <li className="shrink-0">
+                    <Link
+                      className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                      href="/"
+                    >
+                      Главная
+                    </Link>
+                  </li>
+                  <li aria-hidden="true" className="shrink-0 text-stone-400">
+                    /
+                  </li>
+                  <li
+                    className="min-w-0 flex-1 truncate text-stone-800"
+                    aria-current="page"
+                  >
+                    {franchise.title}
+                  </li>
+                </ol>
+              </nav>
+            </div>
             <div className="mt-3 flex flex-col gap-x-6 gap-y-3 lg:flex-row lg:items-baseline">
               <div className="min-w-0">
                 <h1 className="break-words font-serif text-5xl leading-none text-stone-950 sm:text-6xl">
