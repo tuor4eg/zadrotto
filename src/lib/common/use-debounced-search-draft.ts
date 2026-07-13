@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useState } from "react";
 
 type UseDebouncedSearchDraftOptions = {
   delay?: number;
@@ -14,15 +14,11 @@ export function useDebouncedSearchDraft({
   searchQuery,
 }: UseDebouncedSearchDraftOptions) {
   const [draft, setDraft] = useState(searchQuery);
-  const currentSearchQuery = useRef(searchQuery);
   const draftRef = useRef(searchQuery);
   const hasUnconfirmedDraft = useRef(false);
-  const onSearchRef = useRef(onSearch);
   const pendingQueries = useRef(new Set<string>());
   const previousSearchQuery = useRef(searchQuery);
-
-  currentSearchQuery.current = searchQuery;
-  onSearchRef.current = onSearch;
+  const dispatchSearch = useEffectEvent(onSearch);
 
   useEffect(() => {
     if (previousSearchQuery.current === searchQuery) {
@@ -40,7 +36,7 @@ export function useDebouncedSearchDraft({
     if (pendingQueries.current.delete(searchQuery) || hasUnconfirmedDraft.current) {
       hasUnconfirmedDraft.current = true;
       pendingQueries.current.add(draftRef.current);
-      onSearchRef.current(draftRef.current);
+      dispatchSearch(draftRef.current);
       return;
     }
 
@@ -49,23 +45,23 @@ export function useDebouncedSearchDraft({
   }, [searchQuery]);
 
   useEffect(() => {
-    if (draft === currentSearchQuery.current) {
+    if (draft === searchQuery) {
       return;
     }
 
     const timeoutId = window.setTimeout(() => {
       pendingQueries.current.add(draft);
-      onSearchRef.current(draft);
+      dispatchSearch(draft);
     }, delay);
 
     return () => window.clearTimeout(timeoutId);
-  }, [delay, draft]);
+  }, [delay, draft, searchQuery]);
 
   const updateDraft = useCallback((nextDraft: string) => {
     draftRef.current = nextDraft;
-    hasUnconfirmedDraft.current = nextDraft !== currentSearchQuery.current;
+    hasUnconfirmedDraft.current = nextDraft !== searchQuery;
     setDraft(nextDraft);
-  }, []);
+  }, [searchQuery]);
 
   const resetDraft = useCallback((nextDraft = "") => {
     updateDraft(nextDraft);
