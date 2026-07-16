@@ -27,6 +27,7 @@ export type CreateInlineFranchiseState = {
     id: number;
     title: string;
     originalTitle: string | null;
+    publicationStatus: "private" | "submitted" | "published" | "rejected";
   } | null;
 };
 
@@ -156,6 +157,7 @@ export async function createInlineFranchiseAction(
       id: franchise.id,
       title: input.value.title,
       originalTitle: input.value.originalTitle,
+      publicationStatus: franchise.publicationStatus,
     },
   };
 }
@@ -299,14 +301,9 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
     entityType: "franchise",
     entityId: franchise.id,
     entityLabel: franchise.title,
-    message: "Запись привязана к серии.",
     metadata: {
-      mediaItemId: item.id,
-      mediaItemTitle: item.title,
-      franchiseIds: [
-        ...itemBeforeUpdate.franchises.map((existingFranchise) => existingFranchise.id),
-        franchiseId.value,
-      ],
+      mediaItem: { id: item.id, title: item.title },
+      franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
   redirect(`/admin/franchises/${franchiseId.value}/edit?attached=1`);
@@ -358,10 +355,9 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
     entityType: "franchise",
     entityId: franchise.id,
     entityLabel: franchise.title,
-    message: "Запись отвязана от серии.",
     metadata: {
-      mediaItemId: item.id,
-      mediaItemTitle: item.title,
+      mediaItem: { id: item.id, title: item.title },
+      franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
   redirect(`/admin/franchises/${franchiseId.value}/edit?detached=1`);

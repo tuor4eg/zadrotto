@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
+import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 
 type SearchableFranchiseMultiSelectProps = {
@@ -54,6 +55,7 @@ export function SearchableFranchiseMultiSelect({
     () => options.filter((option) => matchesSearch(option, normalizeSearchValue(query))),
     [options, query],
   );
+  const firstSelectableOption = visibleOptions.find((option) => !option.disabled);
   const updateScrollShadow = useCallback(() => {
     const scrollArea = scrollAreaRef.current;
 
@@ -107,6 +109,10 @@ export function SearchableFranchiseMultiSelect({
   }, [open, selectedOptions.length, updateScrollShadow, visibleOptions.length]);
 
   function toggleOption(option: SearchableFranchiseOption) {
+    if (option.disabled) {
+      return;
+    }
+
     const optionId = String(option.id);
 
     onChange(
@@ -143,9 +149,9 @@ export function SearchableFranchiseMultiSelect({
             setOpen(true);
           }}
           onKeyDown={(event) => {
-            if (event.key === "Enter" && open && visibleOptions[0]) {
+            if (event.key === "Enter" && open && firstSelectableOption) {
               event.preventDefault();
-              toggleOption(visibleOptions[0]);
+              toggleOption(firstSelectableOption);
             }
           }}
         />
@@ -208,9 +214,15 @@ export function SearchableFranchiseMultiSelect({
                     type="button"
                     role="option"
                     aria-selected={selected}
+                    aria-disabled={option.disabled || undefined}
+                    disabled={option.disabled}
                     className={cn(
-                      "flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors hover:bg-stone-100",
-                      selected ? "text-stone-950" : "text-stone-700",
+                      "flex w-full items-center gap-2 rounded-sm px-2.5 py-2 text-left text-sm transition-colors",
+                      option.disabled
+                        ? "cursor-not-allowed text-stone-400"
+                        : selected
+                          ? "text-stone-950 hover:bg-stone-100"
+                          : "text-stone-700 hover:bg-stone-100",
                     )}
                     onMouseDown={(event) => {
                       event.preventDefault();
@@ -222,6 +234,16 @@ export function SearchableFranchiseMultiSelect({
                       {option.originalTitle ? (
                         <span className="mt-0.5 block truncate text-xs text-stone-500">
                           {option.originalTitle}
+                        </span>
+                      ) : null}
+                      {option.publicationStatus && option.publicationStatus !== "published" ? (
+                        <span className="mt-0.5 block text-xs text-amber-700">
+                          {PUBLICATION_STATUS_VALUE_LABELS[option.publicationStatus]}
+                        </span>
+                      ) : null}
+                      {option.disabled ? (
+                        <span className="mt-0.5 block text-xs text-stone-400">
+                          {option.disabledLabel ?? "Недоступна для выбора"}
                         </span>
                       ) : null}
                     </span>

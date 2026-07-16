@@ -40,9 +40,12 @@ export const ACTIVITY_ACTIONS = [
   "review.created",
   "review.updated",
   "franchise.created",
+  "franchise-review.approved",
+  "franchise-review.rejected",
   "franchise.updated",
   "franchise.deleted",
   "franchise.media.attached",
+  "franchise.media.suggested",
   "franchise.media.detached",
   "author.created",
   "author.updated",
@@ -114,9 +117,12 @@ export const ACTIVITY_ACTION_LABELS = {
   "review.created": "Рецензия создана",
   "review.updated": "Рецензия изменена",
   "franchise.created": "Серия создана",
+  "franchise-review.approved": "Заявка серии одобрена",
+  "franchise-review.rejected": "Заявка серии отклонена",
   "franchise.updated": "Серия изменена",
   "franchise.deleted": "Серия удалена",
-  "franchise.media.attached": "Запись добавлена в серию",
+  "franchise.media.attached": "Серия добавлена к записи",
+  "franchise.media.suggested": "Связь серии предложена",
   "franchise.media.detached": "Запись убрана из серии",
   "author.created": "Автор создан",
   "author.updated": "Автор изменен",
@@ -277,4 +283,85 @@ export function sanitizeActivityLogMetadata(
     .filter(([, value]) => value !== undefined);
 
   return sanitizedEntries.length > 0 ? Object.fromEntries(sanitizedEntries) : null;
+}
+
+export type ActivityLogFranchise = {
+  id: number;
+  title: string;
+};
+
+export type FranchiseMediaActivityContext = {
+  mediaItem: ActivityLogFranchise | null;
+  franchises: ActivityLogFranchise[];
+};
+
+function parseActivityLogEntity(value: unknown): ActivityLogFranchise | null {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return null;
+  }
+
+  const { id, title } = value as Record<string, unknown>;
+  const normalizedTitle = typeof title === "string" ? title.trim() : "";
+
+  return typeof id === "number" && Number.isSafeInteger(id) && id > 0 && normalizedTitle
+    ? { id, title: normalizedTitle }
+    : null;
+}
+
+export function getActivityLogFranchises(
+  metadata: Record<string, unknown> | null | undefined,
+): ActivityLogFranchise[] {
+  const franchises = metadata?.franchises;
+
+  if (!Array.isArray(franchises)) {
+    return [];
+  }
+
+  const seenIds = new Set<number>();
+
+  return franchises.flatMap((franchise) => {
+    const parsedFranchise = parseActivityLogEntity(franchise);
+
+    if (!parsedFranchise || seenIds.has(parsedFranchise.id)) {
+      return [];
+    }
+
+    seenIds.add(parsedFranchise.id);
+
+    return [parsedFranchise];
+  });
+}
+
+export function getFranchiseMediaActivityContext(input: {
+  action: string;
+  entityId: number | null;
+  entityLabel: string | null;
+  entityType: string | null;
+  metadata: Record<string, unknown> | null | undefined;
+}): FranchiseMediaActivityContext | null {
+  if (!input.action.startsWith("franchise.media.")) {
+    return null;
+  }
+
+  const canonicalMediaItem = parseActivityLogEntity(input.metadata?.mediaItem);
+  const legacyMediaItem = parseActivityLogEntity({
+    id: input.metadata?.mediaItemId,
+    title: input.metadata?.mediaItemTitle,
+  });
+  const entityMediaItem = input.entityType === "media-item"
+    ? parseActivityLogEntity({ id: input.entityId, title: input.entityLabel })
+    : null;
+  const franchises = getActivityLogFranchises(input.metadata);
+  const entityFranchise = input.entityType === "franchise"
+    ? parseActivityLogEntity({ id: input.entityId, title: input.entityLabel })
+    : null;
+
+  if (entityFranchise && !franchises.some((franchise) => franchise.id === entityFranchise.id)) {
+    franchises.push(entityFranchise);
+  }
+
+  return {
+    mediaItem: canonicalMediaItem ?? legacyMediaItem ?? entityMediaItem,
+    franchises,
+  };
 }

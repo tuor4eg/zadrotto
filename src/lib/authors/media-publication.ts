@@ -12,9 +12,22 @@ export function getPublicationStatusAfterAuthorSubmit(input: {
 }
 
 export function canAuthorCreateFranchise(input: {
-  canPublishMediaWithoutReview: boolean;
+  canPublishFranchisesWithoutReview: boolean;
 }) {
-  return input.canPublishMediaWithoutReview;
+  void input;
+  return true;
+}
+
+export function getFranchisePublicationStatusAfterAuthorCreate(input: {
+  canPublishFranchisesWithoutReview: boolean;
+}): AuthorPublicationSubmitStatus | "private" {
+  return input.canPublishFranchisesWithoutReview ? "published" : "private";
+}
+
+export function getFranchisePublicationStatusAfterAuthorSubmit(input: {
+  canPublishFranchisesWithoutReview: boolean;
+}): AuthorPublicationSubmitStatus {
+  return input.canPublishFranchisesWithoutReview ? "published" : "submitted";
 }
 
 export function getAuthorMediaPublicationConfirmDescription(input: {

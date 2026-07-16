@@ -59,7 +59,13 @@ export type MediaItemFranchiseLink = {
   code: string;
   title: string;
   originalTitle: string | null;
+  publicationStatus: PublicationStatus;
 };
+
+type MediaItemFranchiseLinkStatus = Pick<
+  MediaItemFranchiseLink,
+  "id" | "publicationStatus"
+>;
 
 export function normalizeMediaItemFranchises(
   franchisesValue: MediaItemFranchiseLink[] | null,
@@ -80,19 +86,34 @@ export function normalizeMediaItemFranchises(
   });
 }
 
-const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<MediaItemFranchiseLink[]>`coalesce((
+const franchisesJsonSql = (
+  mediaItemId = mediaItems.id,
+  publishedOnly = true,
+  currentAuthorId?: number,
+) => sql<MediaItemFranchiseLink[]>`coalesce((
   select jsonb_agg(
     jsonb_build_object(
       'id', ${franchises.id},
       'code', ${franchises.code},
       'title', ${franchises.title},
-      'originalTitle', ${franchises.originalTitle}
+      'originalTitle', ${franchises.originalTitle},
+      'publicationStatus', "media_item_franchises"."publication_status"
     )
     order by ${franchises.title}, ${franchises.code}
   )
   from ${mediaItemFranchises}
   inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
   where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+    ${publishedOnly
+      ? sql`and "franchises"."publication_status" = ${PUBLISHED_PUBLICATION_STATUS}
+          and "media_item_franchises"."publication_status" = ${PUBLISHED_PUBLICATION_STATUS}`
+      : currentAuthorId
+        ? sql`and (
+            ("franchises"."publication_status" = ${PUBLISHED_PUBLICATION_STATUS}
+              and "media_item_franchises"."publication_status" = ${PUBLISHED_PUBLICATION_STATUS})
+            or "media_item_franchises"."created_by_author_id" = ${currentAuthorId}
+          )`
+        : sql``}
 ), '[]'::jsonb)`;
 
 const franchiseIdsSql = (mediaItemId = mediaItems.id) => sql<number[]>`coalesce((
@@ -101,6 +122,17 @@ const franchiseIdsSql = (mediaItemId = mediaItems.id) => sql<number[]>`coalesce(
   inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
   where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
 ), array[]::integer[])`;
+
+const franchiseLinkStatusesSql = (mediaItemId = mediaItems.id) => sql<MediaItemFranchiseLinkStatus[]>`coalesce((
+  select jsonb_agg(
+    jsonb_build_object(
+      'id', ${mediaItemFranchises.franchiseId},
+      'publicationStatus', ${mediaItemFranchises.publicationStatus}
+    )
+  )
+  from ${mediaItemFranchises}
+  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+), '[]'::jsonb)`;
 
 function withResolvedFranchises<T extends { franchises: MediaItemFranchiseLink[] | null }>(
   item: T,
@@ -130,6 +162,7 @@ export async function setMediaItemFranchisesForExecutor(
     uniqueFranchiseIds.map((franchiseId) => ({
       mediaItemId,
       franchiseId,
+      publicationStatus: PUBLISHED_PUBLICATION_STATUS,
     })),
   );
 }
@@ -552,7 +585,7 @@ export async function getAdminMediaItems(input: {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -856,7 +889,7 @@ export async function getAuthorMediaItemForView(authorId: number, mediaItemId: n
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       mediaCarrierId: mediaItems.mediaCarrierId,
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
@@ -1080,7 +1113,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
@@ -1118,7 +1151,7 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       code: mediaItems.code,
       title: mediaItems.title,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
@@ -1143,7 +1176,7 @@ export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: numbe
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -1214,6 +1247,33 @@ export async function reviewSubmittedAuthorMediaItem(input: {
       publicationStatus: mediaItems.publicationStatus,
     });
 
+  if (item) {
+    await db
+      .update(franchises)
+      .set({
+        publicationStatus: input.decision,
+        updatedAt: now,
+      })
+      .where(
+        and(
+          eq(franchises.publicationStatus, "submitted"),
+          exists(
+            db
+              .select({ id: mediaItemFranchises.franchiseId })
+              .from(mediaItemFranchises)
+              .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+              .where(
+                and(
+                  eq(mediaItemFranchises.mediaItemId, item.id),
+                  eq(mediaItemFranchises.franchiseId, franchises.id),
+                  eq(franchises.createdByAuthorId, mediaItems.createdByAuthorId),
+                ),
+              ),
+          ),
+        ),
+      );
+  }
+
   return item ?? null;
 }
 
@@ -1237,7 +1297,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, false),
       createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
       coverUrl: mediaItems.coverUrl,
@@ -1329,6 +1389,7 @@ export async function getMediaItemIdentityByCode(code: string) {
     .select({
       id: mediaItems.id,
       code: mediaItems.code,
+      title: mediaItems.title,
     })
     .from(mediaItems)
     .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
@@ -1390,7 +1451,8 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(),
+      franchises: franchisesJsonSql(mediaItems.id, currentAuthorId == null, currentAuthorId),
+      franchiseLinkStatuses: franchiseLinkStatusesSql(mediaItems.id),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -1472,6 +1534,7 @@ export async function getOtherMediaItemsFromFranchises(
       and(
         inArray(mediaItemFranchises.franchiseId, franchiseIds),
         ne(mediaItems.id, currentMediaItemId),
+        eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         publishedMediaItemCondition,
       ),
     )

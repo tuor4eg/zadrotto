@@ -119,6 +119,7 @@ export default async function EditFranchisePage({
             <FranchiseForm
               action={updateFranchiseAction}
               submitLabel="Сохранить"
+              publicHref={franchise.publicationStatus === "published" ? `/franchises/${franchise.code}` : null}
               values={franchise}
               errorMessage={getFranchiseErrorMessage(query.error)}
               successMessage={
@@ -203,6 +204,11 @@ export default async function EditFranchisePage({
                       <Badge variant="outline">
                         {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}
                       </Badge>
+                      {item.franchisePublicationStatus !== "published" ? (
+                        <Badge variant="warning">
+                          Связь: {PUBLICATION_STATUS_VALUE_LABELS[item.franchisePublicationStatus]}
+                        </Badge>
+                      ) : null}
                     </div>
                   </Link>
 

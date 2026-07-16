@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useEffectEvent, useRef, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { type MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import { Input, Select } from "@/components/ui/form";
+import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCarrierFiltersFormProps = {
@@ -42,11 +43,10 @@ export function MediaCarrierFiltersForm({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
-  const isFirstSearchSync = useRef(true);
-  const isResettingFilters = useRef(false);
-  const previousSearchQuery = useRef(searchQuery);
+  const desiredMediaTypeFilter = useRef(mediaTypeFilter);
+  const hasUnconfirmedMediaTypeFilter = useRef(false);
+  const previousMediaTypeFilter = useRef(mediaTypeFilter);
 
   const replaceFilters = useCallback(
     (nextFilters: { q?: string; type?: MediaTypeFilter }) => {
@@ -76,44 +76,47 @@ export function MediaCarrierFiltersForm({
     },
     [pathname, router, searchParams],
   );
+  const {
+    draft: search,
+    resetDraft: resetSearch,
+    setDraft: setSearch,
+  } = useDebouncedSearchDraft({
+    searchQuery,
+    onSearch: (query) =>
+      replaceFilters({ q: query, type: desiredMediaTypeFilter.current }),
+  });
+  const dispatchDesiredFilters = useEffectEvent(() => {
+    replaceFilters({ q: search, type: desiredMediaTypeFilter.current });
+  });
+
+  useEffect(() => {
+    if (previousMediaTypeFilter.current === mediaTypeFilter) {
+      return;
+    }
+
+    previousMediaTypeFilter.current = mediaTypeFilter;
+
+    if (mediaTypeFilter === desiredMediaTypeFilter.current) {
+      hasUnconfirmedMediaTypeFilter.current = false;
+      return;
+    }
+
+    if (hasUnconfirmedMediaTypeFilter.current) {
+      dispatchDesiredFilters();
+      return;
+    }
+
+    desiredMediaTypeFilter.current = mediaTypeFilter;
+  }, [mediaTypeFilter]);
 
   function resetFilters() {
-    isResettingFilters.current = true;
-    previousSearchQuery.current = "";
-    setSearch("");
+    desiredMediaTypeFilter.current = "all";
+    hasUnconfirmedMediaTypeFilter.current = mediaTypeFilter !== "all";
+    resetSearch();
     startTransition(() => {
       router.replace(pathname, { scroll: false });
     });
   }
-
-  useEffect(() => {
-    if (previousSearchQuery.current !== searchQuery) {
-      previousSearchQuery.current = searchQuery;
-      setSearch(searchQuery);
-      isResettingFilters.current = false;
-      return;
-    }
-
-    if (isResettingFilters.current) {
-      isResettingFilters.current = false;
-      return;
-    }
-
-    if (isFirstSearchSync.current) {
-      isFirstSearchSync.current = false;
-      return;
-    }
-
-    if (search === searchQuery) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      replaceFilters({ q: search });
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search, searchQuery]);
 
   return (
     <div className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">
@@ -128,7 +131,13 @@ export function MediaCarrierFiltersForm({
 
         <Select
           value={mediaTypeFilter}
-          onChange={(event) => replaceFilters({ type: event.target.value as MediaTypeFilter })}
+          onChange={(event) => {
+            const nextMediaTypeFilter = event.target.value as MediaTypeFilter;
+
+            desiredMediaTypeFilter.current = nextMediaTypeFilter;
+            hasUnconfirmedMediaTypeFilter.current = nextMediaTypeFilter !== mediaTypeFilter;
+            replaceFilters({ q: search, type: nextMediaTypeFilter });
+          }}
           aria-label="Фильтр по типу медиа"
         >
           <option value="all">Все типы ({totalCount})</option>

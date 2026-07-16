@@ -9,6 +9,8 @@ import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
+export const dynamic = "force-dynamic";
+
 type FranchisePageProps = {
   params: Promise<{
     code: string;

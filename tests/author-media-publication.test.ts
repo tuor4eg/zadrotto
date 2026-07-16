@@ -7,6 +7,8 @@ import {
   canAuthorRequestPublication,
   canAuthorWithdrawPublicationRequest,
   getAuthorMediaPublicationConfirmDescription,
+  getFranchisePublicationStatusAfterAuthorCreate,
+  getFranchisePublicationStatusAfterAuthorSubmit,
   getPublicationStatusAfterAuthorSubmit,
 } from "../src/lib/authors/media-publication";
 
@@ -25,9 +27,25 @@ describe("author media publication", () => {
     );
   });
 
-  it("allows franchise creation only when author can publish without review", () => {
-    assert.equal(canAuthorCreateFranchise({ canPublishMediaWithoutReview: false }), false);
-    assert.equal(canAuthorCreateFranchise({ canPublishMediaWithoutReview: true }), true);
+  it("allows every author to create a franchise and applies its independent publication right", () => {
+    assert.equal(canAuthorCreateFranchise({ canPublishFranchisesWithoutReview: false }), true);
+    assert.equal(canAuthorCreateFranchise({ canPublishFranchisesWithoutReview: true }), true);
+    assert.equal(
+      getFranchisePublicationStatusAfterAuthorCreate({ canPublishFranchisesWithoutReview: false }),
+      "private",
+    );
+    assert.equal(
+      getFranchisePublicationStatusAfterAuthorCreate({ canPublishFranchisesWithoutReview: true }),
+      "published",
+    );
+    assert.equal(
+      getFranchisePublicationStatusAfterAuthorSubmit({ canPublishFranchisesWithoutReview: false }),
+      "submitted",
+    );
+    assert.equal(
+      getFranchisePublicationStatusAfterAuthorSubmit({ canPublishFranchisesWithoutReview: true }),
+      "published",
+    );
   });
 
   it("mentions admin review only for authors who cannot publish immediately", () => {

@@ -17,6 +17,7 @@ type InlineFranchise = {
   id: number;
   title: string;
   originalTitle: string | null;
+  publicationStatus: "private" | "submitted" | "published" | "rejected";
 };
 
 type InlineFranchiseDialogProps = {

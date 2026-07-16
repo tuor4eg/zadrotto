@@ -9,6 +9,7 @@ type AccessProfileFormValues = {
   id?: number;
   name?: string;
   canPublishMediaWithoutReview?: boolean;
+  canPublishFranchisesWithoutReview?: boolean;
   maxDraftMediaItems?: number | null;
   maxDraftMediaItemsPerDay?: number | null;
   maxUploadBytes?: number | null;
@@ -64,7 +65,18 @@ export function AccessProfileForm({
             defaultChecked={values?.canPublishMediaWithoutReview ?? false}
             className="size-4 rounded border-stone-300 text-stone-950"
           />
-          Публикация без проверки
+          Записи без проверки
+        </label>
+
+        <label className="flex items-center gap-2 text-sm font-medium text-stone-700">
+          <input
+            type="checkbox"
+            name="canPublishFranchisesWithoutReview"
+            value="1"
+            defaultChecked={values?.canPublishFranchisesWithoutReview ?? false}
+            className="size-4 rounded border-stone-300 text-stone-950"
+          />
+          Серии без проверки
         </label>
 
         <section className="grid gap-3">

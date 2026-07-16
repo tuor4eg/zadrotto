@@ -39,8 +39,17 @@ export const franchises = pgTable("franchises", {
   title: text("title").notNull(),
   originalTitle: text("original_title"),
   description: text("description"),
+  createdByAuthorId: integer("created_by_author_id").references(() => authors.id, {
+    onDelete: "set null",
+  }),
+  publicationStatus: publicationStatusEnum("publication_status")
+    .default(PUBLISHED_PUBLICATION_STATUS)
+    .notNull(),
   ...timestamps(),
-});
+}, (table) => [
+  index("franchises_created_by_author_id_idx").on(table.createdByAuthorId),
+  index("franchises_publication_status_idx").on(table.publicationStatus),
+]);
 
 export const mediaTypes = pgTable("media_types", {
   id: serial("id").primaryKey(),
@@ -56,6 +65,9 @@ export const authorAccessProfiles = pgTable("author_access_profiles", {
   name: text("name").notNull(),
   isSystem: boolean("is_system").default(false).notNull(),
   canPublishMediaWithoutReview: boolean("can_publish_media_without_review")
+    .default(false)
+    .notNull(),
+  canPublishFranchisesWithoutReview: boolean("can_publish_franchises_without_review")
     .default(false)
     .notNull(),
   maxDraftMediaItems: integer("max_draft_media_items"),
@@ -278,6 +290,7 @@ export const mediaItems = pgTable(
     publicationStatus: publicationStatusEnum("publication_status")
       .default(PUBLISHED_PUBLICATION_STATUS)
       .notNull(),
+    ...timestamps(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     reviewedByAdminId: integer("reviewed_by_admin_id").references(() => adminUsers.id),
     reviewedAt: timestamp("reviewed_at", { withTimezone: true }),
@@ -318,6 +331,13 @@ export const mediaItemFranchises = pgTable(
     franchiseId: integer("franchise_id")
       .notNull()
       .references(() => franchises.id, { onDelete: "cascade" }),
+    createdByAuthorId: integer("created_by_author_id").references(() => authors.id, {
+      onDelete: "set null",
+    }),
+    publicationStatus: publicationStatusEnum("publication_status")
+      .default(PUBLISHED_PUBLICATION_STATUS)
+      .notNull(),
+    ...timestamps(),
   },
   (table) => [
     primaryKey({
@@ -325,6 +345,7 @@ export const mediaItemFranchises = pgTable(
       name: "media_item_franchises_pk",
     }),
     index("media_item_franchises_franchise_id_idx").on(table.franchiseId),
+    index("media_item_franchises_publication_status_idx").on(table.publicationStatus),
   ],
 );
 

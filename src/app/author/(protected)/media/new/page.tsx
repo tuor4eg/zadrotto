@@ -18,10 +18,10 @@ type NewAuthorMediaPageProps = {
 };
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
-  const [params, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const author = await requireAuthor();
+  const [params, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     searchParams,
-    requireAuthor(),
-    getFranchiseOptions(),
+    getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
   ]);
@@ -57,7 +57,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             values={initialMediaType === "all" ? undefined : { mediaType: initialMediaType }}
             createAndSubmitLabel={createAndSubmitLabel}
             canCreateFranchise={canAuthorCreateFranchise({
-              canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+              canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}
           />
         </CardContent>

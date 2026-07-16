@@ -104,6 +104,12 @@ Prefer simple, reversible decisions while the project is still early and may cha
 
 Respond to the user in Russian unless asked otherwise.
 
+### UI terminology
+
+- In user-facing interface text, call a `MediaItem` «запись».
+- Do not use «тайтл» in labels, messages, tooltips, notifications, activity logs, or other text visible to users.
+- «Тайтл» is acceptable only in implementation discussions, internal documentation, and code terminology.
+
 ## Verification
 
 Do not run `npm run build` automatically after routine UI/code changes. In this project the Next.js/Turbopack production build can be heavy enough to freeze or crash VS Code.

@@ -4,6 +4,8 @@ import { logoutAuthor } from "@/app/author/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requireAuthor } from "@/lib/auth/author-auth";
 
+export const dynamic = "force-dynamic";
+
 type AuthorLayoutProps = {
   children: React.ReactNode;
 };
@@ -33,6 +35,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Предложения
+            </Link>
+            <Link
+              href="/author/franchises"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Серии
             </Link>
             <Link
               href="/author/reviews"

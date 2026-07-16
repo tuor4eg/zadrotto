@@ -117,10 +117,11 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
                   <div className="min-w-0">
                     <div className="break-words font-medium text-stone-950">{profile.name}</div>
                     <div className="mt-2 flex flex-wrap gap-1.5">
-                      <Badge
-                        variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}
-                      >
-                        {profile.canPublishMediaWithoutReview ? "Без проверки" : "Через проверку"}
+                      <Badge variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}>
+                        Записи: {profile.canPublishMediaWithoutReview ? "без проверки" : "с проверкой"}
+                      </Badge>
+                      <Badge variant={profile.canPublishFranchisesWithoutReview ? "positive" : "outline"}>
+                        Серии: {profile.canPublishFranchisesWithoutReview ? "без проверки" : "с проверкой"}
                       </Badge>
                       <Badge variant="outline">{profile.authorsCount} авторов</Badge>
                     </div>
@@ -139,7 +140,7 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
               <THead>
                 <tr>
                   <TH>Профиль</TH>
-                  <TH className="w-36">Публикация</TH>
+                  <TH className="w-56">Публикация</TH>
                   <TH className="w-28">Авторы</TH>
                   <TH className="w-28 px-2 text-right">Действия</TH>
                 </tr>
@@ -154,11 +155,14 @@ export default async function AccessProfilesPage({ searchParams }: AccessProfile
                         <div className="truncate font-medium text-stone-950">{profile.name}</div>
                       </TD>
                       <TD>
-                        <Badge
-                          variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}
-                        >
-                          {profile.canPublishMediaWithoutReview ? "Без проверки" : "Через проверку"}
-                        </Badge>
+                        <div className="flex flex-wrap gap-1.5">
+                          <Badge variant={profile.canPublishMediaWithoutReview ? "positive" : "outline"}>
+                            Записи: {profile.canPublishMediaWithoutReview ? "без проверки" : "с проверкой"}
+                          </Badge>
+                          <Badge variant={profile.canPublishFranchisesWithoutReview ? "positive" : "outline"}>
+                            Серии: {profile.canPublishFranchisesWithoutReview ? "без проверки" : "с проверкой"}
+                          </Badge>
+                        </div>
                       </TD>
                       <TD>
                         <Badge variant="outline">{profile.authorsCount}</Badge>

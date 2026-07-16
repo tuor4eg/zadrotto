@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Input } from "@/components/ui/form";
+import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 type AdminFranchiseFiltersFormProps = {
   searchQuery: string;
@@ -24,10 +25,7 @@ export function AdminFranchiseFiltersForm({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [search, setSearch] = useState(searchQuery);
   const [, startTransition] = useTransition();
-  const isFirstSearchSync = useRef(true);
-  const previousSearchQuery = useRef(searchQuery);
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -56,36 +54,21 @@ export function AdminFranchiseFiltersForm({
     },
     [pathname, router, searchParams],
   );
+  const {
+    draft: search,
+    resetDraft: resetSearch,
+    setDraft: setSearch,
+  } = useDebouncedSearchDraft({
+    searchQuery,
+    onSearch: (query) => replaceFilters({ q: query }),
+  });
 
   function resetFilters() {
-    setSearch("");
+    resetSearch();
     startTransition(() => {
       router.replace(pathname, { scroll: false });
     });
   }
-
-  useEffect(() => {
-    if (previousSearchQuery.current !== searchQuery) {
-      previousSearchQuery.current = searchQuery;
-      setSearch(searchQuery);
-      return;
-    }
-
-    if (isFirstSearchSync.current) {
-      isFirstSearchSync.current = false;
-      return;
-    }
-
-    if (search === searchQuery) {
-      return;
-    }
-
-    const timeoutId = window.setTimeout(() => {
-      replaceFilters({ q: search });
-    }, 250);
-
-    return () => window.clearTimeout(timeoutId);
-  }, [replaceFilters, search, searchQuery]);
 
   return (
     <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-[minmax(220px,1fr)_auto]">

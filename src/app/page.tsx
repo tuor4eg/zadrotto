@@ -97,10 +97,11 @@ export default async function Home({ searchParams }: HomeProps) {
       }),
       getCatalogReleaseYearBounds(),
       currentAuthor
-        ? Promise.all([getFranchiseOptions(), getMediaCarrierOptions()]).then(
+        ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
             ([franchises, mediaCarriers]) => ({
               canCreateFranchise: canAuthorCreateFranchise({
-                canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
+                canPublishFranchisesWithoutReview:
+                  currentAuthor.canPublishFranchisesWithoutReview,
               }),
               canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
               franchises,

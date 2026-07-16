@@ -29,6 +29,7 @@ function getProfileInput(formData: FormData) {
   return parseAuthorAccessProfileFormInput({
     name: getFormString(formData, "name"),
     canPublishMediaWithoutReview: getFormString(formData, "canPublishMediaWithoutReview"),
+    canPublishFranchisesWithoutReview: getFormString(formData, "canPublishFranchisesWithoutReview"),
     maxDraftMediaItems: getFormString(formData, "maxDraftMediaItems"),
     maxDraftMediaItemsPerDay: getFormString(formData, "maxDraftMediaItemsPerDay"),
     maxUploadMegabytes: getFormString(formData, "maxUploadMegabytes"),

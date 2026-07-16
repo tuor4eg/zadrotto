@@ -16,6 +16,15 @@ function getPositiveIntegerFact(
   return typeof value === "number" && Number.isInteger(value) && value > 0 ? value : null;
 }
 
+function getNonEmptyStringFact(
+  facts: Record<string, unknown> | null | undefined,
+  key: string,
+) {
+  const value = facts?.[key];
+
+  return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
 function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
   const plural = new Intl.PluralRules("ru-RU").select(value);
   const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
@@ -56,9 +65,20 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
       developers.length > 0 ? formatFactList(developers) : null,
       genres.length > 0 ? formatFactList(genres) : null,
     ].filter((value): value is string => Boolean(value));
-  } else if (item.mediaType === "book" || item.mediaType === "comic") {
+  } else if (item.mediaType === "book") {
     const authors = formatAuthorsFact(facts);
     details = authors ? [authors] : [];
+  } else if (item.mediaType === "comic") {
+    const authors = formatAuthorsFact(facts);
+    const issues = getPositiveIntegerFact(facts, "issueCount");
+    const publisher = getNonEmptyStringFact(facts, "publisher");
+    details = [
+      authors,
+      issues
+        ? formatPluralCount(issues, { one: "выпуск", few: "выпуска", many: "выпусков" })
+        : null,
+      publisher,
+    ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "series") {
     const seasons = getPositiveIntegerFact(facts, "seasonCount");
     const episodes = getPositiveIntegerFact(facts, "episodeCount");

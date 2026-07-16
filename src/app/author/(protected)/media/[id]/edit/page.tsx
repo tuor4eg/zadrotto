@@ -29,11 +29,11 @@ export default async function EditAuthorMediaPage({
   params,
   searchParams,
 }: EditAuthorMediaPageProps) {
-  const [{ id }, { error }, author, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const author = await requireAuthor();
+  const [{ id }, { error }, franchises, mediaCarriers, mediaTypes] = await Promise.all([
     params,
     searchParams,
-    requireAuthor(),
-    getFranchiseOptions(),
+    getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
   ]);
@@ -89,7 +89,7 @@ export default async function EditAuthorMediaPage({
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             canCreateFranchise={canAuthorCreateFranchise({
-              canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
+              canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}
             values={item}
             metadata={metadata}

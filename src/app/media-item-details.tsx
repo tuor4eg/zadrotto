@@ -7,6 +7,7 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import type { PublicationStatus } from "@/lib/media/publication-status";
 import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -24,6 +25,7 @@ type MediaItemDetailsItem = {
     code: string;
     title: string;
     originalTitle: string | null;
+    publicationStatus: PublicationStatus;
   }>;
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
@@ -69,6 +71,8 @@ type MediaItemDetailsProps = {
   compactRatingSlot?: React.ReactNode;
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
+  franchiseActions?: React.ReactNode;
+  showFranchiseSection?: boolean;
   relatedItems?: RelatedMediaItem[];
   relatedFranchiseSections?: RelatedFranchiseSection[];
 };
@@ -87,9 +91,15 @@ function FranchiseLinks({
   return (
     <div className="flex flex-wrap gap-1.5">
       {franchises.map((franchise) => (
-        <Link key={franchise.id} href={`/franchises/${franchise.code}`} className={className}>
-          {franchise.title}
-        </Link>
+        franchise.publicationStatus === "published" ? (
+          <Link key={franchise.id} href={`/franchises/${franchise.code}`} className={className}>
+            {franchise.title}
+          </Link>
+        ) : (
+          <span key={franchise.id} className={`${className} text-stone-500`}>
+            {franchise.title} <span className="text-xs">(на проверке)</span>
+          </span>
+        )
       ))}
     </div>
   );
@@ -149,6 +159,8 @@ export function MediaItemDetails({
   compactRatingSlot,
   ratingSlot,
   noteSlot,
+  franchiseActions,
+  showFranchiseSection = false,
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
@@ -179,6 +191,8 @@ export function MediaItemDetails({
         compactRatingSlot={compactRatingSlot}
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
+        franchiseActions={franchiseActions}
+        showFranchiseSection={showFranchiseSection}
         relatedFranchiseSections={resolvedRelatedFranchiseSections}
       />
     );
@@ -236,7 +250,7 @@ export function MediaItemDetails({
                 {meta}
               </div>
 
-              {item.franchises.length > 0 ? (
+              {(item.franchises.length > 0 || showFranchiseSection) ? (
                 <div className="flex flex-wrap gap-1.5 text-sm text-zinc-500">
                   <span className="border border-zinc-200 px-3 py-2">Серии:</span>
                   <FranchiseLinks
@@ -342,6 +356,8 @@ function ArchiveMediaItemDetails({
   compactRatingSlot,
   ratingSlot,
   noteSlot,
+  franchiseActions,
+  showFranchiseSection,
   relatedFranchiseSections,
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
   relatedFranchiseSections: RelatedFranchiseSection[];
@@ -354,6 +370,10 @@ function ArchiveMediaItemDetails({
     ...item,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
+  const archiveInfoLabels = [
+    ...(detailsYearLabel ? [detailsYearLabel] : []),
+    ...detailsMetaLabels,
+  ];
 
   return (
     <div className="flex flex-col gap-3">
@@ -454,24 +474,22 @@ function ArchiveMediaItemDetails({
               </div>
 
               <div className={`mt-5 flex flex-wrap gap-3 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
-                <span>{getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase()}</span>
-                {detailsYearLabel ? <span>•</span> : null}
-                {detailsYearLabel ? <span>{detailsYearLabel}</span> : null}
-                {detailsMetaLabels.map((label) => (
-                  <Fragment key={label}>
-                    <span>•</span>
+                {archiveInfoLabels.map((label, index) => (
+                  <Fragment key={`${label}-${index}`}>
+                    {index > 0 ? <span>•</span> : null}
                     <span>{label}</span>
                   </Fragment>
                 ))}
-                {meta ? <span>•</span> : null}
+                {meta && archiveInfoLabels.length > 0 ? <span>•</span> : null}
                 {meta}
               </div>
 
-              {item.franchises.length > 0 ? (
+              {(item.franchises.length > 0 || showFranchiseSection) ? (
                 <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
                   <div>
-                    <dt className={`${labelFontClassName} text-xs font-semibold uppercase leading-6 text-stone-600`}>
-                      Серия
+                    <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
+                      <span className={labelFontClassName}>Серия</span>
+                      <span className="font-sans normal-case tracking-normal">{franchiseActions}</span>
                     </dt>
                     <dd className="mt-1">
                       <FranchiseLinks

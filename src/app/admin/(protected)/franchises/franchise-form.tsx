@@ -1,6 +1,7 @@
-import { Save } from "lucide-react";
+import Link from "next/link";
+import { Eye, Save } from "lucide-react";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
@@ -17,6 +18,7 @@ type FranchiseFormProps = {
   submitLabel: string;
   values?: FranchiseFormValues;
   errorMessage?: string | null;
+  publicHref?: string | null;
   successMessage?: string | null;
 };
 
@@ -25,6 +27,7 @@ export function FranchiseForm({
   submitLabel,
   values,
   errorMessage,
+  publicHref,
   successMessage,
 }: FranchiseFormProps) {
   const toastMessages = [
@@ -69,13 +72,24 @@ export function FranchiseForm({
         />
       </div>
 
-      <div>
+      <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
         >
           <Save />
           {submitLabel}
         </Button>
+        {publicHref ? (
+          <Link href={publicHref} className={buttonVariants({ variant: "outline" })}>
+            <Eye />
+            Открыть на сайте
+          </Link>
+        ) : (
+          <Button type="button" variant="outline" disabled>
+            <Eye />
+            Серия не опубликована
+          </Button>
+        )}
       </div>
     </form>
   );

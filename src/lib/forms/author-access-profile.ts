@@ -3,6 +3,7 @@ const BYTES_IN_MEGABYTE = 1024 * 1024;
 export type AuthorAccessProfileFormInput = {
   name: string;
   canPublishMediaWithoutReview: boolean;
+  canPublishFranchisesWithoutReview: boolean;
   maxDraftMediaItems: number | null;
   maxDraftMediaItemsPerDay: number | null;
   maxUploadBytes: number | null;
@@ -33,6 +34,7 @@ function parseOptionalPositiveInteger(value: string) {
 export function parseAuthorAccessProfileFormInput(input: {
   name: string;
   canPublishMediaWithoutReview: string;
+  canPublishFranchisesWithoutReview: string;
   maxDraftMediaItems: string;
   maxDraftMediaItemsPerDay: string;
   maxUploadMegabytes: string;
@@ -80,6 +82,7 @@ export function parseAuthorAccessProfileFormInput(input: {
     value: {
       name,
       canPublishMediaWithoutReview: input.canPublishMediaWithoutReview === "1",
+      canPublishFranchisesWithoutReview: input.canPublishFranchisesWithoutReview === "1",
       maxDraftMediaItems: maxDraftMediaItems.value,
       maxDraftMediaItemsPerDay: maxDraftMediaItemsPerDay.value,
       maxUploadBytes,

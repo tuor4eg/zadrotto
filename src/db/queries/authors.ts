@@ -96,6 +96,7 @@ export async function getAuthorById(id: number) {
       accessProfileCode: authorAccessProfiles.code,
       accessProfileName: authorAccessProfiles.name,
       canPublishMediaWithoutReview: authorAccessProfiles.canPublishMediaWithoutReview,
+      canPublishFranchisesWithoutReview: authorAccessProfiles.canPublishFranchisesWithoutReview,
       maxDraftMediaItems: authorAccessProfiles.maxDraftMediaItems,
       maxDraftMediaItemsPerDay: authorAccessProfiles.maxDraftMediaItemsPerDay,
       maxUploadBytes: authorAccessProfiles.maxUploadBytes,

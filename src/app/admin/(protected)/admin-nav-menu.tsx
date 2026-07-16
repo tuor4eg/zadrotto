@@ -52,9 +52,11 @@ function formatBadgeCount(count: number) {
 
 function getAdminNavGroups({
   submittedMediaItemsCount = 0,
+  submittedFranchisesCount = 0,
   submittedReviewsCount = 0,
 }: {
   submittedMediaItemsCount?: number;
+  submittedFranchisesCount?: number;
   submittedReviewsCount?: number;
 } = {}): AdminNavGroup[] {
   return [
@@ -89,7 +91,7 @@ function getAdminNavGroups({
     },
     {
       key: "requests",
-      count: submittedMediaItemsCount + submittedReviewsCount,
+      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount,
       icon: FileClock,
       label: "Заявки",
       items: [
@@ -98,6 +100,12 @@ function getAdminNavGroups({
           icon: FileText,
           label: "Записи",
           count: submittedMediaItemsCount,
+        },
+        {
+          href: "/admin/franchise-review",
+          icon: Layers3,
+          label: "Серии",
+          count: submittedFranchisesCount,
         },
         {
           href: "/admin/reviews",
@@ -205,19 +213,21 @@ function AdminNavMenu({ count = 0, icon: Icon, items, label }: AdminNavMenuProps
 export function AdminMobileNavMenu({
   logoutSlot,
   submittedMediaItemsCount,
+  submittedFranchisesCount,
   submittedReviewsCount,
 }: {
   logoutSlot: React.ReactNode;
   submittedMediaItemsCount: number;
+  submittedFranchisesCount: number;
   submittedReviewsCount: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     content: true,
-    requests: submittedMediaItemsCount + submittedReviewsCount > 0,
+    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount > 0,
   });
   const rootRef = useRef<HTMLDivElement>(null);
-  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedReviewsCount });
+  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount });
 
   useEffect(() => {
     if (!isOpen) {
@@ -362,12 +372,14 @@ export function AdminMobileNavMenu({
 
 export function AdminRequestsMenu({
   submittedMediaItemsCount,
+  submittedFranchisesCount,
   submittedReviewsCount,
 }: {
   submittedMediaItemsCount: number;
+  submittedFranchisesCount: number;
   submittedReviewsCount: number;
 }) {
-  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedReviewsCount })
+  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount })
     .find((item) => item.key === "requests");
 
   return (

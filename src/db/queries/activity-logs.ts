@@ -1,7 +1,7 @@
 import { and, desc, eq, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
-import { adminActivityLogs, adminUsers, authors } from "@/db/schema";
+import { adminActivityLogs, adminUsers, authors, mediaItems } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import type {
   ActivityAction,
@@ -90,7 +90,7 @@ export async function getAdminActivityLogs(input: ActivityLogFilters & {
       action: adminActivityLogs.action,
       entityType: adminActivityLogs.entityType,
       entityId: adminActivityLogs.entityId,
-      entityLabel: adminActivityLogs.entityLabel,
+      entityLabel: sql<string | null>`coalesce(${mediaItems.title}, ${adminActivityLogs.entityLabel})`,
       status: adminActivityLogs.status,
       severity: adminActivityLogs.severity,
       message: adminActivityLogs.message,
@@ -101,6 +101,13 @@ export async function getAdminActivityLogs(input: ActivityLogFilters & {
     .from(adminActivityLogs)
     .leftJoin(adminUsers, eq(adminUsers.id, adminActivityLogs.adminUserId))
     .leftJoin(authors, eq(authors.id, adminActivityLogs.authorId))
+    .leftJoin(
+      mediaItems,
+      and(
+        eq(adminActivityLogs.entityType, "media-item"),
+        eq(mediaItems.id, adminActivityLogs.entityId),
+      ),
+    )
     .where(filterCondition)
     .orderBy(desc(adminActivityLogs.createdAt), desc(adminActivityLogs.id))
     .limit(input.pageSize)

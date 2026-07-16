@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
+import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import {
@@ -12,10 +13,13 @@ import {
   getPublicMediaItemMetadataByCode,
 } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
+
+export const dynamic = "force-dynamic";
 
 type MediaItemPageProps = {
   params: Promise<{
@@ -62,16 +66,23 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   }
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
-  const firstFranchiseCode = item.franchises[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes] = await Promise.all([
+  const publishedFranchiseLinks = item.franchises.filter(
+    (franchise) => franchise.publicationStatus === "published",
+  );
+  const franchiseLinkStatusById = new Map(
+    item.franchiseLinkStatuses.map((franchise) => [franchise.id, franchise.publicationStatus]),
+  );
+  const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises] = await Promise.all([
     Promise.all(
-      item.franchises.map(async (franchise) => ({
+      publishedFranchiseLinks.map(async (franchise) => ({
         franchise,
         items: await getOtherMediaItemsFromFranchises([franchise.id], item.id, currentAuthor?.id),
       })),
     ),
     getPublishedReviewsForMediaItem(item.id),
     getMediaTypeOptions(),
+    currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -118,6 +129,32 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           }
           mediaTypes={mediaTypes}
           relatedFranchiseSections={relatedFranchiseSections}
+          showFranchiseSection={Boolean(currentAuthor)}
+          franchiseActions={
+            currentAuthor ? (
+              <MediaItemFranchiseSuggestionDialog
+                canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
+                franchises={publishedFranchises.map((franchise) => {
+                  const linkStatus = franchiseLinkStatusById.get(franchise.id);
+
+                  return {
+                    ...franchise,
+                    disabled: linkStatus !== undefined,
+                    disabledLabel:
+                      linkStatus === "published"
+                        ? "Уже привязана к записи"
+                        : linkStatus === "submitted"
+                          ? "Уже предложена и ожидает проверки"
+                          : linkStatus === "rejected"
+                            ? "Привязка отклонена"
+                            : "Связь ещё не отправлена",
+                  };
+                })}
+                mediaItemCode={item.code}
+                mediaItemId={item.id}
+              />
+            ) : null
+          }
           adjacentShelfSlot={
             <MediaItemReviews
               mediaItemId={item.id}

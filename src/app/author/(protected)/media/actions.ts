@@ -8,7 +8,11 @@ import { notFound, redirect } from "next/navigation";
 import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
 import { upsertAuthorMediaExperience } from "@/db/queries/author-media-experiences";
 import { getCoverSettings } from "@/db/queries/cover-settings";
-import { createFranchise, franchiseIdsExist } from "@/db/queries/franchises";
+import {
+  authorCanUseFranchiseIds,
+  createFranchise,
+  moveAuthorFranchisesForMediaSubmission,
+} from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
@@ -37,6 +41,8 @@ import {
   canAuthorCreateFranchise,
   canAuthorDeleteMediaItem,
   canAuthorWithdrawPublicationRequest,
+  getFranchisePublicationStatusAfterAuthorCreate,
+  getFranchisePublicationStatusAfterAuthorSubmit,
   getPublicationStatusAfterAuthorSubmit,
 } from "@/lib/authors/media-publication";
 import {
@@ -70,6 +76,7 @@ export type CreateAuthorInlineFranchiseState = {
     id: number;
     title: string;
     originalTitle: string | null;
+    publicationStatus: "private" | "submitted" | "published" | "rejected";
   } | null;
 };
 
@@ -261,8 +268,8 @@ function readAuthorMediaForm(formData: FormData, options?: { mediaType?: MediaTy
   };
 }
 
-async function areKnownFranchises(franchiseIds: number[]) {
-  return franchiseIdsExist(franchiseIds);
+async function canAuthorUseFranchises(authorId: number, franchiseIds: number[]) {
+  return authorCanUseFranchiseIds({ authorId, ids: franchiseIds });
 }
 
 async function isKnownMediaType(mediaType: MediaType) {
@@ -393,12 +400,6 @@ export async function createAuthorInlineFranchiseAction(
 ): Promise<CreateAuthorInlineFranchiseState> {
   const author = await requireAuthor();
 
-  if (!canAuthorCreateFranchise({
-    canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
-  })) {
-    return { error: "forbidden", franchise: null };
-  }
-
   const input = readFranchiseForm(formData);
 
   if (!input.ok) {
@@ -411,6 +412,10 @@ export async function createAuthorInlineFranchiseAction(
     franchise = await createFranchise({
       ...input.value,
       code: generateEntityCode({ type: "series", name: input.value.title }),
+      createdByAuthorId: author.id,
+      publicationStatus: getFranchisePublicationStatusAfterAuthorCreate({
+        canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+      }),
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
@@ -443,6 +448,7 @@ export async function createAuthorInlineFranchiseAction(
       id: franchise.id,
       title: input.value.title,
       originalTitle: input.value.originalTitle,
+      publicationStatus: franchise.publicationStatus,
     },
   };
 }
@@ -474,7 +480,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
   }
 
-  if (!(await areKnownFranchises(form.value.franchiseIds))) {
+  if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(getCreateErrorRedirect(formData, "invalid-franchise"));
   }
 
@@ -608,6 +614,14 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "publish-locked"));
   }
 
+  await moveAuthorFranchisesForMediaSubmission({
+    authorId: author.id,
+    mediaItemId: updatedItem.id,
+    nextStatus: getFranchisePublicationStatusAfterAuthorSubmit({
+      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+    }),
+  });
+
   if (updatedItem.publicationStatus === "published") {
     await logActivity({
       action: "media.published",
@@ -666,7 +680,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
   }
 
-  if (!(await areKnownFranchises(form.value.franchiseIds))) {
+  if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
   }
 
@@ -777,6 +791,14 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   if (!updatedItem) {
     redirect("/author/media?error=publish-locked");
   }
+
+  await moveAuthorFranchisesForMediaSubmission({
+    authorId: author.id,
+    mediaItemId: updatedItem.id,
+    nextStatus: getFranchisePublicationStatusAfterAuthorSubmit({
+      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+    }),
+  });
 
   revalidatePath("/author/media");
 

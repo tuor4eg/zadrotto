@@ -48,6 +48,77 @@ describe("media item summary", () => {
     }
   });
 
+  it("formats comic authors, issue count, and publisher", () => {
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "comic",
+        mediaTypeLabel: "Комикс",
+        releaseYear: 1986,
+        metadataFacts: {
+          authors: ["Алан Мур", "Дэйв Гиббонс"],
+          issueCount: 12,
+          publisher: "DC Comics",
+        },
+      }),
+      "Комикс · 1986 · Алан Мур, Дэйв Гиббонс · 12 выпусков · DC Comics",
+    );
+  });
+
+  it("uses correct Russian plurals and skips invalid optional comic facts", () => {
+    const cases = [
+      [1, "1 выпуск"],
+      [2, "2 выпуска"],
+      [5, "5 выпусков"],
+      [11, "11 выпусков"],
+      [21, "21 выпуск"],
+      [22, "22 выпуска"],
+    ] as const;
+
+    for (const [issueCount, expectedCount] of cases) {
+      assert.equal(
+        formatMediaItemSummary({
+          mediaType: "comic",
+          mediaTypeLabel: "Комикс",
+          releaseYear: null,
+          metadataFacts: { issueCount, publisher: " " },
+        }),
+        `Комикс · ${expectedCount}`,
+      );
+    }
+
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "comic",
+        mediaTypeLabel: "Комикс",
+        releaseYear: null,
+        metadataFacts: { issueCount: null, publisher: null },
+      }),
+      "Комикс",
+    );
+
+    for (const issueCount of [0, -1, 1.5, "12"]) {
+      assert.equal(
+        formatMediaItemSummary({
+          mediaType: "comic",
+          mediaTypeLabel: "Комикс",
+          releaseYear: null,
+          metadataFacts: { issueCount, publisher: 42 },
+        }),
+        "Комикс",
+      );
+    }
+
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "comic",
+        mediaTypeLabel: "Комикс",
+        releaseYear: null,
+        metadataFacts: { publisher: "  DC Comics  " },
+      }),
+      "Комикс · DC Comics",
+    );
+  });
+
   it("formats a series air-year range, counts, and episode runtime", () => {
     assert.equal(
       formatMediaItemSummary({

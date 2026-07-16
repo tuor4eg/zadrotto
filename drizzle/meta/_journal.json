@@ -204,6 +204,27 @@
       "when": 1782081600000,
       "tag": "0028_comic_vine_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782085200000,
+      "tag": "0029_franchise_publication_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782088800000,
+      "tag": "0030_media_item_franchise_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782092400000,
+      "tag": "0031_normalize_franchise_media_activity",
+      "breakpoints": true
     }
   ]
 }

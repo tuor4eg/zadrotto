@@ -12,6 +12,7 @@ import {
   ACTIVITY_STATUS_LABELS,
   getActivityActionLabel,
   getActivityEntityTypeLabel,
+  getFranchiseMediaActivityContext,
   isActivityAction,
   isActivityActorType,
   isActivityEntityType,
@@ -117,14 +118,64 @@ function getSeverityBadgeVariant(severity: string) {
 
 function ActivityLogDetails({
   item,
+  showPrimaryEntity,
 }: {
   item: ActivityLogItem;
+  showPrimaryEntity: boolean;
 }) {
   const entityTypeLabel = getActivityEntityTypeLabel(item.entityType);
+  const franchiseMediaContext = getFranchiseMediaActivityContext({
+    action: item.action,
+    entityId: item.entityId,
+    entityLabel: item.entityLabel,
+    entityType: item.entityType,
+    metadata: item.metadata,
+  });
+  const contextMediaItem = franchiseMediaContext?.mediaItem &&
+    (showPrimaryEntity || item.entityType !== "media-item")
+    ? franchiseMediaContext.mediaItem
+    : null;
+  const contextFranchises = franchiseMediaContext
+    ? showPrimaryEntity || item.entityType !== "franchise"
+      ? franchiseMediaContext.franchises
+      : franchiseMediaContext.franchises.filter(
+          (franchise) => franchise.id !== item.entityId,
+        )
+    : [];
 
   return (
     <div className="grid gap-1 text-xs leading-5 text-stone-500">
-      {item.entityType ? (
+      {franchiseMediaContext ? (
+        <>
+          {contextMediaItem ? (
+            <div>
+              Запись:{" "}
+              <Link
+                className="text-stone-700 underline-offset-2 hover:underline"
+                href={`/admin/media/${contextMediaItem.id}/edit`}
+              >
+                {contextMediaItem.title}
+              </Link>
+            </div>
+          ) : null}
+          {contextFranchises.length > 0 ? (
+            <div>
+              {contextFranchises.length === 1 ? "Серия" : "Серии"}: {" "}
+              {contextFranchises.map((franchise, index) => (
+                <span key={franchise.id}>
+                  {index > 0 ? ", " : null}
+                  <Link
+                    className="text-stone-700 underline-offset-2 hover:underline"
+                    href={`/admin/franchises/${franchise.id}/edit`}
+                  >
+                    {franchise.title}
+                  </Link>
+                </span>
+              ))}
+            </div>
+          ) : null}
+        </>
+      ) : item.entityType ? (
         <div>
           {entityTypeLabel}:{" "}
           <ActivityEntityLabel item={item} className="text-stone-700" />
@@ -255,7 +306,7 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                         item.severity as keyof typeof ACTIVITY_SEVERITY_LABELS
                       ] ?? item.severity}
                     </Badge>
-                    <ActivityLogDetails item={item} />
+                    <ActivityLogDetails item={item} showPrimaryEntity />
                   </div>
                 </div>
               ))}
@@ -311,7 +362,7 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                         </Badge>
                       </TD>
                       <TD>
-                        <ActivityLogDetails item={item} />
+                        <ActivityLogDetails item={item} showPrimaryEntity={false} />
                       </TD>
                     </TR>
                   ))}

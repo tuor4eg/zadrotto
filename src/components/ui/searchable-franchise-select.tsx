@@ -7,9 +7,12 @@ import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
 
 export type SearchableFranchiseOption = {
+  disabled?: boolean;
+  disabledLabel?: string;
   id: number;
   title: string;
   originalTitle: string | null;
+  publicationStatus?: "private" | "submitted" | "published" | "rejected";
 };
 
 type SearchableFranchiseSelectProps = {
