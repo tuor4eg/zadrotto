@@ -38,7 +38,6 @@ import {
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { validateMediaCarrierForMediaType } from "@/lib/forms/media-carrier";
 import {
-  canAuthorCreateFranchise,
   canAuthorDeleteMediaItem,
   canAuthorWithdrawPublicationRequest,
   getFranchisePublicationStatusAfterAuthorCreate,

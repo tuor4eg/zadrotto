@@ -1,7 +1,7 @@
 "use client";
 
 import { Check, Plus, X } from "lucide-react";
-import { useActionState, useEffect, useRef, useState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
@@ -31,31 +31,37 @@ export function MediaItemFranchiseSuggestionDialog({
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [selectedFranchiseIds, setSelectedFranchiseIds] = useState<string[]>([]);
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
-  const [state, formAction, isPending] = useActionState(
-    submitAuthorMediaItemFranchiseSuggestionAction,
-    initialState,
-  );
   const formRef = useRef<HTMLFormElement>(null);
-  const label = canPublishWithoutReview ? "Добавить серию" : "Предложить серию";
 
-  useEffect(() => {
-    if (!state.success) {
-      return;
+  function resetAndCloseDialog() {
+    formRef.current?.reset();
+    setMode("existing");
+    setSelectedFranchiseIds([]);
+    setFranchiseSelectResetKey((currentKey) => currentKey + 1);
+    setOpen(false);
+  }
+
+  async function submitSuggestion(
+    previousState: MediaItemFranchiseSuggestionState,
+    formData: FormData,
+  ) {
+    const nextState = await submitAuthorMediaItemFranchiseSuggestionAction(
+      previousState,
+      formData,
+    );
+
+    if (nextState.success) {
+      resetAndCloseDialog();
     }
 
-    formRef.current?.reset();
-    setMode("existing");
-    setSelectedFranchiseIds([]);
-    setFranchiseSelectResetKey((currentKey) => currentKey + 1);
-    setOpen(false);
-  }, [state.success]);
+    return nextState;
+  }
+
+  const [state, formAction, isPending] = useActionState(submitSuggestion, initialState);
+  const label = canPublishWithoutReview ? "Добавить серию" : "Предложить серию";
 
   function closeDialog() {
-    formRef.current?.reset();
-    setMode("existing");
-    setSelectedFranchiseIds([]);
-    setFranchiseSelectResetKey((currentKey) => currentKey + 1);
-    setOpen(false);
+    resetAndCloseDialog();
   }
 
   const errorMessage = state.error === "duplicate"
