@@ -20,6 +20,7 @@ import {
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
+import { validateFranchiseDuplicateCheck } from "@/lib/franchises/validate-franchise-duplicate-check";
 
 export type CreateInlineFranchiseState = {
   error: string | null;
@@ -80,6 +81,12 @@ export async function createFranchiseAction(formData: FormData) {
     redirect(`/admin/franchises/new?error=${input.error}`);
   }
 
+  const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
+
+  if (!duplicateCheck.ok) {
+    redirect(`/admin/franchises/new?error=${duplicateCheck.error}`);
+  }
+
   let franchise;
 
   try {
@@ -119,6 +126,12 @@ export async function createInlineFranchiseAction(
 
   if (!input.ok) {
     return { error: input.error, franchise: null };
+  }
+
+  const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
+
+  if (!duplicateCheck.ok) {
+    return { error: duplicateCheck.error, franchise: null };
   }
 
   let franchise;

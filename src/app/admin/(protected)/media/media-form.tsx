@@ -1,7 +1,7 @@
 "use client";
 
 import { RefreshCw, Save, Search } from "lucide-react";
-import { useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/media-metadata-facts";
 import { MediaTitleCandidatePicker } from "@/components/ui/media-title-candidate-picker";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
+import { MediaItemDuplicateCheck } from "@/components/media-item-duplicate-check";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
@@ -178,6 +179,7 @@ export function AdminMediaForm({
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
+  const [coverTitleSource, setCoverTitleSource] = useState<Pick<MediaTitleCandidate, "provider" | "externalId"> | null>(null);
   const metadataRequestVersionRef = useRef(0);
   const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
   const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
@@ -191,6 +193,7 @@ export function AdminMediaForm({
   const [franchiseOptions, setFranchiseOptions] = useState(franchises);
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
   const [localErrorToast, setLocalErrorToast] = useState<AdminToast | null>(null);
+  const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
@@ -210,6 +213,9 @@ export function AdminMediaForm({
     },
   });
   const canRefreshMetadata = Boolean(metadataRefreshSource) || title.trim().length >= 2;
+  const handleDuplicateBlockedChange = useCallback((blocked: boolean) => {
+    setDuplicateBlocked(blocked);
+  }, []);
 
   async function refreshMetadata() {
     if (!canRefreshMetadata || isRefreshingMetadata) {
@@ -296,6 +302,7 @@ export function AdminMediaForm({
                   const nextMediaType = event.currentTarget.value as MediaType;
 
                   setSelectedMediaType(nextMediaType);
+                  setCoverTitleSource(null);
                   setCanSearchCoverCandidates(false);
                   setSelectedMetadata(null);
                   setMetadataCandidateToken("");
@@ -353,6 +360,7 @@ export function AdminMediaForm({
             onChange={(event) => {
               metadataRequestVersionRef.current += 1;
               setTitle(event.currentTarget.value);
+              setCoverTitleSource(null);
               setCanSearchCoverCandidates(isEditing);
               setSelectedMetadata(isEditing ? metadata : null);
               setMetadataCandidateToken("");
@@ -374,6 +382,7 @@ export function AdminMediaForm({
                 setOriginalTitle(nextFields.originalTitle);
                 setReleaseYear(nextFields.releaseYear);
                 setDescription(nextFields.description);
+                setCoverTitleSource({ provider: candidate.provider, externalId: candidate.externalId });
                 setCanSearchCoverCandidates(true);
                 const requestVersion = metadataRequestVersionRef.current + 1;
                 metadataRequestVersionRef.current = requestVersion;
@@ -404,7 +413,10 @@ export function AdminMediaForm({
             name="originalTitle"
             type="text"
             value={originalTitle}
-            onChange={(event) => setOriginalTitle(event.currentTarget.value)}
+            onChange={(event) => {
+              setOriginalTitle(event.currentTarget.value);
+              setCoverTitleSource(null);
+            }}
           />
         </div>
 
@@ -469,9 +481,24 @@ export function AdminMediaForm({
             min="0"
             max="9999"
             value={releaseYear}
-            onChange={(event) => setReleaseYear(event.currentTarget.value)}
+            onChange={(event) => {
+              setReleaseYear(event.currentTarget.value);
+              setCoverTitleSource(null);
+            }}
           />
         </div>
+
+        {!isEditing ? (
+          <div className="md:col-span-2">
+            <MediaItemDuplicateCheck
+              mediaType={selectedMediaType}
+              title={title}
+              originalTitle={originalTitle}
+              releaseYear={releaseYear}
+              onBlockedChange={handleDuplicateBlockedChange}
+            />
+          </div>
+        ) : null}
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="admin-media-author">Автор</Label>
@@ -505,6 +532,7 @@ export function AdminMediaForm({
               originalTitle,
               mediaType: selectedMediaType,
               releaseYear,
+              titleSource: coverTitleSource,
             }}
             onFileRejected={(error) => {
               setLocalErrorToast({
@@ -553,7 +581,7 @@ export function AdminMediaForm({
       </div>
 
       <div>
-        <Button type="submit" disabled={requireAuthor && !hasAuthors}>
+        <Button type="submit" disabled={(requireAuthor && !hasAuthors) || duplicateBlocked}>
           <Save />
           {submitLabel}
         </Button>

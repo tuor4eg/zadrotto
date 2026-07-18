@@ -22,7 +22,6 @@ import {
   getAuthorPrivateMediaItemLimitUsage,
   getAuthorMediaItemForEdit,
   getAuthorMediaItemForView,
-  findPublishedMediaItemDuplicateCandidates,
   submitAuthorMediaItemForPublication,
   updateAuthorMediaItem,
   withdrawAuthorMediaItemFromReview,
@@ -62,12 +61,10 @@ import {
 } from "@/lib/covers/storage";
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
-import {
-  isExactMediaItemDuplicate,
-  verifyMediaItemDuplicateAcknowledgementToken,
-} from "@/lib/media/media-item-duplicates";
+import { validateMediaItemDuplicateCheck } from "@/lib/media/validate-media-item-duplicate-check";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 import { parseRatingScoreInput } from "@/lib/ratings/score";
+import { validateFranchiseDuplicateCheck } from "@/lib/franchises/validate-franchise-duplicate-check";
 
 export type CreateAuthorInlineFranchiseState = {
   error: string | null;
@@ -355,44 +352,6 @@ function hasValidMediaItemMetadataToken(formData: FormData) {
   return !metadataCandidateToken || Boolean(verifyMediaMetadataCandidateToken(metadataCandidateToken));
 }
 
-async function validateMediaItemDuplicateCheck(
-  formData: FormData,
-  input: {
-    mediaType: MediaType;
-    originalTitle: string | null;
-    releaseYear: number | null;
-    title: string;
-  },
-) {
-  const matches = await findPublishedMediaItemDuplicateCandidates(input);
-  const exactMatches = matches.filter((match) => isExactMediaItemDuplicate(input, match));
-
-  if (exactMatches.length > 0) {
-    return { ok: false as const, error: "duplicate-media-exact" };
-  }
-
-  const possibleMatches = matches.filter((match) => !exactMatches.includes(match));
-
-  if (possibleMatches.length === 0) {
-    return { ok: true as const };
-  }
-
-  const isAcknowledged = getFormString(formData, "mediaDuplicateAcknowledged") === "1";
-  const acknowledgementToken = getFormString(formData, "mediaDuplicateCheckToken");
-
-  if (
-    !isAcknowledged ||
-    !verifyMediaItemDuplicateAcknowledgementToken(acknowledgementToken, {
-      form: input,
-      matches: possibleMatches,
-    })
-  ) {
-    return { ok: false as const, error: "duplicate-media-possible" };
-  }
-
-  return { ok: true as const };
-}
-
 export async function createAuthorInlineFranchiseAction(
   _previousState: CreateAuthorInlineFranchiseState,
   formData: FormData,
@@ -403,6 +362,11 @@ export async function createAuthorInlineFranchiseAction(
 
   if (!input.ok) {
     return { error: input.error, franchise: null };
+  }
+
+  const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
+  if (!duplicateCheck.ok) {
+    return { error: duplicateCheck.error, franchise: null };
   }
 
   let franchise;

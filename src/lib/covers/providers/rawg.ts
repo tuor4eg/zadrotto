@@ -20,6 +20,10 @@ type RawgResponse = {
 
 type RawgGameDetailsResponse = {
   id?: number;
+  name?: string;
+  released?: string | null;
+  background_image?: string | null;
+  rating?: number;
   slug?: string;
   platforms?: Array<{
     platform?: {
@@ -107,6 +111,13 @@ export const rawgProvider: MediaProvider = {
         genres: getNames(details.genres),
       },
     };
+  },
+  async getCoverCandidatesByTitleSource(input, options) {
+    const apiKey = options.providerCredentials?.rawg?.apiKey?.trim();
+    if (!apiKey || !input.titleSource?.externalId.trim()) return [];
+    const details = await fetchJson<RawgGameDetailsResponse>(buildUrl(`https://api.rawg.io/api/games/${input.titleSource.externalId}`, { key: apiKey }));
+    if (!details?.id || !details.background_image) return [];
+    return [{ id: `game:${details.id}`, provider: "rawg", title: details.name ?? input.title, imageUrl: details.background_image, sourcePageUrl: details.slug ? `https://rawg.io/games/${details.slug}` : `https://rawg.io/games/${details.id}`, year: getFirstYear(details.released) ?? undefined, confidence: details.rating }];
   },
   async searchCoverCandidates(input, options) {
     const apiKey = options.providerCredentials?.rawg?.apiKey?.trim();

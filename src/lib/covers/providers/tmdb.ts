@@ -182,12 +182,13 @@ function createTmdbClient(input: { accessToken: string; mediaType: TmdbMediaType
 
   return {
     tmdbType,
-    searchTitles(query: string) {
+    searchTitles(query: string, releaseYear?: number | null) {
       const url = buildUrl(`https://api.themoviedb.org/3/search/${tmdbType}`, {
         query,
         include_adult: false,
         language: "ru-RU",
         page: 1,
+        ...(releaseYear ? (tmdbType === "movie" ? { year: releaseYear } : { first_air_date_year: releaseYear }) : {}),
       });
 
       return fetchJson<TmdbSearchResponse>(url, { headers });
@@ -302,6 +303,27 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
         },
       };
     },
+    async getCoverCandidatesByTitleSource(input, options) {
+      const accessToken = options.providerCredentials?.tmdb?.accessToken?.trim();
+      const id = Number(input.titleSource?.externalId);
+      if (!accessToken || !Number.isInteger(id) || id <= 0) return [];
+      const client = createTmdbClient({ accessToken, mediaType });
+      const images = await client.searchImages(id, null);
+      return sortTmdbPosters(images?.posters ?? [], null)
+        .filter((poster) => poster.file_path)
+        .slice(0, options.candidateLimit)
+        .map((poster) => ({
+          id: `${client.tmdbType}:${id}:${poster.file_path}`,
+          provider: "tmdb",
+          title: input.title,
+          imageUrl: client.posterUrl(poster.file_path!),
+          sourcePageUrl: client.sourcePageUrl(id),
+          width: poster.width,
+          height: poster.height,
+          year: input.releaseYear ?? undefined,
+          confidence: poster.vote_average,
+        }) satisfies CoverCandidate);
+    },
     async searchCoverCandidates(input, options) {
       const accessToken = options.providerCredentials?.tmdb?.accessToken?.trim();
       const query = normalizeSearchQuery(input);
@@ -311,7 +333,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
       }
 
       const client = createTmdbClient({ accessToken, mediaType });
-      const data = await client.searchTitles(query);
+      const data = await client.searchTitles(query, input.releaseYear);
       const searchResults = (data?.results ?? [])
         .filter((item) => item.id)
         .slice(0, options.tmdbResultScanLimit);

@@ -239,6 +239,7 @@ export function MediaItemForm({
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
+  const [coverTitleSource, setCoverTitleSource] = useState<Pick<MediaTitleCandidate, "provider" | "externalId"> | null>(null);
   const metadataRequestVersionRef = useRef(0);
   const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
   const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
@@ -371,6 +372,7 @@ export function MediaItemForm({
 
   function selectMediaType(nextMediaType: MediaType) {
     setSelectedMediaType(nextMediaType);
+    setCoverTitleSource(null);
     setDuplicateAcknowledged(false);
     setDuplicateStatus("idle");
     setCanSearchCoverCandidates(false);
@@ -551,6 +553,7 @@ export function MediaItemForm({
             onChange={(event) => {
               metadataRequestVersionRef.current += 1;
               setTitle(event.currentTarget.value);
+              setCoverTitleSource(null);
               setDuplicateAcknowledged(false);
               setDuplicateStatus("idle");
               setCanSearchCoverCandidates(isEditing);
@@ -573,6 +576,7 @@ export function MediaItemForm({
                 setOriginalTitle(nextFields.originalTitle);
                 setReleaseYear(nextFields.releaseYear);
                 setDescription(nextFields.description);
+                setCoverTitleSource({ provider: candidate.provider, externalId: candidate.externalId });
                 setDuplicateAcknowledged(false);
                 setDuplicateStatus("idle");
                 setCanSearchCoverCandidates(true);
@@ -609,6 +613,7 @@ export function MediaItemForm({
             value={originalTitle}
             onChange={(event) => {
               setOriginalTitle(event.currentTarget.value);
+              setCoverTitleSource(null);
               setDuplicateAcknowledged(false);
               setDuplicateStatus("idle");
             }}
@@ -686,6 +691,7 @@ export function MediaItemForm({
             value={releaseYear}
             onChange={(event) => {
               setReleaseYear(event.currentTarget.value);
+              setCoverTitleSource(null);
               setDuplicateAcknowledged(false);
               setDuplicateStatus("idle");
             }}
@@ -820,6 +826,7 @@ export function MediaItemForm({
               originalTitle,
               mediaType: selectedMediaType,
               releaseYear,
+              titleSource: coverTitleSource,
             }}
             onFileRejected={(error) => {
               setLocalErrorToast({

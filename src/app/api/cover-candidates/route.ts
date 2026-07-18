@@ -14,16 +14,36 @@ import {
   createProviderCoverSearchRateLimiter,
 } from "@/lib/covers/rate-limits";
 import { searchCoverCandidates } from "@/lib/covers/registry";
+import { isCoverProviderCode } from "@/lib/covers/types";
 import { isMediaTypeCode } from "@/lib/media/types";
 
 type CoverCandidatesRequestBody = {
   title?: unknown;
   originalTitle?: unknown;
   mediaType?: unknown;
+  releaseYear?: unknown;
+  titleSource?: unknown;
 };
 
 function normalizeOptionalString(value: unknown) {
   return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function normalizeReleaseYear(value: unknown) {
+  if (value === null || value === undefined || (typeof value === "string" && !value.trim())) {
+    return null;
+  }
+
+  const year = typeof value === "number" ? value : Number(value);
+  return Number.isInteger(year) && year >= 0 && year <= 9999 ? year : null;
+}
+
+function normalizeTitleSource(value: unknown) {
+  if (!value || typeof value !== "object") return null;
+  const source = value as { provider?: unknown; externalId?: unknown };
+  const provider = normalizeOptionalString(source.provider);
+  const externalId = normalizeOptionalString(source.externalId);
+  return provider && externalId && isCoverProviderCode(provider) ? { provider, externalId } : null;
 }
 
 export async function POST(request: Request) {
@@ -37,8 +57,9 @@ export async function POST(request: Request) {
   const title = normalizeOptionalString(body.title) ?? "";
   const originalTitle = normalizeOptionalString(body.originalTitle);
   const mediaType = normalizeOptionalString(body.mediaType);
+  const titleSource = normalizeTitleSource(body.titleSource);
 
-  if (!mediaType || !isMediaTypeCode(mediaType) || (!title && !originalTitle)) {
+  if (!mediaType || !isMediaTypeCode(mediaType) || (!titleSource && !title && !originalTitle)) {
     return NextResponse.json({ candidates: [] });
   }
 
@@ -69,7 +90,8 @@ export async function POST(request: Request) {
       title,
       originalTitle,
       mediaType,
-      releaseYear: null,
+      releaseYear: normalizeReleaseYear(body.releaseYear),
+      titleSource,
     },
     undefined,
     {

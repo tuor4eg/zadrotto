@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createAuthorFranchiseWithMediaItemLink,
   createAuthorMediaItemFranchiseLinks,
+  findPublishedFranchiseDuplicateCandidates,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
 import { requireAuthor } from "@/lib/auth/author-auth";
@@ -13,9 +14,19 @@ import { generateEntityCode } from "@/lib/common/generated-code";
 import { isUniqueViolation } from "@/lib/common/app-error-messages";
 import { getFranchisePublicationStatusAfterAuthorSubmit } from "@/lib/authors/media-publication";
 import { normalizeOptionalFranchiseString } from "@/lib/forms/admin-franchise";
+import {
+  isExactFranchiseDuplicate,
+  verifyFranchiseDuplicateAcknowledgementToken,
+} from "@/lib/franchises/franchise-duplicates";
 
 export type MediaItemFranchiseSuggestionState = {
-  error: "duplicate" | "invalid" | "unavailable" | null;
+  error:
+    | "duplicate"
+    | "duplicate-franchise-exact"
+    | "duplicate-franchise-possible"
+    | "invalid"
+    | "unavailable"
+    | null;
   success: boolean;
 };
 
@@ -84,12 +95,35 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         return initialErrorState;
       }
 
+      const franchiseInput = {
+        title,
+        originalTitle: normalizeOptionalFranchiseString(getFormString(formData, "originalTitle")),
+      };
+      const matches = await findPublishedFranchiseDuplicateCandidates(franchiseInput);
+      const exactMatches = matches.filter((match) => isExactFranchiseDuplicate(franchiseInput, match));
+
+      if (exactMatches.length > 0) {
+        return { error: "duplicate-franchise-exact", success: false };
+      }
+
+      const possibleMatches = matches.filter((match) => !exactMatches.includes(match));
+      if (
+        possibleMatches.length > 0 &&
+        (getFormString(formData, "franchiseDuplicateAcknowledged") !== "1" ||
+          !verifyFranchiseDuplicateAcknowledgementToken(
+            getFormString(formData, "franchiseDuplicateCheckToken"),
+            { form: franchiseInput, matches: possibleMatches },
+          ))
+      ) {
+        return { error: "duplicate-franchise-possible", success: false };
+      }
+
       const franchise = await createAuthorFranchiseWithMediaItemLink({
         authorId: author.id,
         code: generateEntityCode({ type: "series", name: title }),
         description: normalizeOptionalFranchiseString(getFormString(formData, "description")),
         mediaItemId,
-        originalTitle: normalizeOptionalFranchiseString(getFormString(formData, "originalTitle")),
+        originalTitle: franchiseInput.originalTitle,
         publicationStatus,
         title,
       });

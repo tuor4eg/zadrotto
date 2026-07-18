@@ -16,6 +16,9 @@ type OpenLibrarySearchResponse = {
 };
 
 type OpenLibraryWorkResponse = {
+  title?: string;
+  first_publish_date?: string;
+  covers?: number[];
   authors?: Array<{
     author?: {
       key?: string;
@@ -95,6 +98,14 @@ export const openLibraryProvider: MediaProvider = {
         authors: [...new Set(authors.filter((author): author is string => Boolean(author)))],
       },
     };
+  },
+  async getCoverCandidatesByTitleSource(input) {
+    const workKey = input.titleSource?.externalId ? getOpenLibraryKey(input.titleSource.externalId) : null;
+    if (!workKey) return [];
+    const work = await fetchJson<OpenLibraryWorkResponse>(new URL(`https://openlibrary.org${workKey}.json`));
+    const coverId = work?.covers?.[0];
+    if (!coverId) return [];
+    return [{ id: `work:${workKey}:${coverId}`, provider: "open-library", title: work.title ?? input.title, imageUrl: `https://covers.openlibrary.org/b/id/${coverId}-L.jpg`, sourcePageUrl: `https://openlibrary.org${workKey}`, year: work.first_publish_date ? Number(work.first_publish_date.slice(0, 4)) || undefined : undefined }];
   },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);

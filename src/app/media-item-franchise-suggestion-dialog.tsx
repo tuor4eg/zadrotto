@@ -5,6 +5,7 @@ import { useActionState, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
+import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
@@ -31,12 +32,17 @@ export function MediaItemFranchiseSuggestionDialog({
   const [mode, setMode] = useState<"existing" | "new">("existing");
   const [selectedFranchiseIds, setSelectedFranchiseIds] = useState<string[]>([]);
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
+  const [title, setTitle] = useState("");
+  const [originalTitle, setOriginalTitle] = useState("");
+  const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   function resetAndCloseDialog() {
     formRef.current?.reset();
     setMode("existing");
     setSelectedFranchiseIds([]);
+    setTitle("");
+    setOriginalTitle("");
     setFranchiseSelectResetKey((currentKey) => currentKey + 1);
     setOpen(false);
   }
@@ -66,6 +72,10 @@ export function MediaItemFranchiseSuggestionDialog({
 
   const errorMessage = state.error === "duplicate"
     ? "Одна или несколько выбранных серий уже предложены для этой записи и ожидают проверки."
+    : state.error === "duplicate-franchise-exact"
+      ? "Такая серия уже есть в архиве. Открой существующую вместо создания дубля."
+      : state.error === "duplicate-franchise-possible"
+        ? "Проверь похожие серии в архиве и подтверди, что создаешь другую серию."
     : state.error === "unavailable"
       ? "Не удалось добавить серию. Попробуйте ещё раз."
       : state.error === "invalid"
@@ -100,7 +110,7 @@ export function MediaItemFranchiseSuggestionDialog({
                   <button
                     type="submit"
                     form="media-franchise-suggestion-form"
-                    disabled={isPending}
+                    disabled={isPending || (mode === "new" && duplicateBlocked)}
                     className="grid size-9 place-items-center rounded-md border border-emerald-950/20 bg-emerald-50/80 text-emerald-950 transition-colors hover:border-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={label}
                   >
@@ -129,8 +139,9 @@ export function MediaItemFranchiseSuggestionDialog({
                 <Button type="button" variant={mode === "new" ? "default" : "ghost"} size="sm" className={mode === "new" ? "flex-1" : "flex-1 bg-white hover:bg-stone-50"} onClick={() => setMode("new")}>Создать новую</Button>
               </div>
               {mode === "existing" ? <div className="grid gap-2"><Label htmlFor="media-franchise-ids">Серии</Label><SearchableFranchiseMultiSelect key={franchiseSelectResetKey} id="media-franchise-ids" name="franchiseIds" options={franchises} value={selectedFranchiseIds} onChange={setSelectedFranchiseIds} /></div> : <>
-                <div className="grid gap-2"><Label htmlFor="media-new-franchise-title">Название</Label><Input id="media-new-franchise-title" name="title" required disabled={isPending} autoFocus /></div>
-                <div className="grid gap-2"><Label htmlFor="media-new-franchise-original-title">Оригинальное название</Label><Input id="media-new-franchise-original-title" name="originalTitle" disabled={isPending} /></div>
+                <div className="grid gap-2"><Label htmlFor="media-new-franchise-title">Название</Label><Input id="media-new-franchise-title" name="title" required disabled={isPending} autoFocus value={title} onChange={(event) => setTitle(event.currentTarget.value)} /></div>
+                <div className="grid gap-2"><Label htmlFor="media-new-franchise-original-title">Оригинальное название</Label><Input id="media-new-franchise-original-title" name="originalTitle" disabled={isPending} value={originalTitle} onChange={(event) => setOriginalTitle(event.currentTarget.value)} /></div>
+                <FranchiseDuplicateCheck title={title} originalTitle={originalTitle} onBlockedChange={setDuplicateBlocked} />
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-description">Описание</Label><Textarea id="media-new-franchise-description" name="description" rows={4} disabled={isPending} /></div>
               </>}
               {errorMessage ? <p className="text-sm text-red-700" role="alert">{errorMessage}</p> : null}

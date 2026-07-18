@@ -145,6 +145,15 @@ export const comicVineProvider: MediaProvider = {
       },
     };
   },
+  async getCoverCandidatesByTitleSource(input, options) {
+    const apiKey = options.providerCredentials?.["comic-vine"]?.apiKey?.trim();
+    const id = Number(input.titleSource?.externalId);
+    if (!apiKey || !Number.isInteger(id) || id <= 0) return [];
+    const data = await fetchJson<ComicVineResponse<ComicVineVolume>>(buildUrl(`https://comicvine.gamespot.com/api/volume/4050-${id}/`, { api_key: apiKey, format: "json", field_list: "id,name,start_year,site_detail_url,image" }), { headers: getComicVineHeaders() });
+    const imageUrl = isComicVineOk(data) ? getComicVineImageUrl(data.results.image) : null;
+    if (!isComicVineOk(data) || !data.results.id || !imageUrl) return [];
+    return [{ id: `volume:${data.results.id}`, provider: "comic-vine", title: data.results.name ?? input.title, imageUrl, sourcePageUrl: data.results.site_detail_url ?? null, year: getComicVineYear(data.results.start_year) ?? undefined }];
+  },
   async searchCoverCandidates(input, options) {
     const apiKey = options.providerCredentials?.["comic-vine"]?.apiKey?.trim();
     const query = normalizeSearchQuery(input);

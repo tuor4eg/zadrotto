@@ -34,6 +34,9 @@ type JikanAnimeDetailsResponse = {
     type?: string | null;
     duration?: string | null;
     url?: string;
+    title?: string;
+    year?: number | null;
+    images?: JikanSearchResponse["data"] extends Array<infer Item> ? Item extends { images?: infer Images } ? Images : never : never;
   };
 };
 
@@ -123,6 +126,15 @@ export const jikanProvider: MediaProvider = {
         averageEpisodeRuntimeMinutes: getJikanEpisodeRuntimeMinutes(details.data.duration),
       },
     };
+  },
+  async getCoverCandidatesByTitleSource(input) {
+    const id = Number(input.titleSource?.externalId);
+    if (!Number.isInteger(id) || id <= 0) return [];
+    const details = await fetchJson<JikanAnimeDetailsResponse>(new URL(`https://api.jikan.moe/v4/anime/${id}/full`));
+    const item = details?.data;
+    const imageUrl = item ? getJikanImageUrl(item as NonNullable<JikanSearchResponse["data"]>[number]) : null;
+    if (!item?.mal_id || !imageUrl) return [];
+    return [{ id: `anime:${item.mal_id}`, provider: "jikan", title: item.title ?? input.title, imageUrl, sourcePageUrl: item.url ?? null, year: item.year ?? undefined }];
   },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);

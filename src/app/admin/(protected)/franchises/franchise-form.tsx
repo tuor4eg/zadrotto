@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
 import { Eye, Save } from "lucide-react";
+import { useState } from "react";
 
+import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
@@ -30,6 +34,10 @@ export function FranchiseForm({
   publicHref,
   successMessage,
 }: FranchiseFormProps) {
+  const isEditing = Boolean(values?.id);
+  const [title, setTitle] = useState(values?.title ?? "");
+  const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
+  const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
@@ -45,21 +53,20 @@ export function FranchiseForm({
       {values?.id ? <input type="hidden" name="franchiseId" value={values.id} /> : null}
 
       <div className="grid gap-4">
-        <Field
-          id="franchise-title"
-          label="Название"
-          name="title"
-          defaultValue={values?.title ?? ""}
-          required
-        />
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="franchise-title">Название</Label>
+          <Input id="franchise-title" name="title" type="text" value={title} onChange={(event) => setTitle(event.currentTarget.value)} required />
+        </div>
       </div>
 
-      <Field
-        id="franchise-original-title"
-        label="Оригинальное название"
-        name="originalTitle"
-        defaultValue={values?.originalTitle ?? ""}
-      />
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="franchise-original-title">Оригинальное название</Label>
+        <Input id="franchise-original-title" name="originalTitle" type="text" value={originalTitle} onChange={(event) => setOriginalTitle(event.currentTarget.value)} />
+      </div>
+
+      {!isEditing ? (
+        <FranchiseDuplicateCheck title={title} originalTitle={originalTitle} onBlockedChange={setDuplicateBlocked} />
+      ) : null}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="franchise-description">Описание</Label>
@@ -75,6 +82,7 @@ export function FranchiseForm({
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
+          disabled={duplicateBlocked}
         >
           <Save />
           {submitLabel}
@@ -92,35 +100,5 @@ export function FranchiseForm({
         )}
       </div>
     </form>
-  );
-}
-
-function Field({
-  id,
-  label,
-  name,
-  defaultValue,
-  required,
-  monospace,
-}: {
-  id: string;
-  label: string;
-  name: string;
-  defaultValue: string;
-  required?: boolean;
-  monospace?: boolean;
-}) {
-  return (
-    <div className="flex flex-col gap-2">
-      <Label htmlFor={id}>{label}</Label>
-      <Input
-        id={id}
-        name={name}
-        type="text"
-        defaultValue={defaultValue}
-        required={required}
-        className={monospace ? "font-mono" : ""}
-      />
-    </div>
   );
 }

@@ -46,6 +46,7 @@ export type CoverSearchInput = {
   originalTitle: string | null;
   mediaType: MediaType;
   releaseYear: number | null;
+  titleSource?: Pick<TitleMetadataInput, "provider" | "externalId"> | null;
 };
 
 export type TitleSearchInput = {
@@ -95,6 +96,10 @@ export type MediaProvider = {
   code: MediaProviderCode;
   mediaTypes: readonly MediaType[];
   searchCoverCandidates?(
+    input: CoverSearchInput,
+    options: CoverSearchOptions,
+  ): Promise<CoverCandidate[]>;
+  getCoverCandidatesByTitleSource?(
     input: CoverSearchInput,
     options: CoverSearchOptions,
   ): Promise<CoverCandidate[]>;

@@ -27,6 +27,14 @@ export function getFranchiseErrorMessage(error?: string) {
     return "Заполни название.";
   }
 
+  if (error === "duplicate-franchise-exact") {
+    return "Такая серия уже есть в архиве. Открой существующую вместо создания дубля.";
+  }
+
+  if (error === "duplicate-franchise-possible") {
+    return "Подтверди, что похожая серия не является дублем.";
+  }
+
   if (error === "not-empty") {
     return "Удалять можно только серии без записей.";
   }

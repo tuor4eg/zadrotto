@@ -6,6 +6,7 @@ import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
+import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import {
   createInlineFranchiseAction,
   type CreateInlineFranchiseState,
@@ -37,6 +38,9 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
   );
   const formRef = useRef<HTMLFormElement>(null);
   const lastCreatedFranchiseIdRef = useRef<number | null>(null);
+  const [title, setTitle] = useState("");
+  const [originalTitle, setOriginalTitle] = useState("");
+  const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const toastMessages = [
     ...(state.error
       ? [
@@ -57,6 +61,9 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
     lastCreatedFranchiseIdRef.current = state.franchise.id;
     onCreated(state.franchise);
     formRef.current?.reset();
+    setTitle("");
+    setOriginalTitle("");
+    setDuplicateBlocked(false);
     setOpen(false);
   }, [onCreated, state.franchise]);
 
@@ -109,6 +116,8 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
               required
               disabled={isPending}
               autoFocus
+              value={title}
+              onChange={(event) => setTitle(event.currentTarget.value)}
             />
           </div>
 
@@ -119,8 +128,16 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
               name="originalTitle"
               type="text"
               disabled={isPending}
+              value={originalTitle}
+              onChange={(event) => setOriginalTitle(event.currentTarget.value)}
             />
           </div>
+
+          <FranchiseDuplicateCheck
+            title={title}
+            originalTitle={originalTitle}
+            onBlockedChange={setDuplicateBlocked}
+          />
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="inline-franchise-description">Описание</Label>
@@ -141,7 +158,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
             >
               Отмена
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending || duplicateBlocked}>
               <Plus />
               {isPending ? "Создаём" : "Создать"}
             </Button>

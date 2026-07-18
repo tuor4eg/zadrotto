@@ -305,6 +305,93 @@ describe("cover provider registry", () => {
     );
   });
 
+  it("uses only the selected title source for an exact cover lookup", async () => {
+    let textSearchCalls = 0;
+    let directLookupCalls = 0;
+    const exactProviders = [
+      {
+        code: "open-library",
+        mediaTypes: ["book"],
+        async searchCoverCandidates() {
+          textSearchCalls += 1;
+          return [];
+        },
+        async getCoverCandidatesByTitleSource(input) {
+          directLookupCalls += 1;
+          assert.deepEqual(input.titleSource, { provider: "open-library", externalId: "/works/OL1W" });
+          return [baseCandidate];
+        },
+      },
+      {
+        code: "google-books",
+        mediaTypes: ["book"],
+        async searchCoverCandidates() {
+          textSearchCalls += 1;
+          return [];
+        },
+        async getCoverCandidatesByTitleSource() {
+          directLookupCalls += 100;
+          return [];
+        },
+      },
+    ] satisfies MediaProvider[];
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        {
+          title: "Dune",
+          originalTitle: null,
+          mediaType: "book",
+          releaseYear: 1965,
+          titleSource: { provider: "open-library", externalId: "/works/OL1W" },
+        },
+        exactProviders,
+        customOptions,
+      ),
+      [baseCandidate],
+    );
+    assert.equal(directLookupCalls, 1);
+    assert.equal(textSearchCalls, 0);
+  });
+
+  it("passes the release year to TMDB when falling back to text cover search", async () => {
+    const provider = createTmdbProvider("film");
+    const originalFetch = globalThis.fetch;
+    let requestedUrl: URL | null = null;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+
+      if (url.pathname === "/3/search/movie") {
+        requestedUrl = url;
+        return Response.json({ results: [] });
+      }
+
+      return Response.json({ posters: [] });
+    };
+
+    try {
+      assert.deepEqual(
+        await provider.searchCoverCandidates?.(
+          {
+            title: "Dune",
+            originalTitle: null,
+            mediaType: "film",
+            releaseYear: 2021,
+          },
+          {
+            ...customOptions,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        ),
+        [],
+      );
+      assert.equal(requestedUrl?.searchParams.get("year"), "2021");
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("filters disabled providers and sorts enabled providers by priority", () => {
     assert.deepEqual(
       getCoverProvidersForMediaType("book", providers, [

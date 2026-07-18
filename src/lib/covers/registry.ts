@@ -117,6 +117,34 @@ export async function searchCoverCandidates(
   options: CoverSearchOptions = DEFAULT_COVER_SEARCH_OPTIONS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
+  if (input.titleSource) {
+    const provider = getConfiguredCoverProviders(input.mediaType, providers, providerSettings).find(
+      (candidate) => candidate.code === input.titleSource?.provider,
+    );
+
+    if (
+      !provider ||
+      !provider.getCoverCandidatesByTitleSource ||
+      (coverProviderRequiresCredentials(provider.code) && !options.providerCredentials?.[provider.code])
+    ) {
+      return [];
+    }
+
+    const canSearch = options.beforeProviderSearch
+      ? await options.beforeProviderSearch(provider.code)
+      : true;
+
+    if (!canSearch) return [];
+
+    try {
+      return normalizeCoverCandidates(
+        await provider.getCoverCandidatesByTitleSource(input, options),
+      ).slice(0, options.candidateLimit);
+    } catch {
+      return [];
+    }
+  }
+
   const normalizedTitle = input.title.trim();
   const normalizedOriginalTitle = input.originalTitle?.trim() || null;
 

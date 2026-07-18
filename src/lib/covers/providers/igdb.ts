@@ -141,6 +141,14 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
 
       return game ?? null;
     },
+    async getGameForCover(id: number) {
+      const [game] = await fetchGames([
+        "fields name,slug,url,first_release_date,rating,total_rating,cover.image_id,cover.width,cover.height;",
+        `where id = ${id};`,
+        "limit 1;",
+      ].join(" "));
+      return game ?? null;
+    },
   };
 }
 
@@ -232,6 +240,16 @@ export const igdbProvider: MediaProvider = {
         genres: getUniqueNames(game.genres),
       },
     };
+  },
+  async getCoverCandidatesByTitleSource(input, options) {
+    const clientId = options.providerCredentials?.igdb?.clientId?.trim();
+    const clientSecret = options.providerCredentials?.igdb?.clientSecret?.trim();
+    const id = Number(input.titleSource?.externalId);
+    if (!clientId || !clientSecret || !Number.isInteger(id) || id <= 0) return [];
+    const game = await createIgdbClient({ clientId, clientSecret }).getGameForCover(id);
+    const imageId = game?.cover?.image_id;
+    if (!game?.id || !imageId) return [];
+    return [{ id: `game:${game.id}:${imageId}`, provider: "igdb", title: game.name ?? input.title, imageUrl: buildIgdbImageUrl(imageId), sourcePageUrl: getIgdbSourcePageUrl(game), width: game.cover?.width, height: game.cover?.height, year: getIgdbYear(game.first_release_date) ?? undefined, confidence: game.total_rating ?? game.rating }];
   },
   async searchCoverCandidates(input, options) {
     const clientId = options.providerCredentials?.igdb?.clientId?.trim();

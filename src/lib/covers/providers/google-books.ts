@@ -90,6 +90,13 @@ export const googleBooksProvider: MediaProvider = {
       },
     };
   },
+  async getCoverCandidatesByTitleSource(input, options) {
+    const apiKey = options.providerCredentials?.["google-books"]?.apiKey?.trim() ?? "";
+    const details = await fetchJson<GoogleBookDetailsResponse>(buildUrl(`https://www.googleapis.com/books/v1/volumes/${input.titleSource?.externalId}`, { key: apiKey }));
+    const imageUrl = getGoogleBookImageUrl(details?.volumeInfo?.imageLinks);
+    if (!details?.id || !imageUrl) return [];
+    return [{ id: `volume:${details.id}`, provider: "google-books", title: details.volumeInfo?.title ?? input.title, imageUrl, sourcePageUrl: details.volumeInfo?.infoLink ?? null, year: getFirstYear(details.volumeInfo?.publishedDate) ?? undefined }];
+  },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
 

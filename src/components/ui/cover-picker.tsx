@@ -7,7 +7,7 @@ import { CoverPreview } from "@/app/author/(protected)/media/cover-preview";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/common/utils";
 import { COVER_IMAGE_TYPES, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
-import type { SignedCoverCandidate } from "@/lib/covers/types";
+import type { MediaTitleCandidate, SignedCoverCandidate } from "@/lib/covers/types";
 
 const EMPTY_FILE_LABEL = "Файл не выбран";
 const CURRENT_FILE_LABEL = "Текущая обложка";
@@ -18,9 +18,10 @@ type CoverPickerValues = {
   originalTitle: string;
   mediaType: string;
   releaseYear: string;
+  titleSource?: Pick<MediaTitleCandidate, "provider" | "externalId"> | null;
 };
 
-type CoverSearchValues = Pick<CoverPickerValues, "title" | "originalTitle" | "mediaType">;
+type CoverSearchValues = Pick<CoverPickerValues, "title" | "originalTitle" | "mediaType" | "releaseYear" | "titleSource">;
 
 type CoverPickerProps = {
   canSearchCandidates?: boolean;
@@ -69,8 +70,10 @@ export function CoverPicker({
       title: values.title,
       originalTitle: values.originalTitle,
       mediaType: values.mediaType,
+      releaseYear: values.releaseYear,
+      titleSource: values.titleSource ?? null,
     }),
-    [values.mediaType, values.originalTitle, values.title],
+    [values.mediaType, values.originalTitle, values.releaseYear, values.title, values.titleSource],
   );
   const coverSearchKey = useMemo(
     () => JSON.stringify(coverSearchValues),

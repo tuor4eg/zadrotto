@@ -121,6 +121,69 @@ export async function getPublishedFranchiseOptions() {
     .orderBy(asc(franchises.title));
 }
 
+export type FranchiseDuplicateMatch = {
+  id: number;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+};
+
+export async function findPublishedFranchiseDuplicateCandidates(input: {
+  title: string;
+  originalTitle: string | null;
+}): Promise<FranchiseDuplicateMatch[]> {
+  const searchTerms = [input.title, input.originalTitle]
+    .map((value) => value?.trim().replace(/\s+/g, " ").toLowerCase() ?? "")
+    .filter((value) => value.length >= 2);
+
+  if (searchTerms.length === 0) {
+    return [];
+  }
+
+  const selection = {
+    id: franchises.id,
+    code: franchises.code,
+    title: franchises.title,
+    originalTitle: franchises.originalTitle,
+  };
+  const exactCondition = or(
+    ...searchTerms.flatMap((searchTerm) => [
+      sql`lower(regexp_replace(trim(${franchises.title}), '\\s+', ' ', 'g')) = ${searchTerm}`,
+      sql`lower(regexp_replace(trim(coalesce(${franchises.originalTitle}, '')), '\\s+', ' ', 'g')) = ${searchTerm}`,
+    ]),
+  );
+  const similarCondition = or(
+    ...searchTerms.flatMap((searchTerm) => {
+      const pattern = `%${searchTerm}%`;
+
+      return [
+        sql`lower(${franchises.title}) like ${pattern}`,
+        sql`lower(${franchises.originalTitle}) like ${pattern}`,
+        sql`lower(${franchises.code}) like ${pattern}`,
+      ];
+    }),
+  );
+  const [exactMatches, similarMatches] = await Promise.all([
+    db
+      .select(selection)
+      .from(franchises)
+      .where(and(publishedFranchiseCondition, exactCondition))
+      .orderBy(asc(franchises.title), asc(franchises.code))
+      .limit(1),
+    db
+      .select(selection)
+      .from(franchises)
+      .where(
+        and(publishedFranchiseCondition, similarCondition),
+      )
+      .orderBy(asc(franchises.title), asc(franchises.code))
+      .limit(10),
+  ]);
+
+  const exactIds = new Set(exactMatches.map((match) => match.id));
+  return [...exactMatches, ...similarMatches.filter((match) => !exactIds.has(match.id))];
+}
+
 function adminFranchiseSearchCondition(searchQuery: string) {
   const normalizedSearchQuery = searchQuery.trim().toLowerCase();
 

@@ -35,6 +35,14 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Укажи автора записи.";
   }
 
+  if (error === "duplicate-media-exact") {
+    return "Такая запись уже есть в архиве. Открой существующую вместо создания дубля.";
+  }
+
+  if (error === "duplicate-media-possible") {
+    return "Подтверди, что похожая запись не является дублем.";
+  }
+
   if (error === "invalid-media") {
     return "Не удалось найти запись.";
   }

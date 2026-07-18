@@ -36,6 +36,7 @@ import type { CoverSourceInput } from "@/lib/covers/types";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
 import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
+import { validateMediaItemDuplicateCheck } from "@/lib/media/validate-media-item-duplicate-check";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
@@ -379,6 +380,12 @@ export async function createAdminMediaItemAction(formData: FormData) {
 
   if (!(await isKnownAuthor(form.value.authorId))) {
     redirect("/admin/media/new?error=invalid-author");
+  }
+
+  const duplicateCheck = await validateMediaItemDuplicateCheck(formData, form.value);
+
+  if (!duplicateCheck.ok) {
+    redirect(`/admin/media/new?error=${duplicateCheck.error}`);
   }
 
   const code = generateEntityCode({
