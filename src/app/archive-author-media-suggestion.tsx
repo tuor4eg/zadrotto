@@ -17,6 +17,7 @@ type ArchiveAuthorMediaSuggestionProps = {
   action: (formData: FormData) => void | Promise<void>;
   canCreateFranchise: boolean;
   canPublishMediaWithoutReview: boolean;
+  defaultFranchiseIds?: number[];
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   mediaTypeFilter: MediaTypeFilter;
@@ -57,6 +58,7 @@ export function ArchiveAuthorMediaSuggestion({
   action,
   canCreateFranchise,
   canPublishMediaWithoutReview,
+  defaultFranchiseIds = [],
   franchises,
   mediaCarriers,
   mediaTypeFilter,
@@ -143,11 +145,11 @@ export function ArchiveAuthorMediaSuggestion({
 
   const picker = (
     <div className="fixed bottom-5 left-5 z-[70]">
-      <ArchiveTooltip label="Предложить тайтл" side="right">
+      <ArchiveTooltip label="Предложить запись" side="right">
         <button
           type="button"
           className="grid size-14 place-items-center rounded-full border-2 border-[#d9c7a5] bg-stone-950 text-stone-50 shadow-[0_18px_36px_rgba(28,25,23,0.3)] transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9c7a5]"
-          aria-label="Предложить тайтл"
+          aria-label="Предложить запись"
           onClick={() => openModal()}
         >
           <Plus className="size-6" />
@@ -181,7 +183,7 @@ export function ArchiveAuthorMediaSuggestion({
                         id="archive-author-media-suggestion-title"
                         className="font-serif text-3xl leading-none text-stone-950"
                       >
-                        Предложить тайтл
+                        Предложить запись
                       </div>
                     </div>
                     <ArchiveTooltip label="Закрыть" side="bottom">
@@ -215,6 +217,7 @@ export function ArchiveAuthorMediaSuggestion({
                     submittedSuccessRedirectTo={submittedSuccessRedirectTo}
                     successRedirectTo={successRedirectTo}
                     values={{
+                      franchiseIds: defaultFranchiseIds,
                       mediaType: modalState.mediaType,
                       title: modalState.title,
                     }}

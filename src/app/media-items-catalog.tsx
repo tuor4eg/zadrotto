@@ -214,7 +214,7 @@ export function MediaItemsCatalog({
                   );
                 }}
               >
-                Предложить тайтл
+                Предложить запись
               </button>
             ) : null}
           </div>

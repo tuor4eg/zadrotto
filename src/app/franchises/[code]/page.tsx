@@ -3,10 +3,20 @@ import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 
 import { ArchiveNote } from "@/app/archive-note";
+import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
+import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
+import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { MediaItemTile } from "@/app/media-item-tile";
-import { getFranchiseByCode, getMediaItemsByFranchiseId } from "@/db/queries/franchises";
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
+import {
+  getFranchiseByCode,
+  getFranchiseOptions,
+  getMediaItemsByFranchiseId,
+} from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 export const dynamic = "force-dynamic";
@@ -14,6 +24,10 @@ export const dynamic = "force-dynamic";
 type FranchisePageProps = {
   params: Promise<{
     code: string;
+  }>;
+  searchParams: Promise<{
+    suggested?: string;
+    suggestionError?: string;
   }>;
 };
 
@@ -59,8 +73,8 @@ function getFranchiseMediaSections(
     .filter((section) => section.count > 0);
 }
 
-export default async function FranchisePage({ params }: FranchisePageProps) {
-  const { code } = await params;
+export default async function FranchisePage({ params, searchParams }: FranchisePageProps) {
+  const [{ code }, query] = await Promise.all([params, searchParams]);
   const franchise = await getFranchiseByCode(code);
 
   if (!franchise) {
@@ -71,11 +85,59 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
     getCurrentAuthor(),
     getMediaTypeOptions(),
   ]);
-  const items = await getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id);
+  const [items, authorMediaSuggestionData] = await Promise.all([
+    getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id),
+    currentAuthor
+      ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
+          ([franchises, mediaCarriers]) => ({
+            canCreateFranchise: canAuthorCreateFranchise({
+              canPublishFranchisesWithoutReview:
+                currentAuthor.canPublishFranchisesWithoutReview,
+            }),
+            canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
+            franchises,
+            mediaCarriers,
+          }),
+        )
+      : Promise.resolve(null),
+  ]);
   const sections = getFranchiseMediaSections(items, mediaTypes);
+  const suggestionErrorMessage = getAuthorMediaFormErrorMessage(query.suggestionError);
+  const suggestionSuccessMessage =
+    query.suggested === "created"
+      ? "Запись создана в черновиках."
+      : query.suggested === "submitted"
+        ? "Запись создана и отправлена на проверку."
+        : query.suggested === "published"
+          ? "Запись создана и опубликована."
+          : null;
+  const toastMessages = [
+    ...(suggestionSuccessMessage
+      ? [
+          {
+            id: "suggested",
+            tone: "success",
+            text: suggestionSuccessMessage,
+          } satisfies ArchiveToast,
+        ]
+      : []),
+    ...(suggestionErrorMessage
+      ? [
+          {
+            id: query.suggestionError ?? "suggestion-error",
+            tone: "error",
+            text: suggestionErrorMessage,
+          } satisfies ArchiveToast,
+        ]
+      : []),
+  ];
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      <ArchiveToasts
+        clearParams={["suggested", "suggestionError"]}
+        messages={toastMessages}
+      />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible pt-8">
           <div className="archive-franchise-sticker">
@@ -170,7 +232,6 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
                           item={item}
                           href={`/media/${item.code}`}
                           mediaTypes={mediaTypes}
-                          showMediaTypeLabel={sections.length > 1}
                         />
                       ))}
                     </div>
@@ -181,6 +242,19 @@ export default async function FranchisePage({ params }: FranchisePageProps) {
           ) : null}
         </section>
       </div>
+      {currentAuthor && authorMediaSuggestionData ? (
+        <ArchiveAuthorMediaSuggestion
+          action={createAuthorMediaItemAction}
+          canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
+          canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
+          defaultFranchiseIds={[franchise.id]}
+          franchises={authorMediaSuggestionData.franchises}
+          mediaCarriers={authorMediaSuggestionData.mediaCarriers}
+          mediaTypeFilter="all"
+          mediaTypes={mediaTypes}
+          searchQuery=""
+        />
+      ) : null}
     </main>
   );
 }
