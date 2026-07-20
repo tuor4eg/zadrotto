@@ -70,6 +70,7 @@ describe("author auth persistence contracts", () => {
     assert.match(onboardingActions, /isFreshAccessTokenSession\(current\.session\)/);
     assert.match(onboardingActions, /getAuthorAccountByAuthorId\(current\.author\.id\)/);
     assert.match(registrationActions, /redirect\("\/author\/register\?sent=1"\)/);
+    assert.match(registrationPage, /export const dynamic = "force-dynamic"/);
     assert.match(registrationPage, /if \(!isAuthorRegistrationEnabled\(\)\) notFound\(\)/);
     assert.match(registrationPage, /Регистрация временно недоступна: отправка писем ещё не настроена/);
     assert.doesNotMatch(

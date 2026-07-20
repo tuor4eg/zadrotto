@@ -11,6 +11,8 @@ import { isAuthorEmailDeliveryConfigured, isAuthorRegistrationEnabled } from "@/
 import { registerAuthorAction } from "./actions";
 import { RegistrationStartedAtInput } from "./registration-started-at-input";
 
+export const dynamic = "force-dynamic";
+
 export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; sent?: string }> }) {
   if (!isAuthorRegistrationEnabled()) notFound();
   const isEmailDeliveryConfigured = await isAuthorEmailDeliveryConfigured();
