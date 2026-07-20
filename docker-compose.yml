@@ -64,12 +64,11 @@ services:
           if response=$$(curl --silent --show-error --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $${AUTH_EMAIL_WORKER_SECRET}" http://app:3000/api/internal/auth-cleanup 2>&1); then
             echo "auth-cleanup: request completed"
             [ -z "$$response" ] || echo "$$response"
-            sleep 86400
           else
-            echo "auth-cleanup: request failed; retrying in 60 seconds"
+            echo "auth-cleanup: request failed; retrying later"
             [ -z "$$response" ] || echo "$$response"
-            sleep 60
           fi
+          sleep 60
         done
     environment:
       AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}

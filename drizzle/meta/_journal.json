@@ -239,6 +239,13 @@
       "when": 1784533200000,
       "tag": "0033_author_registration_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784536800000,
+      "tag": "0034_email_automation",
+      "breakpoints": true
     }
   ]
 }

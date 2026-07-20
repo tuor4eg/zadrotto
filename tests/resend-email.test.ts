@@ -99,7 +99,7 @@ describe("Resend author email", () => {
 
   it("loads DB config before claiming outbox rows", () => {
     const worker = readFileSync("src/lib/auth/email-outbox-delivery.ts", "utf8");
-    assert.ok(worker.indexOf("getResendEmailDeliveryReadiness()") < worker.indexOf("claimPendingEmailOutboxMessages(limit)"));
+    assert.ok(worker.indexOf("getResendEmailDeliveryReadiness()") < worker.indexOf("claimPendingEmailOutboxMessages("));
     assert.match(worker, /author-email-outbox-\$\{message\.id\}/);
     assert.doesNotMatch(worker, /AUTH_EMAIL_WEBHOOK/);
   });
@@ -141,18 +141,18 @@ describe("Resend author email", () => {
   });
 
   it("does not expose the decrypted API key in the admin form", () => {
-    const page = readFileSync("src/app/admin/(protected)/tools/email/page.tsx", "utf8");
+    const page = readFileSync("src/app/admin/(protected)/tools/email/provider/page.tsx", "utf8");
     assert.match(page, /type="password"/);
     assert.match(page, /placeholder=\{status\.keyHint/);
     assert.doesNotMatch(page, /defaultValue=\{config\?\.apiKey\}|value=\{config\?\.apiKey\}/);
   });
 
   it("keeps admin save, disable, test and retry actions explicit", () => {
-    const actions = readFileSync("src/app/admin/(protected)/tools/email/actions.ts", "utf8");
+    const actions = readFileSync("src/app/admin/(protected)/tools/email/provider/actions.ts", "utf8");
     assert.match(actions, /saveEmailProviderAction[\s\S]*requireAdminUser\(\)/);
-    assert.match(actions, /disableEmailProviderAction[\s\S]*setEmailDeliveryEnabled\(false/);
+    assert.match(actions, /disableEmailProviderAction[\s\S]*setEmailDeliveryEnabled\(\{ enabled: false/);
     assert.match(actions, /testEmailProviderAction[\s\S]*sendEmailWithResend/);
-    assert.match(actions, /retryFailedEmailsAction[\s\S]*retryFailedEmailOutbox\(\)/);
+    assert.doesNotMatch(actions, /retryFailedEmailsAction|retryFailedEmailOutbox/);
   });
 
   it("gates email-producing auth flows on asynchronous DB readiness", () => {
@@ -173,10 +173,10 @@ describe("Resend author email", () => {
 
   it("keeps worker configuration checks before claiming messages and preserves retry policy", () => {
     const worker = readFileSync("src/lib/auth/email-outbox-delivery.ts", "utf8");
-    assert.ok(worker.indexOf("getResendEmailDeliveryReadiness()") < worker.indexOf("claimPendingEmailOutboxMessages(limit)"));
+    assert.ok(worker.indexOf("getResendEmailDeliveryReadiness()") < worker.indexOf("claimPendingEmailOutboxMessages("));
     assert.match(worker, /siteOrigin\.href/);
-    assert.match(worker, /!result\.retryable \|\| attempts >= 5 \? "failed" : "pending"/);
-    assert.match(worker, /Math\.min\(60, 2 \*\* attempts\)/);
+    assert.match(worker, /!result\.retryable \|\| attempts >= settings\.deliveryMaxAttempts \? "failed" : "pending"/);
+    assert.match(worker, /calculateEmailRetryDelaySeconds/);
   });
 
   it("removes legacy webhook configuration from the environment contract", () => {
@@ -216,7 +216,8 @@ describe("Resend author email", () => {
     assert.match(emailWorker, /\/api\/internal\/auth-email-outbox/);
     assert.match(emailWorker, /sleep 60/);
     assert.match(cleanupWorker, /\/api\/internal\/auth-cleanup/);
-    assert.match(cleanupWorker, /request completed[\s\S]*sleep 86400[\s\S]*request failed; retrying in 60 seconds[\s\S]*sleep 60/);
+    assert.match(cleanupWorker, /request completed[\s\S]*request failed; retrying later[\s\S]*sleep 60/);
+    assert.doesNotMatch(cleanupWorker, /sleep 86400/);
   });
 
   it("documents a one-off worker invocation without starting dependencies", () => {

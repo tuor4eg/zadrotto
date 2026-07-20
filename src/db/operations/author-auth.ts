@@ -33,6 +33,7 @@ import {
 import { encryptEmailOutboxPayload } from "@/lib/auth/email-outbox-crypto";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { isAuthorEmailDeliveryConfigured } from "@/lib/auth/features";
+import { EMAIL_AUTOMATION_DEFAULTS, type EmailAutomationSettingsInput } from "@/lib/auth/email-automation";
 
 export async function createAuthorSession(input: {
   authorId: number;
@@ -423,10 +424,15 @@ export async function reviewAuthorRegistration(input: {
   });
 }
 
-export async function cleanupAuthorAuthData(now = new Date()) {
-  const challengeCutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-  const sessionCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-  const registrationCutoff = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+export async function cleanupAuthorAuthData(
+  settings: Pick<EmailAutomationSettingsInput, "challengeRetentionHours" | "sessionRetentionDays" | "staleRegistrationDays" | "sentOutboxRetentionDays" | "failedOutboxRetentionDays"> = EMAIL_AUTOMATION_DEFAULTS,
+  now = new Date(),
+) {
+  const challengeCutoff = new Date(now.getTime() - settings.challengeRetentionHours * 60 * 60 * 1000);
+  const sessionCutoff = new Date(now.getTime() - settings.sessionRetentionDays * 24 * 60 * 60 * 1000);
+  const registrationCutoff = new Date(now.getTime() - settings.staleRegistrationDays * 24 * 60 * 60 * 1000);
+  const sentOutboxCutoff = new Date(now.getTime() - settings.sentOutboxRetentionDays * 24 * 60 * 60 * 1000);
+  const failedOutboxCutoff = new Date(now.getTime() - settings.failedOutboxRetentionDays * 24 * 60 * 60 * 1000);
 
   return db.transaction(async (tx) => {
     const expiredChallenges = await tx.execute(sql`
@@ -453,10 +459,20 @@ export async function cleanupAuthorAuthData(now = new Date()) {
         and not exists (select 1 from franchises f where f.created_by_author_id = a.id)
         and not exists (select 1 from media_item_franchises mif where mif.created_by_author_id = a.id)
     `);
+    const sentOutbox = await tx.execute(sql`
+      delete from email_outbox
+      where status = 'sent' and sent_at < ${sentOutboxCutoff}
+    `);
+    const failedOutbox = await tx.execute(sql`
+      delete from email_outbox
+      where status = 'failed' and updated_at < ${failedOutboxCutoff}
+    `);
     return {
       expiredChallenges: expiredChallenges.count,
       expiredSessions: expiredSessions.count,
       staleRegistrations: staleRegistrations.count,
+      sentOutbox: sentOutbox.count,
+      failedOutbox: failedOutbox.count,
     };
   });
 }

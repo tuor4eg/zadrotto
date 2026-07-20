@@ -1,8 +1,10 @@
-import { and, asc, eq, inArray, lte, or } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { emailOutbox } from "@/db/schema";
+import { adminActivityLogs, emailOutbox } from "@/db/schema";
+import type { CreateActivityLogInput } from "@/db/queries/activity-logs";
 import type { EmailOutboxStatus, EmailOutboxTemplate } from "@/lib/auth/author-account-model";
+import { EMAIL_AUTOMATION_LEASE_MS, sanitizeEmailDeliveryError } from "@/lib/auth/email-automation";
 
 export async function enqueueEmailOutbox(input: {
   template: EmailOutboxTemplate;
@@ -23,16 +25,29 @@ export async function getPendingEmailOutboxMessages(limit: number, now = new Dat
     .limit(limit);
 }
 
-export async function claimPendingEmailOutboxMessages(limit: number, now = new Date()) {
+export async function claimPendingEmailOutboxMessages(limit: number, maxAttempts = 5, now = new Date()) {
   const safeLimit = Math.max(1, Math.min(limit, 50));
-  const staleLease = new Date(now.getTime() - 10 * 60 * 1000);
+  const staleLease = new Date(now.getTime() - EMAIL_AUTOMATION_LEASE_MS);
 
   return db.transaction(async (tx) => {
+    await tx.update(emailOutbox).set({
+      status: "failed",
+      lastError: "Достигнут лимит попыток доставки.",
+      updatedAt: now,
+    }).where(and(
+      lte(emailOutbox.nextAttemptAt, now),
+      sql`${emailOutbox.attempts} >= ${maxAttempts}`,
+      or(
+        eq(emailOutbox.status, "pending"),
+        and(eq(emailOutbox.status, "sending"), lte(emailOutbox.updatedAt, staleLease)),
+      ),
+    ));
     const candidates = await tx
       .select({ id: emailOutbox.id })
       .from(emailOutbox)
       .where(and(
         lte(emailOutbox.nextAttemptAt, now),
+        lt(emailOutbox.attempts, maxAttempts),
         or(
           eq(emailOutbox.status, "pending"),
           and(eq(emailOutbox.status, "sending"), lte(emailOutbox.updatedAt, staleLease)),
@@ -63,5 +78,83 @@ export async function updateEmailOutboxStatus(input: {
   await db
     .update(emailOutbox)
     .set({ ...values, updatedAt: new Date() })
-    .where(eq(emailOutbox.id, id));
+    .where(and(eq(emailOutbox.id, id), eq(emailOutbox.status, "sending")));
+}
+
+function maskEmailRecipient(recipient: string) {
+  const [local = "", domain = ""] = recipient.split("@");
+  const visible = local.slice(0, Math.min(2, local.length));
+  return domain ? `${visible}${"*".repeat(Math.max(2, local.length - visible.length))}@${domain}` : "***";
+}
+
+export async function getAdminEmailOutbox(input: {
+  page: number;
+  pageSize: number;
+  status?: EmailOutboxStatus | null;
+  template?: EmailOutboxTemplate | null;
+}) {
+  const conditions = [
+    ...(input.status ? [eq(emailOutbox.status, input.status)] : []),
+    ...(input.template ? [eq(emailOutbox.template, input.template)] : []),
+  ];
+  const where = conditions.length ? and(...conditions) : undefined;
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(emailOutbox).where(where);
+  const pageSize = [25, 50, 100].includes(input.pageSize) ? input.pageSize : 25;
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+  const page = Math.max(1, Math.min(input.page, totalPages));
+  const rows = await db.select({
+    id: emailOutbox.id,
+    template: emailOutbox.template,
+    recipient: emailOutbox.recipient,
+    status: emailOutbox.status,
+    attempts: emailOutbox.attempts,
+    createdAt: emailOutbox.createdAt,
+    nextAttemptAt: emailOutbox.nextAttemptAt,
+    sentAt: emailOutbox.sentAt,
+    lastError: emailOutbox.lastError,
+  }).from(emailOutbox).where(where)
+    .orderBy(desc(emailOutbox.createdAt), desc(emailOutbox.id))
+    .limit(pageSize).offset((page - 1) * pageSize);
+  return {
+    items: rows.map((row) => ({
+      ...row,
+      recipient: maskEmailRecipient(row.recipient),
+      lastError: row.lastError ? sanitizeEmailDeliveryError(row.lastError) : null,
+    })),
+    page, pageSize, totalPages, totalCount: count,
+  };
+}
+
+export async function getEmailOutboxStatusCounts() {
+  return db.select({ status: emailOutbox.status, count: sql<number>`count(*)::int` })
+    .from(emailOutbox).groupBy(emailOutbox.status);
+}
+
+export async function retryFailedEmailOutbox(input: {
+  id?: number;
+  limit?: number;
+  activityLog: CreateActivityLogInput;
+}, now = new Date()) {
+  return db.transaction(async (tx) => {
+    let ids: { id: number }[];
+    if (input.id) {
+      ids = await tx.select({ id: emailOutbox.id }).from(emailOutbox)
+        .where(and(eq(emailOutbox.id, input.id), eq(emailOutbox.status, "failed")))
+        .for("update").limit(1);
+    } else {
+      const limit = Math.max(1, Math.min(input.limit ?? 100, 100));
+      ids = await tx.select({ id: emailOutbox.id }).from(emailOutbox)
+        .where(eq(emailOutbox.status, "failed"))
+        .orderBy(asc(emailOutbox.id)).for("update", { skipLocked: true }).limit(limit);
+    }
+    const rows = ids.length ? await tx.update(emailOutbox).set({
+        status: "pending", attempts: 0, nextAttemptAt: now, sentAt: null, lastError: null, updatedAt: now,
+      }).where(and(inArray(emailOutbox.id, ids.map(({ id }) => id)), eq(emailOutbox.status, "failed")))
+        .returning({ id: emailOutbox.id }) : [];
+    await tx.insert(adminActivityLogs).values({
+      ...input.activityLog,
+      metadata: { count: rows.length, ...(input.id ? { id: input.id } : {}) },
+    });
+    return rows.length;
+  });
 }
