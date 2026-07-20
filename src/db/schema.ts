@@ -80,6 +80,23 @@ export const authorAccessProfiles = pgTable("author_access_profiles", {
   ...timestamps(),
 });
 
+export const authorRegistrationSettings = pgTable(
+  "author_registration_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    accessProfileId: integer("access_profile_id").references(() => authorAccessProfiles.id, {
+      onDelete: "restrict",
+    }),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("author_registration_settings_singleton_id_check", sql`${table.id} = 1`),
+  ],
+);
+
 export const coverSettings = pgTable(
   "cover_settings",
   {
@@ -235,6 +252,178 @@ export const authorAccessTokens = pgTable(
   },
   (table) => [
     index("author_access_tokens_author_id_idx").on(table.authorId),
+  ],
+);
+
+export const authorAccounts = pgTable(
+  "author_accounts",
+  {
+    authorId: integer("author_id")
+      .primaryKey()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    login: text("login").notNull(),
+    normalizedLogin: text("normalized_login").notNull().unique(),
+    passwordHash: text("password_hash").notNull(),
+    status: text("status").notNull(),
+    approvedAt: timestamp("approved_at", { withTimezone: true }),
+    approvedByAdminId: integer("approved_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    rejectedAt: timestamp("rejected_at", { withTimezone: true }),
+    rejectedByAdminId: integer("rejected_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check(
+      "author_accounts_status_check",
+      sql`${table.status} in ('pending_email', 'pending_approval', 'active', 'rejected')`,
+    ),
+  ],
+);
+
+export const authorEmails = pgTable(
+  "author_emails",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    normalizedEmail: text("normalized_email").notNull().unique(),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    isPrimary: boolean("is_primary").default(false).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("author_emails_author_id_idx").on(table.authorId),
+    uniqueIndex("author_emails_primary_author_idx")
+      .on(table.authorId)
+      .where(sql`${table.isPrimary} = true`),
+  ],
+);
+
+export const authorAuthIdentities = pgTable(
+  "author_auth_identities",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    provider: text("provider").notNull(),
+    providerSubject: text("provider_subject").notNull(),
+    displayValue: text("display_value"),
+    verifiedAt: timestamp("verified_at", { withTimezone: true }),
+    lastUsedAt: timestamp("last_used_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("author_auth_identities_author_id_idx").on(table.authorId),
+    unique("author_auth_identities_provider_subject_unique").on(
+      table.provider,
+      table.providerSubject,
+    ),
+  ],
+);
+
+export const authorAuthChallenges = pgTable(
+  "author_auth_challenges",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    emailId: integer("email_id").references(() => authorEmails.id, { onDelete: "cascade" }),
+    purpose: text("purpose").notNull(),
+    tokenHash: text("token_hash").notNull().unique(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    consumedAt: timestamp("consumed_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("author_auth_challenges_author_id_idx").on(table.authorId),
+    index("author_auth_challenges_purpose_idx").on(table.purpose),
+    index("author_auth_challenges_token_hash_idx").on(table.tokenHash),
+    index("author_auth_challenges_expires_at_idx").on(table.expiresAt),
+    check(
+      "author_auth_challenges_purpose_check",
+      sql`${table.purpose} in ('verify_email', 'reset_password', 'change_email')`,
+    ),
+  ],
+);
+
+export const authorSessions = pgTable(
+  "author_sessions",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull().unique(),
+    authMethod: text("auth_method").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    revokedAt: timestamp("revoked_at", { withTimezone: true }),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+  },
+  (table) => [
+    index("author_sessions_author_id_idx").on(table.authorId),
+    index("author_sessions_expires_at_idx").on(table.expiresAt),
+    check(
+      "author_sessions_auth_method_check",
+      sql`${table.authMethod} in ('password', 'access_token', 'telegram')`,
+    ),
+  ],
+);
+
+export const emailOutbox = pgTable(
+  "email_outbox",
+  {
+    id: serial("id").primaryKey(),
+    template: text("template").notNull(),
+    recipient: text("recipient").notNull(),
+    encryptedPayload: text("encrypted_payload").notNull(),
+    status: text("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+    sentAt: timestamp("sent_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestamps(),
+  },
+  (table) => [
+    index("email_outbox_delivery_idx").on(table.status, table.nextAttemptAt),
+    check(
+      "email_outbox_template_check",
+      sql`${table.template} in ('verify_email', 'reset_password', 'email_changed', 'registration_approved', 'registration_rejected')`,
+    ),
+    check(
+      "email_outbox_status_check",
+      sql`${table.status} in ('pending', 'sending', 'sent', 'failed')`,
+    ),
+    check("email_outbox_attempts_check", sql`${table.attempts} >= 0`),
+  ],
+);
+
+export const emailDeliverySettings = pgTable(
+  "email_delivery_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    provider: text("provider").default("resend").notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    encryptedApiKey: text("encrypted_api_key").notNull(),
+    apiKeyHint: text("api_key_hint").notNull(),
+    fromName: text("from_name").notNull(),
+    fromEmail: text("from_email").notNull(),
+    replyTo: text("reply_to"),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("email_delivery_settings_singleton_id_check", sql`${table.id} = 1`),
+    check("email_delivery_settings_provider_check", sql`${table.provider} = 'resend'`),
   ],
 );
 
@@ -456,6 +645,7 @@ export type Franchise = typeof franchises.$inferSelect;
 export type NewFranchise = typeof franchises.$inferInsert;
 export type AuthorAccessProfile = typeof authorAccessProfiles.$inferSelect;
 export type NewAuthorAccessProfile = typeof authorAccessProfiles.$inferInsert;
+export type AuthorRegistrationSettings = typeof authorRegistrationSettings.$inferSelect;
 export type CoverSettings = typeof coverSettings.$inferSelect;
 export type NewCoverSettings = typeof coverSettings.$inferInsert;
 export type ProviderSettings = typeof providerSettings.$inferSelect;

@@ -19,7 +19,7 @@ export type ActivityLogFilters = {
   severity?: ActivitySeverity | null;
 };
 
-export async function createActivityLog(input: {
+export type CreateActivityLogInput = {
   action: ActivityAction;
   actorType: ActivityActorType;
   adminUserId: number | null;
@@ -33,7 +33,9 @@ export async function createActivityLog(input: {
   ipAddress: string | null;
   userAgent: string | null;
   metadata: Record<string, unknown> | null;
-}) {
+};
+
+export async function createActivityLog(input: CreateActivityLogInput) {
   await db.insert(adminActivityLogs).values(input);
 }
 

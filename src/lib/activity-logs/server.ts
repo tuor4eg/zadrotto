@@ -2,7 +2,7 @@
 
 import { headers } from "next/headers";
 
-import { createActivityLog } from "@/db/queries/activity-logs";
+import { createActivityLog, type CreateActivityLogInput } from "@/db/queries/activity-logs";
 import {
   getDefaultActivitySeverity,
   isActivitySecurityAction,
@@ -57,30 +57,34 @@ async function getSecurityRequestMetadata(action: ActivityAction) {
   };
 }
 
+export async function prepareActivityLog(input: LogActivityInput): Promise<CreateActivityLogInput> {
+  const securityMetadata = await getSecurityRequestMetadata(input.action);
+  const status = input.status ?? "success";
+
+  return {
+    action: input.action,
+    actorType: input.actorType,
+    adminUserId: input.adminUserId ?? null,
+    authorId: input.authorId ?? null,
+    entityType: input.entityType ?? null,
+    entityId: input.entityId ?? null,
+    entityLabel: input.entityLabel ?? null,
+    status,
+    severity:
+      input.severity ??
+      getDefaultActivitySeverity({
+        action: input.action,
+        status,
+      }),
+    message: input.message ?? null,
+    metadata: sanitizeActivityLogMetadata(input.metadata),
+    ...securityMetadata,
+  };
+}
+
 export async function logActivity(input: LogActivityInput) {
   try {
-    const securityMetadata = await getSecurityRequestMetadata(input.action);
-    const status = input.status ?? "success";
-
-    await createActivityLog({
-      action: input.action,
-      actorType: input.actorType,
-      adminUserId: input.adminUserId ?? null,
-      authorId: input.authorId ?? null,
-      entityType: input.entityType ?? null,
-      entityId: input.entityId ?? null,
-      entityLabel: input.entityLabel ?? null,
-      status,
-      severity:
-        input.severity ??
-        getDefaultActivitySeverity({
-          action: input.action,
-          status,
-        }),
-      message: input.message ?? null,
-      metadata: sanitizeActivityLogMetadata(input.metadata),
-      ...securityMetadata,
-    });
+    await createActivityLog(await prepareActivityLog(input));
   } catch (error) {
     console.error("Failed to write activity log", error);
   }

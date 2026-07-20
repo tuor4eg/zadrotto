@@ -23,7 +23,7 @@ describe("auth rate limits", () => {
       [
         {
           keyPrefix: "auth:admin:identity",
-          subject: "127.0.0.1:admin",
+          subject: "admin",
           window: "quarter-hour",
           limit: 5,
         },
@@ -48,7 +48,7 @@ describe("auth rate limits", () => {
       [
         {
           keyPrefix: "auth:author:identity",
-          subject: "203.0.113.10:stable-credential-hash",
+          subject: "stable-credential-hash",
           window: "quarter-hour",
           limit: 10,
         },
@@ -79,6 +79,20 @@ describe("auth rate limits", () => {
         },
       ],
     );
+  });
+
+  it("keeps identity limits independent from the request ip", () => {
+    const build = (ipAddress: string) =>
+      buildAuthRateLimitInputs({
+        scope: "author-password",
+        ipAddress,
+        identitySubject: "stable-identity-hash",
+        limits: AUTHOR_AUTH_RATE_LIMITS,
+      });
+
+    assert.equal(build("198.51.100.1")[0]?.subject, "stable-identity-hash");
+    assert.equal(build("203.0.113.2")[0]?.subject, "stable-identity-hash");
+    assert.notEqual(build("198.51.100.1")[1]?.subject, build("203.0.113.2")[1]?.subject);
   });
 
   it("maps unavailable redis result to auth unavailable", async () => {

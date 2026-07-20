@@ -1,6 +1,9 @@
 import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 
 export function getAuthorAccessProfileErrorMessage(error?: string) {
+  if (error === "profile-is-registration-default") {
+    return "Нельзя удалить профиль: он выбран для новых авторов. Сначала измените настройку в разделе «Настройки → Авторы».";
+  }
   const formErrorMessage = getAdminFormErrorMessage(error);
 
   if (formErrorMessage) {

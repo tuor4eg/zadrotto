@@ -87,6 +87,7 @@ function getAdminNavGroups({
         { href: "/admin/authors", icon: UserRound, label: "Авторы" },
         { href: "/admin/author-tokens", icon: KeyRound, label: "Токены" },
         { href: "/admin/access-profiles", icon: ShieldCheck, label: "Профили" },
+        { href: "/admin/registration-review", icon: FileClock, label: "Регистрации" },
       ],
     },
     {
@@ -123,6 +124,7 @@ function getAdminNavGroups({
         { href: "/admin/settings/administrator", icon: Settings, label: "Настройки" },
         { href: "/admin/tools/providers", icon: Plug, label: "Провайдеры" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
+        { href: "/admin/tools/email", icon: MessageSquareText, label: "Email" },
         { href: "/admin/tools/activity", icon: Activity, label: "Журнал" },
       ],
     },

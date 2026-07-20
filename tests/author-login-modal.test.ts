@@ -17,7 +17,17 @@ describe("author login modal contracts", () => {
 
   it("keeps the standalone login action redirects", () => {
     assert.match(actionsSource, /redirect\(`\/author\/login\?error=\$\{result\.error\}`\)/);
-    assert.match(actionsSource, /redirect\("\/author"\)/);
+    assert.match(
+      actionsSource,
+      /redirect\(result\.onboarding \? "\/author\/onboarding" : "\/author"\)/,
+    );
+  });
+
+  it("links password login to registration and password recovery", () => {
+    assert.match(formSource, /href="\/author\/register"/);
+    assert.match(formSource, /Зарегистрироваться/);
+    assert.match(formSource, /href="\/author\/forgot-password"/);
+    assert.match(formSource, /Восстановить пароль/);
   });
 
   it("opens login modals for guests instead of linking to the login page", () => {

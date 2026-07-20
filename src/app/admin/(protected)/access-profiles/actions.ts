@@ -138,6 +138,10 @@ export async function deleteAuthorAccessProfileAction(formData: FormData) {
     redirect("/admin/access-profiles?error=profile-has-authors");
   }
 
+  if (deleteResult === "registration-default") {
+    redirect("/admin/access-profiles?error=profile-is-registration-default");
+  }
+
   revalidateAuthorProfileSurfaces();
   redirect("/admin/access-profiles?deleted=1");
 }

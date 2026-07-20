@@ -96,3 +96,35 @@ http://127.0.0.1:9000/zadrotto-covers/covers/dune.jpg
 ```
 
 Если `cover_url` уже содержит `https://...` или `http://...`, он используется без изменений.
+
+## Production: регистрация авторов и фоновые задачи
+
+Image-based deploy из `docker-compose.yml` включает два лёгких worker-контейнера:
+
+- `email-worker` раз в минуту вызывает внутреннюю доставку email;
+- `auth-cleanup-worker` раз в сутки удаляет просроченные данные авторской авторизации.
+
+Для приложения нужны `AUTHOR_REGISTRATION_ENABLED` (по умолчанию `false`), ключи
+`EMAIL_OUTBOX_ENCRYPTION_KEY`, `EMAIL_PROVIDER_CREDENTIALS_KEY` и общий
+`AUTH_EMAIL_WORKER_SECRET`. Одинаковое значение `AUTH_EMAIL_WORKER_SECRET` должно быть
+передано приложению и обоим worker-контейнерам. Переменная
+`AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE` оставлена только как временный переходный fallback;
+профиль новых авторов следует выбрать в `/admin/settings/authors`.
+
+Worker-контейнеры не публикуют порты и не получают доступ к базе данных. Ошибки сети,
+неуспешные HTTP-ответы и запуск раньше приложения повторяются через минуту; cleanup ждёт
+сутки только после успешного вызова.
+Посмотреть их работу можно так:
+
+```bash
+docker compose logs -f email-worker auth-cleanup-worker
+```
+
+Для разового безопасного запуска email endpoint с тем же секретом:
+
+```bash
+docker compose run --rm --no-deps --entrypoint /bin/sh email-worker -c \
+  'curl --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $AUTH_EMAIL_WORKER_SECRET" http://app:3000/api/internal/auth-email-outbox'
+```
+
+Для cleanup замени конечный путь на `/api/internal/auth-cleanup`.

@@ -4,6 +4,7 @@ import { promisify } from "node:util";
 const scrypt = promisify(scryptCallback);
 const PASSWORD_HASH_PREFIX = "scrypt:v1";
 const PASSWORD_KEY_LENGTH = 64;
+const DUMMY_PASSWORD_HASH = "scrypt:v1:S_8OA4curzpgyASOa3tv3w:e9Xo6fQA1_jKlZ1W7LRgBX7Y779if5_SrfUhLGu4sBPAYOgNqS8UBQi1WFxFHPhMFHLtxFKnS2Sw-WVajDmLWA";
 
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString("base64url");
@@ -23,4 +24,8 @@ export async function verifyPassword(password: string, passwordHash: string) {
   const derivedKey = (await scrypt(password, salt, storedKey.length)) as Buffer;
 
   return storedKey.length === derivedKey.length && timingSafeEqual(storedKey, derivedKey);
+}
+
+export async function verifyPasswordOrDummy(password: string, passwordHash?: string | null) {
+  return verifyPassword(password, passwordHash ?? DUMMY_PASSWORD_HASH);
 }

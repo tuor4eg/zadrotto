@@ -1,7 +1,7 @@
 import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authorAccessProfiles, authors } from "@/db/schema";
+import { authorAccessProfiles, authorRegistrationSettings, authors } from "@/db/schema";
 import type { AuthorAccessProfileFormInput } from "@/lib/forms/author-access-profile";
 import {
   REGULAR_AUTHOR_ACCESS_PROFILE_CODE,
@@ -147,6 +147,16 @@ export async function updateAuthorAccessProfile(input: AuthorAccessProfileFormIn
 }
 
 export async function deleteAuthorAccessProfileIfUnused(id: number) {
+  const [registrationDefault] = await db
+    .select({ id: authorRegistrationSettings.id })
+    .from(authorRegistrationSettings)
+    .where(eq(authorRegistrationSettings.accessProfileId, id))
+    .limit(1);
+
+  if (registrationDefault) {
+    return "registration-default" as const;
+  }
+
   const [usage] = await db
     .select({
       id: authorAccessProfiles.id,

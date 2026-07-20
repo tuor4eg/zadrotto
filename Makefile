@@ -18,10 +18,10 @@ push: clean-next
 	docker push $(IMAGE)
 	docker push $(MIGRATOR_IMAGE)
 
-# Pull the fresh app image and restart the application.
+# Pull fresh runtime images and restart the application with background workers.
 deploy:
-	docker compose pull app
-	docker compose up -d app
+	docker compose pull app email-worker auth-cleanup-worker
+	docker compose up -d app email-worker auth-cleanup-worker
 
 # Pull the fresh migrator image and apply migrations.
 migrate:

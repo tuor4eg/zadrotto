@@ -16,6 +16,11 @@ services:
       AUTHOR_SESSION_SECRET: ${AUTHOR_SESSION_SECRET}
       COVER_CANDIDATE_SECRET: ${COVER_CANDIDATE_SECRET}
       COVER_PROVIDER_CREDENTIALS_KEY: ${COVER_PROVIDER_CREDENTIALS_KEY}
+      AUTHOR_REGISTRATION_ENABLED: ${AUTHOR_REGISTRATION_ENABLED:-false}
+      AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE: ${AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE:-}
+      EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY}
+      EMAIL_PROVIDER_CREDENTIALS_KEY: ${EMAIL_PROVIDER_CREDENTIALS_KEY}
+      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
       S3_ENDPOINT: ${S3_ENDPOINT}
@@ -27,6 +32,49 @@ services:
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
     depends_on:
       - redis
+
+  email-worker:
+    image: curlimages/curl:8.21.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          if response=$$(curl --silent --show-error --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $${AUTH_EMAIL_WORKER_SECRET}" http://app:3000/api/internal/auth-email-outbox 2>&1); then
+            echo "auth-email-outbox: request completed"
+            [ -z "$$response" ] || echo "$$response"
+          else
+            echo "auth-email-outbox: request failed; retrying later"
+            [ -z "$$response" ] || echo "$$response"
+          fi
+          sleep 60
+        done
+    environment:
+      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
+    depends_on:
+      - app
+
+  auth-cleanup-worker:
+    image: curlimages/curl:8.21.0
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        while true; do
+          if response=$$(curl --silent --show-error --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $${AUTH_EMAIL_WORKER_SECRET}" http://app:3000/api/internal/auth-cleanup 2>&1); then
+            echo "auth-cleanup: request completed"
+            [ -z "$$response" ] || echo "$$response"
+            sleep 86400
+          else
+            echo "auth-cleanup: request failed; retrying in 60 seconds"
+            [ -z "$$response" ] || echo "$$response"
+            sleep 60
+          fi
+        done
+    environment:
+      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
+    depends_on:
+      - app
 
   redis:
     image: redis:7-alpine

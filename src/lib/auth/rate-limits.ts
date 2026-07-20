@@ -6,7 +6,17 @@ import {
   type RateLimitResult,
 } from "@/lib/rate-limits/redis";
 
-export type AuthRateLimitScope = "admin" | "author";
+export type AuthRateLimitScope =
+  | "admin"
+  | "author"
+  | "author-password"
+  | "author-access-token"
+  | "author-challenge"
+  | "author-register"
+  | "author-onboarding"
+  | "author-forgot"
+  | "author-reset"
+  | "author-verify";
 
 export type AuthRateLimitLimits = {
   identityQuarterHour: number | null;
@@ -44,6 +54,12 @@ export const AUTHOR_AUTH_RATE_LIMITS = {
   ipQuarterHour: 10,
 } satisfies AuthRateLimitLimits;
 
+export const AUTHOR_AUTH_MUTATION_RATE_LIMITS = {
+  identityQuarterHour: 5,
+  ipHour: 20,
+  ipQuarterHour: 10,
+} satisfies AuthRateLimitLimits;
+
 function normalizeRateLimitSubjectPart(value: string) {
   const normalizedValue = value.trim().toLowerCase();
 
@@ -72,7 +88,7 @@ export function buildAuthRateLimitInputs(input: AuthRateLimitInput): FixedWindow
   if (input.identitySubject && input.limits.identityQuarterHour !== null) {
     inputs.push({
       keyPrefix: `auth:${input.scope}:identity`,
-      subject: `${ipAddress}:${normalizeRateLimitSubjectPart(input.identitySubject)}`,
+      subject: normalizeRateLimitSubjectPart(input.identitySubject),
       window: "quarter-hour",
       limit: input.limits.identityQuarterHour,
     });

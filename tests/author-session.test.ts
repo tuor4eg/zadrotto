@@ -1,52 +1,65 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
-import { createAuthorSessionToken, verifyAuthorSessionToken } from "../src/lib/auth/author-session";
+import {
+  AUTHOR_SESSION_COOKIE_NAME,
+  generateAuthorSessionToken,
+  hashAuthorSessionToken,
+} from "../src/lib/auth/author-session";
+import { isFreshAccessTokenSession } from "../src/lib/auth/author-auth";
 
-const previousAuthorSessionSecret = process.env.AUTHOR_SESSION_SECRET;
-
-function withAuthorSessionSecret(secret: string) {
-  process.env.AUTHOR_SESSION_SECRET = secret;
-}
-
-function restoreAuthorSessionSecret() {
-  if (previousAuthorSessionSecret === undefined) {
-    delete process.env.AUTHOR_SESSION_SECRET;
-  } else {
-    process.env.AUTHOR_SESSION_SECRET = previousAuthorSessionSecret;
-  }
-}
-
-describe("author session JWT", () => {
-  it("creates and verifies a signed author session token", () => {
-    withAuthorSessionSecret("test-secret");
-
-    const token = createAuthorSessionToken(7, "alice");
-    const payload = verifyAuthorSessionToken(token);
-
-    assert.equal(payload?.type, "author");
-    assert.equal(payload?.authorId, 7);
-    assert.equal(payload?.authorCode, "alice");
-
-    restoreAuthorSessionSecret();
+describe("opaque author session tokens", () => {
+  it("uses the v2 cookie name", () => {
+    assert.equal(AUTHOR_SESSION_COOKIE_NAME, "author_session_v2");
   });
 
-  it("rejects a token with a changed signature", () => {
-    withAuthorSessionSecret("test-secret");
+  it("generates random opaque tokens without embedded claims", () => {
+    const firstToken = generateAuthorSessionToken();
+    const secondToken = generateAuthorSessionToken();
 
-    const token = createAuthorSessionToken(7, "alice");
-    const tamperedToken = `${token.slice(0, -1)}x`;
-
-    assert.equal(verifyAuthorSessionToken(tamperedToken), null);
-
-    restoreAuthorSessionSecret();
+    assert.match(firstToken, /^zas_[A-Za-z0-9_-]+$/);
+    assert.equal(firstToken.includes("."), false);
+    assert.notEqual(firstToken, secondToken);
   });
 
-  it("rejects malformed tokens", () => {
-    withAuthorSessionSecret("test-secret");
+  it("hashes tokens deterministically without storing the raw value", () => {
+    const token = generateAuthorSessionToken();
+    const tokenHash = hashAuthorSessionToken(token);
 
-    assert.equal(verifyAuthorSessionToken("not-a-jwt"), null);
+    assert.equal(tokenHash, hashAuthorSessionToken(token));
+    assert.notEqual(tokenHash, token);
+    assert.match(tokenHash, /^[a-f0-9]{64}$/);
+  });
 
-    restoreAuthorSessionSecret();
+  it("limits onboarding to fresh access-token sessions", () => {
+    const now = new Date("2026-07-20T12:00:00Z");
+    assert.equal(
+      isFreshAccessTokenSession(
+        { authMethod: "access_token", createdAt: new Date("2026-07-20T11:45:00Z") },
+        now,
+      ),
+      true,
+    );
+    assert.equal(
+      isFreshAccessTokenSession(
+        { authMethod: "access_token", createdAt: new Date("2026-07-20T11:46:00Z") },
+        now,
+      ),
+      true,
+    );
+    assert.equal(
+      isFreshAccessTokenSession(
+        { authMethod: "access_token", createdAt: new Date("2026-07-20T11:44:59Z") },
+        now,
+      ),
+      false,
+    );
+    assert.equal(
+      isFreshAccessTokenSession(
+        { authMethod: "password", createdAt: new Date("2026-07-20T11:59:00Z") },
+        now,
+      ),
+      false,
+    );
   });
 });

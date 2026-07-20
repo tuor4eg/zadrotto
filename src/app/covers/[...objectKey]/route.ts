@@ -1,7 +1,5 @@
-import { cookies } from "next/headers";
-
 import { canViewMediaItemCover } from "@/db/queries/media-items";
-import { AUTHOR_SESSION_COOKIE_NAME, verifyAuthorSessionToken } from "@/lib/auth/author-session";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { fetchS3Object } from "@/lib/services/minio";
 
 type CoverRouteContext = {
@@ -22,15 +20,6 @@ function getSafeCoverObjectKey(segments: string[]) {
   return segments.join("/");
 }
 
-async function getCurrentAuthorFromSession() {
-  const token = (await cookies()).get(AUTHOR_SESSION_COOKIE_NAME)?.value;
-  const payload = token ? verifyAuthorSessionToken(token) : null;
-
-  return payload?.type === "author"
-    ? { id: payload.authorId, code: payload.authorCode }
-    : undefined;
-}
-
 export async function GET(_request: Request, { params }: CoverRouteContext) {
   const { objectKey: segments } = await params;
   const objectKey = getSafeCoverObjectKey(segments);
@@ -39,7 +28,7 @@ export async function GET(_request: Request, { params }: CoverRouteContext) {
     return new Response("Обложка не найдена.", { status: 404 });
   }
 
-  const currentAuthor = await getCurrentAuthorFromSession();
+  const currentAuthor = (await getCurrentAuthor()) ?? undefined;
   const canViewCover = await canViewMediaItemCover(objectKey, currentAuthor);
 
   if (!canViewCover) {
