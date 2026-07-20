@@ -4,6 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 
 type Match = { id: number; code: string; title: string; originalTitle: string | null };
+type DuplicateCheckResult = {
+  exactIds: number[];
+  key: string;
+  matches: Match[];
+  status: "ready" | "error";
+  token: string;
+};
 
 export function FranchiseDuplicateCheck({
   title,
@@ -14,13 +21,15 @@ export function FranchiseDuplicateCheck({
   originalTitle: string;
   onBlockedChange: (blocked: boolean) => void;
 }) {
-  const [matches, setMatches] = useState<Match[]>([]);
-  const [exactIds, setExactIds] = useState<number[]>([]);
-  const [token, setToken] = useState("");
+  const [result, setResult] = useState<DuplicateCheckResult | null>(null);
   const [acknowledgedKey, setAcknowledgedKey] = useState<string | null>(null);
-  const [status, setStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const key = useMemo(() => JSON.stringify({ title: title.trim(), originalTitle: originalTitle.trim() }), [title, originalTitle]);
   const canSearch = title.trim().length >= 2;
+  const currentResult = result?.key === key ? result : null;
+  const matches = currentResult?.matches ?? [];
+  const exactIds = currentResult?.exactIds ?? [];
+  const token = currentResult?.token ?? "";
+  const status = canSearch ? currentResult?.status ?? "loading" : "idle";
   const exactMatches = matches.filter((match) => exactIds.includes(match.id));
   const possibleMatches = matches.filter((match) => !exactIds.includes(match.id));
   const acknowledged = acknowledgedKey === key;
@@ -28,23 +37,10 @@ export function FranchiseDuplicateCheck({
 
   useEffect(() => onBlockedChange(blocked), [blocked, onBlockedChange]);
   useEffect(() => {
-    if (!canSearch) {
-      setMatches([]);
-      setExactIds([]);
-      setToken("");
-      setAcknowledgedKey(null);
-      setStatus("idle");
-      return;
-    }
+    if (!canSearch) return;
 
     const controller = new AbortController();
     let isActive = true;
-
-    setMatches([]);
-    setExactIds([]);
-    setToken("");
-    setAcknowledgedKey(null);
-    setStatus("loading");
 
     const timeout = window.setTimeout(async () => {
       try {
@@ -52,9 +48,17 @@ export function FranchiseDuplicateCheck({
         if (!response.ok) throw new Error("request failed");
         const result = await response.json() as { matches?: Match[]; exactMatchIds?: number[]; acknowledgementToken?: string };
         if (!isActive) return;
-        setMatches(result.matches ?? []); setExactIds(result.exactMatchIds ?? []); setToken(result.acknowledgementToken ?? ""); setStatus("ready");
+        setResult({
+          key,
+          matches: result.matches ?? [],
+          exactIds: result.exactMatchIds ?? [],
+          token: result.acknowledgementToken ?? "",
+          status: "ready",
+        });
       } catch (error) {
-        if (isActive && (error as Error).name !== "AbortError") setStatus("error");
+        if (isActive && (error as Error).name !== "AbortError") {
+          setResult({ key, matches: [], exactIds: [], token: "", status: "error" });
+        }
       }
     }, 350);
 
