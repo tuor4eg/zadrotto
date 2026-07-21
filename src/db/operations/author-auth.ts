@@ -1,11 +1,9 @@
 import { randomUUID } from "node:crypto";
 
-import { and, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
-  authorAccessProfiles,
-  authorAccessTokens,
   authorAccounts,
   authorAuthChallenges,
   authorEmails,
@@ -194,7 +192,7 @@ export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Da
         eq(authorAuthChallenges.tokenHash, tokenHash),
         sql`${authorAuthChallenges.purpose} in ('verify_email', 'change_email')`,
         isNull(authorAuthChallenges.consumedAt),
-        sql`${authorAuthChallenges.expiresAt} > ${now}`,
+        gt(authorAuthChallenges.expiresAt, now),
       ))
       .returning({ authorId: authorAuthChallenges.authorId, emailId: authorAuthChallenges.emailId, purpose: authorAuthChallenges.purpose });
     if (!challenge?.emailId) return null;
@@ -233,20 +231,16 @@ export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Da
       return { authorId: challenge.authorId, status: "active" as const, purpose: "change_email" as const };
     }
     await tx.update(authorEmails).set({ verifiedAt: now, updatedAt: now }).where(eq(authorEmails.id, challenge.emailId));
-    const [legacyToken] = await tx
-      .select({ id: authorAccessTokens.id })
-      .from(authorAccessTokens)
-      .where(and(
-        eq(authorAccessTokens.authorId, challenge.authorId),
-        isNull(authorAccessTokens.revokedAt),
-      ))
-      .limit(1);
-    const nextStatus = legacyToken ? "active" : "pending_approval";
-    await tx
+    const [activatedAccount] = await tx
       .update(authorAccounts)
-      .set({ status: nextStatus, updatedAt: now })
-      .where(eq(authorAccounts.authorId, challenge.authorId));
-    return { authorId: challenge.authorId, status: nextStatus, purpose: "verify_email" as const };
+      .set({ status: "active", updatedAt: now })
+      .where(and(
+        eq(authorAccounts.authorId, challenge.authorId),
+        eq(authorAccounts.status, "pending_email"),
+      ))
+      .returning({ authorId: authorAccounts.authorId });
+    if (!activatedAccount) return null;
+    return { authorId: challenge.authorId, status: "active" as const, purpose: "verify_email" as const };
   });
 }
 
@@ -332,7 +326,7 @@ export async function resetAuthorPassword(input: { tokenHash: string; passwordHa
       eq(authorAuthChallenges.tokenHash, input.tokenHash),
       eq(authorAuthChallenges.purpose, "reset_password"),
       isNull(authorAuthChallenges.consumedAt),
-      sql`${authorAuthChallenges.expiresAt} > ${now}`,
+      gt(authorAuthChallenges.expiresAt, now),
     )).returning({ authorId: authorAuthChallenges.authorId });
     if (!challenge) return false;
     const [updatedAccount] = await tx.update(authorAccounts).set({ passwordHash: input.passwordHash, updatedAt: now }).where(and(
@@ -353,77 +347,6 @@ export async function resetAuthorPassword(input: { tokenHash: string; passwordHa
   });
 }
 
-export async function reviewAuthorRegistration(input: {
-  authorId: number;
-  adminUserId: number;
-  decision: "approve" | "reject";
-  accessProfileId?: number;
-}) {
-  return db.transaction(async (tx) => {
-    const now = new Date();
-    const [account] = await tx
-      .select({ recipient: authorEmails.email })
-      .from(authorAccounts)
-      .innerJoin(authorEmails, and(
-        eq(authorEmails.authorId, authorAccounts.authorId),
-        eq(authorEmails.isPrimary, true),
-        isNotNull(authorEmails.verifiedAt),
-      ))
-      .where(and(
-        eq(authorAccounts.authorId, input.authorId),
-        eq(authorAccounts.status, "pending_approval"),
-      ))
-      .limit(1)
-      .for("update", { of: authorAccounts });
-    if (!account) return false;
-
-    if (input.decision === "approve") {
-      if (!input.accessProfileId) return false;
-      const [profile] = await tx.select({ id: authorAccessProfiles.id })
-        .from(authorAccessProfiles)
-        .where(and(
-          eq(authorAccessProfiles.id, input.accessProfileId),
-          eq(authorAccessProfiles.isSystem, false),
-        ))
-        .limit(1);
-      if (!profile) return false;
-      await tx.update(authors).set({ accessProfileId: profile.id, updatedAt: now }).where(eq(authors.id, input.authorId));
-      await tx.update(authorAccounts).set({
-        status: "active",
-        approvedAt: now,
-        approvedByAdminId: input.adminUserId,
-        rejectedAt: null,
-        rejectedByAdminId: null,
-        updatedAt: now,
-      }).where(eq(authorAccounts.authorId, input.authorId));
-      await tx.insert(emailOutbox).values({
-        template: "registration_approved",
-        recipient: account.recipient,
-        encryptedPayload: encryptEmailOutboxPayload({}),
-      });
-    } else {
-      await tx.update(authorAccounts).set({
-        status: "rejected",
-        rejectedAt: now,
-        rejectedByAdminId: input.adminUserId,
-        approvedAt: null,
-        approvedByAdminId: null,
-        updatedAt: now,
-      }).where(eq(authorAccounts.authorId, input.authorId));
-      await tx.update(authorSessions).set({ revokedAt: now }).where(and(
-        eq(authorSessions.authorId, input.authorId),
-        isNull(authorSessions.revokedAt),
-      ));
-      await tx.insert(emailOutbox).values({
-        template: "registration_rejected",
-        recipient: account.recipient,
-        encryptedPayload: encryptEmailOutboxPayload({}),
-      });
-    }
-    return true;
-  });
-}
-
 export async function cleanupAuthorAuthData(
   settings: Pick<EmailAutomationSettingsInput, "challengeRetentionHours" | "sessionRetentionDays" | "staleRegistrationDays" | "sentOutboxRetentionDays" | "failedOutboxRetentionDays"> = EMAIL_AUTOMATION_DEFAULTS,
   now = new Date(),
@@ -435,22 +358,26 @@ export async function cleanupAuthorAuthData(
   const failedOutboxCutoff = new Date(now.getTime() - settings.failedOutboxRetentionDays * 24 * 60 * 60 * 1000);
 
   return db.transaction(async (tx) => {
-    const expiredChallenges = await tx.execute(sql`
-      delete from author_auth_challenges
-      where expires_at < ${challengeCutoff}
-         or (consumed_at is not null and consumed_at < ${challengeCutoff})
-    `);
-    const expiredSessions = await tx.execute(sql`
-      delete from author_sessions
-      where expires_at < ${sessionCutoff}
-         or (revoked_at is not null and revoked_at < ${sessionCutoff})
-    `);
+    const expiredChallenges = await tx.delete(authorAuthChallenges).where(or(
+      lt(authorAuthChallenges.expiresAt, challengeCutoff),
+      and(
+        isNotNull(authorAuthChallenges.consumedAt),
+        lt(authorAuthChallenges.consumedAt, challengeCutoff),
+      ),
+    ));
+    const expiredSessions = await tx.delete(authorSessions).where(or(
+      lt(authorSessions.expiresAt, sessionCutoff),
+      and(
+        isNotNull(authorSessions.revokedAt),
+        lt(authorSessions.revokedAt, sessionCutoff),
+      ),
+    ));
     const staleRegistrations = await tx.execute(sql`
       delete from authors a
       using author_accounts aa
       where aa.author_id = a.id
         and aa.status = 'pending_email'
-        and aa.created_at < ${registrationCutoff}
+        and aa.created_at < ${registrationCutoff.toISOString()}
         and not exists (select 1 from author_access_tokens t where t.author_id = a.id)
         and not exists (select 1 from ratings r where r.author_id = a.id)
         and not exists (select 1 from author_media_experiences e where e.author_id = a.id)
@@ -459,14 +386,14 @@ export async function cleanupAuthorAuthData(
         and not exists (select 1 from franchises f where f.created_by_author_id = a.id)
         and not exists (select 1 from media_item_franchises mif where mif.created_by_author_id = a.id)
     `);
-    const sentOutbox = await tx.execute(sql`
-      delete from email_outbox
-      where status = 'sent' and sent_at < ${sentOutboxCutoff}
-    `);
-    const failedOutbox = await tx.execute(sql`
-      delete from email_outbox
-      where status = 'failed' and updated_at < ${failedOutboxCutoff}
-    `);
+    const sentOutbox = await tx.delete(emailOutbox).where(and(
+      eq(emailOutbox.status, "sent"),
+      lt(emailOutbox.sentAt, sentOutboxCutoff),
+    ));
+    const failedOutbox = await tx.delete(emailOutbox).where(and(
+      eq(emailOutbox.status, "failed"),
+      lt(emailOutbox.updatedAt, failedOutboxCutoff),
+    ));
     return {
       expiredChallenges: expiredChallenges.count,
       expiredSessions: expiredSessions.count,

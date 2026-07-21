@@ -47,7 +47,7 @@ describe("Resend author email", () => {
       siteUrl: "https://example.com/base",
     });
 
-    assert.match(verify.text, /\/author\/verify-email\?token=a%2Bb%26c%3Fd/);
+    assert.match(verify.text, /\/author\/verify-email#token=a%2Bb%26c%3Fd/);
     assert.match(reset.text, /\/author\/reset-password\?token=a%2Bb%26c%3Fd/);
     assert.doesNotMatch(verify.html, /a\+b&c\?d/);
   });
@@ -69,7 +69,8 @@ describe("Resend author email", () => {
       assert.equal(requestUrl, "https://api.resend.com/emails");
       assert.equal(headers?.get("Authorization"), "Bearer re_test");
       assert.equal(headers?.get("Content-Type"), "application/json");
-      assert.equal(headers?.get("Idempotency-Key"), "author-email-outbox-7");
+      assert.match(headers?.get("Idempotency-Key") ?? "", /^author-email-outbox-7-[a-f0-9]{16}$/);
+      assert.ok((headers?.get("Idempotency-Key")?.length ?? 0) <= 256);
       assert.equal(headers?.get("User-Agent"), "zadrotto-author-email/1.0");
       assert.deepEqual(requestBody?.to, ["to@example.com"]);
       assert.equal(requestBody?.from, "Archive <mail@example.com>");
@@ -85,6 +86,46 @@ describe("Resend author email", () => {
         await sendEmailWithResend({ config, idempotencyKey: "x", recipient: "to@example.com", subject: "Test", html: "x", text: "x" }),
         { ok: false, retryable: true, error: "network unavailable" },
       );
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("binds idempotency keys to the exact serialized request payload", async () => {
+    const previousFetch = globalThis.fetch;
+    const keys: string[] = [];
+    try {
+      globalThis.fetch = async (_url, init) => {
+        keys.push(new Headers(init?.headers).get("Idempotency-Key") ?? "");
+        return new Response("", { status: 200 });
+      };
+      const base = { config, idempotencyKey: "x".repeat(300), recipient: "to@example.com", subject: "Test", html: "<p>Test</p>", text: "Test" };
+      await sendEmailWithResend(base);
+      await sendEmailWithResend(base);
+      await sendEmailWithResend({ ...base, text: "Changed" });
+      assert.equal(keys[0], keys[1]);
+      assert.notEqual(keys[0], keys[2]);
+      assert.ok(keys.every((key) => key.length <= 256));
+    } finally {
+      globalThis.fetch = previousFetch;
+    }
+  });
+
+  it("classifies Resend 409 identifiers without retaining untrusted body text", async () => {
+    const previousFetch = globalThis.fetch;
+    try {
+      globalThis.fetch = async () => Response.json({ name: "concurrent_idempotent_requests", message: "user@example.com Bearer secret" }, { status: 409 });
+      assert.deepEqual(await sendEmailWithResend({ config, idempotencyKey: "x", recipient: "to@example.com", subject: "Test", html: "x", text: "x" }), {
+        ok: false, retryable: true, error: "Resend HTTP 409 (concurrent_idempotent_requests)",
+      });
+      globalThis.fetch = async () => Response.json({ code: "invalid_idempotent_request", message: "https://evil.example/?token=secret" }, { status: 409 });
+      const invalid = await sendEmailWithResend({ config, idempotencyKey: "x", recipient: "to@example.com", subject: "Test", html: "x", text: "x" });
+      assert.deepEqual(invalid, { ok: false, retryable: false, error: "Resend HTTP 409 (invalid_idempotent_request)" });
+      assert.doesNotMatch(invalid.error, /evil|token|secret/);
+      globalThis.fetch = async () => Response.json({ type: "<script>malicious</script>", message: "raw private body" }, { status: 409 });
+      assert.deepEqual(await sendEmailWithResend({ config, idempotencyKey: "x", recipient: "to@example.com", subject: "Test", html: "x", text: "x" }), {
+        ok: false, retryable: false, error: "Resend HTTP 409",
+      });
     } finally {
       globalThis.fetch = previousFetch;
     }
@@ -152,6 +193,8 @@ describe("Resend author email", () => {
     assert.match(actions, /saveEmailProviderAction[\s\S]*requireAdminUser\(\)/);
     assert.match(actions, /disableEmailProviderAction[\s\S]*setEmailDeliveryEnabled\(\{ enabled: false/);
     assert.match(actions, /testEmailProviderAction[\s\S]*sendEmailWithResend/);
+    assert.match(actions, /subject: "Проверка доставки email"/);
+    assert.doesNotMatch(actions, /registration_approved|renderAuthorEmail/);
     assert.doesNotMatch(actions, /retryFailedEmailsAction|retryFailedEmailOutbox/);
   });
 
@@ -163,9 +206,8 @@ describe("Resend author email", () => {
 
     for (const file of [
       "src/app/author/register/actions.ts",
-      "src/app/author/onboarding/actions.ts",
+      "src/app/author/(protected)/profile/actions.ts",
       "src/app/author/forgot-password/actions.ts",
-      "src/app/author/(protected)/settings/security/actions.ts",
     ]) {
       assert.match(readFileSync(file, "utf8"), /await isAuthorEmailDeliveryConfigured\(\)/, file);
     }

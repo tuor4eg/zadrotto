@@ -5,10 +5,8 @@ import { getResendEmailConfig, saveResendEmailConfig, setEmailDeliveryEnabled } 
 import type { CreateActivityLogInput } from "@/db/queries/activity-logs";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { validateResendEmailConfig } from "@/lib/auth/email-provider";
-import { renderAuthorEmail } from "@/lib/auth/email-templates";
 import { sendEmailWithResend } from "@/lib/auth/resend";
 import { logActivity, prepareActivityLog } from "@/lib/activity-logs/server";
-import { getSiteOrigin } from "@/lib/site-url";
 
 const PROVIDER_PATH = "/admin/tools/email/provider";
 function read(formData: FormData, key: string) { const value = formData.get(key); return typeof value === "string" ? value.trim() : ""; }
@@ -40,9 +38,14 @@ export async function testEmailProviderAction() {
   const admin = await requireAdminUser();
   const config = await getResendEmailConfig();
   if (!config) { await logActivity({ action: "email-provider.tested", actorType: "admin", adminUserId: admin.id, entityType: "email-provider", entityLabel: "Resend", status: "failure", message: "Тест email недоступен: провайдер не настроен.", metadata: { provider: "resend", reason: "unavailable-config" } }); redirect(`${PROVIDER_PATH}?error=unavailable`); }
-  let siteOrigin;
-  try { siteOrigin = getSiteOrigin(); } catch { await logActivity({ action: "email-provider.tested", actorType: "admin", adminUserId: admin.id, entityType: "email-provider", entityLabel: "Resend", status: "failure", message: "Тест email недоступен: SITE_URL неверен.", metadata: { provider: "resend", reason: "invalid-site-url" } }); redirect(`${PROVIDER_PATH}?error=site-url`); }
-  const result = await sendEmailWithResend({ config, idempotencyKey: `author-email-test-${Date.now()}`, recipient: config.fromEmail, ...renderAuthorEmail({ template: "registration_approved", payload: {}, siteUrl: siteOrigin.href }) });
+  const result = await sendEmailWithResend({
+    config,
+    idempotencyKey: `author-email-test-${Date.now()}`,
+    recipient: config.fromEmail,
+    subject: "Проверка доставки email",
+    text: "Тестовое письмо: доставка системных сообщений настроена.",
+    html: "<p>Тестовое письмо: доставка системных сообщений настроена.</p>",
+  });
   await logActivity({ action: "email-provider.tested", actorType: "admin", adminUserId: admin.id, entityType: "email-provider", entityLabel: "Resend", status: result.ok ? "success" : "failure", message: result.ok ? "Тестовое email отправлено." : "Тест email завершился ошибкой.", metadata: { provider: "resend", retryable: result.ok ? false : result.retryable } });
   redirect(result.ok ? `${PROVIDER_PATH}?tested=1` : `${PROVIDER_PATH}?error=test`);
 }

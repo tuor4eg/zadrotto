@@ -19,7 +19,7 @@ describe("author login modal contracts", () => {
     assert.match(actionsSource, /redirect\(`\/author\/login\?error=\$\{result\.error\}`\)/);
     assert.match(
       actionsSource,
-      /redirect\(result\.onboarding \? "\/author\/onboarding" : "\/author"\)/,
+      /redirect\(result\.onboarding \? "\/author\/profile" : "\/author"\)/,
     );
   });
 

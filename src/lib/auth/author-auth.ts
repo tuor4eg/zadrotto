@@ -43,14 +43,6 @@ export async function getCurrentAuthor() {
   return (await getCurrentAuthorSession())?.author ?? null;
 }
 
-export function isFreshAccessTokenSession(
-  session: { authMethod: string; createdAt: Date },
-  now = new Date(),
-) {
-  return session.authMethod === "access_token"
-    && now.getTime() - session.createdAt.getTime() <= 15 * 60 * 1000;
-}
-
 export async function requireAuthor() {
   const author = await getCurrentAuthor();
 

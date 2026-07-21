@@ -37,7 +37,7 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
   useEffect(() => {
     if (!state?.ok) return;
     if (redirectOnSuccess || state.onboarding) {
-      router.replace(state.onboarding ? "/author/onboarding" : "/author");
+      router.replace(state.onboarding ? "/author/profile" : "/author");
     }
     else onSuccess?.();
   }, [onSuccess, redirectOnSuccess, router, state]);

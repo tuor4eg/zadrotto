@@ -11,7 +11,7 @@ export function renderAuthorEmail(input: {
 }) {
   const token = typeof input.payload.token === "string" ? input.payload.token : "";
   const paths: Partial<Record<EmailOutboxTemplate, string>> = {
-    verify_email: `/author/verify-email?token=${encodeURIComponent(token)}`,
+    verify_email: `/author/verify-email#token=${encodeURIComponent(token)}`,
     reset_password: `/author/reset-password?token=${encodeURIComponent(token)}`,
   };
   const copy: Record<EmailOutboxTemplate, { subject: string; body: string }> = {

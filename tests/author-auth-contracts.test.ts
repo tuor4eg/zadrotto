@@ -8,26 +8,20 @@ const loginActions = readFileSync("src/app/author/login/actions.ts", "utf8");
 const loginForm = readFileSync("src/app/author/login/author-login-form.tsx", "utf8");
 const registrationActions = readFileSync("src/app/author/register/actions.ts", "utf8");
 const registrationPage = readFileSync("src/app/author/register/page.tsx", "utf8");
-const onboardingPage = readFileSync("src/app/author/onboarding/page.tsx", "utf8");
+const profilePage = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
+const legacyOnboardingPage = readFileSync("src/app/author/onboarding/page.tsx", "utf8");
 const resetPasswordPage = readFileSync("src/app/author/reset-password/page.tsx", "utf8");
-const securityPage = readFileSync("src/app/author/(protected)/settings/security/page.tsx", "utf8");
+const legacySecurityPage = readFileSync("src/app/author/(protected)/settings/security/page.tsx", "utf8");
 const passwordField = readFileSync("src/components/auth/password-field.tsx", "utf8");
 const registrationTimestamp = readFileSync(
   "src/app/author/register/registration-started-at-input.tsx",
   "utf8",
 );
-const onboardingActions = readFileSync("src/app/author/onboarding/actions.ts", "utf8");
+const profileActions = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
 const forgotActions = readFileSync("src/app/author/forgot-password/actions.ts", "utf8");
 const verifyPage = readFileSync("src/app/author/verify-email/page.tsx", "utf8");
 const verifyActions = readFileSync("src/app/author/verify-email/actions.ts", "utf8");
-const settingsActions = readFileSync(
-  "src/app/author/(protected)/settings/security/actions.ts",
-  "utf8",
-);
-const reviewActions = readFileSync(
-  "src/app/admin/(protected)/registration-review/actions.ts",
-  "utf8",
-);
+const adminNavigation = readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8");
 const outboxQueries = readFileSync("src/db/queries/email-outbox.ts", "utf8");
 const migration = readFileSync("drizzle/0032_yielding_blockbuster.sql", "utf8");
 
@@ -59,16 +53,23 @@ describe("author auth persistence contracts", () => {
       const source = functionSource(operations, name);
       assert.match(source, /\.set\(\{ consumedAt: now \}\)/);
       assert.match(source, /isNull\(authorAuthChallenges\.consumedAt\)/);
-      assert.match(source, /expiresAt\} > \$\{now\}/);
+      assert.match(source, /gt\(authorAuthChallenges\.expiresAt, now\)/);
     }
   });
 
-  it("keeps registration transitions distinct for legacy and new authors", () => {
+  it("activates every author immediately after verifying the registration email", () => {
     const verify = functionSource(operations, "verifyAuthorEmailChallenge", "requestAuthorEmailChange");
-    assert.match(verify, /const nextStatus = legacyToken \? "active" : "pending_approval"/);
+    assert.match(verify, /set\(\{ status: "active", updatedAt: now \}\)/);
+    assert.match(verify, /eq\(authorAccounts\.status, "pending_email"\)/);
+    assert.match(verify, /if \(!activatedAccount\) return null/);
+    assert.match(verify, /status: "active" as const, purpose: "verify_email" as const/);
+    assert.doesNotMatch(verify, /legacyToken|pending_approval|registration_approved|registration_rejected/);
+    assert.match(verifyActions, /result \? "\/author\/login\?verified=1"/);
+    assert.doesNotMatch(verifyActions, /pending=1/);
     assert.match(operations, /status: "pending_email"/);
-    assert.match(onboardingActions, /isFreshAccessTokenSession\(current\.session\)/);
-    assert.match(onboardingActions, /getAuthorAccountByAuthorId\(current\.author\.id\)/);
+    assert.match(profileActions, /current\.session\.authMethod !== "access_token"/);
+    assert.doesNotMatch(profileActions, /isFreshAccessTokenSession|15 \* 60/);
+    assert.match(profileActions, /getAuthorAccountByAuthorId\(current\.author\.id\)/);
     assert.match(registrationActions, /redirect\("\/author\/register\?sent=1"\)/);
     assert.match(registrationPage, /export const dynamic = "force-dynamic"/);
     assert.match(registrationPage, /if \(!isAuthorRegistrationEnabled\(\)\) notFound\(\)/);
@@ -80,14 +81,14 @@ describe("author auth persistence contracts", () => {
   });
 
   it("uses the informative password strength field only for new passwords", () => {
-    for (const page of [registrationPage, onboardingPage, resetPasswordPage, securityPage]) {
+    for (const page of [registrationPage, resetPasswordPage, profilePage]) {
       assert.match(page, /<PasswordField[\s\S]*name="password"/);
       assert.match(page, /autoComplete="new-password"/);
       assert.match(page, /minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}/);
       assert.match(page, /maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     }
     assert.match(registrationPage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
-    assert.match(onboardingPage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
+    assert.match(profilePage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     assert.match(passwordField, /Минимум \$\{AUTHOR_PASSWORD_MIN_LENGTH\} символов/);
     assert.match(passwordField, /Сложность пароля:/);
     assert.match(passwordField, /aria-describedby=\{describedBy\}/);
@@ -101,20 +102,16 @@ describe("author auth persistence contracts", () => {
     assert.match(loginForm, /name="password"[\s\S]*autoComplete="current-password"/);
     assert.doesNotMatch(loginForm, /name="password"[\s\S]*minLength=/);
 
-    assert.equal((securityPage.match(/<PasswordField/g) ?? []).length, 1);
-    assert.match(securityPage, /<Label htmlFor="newPassword">Новый пароль<\/Label><PasswordField id="newPassword" name="password"/);
-    assert.match(securityPage, /name="currentPassword" type="password" autoComplete="current-password"/);
-    assert.doesNotMatch(securityPage, /name="currentPassword"[^>]*(?:minLength|maxLength)=/);
+    assert.match(profilePage, /<Label htmlFor="newPassword">Новый пароль<\/Label><PasswordField id="newPassword" name="password"/);
+    assert.match(profilePage, /name="currentPassword" type="password" autoComplete="current-password"/);
+    assert.doesNotMatch(profilePage, /name="currentPassword"[^>]*(?:minLength|maxLength)=/);
   });
 
-  it("requires verified pending registrations for admin review", () => {
-    const review = functionSource(operations, "reviewAuthorRegistration", "cleanupAuthorAuthData");
-    assert.match(review, /eq\(authorAccounts\.status, "pending_approval"\)/);
-    assert.match(review, /isNotNull\(authorEmails\.verifiedAt\)/);
-    assert.match(review, /status: "active"/);
-    assert.match(review, /status: "rejected"/);
-    assert.match(review, /eq\(authorAccessProfiles\.isSystem, false\)/);
-    assert.match(reviewActions, /formData\.get\("decision"\) === "reject" \? "reject" : "approve"/);
+  it("removes the registration review route while retaining historic model values", () => {
+    assert.doesNotMatch(operations, /reviewAuthorRegistration|template: "registration_(?:approved|rejected)"/);
+    assert.doesNotMatch(queries, /getPendingAuthorRegistrations/);
+    assert.doesNotMatch(adminNavigation, /\/admin\/registration-review/);
+    assert.match(readFileSync("src/lib/auth/author-account-model.ts", "utf8"), /pending_approval[\s\S]*rejected[\s\S]*registration_approved[\s\S]*registration_rejected/);
   });
 
   it("keeps login failures generic and always performs password verification", () => {
@@ -126,11 +123,11 @@ describe("author auth persistence contracts", () => {
   });
 
   it("applies the documented session revocation policy", () => {
-    const reset = functionSource(operations, "resetAuthorPassword", "reviewAuthorRegistration");
+    const reset = functionSource(operations, "resetAuthorPassword", "cleanupAuthorAuthData");
     assert.match(reset, /update\(authorSessions\)[\s\S]*eq\(authorSessions\.authorId, challenge\.authorId\)/);
-    assert.match(settingsActions, /revokeAllAuthorSessions\(current\.author\.id, current\.session\.sessionId\)/);
-    assert.match(settingsActions, /intent === "all"[\s\S]*revokeAllAuthorSessions\(current\.author\.id\)/);
-    assert.match(settingsActions, /revokeAuthorSessionById\(current\.author\.id, sessionId\)/);
+    assert.match(profileActions, /revokeAllAuthorSessions\(current\.author\.id, current\.session\.sessionId\)/);
+    assert.match(profileActions, /intent === "all"[\s\S]*revokeAllAuthorSessions\(current\.author\.id\)/);
+    assert.match(profileActions, /revokeAuthorSessionById\(current\.author\.id, sessionId\)/);
   });
 
   it("switches email only after consuming its challenge and revokes sessions", () => {
@@ -139,7 +136,7 @@ describe("author auth persistence contracts", () => {
     assert.match(verify, /set\(\{ isPrimary: false/);
     assert.match(verify, /set\(\{ isPrimary: true, verifiedAt: now/);
     assert.match(verify, /update\(authorSessions\)\.set\(\{ revokedAt: now \}\)/);
-    assert.match(settingsActions, /updated=email-pending/);
+    assert.match(profileActions, /updated=email-pending/);
   });
 
   it("claims outbox rows atomically with bounded leases", () => {
@@ -167,17 +164,22 @@ describe("author auth persistence contracts", () => {
     assert.doesNotMatch(migration, /ALTER TABLE "author_access_tokens"/);
   });
 
-  it("verifies email only through a rate-limited POST action", () => {
-    assert.match(verifyPage, /<form action=\{verifyAuthorEmailAction\}/);
-    assert.doesNotMatch(verifyPage, /verifyAuthorEmailChallenge|hashAuthorAuthChallengeToken/);
+  it("automatically verifies a fragment token through the rate-limited POST action", () => {
+    assert.match(verifyPage, /new URLSearchParams\(url\.hash\.slice\(1\)\)/);
+    assert.match(verifyPage, /url\.searchParams\.get\("token"\)/);
+    assert.match(verifyPage, /url\.searchParams\.delete\("token"\)/);
+    assert.match(verifyPage, /window\.history\.replaceState/);
+    assert.match(verifyPage, /formRef\.current\.requestSubmit\(\)/);
+    assert.match(verifyPage, /action=\{verifyAuthorEmailAction\}/);
+    assert.doesNotMatch(verifyPage, /Подтвердить email<\/Button>|verifyAuthorEmailChallenge|hashAuthorAuthChallengeToken/);
     assert.match(verifyActions, /checkAuthorAuthMutationRateLimit\("author-verify", token\)/);
     assert.match(verifyActions, /verifyAuthorEmailChallenge\(hashAuthorAuthChallengeToken\(token\)\)/);
   });
 
   it("rate limits public auth mutations by their own scopes", () => {
     assert.match(registrationActions, /checkAuthorAuthMutationRateLimit\("author-register"/);
-    assert.match(onboardingActions, /checkAuthorAuthMutationRateLimit\("author-onboarding"/);
-    assert.match(onboardingActions, /checkAuthorAuthMutationRateLimit\("author-verify"/);
+    assert.match(profileActions, /checkAuthorAuthMutationRateLimit\("author-onboarding"/);
+    assert.match(profileActions, /checkAuthorAuthMutationRateLimit\("author-verify"/);
     assert.match(forgotActions, /checkAuthorAuthMutationRateLimit\("author-forgot"/);
   });
 
@@ -210,11 +212,10 @@ describe("author auth persistence contracts", () => {
   it("logs security settings mutations and notifies the previous email", () => {
     for (const action of [
       "author.password.changed",
-      "author.updated",
       "author.email.changed",
       "author.session.revoked",
     ]) {
-      assert.match(settingsActions, new RegExp(`action: "${action.replaceAll(".", "\\.")}"`));
+      assert.match(profileActions, new RegExp(`action: "${action.replaceAll(".", "\\.")}"`));
     }
     const verify = functionSource(operations, "verifyAuthorEmailChallenge", "requestAuthorEmailChange");
     assert.match(verify, /template: "email_changed"/);
@@ -222,7 +223,7 @@ describe("author auth persistence contracts", () => {
   });
 
   it("invalidates sibling reset and email-change challenges after success", () => {
-    const reset = functionSource(operations, "resetAuthorPassword", "reviewAuthorRegistration");
+    const reset = functionSource(operations, "resetAuthorPassword", "cleanupAuthorAuthData");
     assert.match(reset, /returning\(\{ authorId: authorAccounts\.authorId \}\)/);
     assert.match(reset, /if \(!updatedAccount\) return false/);
     assert.match(reset, /eq\(authorAuthChallenges\.purpose, "reset_password"\)[\s\S]*isNull\(authorAuthChallenges\.consumedAt\)/);
@@ -231,12 +232,37 @@ describe("author auth persistence contracts", () => {
     assert.match(verify, /delete\(authorEmails\)[\s\S]*eq\(authorEmails\.isPrimary, false\)/);
   });
 
-  it("serializes admin registration decisions and fails closed without email delivery", () => {
-    const review = functionSource(operations, "reviewAuthorRegistration", "cleanupAuthorAuthData");
-    assert.match(review, /for\("update", \{ of: authorAccounts \}\)/);
+  it("fails closed without email delivery for registration and onboarding", () => {
     assert.match(operations, /onboardExistingAuthor[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
     assert.match(operations, /registerAuthorAccount[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
     assert.match(registrationActions, /!\(await isAuthorEmailDeliveryConfigured\(\)\)/);
-    assert.match(onboardingActions, /!\(await isAuthorEmailDeliveryConfigured\(\)\)/);
+    assert.match(profileActions, /!\(await isAuthorEmailDeliveryConfigured\(\)\)/);
+  });
+
+  it("uses one canonical protected profile and redirects legacy routes", () => {
+    const layout = readFileSync("src/app/author/(protected)/layout.tsx", "utf8");
+    assert.match(layout, /href="\/author\/profile"[\s\S]*Профиль/);
+    assert.match(legacyOnboardingPage, /redirectToAuthorProfile\(searchParams\)/);
+    assert.match(legacySecurityPage, /redirectToAuthorProfile\(searchParams\)/);
+    assert.match(profilePage, /value=\{account\.login \?\? ""\}[\s\S]*Логин задаётся один раз и не изменяется/);
+    assert.doesNotMatch(profilePage, /changeAuthorLoginAction|Сменить логин/);
+    assert.doesNotMatch(profileActions, /changeAuthorLoginAction|Автор изменил логин/);
+    assert.match(profilePage, /id="profileLogin"[\s\S]*disabled/);
+    assert.match(profileActions, /function readPassword[\s\S]*return typeof value === "string" \? value : ""/);
+  });
+
+  it("loads profile email state without normalized credentials", () => {
+    const source = functionSource(queries, "getAuthorProfileAccountState", "getAuthorSessions");
+    assert.match(source, /login: authorAccounts\.login/);
+    assert.match(source, /primaryEmail: authorEmails\.email/);
+    assert.doesNotMatch(source, /normalizedLogin|normalizedEmail/);
+  });
+
+  it("returns verified same-browser authors to profile and clears changed-email sessions", () => {
+    assert.match(verifyActions, /getCurrentAuthorSession\(\)/);
+    assert.match(verifyActions, /current\?\.author\.id === result\.authorId[\s\S]*clearAuthorSessionCookie\(\)/);
+    assert.match(verifyActions, /\/author\/profile\?verified=1/);
+    assert.match(verifyActions, /author\.email\.changed[\s\S]*stage: "confirmed"/);
+    assert.match(verifyActions, /\/author\/login\?emailChanged=1/);
   });
 });

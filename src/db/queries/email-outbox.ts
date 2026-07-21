@@ -131,29 +131,20 @@ export async function getEmailOutboxStatusCounts() {
 }
 
 export async function retryFailedEmailOutbox(input: {
-  id?: number;
-  limit?: number;
+  id: number;
   activityLog: CreateActivityLogInput;
 }, now = new Date()) {
   return db.transaction(async (tx) => {
-    let ids: { id: number }[];
-    if (input.id) {
-      ids = await tx.select({ id: emailOutbox.id }).from(emailOutbox)
-        .where(and(eq(emailOutbox.id, input.id), eq(emailOutbox.status, "failed")))
-        .for("update").limit(1);
-    } else {
-      const limit = Math.max(1, Math.min(input.limit ?? 100, 100));
-      ids = await tx.select({ id: emailOutbox.id }).from(emailOutbox)
-        .where(eq(emailOutbox.status, "failed"))
-        .orderBy(asc(emailOutbox.id)).for("update", { skipLocked: true }).limit(limit);
-    }
+    const ids = await tx.select({ id: emailOutbox.id }).from(emailOutbox)
+      .where(and(eq(emailOutbox.id, input.id), eq(emailOutbox.status, "failed")))
+      .for("update").limit(1);
     const rows = ids.length ? await tx.update(emailOutbox).set({
         status: "pending", attempts: 0, nextAttemptAt: now, sentAt: null, lastError: null, updatedAt: now,
       }).where(and(inArray(emailOutbox.id, ids.map(({ id }) => id)), eq(emailOutbox.status, "failed")))
         .returning({ id: emailOutbox.id }) : [];
     await tx.insert(adminActivityLogs).values({
       ...input.activityLog,
-      metadata: { count: rows.length, ...(input.id ? { id: input.id } : {}) },
+      metadata: { count: rows.length, id: input.id },
     });
     return rows.length;
   });

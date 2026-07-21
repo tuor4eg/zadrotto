@@ -34,25 +34,24 @@ export async function getAuthorAccountByAuthorId(authorId: number) {
   return account ?? null;
 }
 
-export async function getPendingAuthorRegistrations() {
-  return db
+export async function getAuthorProfileAccountState(authorId: number) {
+  const [state] = await db
     .select({
-      authorId: authors.id,
-      authorName: authors.name,
       login: authorAccounts.login,
-      email: authorEmails.email,
-      createdAt: authorAccounts.createdAt,
-      accessProfileId: authors.accessProfileId,
+      status: authorAccounts.status,
+      primaryEmail: authorEmails.email,
+      emailVerifiedAt: authorEmails.verifiedAt,
     })
-    .from(authorAccounts)
-    .innerJoin(authors, eq(authors.id, authorAccounts.authorId))
-    .innerJoin(authorEmails, and(
+    .from(authors)
+    .leftJoin(authorAccounts, eq(authorAccounts.authorId, authors.id))
+    .leftJoin(authorEmails, and(
       eq(authorEmails.authorId, authors.id),
       eq(authorEmails.isPrimary, true),
-      isNotNull(authorEmails.verifiedAt),
     ))
-    .where(eq(authorAccounts.status, "pending_approval"))
-    .orderBy(asc(authorAccounts.createdAt), asc(authors.id));
+    .where(eq(authors.id, authorId))
+    .limit(1);
+
+  return state ?? null;
 }
 
 export async function getAuthorSessions(authorId: number) {

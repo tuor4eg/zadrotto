@@ -9,10 +9,10 @@ import { requireAdminUser } from "@/lib/auth/admin-auth";
 export async function retryEmailOutboxAction(formData: FormData) {
   const admin = await requireAdminUser();
   const rawId = formData.get("id");
-  const id = rawId ? Number(rawId) : undefined;
-  if (id !== undefined && (!Number.isInteger(id) || id <= 0)) redirect("/admin/tools/email/queue?error=invalid");
-  const activityLog = await prepareActivityLog({ action: "email-outbox.retry-requested", actorType: "admin", adminUserId: admin.id, entityType: "email-outbox", entityId: id ?? null, entityLabel: id ? `Email #${id}` : "Ошибочные email", message: "Email возвращены в очередь." });
-  const count = await retryFailedEmailOutbox(id ? { id, activityLog } : { limit: 100, activityLog });
+  const id = Number(rawId);
+  if (!rawId || !Number.isInteger(id) || id <= 0) redirect("/admin/tools/email/queue?error=invalid");
+  const activityLog = await prepareActivityLog({ action: "email-outbox.retry-requested", actorType: "admin", adminUserId: admin.id, entityType: "email-outbox", entityId: id, entityLabel: `Email #${id}`, message: "Email возвращён в очередь." });
+  const count = await retryFailedEmailOutbox({ id, activityLog });
   revalidatePath("/admin/tools/email/queue");
   redirect(`/admin/tools/email/queue?retried=${count}`);
 }

@@ -80,9 +80,17 @@ test("delivery uses dynamic attempts, backoff, sanitization and sending-only com
 
 test("cleanup deletes only retained sent and failed outbox records", () => {
   const cleanup = read("src/db/operations/author-auth.ts");
-  assert.match(cleanup, /status = 'sent' and sent_at/);
-  assert.match(cleanup, /status = 'failed' and updated_at/);
-  assert.doesNotMatch(cleanup, /status = 'pending'|status = 'sending'/);
+  assert.match(cleanup, /eq\(emailOutbox\.status, "sent"\)[\s\S]*lt\(emailOutbox\.sentAt, sentOutboxCutoff\)/);
+  assert.match(cleanup, /eq\(emailOutbox\.status, "failed"\)[\s\S]*lt\(emailOutbox\.updatedAt, failedOutboxCutoff\)/);
+  assert.doesNotMatch(cleanup, /eq\(emailOutbox\.status, "(?:pending|sending)"\)/);
+});
+
+test("cleanup serializes retention dates through typed conditions or ISO values", () => {
+  const cleanup = read("src/db/operations/author-auth.ts");
+  assert.match(cleanup, /lt\(authorAuthChallenges\.expiresAt, challengeCutoff\)/);
+  assert.match(cleanup, /lt\(authorSessions\.expiresAt, sessionCutoff\)/);
+  assert.match(cleanup, /registrationCutoff\.toISOString\(\)/);
+  assert.doesNotMatch(cleanup, /\$\{(?:challenge|session|registration|sentOutbox|failedOutbox)Cutoff\}/);
 });
 
 test("admin queue projection excludes encrypted payload and retry resets delivery state", () => {
@@ -96,7 +104,8 @@ test("admin queue projection excludes encrypted payload and retry resets deliver
   assert.match(adminQueue, /eq\(emailOutbox\.template, input\.template\)/);
   assert.match(adminQueue, /recipient: maskEmailRecipient\(row\.recipient\)/);
   assert.match(adminQueue, /\.limit\(pageSize\)\.offset\(\(page - 1\) \* pageSize\)/);
-  assert.match(query, /Math\.min\(input\.limit \?\? 100, 100\)/);
+  assert.doesNotMatch(query, /input\.limit|limit \?\? 100/);
+  assert.match(query, /id: number;[\s\S]*eq\(emailOutbox\.id, input\.id\)/);
   assert.match(query, /eq\(emailOutbox\.status, "failed"\)/);
   assert.match(query, /status: "pending", attempts: 0, nextAttemptAt: now, sentAt: null, lastError: null/);
 });
@@ -109,6 +118,28 @@ test("email routes expose sidebar sections and provider actions redirect locally
   for (const route of ["general", "provider", "queue"]) assert.match(nav, new RegExp(`/admin/tools/email/${route}`));
   assert.match(provider, /PROVIDER_PATH = "\/admin\/tools\/email\/provider"/);
   assert.doesNotMatch(provider, /retryFailedEmail/);
+});
+
+test("queue filters auto-submit inline and dates use the journal local-time component", () => {
+  const page = read("src/app/admin/(protected)/tools/email/queue/page.tsx");
+  const filters = read("src/app/admin/(protected)/tools/email/queue/email-queue-filters.tsx");
+  const action = read("src/app/admin/(protected)/tools/email/queue/actions.ts");
+  assert.match(filters, /grid grid-cols-3/);
+  assert.match(filters, /requestSubmit\(\)/);
+  assert.match(filters, /onChange=\{submit\}/);
+  assert.doesNotMatch(page, /Применить|Повторить до 100/);
+  assert.doesNotMatch(action, /limit: 100/);
+  assert.match(page, /ActivityLogTime/);
+  assert.doesNotMatch(page, /toLocaleString\("ru-RU"\)/);
+});
+
+test("automation job dates use the user's local timezone", () => {
+  const page = read("src/app/admin/(protected)/tools/email/general/page.tsx");
+  assert.match(page, /ActivityLogTime/);
+  assert.match(page, /job\.lastStartedAt\.toISOString\(\)/);
+  assert.match(page, /job\.lastFinishedAt\.toISOString\(\)/);
+  assert.match(page, /job\.nextRunAt\.toISOString\(\)/);
+  assert.doesNotMatch(page, /toLocaleString\("ru-RU"\)/);
 });
 
 test("settings mutation writes its required prepared audit in the same transaction", () => {
