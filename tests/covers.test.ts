@@ -15,6 +15,7 @@ import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/co
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { getCoverProviderDefaultSettings } from "@/lib/covers/provider-settings";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
+import { anilistProvider } from "@/lib/covers/providers/anilist";
 import {
   getCoverProvidersForMediaType,
   getTitleProvidersForMediaType,
@@ -177,14 +178,139 @@ describe("cover provider registry", () => {
     );
   });
 
-  it("uses Jikan before TMDB as the default anime providers", () => {
+  it("uses Jikan, AniList, then TMDB as the default anime providers", () => {
     assert.deepEqual(
       getCoverProviderDefaultSettings().filter((provider) => provider.mediaType === "anime"),
       [
         { mediaType: "anime", providerCode: "jikan", enabled: true, priority: 10 },
-        { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 20 },
+        { mediaType: "anime", providerCode: "anilist", enabled: true, priority: 20 },
+        { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 30 },
       ],
     );
+  });
+
+  it("searches AniList through its public GraphQL endpoint without credentials", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestedUrl: URL | null = null;
+    let requestInit: RequestInit | undefined;
+
+    globalThis.fetch = async (input, init) => {
+      requestedUrl = new URL(String(input));
+      requestInit = init;
+
+      return Response.json({
+        data: {
+          Page: {
+            media: [
+              {
+                id: 16498,
+                title: {
+                  english: "Attack on Titan",
+                  romaji: "Shingeki no Kyojin",
+                  native: "進撃の巨人",
+                },
+                description: "Humanity fights Titans.",
+                coverImage: {
+                  large: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx16498.jpg",
+                  medium: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/medium/bx16498.jpg",
+                },
+                siteUrl: "https://anilist.co/anime/16498",
+                seasonYear: 2013,
+                popularity: 900000,
+              },
+            ],
+          },
+        },
+      });
+    };
+
+    try {
+      assert.deepEqual(
+        await anilistProvider.searchTitleCandidates?.(
+          { mediaType: "anime", query: " Attack on Titan " },
+          customOptions,
+        ),
+        [
+          {
+            id: "anime:16498",
+            provider: "anilist",
+            externalId: "16498",
+            mediaType: "anime",
+            title: "Attack on Titan",
+            originalTitle: "Shingeki no Kyojin",
+            description: "Humanity fights Titans.",
+            coverUrl: "https://s4.anilist.co/file/anilistcdn/media/anime/cover/large/bx16498.jpg",
+            sourcePageUrl: "https://anilist.co/anime/16498",
+            releaseYear: 2013,
+            confidence: 900000,
+          },
+        ],
+      );
+
+      assert.equal(requestedUrl?.href, "https://graphql.anilist.co/");
+      assert.equal(requestInit?.method, "POST");
+      assert.match(String(requestInit?.headers && new Headers(requestInit.headers).get("content-type")), /application\/json/i);
+      const body = JSON.parse(String(requestInit?.body)) as { query: string; variables: Record<string, unknown> };
+      assert.match(body.query, /media\s*\(.*type\s*:\s*ANIME/s);
+      assert.deepEqual(body.variables, { search: "Attack on Titan", perPage: 2 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("maps AniList anime studios and genres from public GraphQL metadata", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestInit: RequestInit | undefined;
+
+    globalThis.fetch = async (_input, init) => {
+      requestInit = init;
+
+      return Response.json({
+        data: {
+          Media: {
+            id: 16498,
+            siteUrl: "https://anilist.co/anime/16498",
+            episodes: 25,
+            duration: 24,
+            format: "TV",
+            status: "FINISHED",
+            studios: {
+              nodes: [{ name: "WIT STUDIO" }, { name: "Production I.G" }],
+            },
+            genres: ["Action", "Drama"],
+          },
+        },
+      });
+    };
+
+    try {
+      assert.deepEqual(
+        await anilistProvider.getTitleMetadata?.(
+          { provider: "anilist", externalId: "16498", mediaType: "anime" },
+          customOptions,
+        ),
+        {
+          provider: "anilist",
+          externalId: "16498",
+          sourceUrl: "https://anilist.co/anime/16498",
+          facts: {
+            episodeCount: 25,
+            status: "FINISHED",
+            animeType: "TV",
+            averageEpisodeRuntimeMinutes: 24,
+            studios: ["WIT STUDIO", "Production I.G"],
+            genres: ["Action", "Drama"],
+          },
+        },
+      );
+
+      const body = JSON.parse(String(requestInit?.body)) as { query: string; variables: Record<string, unknown> };
+      assert.match(body.query, /studios\s*\{\s*nodes\s*\{\s*name\s*\}\s*\}/s);
+      assert.match(body.query, /\bgenres\b/);
+      assert.deepEqual(body.variables, { id: 16498 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 
   it("uses TMDB TV endpoints and TV metadata for anime", async () => {
@@ -618,6 +744,7 @@ describe("cover settings form", () => {
       ["game", "igdb"],
       ["game", "rawg"],
       ["anime", "jikan"],
+      ["anime", "anilist"],
       ["anime", "tmdb"],
     ]) {
       const settingKey = `${mediaType}:${providerCode}`;
@@ -642,10 +769,10 @@ describe("cover settings form", () => {
     assert.deepEqual(
       parsed.ok
         ? parsed.value.find(
-            (provider) => provider.mediaType === "game" && provider.providerCode === "rawg",
+            (provider) => provider.mediaType === "anime" && provider.providerCode === "anilist",
           )
         : null,
-      { mediaType: "game", providerCode: "rawg", enabled: false, priority: 10 },
+      { mediaType: "anime", providerCode: "anilist", enabled: false, priority: 10 },
     );
   });
 
@@ -660,6 +787,7 @@ describe("cover settings form", () => {
       "igdb",
       "rawg",
       "jikan",
+      "anilist",
     ]) {
       formData.set(`providerSearchesPerDay:${providerCode}`, "1000");
     }
@@ -668,8 +796,8 @@ describe("cover settings form", () => {
 
     assert.equal(parsed.ok, true);
     assert.deepEqual(
-      parsed.ok ? parsed.value.find((limit) => limit.providerCode === "tmdb") : null,
-      { providerCode: "tmdb", searchesPerDay: 1000 },
+      parsed.ok ? parsed.value.find((limit) => limit.providerCode === "anilist") : null,
+      { providerCode: "anilist", searchesPerDay: 1000 },
     );
   });
 });

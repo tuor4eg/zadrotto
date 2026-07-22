@@ -17,6 +17,7 @@ export const COVER_PROVIDER_LABELS = {
   igdb: "IGDB",
   rawg: "RAWG",
   jikan: "Jikan",
+  anilist: "AniList",
 } as const satisfies Record<CoverProviderCode, string>;
 
 export function getCoverProviderSettingKey(input: {

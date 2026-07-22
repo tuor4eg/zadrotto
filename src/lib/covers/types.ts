@@ -7,7 +7,8 @@ export type MediaProviderCode =
   | "google-books"
   | "igdb"
   | "rawg"
-  | "jikan";
+  | "jikan"
+  | "anilist";
 
 export type CoverProviderCode = MediaProviderCode;
 
@@ -19,6 +20,7 @@ export const COVER_PROVIDER_CODES = [
   "igdb",
   "rawg",
   "jikan",
+  "anilist",
 ] as const satisfies readonly MediaProviderCode[];
 
 export function isCoverProviderCode(value: string): value is CoverProviderCode {

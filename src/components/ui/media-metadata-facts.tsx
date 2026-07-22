@@ -24,6 +24,7 @@ const FACT_LABELS: Record<string, string> = {
   runtimeMinutes: "Длительность",
   seasonCount: "Сезонов",
   status: "Статус",
+  studios: "Студии",
 };
 
 function isPresentFactValue(value: unknown) {

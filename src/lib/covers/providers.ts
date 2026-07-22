@@ -1,4 +1,5 @@
 import type { MediaProvider } from "@/lib/covers/types";
+import { anilistProvider } from "@/lib/covers/providers/anilist";
 import { comicVineProvider } from "@/lib/covers/providers/comic-vine";
 import { googleBooksProvider } from "@/lib/covers/providers/google-books";
 import { igdbProvider } from "@/lib/covers/providers/igdb";
@@ -16,5 +17,6 @@ export const COVER_PROVIDERS = [
   igdbProvider,
   rawgProvider,
   jikanProvider,
+  anilistProvider,
   createTmdbProvider("anime"),
 ] as const satisfies readonly MediaProvider[];
