@@ -3,6 +3,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 import { COVER_PROVIDER_CODES, type MediaProviderCode } from "@/lib/covers/types";
 
 const METADATA_CANDIDATE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
+const TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 export type MediaMetadataCandidateTokenPayload = {
   provider: MediaProviderCode;
@@ -13,6 +14,12 @@ export type MediaMetadataCandidateTokenPayload = {
 };
 
 export type MediaMetadataCandidate = Omit<MediaMetadataCandidateTokenPayload, "exp">;
+
+type MediaTitleSourceTokenPayload = {
+  provider: MediaProviderCode;
+  externalId: string;
+  exp: number;
+};
 
 function getMediaMetadataCandidateSecret() {
   const secret =
@@ -55,11 +62,54 @@ function isValidSignature(content: string, signature: string) {
   );
 }
 
-function isMediaProviderCode(value: unknown): value is MediaProviderCode {
+export function isMediaProviderCode(value: unknown): value is MediaProviderCode {
   return (
     typeof value === "string" &&
     COVER_PROVIDER_CODES.some((providerCode) => providerCode === value)
   );
+}
+
+export function createMediaTitleSourceToken(source: {
+  provider: MediaProviderCode;
+  externalId: string;
+}) {
+  const payload = encodeBase64UrlJson({
+    provider: source.provider,
+    externalId: source.externalId,
+    exp: Math.floor(Date.now() / 1000) + TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS,
+  } satisfies MediaTitleSourceTokenPayload);
+
+  return `${payload}.${signContent(payload)}`;
+}
+
+export function verifyMediaTitleSourceToken(token: string) {
+  const [payload, signature] = token.split(".");
+
+  try {
+    if (!payload || !signature || !isValidSignature(payload, signature)) {
+      return null;
+    }
+
+    const value = decodeBase64UrlJson(payload);
+
+    if (
+      !isPlainRecord(value) ||
+      !isMediaProviderCode(value.provider) ||
+      typeof value.externalId !== "string" ||
+      !value.externalId.trim() ||
+      typeof value.exp !== "number" ||
+      value.exp <= Math.floor(Date.now() / 1000)
+    ) {
+      return null;
+    }
+
+    return {
+      provider: value.provider,
+      externalId: value.externalId.trim(),
+    };
+  } catch {
+    return null;
+  }
 }
 
 function isAbsoluteHttpUrl(value: unknown): value is string {

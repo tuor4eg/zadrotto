@@ -7,6 +7,7 @@ import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggest
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { MediaItemTile } from "@/app/media-item-tile";
+import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
   getFranchiseByCode,
@@ -15,7 +16,9 @@ import {
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
@@ -27,6 +30,8 @@ type FranchisePageProps = {
   }>;
   searchParams: Promise<{
     suggested?: string;
+    suggestedItemCode?: string;
+    suggestedItemId?: string;
     suggestionError?: string;
   }>;
 };
@@ -81,9 +86,11 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
     notFound();
   }
 
-  const [currentAuthor, mediaTypes] = await Promise.all([
+  const [currentAuthor, currentAdminUser, mediaTypes, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
+    getCurrentAdminUser(),
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
   const [items, authorMediaSuggestionData] = await Promise.all([
     getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id),
@@ -103,19 +110,33 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
   ]);
   const sections = getFranchiseMediaSections(items, mediaTypes);
   const suggestionErrorMessage = getAuthorMediaFormErrorMessage(query.suggestionError);
+  const suggestedItemId = Number(query.suggestedItemId);
+  const suggestedItemHref =
+    Number.isInteger(suggestedItemId) && suggestedItemId > 0
+      ? query.suggested === "published" && query.suggestedItemCode
+        ? `/media/${encodeURIComponent(query.suggestedItemCode)}`
+        : query.suggested === "created"
+          ? `/author/media/${suggestedItemId}/edit`
+          : query.suggested === "submitted" && query.suggestedItemCode
+            ? `/author/media?q=${encodeURIComponent(query.suggestedItemCode)}`
+            : null
+      : null;
   const suggestionSuccessMessage =
     query.suggested === "created"
-      ? "Запись создана в черновиках."
+      ? "создана в черновиках."
       : query.suggested === "submitted"
-        ? "Запись создана и отправлена на проверку."
+        ? "создана и отправлена на проверку."
         : query.suggested === "published"
-          ? "Запись создана и опубликована."
+          ? "создана и опубликована."
           : null;
   const toastMessages = [
     ...(suggestionSuccessMessage
       ? [
           {
             id: "suggested",
+            ...(suggestedItemHref
+              ? { link: { href: suggestedItemHref, label: "Запись" } }
+              : {}),
             tone: "success",
             text: suggestionSuccessMessage,
           } satisfies ArchiveToast,
@@ -135,7 +156,12 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <ArchiveToasts
-        clearParams={["suggested", "suggestionError"]}
+        clearParams={[
+          "suggested",
+          "suggestedItemCode",
+          "suggestedItemId",
+          "suggestionError",
+        ]}
         messages={toastMessages}
       />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
@@ -169,6 +195,14 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                   </li>
                 </ol>
               </nav>
+              {currentAdminUser ? (
+                <AdminEntityEditLink
+                  ariaLabel={`Редактировать серию ${franchise.title}`}
+                  href={`/admin/franchises/${franchise.id}/edit`}
+                  tooltipLabel="Редактировать серию"
+                  tooltipSide="bottom"
+                />
+              ) : null}
             </div>
             <div className="mt-3 flex flex-col gap-x-6 gap-y-3 lg:flex-row lg:items-baseline">
               <div className="min-w-0">
@@ -244,6 +278,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       </div>
       {currentAuthor && authorMediaSuggestionData ? (
         <ArchiveAuthorMediaSuggestion
+          maxTitleAliases={archiveSettings.maxTitleAliases}
           action={createAuthorMediaItemAction}
           canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}

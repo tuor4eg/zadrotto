@@ -10,6 +10,7 @@ import {
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import type {
+  CoverCandidate,
   CoverProviderCode,
   CoverSearchInput,
   CoverSearchOptions,
@@ -118,31 +119,91 @@ export async function searchCoverCandidates(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   if (input.titleSource) {
-    const provider = getConfiguredCoverProviders(input.mediaType, providers, providerSettings).find(
+    const configuredProviders = getConfiguredCoverProviders(
+      input.mediaType,
+      providers,
+      providerSettings,
+    );
+    const provider = configuredProviders.find(
       (candidate) => candidate.code === input.titleSource?.provider,
     );
 
-    if (
-      !provider ||
-      !provider.getCoverCandidatesByTitleSource ||
-      (coverProviderRequiresCredentials(provider.code) && !options.providerCredentials?.[provider.code])
-    ) {
+    const canUseExactProvider = Boolean(
+      provider?.getCoverCandidatesByTitleSource &&
+        (!coverProviderRequiresCredentials(provider.code) ||
+          options.providerCredentials?.[provider.code]),
+    );
+
+    if (input.mediaType !== "anime" && (!provider || !canUseExactProvider)) {
       return [];
     }
 
-    const canSearch = options.beforeProviderSearch
-      ? await options.beforeProviderSearch(provider.code)
-      : true;
+    const canSearch =
+      provider && canUseExactProvider && options.beforeProviderSearch
+        ? await options.beforeProviderSearch(provider.code)
+        : canUseExactProvider;
 
-    if (!canSearch) return [];
+    if (input.mediaType !== "anime" && !canSearch) return [];
 
-    try {
-      return normalizeCoverCandidates(
-        await provider.getCoverCandidatesByTitleSource(input, options),
-      ).slice(0, options.candidateLimit);
-    } catch {
-      return [];
+    let exactCandidates: CoverCandidate[] = [];
+
+    if (provider?.getCoverCandidatesByTitleSource && canSearch) {
+      try {
+        exactCandidates = normalizeCoverCandidates(
+          await provider.getCoverCandidatesByTitleSource(input, options),
+        ).slice(0, options.candidateLimit);
+      } catch {
+        exactCandidates = [];
+      }
     }
+
+    if (input.mediaType !== "anime" || exactCandidates.length >= options.candidateLimit) {
+      return exactCandidates;
+    }
+
+    let candidates = exactCandidates;
+
+    for (const fallbackProvider of configuredProviders) {
+      if (
+        fallbackProvider.code === input.titleSource.provider ||
+        !fallbackProvider.searchCoverCandidates ||
+        (coverProviderRequiresCredentials(fallbackProvider.code) &&
+          !options.providerCredentials?.[fallbackProvider.code])
+      ) {
+        continue;
+      }
+
+      const canSearchFallback = options.beforeProviderSearch
+        ? await options.beforeProviderSearch(fallbackProvider.code)
+        : true;
+
+      if (!canSearchFallback) {
+        continue;
+      }
+
+      try {
+        const fallbackCandidates = await fallbackProvider.searchCoverCandidates(
+          input,
+          {
+            ...options,
+            candidateLimit: options.candidateLimit - candidates.length,
+          },
+        );
+
+        candidates = normalizeCoverCandidates([...candidates, ...fallbackCandidates]).slice(
+          0,
+          options.candidateLimit,
+        );
+      } catch {
+        continue;
+      }
+
+      if (candidates.length >= options.candidateLimit) {
+        break;
+      }
+    }
+
+    return candidates;
   }
 
   const normalizedTitle = input.title.trim();

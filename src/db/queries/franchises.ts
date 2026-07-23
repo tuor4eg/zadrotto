@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, exists, inArray, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authors, franchises, mediaCarriers, mediaItemFranchises, mediaItems, ratings } from "@/db/schema";
+import { authors, franchises, mediaCarriers, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -14,6 +14,12 @@ const publishedFranchiseCondition = eq(
   franchises.publicationStatus,
   PUBLISHED_PUBLICATION_STATUS,
 );
+
+const mediaItemTitleAliasesSql = (mediaItemId = mediaItems.id) => sql<string[]>`coalesce((
+  select jsonb_agg(${mediaItemTitleAliases.value} order by ${mediaItemTitleAliases.id})
+  from ${mediaItemTitleAliases}
+  where ${mediaItemTitleAliases.mediaItemId} = ${mediaItemId}
+), '[]'::jsonb)`;
 
 const currentAuthorScoreSql = (currentAuthorId?: number) =>
   currentAuthorId
@@ -796,6 +802,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       mediaCarrierCode: mediaCarriers.code,
@@ -847,6 +854,7 @@ export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       mediaType: mediaItems.mediaType,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
@@ -873,6 +881,7 @@ export async function getAdminMediaItemsAvailableForFranchise(franchiseId: numbe
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
       publicationStatus: mediaItems.publicationStatus,

@@ -332,13 +332,23 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
         return [];
       }
 
-      const client = createTmdbClient({ accessToken, mediaType });
-      const data = await client.searchTitles(query, input.releaseYear);
-      const searchResults = (data?.results ?? [])
-        .filter((item) => item.id)
-        .slice(0, options.tmdbResultScanLimit);
-      const candidateGroups = await Promise.all(
-        searchResults.map(async (item) => {
+      const clients =
+        mediaType === "anime"
+          ? [
+              createTmdbClient({ accessToken, mediaType: "series" }),
+              createTmdbClient({ accessToken, mediaType: "film" }),
+            ]
+          : [createTmdbClient({ accessToken, mediaType })];
+
+      async function searchClientCandidates(
+        client: ReturnType<typeof createTmdbClient>,
+        tolerateImageErrors: boolean,
+      ) {
+        const data = await client.searchTitles(query, input.releaseYear);
+        const searchResults = (data?.results ?? [])
+          .filter((item) => item.id)
+          .slice(0, options.tmdbResultScanLimit);
+        const candidateRequests = searchResults.map(async (item) => {
           const title = getTmdbTitle(item, query);
           const year = getTmdbYear(item) ?? undefined;
           const images = await client.searchImages(item.id!, item.original_language);
@@ -346,7 +356,11 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
             (poster) => poster.file_path,
           );
           const selectedPosters =
-            posters.length > 0 ? posters : item.poster_path ? [{ file_path: item.poster_path }] : [];
+            posters.length > 0
+              ? posters
+              : item.poster_path
+                ? [{ file_path: item.poster_path }]
+                : [];
 
           return selectedPosters.slice(0, options.candidateLimit).map(
             (poster) =>
@@ -362,10 +376,48 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
                 confidence: poster.vote_average ?? item.popularity,
               }) satisfies CoverCandidate,
           );
-        }),
-      );
+        });
 
-      return candidateGroups.flat().slice(0, options.candidateLimit);
+        if (!tolerateImageErrors) {
+          return (await Promise.all(candidateRequests)).flat();
+        }
+
+        return (await Promise.allSettled(candidateRequests)).flatMap((result) =>
+          result.status === "fulfilled" ? result.value : [],
+        );
+      }
+
+      if (mediaType !== "anime") {
+        return (await searchClientCandidates(clients[0], false)).slice(
+          0,
+          options.candidateLimit,
+        );
+      }
+
+      const clientResults = await Promise.allSettled(
+        clients.map((client) => searchClientCandidates(client, true)),
+      );
+      const candidateLists = clientResults.map((result) =>
+        result.status === "fulfilled" ? result.value : [],
+      );
+      const candidates: CoverCandidate[] = [];
+
+      for (
+        let candidateIndex = 0;
+        candidates.length < options.candidateLimit &&
+        candidateLists.some((candidateList) => candidateIndex < candidateList.length);
+        candidateIndex += 1
+      ) {
+        for (const candidateList of candidateLists) {
+          const candidate = candidateList[candidateIndex];
+
+          if (candidate && candidates.length < options.candidateLimit) {
+            candidates.push(candidate);
+          }
+        }
+      }
+
+      return candidates;
     },
   };
 }

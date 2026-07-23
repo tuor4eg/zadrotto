@@ -2,11 +2,16 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ShieldCheck, Users } from "lucide-react";
+import { Archive, ShieldCheck, Users } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
 const SETTINGS_NAV_ITEMS = [
+  {
+    href: "/admin/settings/archive",
+    label: "Архив",
+    icon: Archive,
+  },
   {
     href: "/admin/settings/administrator",
     label: "Администратор",

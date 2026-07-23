@@ -4,6 +4,7 @@ import type { AuthorMediaItemInput } from "@/db/queries/media-items";
 import {
   getAuthorPrivateMediaItemLimitUsageForExecutor,
   setMediaItemFranchisesForExecutor,
+  setMediaItemTitleAliasesForExecutor,
 } from "@/db/queries/media-items";
 import {
   checkAuthorPrivateMediaLimit,
@@ -69,6 +70,7 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
     }
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
+    await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
 
     return { ok: true, item };
   });

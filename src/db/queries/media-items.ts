@@ -33,6 +33,7 @@ import {
   franchises,
   mediaItemFranchises,
   mediaItemMetadata,
+  mediaItemTitleAliases,
   mediaCarriers,
   mediaItems,
   mediaTypes,
@@ -123,6 +124,12 @@ const franchiseIdsSql = (mediaItemId = mediaItems.id) => sql<number[]>`coalesce(
   where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
 ), array[]::integer[])`;
 
+const mediaItemTitleAliasesSql = (mediaItemId = mediaItems.id) => sql<string[]>`coalesce((
+  select jsonb_agg(${mediaItemTitleAliases.value} order by ${mediaItemTitleAliases.id})
+  from ${mediaItemTitleAliases}
+  where ${mediaItemTitleAliases.mediaItemId} = ${mediaItemId}
+), '[]'::jsonb)`;
+
 const franchiseLinkStatusesSql = (mediaItemId = mediaItems.id) => sql<MediaItemFranchiseLinkStatus[]>`coalesce((
   select jsonb_agg(
     jsonb_build_object(
@@ -165,6 +172,22 @@ export async function setMediaItemFranchisesForExecutor(
       publicationStatus: PUBLISHED_PUBLICATION_STATUS,
     })),
   );
+}
+
+export async function setMediaItemTitleAliasesForExecutor(
+  executor: Pick<typeof db, "delete" | "insert"> | Pick<DbTransaction, "delete" | "insert">,
+  mediaItemId: number,
+  aliases: string[],
+) {
+  await executor
+    .delete(mediaItemTitleAliases)
+    .where(eq(mediaItemTitleAliases.mediaItemId, mediaItemId));
+
+  if (aliases.length > 0) {
+    await executor.insert(mediaItemTitleAliases).values(
+      aliases.map((value) => ({ mediaItemId, value })),
+    );
+  }
 }
 
 const currentAuthorScoreSql = (currentAuthorId?: number) =>
@@ -224,6 +247,17 @@ const catalogSearchCondition = (searchQuery: string) => {
     sql`lower(${mediaItems.title}) like ${pattern}`,
     sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
     sql`lower(${mediaItems.code}) like ${pattern}`,
+    exists(
+      db
+        .select({ id: mediaItemTitleAliases.id })
+        .from(mediaItemTitleAliases)
+        .where(
+          and(
+            eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
+            sql`lower(${mediaItemTitleAliases.value}) like ${pattern}`,
+          ),
+        ),
+    ),
   );
 };
 
@@ -381,9 +415,13 @@ const catalogMediaItemsQuery = (input: {
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(),
+      franchiseLinkStatuses: input.currentAuthorId
+        ? franchiseLinkStatusesSql(mediaItems.id)
+        : sql<MediaItemFranchiseLinkStatus[]>`'[]'::jsonb`,
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
@@ -690,7 +728,7 @@ export async function getAuthorPrivateMediaItemLimitUsage(input: {
 }
 
 function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) {
-  const searchTerms = [input.title, input.originalTitle]
+  const searchTerms = [input.title, input.originalTitle, ...(input.aliases ?? [])]
     .map((value) => value?.trim().toLowerCase() ?? "")
     .filter((value) => value.length >= 2);
 
@@ -706,6 +744,17 @@ function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) 
         sql`lower(${mediaItems.title}) like ${pattern}`,
         sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
         sql`lower(${mediaItems.code}) like ${pattern}`,
+        exists(
+          db
+            .select({ id: mediaItemTitleAliases.id })
+            .from(mediaItemTitleAliases)
+            .where(
+              and(
+                eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
+                sql`lower(${mediaItemTitleAliases.value}) like ${pattern}`,
+              ),
+            ),
+        ),
       ];
     }),
   );
@@ -726,6 +775,7 @@ export async function findPublishedMediaItemDuplicateCandidates(
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
     })
@@ -734,6 +784,7 @@ export async function findPublishedMediaItemDuplicateCandidates(
       and(
         publishedMediaItemCondition,
         eq(mediaItems.mediaType, input.mediaType),
+        input.excludeMediaItemId ? ne(mediaItems.id, input.excludeMediaItemId) : undefined,
         searchCondition,
       ),
     )
@@ -742,6 +793,7 @@ export async function findPublishedMediaItemDuplicateCandidates(
 }
 
 export type AuthorMediaItemInput = {
+  aliases?: string[];
   authorId: number;
   code: string;
   title: string;
@@ -779,6 +831,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
       .returning({ id: mediaItems.id });
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
+    await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
   });
 }
 
@@ -812,6 +865,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
       });
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
+    await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
 
     return item;
   });
@@ -823,6 +877,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
       id: mediaItems.id,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchiseIds: franchiseIdsSql(),
@@ -850,6 +905,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchiseIds: franchiseIdsSql(),
@@ -939,7 +995,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
   mediaItemId: number;
 }) {
   await db.transaction(async (tx) => {
-    await tx
+    const [updatedItem] = await tx
       .update(mediaItems)
       .set({
         title: input.title,
@@ -959,11 +1015,19 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
         and(
           eq(mediaItems.id, input.mediaItemId),
           eq(mediaItems.createdByAuthorId, input.authorId),
-          not(publishedMediaItemCondition),
+          inArray(mediaItems.publicationStatus, ["private", "rejected"]),
         ),
-      );
+      )
+      .returning({ id: mediaItems.id });
+
+    if (!updatedItem) {
+      throw new Error("Media item is not editable");
+    }
 
     await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
+    if (input.aliases) {
+      await setMediaItemTitleAliasesForExecutor(tx, input.mediaItemId, input.aliases);
+    }
   });
 }
 
@@ -1000,6 +1064,9 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
     }
 
     await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
+    if (input.aliases) {
+      await setMediaItemTitleAliasesForExecutor(tx, input.mediaItemId, input.aliases);
+    }
 
     return item;
   });
@@ -1111,6 +1178,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, false),
@@ -1449,6 +1517,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, currentAuthorId == null, currentAuthorId),

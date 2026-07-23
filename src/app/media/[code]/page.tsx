@@ -6,6 +6,7 @@ import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
+import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import {
   getMediaItemByCode,
@@ -15,7 +16,9 @@ import {
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
 
@@ -58,7 +61,10 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
 
 export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const { code } = await params;
-  const currentAuthor = await getCurrentAuthor();
+  const [currentAuthor, currentAdminUser] = await Promise.all([
+    getCurrentAuthor(),
+    getCurrentAdminUser(),
+  ]);
   const item = await getMediaItemByCode(code, currentAuthor?.id);
 
   if (!item) {
@@ -68,9 +74,6 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const publishedFranchiseLinks = item.franchises.filter(
     (franchise) => franchise.publicationStatus === "published",
-  );
-  const franchiseLinkStatusById = new Map(
-    item.franchiseLinkStatuses.map((franchise) => [franchise.id, franchise.publicationStatus]),
   );
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
   const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises] = await Promise.all([
@@ -90,6 +93,15 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
         <MediaItemDetails
           item={item}
           variant="archive"
+          headerActions={
+            currentAdminUser ? (
+              <AdminEntityEditLink
+                ariaLabel={`Редактировать запись ${item.title}`}
+                href={`/admin/media/${item.id}/edit`}
+                tooltipLabel="Редактировать запись"
+              />
+            ) : null
+          }
           breadcrumbSlot={
             <nav
               aria-label="Хлебные крошки"
@@ -134,22 +146,10 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
             currentAuthor ? (
               <MediaItemFranchiseSuggestionDialog
                 canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
-                franchises={publishedFranchises.map((franchise) => {
-                  const linkStatus = franchiseLinkStatusById.get(franchise.id);
-
-                  return {
-                    ...franchise,
-                    disabled: linkStatus !== undefined,
-                    disabledLabel:
-                      linkStatus === "published"
-                        ? "Уже привязана к записи"
-                        : linkStatus === "submitted"
-                          ? "Уже предложена и ожидает проверки"
-                          : linkStatus === "rejected"
-                            ? "Привязка отклонена"
-                            : "Связь ещё не отправлена",
-                  };
-                })}
+                franchises={mapFranchiseSuggestionOptions(
+                  publishedFranchises,
+                  item.franchiseLinkStatuses,
+                )}
                 mediaItemCode={item.code}
                 mediaItemId={item.id}
               />

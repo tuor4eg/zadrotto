@@ -4,24 +4,24 @@ import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
-import type { MediaTitleCandidate } from "@/lib/covers/types";
+import type { SignedMediaTitleCandidate } from "@/lib/covers/types";
 
 const TITLE_SEARCH_DELAY_MS = 500;
 const MIN_TITLE_SEARCH_LENGTH = 2;
 
 type MediaTitleCandidatesResponse = {
-  candidates?: MediaTitleCandidate[];
+  candidates?: SignedMediaTitleCandidate[];
   error?: "author-rate-limit" | "rate-limit-unavailable";
 };
 
 type MediaTitleCandidatePickerProps = {
   disabled?: boolean;
   mediaType: string;
-  onSelect: (candidate: MediaTitleCandidate) => void;
+  onSelect: (candidate: SignedMediaTitleCandidate) => void;
   query: string;
 };
 
-function getCandidateMeta(candidate: MediaTitleCandidate) {
+function getCandidateMeta(candidate: SignedMediaTitleCandidate) {
   return [
     candidate.releaseYear ? String(candidate.releaseYear) : null,
     candidate.provider,
@@ -43,7 +43,7 @@ export function MediaTitleCandidatePicker({
   onSelect,
   query,
 }: MediaTitleCandidatePickerProps) {
-  const [candidates, setCandidates] = useState<MediaTitleCandidate[]>([]);
+  const [candidates, setCandidates] = useState<SignedMediaTitleCandidate[]>([]);
   const [candidateSearchKey, setCandidateSearchKey] = useState("");
   const [suppressedSearchKey, setSuppressedSearchKey] = useState<string | null>(null);
   const [status, setStatus] = useState<

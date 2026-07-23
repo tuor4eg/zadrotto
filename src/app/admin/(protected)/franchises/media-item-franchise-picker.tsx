@@ -34,6 +34,7 @@ function itemMatchesSearch(
   const searchableText = [
     item.title,
     item.originalTitle,
+    ...item.aliases,
     item.code,
     ...item.franchises.map((franchise) => franchise.title),
     item.releaseYear?.toString(),

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -35,7 +36,15 @@ import type {
   CoverSearchOptions,
   MediaProvider,
 } from "@/lib/covers/types";
+import {
+  createMediaMetadataCandidateToken,
+  createMediaTitleSourceToken,
+  verifyMediaMetadataCandidateToken,
+  verifyMediaTitleSourceToken,
+} from "@/lib/media/metadata-candidates";
+import { resolveMediaMetadataFormMutation } from "@/lib/media/metadata-form-mutation";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
+import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
 import {
   checkFixedWindowRateLimitWithClient,
   getFixedWindowRateLimitKey,
@@ -78,19 +87,294 @@ describe("cover candidates", () => {
   });
 });
 
+describe("metadata candidate source", () => {
+  it("signs and verifies the selected title source", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+
+    const token = createMediaTitleSourceToken({
+      provider: "anilist",
+      externalId: " 100 ",
+    });
+
+    assert.deepEqual(verifyMediaTitleSourceToken(token), {
+      provider: "anilist",
+      externalId: "100",
+    });
+  });
+
+  it("rejects tampered, expired, and unknown title source tokens", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const originalDateNow = Date.now;
+    const issuedAt = 1_700_000_000_000;
+
+    Date.now = () => issuedAt;
+
+    try {
+      const token = createMediaTitleSourceToken({
+        provider: "anilist",
+        externalId: "100",
+      });
+      const unknownProviderToken = createMediaTitleSourceToken({
+        provider: "unknown-provider",
+        externalId: "100",
+      } as never);
+
+      assert.equal(verifyMediaTitleSourceToken(`${token}x`), null);
+      assert.equal(verifyMediaTitleSourceToken(unknownProviderToken), null);
+
+      Date.now = () => issuedAt + 6 * 60 * 60 * 1000;
+      assert.equal(verifyMediaTitleSourceToken(token), null);
+    } finally {
+      Date.now = originalDateNow;
+    }
+  });
+
+  it("keeps selected title metadata independent from a cover selected at another provider", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+
+    const metadataToken = createMediaMetadataCandidateToken({
+      provider: "anilist",
+      externalId: "100",
+      sourceUrl: "https://anilist.co/anime/100",
+      facts: { genres: ["Adventure"] },
+    });
+    const coverToken = createCoverCandidateToken({
+      id: "movie:8953:/steamboy.jpg",
+      provider: "tmdb",
+      title: "Steamboy",
+      imageUrl: "https://image.tmdb.org/t/p/w780/steamboy.jpg",
+      sourcePageUrl: "https://www.themoviedb.org/movie/8953",
+    });
+
+    assert.deepEqual(verifyMediaMetadataCandidateToken(metadataToken), {
+      provider: "anilist",
+      externalId: "100",
+      sourceUrl: "https://anilist.co/anime/100",
+      facts: { genres: ["Adventure"] },
+    });
+    assert.equal(verifyCoverCandidateToken(coverToken)?.provider, "tmdb");
+  });
+
+  it("rejects a signed metadata candidate with an unknown source provider", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+
+    const token = createMediaMetadataCandidateToken({
+      provider: "unknown-provider",
+      externalId: "100",
+      sourceUrl: null,
+      facts: {},
+    } as never);
+
+    assert.equal(verifyMediaMetadataCandidateToken(token), null);
+  });
+});
+
+describe("metadata form mutation", () => {
+  it("keeps metadata when the selected source did not change", () => {
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken: null,
+        titleSourceToken: null,
+        sourceChanged: false,
+      }),
+      { type: "keep" },
+    );
+  });
+
+  it("deletes metadata when the selected source was cleared", () => {
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken: null,
+        titleSourceToken: null,
+        sourceChanged: true,
+      }),
+      { type: "delete" },
+    );
+  });
+
+  it("upserts a changed source without facts when metadata has not loaded yet", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const titleSourceToken = createMediaTitleSourceToken({
+      provider: "anilist",
+      externalId: "100",
+    });
+
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken: null,
+        titleSourceToken,
+        sourceChanged: true,
+      }),
+      {
+        type: "upsert",
+        facts: {},
+        sourceProvider: "anilist",
+        sourceExternalId: "100",
+        sourceUrl: null,
+        fetchedAt: null,
+      },
+    );
+  });
+
+  it("rejects changed metadata without a selected title source", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const metadataCandidateToken = createMediaMetadataCandidateToken({
+      provider: "anilist",
+      externalId: "100",
+      sourceUrl: "https://anilist.co/anime/100",
+      facts: { genres: ["Adventure"] },
+    });
+
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken,
+        titleSourceToken: null,
+        sourceChanged: true,
+      }),
+      { type: "reject" },
+    );
+  });
+
+  it("rejects metadata from a different source than the selected title", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const metadataCandidateToken = createMediaMetadataCandidateToken({
+      provider: "tmdb",
+      externalId: "8953",
+      sourceUrl: "https://www.themoviedb.org/movie/8953",
+      facts: { runtimeMinutes: 126 },
+    });
+    const titleSourceToken = createMediaTitleSourceToken({
+      provider: "anilist",
+      externalId: "100",
+    });
+
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken,
+        titleSourceToken,
+        sourceChanged: true,
+      }),
+      { type: "reject" },
+    );
+  });
+
+  it("upserts facts when metadata and selected title tokens match", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const facts = { genres: ["Adventure"], runtimeMinutes: 126 };
+    const metadataCandidateToken = createMediaMetadataCandidateToken({
+      provider: "anilist",
+      externalId: "100",
+      sourceUrl: "https://anilist.co/anime/100",
+      facts,
+    });
+    const titleSourceToken = createMediaTitleSourceToken({
+      provider: "anilist",
+      externalId: "100",
+    });
+
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        metadataCandidateToken,
+        titleSourceToken,
+        sourceChanged: true,
+      }),
+      {
+        type: "upsert",
+        facts,
+        sourceProvider: "anilist",
+        sourceExternalId: "100",
+        sourceUrl: "https://anilist.co/anime/100",
+        fetchedAt: undefined,
+      },
+    );
+  });
+});
+
+describe("metadata refresh form contract", () => {
+  it("ranks candidates without losing the signed title source token", () => {
+    const exactCandidate = {
+      id: "anilist:100",
+      provider: "anilist",
+      externalId: "100",
+      mediaType: "anime",
+      title: "Steamboy",
+      originalTitle: "スチームボーイ",
+      description: null,
+      coverUrl: null,
+      sourcePageUrl: "https://anilist.co/anime/100",
+      releaseYear: 2004,
+      titleSourceToken: "signed-anilist-source",
+    } as const;
+    const otherCandidate = {
+      ...exactCandidate,
+      id: "tmdb:8953",
+      provider: "tmdb",
+      externalId: "8953",
+      releaseYear: 2005,
+      titleSourceToken: "signed-tmdb-source",
+    } as const;
+
+    const ranked = rankMetadataRefreshCandidates(
+      [otherCandidate, exactCandidate],
+      {
+        title: " Steamboy ",
+        originalTitle: "スチームボーイ",
+        releaseYear: "2004",
+      },
+    );
+
+    assert.equal(ranked[0], exactCandidate);
+    assert.equal(ranked[0]?.titleSourceToken, "signed-anilist-source");
+    assert.deepEqual(ranked, [exactCandidate, otherCandidate]);
+  });
+
+  for (const formPath of [
+    "src/app/admin/(protected)/media/media-form.tsx",
+    "src/app/author/(protected)/media/media-item-form.tsx",
+  ]) {
+    it(`keeps the signed title source selected by fallback refresh in ${formPath}`, () => {
+      const source = readFileSync(formPath, "utf8");
+
+      assert.match(source, /rankMetadataRefreshCandidates\(/);
+      assert.match(
+        source,
+        /setSelectedTitleSource\(\{\s*provider: nextTitleSource\.provider,\s*externalId: nextTitleSource\.externalId,\s*token: nextTitleSource\.titleSourceToken,/,
+      );
+      assert.match(source, /setHasSelectedNewTitleSource\(true\)/);
+    });
+  }
+});
+
 describe("media metadata refresh source", () => {
-  it("uses existing metadata source before cover source", () => {
+  it("uses the selected title source before persisted metadata", () => {
+    assert.deepEqual(
+      getMediaMetadataRefreshSource({
+        mediaType: "anime",
+        titleSource: {
+          provider: "anilist",
+          externalId: "100",
+        },
+        metadata: {
+          sourceProvider: "tmdb",
+          sourceExternalId: "8953",
+        },
+      }),
+      {
+        provider: "anilist",
+        externalId: "100",
+        mediaType: "anime",
+      },
+    );
+  });
+
+  it("falls back to the persisted metadata source without a selected title source", () => {
     assert.deepEqual(
       getMediaMetadataRefreshSource({
         mediaType: "film",
+        titleSource: null,
         metadata: {
           sourceProvider: "tmdb",
           sourceExternalId: "123",
-        },
-        coverSource: {
-          provider: "rawg",
-          externalId: "game:7",
-          pageUrl: "https://rawg.io/games/example",
         },
       }),
       {
@@ -101,23 +385,19 @@ describe("media metadata refresh source", () => {
     );
   });
 
-  it("recovers TMDB metadata source from a legacy cover source", () => {
-    assert.deepEqual(
-      getMediaMetadataRefreshSource({
-        mediaType: "series",
-        metadata: null,
-        coverSource: {
-          provider: "tmdb",
-          externalId: "tv:456:/poster.jpg",
-          pageUrl: "https://www.themoviedb.org/tv/456",
-        },
-      }),
-      {
+  it("does not use a cover-only TMDB source for metadata refresh", () => {
+    const legacyCoverOnlyInput = {
+      mediaType: "series",
+      titleSource: null,
+      metadata: null,
+      coverSource: {
         provider: "tmdb",
-        externalId: "456",
-        mediaType: "series",
+        externalId: "tv:456:/poster.jpg",
+        pageUrl: "https://www.themoviedb.org/tv/456",
       },
-    );
+    } as const;
+
+    assert.equal(getMediaMetadataRefreshSource(legacyCoverOnlyInput), null);
   });
 });
 
@@ -399,6 +679,336 @@ describe("cover provider registry", () => {
     }
   });
 
+  it("finds feature-length anime covers through TMDB movie search", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+    const requestedPaths: string[] = [];
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+      requestedPaths.push(url.pathname);
+
+      if (url.pathname === "/3/search/tv") {
+        return Response.json({ results: [] });
+      }
+
+      if (url.pathname === "/3/search/movie") {
+        return Response.json({
+          results: [
+            {
+              id: 8953,
+              title: "Steamboy",
+              original_title: "スチームボーイ",
+              original_language: "ja",
+              release_date: "2004-07-17",
+            },
+          ],
+        });
+      }
+
+      if (url.pathname === "/3/movie/8953/images") {
+        return Response.json({
+          posters: [
+            {
+              file_path: "/steamboy.jpg",
+              iso_639_1: "ja",
+              width: 1000,
+              height: 1500,
+              vote_average: 5.4,
+            },
+          ],
+        });
+      }
+
+      throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+    };
+
+    try {
+      assert.deepEqual(
+        await provider.searchCoverCandidates?.(
+          {
+            title: "Steamboy",
+            originalTitle: "スチームボーイ",
+            mediaType: "anime",
+            releaseYear: 2004,
+          },
+          {
+            candidateLimit: 8,
+            tmdbResultScanLimit: 3,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        ),
+        [
+          {
+            id: "movie:8953:/steamboy.jpg",
+            provider: "tmdb",
+            title: "Steamboy",
+            imageUrl: "https://image.tmdb.org/t/p/w780/steamboy.jpg",
+            sourcePageUrl: "https://www.themoviedb.org/movie/8953",
+            width: 1000,
+            height: 1500,
+            year: 2004,
+            confidence: 5.4,
+          },
+        ],
+      );
+      assert.deepEqual(requestedPaths, [
+        "/3/search/tv",
+        "/3/search/movie",
+        "/3/movie/8953/images",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("merges TMDB TV and movie anime covers under one candidate limit", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+
+      if (url.pathname === "/3/search/tv") {
+        return Response.json({
+          results: [
+            {
+              id: 10,
+              name: "Anime TV",
+              original_language: "ja",
+              first_air_date: "2004-01-01",
+            },
+          ],
+        });
+      }
+
+      if (url.pathname === "/3/search/movie") {
+        return Response.json({
+          results: [
+            {
+              id: 20,
+              title: "Anime Movie",
+              original_language: "ja",
+              release_date: "2004-07-17",
+            },
+          ],
+        });
+      }
+
+      if (url.pathname === "/3/tv/10/images") {
+        return Response.json({
+          posters: [
+            { file_path: "/tv-1.jpg", iso_639_1: "ja" },
+            { file_path: "/tv-2.jpg", iso_639_1: "en" },
+          ],
+        });
+      }
+
+      if (url.pathname === "/3/movie/20/images") {
+        return Response.json({
+          posters: [
+            { file_path: "/movie-1.jpg", iso_639_1: "ja" },
+            { file_path: "/movie-2.jpg", iso_639_1: "en" },
+          ],
+        });
+      }
+
+      throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+    };
+
+    try {
+      const candidates = await provider.searchCoverCandidates?.(
+        {
+          title: "Anime",
+          originalTitle: null,
+          mediaType: "anime",
+          releaseYear: 2004,
+        },
+        {
+          candidateLimit: 3,
+          tmdbResultScanLimit: 2,
+          providerCredentials: { tmdb: { accessToken: "test-token" } },
+        },
+      );
+
+      assert.equal(candidates?.length, 3);
+      assert.deepEqual(
+        candidates?.map((candidate) => candidate.id),
+        ["tv:10:/tv-1.jpg", "movie:20:/movie-1.jpg", "tv:10:/tv-2.jpg"],
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps movie anime covers when TMDB TV search fails", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+
+      if (url.pathname === "/3/search/tv") {
+        throw new Error("TMDB TV search is unavailable");
+      }
+
+      if (url.pathname === "/3/search/movie") {
+        return Response.json({
+          results: [
+            {
+              id: 8953,
+              title: "Steamboy",
+              original_language: "ja",
+              release_date: "2004-07-17",
+            },
+          ],
+        });
+      }
+
+      if (url.pathname === "/3/movie/8953/images") {
+        return Response.json({ posters: [{ file_path: "/steamboy.jpg" }] });
+      }
+
+      throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+    };
+
+    try {
+      const candidates = await provider.searchCoverCandidates?.(
+        {
+          title: "Steamboy",
+          originalTitle: "スチームボーイ",
+          mediaType: "anime",
+          releaseYear: 2004,
+        },
+        {
+          candidateLimit: 8,
+          tmdbResultScanLimit: 3,
+          providerCredentials: { tmdb: { accessToken: "test-token" } },
+        },
+      );
+
+      assert.deepEqual(candidates?.map((candidate) => candidate.id), [
+        "movie:8953:/steamboy.jpg",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps successful anime image groups when another TMDB images request fails", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+
+      if (url.pathname === "/3/search/tv") {
+        return Response.json({
+          results: [{ id: 10, name: "Anime TV", first_air_date: "2004-01-01" }],
+        });
+      }
+
+      if (url.pathname === "/3/search/movie") {
+        return Response.json({
+          results: [{ id: 20, title: "Anime Movie", release_date: "2004-07-17" }],
+        });
+      }
+
+      if (url.pathname === "/3/tv/10/images") {
+        throw new Error("TMDB TV images are unavailable");
+      }
+
+      if (url.pathname === "/3/movie/20/images") {
+        return Response.json({ posters: [{ file_path: "/movie.jpg" }] });
+      }
+
+      throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+    };
+
+    try {
+      const candidates = await provider.searchCoverCandidates?.(
+        {
+          title: "Anime",
+          originalTitle: null,
+          mediaType: "anime",
+          releaseYear: 2004,
+        },
+        {
+          candidateLimit: 8,
+          tmdbResultScanLimit: 3,
+          providerCredentials: { tmdb: { accessToken: "test-token" } },
+        },
+      );
+
+      assert.deepEqual(candidates?.map((candidate) => candidate.id), [
+        "movie:20:/movie.jpg",
+      ]);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps film and series TMDB cover searches on their own endpoints", async () => {
+    for (const scenario of [
+      {
+        mediaType: "film",
+        searchPath: "/3/search/movie",
+        imagesPath: "/3/movie/31/images",
+        result: { id: 31, title: "Film", release_date: "2020-01-01" },
+        expectedId: "movie:31:/film.jpg",
+        posterPath: "/film.jpg",
+      },
+      {
+        mediaType: "series",
+        searchPath: "/3/search/tv",
+        imagesPath: "/3/tv/32/images",
+        result: { id: 32, name: "Series", first_air_date: "2021-01-01" },
+        expectedId: "tv:32:/series.jpg",
+        posterPath: "/series.jpg",
+      },
+    ] as const) {
+      const provider = createTmdbProvider(scenario.mediaType);
+      const originalFetch = globalThis.fetch;
+      const requestedPaths: string[] = [];
+
+      globalThis.fetch = async (input) => {
+        const url = new URL(String(input));
+        requestedPaths.push(url.pathname);
+
+        if (url.pathname === scenario.searchPath) {
+          return Response.json({ results: [scenario.result] });
+        }
+
+        if (url.pathname === scenario.imagesPath) {
+          return Response.json({ posters: [{ file_path: scenario.posterPath }] });
+        }
+
+        throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+      };
+
+      try {
+        const candidates = await provider.searchCoverCandidates?.(
+          {
+            title: scenario.mediaType === "film" ? "Film" : "Series",
+            originalTitle: null,
+            mediaType: scenario.mediaType,
+            releaseYear: scenario.mediaType === "film" ? 2020 : 2021,
+          },
+          {
+            candidateLimit: 8,
+            tmdbResultScanLimit: 3,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        );
+
+        assert.deepEqual(candidates?.map((candidate) => candidate.id), [scenario.expectedId]);
+        assert.deepEqual(requestedPaths, [scenario.searchPath, scenario.imagesPath]);
+      } finally {
+        globalThis.fetch = originalFetch;
+      }
+    }
+  });
+
   it("returns successful provider results when another provider fails", async () => {
     assert.deepEqual(
       await searchCoverCandidates(
@@ -478,6 +1088,132 @@ describe("cover provider registry", () => {
     );
     assert.equal(directLookupCalls, 1);
     assert.equal(textSearchCalls, 0);
+  });
+
+  it("fills anime covers from fallback providers up to the configured limit", async () => {
+    const exactAniListCover = {
+      id: "anime:1",
+      provider: "anilist",
+      title: "Anime",
+      imageUrl: "https://example.com/anilist.jpg",
+      sourcePageUrl: "https://anilist.co/anime/1",
+    } as const satisfies CoverCandidate;
+    const jikanCover = {
+      id: "anime:2",
+      provider: "jikan",
+      title: "Anime",
+      imageUrl: "https://example.com/jikan.jpg",
+      sourcePageUrl: "https://myanimelist.net/anime/2",
+    } as const satisfies CoverCandidate;
+    const tmdbCover = {
+      id: "tv:3:/tmdb.jpg",
+      provider: "tmdb",
+      title: "Anime",
+      imageUrl: "https://example.com/tmdb.jpg",
+      sourcePageUrl: "https://www.themoviedb.org/tv/3",
+    } as const satisfies CoverCandidate;
+    const fallbackCalls: string[] = [];
+    const animeProviders = [
+      {
+        code: "anilist",
+        mediaTypes: ["anime"],
+        async getCoverCandidatesByTitleSource() {
+          return [exactAniListCover];
+        },
+        async searchCoverCandidates() {
+          fallbackCalls.push("anilist");
+          return [];
+        },
+      },
+      {
+        code: "jikan",
+        mediaTypes: ["anime"],
+        async searchCoverCandidates() {
+          fallbackCalls.push("jikan");
+          return [
+            { ...jikanCover, id: "anime:duplicate", imageUrl: exactAniListCover.imageUrl },
+            jikanCover,
+          ];
+        },
+      },
+      {
+        code: "tmdb",
+        mediaTypes: ["anime"],
+        async searchCoverCandidates() {
+          fallbackCalls.push("tmdb");
+          return [tmdbCover];
+        },
+      },
+    ] satisfies CoverProvider[];
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        {
+          title: "Anime",
+          originalTitle: "アニメ",
+          mediaType: "anime",
+          releaseYear: 2024,
+          titleSource: { provider: "anilist", externalId: "1" },
+        },
+        animeProviders,
+        {
+          candidateLimit: 3,
+          tmdbResultScanLimit: 1,
+          providerCredentials: { tmdb: { accessToken: "test-token" } },
+        },
+        [
+          { mediaType: "anime", providerCode: "anilist", enabled: true, priority: 10 },
+          { mediaType: "anime", providerCode: "jikan", enabled: true, priority: 20 },
+          { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 30 },
+        ],
+      ),
+      [exactAniListCover, jikanCover, tmdbCover],
+    );
+    assert.deepEqual(fallbackCalls, ["jikan", "tmdb"]);
+  });
+
+  it("falls back to the next anime provider when the exact AniList lookup fails", async () => {
+    const jikanCover = {
+      id: "anime:2",
+      provider: "jikan",
+      title: "Anime",
+      imageUrl: "https://example.com/jikan-fallback.jpg",
+      sourcePageUrl: "https://myanimelist.net/anime/2",
+    } as const satisfies CoverCandidate;
+    const animeProviders = [
+      {
+        code: "anilist",
+        mediaTypes: ["anime"],
+        async getCoverCandidatesByTitleSource() {
+          throw new Error("AniList is unavailable");
+        },
+        async searchCoverCandidates() {
+          return [];
+        },
+      },
+      {
+        code: "jikan",
+        mediaTypes: ["anime"],
+        async searchCoverCandidates() {
+          return [jikanCover];
+        },
+      },
+    ] satisfies CoverProvider[];
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        {
+          title: "Anime",
+          originalTitle: null,
+          mediaType: "anime",
+          releaseYear: null,
+          titleSource: { provider: "anilist", externalId: "1" },
+        },
+        animeProviders,
+        customOptions,
+      ),
+      [jikanCover],
+    );
   });
 
   it("passes the release year to TMDB when falling back to text cover search", async () => {

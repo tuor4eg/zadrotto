@@ -18,6 +18,7 @@ import {
 import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
@@ -80,13 +81,14 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [{ id }, query, authors, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [{ id }, query, authors, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
     params,
     searchParams,
     getAuthorOptions(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
   const mediaItemId = Number(id);
 
@@ -147,6 +149,7 @@ export default async function EditAdminMediaPage({
               franchises={franchises}
               mediaCarriers={mediaCarriers}
               mediaTypes={mediaTypes}
+              maxTitleAliases={archiveSettings.maxTitleAliases}
               requireAuthor
               values={item}
               metadata={metadata}

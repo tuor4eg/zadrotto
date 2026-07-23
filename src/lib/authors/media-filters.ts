@@ -15,6 +15,7 @@ export const AUTHOR_MEDIA_STATUS_FILTERS = PUBLICATION_STATUSES.filter(
 export type AuthorMediaFilterItem = {
   title: string;
   originalTitle: string | null;
+  aliases?: string[];
   code: string;
   mediaType: MediaType;
   publicationStatus: PublicationStatus;
@@ -56,7 +57,7 @@ export function filterAuthorMediaItems<TItem extends AuthorMediaFilterItem>(
       filters.status === "all" || item.publicationStatus === filters.status;
     const matchesSearch =
       !normalizedSearchQuery ||
-      [item.title, item.originalTitle, item.code].some(
+      [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])].some(
         (value) => value !== null && value.toLowerCase().includes(normalizedSearchQuery),
       );
 

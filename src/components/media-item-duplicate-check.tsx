@@ -17,6 +17,8 @@ type MediaItemDuplicateMatch = {
 };
 
 type MediaItemDuplicateCheckProps = {
+  aliases: string[];
+  mediaItemId?: number;
   mediaType: MediaType;
   originalTitle: string;
   releaseYear: string;
@@ -25,6 +27,8 @@ type MediaItemDuplicateCheckProps = {
 };
 
 export function MediaItemDuplicateCheck({
+  aliases,
+  mediaItemId,
   mediaType,
   originalTitle,
   releaseYear,
@@ -33,12 +37,14 @@ export function MediaItemDuplicateCheck({
 }: MediaItemDuplicateCheckProps) {
   const input = useMemo(
     () => ({
+      aliases: aliases.map((alias) => alias.trim()),
+      mediaItemId,
       mediaType,
       originalTitle: originalTitle.trim(),
       releaseYear: releaseYear.trim(),
       title: title.trim(),
     }),
-    [mediaType, originalTitle, releaseYear, title],
+    [aliases, mediaItemId, mediaType, originalTitle, releaseYear, title],
   );
   const key = useMemo(() => JSON.stringify(input), [input]);
   const canSearch = input.mediaType.trim().length > 0 && input.title.length >= 2;

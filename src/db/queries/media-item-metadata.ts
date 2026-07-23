@@ -52,6 +52,7 @@ export async function upsertMediaItemMetadata(
   input: UpsertMediaItemMetadataInput,
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
+  const fetchedAt = input.fetchedAt === undefined ? now : input.fetchedAt;
   const [row] = await db
     .insert(mediaItemMetadata)
     .values({
@@ -60,7 +61,7 @@ export async function upsertMediaItemMetadata(
       sourceProvider: input.sourceProvider ?? null,
       sourceExternalId: input.sourceExternalId ?? null,
       sourceUrl: input.sourceUrl ?? null,
-      fetchedAt: input.fetchedAt ?? now,
+      fetchedAt,
       updatedAt: now,
     })
     .onConflictDoUpdate({
@@ -70,7 +71,7 @@ export async function upsertMediaItemMetadata(
         sourceProvider: input.sourceProvider ?? null,
         sourceExternalId: input.sourceExternalId ?? null,
         sourceUrl: input.sourceUrl ?? null,
-        fetchedAt: input.fetchedAt ?? now,
+        fetchedAt,
         updatedAt: now,
       },
     })

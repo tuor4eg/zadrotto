@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -30,12 +31,13 @@ export default async function EditAuthorMediaPage({
   searchParams,
 }: EditAuthorMediaPageProps) {
   const author = await requireAuthor();
-  const [{ id }, { error }, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [{ id }, { error }, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
     params,
     searchParams,
     getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
   const mediaItemId = Number(id);
 
@@ -88,6 +90,7 @@ export default async function EditAuthorMediaPage({
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            maxTitleAliases={archiveSettings.maxTitleAliases}
             canCreateFranchise={canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}

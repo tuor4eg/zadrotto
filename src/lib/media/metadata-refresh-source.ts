@@ -9,15 +9,14 @@ export type MediaMetadataRefreshSource = {
 
 export type MediaMetadataRefreshSourceInput = {
   mediaType: MediaType;
+  titleSource?: {
+    provider: string | null | undefined;
+    externalId: string | null | undefined;
+  } | null;
   metadata?: {
     sourceProvider: string | null;
     sourceExternalId: string | null;
   } | null;
-  coverSource?: {
-    provider: string | null | undefined;
-    externalId: string | null | undefined;
-    pageUrl: string | null | undefined;
-  };
 };
 
 const MEDIA_PROVIDER_CODES = [
@@ -28,6 +27,7 @@ const MEDIA_PROVIDER_CODES = [
   "igdb",
   "rawg",
   "jikan",
+  "anilist",
 ] as const satisfies readonly MediaProviderCode[];
 
 function isMediaProviderCode(value: string | null | undefined): value is MediaProviderCode {
@@ -86,11 +86,11 @@ function normalizeMetadataExternalId(
     return getColonPartExternalId(value, "game") ?? (value && /^\d+$/.test(value) ? value : null);
   }
 
-  if (provider === "jikan") {
+  if (provider === "jikan" || provider === "anilist") {
     return (
       getColonPartExternalId(value, "anime") ??
       (value && /^\d+$/.test(value) ? value : null) ??
-      getJikanExternalIdFromUrl(pageUrl)
+      (provider === "jikan" ? getJikanExternalIdFromUrl(pageUrl) : null)
     );
   }
 
@@ -111,9 +111,20 @@ function normalizeMetadataExternalId(
 
 export function getMediaMetadataRefreshSource({
   mediaType,
+  titleSource,
   metadata,
-  coverSource,
 }: MediaMetadataRefreshSourceInput): MediaMetadataRefreshSource | null {
+  if (isMediaProviderCode(titleSource?.provider)) {
+    const externalId = normalizeMetadataExternalId(
+      titleSource.provider,
+      titleSource.externalId,
+    );
+
+    if (externalId) {
+      return { provider: titleSource.provider, externalId, mediaType };
+    }
+  }
+
   if (isMediaProviderCode(metadata?.sourceProvider)) {
     const externalId = normalizeMetadataExternalId(
       metadata.sourceProvider,
@@ -125,15 +136,5 @@ export function getMediaMetadataRefreshSource({
     }
   }
 
-  if (!isMediaProviderCode(coverSource?.provider)) {
-    return null;
-  }
-
-  const externalId = normalizeMetadataExternalId(
-    coverSource.provider,
-    coverSource.externalId,
-    coverSource.pageUrl,
-  );
-
-  return externalId ? { provider: coverSource.provider, externalId, mediaType } : null;
+  return null;
 }

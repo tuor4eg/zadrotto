@@ -1,4 +1,10 @@
 export function getAuthorMediaFormErrorMessage(error?: string) {
+  const aliasLimit = error?.match(/^too-many-aliases-(\d+)$/)?.[1];
+
+  if (aliasLimit) {
+    return `Можно указать не больше ${aliasLimit} альтернативных названий.`;
+  }
+
   if (error === "required") {
     return "Заполни название и тип медиа.";
   }

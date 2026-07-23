@@ -4,15 +4,24 @@ import { describe, it } from "node:test";
 import { formatMediaItemSummary } from "../src/lib/media/media-item-summary";
 
 describe("media item summary", () => {
-  it("formats a film type, release year, and runtime", () => {
+  it("formats a film runtime, genres, and production companies", () => {
     assert.equal(
       formatMediaItemSummary({
         mediaType: "film",
         mediaTypeLabel: "Фильм",
-        releaseYear: 1999,
-        metadataFacts: { runtimeMinutes: 136 },
+        releaseYear: 1995,
+        metadataFacts: {
+          runtimeMinutes: 104,
+          genres: ["Приключения", "Фэнтези", "Семейный"],
+          productionCompanies: [
+            "TriStar Pictures",
+            "Interscope Communications",
+            "Teitler Film",
+            "PolyGram Filmed Entertainment",
+          ],
+        },
       }),
-      "Фильм · 1999 · 136 мин.",
+      "Фильм · 1995 · 104 мин. · Приключения, Фэнтези, Семейный · TriStar Pictures, Interscope Communications, Teitler Film, PolyGram Filmed Entertainment",
     );
   });
 
@@ -119,7 +128,7 @@ describe("media item summary", () => {
     );
   });
 
-  it("formats a series air-year range, counts, and episode runtime", () => {
+  it("formats a series air-year range, counts, episode runtime, genres, and networks", () => {
     assert.equal(
       formatMediaItemSummary({
         mediaType: "series",
@@ -131,9 +140,43 @@ describe("media item summary", () => {
           seasonCount: 5,
           episodeCount: 22,
           averageEpisodeRuntimeMinutes: 47,
+          genres: ["Драма", "Криминал"],
+          networks: ["AMC"],
         },
       }),
-      "Сериал · 2011-2015 · 5 сезонов · 22 серии · 47 мин./серия",
+      "Сериал · 2011-2015 · 5 сезонов · 22 серии · 47 мин./серия · Драма, Криминал · AMC",
+    );
+  });
+
+  it("skips empty and invalid film and series list facts", () => {
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "film",
+        mediaTypeLabel: "Фильм",
+        releaseYear: 1995,
+        metadataFacts: {
+          runtimeMinutes: 0,
+          genres: ["", null, 42],
+          productionCompanies: "TriStar Pictures",
+        },
+      }),
+      "Фильм · 1995",
+    );
+
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "series",
+        mediaTypeLabel: "Сериал",
+        releaseYear: null,
+        metadataFacts: {
+          seasonCount: 0,
+          episodeCount: "22",
+          averageEpisodeRuntimeMinutes: null,
+          genres: null,
+          networks: [" ", 42],
+        },
+      }),
+      "Сериал",
     );
   });
 
@@ -155,6 +198,70 @@ describe("media item summary", () => {
         `Сериал · ${expectedCounts}`,
       );
     }
+  });
+
+  it("formats anime TV format, episode count, studios, and genres", () => {
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "anime",
+        mediaTypeLabel: "Аниме",
+        releaseYear: 2013,
+        metadataFacts: {
+          animeType: "TV",
+          episodeCount: 25,
+          averageEpisodeRuntimeMinutes: 24,
+          studios: ["WIT STUDIO", "Production I.G", "MAPPA", "CloverWorks"],
+          genres: ["Action", "Adventure", "Drama", "Fantasy"],
+        },
+      }),
+      "Аниме · 2013 · TV · 25 серий · WIT STUDIO, Production I.G, MAPPA, CloverWorks · Action, Adventure, Drama, Fantasy",
+    );
+  });
+
+  it("formats anime movies with duration instead of episode count", () => {
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "anime",
+        mediaTypeLabel: "Аниме",
+        releaseYear: 2004,
+        metadataFacts: {
+          animeType: "MOVIE",
+          episodeCount: 1,
+          averageEpisodeRuntimeMinutes: 126,
+          studios: ["Sunrise"],
+          genres: ["Adventure", "Sci-Fi"],
+        },
+      }),
+      "Аниме · 2004 · MOVIE · 126 мин. · Sunrise · Adventure, Sci-Fi",
+    );
+  });
+
+  it("skips missing and invalid optional anime facts while preserving valid partial facts", () => {
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "anime",
+        mediaTypeLabel: "Аниме",
+        releaseYear: null,
+        metadataFacts: null,
+      }),
+      "Аниме",
+    );
+
+    assert.equal(
+      formatMediaItemSummary({
+        mediaType: "anime",
+        mediaTypeLabel: "Аниме",
+        releaseYear: 1995,
+        metadataFacts: {
+          animeType: " ",
+          episodeCount: 0,
+          averageEpisodeRuntimeMinutes: "24",
+          studios: "Gainax",
+          genres: ["Drama", "", 42, " Drama "],
+        },
+      }),
+      "Аниме · 1995 · Drama",
+    );
   });
 
   it("keeps at least the type and includes the year when optional facts are missing", () => {

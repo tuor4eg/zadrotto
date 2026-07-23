@@ -7,9 +7,13 @@ import { redirect } from "next/navigation";
 
 import { authorExistsById } from "@/db/queries/authors";
 import { getCoverSettings } from "@/db/queries/cover-settings";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
-import { upsertMediaItemMetadata } from "@/db/queries/media-item-metadata";
+import {
+  deleteMediaItemMetadata,
+  upsertMediaItemMetadata,
+} from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
 import {
   createAdminMediaItem,
@@ -35,8 +39,12 @@ import {
 import type { CoverSourceInput } from "@/lib/covers/types";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
-import { verifyMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
+import {
+  resolveMediaMetadataFormMutation,
+  type MediaMetadataFormMutation,
+} from "@/lib/media/metadata-form-mutation";
 import { validateMediaItemDuplicateCheck } from "@/lib/media/validate-media-item-duplicate-check";
+import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 function getFormString(formData: FormData, key: string) {
@@ -110,11 +118,18 @@ function readMediaForm(
     return { ok: false as const, error: "author-required" };
   }
 
+  const originalTitle = normalizeOptionalFormString(getFormString(formData, "originalTitle"));
+  const aliases = normalizeMediaItemTitleAliases(
+    formData.getAll("titleAliases").filter((value): value is string => typeof value === "string"),
+    { title, originalTitle },
+  );
+
   return {
     ok: true as const,
     value: {
       title,
-      originalTitle: normalizeOptionalFormString(getFormString(formData, "originalTitle")),
+      originalTitle,
+      aliases,
       description: normalizeOptionalFormString(getFormString(formData, "description")),
       mediaType,
       franchiseIds: franchiseIds.value,
@@ -186,34 +201,36 @@ function getCoverSourceFromItem(item: {
   };
 }
 
-async function saveMediaItemMetadataFromForm(formData: FormData, mediaItemId: number) {
-  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
+function getMediaItemMetadataMutation(formData: FormData) {
+  return resolveMediaMetadataFormMutation({
+    metadataCandidateToken: getOptionalMetadataCandidateToken(formData),
+    titleSourceToken:
+      normalizeOptionalFormString(getFormString(formData, "metadataTitleSourceToken")),
+    sourceChanged: getFormString(formData, "metadataSourceChanged") === "1",
+  });
+}
 
-  if (!metadataCandidateToken) {
-    return { ok: true as const };
+async function saveMediaItemMetadataMutation(
+  mutation: Exclude<MediaMetadataFormMutation, { type: "reject" }>,
+  mediaItemId: number,
+) {
+  if (mutation.type === "keep") {
+    return;
   }
 
-  const metadata = verifyMediaMetadataCandidateToken(metadataCandidateToken);
-
-  if (!metadata) {
-    return { ok: false as const };
+  if (mutation.type === "delete") {
+    await deleteMediaItemMetadata(mediaItemId);
+    return;
   }
 
   await upsertMediaItemMetadata({
     mediaItemId,
-    facts: metadata.facts,
-    sourceProvider: metadata.provider,
-    sourceExternalId: metadata.externalId,
-    sourceUrl: metadata.sourceUrl,
+    facts: mutation.facts,
+    sourceProvider: mutation.sourceProvider,
+    sourceExternalId: mutation.sourceExternalId,
+    sourceUrl: mutation.sourceUrl,
+    fetchedAt: mutation.fetchedAt,
   });
-
-  return { ok: true as const };
-}
-
-function hasValidMediaItemMetadataToken(formData: FormData) {
-  const metadataCandidateToken = getOptionalMetadataCandidateToken(formData);
-
-  return !metadataCandidateToken || Boolean(verifyMediaMetadataCandidateToken(metadataCandidateToken));
 }
 
 export async function updateAdminMediaItemAction(formData: FormData) {
@@ -241,7 +258,24 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${form.error}`);
   }
 
-  if (!hasValidMediaItemMetadataToken(formData)) {
+  const { maxTitleAliases } = await getArchiveSettings();
+
+  if (form.value.aliases.length > maxTitleAliases) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=too-many-aliases-${maxTitleAliases}`);
+  }
+
+  const duplicateCheck = await validateMediaItemDuplicateCheck(formData, {
+    ...form.value,
+    excludeMediaItemId: mediaItemId.value,
+  });
+
+  if (!duplicateCheck.ok) {
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=${duplicateCheck.error}`);
+  }
+
+  const metadataMutation = getMediaItemMetadataMutation(formData);
+
+  if (metadataMutation.type === "reject") {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
   }
 
@@ -310,11 +344,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }
 
-  const metadata = await saveMediaItemMetadataFromForm(formData, mediaItemId.value);
-
-  if (!metadata.ok) {
-    redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
-  }
+  await saveMediaItemMetadataMutation(metadataMutation, mediaItemId.value);
 
   const nextIdentity = await getAdminMediaItemIdentityById(mediaItemId.value);
 
@@ -356,7 +386,15 @@ export async function createAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/new?error=${form.error}`);
   }
 
-  if (!hasValidMediaItemMetadataToken(formData)) {
+  const { maxTitleAliases } = await getArchiveSettings();
+
+  if (form.value.aliases.length > maxTitleAliases) {
+    redirect(`/admin/media/new?error=too-many-aliases-${maxTitleAliases}`);
+  }
+
+  const metadataMutation = getMediaItemMetadataMutation(formData);
+
+  if (metadataMutation.type === "reject") {
     redirect("/admin/media/new?error=invalid-metadata");
   }
 
@@ -427,11 +465,7 @@ export async function createAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
   }
 
-  const metadata = await saveMediaItemMetadataFromForm(formData, item.id);
-
-  if (!metadata.ok) {
-    redirect("/admin/media/new?error=invalid-metadata");
-  }
+  await saveMediaItemMetadataMutation(metadataMutation, item.id);
 
   const identity = await getAdminMediaItemIdentityById(item.id);
 

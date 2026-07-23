@@ -8,6 +8,7 @@ import {
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -41,6 +42,8 @@ type HomeProps = {
     dir?: string;
     sort?: string;
     suggested?: string;
+    suggestedItemCode?: string;
+    suggestedItemId?: string;
     suggestionError?: string;
     type?: string;
     year?: string;
@@ -51,11 +54,12 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   await connection();
 
-  const [currentAuthor, currentAdminUser, params, mediaTypes] = await Promise.all([
+  const [currentAuthor, currentAdminUser, params, mediaTypes, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
     searchParams,
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
@@ -97,33 +101,55 @@ export default async function Home({ searchParams }: HomeProps) {
       }),
       getCatalogReleaseYearBounds(),
       currentAuthor
-        ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
+        ? Promise.all([
+            getFranchiseOptions(currentAuthor.id),
+            getMediaCarrierOptions(),
+          ]).then(
             ([franchises, mediaCarriers]) => ({
               canCreateFranchise: canAuthorCreateFranchise({
                 canPublishFranchisesWithoutReview:
                   currentAuthor.canPublishFranchisesWithoutReview,
               }),
+              canPublishFranchisesWithoutReview:
+                currentAuthor.canPublishFranchisesWithoutReview,
               canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
               franchises,
+              publishedFranchises: franchises.filter(
+                (franchise) => franchise.publicationStatus === "published",
+              ),
               mediaCarriers,
             }),
           )
         : Promise.resolve(null),
     ]);
   const suggestionErrorMessage = getAuthorMediaFormErrorMessage(params.suggestionError);
+  const suggestedItemId = Number(params.suggestedItemId);
+  const suggestedItemHref =
+    Number.isInteger(suggestedItemId) && suggestedItemId > 0
+      ? params.suggested === "published" && params.suggestedItemCode
+        ? `/media/${encodeURIComponent(params.suggestedItemCode)}`
+        : params.suggested === "created"
+          ? `/author/media/${suggestedItemId}/edit`
+          : params.suggested === "submitted" && params.suggestedItemCode
+            ? `/author/media?q=${encodeURIComponent(params.suggestedItemCode)}`
+            : null
+      : null;
   const suggestionSuccessMessage =
     params.suggested === "created"
-      ? "Запись создана в черновиках."
+      ? "создана в черновиках."
       : params.suggested === "submitted"
-        ? "Запись создана и отправлена на проверку."
+        ? "создана и отправлена на проверку."
         : params.suggested === "published"
-          ? "Запись создана и опубликована."
+          ? "создана и опубликована."
           : null;
   const toastMessages = [
     ...(suggestionSuccessMessage
       ? [
           {
             id: "suggested",
+            ...(suggestedItemHref
+              ? { link: { href: suggestedItemHref, label: "Запись" } }
+              : {}),
             tone: "success",
             text: suggestionSuccessMessage,
           } satisfies ArchiveToast,
@@ -143,7 +169,12 @@ export default async function Home({ searchParams }: HomeProps) {
   return (
     <main className="archive-page archive-catalog-page min-h-screen text-stone-950">
       <ArchiveToasts
-        clearParams={["suggested", "suggestionError"]}
+        clearParams={[
+          "suggested",
+          "suggestedItemCode",
+          "suggestedItemId",
+          "suggestionError",
+        ]}
         messages={toastMessages}
       />
       <div className="archive-catalog-shell mx-auto flex w-full max-w-[1480px] flex-col gap-3">
@@ -162,9 +193,13 @@ export default async function Home({ searchParams }: HomeProps) {
 
         <MediaItemsCatalog
           authorRatingFilter={authorRatingFilter}
+          currentAdmin={Boolean(currentAdminUser)}
           defaultPageSize={DEFAULT_CATALOG_PAGE_SIZE}
           currentAuthor={
             currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
+          }
+          canPublishFranchisesWithoutReview={
+            authorMediaSuggestionData?.canPublishFranchisesWithoutReview ?? false
           }
           items={catalog.items}
           mediaTypeCounts={mediaTypeCounts}
@@ -173,6 +208,7 @@ export default async function Home({ searchParams }: HomeProps) {
           page={catalog.page}
           pageSizeOptions={CATALOG_PAGE_SIZE_OPTIONS}
           pageSize={catalog.pageSize}
+          publishedFranchises={authorMediaSuggestionData?.publishedFranchises ?? []}
           searchQuery={searchQuery}
           sort={sort}
           sortDirection={sortDirection}
@@ -184,6 +220,7 @@ export default async function Home({ searchParams }: HomeProps) {
       </div>
       {currentAuthor && authorMediaSuggestionData ? (
         <ArchiveAuthorMediaSuggestion
+          maxTitleAliases={archiveSettings.maxTitleAliases}
           action={createAuthorMediaItemAction}
           canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}

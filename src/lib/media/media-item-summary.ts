@@ -57,7 +57,13 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
 
   if (item.mediaType === "film") {
     const runtime = getPositiveIntegerFact(facts, "runtimeMinutes");
-    details = runtime ? [`${runtime} мин.`] : [];
+    const genres = getStringListFact(facts, "genres");
+    const productionCompanies = getStringListFact(facts, "productionCompanies");
+    details = [
+      runtime ? `${runtime} мин.` : null,
+      genres.length > 0 ? genres.join(", ") : null,
+      productionCompanies.length > 0 ? productionCompanies.join(", ") : null,
+    ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "game") {
     const developers = getStringListFact(facts, "developers");
     const genres = getStringListFact(facts, "genres");
@@ -83,6 +89,8 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
     const seasons = getPositiveIntegerFact(facts, "seasonCount");
     const episodes = getPositiveIntegerFact(facts, "episodeCount");
     const runtime = getPositiveIntegerFact(facts, "averageEpisodeRuntimeMinutes");
+    const genres = getStringListFact(facts, "genres");
+    const networks = getStringListFact(facts, "networks");
     details = [
       seasons
         ? formatPluralCount(seasons, { one: "сезон", few: "сезона", many: "сезонов" })
@@ -91,6 +99,27 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
         ? formatPluralCount(episodes, { one: "серия", few: "серии", many: "серий" })
         : null,
       runtime ? `${runtime} мин./серия` : null,
+      genres.length > 0 ? genres.join(", ") : null,
+      networks.length > 0 ? networks.join(", ") : null,
+    ].filter((value): value is string => Boolean(value));
+  } else if (item.mediaType === "anime") {
+    const animeType = getNonEmptyStringFact(facts, "animeType");
+    const isMovie = animeType?.toUpperCase() === "MOVIE";
+    const episodes = getPositiveIntegerFact(facts, "episodeCount");
+    const runtime = getPositiveIntegerFact(facts, "averageEpisodeRuntimeMinutes");
+    const studios = getStringListFact(facts, "studios");
+    const genres = getStringListFact(facts, "genres");
+    details = [
+      animeType,
+      isMovie
+        ? runtime
+          ? `${runtime} мин.`
+          : null
+        : episodes
+          ? formatPluralCount(episodes, { one: "серия", few: "серии", many: "серий" })
+          : null,
+      studios.length > 0 ? studios.join(", ") : null,
+      genres.length > 0 ? genres.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   }
 

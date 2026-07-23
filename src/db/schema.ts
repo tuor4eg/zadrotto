@@ -114,6 +114,25 @@ export const coverSettings = pgTable(
   ],
 );
 
+export const archiveSettings = pgTable(
+  "archive_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    maxTitleAliases: integer("max_title_aliases").default(3).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("archive_settings_singleton_id_check", sql`${table.id} = 1`),
+    check(
+      "archive_settings_max_title_aliases_check",
+      sql`${table.maxTitleAliases} between 1 and 10`,
+    ),
+  ],
+);
+
 export const providerSettings = pgTable(
   "provider_settings",
   {
@@ -550,6 +569,24 @@ export const mediaItems = pgTable(
   ],
 );
 
+export const mediaItemTitleAliases = pgTable(
+  "media_item_title_aliases",
+  {
+    id: serial("id").primaryKey(),
+    mediaItemId: integer("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    value: text("value").notNull(),
+  },
+  (table) => [
+    uniqueIndex("media_item_title_aliases_media_item_value_lower_unique_idx").on(
+      table.mediaItemId,
+      sql`lower(${table.value})`,
+    ),
+    index("media_item_title_aliases_media_item_id_idx").on(table.mediaItemId),
+  ],
+);
+
 export const mediaItemMetadata = pgTable("media_item_metadata", {
   mediaItemId: integer("media_item_id")
     .primaryKey()
@@ -702,6 +739,7 @@ export type NewAuthorAccessProfile = typeof authorAccessProfiles.$inferInsert;
 export type AuthorRegistrationSettings = typeof authorRegistrationSettings.$inferSelect;
 export type CoverSettings = typeof coverSettings.$inferSelect;
 export type NewCoverSettings = typeof coverSettings.$inferInsert;
+export type ArchiveSettings = typeof archiveSettings.$inferSelect;
 export type ProviderSettings = typeof providerSettings.$inferSelect;
 export type NewProviderSettings = typeof providerSettings.$inferInsert;
 export type ProviderCredentials = typeof providerCredentials.$inferSelect;
@@ -716,6 +754,7 @@ export type Author = typeof authors.$inferSelect;
 export type NewAuthor = typeof authors.$inferInsert;
 export type MediaItem = typeof mediaItems.$inferSelect;
 export type NewMediaItem = typeof mediaItems.$inferInsert;
+export type MediaItemTitleAlias = typeof mediaItemTitleAliases.$inferSelect;
 export type MediaItemMetadata = typeof mediaItemMetadata.$inferSelect;
 export type NewMediaItemMetadata = typeof mediaItemMetadata.$inferInsert;
 export type MediaItemFranchise = typeof mediaItemFranchises.$inferSelect;

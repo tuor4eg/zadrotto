@@ -13,6 +13,7 @@ import {
   updateCoverProviderCredentials,
   updateCoverSettings,
 } from "@/db/queries/cover-settings";
+import { updateArchiveSettings } from "@/db/queries/archive-settings";
 import { requireAdminUser, setAdminSessionCookie } from "@/lib/auth/admin-auth";
 import {
   ADMIN_PASSWORD_CHANGE_ERROR_MESSAGES,
@@ -30,6 +31,7 @@ import { validateCoverProviderCredentials } from "@/lib/covers/credential-valida
 import { isCoverProviderCode } from "@/lib/covers/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
+import { parseMediaItemTitleAliasLimit } from "@/lib/media/title-aliases";
 
 export type ChangeAdminPasswordState = {
   error: string | null;
@@ -37,6 +39,11 @@ export type ChangeAdminPasswordState = {
 };
 
 export type UpdateCoverSettingsState = {
+  error: string | null;
+  success: string | null;
+};
+
+export type UpdateArchiveSettingsState = {
   error: string | null;
   success: string | null;
 };
@@ -67,6 +74,45 @@ function getFormStringsByPrefix(formData: FormData, prefix: string) {
   }
 
   return values;
+}
+
+export async function updateArchiveSettingsAction(
+  _previousState: UpdateArchiveSettingsState,
+  formData: FormData,
+): Promise<UpdateArchiveSettingsState> {
+  const adminUser = await requireAdminUser();
+  const mediaItemTitleAliasLimit = parseMediaItemTitleAliasLimit(
+    getFormString(formData, "mediaItemTitleAliasLimit"),
+  );
+
+  if (mediaItemTitleAliasLimit === null) {
+    return { error: "Укажите число от 1 до 10.", success: null };
+  }
+
+  try {
+    await updateArchiveSettings({
+      maxTitleAliases: mediaItemTitleAliasLimit,
+      updatedByAdminId: adminUser.id,
+    });
+    await logActivity({
+      action: "archive-settings.updated",
+      actorType: "admin",
+      adminUserId: adminUser.id,
+      entityType: "archive-settings",
+      entityId: 1,
+      message: "Настройки архива обновлены.",
+      metadata: { mediaItemTitleAliasLimit },
+    });
+  } catch (error) {
+    console.error(error);
+    return {
+      error: getAdminFormErrorMessage(getAdminFormErrorCode(error)),
+      success: null,
+    };
+  }
+
+  revalidatePath("/admin/settings/archive");
+  return { error: null, success: "Настройки архива сохранены." };
 }
 
 export async function changeAdminPasswordAction(

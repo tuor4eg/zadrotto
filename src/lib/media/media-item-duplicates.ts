@@ -5,6 +5,8 @@ import type { MediaType } from "@/lib/media/types";
 const DUPLICATE_ACKNOWLEDGEMENT_MAX_AGE_SECONDS = 30 * 60;
 
 export type MediaItemDuplicateCheckInput = {
+  aliases?: string[];
+  excludeMediaItemId?: number;
   mediaType: MediaType;
   originalTitle: string | null;
   releaseYear: number | null;
@@ -12,6 +14,7 @@ export type MediaItemDuplicateCheckInput = {
 };
 
 export type MediaItemDuplicateMatch = {
+  aliases?: string[];
   id: number;
   code: string;
   mediaType: string;
@@ -84,13 +87,13 @@ export function normalizeMediaItemDuplicateTitle(value: string | null | undefine
 }
 
 function getInputComparableTitles(input: MediaItemDuplicateCheckInput) {
-  return [input.title, input.originalTitle]
+  return [input.title, input.originalTitle, ...(input.aliases ?? [])]
     .map(normalizeMediaItemDuplicateTitle)
     .filter(Boolean);
 }
 
 function getMatchComparableTitles(match: MediaItemDuplicateMatch) {
-  return [match.title, match.originalTitle]
+  return [match.title, match.originalTitle, ...(match.aliases ?? [])]
     .map(normalizeMediaItemDuplicateTitle)
     .filter(Boolean);
 }
@@ -121,6 +124,8 @@ function getDuplicateAcknowledgementFingerprint(
     mediaType: input.mediaType,
     title: normalizeMediaItemDuplicateTitle(input.title),
     originalTitle: normalizeMediaItemDuplicateTitle(input.originalTitle),
+    aliases: (input.aliases ?? []).map(normalizeMediaItemDuplicateTitle).filter(Boolean).sort(),
+    excludeMediaItemId: input.excludeMediaItemId ?? null,
     releaseYear: input.releaseYear,
     matchIds: matches.map((match) => match.id).sort((left, right) => left - right),
   });

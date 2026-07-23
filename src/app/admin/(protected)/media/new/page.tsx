@@ -4,6 +4,7 @@ import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -19,12 +20,13 @@ type NewAdminMediaPageProps = {
 };
 
 export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaPageProps) {
-  const [{ error }, authors, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [{ error }, authors, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
     searchParams,
     getAuthorOptions(),
     getFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
 
   return (
@@ -52,6 +54,7 @@ export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaP
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            maxTitleAliases={archiveSettings.maxTitleAliases}
             requireAuthor
             values={{ releaseYear: new Date().getFullYear() }}
             errorMessage={getAdminMediaErrorMessage(error)}

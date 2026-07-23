@@ -8,19 +8,26 @@ import {
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
+import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatAuthorsFact } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCatalogPreviewProps = {
+  canPublishFranchisesWithoutReview: boolean;
+  currentAdmin: boolean;
   currentAuthor: {
     name: string;
     code: string;
   } | null;
+  franchises: SearchableFranchiseOption[];
   item: CatalogMediaItem | null;
   mediaTypes: MediaTypeOption[];
 };
@@ -49,7 +56,10 @@ function CoverSourceAttribution({
 }
 
 export function MediaCatalogPreview({
+  canPublishFranchisesWithoutReview,
+  currentAdmin,
   currentAuthor,
+  franchises,
   item,
   mediaTypes,
 }: MediaCatalogPreviewProps) {
@@ -189,11 +199,24 @@ export function MediaCatalogPreview({
           />
         </div>
 
-        {item.franchises.length > 0 ? (
-          <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
+        <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
+          <div className="flex items-center justify-between gap-3">
             <div className={`${labelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
               Серии
             </div>
+            {currentAuthor ? (
+              <MediaItemFranchiseSuggestionDialog
+                canPublishWithoutReview={canPublishFranchisesWithoutReview}
+                franchises={mapFranchiseSuggestionOptions(
+                  franchises,
+                  item.franchiseLinkStatuses,
+                )}
+                mediaItemCode={item.code}
+                mediaItemId={item.id}
+              />
+            ) : null}
+          </div>
+          {item.franchises.length > 0 ? (
             <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
               {item.franchises.map((franchise) => (
                 <Link
@@ -205,18 +228,27 @@ export function MediaCatalogPreview({
                 </Link>
               ))}
             </div>
-          </div>
-        ) : null}
+          ) : (
+            <div className="mt-1 text-stone-500">Не указаны</div>
+          )}
+        </div>
 
-        <div className="mt-5">
+        <div className="mt-5 flex gap-2">
           <Link
             href={`/media/${item.code}`}
-            className="inline-flex w-full items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
+            className="inline-flex min-w-0 flex-1 items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
           >
             <FolderOpen className="size-5" />
             Открыть досье
             <ArrowRight className="size-5" />
           </Link>
+          {currentAdmin ? (
+            <AdminEntityEditLink
+              ariaLabel={`Редактировать запись ${item.title}`}
+              href={`/admin/media/${item.id}/edit`}
+              tooltipLabel="Редактировать запись"
+            />
+          ) : null}
         </div>
       </div>
     </div>

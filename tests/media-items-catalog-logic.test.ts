@@ -35,6 +35,7 @@ const items: TestCatalogItem[] = [
     id: 2,
     title: "Солярис",
     originalTitle: "Solaris",
+    aliases: ["Солярис 1972", "Solaris Tarkovsky"],
     code: "solaris-1972",
     mediaType: "film",
     releaseYear: 1972,
@@ -114,13 +115,18 @@ describe("matchesSearch", () => {
     assert.equal(matchesSearch(items[2], "disco"), false);
   });
 
+  it("searches alternative titles case-insensitively", () => {
+    assert.equal(matchesSearch(items[1], "tarkovsky"), true);
+    assert.equal(matchesSearch(items[0], "tarkovsky"), false);
+  });
+
   it("matches every item for an empty normalized query", () => {
     assert.equal(matchesSearch(items[2], ""), true);
   });
 });
 
 describe("filterCatalogItems", () => {
-  it("filters by trimmed search query across title, original title, and code", () => {
+  it("filters by trimmed search query across title, original title, aliases, and code", () => {
     assert.deepEqual(
       filterCatalogItems(items, "  SOLAR  ", "all", "all").map((item) => item.id),
       [2],
@@ -132,6 +138,10 @@ describe("filterCatalogItems", () => {
     assert.deepEqual(
       filterCatalogItems(items, "disco-elysium", "all", "all").map((item) => item.id),
       [1],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "  SOLARIS TARKOVSKY  ", "all", "all").map((item) => item.id),
+      [2],
     );
   });
 

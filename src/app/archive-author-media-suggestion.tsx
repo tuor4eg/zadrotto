@@ -23,6 +23,7 @@ type ArchiveAuthorMediaSuggestionProps = {
   mediaTypeFilter: MediaTypeFilter;
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
   searchQuery: string;
+  maxTitleAliases: number;
 };
 
 type SuggestionModalState = {
@@ -36,6 +37,8 @@ function getCurrentArchivePath(pathname: string, searchParams: URLSearchParams) 
   const nextSearchParams = new URLSearchParams(searchParams.toString());
 
   nextSearchParams.delete("suggested");
+  nextSearchParams.delete("suggestedItemCode");
+  nextSearchParams.delete("suggestedItemId");
   nextSearchParams.delete("suggestionError");
 
   const queryString = nextSearchParams.toString();
@@ -64,6 +67,7 @@ export function ArchiveAuthorMediaSuggestion({
   mediaTypeFilter,
   mediaTypes,
   searchQuery,
+  maxTitleAliases,
 }: ArchiveAuthorMediaSuggestionProps) {
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -211,6 +215,8 @@ export function ArchiveAuthorMediaSuggestion({
                     franchises={franchises}
                     mediaCarriers={mediaCarriers}
                     mediaTypes={mediaTypes}
+                    maxTitleAliases={maxTitleAliases}
+                    titleAliasTooltipSide="left"
                     onCancel={() => setModalState(null)}
                     publishedSuccessRedirectTo={publishedSuccessRedirectTo}
                     submitLabel="Сохранить черновик"

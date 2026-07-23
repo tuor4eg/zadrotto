@@ -42,6 +42,7 @@ export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDir
 export type CatalogFilterItem = {
   title: string;
   originalTitle: string | null;
+  aliases?: string[];
   code: string | null;
   mediaType: MediaType;
   releaseYear: number | null;
@@ -66,7 +67,7 @@ export function matchesSearch(item: CatalogFilterItem, normalizedSearchQuery: st
     return true;
   }
 
-  return [item.title, item.originalTitle, item.code].some(
+  return [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])].some(
     (value) => value !== null && value.toLowerCase().includes(normalizedSearchQuery),
   );
 }

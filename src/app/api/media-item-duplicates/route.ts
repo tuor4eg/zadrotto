@@ -1,15 +1,19 @@
 import { NextResponse } from "next/server";
 
 import { findPublishedMediaItemDuplicateCandidates } from "@/db/queries/media-items";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import {
   createMediaItemDuplicateAcknowledgementToken,
   isExactMediaItemDuplicate,
 } from "@/lib/media/media-item-duplicates";
+import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 import { isMediaTypeCode } from "@/lib/media/types";
 
 type MediaItemDuplicatesRequestBody = {
+  aliases?: unknown;
+  mediaItemId?: unknown;
   mediaType?: unknown;
   originalTitle?: unknown;
   releaseYear?: unknown;
@@ -46,14 +50,35 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as MediaItemDuplicatesRequestBody;
   const title = normalizeRequiredString(body.title);
   const mediaType = normalizeRequiredString(body.mediaType);
+  const originalTitle = normalizeOptionalString(body.originalTitle);
 
   if (!title || !mediaType || !isMediaTypeCode(mediaType)) {
     return NextResponse.json({ matches: [], acknowledgementToken: "" });
   }
 
+  const aliases = normalizeMediaItemTitleAliases(
+    Array.isArray(body.aliases)
+      ? body.aliases.filter((value): value is string => typeof value === "string")
+      : [],
+    { title, originalTitle },
+  );
+  const { maxTitleAliases } = await getArchiveSettings();
+
+  if (aliases.length > maxTitleAliases) {
+    return NextResponse.json(
+      { error: "too-many-aliases", maxTitleAliases },
+      { status: 422 },
+    );
+  }
+
   const input = {
+    aliases,
+    excludeMediaItemId:
+      Number.isInteger(Number(body.mediaItemId)) && Number(body.mediaItemId) > 0
+        ? Number(body.mediaItemId)
+        : undefined,
     title,
-    originalTitle: normalizeOptionalString(body.originalTitle),
+    originalTitle,
     mediaType,
     releaseYear: normalizeOptionalReleaseYear(body.releaseYear),
   };

@@ -9,6 +9,7 @@ import {
   type MediaItemDuplicateCheckInput,
   type MediaItemDuplicateMatch,
 } from "@/lib/media/media-item-duplicates";
+import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 
 const form = {
   mediaType: "film",
@@ -89,5 +90,27 @@ describe("media item duplicate checks", () => {
       false,
     );
     assert.equal(verifyMediaItemDuplicateAcknowledgementToken(`${token}x`, { form, matches: [match] }), false);
+  });
+
+  it("keeps acknowledgement stable after shared alias normalization", () => {
+    process.env.MEDIA_ITEM_DUPLICATE_SECRET = "test-duplicate-secret";
+    const aliases = normalizeMediaItemTitleAliases(
+      ["", " the matrix ", "Neo", "neo", " Матрица "],
+      { title: form.title, originalTitle: form.originalTitle },
+    );
+    const normalizedForm = { ...form, aliases };
+    const token = createMediaItemDuplicateAcknowledgementToken({
+      form: normalizedForm,
+      matches: [match],
+    });
+
+    assert.deepEqual(aliases, ["Neo"]);
+    assert.equal(
+      verifyMediaItemDuplicateAcknowledgementToken(token, {
+        form: normalizedForm,
+        matches: [match],
+      }),
+      true,
+    );
   });
 });

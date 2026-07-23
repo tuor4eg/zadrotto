@@ -12,14 +12,19 @@ import {
   type MediaMetadataFactsValue,
 } from "@/components/ui/media-metadata-facts";
 import { MediaTitleCandidatePicker } from "@/components/ui/media-title-candidate-picker";
+import {
+  MediaTitleAliasAddButton,
+  MediaTitleAliasFields,
+} from "@/components/ui/media-title-alias-fields";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import { MediaItemDuplicateCheck } from "@/components/media-item-duplicate-check";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
-import type { MediaTitleCandidate } from "@/lib/covers/types";
+import type { MediaTitleCandidate, SignedMediaTitleCandidate } from "@/lib/covers/types";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
+import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
 import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
@@ -30,6 +35,7 @@ type MediaFormValues = {
   id?: number;
   title?: string;
   originalTitle?: string | null;
+  aliases?: string[];
   description?: string | null;
   mediaType?: MediaType;
   franchiseIds?: number[];
@@ -54,6 +60,7 @@ type AdminMediaFormProps = {
   metadata?: MediaMetadataFactsValue | null;
   errorMessage?: string | null;
   successMessage?: string | null;
+  maxTitleAliases: number;
 };
 
 type MediaTitleMetadataResponse = {
@@ -61,14 +68,10 @@ type MediaTitleMetadataResponse = {
 };
 
 type MediaTitleCandidatesResponse = {
-  candidates?: MediaTitleCandidate[];
+  candidates?: SignedMediaTitleCandidate[];
 };
 
 type MediaTitleMetadataRequest = Pick<MediaTitleCandidate, "externalId" | "mediaType" | "provider">;
-
-function normalizeCandidateTitle(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
-}
 
 async function fetchMediaTitleCandidates(input: { mediaType: MediaType; query: string }) {
   const response = await fetch("/api/media-title-candidates", {
@@ -106,51 +109,6 @@ async function fetchMediaTitleMetadata(candidate: MediaTitleMetadataRequest) {
   return data.metadata ?? null;
 }
 
-function getRankedMetadataRefreshCandidates(
-  candidates: MediaTitleCandidate[],
-  input: {
-    originalTitle: string;
-    releaseYear: string;
-    title: string;
-  },
-) {
-  const normalizedTitle = normalizeCandidateTitle(input.title);
-  const normalizedOriginalTitle = normalizeCandidateTitle(input.originalTitle);
-  const releaseYear = Number(input.releaseYear);
-  const hasOriginalTitle = normalizedOriginalTitle.length > 0;
-  const hasReleaseYear = input.releaseYear.trim().length > 0 && Number.isInteger(releaseYear);
-  const rankedCandidates = [
-    ...candidates.filter(
-      (candidate) =>
-        hasReleaseYear &&
-        candidate.releaseYear === releaseYear &&
-        (normalizeCandidateTitle(candidate.title) === normalizedTitle ||
-          (hasOriginalTitle &&
-            normalizeCandidateTitle(candidate.originalTitle) === normalizedOriginalTitle)),
-    ),
-    ...candidates.filter(
-      (candidate) =>
-        normalizeCandidateTitle(candidate.title) === normalizedTitle ||
-        (hasOriginalTitle &&
-          normalizeCandidateTitle(candidate.originalTitle) === normalizedOriginalTitle),
-    ),
-    ...candidates.filter((candidate) => hasReleaseYear && candidate.releaseYear === releaseYear),
-    ...candidates,
-  ];
-  const seen = new Set<string>();
-
-  return rankedCandidates.filter((candidate) => {
-    const key = `${candidate.provider}:${candidate.externalId}`;
-
-    if (seen.has(key)) {
-      return false;
-    }
-
-    seen.add(key);
-    return true;
-  });
-}
-
 export function AdminMediaForm({
   action,
   submitLabel,
@@ -163,6 +121,7 @@ export function AdminMediaForm({
   metadata = null,
   errorMessage,
   successMessage,
+  maxTitleAliases,
 }: AdminMediaFormProps) {
   const hasAuthors = authors.length > 0;
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
@@ -174,12 +133,24 @@ export function AdminMediaForm({
     : "Тип не выбран";
   const [title, setTitle] = useState(values?.title ?? "");
   const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
+  const [aliases, setAliases] = useState(values?.aliases ?? []);
   const [description, setDescription] = useState(values?.description ?? "");
   const [releaseYear, setReleaseYear] = useState(values?.releaseYear ? String(values.releaseYear) : "");
   const [canSearchCoverCandidates, setCanSearchCoverCandidates] = useState(isEditing);
   const [selectedMetadata, setSelectedMetadata] = useState<MediaMetadataFactsValue | null>(metadata);
   const [metadataCandidateToken, setMetadataCandidateToken] = useState("");
-  const [coverTitleSource, setCoverTitleSource] = useState<Pick<MediaTitleCandidate, "provider" | "externalId"> | null>(null);
+  const [selectedTitleSource, setSelectedTitleSource] = useState<
+    Pick<MediaTitleCandidate, "provider" | "externalId"> & { token: string } | null
+  >(() =>
+    metadata?.sourceProvider && metadata.sourceExternalId
+      ? {
+          provider: metadata.sourceProvider as MediaTitleCandidate["provider"],
+          externalId: metadata.sourceExternalId,
+          token: "",
+        }
+      : null,
+  );
+  const [hasSelectedNewTitleSource, setHasSelectedNewTitleSource] = useState(false);
   const metadataRequestVersionRef = useRef(0);
   const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
   const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
@@ -205,12 +176,8 @@ export function AdminMediaForm({
   ] satisfies AdminToast[];
   const metadataRefreshSource = getMediaMetadataRefreshSource({
     mediaType: selectedMediaType,
+    titleSource: selectedTitleSource,
     metadata: selectedMetadata,
-    coverSource: {
-      provider: values?.coverSourceProvider,
-      externalId: values?.coverSourceExternalId,
-      pageUrl: values?.coverSourcePageUrl,
-    },
   });
   const canRefreshMetadata = Boolean(metadataRefreshSource) || title.trim().length >= 2;
   const handleDuplicateBlockedChange = useCallback((blocked: boolean) => {
@@ -230,7 +197,7 @@ export function AdminMediaForm({
     try {
       const refreshSources = metadataRefreshSource
         ? [metadataRefreshSource]
-        : getRankedMetadataRefreshCandidates(
+        : rankMetadataRefreshCandidates(
             await fetchMediaTitleCandidates({
               mediaType: selectedMediaType,
               query: title,
@@ -248,6 +215,10 @@ export function AdminMediaForm({
       }
 
       let nextMetadata: Awaited<ReturnType<typeof fetchMediaTitleMetadata>> = null;
+      let nextTitleSource: Pick<
+        SignedMediaTitleCandidate,
+        "provider" | "externalId" | "titleSourceToken"
+      > | null = null;
 
       for (const refreshSource of refreshSources) {
         nextMetadata = await fetchMediaTitleMetadata({
@@ -257,6 +228,16 @@ export function AdminMediaForm({
         });
 
         if (nextMetadata) {
+          if (
+            "titleSourceToken" in refreshSource &&
+            typeof refreshSource.titleSourceToken === "string"
+          ) {
+            nextTitleSource = {
+              provider: refreshSource.provider,
+              externalId: refreshSource.externalId,
+              titleSourceToken: refreshSource.titleSourceToken,
+            };
+          }
           break;
         }
       }
@@ -273,6 +254,14 @@ export function AdminMediaForm({
       if (metadataRequestVersionRef.current === requestVersion) {
         setSelectedMetadata(nextMetadata);
         setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
+        if (nextTitleSource) {
+          setSelectedTitleSource({
+            provider: nextTitleSource.provider,
+            externalId: nextTitleSource.externalId,
+            token: nextTitleSource.titleSourceToken,
+          });
+          setHasSelectedNewTitleSource(true);
+        }
       }
     } finally {
       setIsRefreshingMetadata(false);
@@ -301,8 +290,10 @@ export function AdminMediaForm({
                 onChange={(event) => {
                   const nextMediaType = event.currentTarget.value as MediaType;
 
+                  metadataRequestVersionRef.current += 1;
                   setSelectedMediaType(nextMediaType);
-                  setCoverTitleSource(null);
+                  setSelectedTitleSource(null);
+                  setHasSelectedNewTitleSource(true);
                   setCanSearchCoverCandidates(false);
                   setSelectedMetadata(null);
                   setMetadataCandidateToken("");
@@ -352,20 +343,38 @@ export function AdminMediaForm({
               </Button>
             ) : null}
           </div>
-          <Input
-            id="admin-media-title"
-            name="title"
-            type="text"
-            value={title}
-            onChange={(event) => {
-              metadataRequestVersionRef.current += 1;
-              setTitle(event.currentTarget.value);
-              setCoverTitleSource(null);
-              setCanSearchCoverCandidates(isEditing);
-              setSelectedMetadata(isEditing ? metadata : null);
-              setMetadataCandidateToken("");
-            }}
-            required
+          <div className="flex items-center gap-2">
+            <Input
+              id="admin-media-title"
+              name="title"
+              type="text"
+              value={title}
+              onChange={(event) => {
+                metadataRequestVersionRef.current += 1;
+                setTitle(event.currentTarget.value);
+                setSelectedTitleSource(null);
+                setHasSelectedNewTitleSource(true);
+                setCanSearchCoverCandidates(isEditing);
+                setSelectedMetadata(null);
+                setMetadataCandidateToken("");
+              }}
+              required
+            />
+            {aliases.length === 0 ? (
+              <MediaTitleAliasAddButton
+                aliases={aliases}
+                limit={maxTitleAliases}
+                onChange={setAliases}
+                tooltipVariant="admin"
+              />
+            ) : null}
+          </div>
+          <MediaTitleAliasFields
+            aliases={aliases}
+            idPrefix="admin-media-title-alias"
+            limit={maxTitleAliases}
+            onChange={setAliases}
+            tooltipVariant="admin"
           />
           {isTitleProviderSearchOpen ? (
             <MediaTitleCandidatePicker
@@ -382,14 +391,17 @@ export function AdminMediaForm({
                 setOriginalTitle(nextFields.originalTitle);
                 setReleaseYear(nextFields.releaseYear);
                 setDescription(nextFields.description);
-                setCoverTitleSource({ provider: candidate.provider, externalId: candidate.externalId });
+                setSelectedTitleSource({
+                  provider: candidate.provider,
+                  externalId: candidate.externalId,
+                  token: candidate.titleSourceToken,
+                });
+                setHasSelectedNewTitleSource(true);
                 setCanSearchCoverCandidates(true);
                 const requestVersion = metadataRequestVersionRef.current + 1;
                 metadataRequestVersionRef.current = requestVersion;
-                if (!isEditing) {
-                  setSelectedMetadata(null);
-                  setMetadataCandidateToken("");
-                }
+                setSelectedMetadata(null);
+                setMetadataCandidateToken("");
                 if (isEditing) setIsTitleProviderSearchOpen(false);
 
                 void fetchMediaTitleMetadata(candidate)
@@ -414,8 +426,12 @@ export function AdminMediaForm({
             type="text"
             value={originalTitle}
             onChange={(event) => {
+              metadataRequestVersionRef.current += 1;
               setOriginalTitle(event.currentTarget.value);
-              setCoverTitleSource(null);
+              setSelectedTitleSource(null);
+              setHasSelectedNewTitleSource(true);
+              setSelectedMetadata(null);
+              setMetadataCandidateToken("");
             }}
           />
         </div>
@@ -482,23 +498,27 @@ export function AdminMediaForm({
             max="9999"
             value={releaseYear}
             onChange={(event) => {
+              metadataRequestVersionRef.current += 1;
               setReleaseYear(event.currentTarget.value);
-              setCoverTitleSource(null);
+              setSelectedTitleSource(null);
+              setHasSelectedNewTitleSource(true);
+              setSelectedMetadata(null);
+              setMetadataCandidateToken("");
             }}
           />
         </div>
 
-        {!isEditing ? (
-          <div className="md:col-span-2">
-            <MediaItemDuplicateCheck
-              mediaType={selectedMediaType}
-              title={title}
-              originalTitle={originalTitle}
-              releaseYear={releaseYear}
-              onBlockedChange={handleDuplicateBlockedChange}
-            />
-          </div>
-        ) : null}
+        <div className="md:col-span-2">
+          <MediaItemDuplicateCheck
+            mediaItemId={values?.id}
+            mediaType={selectedMediaType}
+            title={title}
+            originalTitle={originalTitle}
+            aliases={aliases}
+            releaseYear={releaseYear}
+            onBlockedChange={handleDuplicateBlockedChange}
+          />
+        </div>
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="admin-media-author">Автор</Label>
@@ -532,7 +552,7 @@ export function AdminMediaForm({
               originalTitle,
               mediaType: selectedMediaType,
               releaseYear,
-              titleSource: coverTitleSource,
+              titleSource: selectedTitleSource,
             }}
             onFileRejected={(error) => {
               setLocalErrorToast({
@@ -557,6 +577,16 @@ export function AdminMediaForm({
 
         <div className="md:col-span-2">
           <input type="hidden" name="metadataCandidateToken" value={metadataCandidateToken} />
+          <input
+            type="hidden"
+            name="metadataTitleSourceToken"
+            value={selectedTitleSource?.token ?? ""}
+          />
+          <input
+            type="hidden"
+            name="metadataSourceChanged"
+            value={hasSelectedNewTitleSource ? "1" : ""}
+          />
           {isEditing ? (
             <div className="mb-3 flex flex-wrap items-center gap-2">
               <Button

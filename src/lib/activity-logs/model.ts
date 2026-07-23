@@ -13,6 +13,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   "email-outbox",
   "cover-provider",
   "cover-settings",
+  "archive-settings",
   "franchise",
   "media-item",
   "review",
@@ -73,6 +74,7 @@ export const ACTIVITY_ACTIONS = [
   "author.unblocked",
   "author.deleted",
   "cover-settings.updated",
+  "archive-settings.updated",
   "cover-providers.updated",
   "cover-provider-credentials.updated",
 ] as const;
@@ -110,6 +112,7 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   "email-outbox": "Очередь email",
   "cover-provider": "Провайдер обложек",
   "cover-settings": "Настройки обложек",
+  "archive-settings": "Настройки архива",
   franchise: "Серия",
   "media-item": "Запись",
   review: "Рецензия",
@@ -170,6 +173,7 @@ export const ACTIVITY_ACTION_LABELS = {
   "author.unblocked": "Автор разблокирован",
   "author.deleted": "Автор удален",
   "cover-settings.updated": "Настройки обложек изменены",
+  "archive-settings.updated": "Настройки архива изменены",
   "cover-providers.updated": "Провайдеры обложек изменены",
   "cover-provider-credentials.updated": "Авторизация провайдера сохранена",
 } satisfies Record<ActivityAction, string>;

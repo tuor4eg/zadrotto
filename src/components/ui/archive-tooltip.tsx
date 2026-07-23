@@ -4,7 +4,7 @@ type ArchiveTooltipProps = {
   children: React.ReactNode;
   className?: string;
   label: string;
-  side?: "bottom" | "right" | "top";
+  side?: "bottom" | "left" | "right" | "top";
   tooltipClassName?: string;
 };
 
@@ -39,6 +39,9 @@ export function ArchiveTooltip({
               : null,
             side === "right"
               ? "left-full top-1/2 translate-x-[0.55rem] -translate-y-1/2 before:right-full before:top-1/2 before:-translate-y-1/2 before:translate-x-1/2 before:border-b before:border-l before:bg-[rgb(var(--archive-paper-start))]"
+              : null,
+            side === "left"
+              ? "right-full top-1/2 -translate-x-[0.55rem] -translate-y-1/2 before:left-full before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:border-r before:border-t before:bg-[rgb(var(--archive-paper-start))]"
               : null,
             tooltipClassName,
           )}

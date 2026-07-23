@@ -2,12 +2,17 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/common/utils";
 
 export type ArchiveToast = {
   id: string;
+  link?: {
+    href: string;
+    label: string;
+  };
   text: string;
   tone: "success" | "error";
 };
@@ -25,7 +30,13 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
   const searchParams = useSearchParams();
   const [visibleMessages, setVisibleMessages] = useState(messages);
   const messageSignature = useMemo(
-    () => messages.map((message) => `${message.id}:${message.text}`).join("|"),
+    () =>
+      messages
+        .map(
+          (message) =>
+            `${message.id}:${message.link?.href ?? ""}:${message.link?.label ?? ""}:${message.text}`,
+        )
+        .join("|"),
     [messages],
   );
 
@@ -102,7 +113,19 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
             >
               <Icon className="size-4" />
             </span>
-            <p className="min-w-0 pt-1 leading-5 text-stone-800">{message.text}</p>
+            <p className="min-w-0 pt-1 leading-5 text-stone-800">
+              {message.link ? (
+                <>
+                  <Link
+                    className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-red-800"
+                    href={message.link.href}
+                  >
+                    {message.link.label}
+                  </Link>{" "}
+                </>
+              ) : null}
+              {message.text}
+            </p>
             <button
               type="button"
               className="grid size-7 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-200/70 hover:text-stone-950"

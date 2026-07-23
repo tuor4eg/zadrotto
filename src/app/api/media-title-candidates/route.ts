@@ -13,6 +13,7 @@ import {
   createProviderCoverSearchRateLimiter,
 } from "@/lib/covers/rate-limits";
 import { searchTitleCandidates } from "@/lib/covers/registry";
+import { createMediaTitleSourceToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode } from "@/lib/media/types";
 
 type MediaTitleCandidatesRequestBody = {
@@ -87,6 +88,9 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    candidates,
+    candidates: candidates.map((candidate) => ({
+      ...candidate,
+      titleSourceToken: createMediaTitleSourceToken(candidate),
+    })),
   });
 }

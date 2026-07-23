@@ -1,4 +1,4 @@
-import { and, desc, eq, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -6,6 +6,7 @@ import {
   contributionMediaItems,
   contributionReviews,
   contributions,
+  mediaItemTitleAliases,
   mediaItems,
 } from "@/db/schema";
 import {
@@ -161,6 +162,17 @@ export async function searchPublishedMediaItemsForReview(query: string) {
           ilike(mediaItems.title, `%${normalizedQuery}%`),
           ilike(mediaItems.originalTitle, `%${normalizedQuery}%`),
           ilike(mediaItems.code, `%${normalizedQuery}%`),
+          exists(
+            db
+              .select({ id: mediaItemTitleAliases.id })
+              .from(mediaItemTitleAliases)
+              .where(
+                and(
+                  eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
+                  ilike(mediaItemTitleAliases.value, `%${normalizedQuery}%`),
+                ),
+              ),
+          ),
         ),
       )
     : eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS);

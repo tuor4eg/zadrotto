@@ -1,6 +1,12 @@
 import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 
 export function getAdminMediaErrorMessage(error?: string) {
+  const aliasLimit = error?.match(/^too-many-aliases-(\d+)$/)?.[1];
+
+  if (aliasLimit) {
+    return `Можно указать не больше ${aliasLimit} альтернативных названий.`;
+  }
+
   const formErrorMessage = getAdminFormErrorMessage(error);
 
   if (formErrorMessage) {

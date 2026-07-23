@@ -18,6 +18,7 @@ type MediaItemDetailsItem = {
   code: string;
   title: string;
   originalTitle: string | null;
+  aliases?: string[];
   description: string | null;
   mediaType: MediaType;
   franchises: Array<{
@@ -72,6 +73,7 @@ type MediaItemDetailsProps = {
   ratingSlot?: React.ReactNode;
   noteSlot?: React.ReactNode;
   franchiseActions?: React.ReactNode;
+  headerActions?: React.ReactNode;
   showFranchiseSection?: boolean;
   relatedItems?: RelatedMediaItem[];
   relatedFranchiseSections?: RelatedFranchiseSection[];
@@ -160,6 +162,7 @@ export function MediaItemDetails({
   ratingSlot,
   noteSlot,
   franchiseActions,
+  headerActions,
   showFranchiseSection = false,
   relatedItems = [],
   relatedFranchiseSections,
@@ -192,6 +195,7 @@ export function MediaItemDetails({
         ratingSlot={ratingSlot}
         noteSlot={noteSlot}
         franchiseActions={franchiseActions}
+        headerActions={headerActions}
         showFranchiseSection={showFranchiseSection}
         relatedFranchiseSections={resolvedRelatedFranchiseSections}
       />
@@ -241,11 +245,11 @@ export function MediaItemDetails({
 
           <div className="flex min-h-[360px] flex-col justify-between gap-10 p-5 sm:p-8">
             <div className="flex flex-col gap-5">
-              <div className="flex flex-wrap gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-red-700">
-                <span>{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
-                {detailsYearLabel ? <span>{detailsYearLabel}</span> : null}
+              <div className="text-xs font-semibold uppercase leading-6 tracking-[0.16em] text-red-700">
+                <span className="mr-2">{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
+                {detailsYearLabel ? <span className="mr-2">{detailsYearLabel}</span> : null}
                 {detailsMetaLabels.map((label) => (
-                  <span key={label}>{label}</span>
+                  <span key={label} className="mr-2">{label}</span>
                 ))}
                 {meta}
               </div>
@@ -266,6 +270,11 @@ export function MediaItemDetails({
                 </h1>
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <p className="text-lg text-zinc-500">{item.originalTitle}</p>
+                ) : null}
+                {(item.aliases?.length ?? 0) > 0 ? (
+                  <p className="text-sm text-zinc-500">
+                    Также известно как: {item.aliases?.join(", ")}
+                  </p>
                 ) : null}
                 {item.description ? (
                   <p className="max-w-2xl text-base leading-7 text-zinc-600">
@@ -357,6 +366,7 @@ function ArchiveMediaItemDetails({
   ratingSlot,
   noteSlot,
   franchiseActions,
+  headerActions,
   showFranchiseSection,
   relatedFranchiseSections,
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
@@ -395,6 +405,7 @@ function ArchiveMediaItemDetails({
             >
               <div className="shrink-0 uppercase">Досье</div>
               {breadcrumbSlot}
+              {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
             </div>
             <div
               className={
@@ -471,16 +482,21 @@ function ArchiveMediaItemDetails({
                     {item.originalTitle}
                   </div>
                 ) : null}
+                {(item.aliases?.length ?? 0) > 0 ? (
+                  <div className={`mt-2 ${labelFontClassName} text-xs leading-5 text-stone-600`}>
+                    Также известно как: {item.aliases?.join(", ")}
+                  </div>
+                ) : null}
               </div>
 
-              <div className={`mt-5 flex flex-wrap gap-3 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
+              <div className={`mt-5 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
                 {archiveInfoLabels.map((label, index) => (
                   <Fragment key={`${label}-${index}`}>
-                    {index > 0 ? <span>•</span> : null}
+                    {index > 0 ? <span className="mx-1.5">•</span> : null}
                     <span>{label}</span>
                   </Fragment>
                 ))}
-                {meta && archiveInfoLabels.length > 0 ? <span>•</span> : null}
+                {meta && archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
                 {meta}
               </div>
 

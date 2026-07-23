@@ -76,6 +76,10 @@ export type MediaTitleCandidate = {
   confidence?: number;
 };
 
+export type SignedMediaTitleCandidate = MediaTitleCandidate & {
+  titleSourceToken: string;
+};
+
 export type MediaTitleMetadata = {
   provider: MediaProviderCode;
   externalId: string;

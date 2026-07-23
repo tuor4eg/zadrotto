@@ -1,5 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
@@ -19,11 +20,12 @@ type NewAuthorMediaPageProps = {
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
   const author = await requireAuthor();
-  const [params, franchises, mediaCarriers, mediaTypes] = await Promise.all([
+  const [params, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
     searchParams,
     getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
+    getArchiveSettings(),
   ]);
   const { error } = params;
   const initialMediaType = parseAuthorMediaTypeFilter(params.type, mediaTypes);
@@ -54,6 +56,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
+            maxTitleAliases={archiveSettings.maxTitleAliases}
             values={initialMediaType === "all" ? undefined : { mediaType: initialMediaType }}
             createAndSubmitLabel={createAndSubmitLabel}
             canCreateFranchise={canAuthorCreateFranchise({

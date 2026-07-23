@@ -19,6 +19,7 @@ import { MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveCatalogLayout } from "@/components/archive/archive-catalog-layout";
 import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
+import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import {
   sortMediaTypesByCount,
   type MediaType,
@@ -27,6 +28,8 @@ import {
 
 type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;
+  canPublishFranchisesWithoutReview: boolean;
+  currentAdmin: boolean;
   defaultPageSize: number;
   items: CatalogMediaItem[];
   mediaTypeCounts: Array<{
@@ -38,6 +41,7 @@ type MediaItemsCatalogProps = {
   page: number;
   pageSize: number;
   pageSizeOptions: readonly number[];
+  publishedFranchises: SearchableFranchiseOption[];
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
@@ -67,6 +71,8 @@ function updateFilterParam(
 
 export function MediaItemsCatalog({
   authorRatingFilter,
+  canPublishFranchisesWithoutReview,
+  currentAdmin,
   currentAuthor,
   defaultPageSize,
   items,
@@ -76,6 +82,7 @@ export function MediaItemsCatalog({
   page,
   pageSize,
   pageSizeOptions,
+  publishedFranchises,
   searchQuery,
   sort,
   sortDirection,
@@ -191,7 +198,10 @@ export function MediaItemsCatalog({
       }
       preview={
         <MediaCatalogPreview
+          canPublishFranchisesWithoutReview={canPublishFranchisesWithoutReview}
+          currentAdmin={currentAdmin}
           currentAuthor={currentAuthor}
+          franchises={publishedFranchises}
           item={selectedItem}
           mediaTypes={mediaTypes}
         />
