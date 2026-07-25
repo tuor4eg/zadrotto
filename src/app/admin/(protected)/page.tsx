@@ -56,7 +56,7 @@ export default async function AdminPage() {
       label: "Серий",
       value: stats.franchises.totalCount,
       detail: "связи записей",
-      href: "/admin/franchises",
+      href: "/admin/series",
     },
     {
       icon: CheckCircle2,

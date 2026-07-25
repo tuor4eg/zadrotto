@@ -18,6 +18,7 @@ export const COVER_PROVIDER_LABELS = {
   rawg: "RAWG",
   jikan: "Jikan",
   anilist: "AniList",
+  fantlab: "FantLab",
 } as const satisfies Record<CoverProviderCode, string>;
 
 export function getCoverProviderSettingKey(input: {

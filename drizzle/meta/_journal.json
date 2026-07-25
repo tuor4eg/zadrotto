@@ -260,6 +260,13 @@
       "when": 1784829335938,
       "tag": "0036_media_item_title_aliases",
       "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1784916000000,
+      "tag": "0037_fantlab_provider",
+      "breakpoints": true
     }
   ]
 }

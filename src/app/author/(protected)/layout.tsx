@@ -37,7 +37,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Предложения
             </Link>
             <Link
-              href="/author/franchises"
+              href="/author/series"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Серии

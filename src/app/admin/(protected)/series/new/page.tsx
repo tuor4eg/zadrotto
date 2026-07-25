@@ -24,7 +24,7 @@ export default async function NewFranchisePage({ searchParams }: NewFranchisePag
         description="Базовая карточка серии для будущих связей с записями."
         aside={
           <Link
-            href="/admin/franchises"
+            href="/admin/series"
             className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
           >
             <ArrowLeft />

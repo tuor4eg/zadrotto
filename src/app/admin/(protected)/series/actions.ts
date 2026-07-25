@@ -56,7 +56,7 @@ function getFranchiseInput(formData: FormData) {
 }
 
 function revalidateFranchiseSurfaces() {
-  revalidatePath("/admin/franchises");
+  revalidatePath("/admin/series");
   revalidatePath("/", "layout");
 }
 
@@ -78,13 +78,13 @@ export async function createFranchiseAction(formData: FormData) {
   const input = getFranchiseInput(formData);
 
   if (!input.ok) {
-    redirect(`/admin/franchises/new?error=${input.error}`);
+    redirect(`/admin/series/new?error=${input.error}`);
   }
 
   const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
 
   if (!duplicateCheck.ok) {
-    redirect(`/admin/franchises/new?error=${duplicateCheck.error}`);
+    redirect(`/admin/series/new?error=${duplicateCheck.error}`);
   }
 
   let franchise;
@@ -96,11 +96,11 @@ export async function createFranchiseAction(formData: FormData) {
     });
   } catch (error) {
     if (isUniqueViolation(error)) {
-      redirect("/admin/franchises/new?error=duplicate-code");
+      redirect("/admin/series/new?error=duplicate-code");
     }
 
     console.error(error);
-    redirect(`/admin/franchises/new?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/new?error=${getAdminFormErrorCode(error)}`);
   }
 
   revalidateFranchiseSurfaces();
@@ -113,7 +113,7 @@ export async function createFranchiseAction(formData: FormData) {
     entityLabel: franchise.title,
     message: "Серия создана.",
   });
-  redirect("/admin/franchises?created=1");
+  redirect("/admin/series?created=1");
 }
 
 export async function createInlineFranchiseAction(
@@ -182,11 +182,11 @@ export async function updateFranchiseAction(formData: FormData) {
   const input = getFranchiseInput(formData);
 
   if (!id.ok) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   if (!input.ok) {
-    redirect(`/admin/franchises/${id.value}/edit?error=${input.error}`);
+    redirect(`/admin/series/${id.value}/edit?error=${input.error}`);
   }
 
   let franchise;
@@ -198,15 +198,15 @@ export async function updateFranchiseAction(formData: FormData) {
     });
 
     if (!franchise) {
-      redirect(`/admin/franchises/${id.value}/edit?error=invalid-franchise`);
+      redirect(`/admin/series/${id.value}/edit?error=invalid-franchise`);
     }
   } catch (error) {
     if (isUniqueViolation(error)) {
-      redirect(`/admin/franchises/${id.value}/edit?error=duplicate-code`);
+      redirect(`/admin/series/${id.value}/edit?error=duplicate-code`);
     }
 
     console.error(error);
-    redirect(`/admin/franchises/${id.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${id.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }
 
   revalidateFranchiseSurfaces();
@@ -219,7 +219,7 @@ export async function updateFranchiseAction(formData: FormData) {
     entityLabel: franchise.title,
     message: "Серия изменена.",
   });
-  redirect(`/admin/franchises/${id.value}/edit?updated=1`);
+  redirect(`/admin/series/${id.value}/edit?updated=1`);
 }
 
 export async function deleteFranchiseAction(formData: FormData) {
@@ -228,7 +228,7 @@ export async function deleteFranchiseAction(formData: FormData) {
   const id = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
 
   if (!id.ok) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   let franchise;
@@ -237,11 +237,11 @@ export async function deleteFranchiseAction(formData: FormData) {
     franchise = await deleteFranchiseIfEmpty(id.value);
   } catch (error) {
     console.error(error);
-    redirect(`/admin/franchises?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series?error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!franchise) {
-    redirect("/admin/franchises?error=not-empty");
+    redirect("/admin/series?error=not-empty");
   }
 
   revalidateFranchiseSurfaces();
@@ -254,7 +254,7 @@ export async function deleteFranchiseAction(formData: FormData) {
     entityLabel: franchise.title,
     message: "Серия удалена.",
   });
-  redirect("/admin/franchises?deleted=1");
+  redirect("/admin/series?deleted=1");
 }
 
 export async function addMediaItemToFranchiseAction(formData: FormData) {
@@ -264,19 +264,19 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
   const mediaItemId = parseRequiredPositiveInteger(getFormString(formData, "mediaItemId"));
 
   if (!franchiseId.ok || !mediaItemId.ok) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   const franchise = await getAdminFranchiseById(franchiseId.value);
 
   if (!franchise) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   const itemBeforeUpdate = await getAdminMediaItemFranchiseIdentityById(mediaItemId.value);
 
   if (!itemBeforeUpdate) {
-    redirect(`/admin/franchises/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
   }
 
   let item;
@@ -288,23 +288,23 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
     });
   } catch (error) {
     console.error(error);
-    redirect(`/admin/franchises/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!item) {
-    redirect(`/admin/franchises/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
   }
 
   revalidateFranchiseSurfaces();
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${mediaItemId.value}/edit`);
-  revalidatePath(`/admin/franchises/${franchiseId.value}/edit`);
-  revalidatePath(`/franchises/${franchise.code}`);
+  revalidatePath(`/admin/series/${franchiseId.value}/edit`);
+  revalidatePath(`/series/${franchise.code}`);
   revalidatePath(`/media/${item.code}`);
 
   for (const existingFranchise of itemBeforeUpdate.franchises) {
-    revalidatePath(`/admin/franchises/${existingFranchise.id}/edit`);
-    revalidatePath(`/franchises/${existingFranchise.code}`);
+    revalidatePath(`/admin/series/${existingFranchise.id}/edit`);
+    revalidatePath(`/series/${existingFranchise.code}`);
   }
 
   await logActivity({
@@ -319,7 +319,7 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
       franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
-  redirect(`/admin/franchises/${franchiseId.value}/edit?attached=1`);
+  redirect(`/admin/series/${franchiseId.value}/edit?attached=1`);
 }
 
 export async function removeMediaItemFromFranchiseAction(formData: FormData) {
@@ -329,13 +329,13 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
   const mediaItemId = parseRequiredPositiveInteger(getFormString(formData, "mediaItemId"));
 
   if (!franchiseId.ok || !mediaItemId.ok) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   const franchise = await getAdminFranchiseById(franchiseId.value);
 
   if (!franchise) {
-    redirect("/admin/franchises?error=invalid-franchise");
+    redirect("/admin/series?error=invalid-franchise");
   }
 
   let item;
@@ -347,18 +347,18 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
     });
   } catch (error) {
     console.error(error);
-    redirect(`/admin/franchises/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!item) {
-    redirect(`/admin/franchises/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
   }
 
   revalidateFranchiseSurfaces();
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${mediaItemId.value}/edit`);
-  revalidatePath(`/admin/franchises/${franchiseId.value}/edit`);
-  revalidatePath(`/franchises/${franchise.code}`);
+  revalidatePath(`/admin/series/${franchiseId.value}/edit`);
+  revalidatePath(`/series/${franchise.code}`);
   revalidatePath(`/media/${item.code}`);
 
   await logActivity({
@@ -373,5 +373,5 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
       franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
-  redirect(`/admin/franchises/${franchiseId.value}/edit?detached=1`);
+  redirect(`/admin/series/${franchiseId.value}/edit?detached=1`);
 }

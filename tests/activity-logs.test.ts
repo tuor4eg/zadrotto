@@ -193,7 +193,7 @@ describe("franchise media activity context", () => {
   it("logs affected franchises and renders safe admin links", () => {
     const actionSource = readFileSync("src/app/media/franchise-actions.ts", "utf8");
     const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
-    const adminActionSource = readFileSync("src/app/admin/(protected)/franchises/actions.ts", "utf8");
+    const adminActionSource = readFileSync("src/app/admin/(protected)/series/actions.ts", "utf8");
     const pageSource = readFileSync("src/app/admin/(protected)/tools/activity/page.tsx", "utf8");
     const activityCallSource = actionSource.slice(actionSource.indexOf("await logActivity({"));
     const adminAttachActivitySource = adminActionSource.slice(
@@ -235,7 +235,7 @@ describe("franchise media activity context", () => {
     assert.match(pageSource, /franchise\.id !== item\.entityId/);
     assert.match(pageSource, /contextFranchises\.length === 1 \? "Серия" : "Серии"/);
     assert.match(pageSource, /href=\{`\/admin\/media\/\$\{contextMediaItem\.id\}\/edit`\}/);
-    assert.match(pageSource, /href=\{`\/admin\/franchises\/\$\{franchise\.id\}\/edit`\}/);
+    assert.match(pageSource, /href=\{`\/admin\/series\/\$\{franchise\.id\}\/edit`\}/);
   });
 });
 

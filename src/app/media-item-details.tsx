@@ -94,7 +94,7 @@ function FranchiseLinks({
     <div className="flex flex-wrap gap-1.5">
       {franchises.map((franchise) => (
         franchise.publicationStatus === "published" ? (
-          <Link key={franchise.id} href={`/franchises/${franchise.code}`} className={className}>
+          <Link key={franchise.id} href={`/series/${franchise.code}`} className={className}>
             {franchise.title}
           </Link>
         ) : (
@@ -121,7 +121,7 @@ function FranchiseRelatedTitle({
   return (
     <>
       Еще из серии{" "}
-      <Link href={`/franchises/${franchise.code}`} className={linkClassName}>
+      <Link href={`/series/${franchise.code}`} className={linkClassName}>
         {franchise.title}
       </Link>
     </>

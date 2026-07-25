@@ -10,8 +10,8 @@ import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check"
 import {
   createInlineFranchiseAction,
   type CreateInlineFranchiseState,
-} from "../franchises/actions";
-import { getFranchiseErrorMessage } from "../franchises/messages";
+} from "../series/actions";
+import { getFranchiseErrorMessage } from "../series/messages";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type InlineFranchise = {

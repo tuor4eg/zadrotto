@@ -37,7 +37,7 @@ function revalidateRatingPaths(input: {
   revalidatePath("/author/media");
 
   for (const franchiseCode of input.franchiseCodes) {
-    revalidatePath(`/franchises/${franchiseCode}`);
+    revalidatePath(`/series/${franchiseCode}`);
   }
 }
 

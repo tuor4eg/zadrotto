@@ -21,6 +21,7 @@ import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import { SeriesMediaLinkSearch } from "./series-media-link-search";
 
 export const dynamic = "force-dynamic";
 
@@ -187,6 +188,17 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                   <li aria-hidden="true" className="shrink-0 text-stone-400">
                     /
                   </li>
+                  <li className="shrink-0">
+                    <Link
+                      className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                      href="/series"
+                    >
+                      Все серии
+                    </Link>
+                  </li>
+                  <li aria-hidden="true" className="shrink-0 text-stone-400">
+                    /
+                  </li>
                   <li
                     className="min-w-0 flex-1 truncate text-stone-800"
                     aria-current="page"
@@ -198,7 +210,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
               {currentAdminUser ? (
                 <AdminEntityEditLink
                   ariaLabel={`Редактировать серию ${franchise.title}`}
-                  href={`/admin/franchises/${franchise.id}/edit`}
+                  href={`/admin/series/${franchise.id}/edit`}
                   tooltipLabel="Редактировать серию"
                   tooltipSide="bottom"
                 />
@@ -214,6 +226,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                 {formatMediaItemsCount(items.length)}
               </p>
             </div>
+            {currentAuthor ? (
+              <SeriesMediaLinkSearch franchiseCode={franchise.code} mediaTypes={mediaTypes} />
+            ) : null}
           </div>
 
           <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8">

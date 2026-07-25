@@ -419,7 +419,7 @@ export async function createAuthorInlineFranchiseAction(
   }
 
   revalidatePath("/", "layout");
-  revalidatePath("/admin/franchises");
+  revalidatePath("/admin/series");
   revalidatePath("/admin/media");
   revalidatePath("/author/media/new");
   revalidatePath("/author/media", "layout");

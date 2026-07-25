@@ -261,9 +261,25 @@ export function CatalogHeaderControls({
     },
     [mediaTypeFilter, pathname, router, searchParams, sort, sortDirection, yearFilter, yearMode],
   );
+  const handleSearch = useCallback(
+    (query: string) => {
+      const normalizedQuery = query.trim();
+      const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
+
+      if (normalizedQuery === currentUrlQuery && normalizedQuery !== searchQuery) {
+        startTransition(() => {
+          router.refresh();
+        });
+        return;
+      }
+
+      replaceFilters({ q: query });
+    },
+    [replaceFilters, router, searchParams, searchQuery],
+  );
   const { draft: search, setDraft: setSearch } = useDebouncedSearchDraft({
     searchQuery,
-    onSearch: (query) => replaceFilters({ q: query }),
+    onSearch: handleSearch,
   });
 
   useEffect(() => {

@@ -63,7 +63,7 @@ function PublicFranchiseName({
   title: string;
 }) {
   return isPublished ? (
-    <Link href={`/franchises/${code}`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
+    <Link href={`/series/${code}`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
       {title}
     </Link>
   ) : (
@@ -200,7 +200,7 @@ export default async function AuthorFranchisesPage({ searchParams }: AuthorFranc
             })}
           </div>
           <PaginationNav
-            basePath="/author/franchises"
+            basePath="/author/series"
             itemLabel="заявок"
             page={page}
             pageSize={pageSize}

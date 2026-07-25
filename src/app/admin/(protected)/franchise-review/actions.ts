@@ -36,7 +36,7 @@ export async function reviewFranchiseAction(formData: FormData) {
 
   revalidatePath("/admin/franchise-review");
   revalidatePath("/admin", "layout");
-  revalidatePath("/admin/franchises");
+  revalidatePath("/admin/series");
   revalidatePath("/author/media");
   revalidatePath("/");
   await logActivity({

@@ -10,7 +10,7 @@ const homeSource = readFileSync("src/app/page.tsx", "utf8");
 const catalogSource = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const previewSource = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 const mediaPageSource = readFileSync("src/app/media/[code]/page.tsx", "utf8");
-const franchisePageSource = readFileSync("src/app/franchises/[code]/page.tsx", "utf8");
+const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const detailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
 
 describe("admin entity edit action", () => {
@@ -56,7 +56,7 @@ describe("admin entity edit action", () => {
     );
     assert.match(
       franchisePageSource,
-      /currentAdminUser \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать серию \$\{franchise\.title\}`\}[\s\S]*href=\{`\/admin\/franchises\/\$\{franchise\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать серию"[\s\S]*tooltipSide="bottom"[\s\S]*\) : null/,
+      /currentAdminUser \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать серию \$\{franchise\.title\}`\}[\s\S]*href=\{`\/admin\/series\/\$\{franchise\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать серию"[\s\S]*tooltipSide="bottom"[\s\S]*\) : null/,
     );
   });
 });

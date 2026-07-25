@@ -105,7 +105,7 @@ export default async function EditFranchisePage({
           description={franchise.title}
           aside={
             <Link
-              href="/admin/franchises"
+              href="/admin/series"
               className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
             >
               <ArrowLeft />
@@ -119,7 +119,7 @@ export default async function EditFranchisePage({
             <FranchiseForm
               action={updateFranchiseAction}
               submitLabel="Сохранить"
-              publicHref={franchise.publicationStatus === "published" ? `/franchises/${franchise.code}` : null}
+              publicHref={franchise.publicationStatus === "published" ? `/series/${franchise.code}` : null}
               values={franchise}
               errorMessage={getFranchiseErrorMessage(query.error)}
               successMessage={

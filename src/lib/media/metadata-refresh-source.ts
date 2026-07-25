@@ -28,6 +28,7 @@ const MEDIA_PROVIDER_CODES = [
   "rawg",
   "jikan",
   "anilist",
+  "fantlab",
 ] as const satisfies readonly MediaProviderCode[];
 
 function isMediaProviderCode(value: string | null | undefined): value is MediaProviderCode {
@@ -104,6 +105,16 @@ function normalizeMetadataExternalId(
 
   if (provider === "google-books") {
     return getColonPartExternalId(value, "volume") ?? (value || null);
+  }
+
+  if (provider === "fantlab") {
+    return (
+      getColonPartExternalId(value, "work") ??
+      (value && /^\d+$/.test(value) ? value : null) ??
+      value.match(/(?:^|fantlab\.ru\/)work(\d+)(?:[/?#]|$)/i)?.[1] ??
+      pageUrl?.match(/fantlab\.ru\/work(\d+)/i)?.[1] ??
+      null
+    );
   }
 
   return getOpenLibraryExternalId(value) ?? getOpenLibraryExternalIdFromUrl(pageUrl);

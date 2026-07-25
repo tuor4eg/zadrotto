@@ -11,7 +11,7 @@ const actionSource = readFileSync(
   "utf8",
 );
 const archiveToastsSource = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");
-const franchisePageSource = readFileSync("src/app/franchises/[code]/page.tsx", "utf8");
+const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const homePageSource = readFileSync("src/app/page.tsx", "utf8");
 
 function findSuggestionMountFiles(directory: string): string[] {
@@ -33,8 +33,8 @@ function findSuggestionMountFiles(directory: string): string[] {
 describe("archive author media suggestion placement", () => {
   it("mounts the shared suggestion layer only in the catalog and franchise page", () => {
     assert.deepEqual(findSuggestionMountFiles("src/app").sort(), [
-      "src/app/franchises/[code]/page.tsx",
       "src/app/page.tsx",
+      "src/app/series/[code]/page.tsx",
     ]);
     assert.match(franchisePageSource, /defaultFranchiseIds=\{\[franchise\.id\]\}/);
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);

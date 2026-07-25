@@ -49,7 +49,7 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
                             {franchise.title}
                           </Link>
                           {" → "}
-                          <Link href={`/admin/franchises/${franchise.franchiseId}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
+                          <Link href={`/admin/series/${franchise.franchiseId}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
                             {franchise.franchiseTitle}
                           </Link>
                         </>
@@ -65,12 +65,12 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
                               </span>
                             ))}
                             {" → "}
-                            <Link href={`/admin/franchises/${franchise.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
+                            <Link href={`/admin/series/${franchise.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
                               {franchise.title}
                             </Link>
                           </>
                         ) : (
-                          <Link href={`/admin/franchises/${franchise.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
+                          <Link href={`/admin/series/${franchise.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
                             {franchise.title}
                           </Link>
                         )

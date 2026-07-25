@@ -242,11 +242,12 @@ const catalogSearchCondition = (searchQuery: string) => {
   }
 
   const pattern = `%${normalizedSearchQuery}%`;
+  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
 
   return or(
     sql`lower(${mediaItems.title}) like ${pattern}`,
     sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
-    sql`lower(${mediaItems.code}) like ${pattern}`,
+    sql`('-' || lower(${mediaItems.code}) || '-') like ${codePattern}`,
     exists(
       db
         .select({ id: mediaItemTitleAliases.id })

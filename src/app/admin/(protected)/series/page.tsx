@@ -64,7 +64,7 @@ export default async function AdminFranchisesPage({
           <>
             <Badge variant="outline">{franchisesResult.totalCount} всего</Badge>
             <Link
-              href="/admin/franchises/new"
+              href="/admin/series/new"
               className={buttonVariants({ variant: "default" })}
             >
               <Plus />
@@ -111,7 +111,7 @@ export default async function AdminFranchisesPage({
                       <div className="flex flex-nowrap justify-end gap-1.5">
                         <Tooltip label="Изменить">
                           <Link
-                            href={`/admin/franchises/${franchise.id}/edit`}
+                            href={`/admin/series/${franchise.id}/edit`}
                             className={buttonVariants({ variant: "outline", size: "icon" })}
                             aria-label={`Изменить серию ${franchise.title}`}
                           >
@@ -147,7 +147,7 @@ export default async function AdminFranchisesPage({
             </Table>
           </TableWrap>
           <PaginationNav
-            basePath="/admin/franchises"
+            basePath="/admin/series"
             itemLabel="серий"
             page={franchisesResult.page}
             pageSize={franchisesResult.pageSize}

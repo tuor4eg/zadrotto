@@ -221,7 +221,7 @@ export function MediaCatalogPreview({
               {item.franchises.map((franchise) => (
                 <Link
                   key={franchise.id}
-                  href={`/franchises/${franchise.code}`}
+                  href={`/series/${franchise.code}`}
                   className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
                 >
                   {franchise.title}

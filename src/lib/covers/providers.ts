@@ -1,6 +1,7 @@
 import type { MediaProvider } from "@/lib/covers/types";
 import { anilistProvider } from "@/lib/covers/providers/anilist";
 import { comicVineProvider } from "@/lib/covers/providers/comic-vine";
+import { fantLabProvider } from "@/lib/covers/providers/fantlab";
 import { googleBooksProvider } from "@/lib/covers/providers/google-books";
 import { igdbProvider } from "@/lib/covers/providers/igdb";
 import { jikanProvider } from "@/lib/covers/providers/jikan";
@@ -14,6 +15,7 @@ export const COVER_PROVIDERS = [
   comicVineProvider,
   openLibraryProvider,
   googleBooksProvider,
+  fantLabProvider,
   igdbProvider,
   rawgProvider,
   jikanProvider,

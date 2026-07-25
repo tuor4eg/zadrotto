@@ -174,7 +174,7 @@ function revalidateMediaSurfaces(input: {
 }) {
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${input.id}/edit`);
-  revalidatePath("/admin/franchises");
+  revalidatePath("/admin/series");
   revalidatePath("/admin/media-review");
   revalidatePath(`/admin/media-review/${input.id}`);
   revalidatePath("/author/media");
@@ -184,8 +184,8 @@ function revalidateMediaSurfaces(input: {
   revalidatePath(`/media/${input.code}`);
 
   for (const franchise of input.franchises) {
-    revalidatePath(`/franchises/${franchise.code}`);
-    revalidatePath(`/admin/franchises/${franchise.id}/edit`);
+    revalidatePath(`/series/${franchise.code}`);
+    revalidatePath(`/admin/series/${franchise.id}/edit`);
   }
 }
 
@@ -368,8 +368,8 @@ export async function updateAdminMediaItemAction(formData: FormData) {
 
     for (const franchise of existingItem.franchises) {
       if (!nextIdentity.franchises.some((nextFranchise) => nextFranchise.id === franchise.id)) {
-        revalidatePath(`/admin/franchises/${franchise.id}/edit`);
-        revalidatePath(`/franchises/${franchise.code}`);
+        revalidatePath(`/admin/series/${franchise.id}/edit`);
+        revalidatePath(`/series/${franchise.code}`);
       }
     }
   }

@@ -94,7 +94,7 @@ function getActivityEntityAdminHref(input: {
     case "cover-settings":
       return "/admin/tools/providers/limits";
     case "franchise":
-      return input.entityId ? `/admin/franchises/${input.entityId}/edit` : null;
+      return input.entityId ? `/admin/series/${input.entityId}/edit` : null;
     case "media-item":
       return input.entityId ? `/admin/media/${input.entityId}/edit` : null;
     case "review":
@@ -166,7 +166,7 @@ function ActivityLogDetails({
                   {index > 0 ? ", " : null}
                   <Link
                     className="text-stone-700 underline-offset-2 hover:underline"
-                    href={`/admin/franchises/${franchise.id}/edit`}
+                    href={`/admin/series/${franchise.id}/edit`}
                   >
                     {franchise.title}
                   </Link>

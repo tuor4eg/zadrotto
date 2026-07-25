@@ -76,7 +76,7 @@ export function FranchiseDuplicateCheck({
       <input type="hidden" name="franchiseDuplicateAcknowledged" value={acknowledged ? "1" : ""} />
       {status === "loading" ? <p className="text-stone-500">Проверяем уже созданные серии…</p> : null}
       {status === "error" ? <p className="text-red-700">Не удалось проверить существующие серии. Попробуйте ещё раз.</p> : null}
-      {matches.length > 0 ? <><p className={exactMatches.length ? "font-medium text-red-700" : "font-medium text-amber-800"}>{exactMatches.length ? "Такая серия уже есть в архиве." : "Проверьте похожие серии в архиве."}</p><ul className="grid gap-1">{matches.map((match) => <li key={match.id}><Link href={`/franchises/${match.code}`} target="_blank" className="underline underline-offset-2">{match.title}{match.originalTitle ? ` (${match.originalTitle})` : ""}</Link></li>)}</ul></> : null}
+      {matches.length > 0 ? <><p className={exactMatches.length ? "font-medium text-red-700" : "font-medium text-amber-800"}>{exactMatches.length ? "Такая серия уже есть в архиве." : "Проверьте похожие серии в архиве."}</p><ul className="grid gap-1">{matches.map((match) => <li key={match.id}><Link href={`/series/${match.code}`} target="_blank" className="underline underline-offset-2">{match.title}{match.originalTitle ? ` (${match.originalTitle})` : ""}</Link></li>)}</ul></> : null}
       {possibleMatches.length > 0 ? <label className="flex gap-2 text-stone-700"><input type="checkbox" checked={acknowledged} onChange={(event) => setAcknowledgedKey(event.currentTarget.checked ? key : null)} />Я проверил(а): это другая серия.</label> : null}
     </div>
   );
