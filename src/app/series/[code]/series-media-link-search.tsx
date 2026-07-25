@@ -65,10 +65,6 @@ export function SeriesMediaLinkSearch({
     const normalizedQuery = query.trim();
 
     if (normalizedQuery.length < 2) {
-      setItems([]);
-      setLoading(false);
-      setResolvedQuery("");
-      setSearchError(null);
       return;
     }
 
@@ -202,10 +198,20 @@ export function SeriesMediaLinkSearch({
         aria-controls="series-media-search-results"
         id="series-media-search"
         onChange={(event) => {
-          queryRef.current = event.target.value;
-          setQuery(event.target.value);
+          const nextQuery = event.target.value;
+          const normalizedNextQuery = nextQuery.trim();
+
+          queryRef.current = nextQuery;
+          setQuery(nextQuery);
           setMessage(null);
-          setOpen(event.target.value.trim().length >= 2);
+          setOpen(normalizedNextQuery.length >= 2);
+
+          if (normalizedNextQuery.length < 2) {
+            setItems([]);
+            setLoading(false);
+            setResolvedQuery("");
+            setSearchError(null);
+          }
         }}
         onFocus={() => {
           if (normalizedQuery.length >= 2) {
