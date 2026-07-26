@@ -78,6 +78,12 @@ function parseRequiredPositiveInteger(value: string) {
     : { ok: false as const };
 }
 
+function getFranchiseMutationErrorCode(error: unknown) {
+  return error instanceof Error && error.message === "franchise-depth-limit"
+    ? "franchise-depth-limit"
+    : getAdminFormErrorCode(error);
+}
+
 export async function createFranchiseAction(formData: FormData) {
   const adminUser = await requireAdminUser();
 
@@ -107,7 +113,7 @@ export async function createFranchiseAction(formData: FormData) {
     }
 
     console.error(error);
-    redirect(`/admin/series/new?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/new?error=${getFranchiseMutationErrorCode(error)}`);
   }
 
   revalidateFranchiseSurfaces();
@@ -155,7 +161,7 @@ export async function createInlineFranchiseAction(
     }
 
     console.error(error);
-    return { error: getAdminFormErrorCode(error), franchise: null };
+    return { error: getFranchiseMutationErrorCode(error), franchise: null };
   }
 
   revalidateFranchiseSurfaces();
@@ -218,7 +224,7 @@ export async function updateFranchiseAction(formData: FormData) {
     }
 
     console.error(error);
-    redirect(`/admin/series/${id.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${id.value}/edit?error=${getFranchiseMutationErrorCode(error)}`);
   }
 
   revalidateFranchiseSurfaces();
@@ -273,7 +279,7 @@ export async function createFranchiseChildAction(formData: FormData) {
   } catch (error) {
     if (isUniqueViolation(error)) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=duplicate-code`);
     console.error(error);
-    redirect(`/admin/series/${parentId.value}/edit?tab=children&error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${parentId.value}/edit?tab=children&error=${getFranchiseMutationErrorCode(error)}`);
   }
   redirect(`/admin/series/${parentId.value}/edit?tab=children&childCreated=1`);
 }

@@ -13,8 +13,10 @@ const initialState: UpdateArchiveSettingsState = { error: null, success: null };
 
 export function ArchiveSettingsForm({
   mediaItemTitleAliasLimit,
+  maxFranchiseDepth,
 }: {
   mediaItemTitleAliasLimit: number;
+  maxFranchiseDepth: number;
 }) {
   const [state, formAction, isPending] = useActionState(
     updateArchiveSettingsAction,
@@ -39,6 +41,7 @@ export function ArchiveSettingsForm({
           удалятся, но записи с превышением нельзя будет сохранить до удаления лишних значений.
         </p>
       </div>
+      <div className="grid gap-2"><Label htmlFor="max-franchise-depth">Максимальная глубина серий</Label><Input id="max-franchise-depth" name="maxFranchiseDepth" type="number" min={2} max={5} defaultValue={maxFranchiseDepth} required /><p className="text-xs leading-5 text-stone-500">Корневая серия считается первым уровнем: Marvel → Avengers → Spider-Man — глубина 3. Допустимо от 2 до 5.</p></div>
       {state.error ? <p className="text-sm text-red-700">{state.error}</p> : null}
       {state.success ? <p className="text-sm text-emerald-700">{state.success}</p> : null}
       <Button type="submit" disabled={isPending}>

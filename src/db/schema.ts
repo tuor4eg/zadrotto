@@ -129,6 +129,7 @@ export const archiveSettings = pgTable(
   {
     id: integer("id").primaryKey().default(1),
     maxTitleAliases: integer("max_title_aliases").default(3).notNull(),
+    maxFranchiseDepth: integer("max_franchise_depth").default(3).notNull(),
     updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
@@ -140,6 +141,7 @@ export const archiveSettings = pgTable(
       "archive_settings_max_title_aliases_check",
       sql`${table.maxTitleAliases} between 1 and 10`,
     ),
+    check("archive_settings_max_franchise_depth_check", sql`${table.maxFranchiseDepth} between 2 and 5`),
   ],
 );
 

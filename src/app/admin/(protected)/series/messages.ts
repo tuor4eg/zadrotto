@@ -47,5 +47,9 @@ export function getFranchiseErrorMessage(error?: string) {
     return "Не удалось найти запись.";
   }
 
+  if (error === "franchise-depth-limit") {
+    return "Нельзя превысить заданную максимальную глубину серий.";
+  }
+
   return null;
 }

@@ -121,7 +121,7 @@ function getAdminNavGroups({
       icon: Wrench,
       label: "Инструменты",
       items: [
-        { href: "/admin/settings/administrator", icon: Settings, label: "Настройки" },
+        { href: "/admin/settings/general", icon: Settings, label: "Настройки" },
         { href: "/admin/tools/providers", icon: Plug, label: "Провайдеры" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
         { href: "/admin/tools/email", icon: Mail, label: "Email" },

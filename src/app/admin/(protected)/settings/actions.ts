@@ -84,14 +84,16 @@ export async function updateArchiveSettingsAction(
   const mediaItemTitleAliasLimit = parseMediaItemTitleAliasLimit(
     getFormString(formData, "mediaItemTitleAliasLimit"),
   );
+  const maxFranchiseDepth = Number(getFormString(formData, "maxFranchiseDepth"));
 
-  if (mediaItemTitleAliasLimit === null) {
-    return { error: "Укажите число от 1 до 10.", success: null };
+  if (mediaItemTitleAliasLimit === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+    return { error: "Укажите максимум альтернативных названий от 1 до 10 и глубину серий от 2 до 5.", success: null };
   }
 
   try {
     await updateArchiveSettings({
       maxTitleAliases: mediaItemTitleAliasLimit,
+      maxFranchiseDepth,
       updatedByAdminId: adminUser.id,
     });
     await logActivity({
@@ -100,10 +102,14 @@ export async function updateArchiveSettingsAction(
       adminUserId: adminUser.id,
       entityType: "archive-settings",
       entityId: 1,
-      message: "Настройки архива обновлены.",
-      metadata: { mediaItemTitleAliasLimit },
+      message: "Общие настройки обновлены.",
+      metadata: { mediaItemTitleAliasLimit, maxFranchiseDepth },
     });
   } catch (error) {
+    if (error instanceof Error && error.message === "Franchise depth is below existing tree") {
+      return { error: "Нельзя установить меньшую глубину: в дереве уже есть более глубокие серии.", success: null };
+    }
+
     console.error(error);
     return {
       error: getAdminFormErrorMessage(getAdminFormErrorCode(error)),
@@ -111,8 +117,8 @@ export async function updateArchiveSettingsAction(
     };
   }
 
-  revalidatePath("/admin/settings/archive");
-  return { error: null, success: "Настройки архива сохранены." };
+  revalidatePath("/admin/settings/general");
+  return { error: null, success: "Общие настройки сохранены." };
 }
 
 export async function changeAdminPasswordAction(

@@ -281,6 +281,13 @@
       "when": 1785088800000,
       "tag": "0039_media_item_franchise_removal_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785175200000,
+      "tag": "0040_archive_settings_franchise_depth",
+      "breakpoints": true
     }
   ]
 }

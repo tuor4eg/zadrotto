@@ -5,6 +5,7 @@ import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, 
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
+import { getArchiveSettings } from "@/db/queries/archive-settings";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -1380,6 +1381,13 @@ export async function createFranchise(input: {
   publicationStatus?: "private" | "submitted" | "published" | "rejected";
   parentId?: number | null;
 }) {
+  if (input.parentId) {
+    const [settings, rows] = await Promise.all([getArchiveSettings(), db.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises)]);
+    const parents = new Map(rows.map((row) => [row.id, row.parentId]));
+    let depth = 1; let parentId: number | null = input.parentId;
+    while (parentId) { depth += 1; parentId = parents.get(parentId) ?? null; }
+    if (depth > settings.maxFranchiseDepth) throw new Error("franchise-depth-limit");
+  }
   const [franchise] = await db
     .insert(franchises)
     .values({
@@ -1407,6 +1415,7 @@ export async function updateFranchise(input: {
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(58391038)`);
     const allFranchises = await tx.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
+    const { maxFranchiseDepth } = await getArchiveSettings();
     const parent = input.parentId === null ? null : allFranchises.find((franchise) => franchise.id === input.parentId);
     if (input.parentId !== null && !parent) throw new Error("invalid-franchise-parent");
     let ancestorId = input.parentId;
@@ -1414,6 +1423,13 @@ export async function updateFranchise(input: {
       if (ancestorId === input.id) throw new Error("franchise-parent-cycle");
       ancestorId = allFranchises.find((franchise) => franchise.id === ancestorId)?.parentId ?? null;
     }
+    const parentById = new Map(allFranchises.map((franchise) => [franchise.id, franchise.parentId]));
+    let targetDepth = 1; let targetParentId = input.parentId;
+    while (targetParentId) { targetDepth += 1; targetParentId = parentById.get(targetParentId) ?? null; }
+    const childIds = new Map<number, number[]>();
+    for (const row of allFranchises) childIds.set(row.parentId ?? 0, [...(childIds.get(row.parentId ?? 0) ?? []), row.id]);
+    const height = (id: number): number => 1 + Math.max(0, ...(childIds.get(id) ?? []).map(height));
+    if (targetDepth + height(input.id) - 1 > maxFranchiseDepth) throw new Error("franchise-depth-limit");
     const [franchise] = await tx
     .update(franchises)
     .set({

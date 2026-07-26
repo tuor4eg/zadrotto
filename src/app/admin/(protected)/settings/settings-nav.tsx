@@ -8,8 +8,8 @@ import { cn } from "@/lib/common/utils";
 
 const SETTINGS_NAV_ITEMS = [
   {
-    href: "/admin/settings/archive",
-    label: "Архив",
+    href: "/admin/settings/general",
+    label: "Общие",
     icon: Archive,
   },
   {

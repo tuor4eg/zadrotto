@@ -28,7 +28,7 @@ describe("series media unlink tile", () => {
 
   it("places the unlink affordance at the tile's top-left corner", () => {
     assert.match(tileSource, /className="group relative min-w-0"/);
-    assert.match(tileSource, /className="absolute left-1\.5 top-1\.5 z-30/);
+    assert.match(tileSource, /className="absolute left-2 top-2 z-30/);
     assert.match(tileSource, /<ArchiveTooltip label="Удалить из серии" side="right"/);
     assert.match(tileSource, /aria-label=\{`Удалить запись \$\{item\.title\} из серии`\}/);
     assert.match(tileSource, /<Unlink className="size-3\.5" \/>/);

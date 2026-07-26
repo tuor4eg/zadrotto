@@ -70,7 +70,7 @@ export function SeriesMediaUnlinkTile({ canPublishFranchisesWithoutReview, franc
       }}
     >
       <MediaItemTile currentAuthorScore={currentAuthorScore} item={item} href={`/media/${item.code}`} mediaTypes={mediaTypes} />
-      <ArchiveTooltip label="Удалить из серии" side="right" className="absolute left-1.5 top-1.5 z-30">
+      <ArchiveTooltip label="Удалить из серии" side="right" className="absolute left-2 top-2 z-30">
         <button
           type="button"
           className={`grid size-7 place-items-center rounded-full border border-red-200 bg-red-50/95 text-red-700 shadow-sm transition-all hover:border-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:focus-visible:pointer-events-auto md:focus-visible:opacity-100 ${unlinkedActionRevealed ? "max-md:opacity-100" : "max-md:pointer-events-none max-md:opacity-0 max-md:focus-visible:pointer-events-auto max-md:focus-visible:opacity-100"}`}
