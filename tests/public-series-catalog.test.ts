@@ -68,10 +68,10 @@ describe("public series catalog UI", () => {
       /href="\/"[\s\S]*Главная[\s\S]*href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
     );
     assert.match(querySource, /const franchiseParentsJsonSql[\s\S]*with recursive ancestors as \(/);
-    assert.match(querySource, /parents: franchiseParentsJsonSql\(\)/);
-    assert.match(seriesPageSource, /franchise\.parents\.map\(\(parent\) => \(/);
+    assert.match(querySource, /parents: franchiseParentsJsonSql\(franchiseByCode\.id\)/);
+    assert.match(seriesPageSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);
     assert.match(seriesPageSource, /href=\{`\/series\/\$\{parent\.code\}`\}/);
-    assert.match(seriesPageSource, /Все серии[\s\S]*franchise\.parents\.map[\s\S]*aria-current="page"/);
+    assert.match(seriesPageSource, /Все серии[\s\S]*parentBreadcrumbs\.map[\s\S]*aria-current="page"/);
   });
 
   it("shows the current series branch before its media items when it has descendants", () => {
@@ -80,11 +80,10 @@ describe("public series catalog UI", () => {
     assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id\)/);
     assert.match(seriesPageSource, /franchiseBranch && franchiseBranch\.children\.length > 0/);
     assert.match(seriesPageSource, /Серии внутри/);
-    assert.match(seriesPageSource, /<FranchiseBranch node=\{franchiseBranch\} \/>/);
-    assert.match(
-      seriesPageSource,
-      /depth === 0 \? \([\s\S]*<span[\s\S]*\{node\.title\}[\s\S]*\) : \([\s\S]*<Link[\s\S]*href=\{`\/series\/\$\{node\.code\}`\}[\s\S]*\{node\.title\}/,
-    );
+    assert.match(seriesPageSource, /function getFranchiseDescendants\(nodes: FranchiseBranchNode\[\]\)/);
+    assert.match(seriesPageSource, /<ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1/);
+    assert.match(seriesPageSource, /getFranchiseDescendants\(franchiseBranch\.children\)\.map/);
+    assert.match(seriesPageSource, /<Link[\s\S]*href=\{`\/series\/\$\{child\.code\}`\}[\s\S]*\{child\.title\}/);
 
     const branchSection = seriesPageSource.indexOf("franchiseBranch && franchiseBranch.children.length > 0");
     const mediaItems = seriesPageSource.indexOf("{items.length === 0 ?");

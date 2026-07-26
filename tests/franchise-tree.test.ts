@@ -8,6 +8,7 @@ const franchisesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8
 const mediaItemsQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
 const mediaItemDetailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
 const adminSeriesPageSource = readFileSync("src/app/admin/(protected)/series/page.tsx", "utf8");
+const publicSeriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 
 function getFunctionSource(source: string, name: string, nextName: string) {
   const start = source.indexOf(`export async function ${name}`);
@@ -69,6 +70,16 @@ describe("franchise tree display and traversal", () => {
     "getMediaItemsByFranchiseId",
     "getAdminMediaItemsByFranchiseId",
   );
+
+  it("correlates breadcrumbs with the selected series", () => {
+    assert.match(franchisesQuerySource, /const franchiseByCode = alias\(franchises, "franchise_by_code"\)/);
+    assert.match(franchisesQuerySource, /parents: franchiseParentsJsonSql\(franchiseByCode\.id\)/);
+    assert.match(franchisesQuerySource, /\.from\(franchiseByCode\)/);
+    assert.match(publicSeriesPageSource, /const parentBreadcrumbs = franchise\.parents\.filter\(/);
+    assert.match(publicSeriesPageSource, /parent\.id !== franchise\.id/);
+    assert.match(publicSeriesPageSource, /parent\.code !== franchise\.code/);
+    assert.match(publicSeriesPageSource, /\{parentBreadcrumbs\.map\(\(parent\) => \(/);
+  });
 
   it("shows every published series in a record's inherited path as its own link", () => {
     assert.match(mediaItemsQuerySource, /'path', \([\s\S]*with recursive ancestors as \(/);

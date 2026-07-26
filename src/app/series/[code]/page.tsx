@@ -83,26 +83,8 @@ function getFranchiseMediaSections(
     .filter((section) => section.count > 0);
 }
 
-function FranchiseBranch({ node, depth = 0 }: { node: FranchiseBranchNode; depth?: number }) {
-  return (
-    <li>
-      {depth === 0 ? (
-        <span className="font-medium text-stone-950">{node.title}</span>
-      ) : (
-        <Link
-          href={`/series/${node.code}`}
-          className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-        >
-          {node.title}
-        </Link>
-      )}
-      {node.children.length > 0 ? (
-        <ul className="mt-2 grid gap-2 border-l border-stone-300 pl-4" style={{ marginLeft: `${depth * 0.5}rem` }}>
-          {node.children.map((child) => <FranchiseBranch key={child.id} node={child} depth={depth + 1} />)}
-        </ul>
-      ) : null}
-    </li>
-  );
+function getFranchiseDescendants(nodes: FranchiseBranchNode[]): FranchiseBranchNode[] {
+  return nodes.flatMap((node) => [node, ...getFranchiseDescendants(node.children)]);
 }
 
 export default async function FranchisePage({ params, searchParams }: FranchisePageProps) {
@@ -112,6 +94,13 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
   if (!franchise) {
     notFound();
   }
+
+  const parentBreadcrumbs = franchise.parents.filter(
+    (parent, index, parents) =>
+      parent.id !== franchise.id &&
+      parent.code !== franchise.code &&
+      parents.findIndex((candidate) => candidate.id === parent.id || candidate.code === parent.code) === index,
+  );
 
   const [currentAuthor, currentAdminUser, mediaTypes, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
@@ -221,7 +210,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                       Все серии
                     </Link>
                   </li>
-                  {franchise.parents.map((parent) => (
+                  {parentBreadcrumbs.map((parent) => (
                     <Fragment key={parent.id}>
                       <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
                       <li className="shrink-0">
@@ -288,8 +277,17 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
               <h2 id="franchise-branch-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-600">
                 Серии внутри
               </h2>
-              <ul className="mt-3 grid gap-2 text-sm leading-6 text-stone-800">
-                <FranchiseBranch node={franchiseBranch} />
+              <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm leading-6 text-stone-800">
+                {getFranchiseDescendants(franchiseBranch.children).map((child) => (
+                  <li key={child.id}>
+                    <Link
+                      href={`/series/${child.code}`}
+                      className="font-medium underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                    >
+                      {child.title}
+                    </Link>
+                  </li>
+                ))}
               </ul>
             </section>
           ) : null}

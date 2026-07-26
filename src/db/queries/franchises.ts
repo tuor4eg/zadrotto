@@ -1,4 +1,5 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
 import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
@@ -45,7 +46,7 @@ type FranchiseBreadcrumb = {
   title: string;
 };
 
-const franchiseParentsJsonSql = (franchiseId = franchises.id) => sql<FranchiseBreadcrumb[]>`coalesce((
+const franchiseParentsJsonSql = (franchiseId: SQLWrapper) => sql<FranchiseBreadcrumb[]>`coalesce((
   with recursive ancestors as (
     select ${franchises.id}, ${franchises.code}, ${franchises.title}, ${franchises.parentId}, 0 as depth
     from ${franchises}
@@ -82,21 +83,22 @@ const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`
 ), '[]'::jsonb)`;
 
 export async function getFranchiseByCode(code: string) {
+  const franchiseByCode = alias(franchises, "franchise_by_code");
   const [franchise] = await db
     .select({
-      id: franchises.id,
-      code: franchises.code,
-      title: franchises.title,
-      originalTitle: franchises.originalTitle,
-      publicationStatus: franchises.publicationStatus,
-      description: franchises.description,
-      parents: franchiseParentsJsonSql(),
+      id: franchiseByCode.id,
+      code: franchiseByCode.code,
+      title: franchiseByCode.title,
+      originalTitle: franchiseByCode.originalTitle,
+      publicationStatus: franchiseByCode.publicationStatus,
+      description: franchiseByCode.description,
+      parents: franchiseParentsJsonSql(franchiseByCode.id),
     })
-    .from(franchises)
+    .from(franchiseByCode)
     .where(
       and(
-        eq(franchises.code, code),
-        publishedFranchiseCondition,
+        eq(franchiseByCode.code, code),
+        eq(franchiseByCode.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       ),
     )
     .limit(1);
