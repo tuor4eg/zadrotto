@@ -11,6 +11,7 @@ import {
   getAdminFranchiseById,
   getAdminMediaItemsAvailableForFranchise,
   getAdminMediaItemsByFranchiseId,
+  getAdminFranchiseParentOptions,
 } from "@/db/queries/franchises";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaTypeLabel } from "@/lib/media/types";
@@ -84,11 +85,12 @@ export default async function EditFranchisePage({
     notFound();
   }
 
-  const [franchise, mediaItems, availableMediaItems, mediaTypes] = await Promise.all([
+  const [franchise, mediaItems, availableMediaItems, mediaTypes, parentOptions] = await Promise.all([
     getAdminFranchiseById(franchiseId),
     getAdminMediaItemsByFranchiseId(franchiseId),
     getAdminMediaItemsAvailableForFranchise(franchiseId),
     getMediaTypeOptions(),
+    getAdminFranchiseParentOptions(franchiseId),
   ]);
 
   if (!franchise) {
@@ -121,6 +123,7 @@ export default async function EditFranchisePage({
               submitLabel="Сохранить"
               publicHref={franchise.publicationStatus === "published" ? `/series/${franchise.code}` : null}
               values={franchise}
+              parentOptions={parentOptions}
               errorMessage={getFranchiseErrorMessage(query.error)}
               successMessage={
                 query.updated === "1"

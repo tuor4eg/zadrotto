@@ -12,6 +12,8 @@ export type SearchableFranchiseOption = {
   id: number;
   title: string;
   originalTitle: string | null;
+  parentIds?: number[];
+  path?: string;
   publicationStatus?: "private" | "submitted" | "published" | "rejected";
 };
 

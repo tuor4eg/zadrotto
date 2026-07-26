@@ -19,7 +19,7 @@ import {
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import { MediaItemDuplicateCheck } from "@/components/media-item-duplicate-check";
 import type { getAuthorOptions } from "@/db/queries/authors";
-import type { getFranchiseOptions } from "@/db/queries/franchises";
+import type { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaTitleCandidate, SignedMediaTitleCandidate } from "@/lib/covers/types";
@@ -52,7 +52,7 @@ type AdminMediaFormProps = {
   action: (formData: FormData) => Promise<void>;
   submitLabel: string;
   authors: Awaited<ReturnType<typeof getAuthorOptions>>;
-  franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
+  franchises: Awaited<ReturnType<typeof getAdminFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
   requireAuthor?: boolean;
@@ -463,6 +463,7 @@ export function AdminMediaForm({
               options={franchiseOptions}
               value={selectedFranchiseIds}
               onChange={setSelectedFranchiseIds}
+              hideSelectedAncestors
             />
             <InlineFranchiseDialog
               onCreated={(franchise) => {
@@ -471,7 +472,7 @@ export function AdminMediaForm({
                     (currentFranchise) => currentFranchise.id === franchise.id,
                   )
                     ? currentFranchises
-                    : [...currentFranchises, franchise];
+                    : [...currentFranchises, { ...franchise, parentIds: [], path: franchise.title }];
 
                   return [...nextFranchises].sort((left, right) =>
                     left.title.localeCompare(right.title, "ru"),

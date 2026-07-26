@@ -27,6 +27,7 @@ type MediaItemDetailsItem = {
     title: string;
     originalTitle: string | null;
     publicationStatus: PublicationStatus;
+    path?: Array<{ id: number; code: string; title: string }>;
   }>;
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
@@ -94,12 +95,24 @@ function FranchiseLinks({
     <div className="flex flex-wrap gap-1.5">
       {franchises.map((franchise) => (
         franchise.publicationStatus === "published" ? (
-          <Link key={franchise.id} href={`/series/${franchise.code}`} className={className}>
-            {franchise.title}
-          </Link>
+          <span key={franchise.id} className="inline-flex flex-wrap items-center gap-x-1.5">
+            {(franchise.path ?? [franchise]).map((part, index) => (
+              <Fragment key={part.id}>
+                {index > 0 ? <span aria-hidden="true">/</span> : null}
+                <Link href={`/series/${part.code}`} className={className}>
+                  {part.title}
+                </Link>
+              </Fragment>
+            ))}
+          </span>
         ) : (
           <span key={franchise.id} className={`${className} text-stone-500`}>
-            {franchise.title} <span className="text-xs">(на проверке)</span>
+            {franchise.path?.map((part, index) => (
+              <Fragment key={part.id}>
+                {index > 0 ? " / " : null}
+                {part.title}
+              </Fragment>
+            )) ?? franchise.title} <span className="text-xs">(на проверке)</span>
           </span>
         )
       ))}

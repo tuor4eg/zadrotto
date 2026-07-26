@@ -10,6 +10,7 @@ import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status"
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 
 type SearchableFranchiseMultiSelectProps = {
+  hideSelectedAncestors?: boolean;
   id: string;
   name: string;
   onChange: (value: string[]) => void;
@@ -26,7 +27,7 @@ function matchesSearch(option: SearchableFranchiseOption, searchValue: string) {
     return true;
   }
 
-  return [option.title, option.originalTitle]
+  return [option.title, option.path, option.originalTitle]
     .filter(Boolean)
     .join(" ")
     .toLowerCase()
@@ -34,6 +35,7 @@ function matchesSearch(option: SearchableFranchiseOption, searchValue: string) {
 }
 
 export function SearchableFranchiseMultiSelect({
+  hideSelectedAncestors = false,
   id,
   name,
   onChange,
@@ -51,9 +53,15 @@ export function SearchableFranchiseMultiSelect({
   });
   const selectedIds = useMemo(() => new Set(value), [value]);
   const selectedOptions = options.filter((option) => selectedIds.has(String(option.id)));
+  const selectedAncestorIds = useMemo(
+    () => new Set(selectedOptions.flatMap((option) => option.parentIds ?? [])),
+    [selectedOptions],
+  );
   const visibleOptions = useMemo(
-    () => options.filter((option) => matchesSearch(option, normalizeSearchValue(query))),
-    [options, query],
+    () => options.filter((option) =>
+      matchesSearch(option, normalizeSearchValue(query)) &&
+      (!hideSelectedAncestors || selectedIds.has(String(option.id)) || !selectedAncestorIds.has(option.id))),
+    [hideSelectedAncestors, options, query, selectedAncestorIds, selectedIds],
   );
   const firstSelectableOption = visibleOptions.find((option) => !option.disabled);
   const updateScrollShadow = useCallback(() => {
@@ -115,11 +123,15 @@ export function SearchableFranchiseMultiSelect({
 
     const optionId = String(option.id);
 
-    onChange(
-      selectedIds.has(optionId)
-        ? value.filter((selectedId) => selectedId !== optionId)
-        : [...value, optionId],
-    );
+    if (selectedIds.has(optionId)) {
+      onChange(value.filter((selectedId) => selectedId !== optionId));
+    } else {
+      const nextValue = hideSelectedAncestors
+        ? value.filter((selectedId) => !option.parentIds?.includes(Number(selectedId)))
+        : value;
+
+      onChange([...nextValue, optionId]);
+    }
     setQuery("");
     setOpen(true);
   }
@@ -164,11 +176,11 @@ export function SearchableFranchiseMultiSelect({
               key={option.id}
               className="inline-flex max-w-full items-center gap-1 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700"
             >
-              <span className="truncate">{option.title}</span>
+              <span className="truncate">{option.path ?? option.title}</span>
               <button
                 type="button"
                 className="rounded-sm text-stone-400 transition-colors hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20"
-                aria-label={`Убрать серию ${option.title}`}
+                aria-label={`Убрать серию ${option.path ?? option.title}`}
                 onClick={() => toggleOption(option)}
               >
                 <X className="size-3.5" />
@@ -230,7 +242,7 @@ export function SearchableFranchiseMultiSelect({
                     }}
                   >
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{option.title}</span>
+                      <span className="block truncate font-medium">{option.path ?? option.title}</span>
                       {option.originalTitle ? (
                         <span className="mt-0.5 block truncate text-xs text-stone-500">
                           {option.originalTitle}

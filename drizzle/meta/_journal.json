@@ -267,6 +267,13 @@
       "when": 1784916000000,
       "tag": "0037_fantlab_provider",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785002400000,
+      "tag": "0038_franchise_tree",
+      "breakpoints": true
     }
   ]
 }

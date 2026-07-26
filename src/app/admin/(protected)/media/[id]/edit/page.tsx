@@ -19,7 +19,7 @@ import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
-import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -85,7 +85,7 @@ export default async function EditAdminMediaPage({
     params,
     searchParams,
     getAuthorOptions(),
-    getFranchiseOptions(),
+    getAdminFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
     getArchiveSettings(),

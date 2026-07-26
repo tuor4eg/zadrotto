@@ -51,6 +51,12 @@ function getFranchiseInput(formData: FormData) {
       title,
       originalTitle: normalizeOptionalFranchiseString(getFormString(formData, "originalTitle")),
       description: normalizeOptionalFranchiseString(getFormString(formData, "description")),
+      parentId: (() => {
+        const value = getFormString(formData, "parentId");
+        if (!value) return null;
+        const parsed = parseRequiredPositiveInteger(value);
+        return parsed.ok ? parsed.value : undefined;
+      })(),
     },
   };
 }
@@ -80,6 +86,7 @@ export async function createFranchiseAction(formData: FormData) {
   if (!input.ok) {
     redirect(`/admin/series/new?error=${input.error}`);
   }
+  if (input.value.parentId === undefined) redirect("/admin/series/new?error=invalid-franchise");
 
   const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
 
@@ -127,6 +134,7 @@ export async function createInlineFranchiseAction(
   if (!input.ok) {
     return { error: input.error, franchise: null };
   }
+  if (input.value.parentId === undefined) return { error: "invalid-franchise", franchise: null };
 
   const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
 
@@ -188,6 +196,9 @@ export async function updateFranchiseAction(formData: FormData) {
   if (!input.ok) {
     redirect(`/admin/series/${id.value}/edit?error=${input.error}`);
   }
+  if (input.value.parentId === undefined) {
+    redirect(`/admin/series/${id.value}/edit?error=invalid-franchise`);
+  }
 
   let franchise;
 
@@ -195,6 +206,7 @@ export async function updateFranchiseAction(formData: FormData) {
     franchise = await updateFranchise({
       id: id.value,
       ...input.value,
+      parentId: input.value.parentId ?? null,
     });
 
     if (!franchise) {

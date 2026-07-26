@@ -7,6 +7,7 @@ import { createFranchiseAction } from "../actions";
 import { PageHeader } from "../../admin-ui";
 import { FranchiseForm } from "../franchise-form";
 import { getFranchiseErrorMessage } from "../messages";
+import { getAdminFranchiseParentOptions } from "@/db/queries/franchises";
 
 type NewFranchisePageProps = {
   searchParams: Promise<{
@@ -15,7 +16,7 @@ type NewFranchisePageProps = {
 };
 
 export default async function NewFranchisePage({ searchParams }: NewFranchisePageProps) {
-  const { error } = await searchParams;
+  const [{ error }, parentOptions] = await Promise.all([searchParams, getAdminFranchiseParentOptions()]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -39,6 +40,7 @@ export default async function NewFranchisePage({ searchParams }: NewFranchisePag
             action={createFranchiseAction}
             submitLabel="Создать"
             errorMessage={getFranchiseErrorMessage(error)}
+            parentOptions={parentOptions}
           />
         </CardContent>
       </Card>

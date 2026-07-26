@@ -39,6 +39,31 @@ type FranchiseLink = {
   originalTitle: string | null;
 };
 
+type FranchiseBreadcrumb = {
+  id: number;
+  code: string;
+  title: string;
+};
+
+const franchiseParentsJsonSql = (franchiseId = franchises.id) => sql<FranchiseBreadcrumb[]>`coalesce((
+  with recursive ancestors as (
+    select ${franchises.id}, ${franchises.code}, ${franchises.title}, ${franchises.parentId}, 0 as depth
+    from ${franchises}
+    where ${franchises.id} = ${franchiseId}
+    union all
+    select parent.id, parent.code, parent.title, parent.parent_id, ancestors.depth + 1
+    from "franchises" parent
+    inner join ancestors on parent.id = ancestors.parent_id
+    where parent.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+  )
+  select jsonb_agg(
+    jsonb_build_object('id', id, 'code', code, 'title', title)
+    order by depth desc
+  )
+  from ancestors
+  where depth > 0
+), '[]'::jsonb)`;
+
 const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`coalesce((
   select jsonb_agg(
     jsonb_build_object(
@@ -65,6 +90,7 @@ export async function getFranchiseByCode(code: string) {
       originalTitle: franchises.originalTitle,
       publicationStatus: franchises.publicationStatus,
       description: franchises.description,
+      parents: franchiseParentsJsonSql(),
     })
     .from(franchises)
     .where(
@@ -96,6 +122,47 @@ export async function getFranchiseOptions(currentAuthorId?: number) {
         : undefined,
     )
     .orderBy(asc(franchises.title));
+}
+
+export async function getAdminFranchiseOptions() {
+  const rows = await db
+    .select({
+      id: franchises.id,
+      parentId: franchises.parentId,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+      publicationStatus: franchises.publicationStatus,
+    })
+    .from(franchises)
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+
+  return rows.map((row) => {
+    const parentIds: number[] = [];
+    const path = [row.title];
+    let parentId = row.parentId;
+
+    while (parentId) {
+      const parent = rowsById.get(parentId);
+
+      if (!parent) {
+        break;
+      }
+
+      parentIds.unshift(parent.id);
+      path.unshift(parent.title);
+      parentId = parent.parentId;
+    }
+
+    return {
+      id: row.id,
+      title: row.title,
+      originalTitle: row.originalTitle,
+      publicationStatus: row.publicationStatus,
+      parentIds,
+      path: path.join(" / "),
+    };
+  });
 }
 
 export async function getPublishedFranchiseOptions() {
@@ -255,6 +322,142 @@ export async function getPublishedFranchisesPage(input: {
   };
 }
 
+export type FranchiseTreeNode = {
+  id: number;
+  parentId: number | null;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+  mediaItemsCount: number;
+  children: FranchiseTreeNode[];
+};
+
+export type FranchiseBranchNode = {
+  id: number;
+  code: string;
+  title: string;
+  children: FranchiseBranchNode[];
+};
+
+export async function getPublishedFranchiseBranch(franchiseId: number) {
+  const rows = await db
+    .select({
+      id: franchises.id,
+      parentId: franchises.parentId,
+      code: franchises.code,
+      title: franchises.title,
+    })
+    .from(franchises)
+    .where(publishedFranchiseCondition)
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const childrenByParentId = new Map<number | null, number[]>();
+
+  for (const row of rows) {
+    childrenByParentId.set(row.parentId, [
+      ...(childrenByParentId.get(row.parentId) ?? []),
+      row.id,
+    ]);
+  }
+
+  const buildBranch = (id: number): FranchiseBranchNode | null => {
+    const row = rowById.get(id);
+
+    if (!row) {
+      return null;
+    }
+
+    return {
+      id: row.id,
+      code: row.code,
+      title: row.title,
+      children: (childrenByParentId.get(row.id) ?? [])
+        .map(buildBranch)
+        .filter((child): child is FranchiseBranchNode => child !== null),
+    };
+  };
+
+  return buildBranch(franchiseId);
+}
+
+export async function getPublishedFranchiseTree(searchQuery: string) {
+  const rows = await db
+    .select({
+      id: franchises.id,
+      parentId: franchises.parentId,
+      code: franchises.code,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+    })
+    .from(franchises)
+    .where(publishedFranchiseCondition)
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const links = await db
+    .select({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId })
+    .from(mediaItemFranchises)
+    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+    .where(and(eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS), publishedMediaItemCondition));
+  const normalizedSearch = searchQuery.trim().toLowerCase();
+  const matches = new Set(rows.filter((row) => !normalizedSearch || [row.title, row.originalTitle, row.code]
+    .filter(Boolean).join(" ").toLowerCase().includes(normalizedSearch)).map((row) => row.id));
+  const rowById = new Map(rows.map((row) => [row.id, row]));
+  const childrenByParentId = new Map<number | null, number[]>();
+
+  for (const row of rows) {
+    childrenByParentId.set(row.parentId, [
+      ...(childrenByParentId.get(row.parentId) ?? []),
+      row.id,
+    ]);
+  }
+
+  if (normalizedSearch) {
+    for (const id of [...matches]) {
+      let parentId = rowById.get(id)?.parentId ?? null;
+      while (parentId) {
+        matches.add(parentId);
+        parentId = rowById.get(parentId)?.parentId ?? null;
+      }
+
+      const descendantIds = [...(childrenByParentId.get(id) ?? [])];
+
+      while (descendantIds.length > 0) {
+        const descendantId = descendantIds.pop()!;
+
+        matches.add(descendantId);
+        descendantIds.push(...(childrenByParentId.get(descendantId) ?? []));
+      }
+    }
+  }
+
+  const nodes = new Map<number, FranchiseTreeNode>();
+  for (const row of rows) {
+    if (!normalizedSearch || matches.has(row.id)) {
+      nodes.set(row.id, { ...row, mediaItemsCount: 0, children: [] });
+    }
+  }
+  const mediaIdsByFranchise = new Map<number, Set<number>>();
+  for (const link of links) {
+    if (nodes.has(link.franchiseId)) {
+      const ids = mediaIdsByFranchise.get(link.franchiseId) ?? new Set<number>();
+      ids.add(link.mediaItemId);
+      mediaIdsByFranchise.set(link.franchiseId, ids);
+    }
+  }
+  const roots: FranchiseTreeNode[] = [];
+  for (const node of nodes.values()) {
+    const parent = node.parentId ? nodes.get(node.parentId) : undefined;
+    if (parent) parent.children.push(node); else roots.push(node);
+  }
+  const countItems = (node: FranchiseTreeNode): Set<number> => {
+    const ids = new Set(mediaIdsByFranchise.get(node.id));
+    for (const child of node.children) for (const id of countItems(child)) ids.add(id);
+    node.mediaItemsCount = ids.size;
+    return ids;
+  };
+  roots.forEach(countItems);
+  return roots;
+}
+
 export type FranchiseDuplicateMatch = {
   id: number;
   code: string;
@@ -393,6 +596,103 @@ export async function getAdminFranchises(input: {
   };
 }
 
+export type AdminFranchiseTreeNode = {
+  id: number;
+  parentId: number | null;
+  code: string;
+  title: string;
+  originalTitle: string | null;
+  mediaItemsCount: number;
+  publicationStatus: "private" | "submitted" | "published" | "rejected";
+  children: AdminFranchiseTreeNode[];
+};
+
+export async function getAdminFranchiseTree(searchQuery: string) {
+  const rows = await db
+    .select({
+      id: franchises.id,
+      parentId: franchises.parentId,
+      code: franchises.code,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+      mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int`,
+      publicationStatus: franchises.publicationStatus,
+    })
+    .from(franchises)
+    .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
+    .groupBy(
+      franchises.id,
+      franchises.parentId,
+      franchises.code,
+      franchises.title,
+      franchises.originalTitle,
+      franchises.publicationStatus,
+    )
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const rowsById = new Map(rows.map((row) => [row.id, row]));
+  const childrenByParentId = new Map<number | null, number[]>();
+
+  for (const row of rows) {
+    childrenByParentId.set(row.parentId, [
+      ...(childrenByParentId.get(row.parentId) ?? []),
+      row.id,
+    ]);
+  }
+
+  const visibleIds = new Set(
+    rows
+      .filter((row) => !normalizedSearchQuery || [row.title, row.originalTitle, row.code]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(normalizedSearchQuery))
+      .map((row) => row.id),
+  );
+
+  if (normalizedSearchQuery) {
+    for (const id of [...visibleIds]) {
+      let parentId = rowsById.get(id)?.parentId ?? null;
+
+      while (parentId) {
+        visibleIds.add(parentId);
+        parentId = rowsById.get(parentId)?.parentId ?? null;
+      }
+
+      const descendantIds = [...(childrenByParentId.get(id) ?? [])];
+
+      while (descendantIds.length > 0) {
+        const descendantId = descendantIds.pop()!;
+
+        visibleIds.add(descendantId);
+        descendantIds.push(...(childrenByParentId.get(descendantId) ?? []));
+      }
+    }
+  }
+
+  const nodesById = new Map<number, AdminFranchiseTreeNode>();
+
+  for (const row of rows) {
+    if (!normalizedSearchQuery || visibleIds.has(row.id)) {
+      nodesById.set(row.id, { ...row, children: [] });
+    }
+  }
+
+  const roots: AdminFranchiseTreeNode[] = [];
+
+  for (const node of nodesById.values()) {
+    const parent = node.parentId ? nodesById.get(node.parentId) : undefined;
+
+    if (parent) {
+      parent.children.push(node);
+    } else {
+      roots.push(node);
+    }
+  }
+
+  return { items: roots, totalCount: rows.length };
+}
+
 export async function getAdminFranchiseById(id: number) {
   const [franchise] = await db
     .select({
@@ -404,12 +704,46 @@ export async function getAdminFranchiseById(id: number) {
       publicationStatus: franchises.publicationStatus,
       createdAt: franchises.createdAt,
       updatedAt: franchises.updatedAt,
+      parentId: franchises.parentId,
     })
     .from(franchises)
     .where(eq(franchises.id, id))
     .limit(1);
 
   return franchise ?? null;
+}
+
+export async function getAdminFranchiseParentOptions(franchiseId?: number) {
+  const rows = await db
+    .select({ id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle })
+    .from(franchises)
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const excluded = new Set<number>();
+  if (franchiseId) {
+    excluded.add(franchiseId);
+    for (const row of rows) {
+      let parentId = row.parentId;
+      while (parentId) {
+        if (parentId === franchiseId) { excluded.add(row.id); break; }
+        parentId = byId.get(parentId)?.parentId ?? null;
+      }
+    }
+  }
+  const getPath = (row: typeof rows[number]) => {
+    const parts = [row.title];
+    let parentId = row.parentId;
+    while (parentId) {
+      const parent = byId.get(parentId);
+      if (!parent) break;
+      parts.unshift(parent.title);
+      parentId = parent.parentId;
+    }
+    return parts.join(" / ");
+  };
+  return rows.filter((row) => !excluded.has(row.id)).map((row) => ({
+    id: row.id, title: getPath(row), originalTitle: row.originalTitle,
+  }));
 }
 
 export async function franchiseExistsById(id: number) {
@@ -881,6 +1215,7 @@ export async function createFranchise(input: {
   description: string | null;
   createdByAuthorId?: number | null;
   publicationStatus?: "private" | "submitted" | "published" | "rejected";
+  parentId?: number | null;
 }) {
   const [franchise] = await db
     .insert(franchises)
@@ -904,13 +1239,25 @@ export async function updateFranchise(input: {
   title: string;
   originalTitle: string | null;
   description: string | null;
+  parentId: number | null;
 }) {
-  const [franchise] = await db
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`select pg_advisory_xact_lock(58391038)`);
+    const allFranchises = await tx.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
+    const parent = input.parentId === null ? null : allFranchises.find((franchise) => franchise.id === input.parentId);
+    if (input.parentId !== null && !parent) throw new Error("invalid-franchise-parent");
+    let ancestorId = input.parentId;
+    while (ancestorId) {
+      if (ancestorId === input.id) throw new Error("franchise-parent-cycle");
+      ancestorId = allFranchises.find((franchise) => franchise.id === ancestorId)?.parentId ?? null;
+    }
+    const [franchise] = await tx
     .update(franchises)
     .set({
       title: input.title,
       originalTitle: input.originalTitle,
       description: input.description,
+      parentId: input.parentId,
       updatedAt: new Date(),
     })
     .where(eq(franchises.id, input.id))
@@ -920,7 +1267,24 @@ export async function updateFranchise(input: {
       title: franchises.title,
     });
 
-  return franchise ?? null;
+    if (!franchise) return null;
+    await tx.execute(sql`
+      with recursive ancestor_links as (
+        select id as ancestor_id, parent_id, id as descendant_id from ${franchises}
+        union all
+        select parent.id, parent.parent_id, ancestor_links.descendant_id
+        from ${franchises} parent
+        inner join ancestor_links on parent.id = ancestor_links.parent_id
+      )
+      delete from ${mediaItemFranchises} direct_link
+      using ${mediaItemFranchises} descendant_link, ancestor_links
+      where direct_link.media_item_id = descendant_link.media_item_id
+        and direct_link.franchise_id = ancestor_links.ancestor_id
+        and descendant_link.franchise_id = ancestor_links.descendant_id
+        and ancestor_links.ancestor_id <> ancestor_links.descendant_id
+    `);
+    return franchise;
+  });
 }
 
 export async function deleteFranchiseIfEmpty(id: number) {
@@ -934,6 +1298,9 @@ export async function deleteFranchiseIfEmpty(id: number) {
             .select({ id: mediaItemFranchises.mediaItemId })
             .from(mediaItemFranchises)
             .where(eq(mediaItemFranchises.franchiseId, franchises.id)),
+        ),
+        notExists(
+          db.select({ id: franchises.id }).from(franchises).where(eq(franchises.parentId, id)),
         ),
       ),
     )
@@ -967,12 +1334,23 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
     })
     .from(mediaItems)
     .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
+    .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
-        eq(mediaItemFranchises.franchiseId, franchiseId),
+        sql`${mediaItemFranchises.franchiseId} in (
+          with recursive descendants as (
+            select ${franchises.id} from ${franchises} where ${franchises.id} = ${franchiseId}
+            union all
+            select child.id from "franchises" child
+            inner join descendants on child.parent_id = descendants.id
+            where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+          )
+          select id from descendants
+        )`,
         eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        publishedFranchiseCondition,
         publishedMediaItemCondition,
       ),
     )
@@ -1074,32 +1452,51 @@ export async function addMediaItemToFranchise(input: {
   franchiseId: number;
   mediaItemId: number;
 }) {
-  const [item] = await db
-    .insert(mediaItemFranchises)
-    .values({
-      mediaItemId: input.mediaItemId,
-      franchiseId: input.franchiseId,
-    })
-    .onConflictDoNothing()
-    .returning({
-      id: mediaItemFranchises.mediaItemId,
-    });
+  return db.transaction(async (tx) => {
+    const [mediaItem, franchise] = await Promise.all([
+      tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).limit(1),
+      tx.select({ id: franchises.id }).from(franchises).where(eq(franchises.id, input.franchiseId)).limit(1),
+    ]);
+    if (!mediaItem || !franchise) return null;
 
-  if (!item) {
-    return null;
-  }
+    const [existingLinks, allFranchises] = await Promise.all([
+      tx.select({ franchiseId: mediaItemFranchises.franchiseId })
+        .from(mediaItemFranchises)
+        .where(eq(mediaItemFranchises.mediaItemId, input.mediaItemId)),
+      tx.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises),
+    ]);
+    const parentById = new Map(allFranchises.map((row) => [row.id, row.parentId]));
+    const selectedIds = [...new Set([...existingLinks.map((link) => link.franchiseId), input.franchiseId])];
+    const redundantIds = selectedIds.filter((id) => selectedIds.some((candidateId) => {
+      let parentId = parentById.get(candidateId) ?? null;
+      while (parentId) {
+        if (parentId === id) return true;
+        parentId = parentById.get(parentId) ?? null;
+      }
+      return false;
+    }));
+    const inputIsRedundant = redundantIds.includes(input.franchiseId);
+    const existingFranchiseIds = new Set(existingLinks.map((link) => link.franchiseId));
+    const existingRedundantIds = redundantIds.filter((id) => existingFranchiseIds.has(id));
+    if (existingRedundantIds.length > 0) {
+      await tx.delete(mediaItemFranchises).where(and(
+        eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+        inArray(mediaItemFranchises.franchiseId, existingRedundantIds),
+      ));
+    }
+    if (!inputIsRedundant) {
+      await tx.insert(mediaItemFranchises).values({
+        mediaItemId: input.mediaItemId,
+        franchiseId: input.franchiseId,
+      }).onConflictDoNothing();
+    }
 
-  const [mediaItem] = await db
-    .update(mediaItems)
-    .set({ updatedAt: new Date() })
-    .where(eq(mediaItems.id, input.mediaItemId))
-    .returning({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-    });
-
-  return mediaItem ?? null;
+    const [updatedMediaItem] = await tx.update(mediaItems)
+      .set({ updatedAt: new Date() })
+      .where(eq(mediaItems.id, input.mediaItemId))
+      .returning({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title });
+    return updatedMediaItem ?? null;
+  });
 }
 
 export async function removeMediaItemFromFranchise(input: {

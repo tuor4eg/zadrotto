@@ -1,6 +1,7 @@
 import { sql } from "drizzle-orm";
 import {
   check,
+  type AnyPgColumn,
   boolean,
   date,
   index,
@@ -35,6 +36,9 @@ const timestamps = () => ({
 
 export const franchises = pgTable("franchises", {
   id: serial("id").primaryKey(),
+  parentId: integer("parent_id").references((): AnyPgColumn => franchises.id, {
+    onDelete: "restrict",
+  }),
   code: text("code").notNull().unique(),
   title: text("title").notNull(),
   originalTitle: text("original_title"),
@@ -47,8 +51,13 @@ export const franchises = pgTable("franchises", {
     .notNull(),
   ...timestamps(),
 }, (table) => [
+  index("franchises_parent_id_idx").on(table.parentId),
   index("franchises_created_by_author_id_idx").on(table.createdByAuthorId),
   index("franchises_publication_status_idx").on(table.publicationStatus),
+  check(
+    "franchises_parent_not_self_check",
+    sql`${table.parentId} is null or ${table.parentId} <> ${table.id}`,
+  ),
 ]);
 
 export const mediaTypes = pgTable("media_types", {

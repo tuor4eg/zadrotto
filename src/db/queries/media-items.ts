@@ -61,6 +61,7 @@ export type MediaItemFranchiseLink = {
   title: string;
   originalTitle: string | null;
   publicationStatus: PublicationStatus;
+  path?: Array<{ id: number; code: string; title: string }>;
 };
 
 type MediaItemFranchiseLinkStatus = Pick<
@@ -98,7 +99,21 @@ const franchisesJsonSql = (
       'code', ${franchises.code},
       'title', ${franchises.title},
       'originalTitle', ${franchises.originalTitle},
-      'publicationStatus', "media_item_franchises"."publication_status"
+      'publicationStatus', "media_item_franchises"."publication_status",
+      'path', (
+        with recursive ancestors as (
+          select ${franchises.id}, ${franchises.code}, ${franchises.title}, ${franchises.parentId}, 0 as depth
+          union all
+          select parent.id, parent.code, parent.title, parent.parent_id, ancestors.depth + 1
+          from "franchises" parent
+          inner join ancestors on parent.id = ancestors.parent_id
+          where parent.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+        )
+        select coalesce(jsonb_agg(jsonb_build_object(
+          'id', id, 'code', code, 'title', title
+        ) order by depth desc), '[]'::jsonb)
+        from ancestors
+      )
     )
     order by ${franchises.title}, ${franchises.code}
   )
@@ -155,7 +170,7 @@ export async function setMediaItemFranchisesForExecutor(
   mediaItemId: number,
   franchiseIds: number[],
 ) {
-  const uniqueFranchiseIds = [...new Set(franchiseIds)];
+  const uniqueFranchiseIds = await getMostSpecificFranchiseIds(franchiseIds);
 
   await executor
     .delete(mediaItemFranchises)
@@ -172,6 +187,35 @@ export async function setMediaItemFranchisesForExecutor(
       publicationStatus: PUBLISHED_PUBLICATION_STATUS,
     })),
   );
+}
+
+async function getMostSpecificFranchiseIds(franchiseIds: number[]) {
+  const uniqueFranchiseIds = [...new Set(franchiseIds)];
+
+  if (uniqueFranchiseIds.length < 2) {
+    return uniqueFranchiseIds;
+  }
+
+  const rows = await db.execute<{ ancestor_id: number }>(sql`
+    with recursive ancestors as (
+      select id, parent_id, id as descendant_id
+      from ${franchises}
+      where ${franchises.id} in ${uniqueFranchiseIds}
+      union all
+      select parent.id, parent.parent_id, ancestors.descendant_id
+      from ${franchises} parent
+      inner join ancestors on parent.id = ancestors.parent_id
+    )
+    select distinct ancestor_id
+    from (
+      select id as ancestor_id
+      from ancestors
+      where id <> descendant_id
+    ) nested
+  `);
+  const ancestorIds = new Set(rows.map((row) => row.ancestor_id));
+
+  return uniqueFranchiseIds.filter((id) => !ancestorIds.has(id));
 }
 
 export async function setMediaItemTitleAliasesForExecutor(

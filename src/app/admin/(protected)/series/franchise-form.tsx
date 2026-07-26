@@ -5,6 +5,7 @@ import { Eye, Save } from "lucide-react";
 import { useState } from "react";
 
 import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
+import { SearchableFranchiseSelect } from "@/components/ui/searchable-franchise-select";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
@@ -15,6 +16,7 @@ type FranchiseFormValues = {
   title?: string;
   originalTitle?: string | null;
   description?: string | null;
+  parentId?: number | null;
 };
 
 type FranchiseFormProps = {
@@ -24,6 +26,7 @@ type FranchiseFormProps = {
   errorMessage?: string | null;
   publicHref?: string | null;
   successMessage?: string | null;
+  parentOptions?: Array<{ id: number; title: string; originalTitle: string | null }>;
 };
 
 export function FranchiseForm({
@@ -33,11 +36,14 @@ export function FranchiseForm({
   errorMessage,
   publicHref,
   successMessage,
+  parentOptions = [],
 }: FranchiseFormProps) {
   const isEditing = Boolean(values?.id);
   const [title, setTitle] = useState(values?.title ?? "");
   const [originalTitle, setOriginalTitle] = useState(values?.originalTitle ?? "");
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
+  const [parentId, setParentId] = useState(values?.parentId ? String(values.parentId) : "");
+  const selectedParent = parentOptions.find((option) => String(option.id) === parentId);
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
@@ -67,6 +73,27 @@ export function FranchiseForm({
       {!isEditing ? (
         <FranchiseDuplicateCheck title={title} originalTitle={originalTitle} onBlockedChange={setDuplicateBlocked} />
       ) : null}
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="franchise-parent">Родительская серия</Label>
+        <SearchableFranchiseSelect
+          id="franchise-parent"
+          name="parentId"
+          options={parentOptions}
+          value={parentId}
+          onChange={setParentId}
+        />
+        <p className="text-xs leading-5 text-stone-500">
+          {parentId
+            ? "После сохранения избыточные прямые связи записей с родительскими сериями будут удалены: родители останутся видны в пути."
+            : "Без выбранного родителя серия будет корневой."}
+        </p>
+        {isEditing ? (
+          <p className="text-xs leading-5 text-stone-500">
+            Текущий путь: {selectedParent ? `${selectedParent.title} / ${values?.title}` : values?.title}
+          </p>
+        ) : null}
+      </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="franchise-description">Описание</Label>

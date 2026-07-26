@@ -5,7 +5,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
-import { getFranchiseOptions } from "@/db/queries/franchises";
+import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { PageHeader } from "../../admin-ui";
@@ -23,7 +23,7 @@ export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaP
   const [{ error }, authors, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
     searchParams,
     getAuthorOptions(),
-    getFranchiseOptions(),
+    getAdminFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
     getArchiveSettings(),

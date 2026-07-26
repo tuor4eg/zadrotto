@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
+import { Fragment } from "react";
 
 import { ArchiveNote } from "@/app/archive-note";
 import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
@@ -13,6 +14,8 @@ import {
   getFranchiseByCode,
   getFranchiseOptions,
   getMediaItemsByFranchiseId,
+  getPublishedFranchiseBranch,
+  type FranchiseBranchNode,
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -79,6 +82,28 @@ function getFranchiseMediaSections(
     .filter((section) => section.count > 0);
 }
 
+function FranchiseBranch({ node, depth = 0 }: { node: FranchiseBranchNode; depth?: number }) {
+  return (
+    <li>
+      {depth === 0 ? (
+        <span className="font-medium text-stone-950">{node.title}</span>
+      ) : (
+        <Link
+          href={`/series/${node.code}`}
+          className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+        >
+          {node.title}
+        </Link>
+      )}
+      {node.children.length > 0 ? (
+        <ul className="mt-2 grid gap-2 border-l border-stone-300 pl-4" style={{ marginLeft: `${depth * 0.5}rem` }}>
+          {node.children.map((child) => <FranchiseBranch key={child.id} node={child} depth={depth + 1} />)}
+        </ul>
+      ) : null}
+    </li>
+  );
+}
+
 export default async function FranchisePage({ params, searchParams }: FranchisePageProps) {
   const [{ code }, query] = await Promise.all([params, searchParams]);
   const franchise = await getFranchiseByCode(code);
@@ -93,8 +118,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
     getMediaTypeOptions(),
     getArchiveSettings(),
   ]);
-  const [items, authorMediaSuggestionData] = await Promise.all([
+  const [items, franchiseBranch, authorMediaSuggestionData] = await Promise.all([
     getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id),
+    getPublishedFranchiseBranch(franchise.id),
     currentAuthor
       ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
           ([franchises, mediaCarriers]) => ({
@@ -185,9 +211,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                       Главная
                     </Link>
                   </li>
-                  <li aria-hidden="true" className="shrink-0 text-stone-400">
-                    /
-                  </li>
+                  <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
                   <li className="shrink-0">
                     <Link
                       className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
@@ -196,6 +220,19 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                       Все серии
                     </Link>
                   </li>
+                  {franchise.parents.map((parent) => (
+                    <Fragment key={parent.id}>
+                      <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
+                      <li className="shrink-0">
+                        <Link
+                          className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                          href={`/series/${parent.code}`}
+                        >
+                          {parent.title}
+                        </Link>
+                      </li>
+                    </Fragment>
+                  ))}
                   <li aria-hidden="true" className="shrink-0 text-stone-400">
                     /
                   </li>
@@ -244,6 +281,17 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
           <div className="p-6 sm:p-8">
             <ArchiveNote text={franchise.description} maxWidthClassName="max-w-none" />
           </div>
+
+          {franchiseBranch && franchiseBranch.children.length > 0 ? (
+            <section className="border-t border-stone-300/80 px-6 py-6 sm:px-8" aria-labelledby="franchise-branch-heading">
+              <h2 id="franchise-branch-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-600">
+                Серии внутри
+              </h2>
+              <ul className="mt-3 grid gap-2 text-sm leading-6 text-stone-800">
+                <FranchiseBranch node={franchiseBranch} />
+              </ul>
+            </section>
+          ) : null}
 
           {items.length === 0 ? (
             <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8 sm:pt-4">
