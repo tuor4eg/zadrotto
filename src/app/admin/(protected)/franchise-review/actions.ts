@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
-import { reviewSubmittedFranchise, reviewSubmittedMediaItemFranchise } from "@/db/queries/franchises";
+import { reviewMediaItemFranchiseRemovalRequest, reviewSubmittedFranchise, reviewSubmittedMediaItemFranchise } from "@/db/queries/franchises";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { logActivity } from "@/lib/activity-logs/server";
 
@@ -19,12 +19,15 @@ export async function reviewFranchiseAction(formData: FormData) {
   const mediaItemIdValue = getFormString(formData, "mediaItemId");
   const mediaItemId = mediaItemIdValue ? Number(mediaItemIdValue) : null;
   const decision = getFormString(formData, "decision");
+  const kind = getFormString(formData, "kind");
 
   if (!Number.isInteger(franchiseId) || franchiseId <= 0 || (decision !== "published" && decision !== "rejected")) {
     redirect("/admin/franchise-review?error=invalid-review");
   }
 
-  const result = mediaItemId === null
+  const result = kind === "removal" && mediaItemId !== null
+    ? await reviewMediaItemFranchiseRemovalRequest({ decision, franchiseId, mediaItemId })
+    : mediaItemId === null
     ? await reviewSubmittedFranchise({ adminUserId: adminUser.id, decision, franchiseId })
     : Number.isInteger(mediaItemId) && mediaItemId > 0
       ? await reviewSubmittedMediaItemFranchise({ adminUserId: adminUser.id, decision, franchiseId, mediaItemId })

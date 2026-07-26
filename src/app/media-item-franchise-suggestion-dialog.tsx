@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Plus, X } from "lucide-react";
+import { Check, Plus, Trash2, X } from "lucide-react";
 import { useActionState, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -18,11 +18,19 @@ import {
 const initialState: MediaItemFranchiseSuggestionState = { error: null, success: false };
 
 export function MediaItemFranchiseSuggestionDialog({
+  assignedFranchises,
   canPublishWithoutReview,
   franchises,
   mediaItemCode,
   mediaItemId,
 }: {
+  assignedFranchises: Array<{
+    id: number;
+    code: string;
+    path?: Array<{ id: number; title: string }>;
+    removalRequested?: boolean;
+    title: string;
+  }>;
   canPublishWithoutReview: boolean;
   franchises: SearchableFranchiseOption[];
   mediaItemCode: string;
@@ -35,12 +43,18 @@ export function MediaItemFranchiseSuggestionDialog({
   const [title, setTitle] = useState("");
   const [originalTitle, setOriginalTitle] = useState("");
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
+  const [franchiseRemovalIds, setFranchiseRemovalIds] = useState<string[]>([]);
+  const [removalConfirmationOpen, setRemovalConfirmationOpen] = useState(false);
+  const removalConfirmedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
   function resetAndCloseDialog() {
     formRef.current?.reset();
     setMode("existing");
     setSelectedFranchiseIds([]);
+    setFranchiseRemovalIds([]);
+    setRemovalConfirmationOpen(false);
+    removalConfirmedRef.current = false;
     setTitle("");
     setOriginalTitle("");
     setFranchiseSelectResetKey((currentKey) => currentKey + 1);
@@ -64,10 +78,16 @@ export function MediaItemFranchiseSuggestionDialog({
   }
 
   const [state, formAction, isPending] = useActionState(submitSuggestion, initialState);
-  const label = canPublishWithoutReview ? "Добавить серию" : "Предложить серию";
+  const label = canPublishWithoutReview ? "Изменить серии" : "Предложить изменения";
 
   function closeDialog() {
     resetAndCloseDialog();
+  }
+
+  function submitAfterRemovalConfirmation() {
+    removalConfirmedRef.current = true;
+    setRemovalConfirmationOpen(false);
+    formRef.current?.requestSubmit();
   }
 
   const errorMessage = state.error === "duplicate"
@@ -99,18 +119,18 @@ export function MediaItemFranchiseSuggestionDialog({
             if (event.target === event.currentTarget && !isPending) closeDialog();
           }}
         >
-          <div className="archive-paper archive-panel min-h-[500px] w-full max-w-xl p-5 shadow-2xl">
+          <div className="archive-paper archive-panel relative min-h-[500px] w-full max-w-xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="media-franchise-dialog-title" className="font-serif text-3xl leading-none text-stone-950">{label}</h2>
-                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">{canPublishWithoutReview ? "Связь появится в карточке сразу." : "После одобрения серия появится в карточке."}</p>
+                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">{canPublishWithoutReview ? "Серии в карточке будут изменены." : "Серии в карточке будут изменены после одобрения."}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <ArchiveTooltip label={label} side="bottom">
                   <button
                     type="submit"
                     form="media-franchise-suggestion-form"
-                    disabled={isPending || (mode === "new" && duplicateBlocked)}
+                    disabled={isPending || (mode === "new" && duplicateBlocked) || (mode === "existing" && selectedFranchiseIds.length === 0 && franchiseRemovalIds.length === 0)}
                     className="grid size-9 place-items-center rounded-md border border-emerald-950/20 bg-emerald-50/80 text-emerald-950 transition-colors hover:border-emerald-700 hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50"
                     aria-label={label}
                   >
@@ -130,15 +150,42 @@ export function MediaItemFranchiseSuggestionDialog({
                 </ArchiveTooltip>
               </div>
             </div>
-            <form id="media-franchise-suggestion-form" ref={formRef} action={formAction} className="mt-5 grid gap-4" noValidate>
+            <form
+              id="media-franchise-suggestion-form"
+              ref={formRef}
+              action={formAction}
+              className="mt-5 grid gap-4"
+              noValidate
+              onSubmit={(event) => {
+                if (franchiseRemovalIds.length > 0 && !removalConfirmedRef.current) {
+                  event.preventDefault();
+                  setRemovalConfirmationOpen(true);
+                }
+              }}
+            >
               <input type="hidden" name="mediaItemId" value={mediaItemId} />
               <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
               <input type="hidden" name="mode" value={mode} />
+              {franchiseRemovalIds.map((id) => <input key={id} type="hidden" name="franchiseRemovalIds" value={id} />)}
               <div className="flex rounded-md border border-stone-200 p-1">
                 <Button type="button" variant={mode === "existing" ? "default" : "ghost"} size="sm" className={mode === "existing" ? "flex-1" : "flex-1 bg-white hover:bg-stone-50"} onClick={() => setMode("existing")}>Выбрать существующую</Button>
                 <Button type="button" variant={mode === "new" ? "default" : "ghost"} size="sm" className={mode === "new" ? "flex-1" : "flex-1 bg-white hover:bg-stone-50"} onClick={() => setMode("new")}>Создать новую</Button>
               </div>
-              {mode === "existing" ? <div className="grid gap-2"><Label htmlFor="media-franchise-ids">Серии</Label><SearchableFranchiseMultiSelect key={franchiseSelectResetKey} id="media-franchise-ids" name="franchiseIds" options={franchises} value={selectedFranchiseIds} onChange={setSelectedFranchiseIds} /></div> : <>
+              {mode === "existing" ? <div className="grid gap-2"><Label htmlFor="media-franchise-ids">Серии</Label><SearchableFranchiseMultiSelect key={franchiseSelectResetKey} id="media-franchise-ids" name="franchiseIds" options={franchises} value={selectedFranchiseIds} onChange={setSelectedFranchiseIds} />
+                {assignedFranchises.length > 0 ? (
+                  <div className="mt-1 grid gap-2">
+                    <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Уже назначены</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {assignedFranchises.map((franchise) => (
+                        <span key={franchise.id} className="inline-flex max-w-full items-center gap-1 rounded-md border border-stone-200 bg-stone-50 px-2 py-1 text-xs text-stone-700">
+                          <span className="truncate">{franchise.path?.map((part) => part.title).join(" / ") ?? franchise.title}</span>
+                          {franchise.removalRequested ? <span className="text-stone-500">(на удалении)</span> : franchiseRemovalIds.includes(String(franchise.id)) ? <><span className="text-stone-500">(будет удалена)</span><button type="button" onClick={() => setFranchiseRemovalIds((ids) => ids.filter((id) => id !== String(franchise.id)))} className="text-stone-500 underline" aria-label={`Отменить удаление серии ${franchise.title}`}>отменить</button></> : <button type="button" onClick={() => setFranchiseRemovalIds((ids) => [...ids, String(franchise.id)])} aria-label={`Пометить серию ${franchise.title} к удалению`}><Trash2 className="size-3.5" /></button>}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div> : <>
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-title">Название</Label><Input id="media-new-franchise-title" name="title" required disabled={isPending} autoFocus value={title} onChange={(event) => setTitle(event.currentTarget.value)} /></div>
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-original-title">Оригинальное название</Label><Input id="media-new-franchise-original-title" name="originalTitle" disabled={isPending} value={originalTitle} onChange={(event) => setOriginalTitle(event.currentTarget.value)} /></div>
                 <FranchiseDuplicateCheck title={title} originalTitle={originalTitle} onBlockedChange={setDuplicateBlocked} />
@@ -146,6 +193,19 @@ export function MediaItemFranchiseSuggestionDialog({
               </>}
               {errorMessage ? <p className="text-sm text-red-700" role="alert">{errorMessage}</p> : null}
             </form>
+          </div>
+        </div>,
+        document.body,
+      ) : null}
+      {open && removalConfirmationOpen ? createPortal(
+        <div className="fixed inset-0 z-[120] grid place-items-center bg-stone-950/55 p-5">
+          <div className="archive-paper archive-panel w-full max-w-md p-5 shadow-2xl" role="alertdialog" aria-modal="true" aria-labelledby="media-franchise-removal-confirmation-title">
+            <h3 id="media-franchise-removal-confirmation-title" className="font-serif text-2xl leading-none text-stone-950">Подтвердить удаление серий?</h3>
+            <p className="mt-3 text-sm leading-6 text-stone-700">Изменения будут применены после сохранения. Для серий, требующих проверки, будет создана заявка на удаление.</p>
+            <div className="mt-5 flex justify-end gap-2">
+              <Button type="button" variant="outline" onClick={() => setRemovalConfirmationOpen(false)}>Вернуться</Button>
+              <Button type="button" onClick={submitAfterRemovalConfirmation}>Сохранить изменения</Button>
+            </div>
           </div>
         </div>,
         document.body,

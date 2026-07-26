@@ -1,7 +1,7 @@
 import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authors, franchises, mediaCarriers, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -867,7 +867,7 @@ const submittedFranchiseMediaItemsSql = (authorId = franchises.createdByAuthorId
   ), '[]'::jsonb)`;
 
 export async function getSubmittedFranchisesForAdmin() {
-  const [submittedFranchises, submittedLinks] = await Promise.all([
+  const [submittedFranchises, submittedLinks, removalRequests] = await Promise.all([
     db
     .select({
       kind: sql<"franchise">`'franchise'`,
@@ -913,15 +913,27 @@ export async function getSubmittedFranchisesForAdmin() {
         ),
       )
       .orderBy(desc(mediaItemFranchises.createdAt), asc(mediaItems.title)),
+    db.select({
+      kind: sql<"removal">`'removal'`, id: mediaItems.id, franchiseId: franchises.id,
+      code: mediaItems.code, title: mediaItems.title, originalTitle: mediaItems.originalTitle,
+      description: sql<string | null>`null`, mediaItems: sql<[]>`'[]'::jsonb`,
+      createdAt: mediaItemFranchiseRemovalRequests.createdAt,
+      authorId: authors.id, authorName: authors.name, authorCode: authors.code,
+      franchiseTitle: franchises.title,
+    }).from(mediaItemFranchiseRemovalRequests)
+      .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchiseRemovalRequests.mediaItemId))
+      .innerJoin(franchises, eq(franchises.id, mediaItemFranchiseRemovalRequests.franchiseId))
+      .innerJoin(authors, eq(authors.id, mediaItemFranchiseRemovalRequests.requestedByAuthorId))
+      .orderBy(desc(mediaItemFranchiseRemovalRequests.createdAt), asc(mediaItems.title)),
   ]);
 
-  return [...submittedFranchises, ...submittedLinks].sort(
+  return [...submittedFranchises, ...submittedLinks, ...removalRequests].sort(
     (left, right) => right.createdAt.getTime() - left.createdAt.getTime(),
   );
 }
 
 export async function getSubmittedFranchisesCountForAdmin() {
-  const [franchiseResult, linkResult] = await Promise.all([
+  const [franchiseResult, linkResult, removalResult] = await Promise.all([
     db
     .select({ count: sql<number>`count(*)::int` })
     .from(franchises)
@@ -938,9 +950,11 @@ export async function getSubmittedFranchisesCountForAdmin() {
           publishedFranchiseCondition,
         ),
       ),
+    db.select({ count: sql<number>`count(*)::int` })
+      .from(mediaItemFranchiseRemovalRequests),
   ]);
 
-  return (franchiseResult[0]?.count ?? 0) + (linkResult[0]?.count ?? 0);
+  return (franchiseResult[0]?.count ?? 0) + (linkResult[0]?.count ?? 0) + (removalResult[0]?.count ?? 0);
 }
 
 export async function reviewSubmittedFranchise(input: {
@@ -1014,6 +1028,34 @@ export async function reviewSubmittedMediaItemFranchise(input: {
     .returning({ mediaItemId: mediaItemFranchises.mediaItemId, franchiseId: mediaItemFranchises.franchiseId });
 
   return link ?? null;
+}
+
+export async function reviewMediaItemFranchiseRemovalRequest(input: {
+  decision: "published" | "rejected";
+  franchiseId: number;
+  mediaItemId: number;
+}) {
+  return db.transaction(async (tx) => {
+    if (input.decision === "published") {
+      const [link] = await tx.delete(mediaItemFranchises).where(and(
+        eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+        eq(mediaItemFranchises.franchiseId, input.franchiseId),
+        eq(mediaItemFranchises.publicationStatus, "published"),
+        exists(tx.select({ mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId })
+          .from(mediaItemFranchiseRemovalRequests)
+          .where(and(
+            eq(mediaItemFranchiseRemovalRequests.mediaItemId, input.mediaItemId),
+            eq(mediaItemFranchiseRemovalRequests.franchiseId, input.franchiseId),
+          ))),
+      )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
+      return link ?? null;
+    }
+    const [request] = await tx.delete(mediaItemFranchiseRemovalRequests).where(and(
+      eq(mediaItemFranchiseRemovalRequests.mediaItemId, input.mediaItemId),
+      eq(mediaItemFranchiseRemovalRequests.franchiseId, input.franchiseId),
+    )).returning({ mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId });
+    return request ?? null;
+  });
 }
 
 export async function createAuthorMediaItemFranchiseLinks(input: {
@@ -1095,6 +1137,45 @@ export async function removeAuthorMediaItemFranchiseLink(input: {
     });
 
   return removedLink ?? null;
+}
+
+export async function requestAuthorMediaItemFranchiseRemoval(input: {
+  authorId: number;
+  canPublishFranchisesWithoutReview: boolean;
+  franchiseId: number;
+  mediaItemId: number;
+}) {
+  return db.transaction(async (tx) => {
+    const [link] = await tx.select({
+      createdByAuthorId: mediaItemFranchises.createdByAuthorId,
+      publicationStatus: mediaItemFranchises.publicationStatus,
+    }).from(mediaItemFranchises).where(and(
+      eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+      eq(mediaItemFranchises.franchiseId, input.franchiseId),
+    )).limit(1);
+    if (!link) return null;
+    if (link.publicationStatus !== "published") {
+      if (link.createdByAuthorId !== input.authorId) return null;
+      const [removed] = await tx.delete(mediaItemFranchises).where(and(
+        eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+        eq(mediaItemFranchises.franchiseId, input.franchiseId),
+      )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
+      return removed ? { status: "removed" as const } : null;
+    }
+    if (input.canPublishFranchisesWithoutReview) {
+      const [removed] = await tx.delete(mediaItemFranchises).where(and(
+        eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
+        eq(mediaItemFranchises.franchiseId, input.franchiseId),
+      )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
+      return removed ? { status: "removed" as const } : null;
+    }
+    await tx.insert(mediaItemFranchiseRemovalRequests).values({
+      mediaItemId: input.mediaItemId,
+      franchiseId: input.franchiseId,
+      requestedByAuthorId: input.authorId,
+    }).onConflictDoNothing();
+    return { status: "requested" as const };
+  });
 }
 
 export async function createAuthorFranchiseWithMediaItemLink(input: {
@@ -1331,6 +1412,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+      hasDirectFranchiseLink: sql<boolean>`bool_or(${mediaItemFranchises.franchiseId} = ${franchiseId})`,
     })
     .from(mediaItems)
     .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))

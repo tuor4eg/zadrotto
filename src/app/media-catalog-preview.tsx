@@ -206,6 +206,7 @@ export function MediaCatalogPreview({
             </div>
             {currentAuthor ? (
               <MediaItemFranchiseSuggestionDialog
+                assignedFranchises={item.franchises}
                 canPublishWithoutReview={canPublishFranchisesWithoutReview}
                 franchises={mapFranchiseSuggestionOptions(
                   franchises,

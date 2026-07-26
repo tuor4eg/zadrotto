@@ -152,6 +152,13 @@ export function SeriesMediaLinkSearch({
             return;
           }
 
+          if (result.removalStatus === "requested") {
+            setItems((currentItems) => currentItems.map((currentItem) =>
+              currentItem.id === item.id ? { ...currentItem, canRemove: false } : currentItem,
+            ));
+            setMessage("Запрос на удаление отправлен на проверку.");
+            return;
+          }
           setItems((currentItems) =>
             result.linkStatus === "published"
               ? currentItems.filter((currentItem) => currentItem.id !== item.id)

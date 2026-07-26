@@ -25,6 +25,7 @@ import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { SeriesMediaLinkSearch } from "./series-media-link-search";
+import { SeriesMediaUnlinkTile } from "./series-media-unlink-tile";
 
 export const dynamic = "force-dynamic";
 
@@ -322,14 +323,10 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                     </summary>
 
                     <div className="grid grid-cols-3 content-start gap-2.5 border-t border-stone-300/70 p-3 md:grid-cols-4 xl:grid-cols-6">
-                      {section.items.map((item) => (
-                        <MediaItemTile
-                          key={item.id}
-                          currentAuthorScore={currentAuthor ? item.currentAuthorScore : undefined}
-                          item={item}
-                          href={`/media/${item.code}`}
-                          mediaTypes={mediaTypes}
-                        />
+                      {section.items.map((item) => currentAuthor && item.hasDirectFranchiseLink ? (
+                        <SeriesMediaUnlinkTile key={item.id} canPublishFranchisesWithoutReview={currentAuthor.canPublishFranchisesWithoutReview} franchiseCode={franchise.code} item={item} mediaTypes={mediaTypes} currentAuthorScore={item.currentAuthorScore} />
+                      ) : (
+                        <MediaItemTile key={item.id} currentAuthorScore={currentAuthor ? item.currentAuthorScore : undefined} item={item} href={`/media/${item.code}`} mediaTypes={mediaTypes} />
                       ))}
                     </div>
                   </details>

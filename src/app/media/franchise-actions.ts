@@ -6,6 +6,8 @@ import {
   createAuthorFranchiseWithMediaItemLink,
   createAuthorMediaItemFranchiseLinks,
   findPublishedFranchiseDuplicateCandidates,
+  getFranchiseByCode,
+  requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
 import { requireAuthor } from "@/lib/auth/author-auth";
@@ -31,6 +33,45 @@ export type MediaItemFranchiseSuggestionState = {
 };
 
 const initialErrorState = { error: "invalid" as const, success: false };
+
+export type MediaItemFranchiseRemovalState = {
+  error: "invalid" | "unavailable" | null;
+  status: "removed" | "requested" | null;
+};
+
+export async function removeAuthorMediaItemFranchiseAction(input: {
+  franchiseCode: string;
+  mediaItemCode: string;
+}): Promise<MediaItemFranchiseRemovalState> {
+  const author = await requireAuthor();
+  const [franchise, mediaItem] = await Promise.all([
+    getFranchiseByCode(input.franchiseCode),
+    getMediaItemIdentityByCode(input.mediaItemCode),
+  ]);
+  if (!franchise || !mediaItem) return { error: "invalid", status: null };
+  try {
+    const result = await requestAuthorMediaItemFranchiseRemoval({
+      authorId: author.id,
+      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+      franchiseId: franchise.id,
+      mediaItemId: mediaItem.id,
+    });
+    if (!result) return { error: "invalid", status: null };
+    revalidatePath(`/media/${mediaItem.code}`);
+    revalidatePath(`/series/${franchise.code}`);
+    revalidatePath("/admin/franchise-review");
+    revalidatePath("/", "layout");
+    await logActivity({
+      action: result.status === "removed" ? "franchise.media.detached" : "franchise.media.removal-requested",
+      actorType: "author", authorId: author.id, entityType: "media-item", entityId: mediaItem.id,
+      entityLabel: mediaItem.title, metadata: { franchises: [{ id: franchise.id, title: franchise.title }] },
+    });
+    return { error: null, status: result.status };
+  } catch (error) {
+    console.error(error);
+    return { error: "unavailable", status: null };
+  }
+}
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -61,39 +102,55 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
   }
 
   let affectedFranchises: Array<{ id: number; title: string }> = [];
+  const removalIds = [...new Set(
+    formData.getAll("franchiseRemovalIds")
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0),
+  )];
+  const franchiseIds = mode === "existing" ? [...new Set(
+    formData
+      .getAll("franchiseIds")
+      .filter((value): value is string => typeof value === "string")
+      .map((value) => Number(value))
+      .filter((value) => Number.isInteger(value) && value > 0),
+  )] : [];
+  const newFranchiseTitle = mode === "new" ? getFormString(formData, "title") : "";
+
+  if (
+    (mode !== "existing" && mode !== "new") ||
+    (mode === "existing" && franchiseIds.length === 0 && removalIds.length === 0) ||
+    (mode === "new" && !newFranchiseTitle)
+  ) {
+    return initialErrorState;
+  }
+
+  let removalStatuses: Array<{ franchiseId: number; status: "removed" | "requested" }> = [];
 
   try {
-    if (mode === "existing") {
-      const franchiseIds = [...new Set(
-        formData
-          .getAll("franchiseIds")
-          .filter((value): value is string => typeof value === "string")
-          .map((value) => Number(value))
-          .filter((value) => Number.isInteger(value) && value > 0),
-      )];
-
-      if (franchiseIds.length === 0) {
-        return initialErrorState;
-      }
-
-      const links = await createAuthorMediaItemFranchiseLinks({
+    for (const franchiseId of removalIds) {
+      const result = await requestAuthorMediaItemFranchiseRemoval({
         authorId: author.id,
-        franchiseIds,
+        canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+        franchiseId,
         mediaItemId,
-        publicationStatus,
       });
-
-      if (!links) {
-        return { error: "duplicate", success: false };
+      if (!result) return initialErrorState;
+      removalStatuses.push({ franchiseId, status: result.status });
+    }
+    if (mode === "existing") {
+      if (franchiseIds.length > 0) {
+        const links = await createAuthorMediaItemFranchiseLinks({
+          authorId: author.id,
+          franchiseIds,
+          mediaItemId,
+          publicationStatus,
+        });
+        if (!links) return { error: "duplicate", success: false };
+        affectedFranchises = links;
       }
-
-      affectedFranchises = links;
     } else if (mode === "new") {
-      const title = getFormString(formData, "title");
-
-      if (!title) {
-        return initialErrorState;
-      }
+      const title = newFranchiseTitle;
 
       const franchiseInput = {
         title,
@@ -149,21 +206,31 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
   revalidatePath("/");
   revalidatePath("/admin/franchise-review");
   revalidatePath("/admin", "layout");
-  await logActivity({
-    action:
-      publicationStatus === "published"
-        ? "franchise.media.attached"
-        : "franchise.media.suggested",
-    actorType: "author",
-    authorId: author.id,
-    entityType: "media-item",
-    entityId: mediaItemId,
-    entityLabel: mediaItem.title,
-    metadata: {
-      mediaItem: { id: mediaItem.id, title: mediaItem.title },
-      franchises: affectedFranchises,
-    },
-  });
+  if (affectedFranchises.length > 0) {
+    await logActivity({
+      action:
+        publicationStatus === "published"
+          ? "franchise.media.attached"
+          : "franchise.media.suggested",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: mediaItemId,
+      entityLabel: mediaItem.title,
+      metadata: {
+        mediaItem: { id: mediaItem.id, title: mediaItem.title },
+        franchises: affectedFranchises,
+      },
+    });
+  }
+  for (const removal of removalStatuses) {
+    await logActivity({
+      action: removal.status === "removed" ? "franchise.media.detached" : "franchise.media.removal-requested",
+      actorType: "author", authorId: author.id, entityType: "media-item", entityId: mediaItemId,
+      entityLabel: mediaItem.title,
+      metadata: { mediaItem: { id: mediaItem.id, title: mediaItem.title }, franchises: [{ id: removal.franchiseId, title: "Серия" }] },
+    });
+  }
 
   return { error: null, success: true };
 }

@@ -4,6 +4,7 @@ import {
   type AnyPgColumn,
   boolean,
   date,
+  foreignKey,
   index,
   integer,
   jsonb,
@@ -635,6 +636,30 @@ export const mediaItemFranchises = pgTable(
     }),
     index("media_item_franchises_franchise_id_idx").on(table.franchiseId),
     index("media_item_franchises_publication_status_idx").on(table.publicationStatus),
+  ],
+);
+
+export const mediaItemFranchiseRemovalRequests = pgTable(
+  "media_item_franchise_removal_requests",
+  {
+    mediaItemId: integer("media_item_id").notNull(),
+    franchiseId: integer("franchise_id").notNull(),
+    requestedByAuthorId: integer("requested_by_author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.mediaItemId, table.franchiseId],
+      name: "media_item_franchise_removal_requests_pk",
+    }),
+    foreignKey({
+      columns: [table.mediaItemId, table.franchiseId],
+      foreignColumns: [mediaItemFranchises.mediaItemId, mediaItemFranchises.franchiseId],
+      name: "media_item_franchise_removal_requests_link_fk",
+    }).onDelete("cascade"),
+    index("media_item_franchise_removal_requests_author_id_idx").on(table.requestedByAuthorId),
   ],
 );
 

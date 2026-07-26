@@ -38,6 +38,16 @@ describe("public franchise links", () => {
     assert.match(mediaPage, /mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/);
   });
 
+  it("shows already assigned series as path tags in the public suggestion dialog", () => {
+    const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
+    const dialog = readFileSync("src/app/media-item-franchise-suggestion-dialog.tsx", "utf8");
+
+    assert.match(mediaPage, /<MediaItemFranchiseSuggestionDialog[\s\S]*assignedFranchises=\{item\.franchises\}/);
+    assert.match(dialog, /assignedFranchises: Array<\{/);
+    assert.match(dialog, /Уже назначены/);
+    assert.match(dialog, /franchise\.path\?\.map\(\(part\) => part\.title\)\.join\(" \/ "\)/);
+  });
+
   it("disables linked series with a status label and leaves an unlinked series enabled", () => {
     const franchises = [
       { id: 1, title: "Published" },

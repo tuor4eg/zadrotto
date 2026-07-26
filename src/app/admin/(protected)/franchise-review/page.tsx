@@ -1,4 +1,4 @@
-import { Check, X } from "lucide-react";
+import { Check, Link2, Unlink, X } from "lucide-react";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -40,10 +40,17 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
             <THead><tr><TH>Серия</TH><TH className="w-44">Автор</TH><TH className="w-28 px-2 text-right">Действия</TH></tr></THead>
             <TBody>
               {franchises.map((franchise) => (
-                <TR key={`${franchise.kind}-${franchise.id}-${franchise.kind === "link" ? franchise.franchiseId : ""}`}>
+                <TR key={`${franchise.kind}-${franchise.id}-${franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : ""}`}>
                   <TD className="min-w-0 overflow-hidden">
-                    <div className="truncate font-medium text-stone-950">
-                      {franchise.kind === "link" ? (
+                    <div className="flex items-start gap-3">
+                      {franchise.kind === "link" || franchise.kind === "removal" ? (
+                        <div className={franchise.kind === "removal" ? "grid size-10 shrink-0 place-items-center rounded-md border border-red-200 bg-red-50 text-red-700" : "grid size-10 shrink-0 place-items-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700"} aria-hidden="true">
+                          {franchise.kind === "removal" ? <Unlink className="size-5" /> : <Link2 className="size-5" />}
+                        </div>
+                      ) : null}
+                      <div className="min-w-0">
+                        <div className="truncate font-medium text-stone-950">
+                          {franchise.kind === "link" || franchise.kind === "removal" ? (
                         <>
                           <Link href={`/admin/media/${franchise.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
                             {franchise.title}
@@ -53,7 +60,7 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
                             {franchise.franchiseTitle}
                           </Link>
                         </>
-                      ) : (
+                          ) : (
                         franchise.mediaItems.length > 0 ? (
                           <>
                             {franchise.mediaItems.map((mediaItem, index) => (
@@ -74,16 +81,18 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
                             {franchise.title}
                           </Link>
                         )
-                      )}
+                          )}
+                        </div>
+                        {franchise.kind === "removal" ? <div className="mt-1 text-xs text-red-700">Запрос на отвязку существующей серии</div> : franchise.kind === "link" ? <div className="mt-1 text-xs text-emerald-700">Привязка существующей серии</div> : franchise.mediaItems.length > 0 ? <div className="mt-1 text-xs text-stone-500">Новая серия будет добавлена к записи при одобрении</div> : null}
+                        {franchise.originalTitle ? <div className="mt-1 truncate text-xs text-stone-500">{franchise.originalTitle}</div> : null}
+                        {franchise.description ? <div className="mt-1 line-clamp-2 text-xs text-stone-500">{franchise.description}</div> : null}
+                      </div>
                     </div>
-                    {franchise.kind === "link" ? <div className="mt-1 text-xs text-stone-500">Привязка существующей серии</div> : franchise.mediaItems.length > 0 ? <div className="mt-1 text-xs text-stone-500">Новая серия будет добавлена к записи при одобрении</div> : null}
-                    {franchise.originalTitle ? <div className="mt-1 truncate text-xs text-stone-500">{franchise.originalTitle}</div> : null}
-                    {franchise.description ? <div className="mt-1 line-clamp-2 text-xs text-stone-500">{franchise.description}</div> : null}
                   </TD>
                   <TD><div className="truncate text-sm text-stone-700">{franchise.authorName}</div></TD>
                   <TD className="px-2"><div className="flex justify-end gap-1.5">
-                    <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}<input type="hidden" name="decision" value="published" /><Button type="submit" variant="positive" size="icon" aria-label={`Одобрить заявку ${franchise.title}`}><Check /></Button></form>
-                    <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}<input type="hidden" name="decision" value="rejected" /><Button type="submit" variant="destructive" size="icon" aria-label={`Отклонить заявку ${franchise.title}`}><X /></Button></form>
+                    <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" || franchise.kind === "removal" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}{franchise.kind === "removal" ? <input type="hidden" name="kind" value="removal" /> : null}<input type="hidden" name="decision" value="published" /><Button type="submit" variant="positive" size="icon" aria-label={`Одобрить заявку ${franchise.title}`}><Check /></Button></form>
+                    <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" || franchise.kind === "removal" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}{franchise.kind === "removal" ? <input type="hidden" name="kind" value="removal" /> : null}<input type="hidden" name="decision" value="rejected" /><Button type="submit" variant="destructive" size="icon" aria-label={`Отклонить заявку ${franchise.title}`}><X /></Button></form>
                   </div></TD>
                 </TR>
               ))}

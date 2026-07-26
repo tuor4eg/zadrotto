@@ -145,6 +145,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           franchiseActions={
             currentAuthor ? (
               <MediaItemFranchiseSuggestionDialog
+                assignedFranchises={item.franchises}
                 canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
                 franchises={mapFranchiseSuggestionOptions(
                   publishedFranchises,

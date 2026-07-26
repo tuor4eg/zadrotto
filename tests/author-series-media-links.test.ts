@@ -117,7 +117,7 @@ describe("author series media mutations", () => {
     const removeQuery = getFunctionSource(
       querySource,
       "removeAuthorMediaItemFranchiseLink",
-      "createAuthorFranchiseWithMediaItemLink",
+      "requestAuthorMediaItemFranchiseRemoval",
     );
 
     assert.match(removeQuery, /\.delete\(mediaItemFranchises\)/);
@@ -129,7 +129,13 @@ describe("author series media mutations", () => {
       /inArray\(mediaItemFranchises\.publicationStatus, \["private", "submitted", "rejected"\]\)/,
     );
     assert.doesNotMatch(removeQuery, /"published"/);
-    assert.match(actionsSource, /if \(!removedLink\)[\s\S]*error: "invalid"/);
+  });
+
+  it("requests published-link removal and returns its explicit status to the series client", () => {
+    assert.match(actionsSource, /requestAuthorMediaItemFranchiseRemoval\(\{[\s\S]*authorId: author\.id,[\s\S]*canPublishFranchisesWithoutReview: author\.canPublishFranchisesWithoutReview/);
+    assert.match(actionsSource, /let removalStatus: "removed" \| "requested"/);
+    assert.match(actionsSource, /removalStatus = removedLink\.status/);
+    assert.match(actionsSource, /return \{ error: null, linkStatus: null, removalStatus, success: true \}/);
   });
 
   it("revalidates every affected surface and records add/remove identities", () => {
@@ -146,6 +152,7 @@ describe("author series media mutations", () => {
     }
 
     assert.match(actionsSource, /"franchise\.media\.detached"/);
+    assert.match(actionsSource, /removalStatus === "requested"[\s\S]*"franchise\.media\.removal-requested"/);
     assert.match(actionsSource, /mediaItem: \{ id: mediaItem\.id, title: mediaItem\.title \}/);
     assert.match(
       actionsSource,
@@ -299,7 +306,7 @@ describe("author series media link client", () => {
       clientSource,
       /result\.linkStatus === "published" &&[\s\S]*visibleItems\.length === 1 &&[\s\S]*queryRef\.current\.trim\(\) === mutationQuery[\s\S]*setOpen\(false\);[\s\S]*setQuery\(""\);[\s\S]*setItems\(\[\]\);[\s\S]*setResolvedQuery\(""\);[\s\S]*setSearchError\(null\);[\s\S]*setMessage\(null\);[\s\S]*return;/,
     );
-    assert.match(clientSource, /queryRef\.current = event\.target\.value/);
+    assert.match(clientSource, /const nextQuery = event\.target\.value;[\s\S]*queryRef\.current = nextQuery/);
   });
 
   it("keeps a multi-result search open after filtering a published item", () => {
@@ -340,6 +347,7 @@ describe("author series media link client", () => {
     assert.match(clientSource, /role="status"/);
     assert.match(clientSource, /Связь уже существует\./);
     assert.match(clientSource, /Связь отправлена на проверку\./);
+    assert.match(clientSource, /result\.removalStatus === "requested"[\s\S]*Запрос на удаление отправлен на проверку\./);
     assert.match(clientSource, /Связь удалена\./);
   });
 
@@ -355,7 +363,7 @@ describe("author series media link client", () => {
     );
     assert.match(
       clientSource,
-      /onChange=\{\(event\) => \{[\s\S]*setQuery\(event\.target\.value\);[\s\S]*setMessage\(null\)/,
+      /onChange=\{\(event\) => \{[\s\S]*const nextQuery = event\.target\.value;[\s\S]*setQuery\(nextQuery\);[\s\S]*setMessage\(null\)/,
     );
     assert.match(clientSource, /response\.status === 401[\s\S]*Сессия истекла/);
     assert.match(clientSource, /role="alert"/);

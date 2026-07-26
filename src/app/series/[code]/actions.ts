@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createAuthorMediaItemFranchiseLinks,
   getFranchiseByCode,
-  removeAuthorMediaItemFranchiseLink,
+  requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
 import { logActivity } from "@/lib/activity-logs/server";
@@ -15,6 +15,7 @@ import { getFranchisePublicationStatusAfterAuthorSubmit } from "@/lib/authors/me
 export type SeriesMediaLinkActionResult = {
   error: "duplicate" | "invalid" | "unavailable" | null;
   linkStatus: "published" | "submitted" | null;
+  removalStatus?: "removed" | "requested" | null;
   success: boolean;
 };
 
@@ -96,9 +97,11 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
     return { error: "invalid", linkStatus: null, success: false };
   }
 
+  let removalStatus: "removed" | "requested";
   try {
-    const removedLink = await removeAuthorMediaItemFranchiseLink({
+    const removedLink = await requestAuthorMediaItemFranchiseRemoval({
       authorId: author.id,
+      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
       franchiseId: franchise.id,
       mediaItemId: mediaItem.id,
     });
@@ -106,6 +109,7 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
     if (!removedLink) {
       return { error: "invalid", linkStatus: null, success: false };
     }
+    removalStatus = removedLink.status;
   } catch (error) {
     console.error(error);
     return { error: "unavailable", linkStatus: null, success: false };
@@ -113,7 +117,9 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
 
   revalidateSeriesMediaSurfaces(franchise.code, mediaItem.code);
   await logActivity({
-    action: "franchise.media.detached",
+    action: removalStatus === "requested"
+      ? "franchise.media.removal-requested"
+      : "franchise.media.detached",
     actorType: "author",
     authorId: author.id,
     entityType: "franchise",
@@ -125,5 +131,5 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
     },
   });
 
-  return { error: null, linkStatus: null, success: true };
+  return { error: null, linkStatus: null, removalStatus, success: true };
 }

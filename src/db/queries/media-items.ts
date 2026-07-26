@@ -31,6 +31,7 @@ import {
   contributionMediaItems,
   contributions,
   franchises,
+  mediaItemFranchiseRemovalRequests,
   mediaItemFranchises,
   mediaItemMetadata,
   mediaItemTitleAliases,
@@ -61,6 +62,7 @@ export type MediaItemFranchiseLink = {
   title: string;
   originalTitle: string | null;
   publicationStatus: PublicationStatus;
+  removalRequested?: boolean;
   path?: Array<{ id: number; code: string; title: string }>;
 };
 
@@ -100,6 +102,11 @@ const franchisesJsonSql = (
       'title', ${franchises.title},
       'originalTitle', ${franchises.originalTitle},
       'publicationStatus', "media_item_franchises"."publication_status",
+      'removalRequested', ${currentAuthorId
+        ? sql`exists(select 1 from ${mediaItemFranchiseRemovalRequests}
+          where ${mediaItemFranchiseRemovalRequests.mediaItemId} = ${mediaItemFranchises.mediaItemId}
+            and ${mediaItemFranchiseRemovalRequests.franchiseId} = ${mediaItemFranchises.franchiseId})`
+        : sql`false`},
       'path', (
         with recursive ancestors as (
           select ${franchises.id}, ${franchises.code}, ${franchises.title}, ${franchises.parentId}, 0 as depth
