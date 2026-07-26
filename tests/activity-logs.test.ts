@@ -10,6 +10,7 @@ import {
   getActivityLogFranchises,
   getActivityEntityTypeLabel,
   getFranchiseMediaActivityContext,
+  getFranchiseMoveDestination,
   sanitizeActivityLogMetadata,
 } from "@/lib/activity-logs/model";
 
@@ -236,6 +237,53 @@ describe("franchise media activity context", () => {
     assert.match(pageSource, /contextFranchises\.length === 1 \? "Серия" : "Серии"/);
     assert.match(pageSource, /href=\{`\/admin\/media\/\$\{contextMediaItem\.id\}\/edit`\}/);
     assert.match(pageSource, /href=\{`\/admin\/series\/\$\{franchise\.id\}\/edit`\}/);
+  });
+});
+
+describe("franchise branch activity", () => {
+  it("reads a safe destination branch from move metadata", () => {
+    assert.deepEqual(
+      getFranchiseMoveDestination({
+        action: "franchise.updated",
+        metadata: { destinationFranchise: { id: 12, title: "  Матрица  " } },
+      }),
+      { id: 12, title: "Матрица" },
+    );
+    assert.equal(
+      getFranchiseMoveDestination({
+        action: "franchise.updated",
+        metadata: { destinationFranchise: { id: 0, title: "" } },
+      }),
+      null,
+    );
+    assert.equal(
+      getFranchiseMoveDestination({
+        action: "franchise.created",
+        metadata: { destinationFranchise: { id: 12, title: "Матрица" } },
+      }),
+      null,
+    );
+  });
+
+  it("logs the destination and renders its title as an admin link", () => {
+    const actionSource = readFileSync("src/app/admin/(protected)/series/actions.ts", "utf8");
+    const pageSource = readFileSync("src/app/admin/(protected)/tools/activity/page.tsx", "utf8");
+    const moveActionSource = actionSource.slice(
+      actionSource.indexOf("export async function moveFranchiseChildAction"),
+      actionSource.indexOf("export async function createFranchiseChildAction"),
+    );
+
+    assert.match(
+      moveActionSource,
+      /destinationFranchise: \{ id: parent\.id, title: parent\.title \}/,
+    );
+    assert.doesNotMatch(moveActionSource, /message:/);
+    assert.match(pageSource, /getFranchiseMoveDestination\(\{/);
+    assert.match(
+      pageSource,
+      /href=\{`\/admin\/series\/\$\{franchiseMoveDestination\.id\}\/edit`\}/,
+    );
+    assert.match(pageSource, /\{franchiseMoveDestination\.title\}/);
   });
 });
 

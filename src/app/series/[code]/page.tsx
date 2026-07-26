@@ -3,12 +3,12 @@ import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
 import { Fragment } from "react";
 
-import { ArchiveNote } from "@/app/archive-note";
 import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import { ArchiveNote } from "@/components/archive/archive-note";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
   getFranchiseByCode,

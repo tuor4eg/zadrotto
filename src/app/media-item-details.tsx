@@ -1,10 +1,10 @@
 import { Fragment } from "react";
 import Link from "next/link";
 
-import { ArchiveNote } from "@/app/archive-note";
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
+import { ArchiveNote } from "@/components/archive/archive-note";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import type { PublicationStatus } from "@/lib/media/publication-status";

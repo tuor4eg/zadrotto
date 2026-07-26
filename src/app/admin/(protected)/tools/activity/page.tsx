@@ -13,6 +13,7 @@ import {
   getActivityActionLabel,
   getActivityEntityTypeLabel,
   getFranchiseMediaActivityContext,
+  getFranchiseMoveDestination,
   isActivityAction,
   isActivityActorType,
   isActivityEntityType,
@@ -131,6 +132,10 @@ function ActivityLogDetails({
     entityType: item.entityType,
     metadata: item.metadata,
   });
+  const franchiseMoveDestination = getFranchiseMoveDestination({
+    action: item.action,
+    metadata: item.metadata,
+  });
   const contextMediaItem = franchiseMediaContext?.mediaItem &&
     (showPrimaryEntity || item.entityType !== "media-item")
     ? franchiseMediaContext.mediaItem
@@ -181,7 +186,20 @@ function ActivityLogDetails({
           <ActivityEntityLabel item={item} className="text-stone-700" />
         </div>
       ) : null}
-      {item.message ? <div className="text-stone-600">{item.message}</div> : null}
+      {franchiseMoveDestination ? (
+        <div className="text-stone-600">
+          Серия перемещена в ветку{" "}
+          <Link
+            className="text-stone-700 underline-offset-2 hover:underline"
+            href={`/admin/series/${franchiseMoveDestination.id}/edit`}
+          >
+            {franchiseMoveDestination.title}
+          </Link>
+          .
+        </div>
+      ) : item.message ? (
+        <div className="text-stone-600">{item.message}</div>
+      ) : null}
       {item.ipAddress || item.userAgent ? (
         <div className="break-words">
           {[item.ipAddress ? `IP: ${item.ipAddress}` : null, item.userAgent]

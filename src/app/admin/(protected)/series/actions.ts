@@ -245,12 +245,15 @@ export async function moveFranchiseChildAction(formData: FormData) {
   const parentId = parseRequiredFranchiseId(getFormString(formData, "parentId"));
   const childId = parseRequiredFranchiseId(getFormString(formData, "childId"));
   if (!parentId.ok || !childId.ok || parentId.value === childId.value) redirect("/admin/series?error=invalid-franchise");
-  const child = await getAdminFranchiseById(childId.value);
-  if (!child) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
+  const [parent, child] = await Promise.all([
+    getAdminFranchiseById(parentId.value),
+    getAdminFranchiseById(childId.value),
+  ]);
+  if (!parent || !child) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
   try {
     const moved = await updateFranchise({
       id: child.id, title: child.title, originalTitle: child.originalTitle,
-      description: child.description, parentId: parentId.value,
+      description: child.description, parentId: parent.id,
     });
     if (!moved) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
   } catch (error) {
@@ -258,7 +261,17 @@ export async function moveFranchiseChildAction(formData: FormData) {
     redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
   }
   revalidateFranchiseSurfaces();
-  await logActivity({ action: "franchise.updated", actorType: "admin", adminUserId: adminUser.id, entityType: "franchise", entityId: child.id, entityLabel: child.title, message: "Серия перемещена в ветку." });
+  await logActivity({
+    action: "franchise.updated",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "franchise",
+    entityId: child.id,
+    entityLabel: child.title,
+    metadata: {
+      destinationFranchise: { id: parent.id, title: parent.title },
+    },
+  });
   redirect(`/admin/series/${parentId.value}/edit?tab=children&childMoved=1`);
 }
 

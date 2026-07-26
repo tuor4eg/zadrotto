@@ -396,6 +396,17 @@ export function getActivityLogFranchises(
   });
 }
 
+export function getFranchiseMoveDestination(input: {
+  action: string;
+  metadata: Record<string, unknown> | null | undefined;
+}) {
+  if (input.action !== "franchise.updated") {
+    return null;
+  }
+
+  return parseActivityLogEntity(input.metadata?.destinationFranchise);
+}
+
 export function getFranchiseMediaActivityContext(input: {
   action: string;
   entityId: number | null;
