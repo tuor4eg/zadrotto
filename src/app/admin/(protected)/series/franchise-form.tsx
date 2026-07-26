@@ -26,7 +26,7 @@ type FranchiseFormProps = {
   errorMessage?: string | null;
   publicHref?: string | null;
   successMessage?: string | null;
-  parentOptions?: Array<{ id: number; title: string; originalTitle: string | null }>;
+  parentOptions?: Array<{ id: number; title: string; originalTitle: string | null; path: string }>;
 };
 
 export function FranchiseForm({
@@ -80,6 +80,7 @@ export function FranchiseForm({
           id="franchise-parent"
           name="parentId"
           options={parentOptions}
+          searchByTitleOnly
           value={parentId}
           onChange={setParentId}
         />
@@ -90,7 +91,7 @@ export function FranchiseForm({
         </p>
         {isEditing ? (
           <p className="text-xs leading-5 text-stone-500">
-            Текущий путь: {selectedParent ? `${selectedParent.title} / ${values?.title}` : values?.title}
+            Текущий путь: {selectedParent ? <><Link href={`/admin/series/${selectedParent.id}/edit?tab=edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">{selectedParent.path}</Link> / {values?.title}</> : values?.title}
           </p>
         ) : null}
       </div>

@@ -22,6 +22,7 @@ type SearchableFranchiseSelectProps = {
   name: string;
   onChange: (value: string) => void;
   options: SearchableFranchiseOption[];
+  searchByTitleOnly?: boolean;
   value: string;
 };
 
@@ -33,12 +34,12 @@ function normalizeSearchValue(value: string) {
   return value.trim().toLowerCase();
 }
 
-function matchesSearch(option: SearchableFranchiseOption, searchValue: string) {
+function matchesSearch(option: SearchableFranchiseOption, searchValue: string, searchByTitleOnly: boolean) {
   if (!searchValue) {
     return true;
   }
 
-  return [option.title, option.originalTitle]
+  return (searchByTitleOnly ? [option.title] : [option.title, option.originalTitle])
     .filter(Boolean)
     .join(" ")
     .toLowerCase()
@@ -51,6 +52,7 @@ export function SearchableFranchiseSelect({
   onChange,
   options,
   value,
+  searchByTitleOnly = false,
 }: SearchableFranchiseSelectProps) {
   const listboxId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
@@ -59,8 +61,8 @@ export function SearchableFranchiseSelect({
   const [open, setOpen] = useState(false);
   const normalizedQuery = normalizeSearchValue(query);
   const visibleOptions = useMemo(
-    () => options.filter((option) => matchesSearch(option, normalizedQuery)),
-    [normalizedQuery, options],
+    () => options.filter((option) => matchesSearch(option, normalizedQuery, searchByTitleOnly)),
+    [normalizedQuery, options, searchByTitleOnly],
   );
 
   useEffect(() => {
@@ -177,6 +179,9 @@ export function SearchableFranchiseSelect({
                       <span className="mt-0.5 block truncate text-xs text-stone-500">
                         {option.originalTitle}
                       </span>
+                    ) : null}
+                    {option.path && option.path !== option.title ? (
+                      <span className="mt-0.5 block truncate text-xs text-stone-500">{option.path}</span>
                     ) : null}
                   </span>
                   <Check

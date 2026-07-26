@@ -27,7 +27,7 @@ describe("series media unlink tile", () => {
   });
 
   it("places the unlink affordance at the tile's top-left corner", () => {
-    assert.match(tileSource, /<div className="relative min-w-0">/);
+    assert.match(tileSource, /className="group relative min-w-0"/);
     assert.match(tileSource, /className="absolute left-1\.5 top-1\.5 z-30/);
     assert.match(tileSource, /<ArchiveTooltip label="Удалить из серии" side="right"/);
     assert.match(tileSource, /aria-label=\{`Удалить запись \$\{item\.title\} из серии`\}/);
@@ -36,7 +36,7 @@ describe("series media unlink tile", () => {
 
   it("opens confirmation before invoking the existing removal action", () => {
     assert.match(tileSource, /const \[confirming, setConfirming\] = useState\(false\)/);
-    assert.match(tileSource, /onClick=\{\(\) => \{ setMessage\(null\); setConfirming\(true\); \}\}/);
+    assert.match(tileSource, /onClick=\{\(\) => \{ setMessage\(null\); setConfirming\(true\); setUnlinkedActionRevealed\(false\); \}\}/);
     assert.match(tileSource, /\{confirming \? createPortal\([\s\S]*role="alertdialog"/);
     assert.match(tileSource, /onClick=\{\(\) => setConfirming\(false\)\}>Отмена/);
     assert.match(tileSource, /onClick=\{submit\}>\{pending \? "Сохраняем…" : "Убрать"\}/);
@@ -50,6 +50,21 @@ describe("series media unlink tile", () => {
       tileSource.slice(submitStart, confirmationStart),
       /await removeAuthorSeriesMediaLinkAction\(\{ franchiseCode, mediaItemCode: item\.code \}\)/,
     );
+  });
+
+  it("hides the action on desktop until hover and reveals it after a mobile left swipe", () => {
+    assert.match(tileSource, /md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100/);
+    assert.match(tileSource, /md:focus-visible:opacity-100/);
+    assert.match(tileSource, /max-md:focus-visible:pointer-events-auto max-md:focus-visible:opacity-100/);
+    assert.match(tileSource, /event\.clientX - pointerStartX\.current < -40/);
+    assert.match(tileSource, /setUnlinkedActionRevealed\(true\)/);
+    assert.match(tileSource, /event\.currentTarget\.setPointerCapture\(event\.pointerId\)/);
+  });
+
+  it("cancels interrupted gestures and prevents a completed swipe from navigating the tile link", () => {
+    assert.match(tileSource, /onPointerCancel=\{\(event\) => \{[\s\S]*pointerStartX\.current = null;[\s\S]*didSwipeToReveal\.current = false/);
+    assert.match(tileSource, /onClickCapture=\{\(event\) => \{[\s\S]*if \(!didSwipeToReveal\.current\) return;[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*didSwipeToReveal\.current = false/);
+    assert.match(tileSource, /event\.currentTarget\.releasePointerCapture\(event\.pointerId\)/);
   });
 
   it("reports either immediate removal or a request for review from the shared action result", () => {

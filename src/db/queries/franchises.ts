@@ -1,5 +1,4 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
 import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
@@ -46,25 +45,6 @@ type FranchiseBreadcrumb = {
   title: string;
 };
 
-const franchiseParentsJsonSql = (franchiseId: SQLWrapper) => sql<FranchiseBreadcrumb[]>`coalesce((
-  with recursive ancestors as (
-    select ${franchises.id}, ${franchises.code}, ${franchises.title}, ${franchises.parentId}, 0 as depth
-    from ${franchises}
-    where ${franchises.id} = ${franchiseId}
-    union all
-    select parent.id, parent.code, parent.title, parent.parent_id, ancestors.depth + 1
-    from "franchises" parent
-    inner join ancestors on parent.id = ancestors.parent_id
-    where parent.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-  )
-  select jsonb_agg(
-    jsonb_build_object('id', id, 'code', code, 'title', title)
-    order by depth desc
-  )
-  from ancestors
-  where depth > 0
-), '[]'::jsonb)`;
-
 const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`coalesce((
   select jsonb_agg(
     jsonb_build_object(
@@ -83,27 +63,51 @@ const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`
 ), '[]'::jsonb)`;
 
 export async function getFranchiseByCode(code: string) {
-  const franchiseByCode = alias(franchises, "franchise_by_code");
   const [franchise] = await db
     .select({
-      id: franchiseByCode.id,
-      code: franchiseByCode.code,
-      title: franchiseByCode.title,
-      originalTitle: franchiseByCode.originalTitle,
-      publicationStatus: franchiseByCode.publicationStatus,
-      description: franchiseByCode.description,
-      parents: franchiseParentsJsonSql(franchiseByCode.id),
+      id: franchises.id,
+      code: franchises.code,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+      publicationStatus: franchises.publicationStatus,
+      description: franchises.description,
+      parentId: franchises.parentId,
     })
-    .from(franchiseByCode)
+    .from(franchises)
     .where(
       and(
-        eq(franchiseByCode.code, code),
-        eq(franchiseByCode.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        eq(franchises.code, code),
+        publishedFranchiseCondition,
       ),
     )
     .limit(1);
 
-  return franchise ?? null;
+  if (!franchise) return null;
+
+  const parents: FranchiseBreadcrumb[] = [];
+  const visitedParentIds = new Set([franchise.id]);
+  let parentId = franchise.parentId;
+
+  while (parentId && !visitedParentIds.has(parentId)) {
+    visitedParentIds.add(parentId);
+    const [parent] = await db
+      .select({
+        id: franchises.id,
+        code: franchises.code,
+        title: franchises.title,
+        parentId: franchises.parentId,
+      })
+      .from(franchises)
+      .where(and(eq(franchises.id, parentId), publishedFranchiseCondition))
+      .limit(1);
+
+    if (!parent) break;
+
+    parents.unshift({ id: parent.id, code: parent.code, title: parent.title });
+    parentId = parent.parentId;
+  }
+
+  return { ...franchise, parents };
 }
 
 export async function getFranchiseOptions(currentAuthorId?: number) {
@@ -744,8 +748,84 @@ export async function getAdminFranchiseParentOptions(franchiseId?: number) {
     return parts.join(" / ");
   };
   return rows.filter((row) => !excluded.has(row.id)).map((row) => ({
-    id: row.id, title: getPath(row), originalTitle: row.originalTitle,
+    id: row.id, title: row.title, originalTitle: row.originalTitle, path: getPath(row),
   }));
+}
+
+export async function getAdminFranchiseChildCandidates(franchiseId: number) {
+  const rows = await db.select({ id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle }).from(franchises).orderBy(asc(franchises.title));
+  const byId = new Map(rows.map((row) => [row.id, row]));
+  const related = new Set<number>([franchiseId]);
+  let ancestorId = byId.get(franchiseId)?.parentId ?? null;
+  while (ancestorId) { related.add(ancestorId); ancestorId = byId.get(ancestorId)?.parentId ?? null; }
+  for (const row of rows) {
+    let parentId = row.parentId;
+    while (parentId) {
+      if (parentId === franchiseId) { related.add(row.id); break; }
+      parentId = byId.get(parentId)?.parentId ?? null;
+    }
+  }
+  const path = (row: typeof rows[number]) => {
+    const parts = [row.title]; let parentId = row.parentId;
+    while (parentId) { const parent = byId.get(parentId); if (!parent) break; parts.unshift(parent.title); parentId = parent.parentId; }
+    return parts.join(" / ");
+  };
+  return rows.filter((row) => !related.has(row.id)).map((row) => ({ id: row.id, title: row.title, originalTitle: row.originalTitle, path: path(row) }));
+}
+
+export async function getAdminFranchiseChildren(franchiseId: number) {
+  const roots = await getAdminFranchiseTree("");
+  const find = (nodes: AdminFranchiseTreeNode[]): AdminFranchiseTreeNode | null => {
+    for (const node of nodes) {
+      if (node.id === franchiseId) return node;
+      const nested = find(node.children);
+      if (nested) return nested;
+    }
+    return null;
+  };
+  return find(roots.items)?.children ?? [];
+}
+
+export type AdminFranchiseDescendantNode = {
+  code: string;
+  children: AdminFranchiseDescendantNode[];
+  id: number;
+  mediaItemsCount: number;
+  title: string;
+};
+
+export async function getAdminFranchiseDescendantTree(franchiseId: number) {
+  const rows = await db
+    .select({ id: franchises.id, parentId: franchises.parentId, code: franchises.code, title: franchises.title, mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int` })
+    .from(franchises)
+    .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
+    .groupBy(franchises.id, franchises.parentId, franchises.code, franchises.title)
+    .orderBy(asc(franchises.title), asc(franchises.code));
+  const childrenByParentId = new Map<number | null, typeof rows>();
+
+  for (const row of rows) {
+    childrenByParentId.set(row.parentId, [...(childrenByParentId.get(row.parentId) ?? []), row]);
+  }
+
+  function buildChildren(parentId: number, visitedIds: Set<number>): AdminFranchiseDescendantNode[] {
+    return (childrenByParentId.get(parentId) ?? []).flatMap((child) => {
+      if (visitedIds.has(child.id)) return [];
+      const nextVisitedIds = new Set(visitedIds).add(child.id);
+      return [{ id: child.id, code: child.code, title: child.title, mediaItemsCount: child.mediaItemsCount, children: buildChildren(child.id, nextVisitedIds) }];
+    });
+  }
+
+  return buildChildren(franchiseId, new Set([franchiseId]));
+}
+
+export async function hasAdminFranchiseChildren(franchiseId: number) {
+  const [child] = await db
+    .select({ id: franchises.id })
+    .from(franchises)
+    .where(eq(franchises.parentId, franchiseId))
+    .limit(1);
+
+  return Boolean(child);
 }
 
 export async function franchiseExistsById(id: number) {

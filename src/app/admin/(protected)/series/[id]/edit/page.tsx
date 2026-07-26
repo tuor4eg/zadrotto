@@ -12,6 +12,9 @@ import {
   getAdminMediaItemsAvailableForFranchise,
   getAdminMediaItemsByFranchiseId,
   getAdminFranchiseParentOptions,
+  getAdminFranchiseChildCandidates,
+  getAdminFranchiseDescendantTree,
+  hasAdminFranchiseChildren,
 } from "@/db/queries/franchises";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaTypeLabel } from "@/lib/media/types";
@@ -25,6 +28,7 @@ import { EmptyState, PageHeader } from "../../../admin-ui";
 import { FranchiseForm } from "../../franchise-form";
 import { MediaItemFranchisePicker } from "../../media-item-franchise-picker";
 import { formatMediaItemsCount, getFranchiseErrorMessage } from "../../messages";
+import { FranchiseChildrenTab } from "./children-tab";
 
 type EditFranchisePageProps = {
   params: Promise<{
@@ -32,9 +36,13 @@ type EditFranchisePageProps = {
   }>;
   searchParams: Promise<{
     attached?: string;
+    childCreated?: string;
+    childDeleted?: string;
+    childMoved?: string;
     detached?: string;
     updated?: string;
     error?: string;
+    tab?: string;
   }>;
 };
 
@@ -85,37 +93,35 @@ export default async function EditFranchisePage({
     notFound();
   }
 
-  const [franchise, mediaItems, availableMediaItems, mediaTypes, parentOptions] = await Promise.all([
+  const tab = query.tab === "media" || query.tab === "children" ? query.tab : "edit";
+  const [franchise, mediaItems, availableMediaItems, mediaTypes, parentOptions, childCandidates, descendants, hasChildren] = await Promise.all([
     getAdminFranchiseById(franchiseId),
-    getAdminMediaItemsByFranchiseId(franchiseId),
-    getAdminMediaItemsAvailableForFranchise(franchiseId),
-    getMediaTypeOptions(),
-    getAdminFranchiseParentOptions(franchiseId),
+    tab === "edit" || tab === "media" ? getAdminMediaItemsByFranchiseId(franchiseId) : Promise.resolve([]),
+    tab === "media" ? getAdminMediaItemsAvailableForFranchise(franchiseId) : Promise.resolve([]),
+    tab === "media" ? getMediaTypeOptions() : Promise.resolve([]),
+    tab === "edit" ? getAdminFranchiseParentOptions(franchiseId) : Promise.resolve([]),
+    tab === "children" ? getAdminFranchiseChildCandidates(franchiseId) : Promise.resolve([]),
+    tab === "children" ? getAdminFranchiseDescendantTree(franchiseId) : Promise.resolve([]),
+    tab === "edit" ? hasAdminFranchiseChildren(franchiseId) : Promise.resolve(false),
   ]);
 
   if (!franchise) {
     notFound();
   }
 
-  const canDelete = mediaItems.length === 0;
+  const canDelete = mediaItems.length === 0 && !hasChildren;
 
   return (
-    <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_360px]">
-      <section className="min-w-0">
-        <PageHeader
-          title="Редактирование серии"
-          description={franchise.title}
-          aside={
-            <Link
-              href="/admin/series"
-              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
-            >
-              <ArrowLeft />
-              Назад
-            </Link>
-          }
-        />
-
+    <div className="grid gap-5">
+      <PageHeader
+        title="Редактирование серии"
+        description={franchise.title}
+        aside={<Link href="/admin/series" className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}><ArrowLeft />Назад</Link>}
+      />
+      <nav className="flex gap-2 border-b border-stone-200" aria-label="Разделы серии">
+        {[['edit', 'Редактирование'], ['media', 'Записи'], ['children', 'Потомки']].map(([value, label]) => <Link key={value} href={`/admin/series/${franchise.id}/edit?tab=${value}`} className={`px-3 py-2 text-sm ${tab === value ? "border-b-2 border-stone-950 font-medium text-stone-950" : "text-stone-600"}`}>{label}</Link>)}
+      </nav>
+      {tab === "edit" ? <section className="min-w-0">
         <Card className="mt-5">
           <CardContent className="pt-5">
             <FranchiseForm
@@ -143,19 +149,19 @@ export default async function EditFranchisePage({
             <div>
               <h2 className="text-sm font-medium text-stone-950">Удаление серии</h2>
               <p className="mt-1 text-sm leading-6 text-stone-600">
-                Серию можно удалить только если к ней не привязаны записи.
+                Серию можно удалить только если к ней не привязаны записи и дочерние серии.
               </p>
             </div>
             <Tooltip
               className="w-full"
-              label={canDelete ? "Удалить" : "Нельзя удалить: есть записи"}
+              label={canDelete ? "Удалить" : "Нельзя удалить: есть записи или дочерние серии"}
             >
               <ConfirmAction
                 action={deleteFranchiseAction}
                 disabled={!canDelete}
                 fields={[{ name: "franchiseId", value: franchise.id }]}
                 title="Удалить серию?"
-                description={`Серия «${franchise.title}» будет удалена. Это возможно только если к ней не привязаны записи.`}
+                description={`Серия «${franchise.title}» будет удалена. Это возможно только если к ней не привязаны записи и дочерние серии.`}
                 triggerLabel="Удалить серию"
                 triggerAriaLabel={`Удалить серию ${franchise.title}`}
                 triggerIcon={<Trash2 />}
@@ -165,9 +171,9 @@ export default async function EditFranchisePage({
             </Tooltip>
           </CardContent>
         </Card>
-      </section>
+      </section> : null}
 
-      <Card>
+      {tab === "media" ? <Card>
         <CardHeader className="flex flex-row items-end justify-between gap-3 space-y-0">
           <CardTitle className="text-base">Записи</CardTitle>
           <Badge variant="outline">
@@ -176,6 +182,9 @@ export default async function EditFranchisePage({
         </CardHeader>
 
         <CardContent>
+          {query.attached === "1" ? <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">Запись добавлена в серию.</p> : null}
+          {query.detached === "1" ? <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">Запись убрана из серии.</p> : null}
+          {query.error ? <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{getFranchiseErrorMessage(query.error)}</p> : null}
           <MediaItemFranchisePicker
             franchiseId={franchise.id}
             items={availableMediaItems}
@@ -246,7 +255,14 @@ export default async function EditFranchisePage({
             </div>
           )}
         </CardContent>
-      </Card>
+      </Card> : null}
+      {tab === "children" ? <FranchiseChildrenTab
+        franchiseId={franchise.id}
+        candidates={childCandidates}
+        descendants={descendants}
+        errorMessage={getFranchiseErrorMessage(query.error)}
+        successMessage={query.childMoved === "1" ? "Серия перемещена в эту ветку." : query.childCreated === "1" ? "Дочерняя серия создана." : query.childDeleted === "1" ? "Дочерняя серия удалена." : null}
+      /> : null}
     </div>
   );
 }

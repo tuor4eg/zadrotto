@@ -71,10 +71,18 @@ describe("franchise tree display and traversal", () => {
     "getAdminMediaItemsByFranchiseId",
   );
 
-  it("correlates breadcrumbs with the selected series", () => {
-    assert.match(franchisesQuerySource, /const franchiseByCode = alias\(franchises, "franchise_by_code"\)/);
-    assert.match(franchisesQuerySource, /parents: franchiseParentsJsonSql\(franchiseByCode\.id\)/);
-    assert.match(franchisesQuerySource, /\.from\(franchiseByCode\)/);
+  it("builds breadcrumbs only from the selected series parent chain", () => {
+    const franchiseByCodeSource = getFunctionSource(
+      franchisesQuerySource,
+      "getFranchiseByCode",
+      "getFranchiseOptions",
+    );
+
+    assert.match(franchiseByCodeSource, /parentId: franchises\.parentId/);
+    assert.match(franchiseByCodeSource, /const visitedParentIds = new Set\(\[franchise\.id\]\)/);
+    assert.match(franchiseByCodeSource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
+    assert.match(franchiseByCodeSource, /eq\(franchises\.id, parentId\)/);
+    assert.match(franchiseByCodeSource, /parents\.unshift\(\{ id: parent\.id, code: parent\.code, title: parent\.title \}\)/);
     assert.match(publicSeriesPageSource, /const parentBreadcrumbs = franchise\.parents\.filter\(/);
     assert.match(publicSeriesPageSource, /parent\.id !== franchise\.id/);
     assert.match(publicSeriesPageSource, /parent\.code !== franchise\.code/);

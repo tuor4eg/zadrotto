@@ -234,6 +234,50 @@ export async function updateFranchiseAction(formData: FormData) {
   redirect(`/admin/series/${id.value}/edit?updated=1`);
 }
 
+export async function moveFranchiseChildAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const parentId = parseRequiredFranchiseId(getFormString(formData, "parentId"));
+  const childId = parseRequiredFranchiseId(getFormString(formData, "childId"));
+  if (!parentId.ok || !childId.ok || parentId.value === childId.value) redirect("/admin/series?error=invalid-franchise");
+  const child = await getAdminFranchiseById(childId.value);
+  if (!child) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
+  try {
+    const moved = await updateFranchise({
+      id: child.id, title: child.title, originalTitle: child.originalTitle,
+      description: child.description, parentId: parentId.value,
+    });
+    if (!moved) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
+  }
+  revalidateFranchiseSurfaces();
+  await logActivity({ action: "franchise.updated", actorType: "admin", adminUserId: adminUser.id, entityType: "franchise", entityId: child.id, entityLabel: child.title, message: "Серия перемещена в ветку." });
+  redirect(`/admin/series/${parentId.value}/edit?tab=children&childMoved=1`);
+}
+
+export async function createFranchiseChildAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const parentId = parseRequiredFranchiseId(getFormString(formData, "parentId"));
+  const input = getFranchiseInput(formData);
+  if (!parentId.ok || !input.ok) redirect(`/admin/series/${parentId.ok ? parentId.value : ""}/edit?tab=children&error=required`);
+  if (input.value.parentId === undefined) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=invalid-franchise`);
+  const parent = await getAdminFranchiseById(parentId.value);
+  if (!parent) redirect("/admin/series?error=invalid-franchise");
+  const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
+  if (!duplicateCheck.ok) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=${duplicateCheck.error}`);
+  try {
+    const child = await createFranchise({ ...input.value, parentId: parent.id, code: generateEntityCode({ type: "series", name: input.value.title }) });
+    revalidateFranchiseSurfaces();
+    await logActivity({ action: "franchise.created", actorType: "admin", adminUserId: adminUser.id, entityType: "franchise", entityId: child.id, entityLabel: child.title, message: "Дочерняя серия создана." });
+  } catch (error) {
+    if (isUniqueViolation(error)) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=duplicate-code`);
+    console.error(error);
+    redirect(`/admin/series/${parentId.value}/edit?tab=children&error=${getAdminFormErrorCode(error)}`);
+  }
+  redirect(`/admin/series/${parentId.value}/edit?tab=children&childCreated=1`);
+}
+
 export async function deleteFranchiseAction(formData: FormData) {
   const adminUser = await requireAdminUser();
 
@@ -269,6 +313,18 @@ export async function deleteFranchiseAction(formData: FormData) {
   redirect("/admin/series?deleted=1");
 }
 
+export async function deleteFranchiseChildAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const parentId = parseRequiredFranchiseId(getFormString(formData, "parentId"));
+  const childId = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
+  if (!parentId.ok || !childId.ok) redirect("/admin/series?error=invalid-franchise");
+  const deleted = await deleteFranchiseIfEmpty(childId.value);
+  if (!deleted) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=not-empty`);
+  revalidateFranchiseSurfaces();
+  await logActivity({ action: "franchise.deleted", actorType: "admin", adminUserId: adminUser.id, entityType: "franchise", entityId: deleted.id, entityLabel: deleted.title, message: "Дочерняя серия удалена." });
+  redirect(`/admin/series/${parentId.value}/edit?tab=children&childDeleted=1`);
+}
+
 export async function addMediaItemToFranchiseAction(formData: FormData) {
   const adminUser = await requireAdminUser();
 
@@ -288,7 +344,7 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
   const itemBeforeUpdate = await getAdminMediaItemFranchiseIdentityById(mediaItemId.value);
 
   if (!itemBeforeUpdate) {
-    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?tab=media&error=invalid-media`);
   }
 
   let item;
@@ -300,11 +356,11 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
     });
   } catch (error) {
     console.error(error);
-    redirect(`/admin/series/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${franchiseId.value}/edit?tab=media&error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!item) {
-    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?tab=media&error=invalid-media`);
   }
 
   revalidateFranchiseSurfaces();
@@ -331,7 +387,7 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
       franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
-  redirect(`/admin/series/${franchiseId.value}/edit?attached=1`);
+  redirect(`/admin/series/${franchiseId.value}/edit?tab=media&attached=1`);
 }
 
 export async function removeMediaItemFromFranchiseAction(formData: FormData) {
@@ -359,11 +415,11 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
     });
   } catch (error) {
     console.error(error);
-    redirect(`/admin/series/${franchiseId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/series/${franchiseId.value}/edit?tab=media&error=${getAdminFormErrorCode(error)}`);
   }
 
   if (!item) {
-    redirect(`/admin/series/${franchiseId.value}/edit?error=invalid-media`);
+    redirect(`/admin/series/${franchiseId.value}/edit?tab=media&error=invalid-media`);
   }
 
   revalidateFranchiseSurfaces();
@@ -385,5 +441,5 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
       franchises: [{ id: franchise.id, title: franchise.title }],
     },
   });
-  redirect(`/admin/series/${franchiseId.value}/edit?detached=1`);
+  redirect(`/admin/series/${franchiseId.value}/edit?tab=media&detached=1`);
 }
