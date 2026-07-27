@@ -16,12 +16,15 @@ const LEVEL_STYLES: Record<PasswordStrengthLevel, string> = {
 
 export type PasswordFieldProps = Omit<
   React.InputHTMLAttributes<HTMLInputElement>,
-  "defaultValue" | "type" | "value"
+  "type"
 >;
 
 export function PasswordField(props: PasswordFieldProps) {
-  const [password, setPassword] = useState("");
+  const [internalPassword, setInternalPassword] = useState(
+    typeof props.defaultValue === "string" ? props.defaultValue : "",
+  );
   const hintId = useId();
+  const password = typeof props.value === "string" ? props.value : internalPassword;
   const strength = getPasswordStrength(password);
   const describedBy = [props["aria-describedby"], hintId].filter(Boolean).join(" ");
 
@@ -34,7 +37,7 @@ export function PasswordField(props: PasswordFieldProps) {
         maxLength={props.maxLength ?? AUTHOR_PASSWORD_MAX_LENGTH}
         aria-describedby={describedBy}
         onChange={(event) => {
-          setPassword(event.currentTarget.value);
+          setInternalPassword(event.currentTarget.value);
           props.onChange?.(event);
         }}
       />

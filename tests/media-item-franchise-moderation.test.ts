@@ -103,6 +103,9 @@ describe("author franchise submission history", () => {
     assert.match(franchiseQueries, /export async function getAuthorFranchiseSubmissions\(authorId: number\)/);
     assert.match(franchiseQueries, /eq\(franchises\.createdByAuthorId, authorId\)/);
     assert.match(franchiseQueries, /eq\(mediaItemFranchises\.createdByAuthorId, authorId\)/);
+    assert.match(franchiseQueries, /AUTHOR_FRANCHISE_SUBMISSION_STATUSES/);
+    assert.match(franchiseQueries, /inArray\(franchises\.publicationStatus/);
+    assert.match(franchiseQueries, /inArray\(\s*mediaItemFranchises\.publicationStatus/);
     assert.match(franchiseQueries, /notExists\(/);
   });
 });

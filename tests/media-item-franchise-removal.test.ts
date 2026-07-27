@@ -44,7 +44,10 @@ describe("media item franchise removal requests", () => {
     assert.match(removalQuery, /if \(link\.publicationStatus !== "published"\) \{[\s\S]*delete\(mediaItemFranchises\)/);
     assert.match(removalQuery, /if \(input\.canPublishFranchisesWithoutReview\) \{[\s\S]*delete\(mediaItemFranchises\)/);
     assert.match(removalQuery, /insert\(mediaItemFranchiseRemovalRequests\)[\s\S]*onConflictDoNothing\(\)/);
-    assert.match(removalQuery, /return \{ status: "requested" as const \}/);
+    assert.match(
+      removalQuery,
+      /status: "requested" as const,[\s\S]*franchise: \{ id: link\.franchiseId, title: link\.franchiseTitle \}/,
+    );
   });
 
   it("exposes one global pending removal for a linked series in the media-item DTO", () => {

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Edit3, Plus, Trash2 } from "lucide-react";
+import { Edit3, Eye, EyeOff, Plus, Trash2 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
@@ -9,7 +9,10 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminMediaTypes } from "@/db/queries/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
-import { deleteMediaTypeAction } from "./actions";
+import {
+  deleteMediaTypeAction,
+  setMediaTypePublicAvailabilityAction,
+} from "./actions";
 import { getMediaTypeErrorMessage } from "./messages";
 
 type MediaTypesPageProps = {
@@ -17,16 +20,25 @@ type MediaTypesPageProps = {
     created?: string;
     deleted?: string;
     error?: string;
+    "visibility-updated"?: string;
   }>;
 };
 
-function getSuccessMessage(input: { created?: string; deleted?: string }) {
+function getSuccessMessage(input: {
+  created?: string;
+  deleted?: string;
+  "visibility-updated"?: string;
+}) {
   if (input.created === "1") {
     return "Тип создан.";
   }
 
   if (input.deleted === "1") {
     return "Тип удален.";
+  }
+
+  if (input["visibility-updated"] === "1") {
+    return "Публичная видимость типа изменена.";
   }
 
   return null;
@@ -43,7 +55,10 @@ export default async function MediaTypesPage({ searchParams }: MediaTypesPagePro
 
   return (
     <div className="flex flex-col gap-5">
-      <AdminToasts clearParams={["created", "deleted", "error"]} messages={toastMessages} />
+      <AdminToasts
+        clearParams={["created", "deleted", "error", "visibility-updated"]}
+        messages={toastMessages}
+      />
 
       <PageHeader
         title="Типы"
@@ -87,6 +102,11 @@ export default async function MediaTypesPage({ searchParams }: MediaTypesPagePro
                           {mediaType.description}
                         </div>
                       ) : null}
+                      <div className="mt-1">
+                        <Badge variant={mediaType.isPubliclyAvailable ? "outline" : "warning"}>
+                          {mediaType.isPubliclyAvailable ? "Виден пользователям" : "Выключен"}
+                        </Badge>
+                      </div>
                     </TD>
                     <TD className="hidden sm:table-cell">
                       <span className="font-mono text-xs text-stone-500">{mediaType.code}</span>
@@ -99,6 +119,51 @@ export default async function MediaTypesPage({ searchParams }: MediaTypesPagePro
                     </TD>
                     <TD className="px-2">
                       <div className="flex flex-nowrap justify-end gap-1.5">
+                        <Tooltip
+                          label={mediaType.isPubliclyAvailable ? "Выключить" : "Включить"}
+                        >
+                          <ConfirmAction
+                            action={setMediaTypePublicAvailabilityAction}
+                            fields={[
+                              { name: "mediaTypeId", value: mediaType.id },
+                              {
+                                name: "isPubliclyAvailable",
+                                value: mediaType.isPubliclyAvailable ? "0" : "1",
+                              },
+                            ]}
+                            title={
+                              mediaType.isPubliclyAvailable
+                                ? "Выключить тип?"
+                                : "Включить тип?"
+                            }
+                            description={
+                              mediaType.isPubliclyAvailable
+                                ? `Тип «${mediaType.name}» исчезнет из публичного интерфейса у всех пользователей.`
+                                : `Тип «${mediaType.name}» снова станет доступен с учётом личных настроек пользователей.`
+                            }
+                            triggerLabel={
+                              mediaType.isPubliclyAvailable ? "Выключить" : "Включить"
+                            }
+                            triggerAriaLabel={
+                              mediaType.isPubliclyAvailable
+                                ? `Выключить тип ${mediaType.name}`
+                                : `Включить тип ${mediaType.name}`
+                            }
+                            triggerIcon={
+                              mediaType.isPubliclyAvailable ? <EyeOff /> : <Eye />
+                            }
+                            triggerSize="icon"
+                            triggerVariant={
+                              mediaType.isPubliclyAvailable ? "destructive" : "outline"
+                            }
+                            confirmVariant={
+                              mediaType.isPubliclyAvailable ? "destructive" : "default"
+                            }
+                            confirmLabel={
+                              mediaType.isPubliclyAvailable ? "Выключить тип" : "Включить тип"
+                            }
+                          />
+                        </Tooltip>
                         <Tooltip label="Изменить">
                           <Link
                             href={`/admin/media-types/${mediaType.id}/edit`}

@@ -7,15 +7,21 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/form";
 import { PasswordField } from "@/components/auth/password-field";
 import { AUTHOR_LOGIN_MAX_LENGTH, AUTHOR_PASSWORD_MAX_LENGTH, AUTHOR_PASSWORD_MIN_LENGTH } from "@/lib/auth/author-account";
-import { isAuthorEmailDeliveryConfigured, isAuthorRegistrationEnabled } from "@/lib/auth/features";
+import {
+  isAuthorEmailDeliveryConfigured,
+  isAuthorEmailVerificationBypassed,
+  isAuthorRegistrationEnabled,
+} from "@/lib/auth/features";
 import { registerAuthorAction } from "./actions";
 import { RegistrationStartedAtInput } from "./registration-started-at-input";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; sent?: string }> }) {
+export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; registered?: string; sent?: string }> }) {
   if (!isAuthorRegistrationEnabled()) notFound();
-  const isEmailDeliveryConfigured = await isAuthorEmailDeliveryConfigured();
+  const bypassEmailVerification = isAuthorEmailVerificationBypassed();
+  const isEmailDeliveryConfigured = bypassEmailVerification
+    || await isAuthorEmailDeliveryConfigured();
   const query = await searchParams;
   return (
     <main className="archive-page min-h-screen px-4 py-8 text-stone-950">
@@ -31,6 +37,10 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
                 Вернуться ко входу
               </Link>
             </div>
+          ) : query.registered === "1" ? (
+            <Alert>
+              Регистрация завершена. Теперь можно <Link className="underline underline-offset-4" href="/author/login">войти</Link>.
+            </Alert>
           ) : query.sent === "1" ? <Alert>Письмо с подтверждением отправлено. Если его долго нет, проверьте папку Спам.</Alert> : (
             <form action={registerAuthorAction} className="grid gap-4">
               <RegistrationStartedAtInput />

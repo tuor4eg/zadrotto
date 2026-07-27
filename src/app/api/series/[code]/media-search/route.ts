@@ -5,6 +5,7 @@ import {
   searchPublishedMediaItemsForFranchise,
 } from "@/db/queries/franchises";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 
 type RouteContext = {
   params: Promise<{ code: string }>;
@@ -16,6 +17,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!author) {
     return NextResponse.json({ items: [] }, { status: 401 });
   }
+  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(author.id);
 
   const searchQuery = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
@@ -31,6 +33,7 @@ export async function GET(request: Request, { params }: RouteContext) {
 
   const items = await searchPublishedMediaItemsForFranchise({
     authorId: author.id,
+    enabledMediaTypeCodes,
     franchiseId: franchise.id,
     searchQuery,
   });

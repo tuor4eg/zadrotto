@@ -8,6 +8,7 @@ const loginActions = readFileSync("src/app/author/login/actions.ts", "utf8");
 const loginForm = readFileSync("src/app/author/login/author-login-form.tsx", "utf8");
 const registrationActions = readFileSync("src/app/author/register/actions.ts", "utf8");
 const registrationPage = readFileSync("src/app/author/register/page.tsx", "utf8");
+const authFeatures = readFileSync("src/lib/auth/features.ts", "utf8");
 const profilePage = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
 const legacyOnboardingPage = readFileSync("src/app/author/onboarding/page.tsx", "utf8");
 const resetPasswordPage = readFileSync("src/app/author/reset-password/page.tsx", "utf8");
@@ -18,6 +19,9 @@ const registrationTimestamp = readFileSync(
   "utf8",
 );
 const profileActions = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
+const onboardingForm = readFileSync("src/app/author/(protected)/profile/author-onboarding-form.tsx", "utf8");
+const reviewForm = readFileSync("src/app/author/(protected)/reviews/review-form.tsx", "utf8");
+const mediaTypeSettingsPage = readFileSync("src/app/author/(protected)/settings/media-types/page.tsx", "utf8");
 const forgotActions = readFileSync("src/app/author/forgot-password/actions.ts", "utf8");
 const verifyPage = readFileSync("src/app/author/verify-email/page.tsx", "utf8");
 const verifyActions = readFileSync("src/app/author/verify-email/actions.ts", "utf8");
@@ -66,11 +70,11 @@ describe("author auth persistence contracts", () => {
     assert.doesNotMatch(verify, /legacyToken|pending_approval|registration_approved|registration_rejected/);
     assert.match(verifyActions, /result \? "\/author\/login\?verified=1"/);
     assert.doesNotMatch(verifyActions, /pending=1/);
-    assert.match(operations, /status: "pending_email"/);
+    assert.match(operations, /status: bypassEmailVerification \? "active" : "pending_email"/);
     assert.match(profileActions, /current\.session\.authMethod !== "access_token"/);
     assert.doesNotMatch(profileActions, /isFreshAccessTokenSession|15 \* 60/);
     assert.match(profileActions, /getAuthorAccountByAuthorId\(current\.author\.id\)/);
-    assert.match(registrationActions, /redirect\("\/author\/register\?sent=1"\)/);
+    assert.match(registrationActions, /\/author\/register\?sent=1/);
     assert.match(registrationPage, /export const dynamic = "force-dynamic"/);
     assert.match(registrationPage, /if \(!isAuthorRegistrationEnabled\(\)\) notFound\(\)/);
     assert.match(registrationPage, /Регистрация временно недоступна: отправка писем ещё не настроена/);
@@ -88,7 +92,7 @@ describe("author auth persistence contracts", () => {
       assert.match(page, /maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     }
     assert.match(registrationPage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
-    assert.match(profilePage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
+    assert.match(onboardingForm, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     assert.match(passwordField, /Минимум \$\{AUTHOR_PASSWORD_MIN_LENGTH\} символов/);
     assert.match(passwordField, /Сложность пароля:/);
     assert.match(passwordField, /aria-describedby=\{describedBy\}/);
@@ -96,7 +100,7 @@ describe("author auth persistence contracts", () => {
     assert.match(passwordField, /aria-hidden="true"/);
     assert.match(passwordField, /weak: "bg-red-500"/);
     assert.match(passwordField, /strong: "bg-emerald-600"/);
-    assert.match(passwordField, /Omit<[\s\S]*"defaultValue" \| "type" \| "value"/);
+    assert.match(passwordField, /Omit<[\s\S]*"type"/);
 
     assert.doesNotMatch(loginForm, /PasswordField|AUTHOR_PASSWORD_MIN_LENGTH|AUTHOR_PASSWORD_MAX_LENGTH/);
     assert.match(loginForm, /name="password"[\s\S]*autoComplete="current-password"/);
@@ -105,6 +109,10 @@ describe("author auth persistence contracts", () => {
     assert.match(profilePage, /<Label htmlFor="newPassword">Новый пароль<\/Label><PasswordField id="newPassword" name="password"/);
     assert.match(profilePage, /name="currentPassword" type="password" autoComplete="current-password"/);
     assert.doesNotMatch(profilePage, /name="currentPassword"[^>]*(?:minLength|maxLength)=/);
+    assert.equal(
+      profilePage.match(/name="username" autoComplete="username"/g)?.length,
+      2,
+    );
   });
 
   it("removes the registration review route while retaining historic model values", () => {
@@ -233,10 +241,48 @@ describe("author auth persistence contracts", () => {
   });
 
   it("fails closed without email delivery for registration and onboarding", () => {
-    assert.match(operations, /onboardExistingAuthor[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
-    assert.match(operations, /registerAuthorAccount[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
-    assert.match(registrationActions, /!\(await isAuthorEmailDeliveryConfigured\(\)\)/);
-    assert.match(profileActions, /!\(await isAuthorEmailDeliveryConfigured\(\)\)/);
+    assert.match(operations, /onboardExistingAuthor[\s\S]*!bypassEmailVerification[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
+    assert.match(operations, /registerAuthorAccount[\s\S]*!bypassEmailVerification[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
+    assert.match(registrationActions, /!bypassEmailVerification[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
+    assert.match(profileActions, /!bypassEmailVerification[\s\S]*isAuthorEmailDeliveryConfigured\(\)/);
+  });
+
+  it("allows explicit email verification bypass outside production only", () => {
+    assert.match(authFeatures, /env\.NODE_ENV !== "production"/);
+    assert.match(authFeatures, /env\.AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION === "true"/);
+    assert.match(operations, /status: bypassEmailVerification \? "active" : "pending_email"/);
+    assert.match(operations, /verifiedAt: bypassEmailVerification \? now : null/);
+    assert.match(operations, /if \(!bypassEmailVerification\) \{[\s\S]*insertVerificationChallenge/);
+    assert.match(profilePage, /bypassEmailVerification[\s\S]*Promise\.resolve\(true\)/);
+    assert.match(profileActions, /bypassEmailVerification[\s\S]*updated=credentials/);
+    assert.match(registrationPage, /query\.registered === "1"/);
+    assert.match(registrationActions, /\/author\/register\?registered=1/);
+  });
+
+  it("shows the concrete onboarding credential conflict", () => {
+    assert.match(profileActions, /getAuthorCredentialConflicts/);
+    assert.match(profileActions, /credentials-taken/);
+    assert.match(profileActions, /getUniqueViolationConstraint\(error\)/);
+    assert.match(profileActions, /author_accounts_normalized_login_unique[\s\S]*error: "login-taken"/);
+    assert.match(profileActions, /author_emails_normalized_email_unique[\s\S]*error: "email-taken"/);
+    assert.match(onboardingForm, /Этот логин уже занят/);
+    assert.match(onboardingForm, /Этот email уже используется другим аккаунтом/);
+    assert.match(onboardingForm, /useActionState/);
+    assert.match(onboardingForm, /value=\{login\}/);
+    assert.match(onboardingForm, /value=\{email\}/);
+    assert.match(onboardingForm, /value=\{password\}/);
+    assert.match(onboardingForm, /value=\{passwordConfirmation\}/);
+    assert.match(onboardingForm, /<AuthorToasts/);
+    assert.doesNotMatch(onboardingForm, /<Alert/);
+  });
+
+  it("uses toasts for transient author cabinet feedback", () => {
+    for (const source of [profilePage, onboardingForm, reviewForm, mediaTypeSettingsPage]) {
+      assert.match(source, /<AuthorToasts/);
+    }
+    assert.doesNotMatch(profilePage, /query\.verified \? <Alert|query\.updated \? <Alert/);
+    assert.doesNotMatch(mediaTypeSettingsPage, /query\.(?:saved|reset|error) \? <Alert/);
+    assert.doesNotMatch(reviewForm, /state\.error \? <Alert/);
   });
 
   it("uses one canonical protected profile and redirects legacy routes", () => {

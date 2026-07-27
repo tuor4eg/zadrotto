@@ -4,6 +4,7 @@ import { findPublishedMediaItemDuplicateCandidates } from "@/db/queries/media-it
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import {
   createMediaItemDuplicateAcknowledgementToken,
   isExactMediaItemDuplicate,
@@ -54,6 +55,14 @@ export async function POST(request: Request) {
 
   if (!title || !mediaType || !isMediaTypeCode(mediaType)) {
     return NextResponse.json({ matches: [], acknowledgementToken: "" });
+  }
+
+  if (
+    author &&
+    !adminUser &&
+    !(await getAccessibleMediaTypeCodes(author.id)).includes(mediaType)
+  ) {
+    return NextResponse.json({ matches: [], acknowledgementToken: "" }, { status: 403 });
   }
 
   const aliases = normalizeMediaItemTitleAliases(

@@ -2,7 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getAccessibleMediaTypeOptions } from "@/db/queries/media-types";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { parseAuthorMediaTypeFilter } from "@/lib/authors/media-filters";
@@ -20,13 +20,14 @@ type NewAuthorMediaPageProps = {
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
   const author = await requireAuthor();
-  const [params, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
+  const [params, franchises, mediaCarriers, effectiveMediaTypes, archiveSettings] = await Promise.all([
     searchParams,
     getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
-    getMediaTypeOptions(),
+    getAccessibleMediaTypeOptions(author.id),
     getArchiveSettings(),
   ]);
+  const mediaTypes = effectiveMediaTypes;
   const { error } = params;
   const initialMediaType = parseAuthorMediaTypeFilter(params.type, mediaTypes);
   const errorMessage = getAuthorMediaFormErrorMessage(error);

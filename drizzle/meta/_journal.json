@@ -288,6 +288,20 @@
       "when": 1785175200000,
       "tag": "0040_archive_settings_franchise_depth",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785261600000,
+      "tag": "0041_media_type_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785348000000,
+      "tag": "0042_media_type_guest_access",
+      "breakpoints": true
     }
   ]
 }

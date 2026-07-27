@@ -1,7 +1,13 @@
-import { asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authorAccessProfiles, authorRegistrationSettings, authors } from "@/db/schema";
+import {
+  authorAccessProfileMediaTypes,
+  authorAccessProfiles,
+  authorRegistrationSettings,
+  authors,
+  mediaTypes,
+} from "@/db/schema";
 import type { AuthorAccessProfileFormInput } from "@/lib/forms/author-access-profile";
 import {
   REGULAR_AUTHOR_ACCESS_PROFILE_CODE,
@@ -92,39 +98,88 @@ export async function getAuthorAccessProfileById(id: number) {
     .where(eq(authorAccessProfiles.id, id))
     .limit(1);
 
-  return profile ?? null;
+  if (!profile) {
+    return null;
+  }
+
+  const mediaTypeGrants = await db
+    .select({ mediaTypeId: authorAccessProfileMediaTypes.mediaTypeId })
+    .from(authorAccessProfileMediaTypes)
+    .where(eq(authorAccessProfileMediaTypes.accessProfileId, id));
+
+  return {
+    ...profile,
+    mediaTypeIds: mediaTypeGrants.map(({ mediaTypeId }) => mediaTypeId),
+  };
 }
 
 export async function createAuthorAccessProfile(input: AuthorAccessProfileFormInput & {
   code: string;
+  mediaTypeIds: number[];
 }) {
-  const [profile] = await db
-    .insert(authorAccessProfiles)
-    .values({
-      code: input.code,
-      name: input.name,
-      canPublishMediaWithoutReview: input.canPublishMediaWithoutReview,
-      canPublishFranchisesWithoutReview: input.canPublishFranchisesWithoutReview,
-      maxDraftMediaItems: input.maxDraftMediaItems,
-      maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
-      maxUploadBytes: input.maxUploadBytes,
-      maxFilesPerMediaItem: input.maxFilesPerMediaItem,
-      coverSearchesPerMinute: input.coverSearchesPerMinute,
-      coverSearchesPerHour: input.coverSearchesPerHour,
-      coverSearchesPerDay: input.coverSearchesPerDay,
-    })
-    .returning({
-      id: authorAccessProfiles.id,
-    });
+  return db.transaction(async (tx) => {
+    const grantableIds = input.mediaTypeIds.length === 0
+      ? []
+      : await tx
+        .select({ id: mediaTypes.id })
+        .from(mediaTypes)
+        .where(and(
+          inArray(mediaTypes.id, input.mediaTypeIds),
+          eq(mediaTypes.isAvailableToGuests, false),
+        ));
 
-  return profile;
+    if (grantableIds.length !== new Set(input.mediaTypeIds).size) {
+      throw new Error("Unknown or guest media type grant");
+    }
+
+    const [profile] = await tx
+      .insert(authorAccessProfiles)
+      .values({
+        code: input.code,
+        name: input.name,
+        canPublishMediaWithoutReview: input.canPublishMediaWithoutReview,
+        canPublishFranchisesWithoutReview: input.canPublishFranchisesWithoutReview,
+        maxDraftMediaItems: input.maxDraftMediaItems,
+        maxDraftMediaItemsPerDay: input.maxDraftMediaItemsPerDay,
+        maxUploadBytes: input.maxUploadBytes,
+        maxFilesPerMediaItem: input.maxFilesPerMediaItem,
+        coverSearchesPerMinute: input.coverSearchesPerMinute,
+        coverSearchesPerHour: input.coverSearchesPerHour,
+        coverSearchesPerDay: input.coverSearchesPerDay,
+      })
+      .returning({ id: authorAccessProfiles.id });
+
+    if (input.mediaTypeIds.length > 0) {
+      await tx.insert(authorAccessProfileMediaTypes).values(
+        input.mediaTypeIds.map((mediaTypeId) => ({
+          accessProfileId: profile.id,
+          mediaTypeId,
+        })),
+      );
+    }
+
+    return profile;
+  });
 }
 
 export async function updateAuthorAccessProfile(input: AuthorAccessProfileFormInput & {
   id: number;
+  mediaTypeIds: number[];
 }) {
-  const [profile] = await db
-    .update(authorAccessProfiles)
+  return db.transaction(async (tx) => {
+    const nonGuestTypes = await tx
+      .select({ id: mediaTypes.id })
+      .from(mediaTypes)
+      .where(eq(mediaTypes.isAvailableToGuests, false));
+    const nonGuestIds = nonGuestTypes.map(({ id }) => id);
+    const requestedIds = [...new Set(input.mediaTypeIds)];
+
+    if (requestedIds.some((id) => !nonGuestIds.includes(id))) {
+      throw new Error("Unknown or guest media type grant");
+    }
+
+    const [profile] = await tx
+      .update(authorAccessProfiles)
     .set({
       name: input.name,
       canPublishMediaWithoutReview: input.canPublishMediaWithoutReview,
@@ -138,12 +193,33 @@ export async function updateAuthorAccessProfile(input: AuthorAccessProfileFormIn
       coverSearchesPerDay: input.coverSearchesPerDay,
       updatedAt: new Date(),
     })
-    .where(eq(authorAccessProfiles.id, input.id))
-    .returning({
-      id: authorAccessProfiles.id,
-    });
+      .where(eq(authorAccessProfiles.id, input.id))
+      .returning({ id: authorAccessProfiles.id });
 
-  return profile ?? null;
+    if (!profile) {
+      return null;
+    }
+
+    if (nonGuestIds.length > 0) {
+      await tx
+        .delete(authorAccessProfileMediaTypes)
+        .where(and(
+          eq(authorAccessProfileMediaTypes.accessProfileId, input.id),
+          inArray(authorAccessProfileMediaTypes.mediaTypeId, nonGuestIds),
+        ));
+    }
+
+    if (requestedIds.length > 0) {
+      await tx.insert(authorAccessProfileMediaTypes).values(
+        requestedIds.map((mediaTypeId) => ({
+          accessProfileId: input.id,
+          mediaTypeId,
+        })),
+      );
+    }
+
+    return profile;
+  });
 }
 
 export async function deleteAuthorAccessProfileIfUnused(id: number) {

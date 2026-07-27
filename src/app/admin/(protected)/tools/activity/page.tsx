@@ -7,6 +7,7 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { getAdminActivityLogs } from "@/db/queries/activity-logs";
 import { getAdminUserOptions } from "@/db/queries/admin-users";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { getFranchiseTitlesByIds } from "@/db/queries/franchises";
 import {
   ACTIVITY_SEVERITY_LABELS,
   ACTIVITY_STATUS_LABELS,
@@ -118,9 +119,11 @@ function getSeverityBadgeVariant(severity: string) {
 }
 
 function ActivityLogDetails({
+  franchiseTitleById,
   item,
   showPrimaryEntity,
 }: {
+  franchiseTitleById: ReadonlyMap<number, string>;
   item: ActivityLogItem;
   showPrimaryEntity: boolean;
 }) {
@@ -173,7 +176,7 @@ function ActivityLogDetails({
                     className="text-stone-700 underline-offset-2 hover:underline"
                     href={`/admin/series/${franchise.id}/edit`}
                   >
-                    {franchise.title}
+                    {franchiseTitleById.get(franchise.id) ?? franchise.title}
                   </Link>
                 </span>
               ))}
@@ -263,6 +266,21 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
       severity,
     }),
   ]);
+  const franchiseIds = logs.items.flatMap((item) => {
+    const context = getFranchiseMediaActivityContext({
+      action: item.action,
+      entityId: item.entityId,
+      entityLabel: item.entityLabel,
+      entityType: item.entityType,
+      metadata: item.metadata,
+    });
+
+    return context?.franchises.map(({ id }) => id) ?? [];
+  });
+  const franchiseTitles = await getFranchiseTitlesByIds(franchiseIds);
+  const franchiseTitleById = new Map(
+    franchiseTitles.map(({ id, title }) => [id, title]),
+  );
   const searchParamsForPagination = {
     action: action ?? undefined,
     actor: actorType ?? undefined,
@@ -324,7 +342,11 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                         item.severity as keyof typeof ACTIVITY_SEVERITY_LABELS
                       ] ?? item.severity}
                     </Badge>
-                    <ActivityLogDetails item={item} showPrimaryEntity />
+                    <ActivityLogDetails
+                      franchiseTitleById={franchiseTitleById}
+                      item={item}
+                      showPrimaryEntity
+                    />
                   </div>
                 </div>
               ))}
@@ -380,7 +402,11 @@ export default async function AdminActivityPage({ searchParams }: AdminActivityP
                         </Badge>
                       </TD>
                       <TD>
-                        <ActivityLogDetails item={item} showPrimaryEntity={false} />
+                        <ActivityLogDetails
+                          franchiseTitleById={franchiseTitleById}
+                          item={item}
+                          showPrimaryEntity={false}
+                        />
                       </TD>
                     </TR>
                   ))}

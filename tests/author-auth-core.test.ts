@@ -22,8 +22,24 @@ import {
 } from "@/lib/auth/challenges";
 import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
 import { getPasswordStrength } from "@/lib/auth/password-strength";
+import { isAuthorEmailVerificationBypassed } from "@/lib/auth/features";
 
 describe("author auth core", () => {
+  it("bypasses email verification only when explicitly enabled outside production", () => {
+    assert.equal(isAuthorEmailVerificationBypassed({
+      NODE_ENV: "development",
+      AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION: "true",
+    }), true);
+    assert.equal(isAuthorEmailVerificationBypassed({
+      NODE_ENV: "production",
+      AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION: "true",
+    }), false);
+    assert.equal(isAuthorEmailVerificationBypassed({
+      NODE_ENV: "development",
+      AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION: "false",
+    }), false);
+  });
+
   it("normalizes logins and emails consistently", () => {
     assert.equal(normalizeAuthorLogin("  ИВАН  "), "иван");
     assert.equal(normalizeAuthorEmail(" User@Example.COM "), "user@example.com");

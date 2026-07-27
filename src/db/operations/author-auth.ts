@@ -30,7 +30,10 @@ import {
 } from "@/lib/auth/challenges";
 import { encryptEmailOutboxPayload } from "@/lib/auth/email-outbox-crypto";
 import { generateEntityCode } from "@/lib/common/generated-code";
-import { isAuthorEmailDeliveryConfigured } from "@/lib/auth/features";
+import {
+  isAuthorEmailDeliveryConfigured,
+  isAuthorEmailVerificationBypassed,
+} from "@/lib/auth/features";
 import { EMAIL_AUTOMATION_DEFAULTS, type EmailAutomationSettingsInput } from "@/lib/auth/email-automation";
 
 export async function createAuthorSession(input: {
@@ -109,7 +112,11 @@ export async function onboardExistingAuthor(input: {
   email: string;
   normalizedEmail: string;
 }) {
-  if (!(await isAuthorEmailDeliveryConfigured())) throw new Error("Author email delivery is unavailable");
+  const bypassEmailVerification = isAuthorEmailVerificationBypassed();
+  if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
+    throw new Error("Author email delivery is unavailable");
+  }
+  const now = new Date();
   return db.transaction(async (tx) => {
     const [account] = await tx
       .insert(authorAccounts)
@@ -118,7 +125,7 @@ export async function onboardExistingAuthor(input: {
         login: input.login,
         normalizedLogin: input.normalizedLogin,
         passwordHash: input.passwordHash,
-        status: "pending_email",
+        status: bypassEmailVerification ? "active" : "pending_email",
       })
       .returning({ authorId: authorAccounts.authorId });
     const [email] = await tx
@@ -128,13 +135,16 @@ export async function onboardExistingAuthor(input: {
         email: input.email,
         normalizedEmail: input.normalizedEmail,
         isPrimary: true,
+        verifiedAt: bypassEmailVerification ? now : null,
       })
       .returning({ id: authorEmails.id });
-    await insertVerificationChallenge(tx, {
-      authorId: account.authorId,
-      emailId: email.id,
-      recipient: input.email,
-    });
+    if (!bypassEmailVerification) {
+      await insertVerificationChallenge(tx, {
+        authorId: account.authorId,
+        emailId: email.id,
+        recipient: input.email,
+      });
+    }
     return account;
   });
 }
@@ -147,7 +157,11 @@ export async function registerAuthorAccount(input: {
   email: string;
   normalizedEmail: string;
 }) {
-  if (!(await isAuthorEmailDeliveryConfigured())) throw new Error("Author email delivery is unavailable");
+  const bypassEmailVerification = isAuthorEmailVerificationBypassed();
+  if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
+    throw new Error("Author email delivery is unavailable");
+  }
+  const now = new Date();
   return db.transaction(async (tx) => {
     const { profile: registrationProfile } = await resolveAuthorRegistrationAccessProfile(tx);
     const [author] = await tx
@@ -163,7 +177,7 @@ export async function registerAuthorAccount(input: {
       login: input.login,
       normalizedLogin: input.normalizedLogin,
       passwordHash: input.passwordHash,
-      status: "pending_email",
+      status: bypassEmailVerification ? "active" : "pending_email",
     });
     const [email] = await tx
       .insert(authorEmails)
@@ -172,13 +186,16 @@ export async function registerAuthorAccount(input: {
         email: input.email,
         normalizedEmail: input.normalizedEmail,
         isPrimary: true,
+        verifiedAt: bypassEmailVerification ? now : null,
       })
       .returning({ id: authorEmails.id });
-    await insertVerificationChallenge(tx, {
-      authorId: author.id,
-      emailId: email.id,
-      recipient: input.email,
-    });
+    if (!bypassEmailVerification) {
+      await insertVerificationChallenge(tx, {
+        authorId: author.id,
+        emailId: email.id,
+        recipient: input.email,
+      });
+    }
     return author;
   });
 }

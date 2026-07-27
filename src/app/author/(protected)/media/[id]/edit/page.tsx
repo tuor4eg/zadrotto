@@ -6,7 +6,10 @@ import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import {
+  getAccessibleMediaTypeOptions,
+  getEffectiveMediaTypeOptions,
+} from "@/db/queries/media-types";
 import { getAuthorMediaItemForEdit } from "@/db/queries/media-items";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { isAuthorEditablePublicationStatus } from "@/lib/forms/author-media";
@@ -31,12 +34,21 @@ export default async function EditAuthorMediaPage({
   searchParams,
 }: EditAuthorMediaPageProps) {
   const author = await requireAuthor();
-  const [{ id }, { error }, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
+  const [
+    { id },
+    { error },
+    franchises,
+    mediaCarriers,
+    accessibleMediaTypes,
+    effectiveMediaTypes,
+    archiveSettings,
+  ] = await Promise.all([
     params,
     searchParams,
     getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
-    getMediaTypeOptions(),
+    getAccessibleMediaTypeOptions(author.id),
+    getEffectiveMediaTypeOptions(author.id),
     getArchiveSettings(),
   ]);
   const mediaItemId = Number(id);
@@ -58,6 +70,17 @@ export default async function EditAuthorMediaPage({
   if (!isAuthorEditablePublicationStatus(item.publicationStatus)) {
     notFound();
   }
+  const enabledMediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
+  const currentMediaType = accessibleMediaTypes.find(({ code }) => code === item.mediaType);
+
+  if (!currentMediaType) {
+    notFound();
+  }
+
+  const mediaTypes = currentMediaType &&
+      !enabledMediaTypes.some(({ code }) => code === currentMediaType.code)
+    ? [...enabledMediaTypes, currentMediaType]
+    : enabledMediaTypes;
 
   return (
     <div className="grid gap-6">

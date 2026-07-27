@@ -7,10 +7,10 @@ import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import {
+  AUTHOR_FRANCHISE_SUBMISSION_STATUSES,
   type AuthorFranchiseSubmissionStatusFilter,
 } from "@/lib/authors/franchise-submission-filters";
 import {
-  PUBLICATION_STATUSES,
   PUBLICATION_STATUS_LABELS,
 } from "@/lib/media/publication-status";
 
@@ -96,7 +96,7 @@ export function AuthorFranchiseFiltersForm({
           }
         >
           <option value="all">Все статусы</option>
-          {PUBLICATION_STATUSES.map((status) => (
+          {AUTHOR_FRANCHISE_SUBMISSION_STATUSES.map((status) => (
             <option key={status} value={status}>
               {PUBLICATION_STATUS_LABELS[status]}
             </option>

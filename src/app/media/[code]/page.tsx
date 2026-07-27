@@ -13,7 +13,11 @@ import {
   getOtherMediaItemsFromFranchises,
   getPublicMediaItemMetadataByCode,
 } from "@/db/queries/media-items";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import {
+  getAccessibleMediaTypeCodes,
+  getAllMediaTypeOptions,
+  getEnabledMediaTypeCodes,
+} from "@/db/queries/media-types";
 import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -32,7 +36,9 @@ type MediaItemPageProps = {
 
 export async function generateMetadata({ params }: MediaItemPageProps): Promise<Metadata> {
   const { code } = await params;
-  const item = await getPublicMediaItemMetadataByCode(code);
+  const currentAuthor = await getCurrentAuthor();
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(currentAuthor?.id);
+  const item = await getPublicMediaItemMetadataByCode(code, accessibleMediaTypeCodes);
 
   if (!item) {
     return {};
@@ -65,7 +71,8 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
-  const item = await getMediaItemByCode(code, currentAuthor?.id);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(currentAuthor?.id);
+  const item = await getMediaItemByCode(code, accessibleMediaTypeCodes, currentAuthor?.id);
 
   if (!item) {
     notFound();
@@ -75,16 +82,22 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const publishedFranchiseLinks = item.franchises.filter(
     (franchise) => franchise.publicationStatus === "published",
   );
+  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
   const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises] = await Promise.all([
     Promise.all(
       publishedFranchiseLinks.map(async (franchise) => ({
         franchise,
-        items: await getOtherMediaItemsFromFranchises([franchise.id], item.id, currentAuthor?.id),
+        items: await getOtherMediaItemsFromFranchises(
+          [franchise.id],
+          item.id,
+          enabledMediaTypeCodes,
+          currentAuthor?.id,
+        ),
       })),
     ),
     getPublishedReviewsForMediaItem(item.id),
-    getMediaTypeOptions(),
+    getAllMediaTypeOptions(),
     currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
   ]);
   return (
@@ -157,13 +170,15 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
             ) : null
           }
           adjacentShelfSlot={
-            <MediaItemReviews
-              mediaItemId={item.id}
-              currentAuthor={
-                currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
-              }
-              reviews={reviews}
-            />
+            currentAuthor || reviews.length > 0 ? (
+              <MediaItemReviews
+                mediaItemId={item.id}
+                currentAuthor={
+                  currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
+                }
+                reviews={reviews}
+              />
+            ) : null
           }
           ratingSlot={
             <MediaItemRatingDialog

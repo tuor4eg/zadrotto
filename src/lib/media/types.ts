@@ -6,12 +6,30 @@ export type MediaTypeOption = {
   description: string | null;
 };
 
+export type EffectiveMediaTypeOption = MediaTypeOption & {
+  id: number;
+  enabledByDefault: boolean;
+  isEnabled: boolean;
+  isPubliclyAvailable: boolean;
+};
+
 export type MediaTypeCount = {
   count: number;
   mediaType: MediaType;
 };
 
 const OTHER_MEDIA_TYPE_CODE = "other";
+
+export function resolveMediaTypeEnabled(
+  mediaType: {
+    enabledByDefault: boolean;
+    isPubliclyAvailable: boolean;
+  },
+  userSetting?: { isEnabled: boolean } | null,
+) {
+  return mediaType.isPubliclyAvailable
+    && (userSetting?.isEnabled ?? mediaType.enabledByDefault);
+}
 
 export function isMediaTypeCode(value: string | null | undefined): value is MediaType {
   return typeof value === "string" && /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);

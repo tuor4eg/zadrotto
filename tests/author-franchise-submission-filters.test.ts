@@ -33,9 +33,11 @@ const items: AuthorFranchiseSubmissionFilterItem[] = [
 ];
 
 describe("author franchise submission filters", () => {
-  it("accepts every publication status because the history includes published proposals", () => {
+  it("accepts only moderation and rejected statuses", () => {
     assert.equal(parseAuthorFranchiseSubmissionStatusFilter("submitted"), "submitted");
-    assert.equal(parseAuthorFranchiseSubmissionStatusFilter("published"), "published");
+    assert.equal(parseAuthorFranchiseSubmissionStatusFilter("rejected"), "rejected");
+    assert.equal(parseAuthorFranchiseSubmissionStatusFilter("published"), "all");
+    assert.equal(parseAuthorFranchiseSubmissionStatusFilter("private"), "all");
     assert.equal(parseAuthorFranchiseSubmissionStatusFilter("unknown"), "all");
   });
 
@@ -53,10 +55,10 @@ describe("author franchise submission filters", () => {
       ["matrix"],
     );
     assert.deepEqual(
-      filterAuthorFranchiseSubmissions(items, { searchQuery: "", status: "published" }).map(
+      filterAuthorFranchiseSubmissions(items, { searchQuery: "", status: "all" }).map(
         (item) => item.franchiseCode,
       ),
-      ["half-life"],
+      ["dune", "matrix"],
     );
   });
 });

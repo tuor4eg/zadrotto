@@ -4,15 +4,24 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { onboardExistingAuthor, requestAuthorEmailChange, resendAuthorEmailVerification } from "@/db/operations/author-auth";
-import { getAuthorAccountByAuthorId, revokeAllAuthorSessions, revokeAuthorSessionById, updateAuthorAccountCredentials } from "@/db/queries/author-auth";
+import { getAuthorAccountByAuthorId, getAuthorCredentialConflicts, revokeAllAuthorSessions, revokeAuthorSessionById, updateAuthorAccountCredentials } from "@/db/queries/author-auth";
 import { clearAuthorSessionCookie, getCurrentAuthorSession } from "@/lib/auth/author-auth";
 import { isValidAuthorEmail, isValidAuthorLogin, normalizeAuthorEmail, normalizeAuthorLogin, validateAuthorPassword } from "@/lib/auth/author-account";
-import { isAuthorEmailDeliveryConfigured } from "@/lib/auth/features";
+import {
+  isAuthorEmailDeliveryConfigured,
+  isAuthorEmailVerificationBypassed,
+} from "@/lib/auth/features";
 import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
+import { getUniqueViolationConstraint } from "@/lib/common/app-error-messages";
 
 const PROFILE_PATH = "/author/profile";
+
+export async function logoutAuthorToTokenLogin() {
+  await clearAuthorSessionCookie();
+  redirect("/author/token");
+}
 
 function read(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -39,24 +48,64 @@ async function requireActiveAccount() {
   return { current, account };
 }
 
-export async function onboardExistingAuthorAction(formData: FormData) {
+export type AuthorOnboardingState = {
+  error: "credentials-taken" | "email-taken" | "invalid" | "login-taken" | "unavailable";
+} | null;
+
+export async function onboardExistingAuthorAction(
+  _previousState: AuthorOnboardingState,
+  formData: FormData,
+): Promise<AuthorOnboardingState> {
   const current = await requireAccessTokenSession();
-  if (!(await isAuthorEmailDeliveryConfigured())) redirect(`${PROFILE_PATH}?error=email-unavailable`);
+  const bypassEmailVerification = isAuthorEmailVerificationBypassed();
+  if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
+    return { error: "unavailable" };
+  }
   if (await getAuthorAccountByAuthorId(current.author.id)) redirect(PROFILE_PATH);
   const login = read(formData, "login");
   const email = read(formData, "email");
   const password = readPassword(formData, "password");
   const confirmation = readPassword(formData, "passwordConfirmation");
   const rateLimit = await checkAuthorAuthMutationRateLimit("author-onboarding", String(current.author.id));
-  if (!rateLimit.ok) redirect(`${PROFILE_PATH}?error=unavailable`);
-  if (!isValidAuthorLogin(login) || !isValidAuthorEmail(email) || password !== confirmation || !validateAuthorPassword(password).ok) redirect(`${PROFILE_PATH}?error=invalid`);
-  try {
-    await onboardExistingAuthor({ authorId: current.author.id, login, normalizedLogin: normalizeAuthorLogin(login), passwordHash: await hashPassword(password), email, normalizedEmail: normalizeAuthorEmail(email) });
-    await logActivity({ action: "author.registration.submitted", actorType: "author", authorId: current.author.id, entityType: "author-account", entityId: current.author.id, message: "Автор настроил вход и запросил подтверждение email.", metadata: { source: "access-token-profile" } });
-  } catch {
-    redirect(`${PROFILE_PATH}?error=unavailable`);
+  if (!rateLimit.ok) return { error: "unavailable" };
+  if (!isValidAuthorLogin(login) || !isValidAuthorEmail(email) || password !== confirmation || !validateAuthorPassword(password).ok) {
+    return { error: "invalid" };
   }
-  redirect(`${PROFILE_PATH}?sent=1`);
+  const normalizedLogin = normalizeAuthorLogin(login);
+  const normalizedEmail = normalizeAuthorEmail(email);
+  const conflicts = await getAuthorCredentialConflicts({ normalizedLogin, normalizedEmail });
+  if (conflicts.loginTaken && conflicts.emailTaken) return { error: "credentials-taken" };
+  if (conflicts.loginTaken) return { error: "login-taken" };
+  if (conflicts.emailTaken) return { error: "email-taken" };
+  try {
+    await onboardExistingAuthor({ authorId: current.author.id, login, normalizedLogin, passwordHash: await hashPassword(password), email, normalizedEmail });
+    await logActivity({
+      action: "author.registration.submitted",
+      actorType: "author",
+      authorId: current.author.id,
+      entityType: "author-account",
+      entityId: current.author.id,
+      message: bypassEmailVerification
+        ? "Автор настроил вход без подтверждения email."
+        : "Автор настроил вход и запросил подтверждение email.",
+      metadata: {
+        source: "access-token-profile",
+        emailVerificationBypassed: bypassEmailVerification,
+      },
+    });
+  } catch (error) {
+    const constraint = getUniqueViolationConstraint(error);
+    if (constraint === "author_accounts_normalized_login_unique") {
+      return { error: "login-taken" };
+    }
+    if (constraint === "author_emails_normalized_email_unique") {
+      return { error: "email-taken" };
+    }
+    return { error: "unavailable" };
+  }
+  redirect(bypassEmailVerification
+    ? `${PROFILE_PATH}?updated=credentials`
+    : `${PROFILE_PATH}?sent=1`);
 }
 
 export async function resendAuthorVerificationAction() {

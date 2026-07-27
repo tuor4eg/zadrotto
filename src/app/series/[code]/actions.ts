@@ -8,6 +8,7 @@ import {
   requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getFranchisePublicationStatusAfterAuthorSubmit } from "@/lib/authors/media-publication";
@@ -34,9 +35,10 @@ export async function addAuthorSeriesMediaLinkAction(input: {
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
   const author = await requireAuthor();
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
   const [franchise, mediaItem] = await Promise.all([
     getFranchiseByCode(input.franchiseCode),
-    getMediaItemIdentityByCode(input.mediaItemCode),
+    getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
   ]);
 
   if (!franchise || !mediaItem) {
@@ -88,9 +90,10 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
   const author = await requireAuthor();
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
   const [franchise, mediaItem] = await Promise.all([
     getFranchiseByCode(input.franchiseCode),
-    getMediaItemIdentityByCode(input.mediaItemCode),
+    getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
   ]);
 
   if (!franchise || !mediaItem) {

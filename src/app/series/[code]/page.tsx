@@ -18,7 +18,7 @@ import {
   type FranchiseBranchNode,
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -102,15 +102,17 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       parents.findIndex((candidate) => candidate.id === parent.id || candidate.code === parent.code) === index,
   );
 
-  const [currentAuthor, currentAdminUser, mediaTypes, archiveSettings] = await Promise.all([
+  const [currentAuthor, currentAdminUser, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
-    getMediaTypeOptions(),
     getArchiveSettings(),
   ]);
+  const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
+  const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
+  const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const [items, franchiseBranch, authorMediaSuggestionData] = await Promise.all([
-    getMediaItemsByFranchiseId(franchise.id, currentAuthor?.id),
-    getPublishedFranchiseBranch(franchise.id),
+    getMediaItemsByFranchiseId(franchise.id, enabledMediaTypeCodes, currentAuthor?.id),
+    getPublishedFranchiseBranch(franchise.id, enabledMediaTypeCodes),
     currentAuthor
       ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
           ([franchises, mediaCarriers]) => ({

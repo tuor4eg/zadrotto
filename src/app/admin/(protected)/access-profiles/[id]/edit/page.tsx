@@ -5,6 +5,7 @@ import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorAccessProfileById } from "@/db/queries/author-access-profiles";
+import { getAdminMediaTypeAccessOptions } from "@/db/queries/media-types";
 import { PageHeader } from "../../../admin-ui";
 import { AccessProfileForm } from "../../access-profile-form";
 import { updateAuthorAccessProfileAction } from "../../actions";
@@ -37,7 +38,10 @@ export default async function EditAccessProfilePage({
     notFound();
   }
 
-  const profile = await getAuthorAccessProfileById(profileId);
+  const [profile, mediaTypes] = await Promise.all([
+    getAuthorAccessProfileById(profileId),
+    getAdminMediaTypeAccessOptions(),
+  ]);
 
   if (!profile) {
     notFound();
@@ -65,6 +69,7 @@ export default async function EditAccessProfilePage({
             action={updateAuthorAccessProfileAction}
             submitLabel="Сохранить"
             values={profile}
+            mediaTypes={mediaTypes}
             errorMessage={getAuthorAccessProfileErrorMessage(query.error)}
             successMessage={query.updated === "1" ? "Профиль сохранен." : null}
           />

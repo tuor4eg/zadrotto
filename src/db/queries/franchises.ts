@@ -1,11 +1,13 @@
 import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
+import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
+import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -131,6 +133,20 @@ export async function getFranchiseOptions(currentAuthorId?: number) {
     .orderBy(asc(franchises.title));
 }
 
+export async function getFranchiseTitlesByIds(ids: readonly number[]) {
+  if (ids.length === 0) {
+    return [];
+  }
+
+  return db
+    .select({
+      id: franchises.id,
+      title: franchises.title,
+    })
+    .from(franchises)
+    .where(inArray(franchises.id, [...new Set(ids)]));
+}
+
 export async function getAdminFranchiseOptions() {
   const rows = await db
     .select({
@@ -187,6 +203,7 @@ export async function getPublishedFranchiseOptions() {
 
 export async function searchPublishedMediaItemsForFranchise(input: {
   authorId: number;
+  enabledMediaTypeCodes: readonly string[];
   franchiseId: number;
   searchQuery: string;
 }) {
@@ -220,6 +237,7 @@ export async function searchPublishedMediaItemsForFranchise(input: {
     .where(
       and(
         publishedMediaItemCondition,
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
         or(
           isNull(mediaItemFranchises.publicationStatus),
           ne(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
@@ -266,59 +284,30 @@ export async function searchPublishedMediaItemsForFranchise(input: {
 }
 
 export async function getPublishedFranchisesPage(input: {
+  enabledMediaTypeCodes: readonly string[];
   page: number;
   pageSize: number;
   searchQuery: string;
 }) {
-  const normalizedSearchQuery = input.searchQuery.trim().toLowerCase();
-  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
-  const searchCondition = normalizedSearchQuery
-    ? or(
-        sql`lower(${franchises.title}) like ${`%${normalizedSearchQuery}%`}`,
-        sql`lower(${franchises.originalTitle}) like ${`%${normalizedSearchQuery}%`}`,
-        sql`('-' || lower(${franchises.code}) || '-') like ${codePattern}`,
-      )
-    : undefined;
-  const filterCondition = and(publishedFranchiseCondition, searchCondition);
-  const [{ totalCount }] = await db
-    .select({ totalCount: sql<number>`count(*)::int` })
-    .from(franchises)
-    .where(filterCondition);
+  const tree = await getPublishedFranchiseTree(
+    input.searchQuery,
+    input.enabledMediaTypeCodes,
+  );
+  const flattenTree = (
+    nodes: FranchiseTreeNode[],
+    parentPath: Array<{ code: string; title: string }> = [],
+  ): Array<Omit<FranchiseTreeNode, "children" | "parentId"> & {
+    parentPath: Array<{ code: string; title: string }>;
+  }> => nodes.flatMap(({ children, parentId: _parentId, ...node }) => [
+    { ...node, parentPath },
+    ...flattenTree(children, [...parentPath, { code: node.code, title: node.title }]),
+  ]);
+  const visibleItems = flattenTree(tree);
+  const totalCount = visibleItems.length;
   const totalPages = getTotalPages(totalCount, input.pageSize);
   const page = clampPage(input.page, totalPages);
-  const items = await db
-    .select({
-      id: franchises.id,
-      code: franchises.code,
-      title: franchises.title,
-      originalTitle: franchises.originalTitle,
-      mediaItemsCount: sql<number>`count(${mediaItems.id})::int`,
-    })
-    .from(franchises)
-    .leftJoin(
-      mediaItemFranchises,
-      and(
-        eq(mediaItemFranchises.franchiseId, franchises.id),
-        eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-      ),
-    )
-    .leftJoin(
-      mediaItems,
-      and(
-        eq(mediaItems.id, mediaItemFranchises.mediaItemId),
-        publishedMediaItemCondition,
-      ),
-    )
-    .where(filterCondition)
-    .groupBy(
-      franchises.id,
-      franchises.code,
-      franchises.title,
-      franchises.originalTitle,
-    )
-    .orderBy(asc(franchises.title), asc(franchises.code), asc(franchises.id))
-    .limit(input.pageSize)
-    .offset(getOffset(page, input.pageSize));
+  const offset = getOffset(page, input.pageSize);
+  const items = visibleItems.slice(offset, offset + input.pageSize);
 
   return {
     items,
@@ -346,48 +335,35 @@ export type FranchiseBranchNode = {
   children: FranchiseBranchNode[];
 };
 
-export async function getPublishedFranchiseBranch(franchiseId: number) {
-  const rows = await db
-    .select({
-      id: franchises.id,
-      parentId: franchises.parentId,
-      code: franchises.code,
-      title: franchises.title,
-    })
-    .from(franchises)
-    .where(publishedFranchiseCondition)
-    .orderBy(asc(franchises.title), asc(franchises.code));
-  const rowById = new Map(rows.map((row) => [row.id, row]));
-  const childrenByParentId = new Map<number | null, number[]>();
+export async function getPublishedFranchiseBranch(
+  franchiseId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
+  const roots = await getPublishedFranchiseTree("", enabledMediaTypeCodes);
 
-  for (const row of rows) {
-    childrenByParentId.set(row.parentId, [
-      ...(childrenByParentId.get(row.parentId) ?? []),
-      row.id,
-    ]);
-  }
+  const findBranch = (nodes: FranchiseTreeNode[]): FranchiseBranchNode | null => {
+    for (const node of nodes) {
+      if (node.id === franchiseId) {
+        return node;
+      }
 
-  const buildBranch = (id: number): FranchiseBranchNode | null => {
-    const row = rowById.get(id);
+      const branch = findBranch(node.children);
 
-    if (!row) {
-      return null;
+      if (branch) {
+        return branch;
+      }
     }
 
-    return {
-      id: row.id,
-      code: row.code,
-      title: row.title,
-      children: (childrenByParentId.get(row.id) ?? [])
-        .map(buildBranch)
-        .filter((child): child is FranchiseBranchNode => child !== null),
-    };
+    return null;
   };
 
-  return buildBranch(franchiseId);
+  return findBranch(roots);
 }
 
-export async function getPublishedFranchiseTree(searchQuery: string) {
+export async function getPublishedFranchiseTree(
+  searchQuery: string,
+  enabledMediaTypeCodes: readonly string[],
+) {
   const rows = await db
     .select({
       id: franchises.id,
@@ -403,7 +379,11 @@ export async function getPublishedFranchiseTree(searchQuery: string) {
     .select({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId })
     .from(mediaItemFranchises)
     .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
-    .where(and(eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS), publishedMediaItemCondition));
+    .where(and(
+      eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+    ));
   const normalizedSearch = searchQuery.trim().toLowerCase();
   const matches = new Set(rows.filter((row) => !normalizedSearch || [row.title, row.originalTitle, row.code]
     .filter(Boolean).join(" ").toLowerCase().includes(normalizedSearch)).map((row) => row.id));
@@ -462,7 +442,14 @@ export async function getPublishedFranchiseTree(searchQuery: string) {
     return ids;
   };
   roots.forEach(countItems);
-  return roots;
+  const removeEmptyBranches = (nodesToFilter: FranchiseTreeNode[]): FranchiseTreeNode[] =>
+    nodesToFilter.flatMap((node) => {
+      const children = removeEmptyBranches(node.children);
+
+      return node.mediaItemsCount > 0 ? [{ ...node, children }] : [];
+    });
+
+  return removeEmptyBranches(roots);
 }
 
 export type FranchiseDuplicateMatch = {
@@ -572,10 +559,21 @@ export async function getAdminFranchises(input: {
   const items = await db
     .select({
       id: franchises.id,
+      parentId: franchises.parentId,
+      parentTitle: sql<string | null>`(
+        select parent.title
+        from franchises parent
+        where parent.id = ${franchises.parentId}
+      )`,
       code: franchises.code,
       title: franchises.title,
       originalTitle: franchises.originalTitle,
       mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int`,
+      childrenCount: sql<number>`(
+        select count(*)::int
+        from franchises child
+        where child.parent_id = ${franchises.id}
+      )`,
       publicationStatus: franchises.publicationStatus,
       createdByAuthorId: franchises.createdByAuthorId,
     })
@@ -584,6 +582,7 @@ export async function getAdminFranchises(input: {
     .where(filterCondition)
     .groupBy(
       franchises.id,
+      franchises.parentId,
       franchises.code,
       franchises.title,
       franchises.originalTitle,
@@ -1231,8 +1230,13 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
   return db.transaction(async (tx) => {
     const [link] = await tx.select({
       createdByAuthorId: mediaItemFranchises.createdByAuthorId,
+      franchiseId: franchises.id,
+      franchiseTitle: franchises.title,
       publicationStatus: mediaItemFranchises.publicationStatus,
-    }).from(mediaItemFranchises).where(and(
+    })
+      .from(mediaItemFranchises)
+      .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
+      .where(and(
       eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
       eq(mediaItemFranchises.franchiseId, input.franchiseId),
     )).limit(1);
@@ -1243,21 +1247,34 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
       )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
-      return removed ? { status: "removed" as const } : null;
+      return removed
+        ? {
+            status: "removed" as const,
+            franchise: { id: link.franchiseId, title: link.franchiseTitle },
+          }
+        : null;
     }
     if (input.canPublishFranchisesWithoutReview) {
       const [removed] = await tx.delete(mediaItemFranchises).where(and(
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
       )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
-      return removed ? { status: "removed" as const } : null;
+      return removed
+        ? {
+            status: "removed" as const,
+            franchise: { id: link.franchiseId, title: link.franchiseTitle },
+          }
+        : null;
     }
     await tx.insert(mediaItemFranchiseRemovalRequests).values({
       mediaItemId: input.mediaItemId,
       franchiseId: input.franchiseId,
       requestedByAuthorId: input.authorId,
     }).onConflictDoNothing();
-    return { status: "requested" as const };
+    return {
+      status: "requested" as const,
+      franchise: { id: link.franchiseId, title: link.franchiseTitle },
+    };
   });
 }
 
@@ -1321,6 +1338,7 @@ export async function getAuthorFranchiseSubmissions(authorId: number) {
       .where(
         and(
           eq(franchises.createdByAuthorId, authorId),
+          inArray(franchises.publicationStatus, [...AUTHOR_FRANCHISE_SUBMISSION_STATUSES]),
           notExists(
             db
               .select({ franchiseId: mediaItemFranchises.franchiseId })
@@ -1358,7 +1376,13 @@ export async function getAuthorFranchiseSubmissions(authorId: number) {
       .from(mediaItemFranchises)
       .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
       .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
-      .where(eq(mediaItemFranchises.createdByAuthorId, authorId)),
+      .where(and(
+        eq(mediaItemFranchises.createdByAuthorId, authorId),
+        inArray(
+          mediaItemFranchises.publicationStatus,
+          [...AUTHOR_FRANCHISE_SUBMISSION_STATUSES],
+        ),
+      )),
   ]);
 
   return [...standaloneFranchises, ...franchiseLinks].sort((left, right) => {
@@ -1492,7 +1516,11 @@ export async function deleteFranchiseIfEmpty(id: number) {
   return franchise ?? null;
 }
 
-export async function getMediaItemsByFranchiseId(franchiseId: number, currentAuthorId?: number) {
+export async function getMediaItemsByFranchiseId(
+  franchiseId: number,
+  enabledMediaTypeCodes: readonly string[],
+  currentAuthorId?: number,
+) {
   const items = await db
     .select({
       id: mediaItems.id,
@@ -1532,6 +1560,7 @@ export async function getMediaItemsByFranchiseId(franchiseId: number, currentAut
         eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         publishedFranchiseCondition,
         publishedMediaItemCondition,
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ),
     )
     .groupBy(

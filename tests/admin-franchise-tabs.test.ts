@@ -70,7 +70,7 @@ test("moving a child reuses guarded hierarchy updates and deletion is blocked by
   const deletion = sourceBetween(queries, "export async function deleteFranchiseIfEmpty", "export async function getMediaItemsByFranchiseId");
 
   assert.match(moveChild, /const moved = await updateFranchise\(\{/);
-  assert.match(moveChild, /parentId: parentId\.value/);
+  assert.match(moveChild, /parentId: parent\.id/);
   assert.match(moveChild, /edit\?tab=children&childMoved=1/);
   assert.match(update, /if \(ancestorId === input\.id\) throw new Error\("franchise-parent-cycle"\)/);
   assert.match(page, /const canDelete = mediaItems\.length === 0 && !hasChildren/);

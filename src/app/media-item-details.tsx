@@ -319,7 +319,7 @@ export function MediaItemDetails({
                 {adjacentShelfSlot ?? (
                   <>
                     <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                      На соседней полке
+                      Полка мнений
                     </div>
                     <div className="px-3 py-2 text-xs text-zinc-500">
                       Here be dragons
@@ -475,6 +475,11 @@ function ArchiveMediaItemDetails({
                 provider={item.coverSourceProvider}
                 pageUrl={item.coverSourcePageUrl}
               />
+              {adjacentShelfSlot ? (
+                <div className="mt-6">
+                  {adjacentShelfSlot}
+                </div>
+              ) : null}
             </div>
           </div>
 
@@ -599,21 +604,8 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
-          <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
-            <section>
-              {adjacentShelfSlot ?? (
-                <>
-                  <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                    На соседней полке
-                  </div>
-                  <div className="mt-4 px-4 py-5 font-mono text-sm text-stone-500">
-                    Here be dragons
-                  </div>
-                </>
-              )}
-            </section>
-
-            {relatedFranchiseSections.length > 0 ? (
+          {relatedFranchiseSections.length > 0 ? (
+            <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
               <div className="flex flex-col gap-6">
                 {relatedFranchiseSections.map((section) => (
                   <section key={section.franchise.id}>
@@ -644,8 +636,8 @@ function ArchiveMediaItemDetails({
                   </section>
                 ))}
               </div>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
         </div>
       </article>
     </div>

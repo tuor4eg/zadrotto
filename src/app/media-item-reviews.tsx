@@ -243,6 +243,10 @@ export function MediaItemReviews({
     : false;
   const canShowReviewAction = !currentAuthor || !hasCurrentAuthorReview;
 
+  if (!currentAuthor && reviews.length === 0) {
+    return null;
+  }
+
   function showSpineTooltip(
     event: React.FocusEvent<HTMLButtonElement> | React.MouseEvent<HTMLButtonElement>,
     title: string,
@@ -270,7 +274,7 @@ export function MediaItemReviews({
     <div>
       <div className="flex flex-wrap items-center gap-3">
         <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-          На соседней полке
+          Полка мнений
         </div>
       </div>
 

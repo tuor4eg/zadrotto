@@ -8,6 +8,7 @@ import {
   upsertAuthorMediaExperience,
 } from "@/db/queries/author-media-experiences";
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import {
@@ -62,7 +63,12 @@ export async function saveAuthorRatingAction(
     return { error: "Не удалось определить запись архива." };
   }
 
-  const mediaItem = await getMediaItemIdentityForAuthorRating(mediaItemCode, author.id);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  const mediaItem = await getMediaItemIdentityForAuthorRating(
+    mediaItemCode,
+    author.id,
+    accessibleMediaTypeCodes,
+  );
 
   if (!mediaItem) {
     return { error: "Запись архива не найдена." };

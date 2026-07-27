@@ -1,9 +1,14 @@
-import {
-  PUBLICATION_STATUSES,
-  type PublicationStatus,
-} from "@/lib/media/publication-status";
+import type { PublicationStatus } from "@/lib/media/publication-status";
 
-export type AuthorFranchiseSubmissionStatusFilter = PublicationStatus | "all";
+export const AUTHOR_FRANCHISE_SUBMISSION_STATUSES = [
+  "submitted",
+  "rejected",
+] as const;
+
+export type AuthorFranchiseSubmissionStatus =
+  (typeof AUTHOR_FRANCHISE_SUBMISSION_STATUSES)[number];
+export type AuthorFranchiseSubmissionStatusFilter =
+  AuthorFranchiseSubmissionStatus | "all";
 
 export type AuthorFranchiseSubmissionFilterItem = {
   franchiseCode: string;
@@ -15,8 +20,8 @@ export type AuthorFranchiseSubmissionFilterItem = {
 };
 
 export function parseAuthorFranchiseSubmissionStatusFilter(value: string | undefined) {
-  return PUBLICATION_STATUSES.some((status) => status === value)
-    ? (value as PublicationStatus)
+  return AUTHOR_FRANCHISE_SUBMISSION_STATUSES.some((status) => status === value)
+    ? (value as AuthorFranchiseSubmissionStatus)
     : "all";
 }
 
@@ -30,6 +35,9 @@ export function filterAuthorFranchiseSubmissions<TItem extends AuthorFranchiseSu
   const normalizedSearchQuery = filters.searchQuery.trim().toLowerCase();
 
   return items.filter((item) => {
+    const isVisibleStatus = AUTHOR_FRANCHISE_SUBMISSION_STATUSES.some(
+      (status) => status === item.publicationStatus,
+    );
     const matchesStatus = filters.status === "all" || item.publicationStatus === filters.status;
     const matchesSearch =
       !normalizedSearchQuery ||
@@ -43,6 +51,6 @@ export function filterAuthorFranchiseSubmissions<TItem extends AuthorFranchiseSu
         (value) => value !== null && value !== undefined && value.toLowerCase().includes(normalizedSearchQuery),
       );
 
-    return matchesStatus && matchesSearch;
+    return isVisibleStatus && matchesStatus && matchesSearch;
   });
 }

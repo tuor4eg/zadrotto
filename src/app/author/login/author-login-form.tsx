@@ -8,7 +8,6 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import {
-  loginAuthorInline,
   loginAuthorWithPasswordInline,
   type AuthorLoginState,
 } from "./actions";
@@ -31,8 +30,7 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
     loginAuthorWithPasswordInline,
     null,
   );
-  const [tokenState, tokenFormAction, isTokenPending] = useActionState(loginAuthorInline, null);
-  const state = passwordState ?? tokenState;
+  const state = passwordState;
 
   useEffect(() => {
     if (!state?.ok) return;
@@ -74,21 +72,6 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
         </div>
       </form>
 
-      <div className="flex items-center gap-3 text-xs text-stone-500">
-        <span className="h-px flex-1 bg-stone-200" />
-        <span>или по старому токену</span>
-        <span className="h-px flex-1 bg-stone-200" />
-      </div>
-
-      <form action={tokenFormAction} className="flex flex-col gap-4" noValidate>
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="author-access-token">Токен доступа</Label>
-          <Input id="author-access-token" name="accessToken" type="password" autoComplete="off" required />
-        </div>
-        <Button type="submit" variant="outline" disabled={isTokenPending}>
-          {isTokenPending ? "Входим…" : "Войти по токену"}
-        </Button>
-      </form>
       {error ? <Alert variant="destructive">{ERROR_MESSAGES[error]}</Alert> : null}
     </div>
   );

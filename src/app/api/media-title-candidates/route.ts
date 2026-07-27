@@ -8,6 +8,7 @@ import {
 } from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import {
   checkAuthorCoverSearchRateLimit,
   createProviderCoverSearchRateLimiter,
@@ -38,6 +39,14 @@ export async function POST(request: Request) {
 
   if (!query || !mediaType || !isMediaTypeCode(mediaType)) {
     return NextResponse.json({ candidates: [] });
+  }
+
+  if (
+    author &&
+    !adminUser &&
+    !(await getAccessibleMediaTypeCodes(author.id)).includes(mediaType)
+  ) {
+    return NextResponse.json({ candidates: [] }, { status: 403 });
   }
 
   if (author && !adminUser) {

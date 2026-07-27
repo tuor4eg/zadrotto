@@ -51,7 +51,7 @@ describe("public media item metadata", () => {
     assert.notEqual(end, -1);
     assert.match(
       mediaItemsQuerySource.slice(start, end),
-      /and\(eq\(mediaItems\.code, code\), publishedMediaItemCondition\)/,
+      /and\([\s\S]*eq\(mediaItems\.code, code\),[\s\S]*publishedMediaItemCondition,[\s\S]*eq\(mediaTypes\.isPubliclyAvailable, true\),[\s\S]*\)/,
     );
   });
 });

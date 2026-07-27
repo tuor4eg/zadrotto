@@ -2,7 +2,6 @@
 
 import { useActionState, useRef, useState } from "react";
 
-import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import {
@@ -11,6 +10,7 @@ import {
 } from "@/lib/forms/contribution-review";
 import type { ContributionStatus } from "@/lib/contributions/model";
 import { saveAuthorReviewAction, type SaveAuthorReviewState } from "./actions";
+import { AuthorToasts } from "../author-toasts";
 
 type AuthorReviewFormProps = {
   canPublishWithoutReview?: boolean;
@@ -95,7 +95,11 @@ export function AuthorReviewForm({
         Запись архива: <span className="font-medium text-stone-950">{mediaItem.title}</span>
       </div>
 
-      {state.error ? <Alert variant="destructive">{state.error}</Alert> : null}
+      <AuthorToasts
+        messages={state.error
+          ? [{ id: "review-form-error", tone: "error", text: state.error }]
+          : []}
+      />
 
       <div className="grid gap-2">
         <Label htmlFor="title">Заголовок</Label>

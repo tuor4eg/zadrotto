@@ -4,7 +4,11 @@ import { redirect } from "next/navigation";
 
 import { registerAuthorAccount } from "@/db/operations/author-auth";
 import { isValidAuthorEmail, isValidAuthorLogin, normalizeAuthorEmail, normalizeAuthorLogin, validateAuthorPassword } from "@/lib/auth/author-account";
-import { isAuthorEmailDeliveryConfigured, isAuthorRegistrationEnabled } from "@/lib/auth/features";
+import {
+  isAuthorEmailDeliveryConfigured,
+  isAuthorEmailVerificationBypassed,
+  isAuthorRegistrationEnabled,
+} from "@/lib/auth/features";
 import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit";
 import { hashPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
@@ -15,7 +19,11 @@ function read(formData: FormData, key: string) {
 }
 
 export async function registerAuthorAction(formData: FormData) {
-  if (!isAuthorRegistrationEnabled() || !(await isAuthorEmailDeliveryConfigured())) redirect("/author/login");
+  const bypassEmailVerification = isAuthorEmailVerificationBypassed();
+  if (
+    !isAuthorRegistrationEnabled()
+    || (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured()))
+  ) redirect("/author/login");
   const name = read(formData, "name");
   const login = read(formData, "login");
   const email = read(formData, "email");
@@ -46,11 +54,18 @@ export async function registerAuthorAction(formData: FormData) {
       authorId: author.id,
       entityType: "author-account",
       entityId: author.id,
-      message: "Отправлена заявка на регистрацию автора.",
-      metadata: { source: "public-registration" },
+      message: bypassEmailVerification
+        ? "Автор зарегистрирован без подтверждения email."
+        : "Отправлена заявка на регистрацию автора.",
+      metadata: {
+        source: "public-registration",
+        emailVerificationBypassed: bypassEmailVerification,
+      },
     });
   } catch {
     // The same response covers uniqueness and infrastructure failures.
   }
-  redirect("/author/register?sent=1");
+  redirect(bypassEmailVerification
+    ? "/author/register?registered=1"
+    : "/author/register?sent=1");
 }

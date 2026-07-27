@@ -10,6 +10,7 @@ import {
   requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { logActivity } from "@/lib/activity-logs/server";
 import { generateEntityCode } from "@/lib/common/generated-code";
@@ -44,9 +45,10 @@ export async function removeAuthorMediaItemFranchiseAction(input: {
   mediaItemCode: string;
 }): Promise<MediaItemFranchiseRemovalState> {
   const author = await requireAuthor();
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
   const [franchise, mediaItem] = await Promise.all([
     getFranchiseByCode(input.franchiseCode),
-    getMediaItemIdentityByCode(input.mediaItemCode),
+    getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
   ]);
   if (!franchise || !mediaItem) return { error: "invalid", status: null };
   try {
@@ -95,7 +97,8 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     return initialErrorState;
   }
 
-  const mediaItem = await getMediaItemIdentityByCode(mediaItemCode);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  const mediaItem = await getMediaItemIdentityByCode(mediaItemCode, accessibleMediaTypeCodes);
 
   if (!mediaItem || mediaItem.id !== mediaItemId) {
     return initialErrorState;
@@ -125,7 +128,10 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     return initialErrorState;
   }
 
-  let removalStatuses: Array<{ franchiseId: number; status: "removed" | "requested" }> = [];
+  const removalStatuses: Array<{
+    franchise: { id: number; title: string };
+    status: "removed" | "requested";
+  }> = [];
 
   try {
     for (const franchiseId of removalIds) {
@@ -136,7 +142,10 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         mediaItemId,
       });
       if (!result) return initialErrorState;
-      removalStatuses.push({ franchiseId, status: result.status });
+      removalStatuses.push({
+        franchise: result.franchise,
+        status: result.status,
+      });
     }
     if (mode === "existing") {
       if (franchiseIds.length > 0) {
@@ -228,7 +237,10 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
       action: removal.status === "removed" ? "franchise.media.detached" : "franchise.media.removal-requested",
       actorType: "author", authorId: author.id, entityType: "media-item", entityId: mediaItemId,
       entityLabel: mediaItem.title,
-      metadata: { mediaItem: { id: mediaItem.id, title: mediaItem.title }, franchises: [{ id: removal.franchiseId, title: "Серия" }] },
+      metadata: {
+        mediaItem: { id: mediaItem.id, title: mediaItem.title },
+        franchises: [removal.franchise],
+      },
     });
   }
 

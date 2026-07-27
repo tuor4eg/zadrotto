@@ -24,7 +24,10 @@ export const ADMIN_FORM_ERROR_MESSAGES = {
 
 export type AdminFormErrorCode = keyof typeof ADMIN_FORM_ERROR_MESSAGES;
 
-function getErrorField(error: unknown, field: "code" | "message" | "cause") {
+function getErrorField(
+  error: unknown,
+  field: "code" | "message" | "cause" | "constraint_name",
+) {
   if (typeof error !== "object" || error === null || !(field in error)) {
     return null;
   }
@@ -34,6 +37,12 @@ function getErrorField(error: unknown, field: "code" | "message" | "cause") {
 
 export function isUniqueViolation(error: unknown) {
   return getErrorField(error, "code") === "23505";
+}
+
+export function getUniqueViolationConstraint(error: unknown) {
+  if (!isUniqueViolation(error)) return null;
+  const constraint = getErrorField(error, "constraint_name");
+  return typeof constraint === "string" ? constraint : null;
 }
 
 export function isDatabaseUnavailableError(error: unknown): boolean {

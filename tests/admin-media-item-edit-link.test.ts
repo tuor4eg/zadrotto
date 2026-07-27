@@ -52,7 +52,7 @@ describe("admin entity edit action", () => {
   it("shows the series edit action only to an admin", () => {
     assert.match(
       franchisePageSource,
-      /Promise\.all\(\[[\s\S]*getCurrentAuthor\(\),[\s\S]*getCurrentAdminUser\(\),[\s\S]*getMediaTypeOptions\(\),[\s\S]*\]\)/,
+      /Promise\.all\(\[[\s\S]*getCurrentAuthor\(\),[\s\S]*getCurrentAdminUser\(\),[\s\S]*\]\)/,
     );
     assert.match(
       franchisePageSource,

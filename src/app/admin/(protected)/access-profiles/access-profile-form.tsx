@@ -3,6 +3,7 @@ import { Save } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { formatUploadLimitMegabytes } from "@/lib/forms/author-access-profile";
+import type { getAdminMediaTypeAccessOptions } from "@/db/queries/media-types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 
 type AccessProfileFormValues = {
@@ -17,6 +18,7 @@ type AccessProfileFormValues = {
   coverSearchesPerMinute?: number | null;
   coverSearchesPerHour?: number | null;
   coverSearchesPerDay?: number | null;
+  mediaTypeIds?: number[];
 };
 
 type AccessProfileFormProps = {
@@ -25,6 +27,7 @@ type AccessProfileFormProps = {
   successMessage?: string | null;
   submitLabel: string;
   values?: AccessProfileFormValues;
+  mediaTypes: Awaited<ReturnType<typeof getAdminMediaTypeAccessOptions>>;
 };
 
 export function AccessProfileForm({
@@ -33,6 +36,7 @@ export function AccessProfileForm({
   successMessage,
   submitLabel,
   values,
+  mediaTypes,
 }: AccessProfileFormProps) {
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
@@ -78,6 +82,39 @@ export function AccessProfileForm({
           />
           Серии без проверки
         </label>
+
+        <section className="grid gap-3">
+          <div>
+            <h3 className="text-sm font-semibold text-stone-950">Доступные типы медиа</h3>
+            <p className="mt-1 text-xs leading-5 text-stone-500">
+              Гостевые типы доступны всегда. Для остальных настройте разрешения профиля.
+            </p>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {mediaTypes.map((mediaType) => (
+              <label
+                key={mediaType.id}
+                className="flex items-center gap-2 text-sm font-medium text-stone-700"
+              >
+                <input
+                  type="checkbox"
+                  name="mediaTypeIds"
+                  value={mediaType.id}
+                  defaultChecked={
+                    mediaType.isAvailableToGuests
+                    || (values?.mediaTypeIds ?? []).includes(mediaType.id)
+                  }
+                  disabled={mediaType.isAvailableToGuests}
+                  className="size-4 rounded border-stone-300 text-stone-950"
+                />
+                {mediaType.name}
+                {mediaType.isAvailableToGuests ? (
+                  <span className="text-xs font-normal text-stone-500">гостевой</span>
+                ) : null}
+              </label>
+            ))}
+          </div>
+        </section>
 
         <section className="grid gap-3">
           <div>

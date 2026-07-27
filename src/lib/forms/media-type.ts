@@ -1,5 +1,8 @@
 export type MediaTypeFormInput = {
   description: string | null;
+  enabledByDefault: boolean;
+  isAvailableToGuests: boolean;
+  isPubliclyAvailable: boolean;
   name: string;
 };
 

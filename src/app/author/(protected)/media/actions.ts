@@ -19,7 +19,9 @@ import {
   deleteMediaItemMetadata,
   upsertMediaItemMetadata,
 } from "@/db/queries/media-item-metadata";
-import { mediaTypeExistsByCode } from "@/db/queries/media-types";
+import {
+  getAccessibleMediaTypeCodes,
+} from "@/db/queries/media-types";
 import { upsertAuthorRating } from "@/db/queries/ratings";
 import {
   deleteAuthorDraftMediaItem,
@@ -295,8 +297,8 @@ async function canAuthorUseFranchises(authorId: number, franchiseIds: number[]) 
   return authorCanUseFranchiseIds({ authorId, ids: franchiseIds });
 }
 
-async function isKnownMediaType(mediaType: MediaType) {
-  return mediaTypeExistsByCode(mediaType);
+async function canAuthorCreateMediaType(authorId: number, mediaType: MediaType) {
+  return (await getAccessibleMediaTypeCodes(authorId)).includes(mediaType);
 }
 
 async function validateMediaCarrier(input: {
@@ -484,7 +486,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "invalid-franchise"));
   }
 
-  if (!(await isKnownMediaType(form.value.mediaType))) {
+  if (!(await canAuthorCreateMediaType(author.id, form.value.mediaType))) {
     redirect(getCreateErrorRedirect(formData, "required"));
   }
 
@@ -683,6 +685,10 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     notFound();
   }
 
+  if (!(await canAuthorCreateMediaType(author.id, item.mediaType))) {
+    notFound();
+  }
+
   const form = readAuthorMediaForm(formData, { mediaType: item.mediaType });
 
   if (!form.ok) {
@@ -714,7 +720,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
   }
 
-  if (!(await isKnownMediaType(form.value.mediaType))) {
+  if (!(await canAuthorCreateMediaType(author.id, form.value.mediaType))) {
     redirect(`/author/media/${mediaItemId}/edit?error=required`);
   }
 
@@ -801,6 +807,10 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
     notFound();
   }
 
+  if (!(await canAuthorCreateMediaType(author.id, item.mediaType))) {
+    notFound();
+  }
+
   if (item.publicationStatus !== "private" && item.publicationStatus !== "rejected") {
     redirect("/author/media?error=publish-locked");
   }
@@ -868,6 +878,10 @@ export async function withdrawAuthorMediaItemAction(formData: FormData) {
   const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
 
   if (!item) {
+    notFound();
+  }
+
+  if (!(await canAuthorCreateMediaType(author.id, item.mediaType))) {
     notFound();
   }
 

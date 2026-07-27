@@ -66,6 +66,9 @@ export const mediaTypes = pgTable("media_types", {
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
+  isPubliclyAvailable: boolean("is_publicly_available").default(false).notNull(),
+  isAvailableToGuests: boolean("is_available_to_guests").default(false).notNull(),
+  enabledByDefault: boolean("enabled_by_default").default(true).notNull(),
   ...timestamps(),
 });
 
@@ -216,6 +219,45 @@ export const authors = pgTable("authors", {
 }, (table) => [
   index("authors_access_profile_id_idx").on(table.accessProfileId),
 ]);
+
+export const authorMediaTypeSettings = pgTable(
+  "author_media_type_settings",
+  {
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    mediaTypeId: integer("media_type_id")
+      .notNull()
+      .references(() => mediaTypes.id, { onDelete: "cascade" }),
+    isEnabled: boolean("is_enabled").notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.authorId, table.mediaTypeId],
+      name: "author_media_type_settings_pk",
+    }),
+  ],
+);
+
+export const authorAccessProfileMediaTypes = pgTable(
+  "author_access_profile_media_types",
+  {
+    accessProfileId: integer("access_profile_id")
+      .notNull()
+      .references(() => authorAccessProfiles.id, { onDelete: "cascade" }),
+    mediaTypeId: integer("media_type_id")
+      .notNull()
+      .references(() => mediaTypes.id, { onDelete: "cascade" }),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.accessProfileId, table.mediaTypeId],
+      name: "author_access_profile_media_types_pk",
+    }),
+  ],
+);
 
 export const adminUsers = pgTable("admin_users", {
   id: serial("id").primaryKey(),

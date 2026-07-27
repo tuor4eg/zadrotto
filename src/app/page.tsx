@@ -7,7 +7,7 @@ import {
 } from "@/db/queries/media-items";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -54,13 +54,15 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   await connection();
 
-  const [currentAuthor, currentAdminUser, params, mediaTypes, archiveSettings] = await Promise.all([
+  const [currentAuthor, currentAdminUser, params, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
     searchParams,
-    getMediaTypeOptions(),
     getArchiveSettings(),
   ]);
+  const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
+  const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
+  const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const pageSize = parsePageSize(
@@ -83,6 +85,7 @@ export default async function Home({ searchParams }: HomeProps) {
       getCatalogMediaItems({
         authorRatingFilter,
         currentAuthorId: currentAuthor?.id,
+        enabledMediaTypeCodes,
         mediaTypeFilter,
         page: parsePage(params.page),
         pageSize,
@@ -95,11 +98,12 @@ export default async function Home({ searchParams }: HomeProps) {
       getCatalogMediaTypeCounts({
         authorRatingFilter,
         currentAuthorId: currentAuthor?.id,
+        enabledMediaTypeCodes,
         searchQuery,
         yearFilter,
         yearMode,
       }),
-      getCatalogReleaseYearBounds(),
+      getCatalogReleaseYearBounds(enabledMediaTypeCodes),
       currentAuthor
         ? Promise.all([
             getFranchiseOptions(currentAuthor.id),

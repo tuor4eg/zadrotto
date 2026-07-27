@@ -199,11 +199,11 @@ describe("franchise media activity context", () => {
     const activityCallSource = actionSource.slice(actionSource.indexOf("await logActivity({"));
     const adminAttachActivitySource = adminActionSource.slice(
       adminActionSource.indexOf('action: "franchise.media.attached"'),
-      adminActionSource.indexOf("?attached=1"),
+      adminActionSource.indexOf("&attached=1"),
     );
     const adminDetachActivitySource = adminActionSource.slice(
       adminActionSource.indexOf('action: "franchise.media.detached"'),
-      adminActionSource.indexOf("?detached=1"),
+      adminActionSource.indexOf("&detached=1"),
     );
 
     assert.match(querySource, /select\(\{ id: franchises\.id, title: franchises\.title \}\)/);
@@ -212,6 +212,12 @@ describe("franchise media activity context", () => {
       /return franchiseIds\.map\(\(franchiseId\) => availableFranchisesById\.get\(franchiseId\)!\)/,
     );
     assert.match(actionSource, /affectedFranchises = links;/);
+    assert.match(
+      querySource,
+      /franchiseTitle: franchises\.title,[\s\S]*franchise: \{ id: link\.franchiseId, title: link\.franchiseTitle \}/,
+    );
+    assert.match(actionSource, /franchises: \[removal\.franchise\]/);
+    assert.doesNotMatch(actionSource, /title: "Серия"/);
     assert.match(
       actionSource,
       /affectedFranchises = \[\{ id: franchise\.id, title: franchise\.title \}\];/,
@@ -230,8 +236,15 @@ describe("franchise media activity context", () => {
     assert.doesNotMatch(adminAttachActivitySource, /message:|mediaItemId:|mediaItemTitle:|franchiseIds:/);
     assert.doesNotMatch(adminDetachActivitySource, /message:|mediaItemId:|mediaItemTitle:|franchiseIds:/);
     assert.match(pageSource, /getFranchiseMediaActivityContext\(\{/);
-    assert.match(pageSource, /<ActivityLogDetails item=\{item\} showPrimaryEntity \/>/);
-    assert.match(pageSource, /<ActivityLogDetails item=\{item\} showPrimaryEntity=\{false\} \/>/);
+    assert.match(
+      pageSource,
+      /<ActivityLogDetails[\s\S]*franchiseTitleById=\{franchiseTitleById\}[\s\S]*item=\{item\}[\s\S]*showPrimaryEntity/,
+    );
+    assert.match(pageSource, /getFranchiseTitlesByIds\(franchiseIds\)/);
+    assert.match(
+      pageSource,
+      /franchiseTitleById\.get\(franchise\.id\) \?\? franchise\.title/,
+    );
     assert.match(pageSource, /showPrimaryEntity \|\| item\.entityType !== "media-item"/);
     assert.match(pageSource, /franchise\.id !== item\.entityId/);
     assert.match(pageSource, /contextFranchises\.length === 1 \? "Серия" : "Серии"/);

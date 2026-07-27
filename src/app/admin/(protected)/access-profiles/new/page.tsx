@@ -7,6 +7,7 @@ import { PageHeader } from "../../admin-ui";
 import { AccessProfileForm } from "../access-profile-form";
 import { createAuthorAccessProfileAction } from "../actions";
 import { getAuthorAccessProfileErrorMessage } from "../messages";
+import { getAdminMediaTypeAccessOptions } from "@/db/queries/media-types";
 
 type NewAccessProfilePageProps = {
   searchParams: Promise<{
@@ -17,7 +18,10 @@ type NewAccessProfilePageProps = {
 export default async function NewAccessProfilePage({
   searchParams,
 }: NewAccessProfilePageProps) {
-  const { error } = await searchParams;
+  const [{ error }, mediaTypes] = await Promise.all([
+    searchParams,
+    getAdminMediaTypeAccessOptions(),
+  ]);
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -41,6 +45,7 @@ export default async function NewAccessProfilePage({
             action={createAuthorAccessProfileAction}
             submitLabel="Создать"
             errorMessage={getAuthorAccessProfileErrorMessage(error)}
+            mediaTypes={mediaTypes}
           />
         </CardContent>
       </Card>

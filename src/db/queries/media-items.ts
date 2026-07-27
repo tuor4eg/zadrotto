@@ -41,6 +41,7 @@ import {
   ratings,
 } from "@/db/schema";
 import type { MediaType } from "@/lib/media/types";
+import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import type { PublicationStatus } from "@/lib/media/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
@@ -324,12 +325,16 @@ const currentAuthorRatingExistsCondition = (currentAuthorId: number) =>
 function catalogFilterConditions(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {
-  const conditions: SQL[] = [publishedMediaItemCondition];
+  const conditions: SQL[] = [
+    publishedMediaItemCondition,
+    getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
+  ];
   const searchCondition = catalogSearchCondition(input.searchQuery);
 
   if (searchCondition) {
@@ -525,6 +530,7 @@ export type CatalogMediaItem = Awaited<
 export async function getCatalogMediaItems(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
@@ -559,6 +565,7 @@ export async function getCatalogMediaItems(input: {
 export async function getCatalogMediaTypeCounts(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  enabledMediaTypeCodes: readonly string[];
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -578,13 +585,16 @@ export async function getCatalogMediaTypeCounts(input: {
     .groupBy(mediaItems.mediaType);
 }
 
-export async function getCatalogReleaseYearBounds() {
+export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[]) {
   const [bounds] = await db
     .select({
       minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
     })
     .from(mediaItems)
-    .where(publishedMediaItemCondition);
+    .where(and(
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+    ));
 
   return {
     minReleaseYear: bounds?.minReleaseYear ?? null,
@@ -1468,6 +1478,7 @@ export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId
 
 export async function canViewMediaItemCover(
   objectKey: string,
+  accessibleMediaTypeCodes: readonly string[],
   currentAuthor?: { id: number; code: string },
 ) {
   const authorOwnsCoverCondition = currentAuthor
@@ -1487,15 +1498,21 @@ export async function canViewMediaItemCover(
         ),
       )
     : undefined;
+  const publiclyVisibleCondition = and(
+    publishedMediaItemCondition,
+    eq(mediaTypes.isPubliclyAvailable, true),
+  );
   const visibilityCondition = authorOwnsCoverCondition
-    ? or(publishedMediaItemCondition, authorOwnsCoverCondition)
-    : publishedMediaItemCondition;
+    ? or(publiclyVisibleCondition, authorOwnsCoverCondition)
+    : publiclyVisibleCondition;
   const [item] = await db
     .select({ id: mediaItems.id })
     .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .where(
       and(
         or(eq(mediaItems.coverUrl, objectKey), eq(mediaItems.coverThumbUrl, objectKey)),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
         visibilityCondition,
       ),
     )
@@ -1504,7 +1521,10 @@ export async function canViewMediaItemCover(
   return Boolean(item);
 }
 
-export async function getMediaItemIdentityByCode(code: string) {
+export async function getMediaItemIdentityByCode(
+  code: string,
+  accessibleMediaTypeCodes: readonly string[],
+) {
   const [item] = await db
     .select({
       id: mediaItems.id,
@@ -1512,13 +1532,22 @@ export async function getMediaItemIdentityByCode(code: string) {
       title: mediaItems.title,
     })
     .from(mediaItems)
-    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .where(and(
+      eq(mediaItems.code, code),
+      publishedMediaItemCondition,
+      eq(mediaTypes.isPubliclyAvailable, true),
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
+    ))
     .limit(1);
 
   return item ?? null;
 }
 
-export async function getPublicMediaItemMetadataByCode(code: string) {
+export async function getPublicMediaItemMetadataByCode(
+  code: string,
+  accessibleMediaTypeCodes: readonly string[],
+) {
   const [item] = await db
     .select({
       title: mediaItems.title,
@@ -1531,7 +1560,12 @@ export async function getPublicMediaItemMetadataByCode(code: string) {
     .from(mediaItems)
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
+    .where(and(
+      eq(mediaItems.code, code),
+      publishedMediaItemCondition,
+      eq(mediaTypes.isPubliclyAvailable, true),
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
+    ))
     .limit(1);
 
   return item
@@ -1542,7 +1576,11 @@ export async function getPublicMediaItemMetadataByCode(code: string) {
     : null;
 }
 
-export async function getMediaItemIdentityForAuthorRating(code: string, authorId: number) {
+export async function getMediaItemIdentityForAuthorRating(
+  code: string,
+  authorId: number,
+  accessibleMediaTypeCodes: readonly string[],
+) {
   const [item] = await db
     .select({
       id: mediaItems.id,
@@ -1551,9 +1589,12 @@ export async function getMediaItemIdentityForAuthorRating(code: string, authorId
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .where(
       and(
         eq(mediaItems.code, code),
+        eq(mediaTypes.isPubliclyAvailable, true),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
         or(publishedMediaItemCondition, eq(mediaItems.createdByAuthorId, authorId)),
       ),
     )
@@ -1562,7 +1603,11 @@ export async function getMediaItemIdentityForAuthorRating(code: string, authorId
   return item ? withResolvedFranchises(item) : null;
 }
 
-export async function getMediaItemByCode(code: string, currentAuthorId?: number) {
+export async function getMediaItemByCode(
+  code: string,
+  accessibleMediaTypeCodes: readonly string[],
+  currentAuthorId?: number,
+) {
   const [item] = await db
     .select({
       id: mediaItems.id,
@@ -1591,10 +1636,16 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
       ),
     })
     .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(and(eq(mediaItems.code, code), publishedMediaItemCondition))
+    .where(and(
+      eq(mediaItems.code, code),
+      publishedMediaItemCondition,
+      eq(mediaTypes.isPubliclyAvailable, true),
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
+    ))
     .groupBy(
       mediaItems.id,
       mediaItems.code,
@@ -1625,6 +1676,7 @@ export async function getMediaItemByCode(code: string, currentAuthorId?: number)
 export async function getOtherMediaItemsFromFranchises(
   franchiseIds: number[],
   currentMediaItemId: number,
+  enabledMediaTypeCodes: readonly string[],
   currentAuthorId?: number,
 ) {
   if (franchiseIds.length === 0) {
@@ -1657,6 +1709,7 @@ export async function getOtherMediaItemsFromFranchises(
         ne(mediaItems.id, currentMediaItemId),
         eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         publishedMediaItemCondition,
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ),
     )
     .groupBy(

@@ -6,6 +6,7 @@ const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const catalogPageSource = readFileSync("src/app/series/page.tsx", "utf8");
 const searchSource = readFileSync("src/app/series/series-search.tsx", "utf8");
 const seriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const paginationSource = readFileSync("src/components/pagination-nav.tsx", "utf8");
 
 function getFunctionSource(name: string, nextName: string) {
   const start = querySource.indexOf(`export async function ${name}`);
@@ -40,18 +41,79 @@ describe("public series tree", () => {
     assert.match(treeQuerySource, /const countItems = \(node: FranchiseTreeNode\): Set<number> => \{/);
     assert.match(treeQuerySource, /for \(const child of node\.children\) for \(const id of countItems\(child\)\) ids\.add\(id\);/);
     assert.match(treeQuerySource, /node\.mediaItemsCount = ids\.size/);
+    assert.match(
+      treeQuerySource,
+      /getMediaTypeCodeFilterSql\(mediaItems\.mediaType, enabledMediaTypeCodes\)/,
+    );
+    assert.match(treeQuerySource, /const removeEmptyBranches = /);
+    assert.match(
+      treeQuerySource,
+      /return node\.mediaItemsCount > 0 \? \[\{ \.\.\.node, children \}\] : \[\]/,
+    );
+    assert.match(treeQuerySource, /return removeEmptyBranches\(roots\)/);
   });
 });
 
 describe("public series catalog UI", () => {
-  it("renders the nested tree, counts, and empty states without pagination", () => {
-    assert.match(catalogPageSource, /function SeriesTree\(/);
-    assert.match(catalogPageSource, /<SeriesTree nodes=\{series\.children\} depth=\{depth \+ 1\} \/>/);
-    assert.match(catalogPageSource, /getPublishedFranchiseTree\(searchQuery\)/);
-    assert.match(catalogPageSource, /series\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
+  it("renders a compact flat page with counts, empty states, and archive pagination", () => {
+    assert.doesNotMatch(catalogPageSource, /function SeriesTree\(|<SeriesTree/);
+    assert.match(
+      catalogPageSource,
+      /SERIES_PAGE_SIZE_OPTIONS = \[24, 48, 72\][\s\S]*DEFAULT_SERIES_PAGE_SIZE = 24/,
+    );
+    assert.match(
+      catalogPageSource,
+      /getEnabledMediaTypeCodes\(currentAuthor\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
+    );
+    assert.match(catalogPageSource, /seriesPage\.items\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
+    assert.match(catalogPageSource, /seriesPage\.items\.map\(\(series\) => \(/);
+    assert.match(
+      catalogPageSource,
+      /series\.parentPath\.length > 0[\s\S]*series\.parentPath\.map\(\(parent\) => parent\.title\)\.join\(" \/ "\)/,
+    );
     assert.match(catalogPageSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
     assert.match(catalogPageSource, /formatMediaItemsCount\(series\.mediaItemsCount\)/);
-    assert.doesNotMatch(catalogPageSource, /PaginationNav|getPublishedFranchisesPage|PAGE_SIZE/);
+    assert.match(
+      catalogPageSource,
+      /<PaginationNav[\s\S]*basePath="\/series"[\s\S]*pageSizeOptions=\{SERIES_PAGE_SIZE_OPTIONS\}[\s\S]*showPageJump[\s\S]*variant="archive"/,
+    );
+  });
+
+  it("flattens the visible tree after subtree counts and paginates it with parent context", () => {
+    const pageQuerySource = getFunctionSource(
+      "getPublishedFranchisesPage",
+      "getPublishedFranchiseBranch",
+    );
+
+    assert.match(pageQuerySource, /enabledMediaTypeCodes: readonly string\[\]/);
+    assert.match(
+      pageQuerySource,
+      /getPublishedFranchiseTree\([\s\S]*input\.searchQuery,[\s\S]*input\.enabledMediaTypeCodes/,
+    );
+    assert.match(
+      pageQuerySource,
+      /const flattenTree = \([\s\S]*parentPath: Array<\{ code: string; title: string \}> = \[\]/,
+    );
+    assert.match(
+      pageQuerySource,
+      /\{ \.\.\.node, parentPath \},[\s\S]*flattenTree\(children, \[\.\.\.parentPath, \{ code: node\.code, title: node\.title \}\]\)/,
+    );
+    assert.match(pageQuerySource, /const totalCount = visibleItems\.length/);
+    assert.match(
+      pageQuerySource,
+      /const items = visibleItems\.slice\(offset, offset \+ input\.pageSize\)/,
+    );
+    assert.doesNotMatch(pageQuerySource, /\.limit\(|\.offset\(/);
+    assert.match(pageQuerySource, /pageSize: input\.pageSize,[\s\S]*totalCount,[\s\S]*totalPages/);
+  });
+
+  it("keeps filters in pagination links and offers page-size and direct-page controls", () => {
+    assert.match(paginationSource, /function buildPageHref\([\s\S]*Object\.entries\(searchParams\)/);
+    assert.match(paginationSource, /page <= 1[\s\S]*nextSearchParams\.delete\("page"\)/);
+    assert.match(paginationSource, /nextSearchParams\.set\("page", String\(page\)\)/);
+    assert.match(paginationSource, /HiddenSearchParams exclude=\{\["page", "pageSize"\]\}/);
+    assert.match(paginationSource, /totalPages > 1 && showPageJump/);
+    assert.match(paginationSource, /aria-label="Пагинация"/);
   });
 
   it("keeps the debounced search interaction", () => {
@@ -75,9 +137,9 @@ describe("public series catalog UI", () => {
   });
 
   it("shows the current series branch before its media items when it has descendants", () => {
-    assert.match(querySource, /export async function getPublishedFranchiseBranch\(franchiseId: number\)/);
-    assert.match(querySource, /const buildBranch = \(id: number\): FranchiseBranchNode \| null =>/);
-    assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id\)/);
+    assert.match(querySource, /export async function getPublishedFranchiseBranch\([\s\S]*enabledMediaTypeCodes/);
+    assert.match(querySource, /getPublishedFranchiseTree\("", enabledMediaTypeCodes\)/);
+    assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id, enabledMediaTypeCodes\)/);
     assert.match(seriesPageSource, /franchiseBranch && franchiseBranch\.children\.length > 0/);
     assert.match(seriesPageSource, /Серии внутри/);
     assert.match(seriesPageSource, /function getFranchiseDescendants\(nodes: FranchiseBranchNode\[\]\)/);

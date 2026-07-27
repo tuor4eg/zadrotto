@@ -6,6 +6,7 @@ import {
   getAdminFormErrorMessage,
   getRuntimeErrorMessage,
   getRuntimeErrorTitle,
+  getUniqueViolationConstraint,
   isDatabaseUnavailableError,
   isUniqueViolation,
 } from "../src/lib/common/app-error-messages";
@@ -14,6 +15,14 @@ describe("app error messages", () => {
   it("recognizes unique constraint violations", () => {
     assert.equal(isUniqueViolation({ code: "23505" }), true);
     assert.equal(isUniqueViolation({ code: "23503" }), false);
+    assert.equal(
+      getUniqueViolationConstraint({
+        code: "23505",
+        constraint_name: "author_accounts_normalized_login_unique",
+      }),
+      "author_accounts_normalized_login_unique",
+    );
+    assert.equal(getUniqueViolationConstraint({ code: "23503" }), null);
   });
 
   it("recognizes unavailable database errors by code, message, and cause", () => {

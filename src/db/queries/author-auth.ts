@@ -25,6 +25,29 @@ export async function getAuthorAccountByNormalizedLogin(normalizedLogin: string)
   return account ?? null;
 }
 
+export async function getAuthorCredentialConflicts(input: {
+  normalizedLogin: string;
+  normalizedEmail: string;
+}) {
+  const [loginAccount, email] = await Promise.all([
+    db
+      .select({ authorId: authorAccounts.authorId })
+      .from(authorAccounts)
+      .where(eq(authorAccounts.normalizedLogin, input.normalizedLogin))
+      .limit(1),
+    db
+      .select({ authorId: authorEmails.authorId })
+      .from(authorEmails)
+      .where(eq(authorEmails.normalizedEmail, input.normalizedEmail))
+      .limit(1),
+  ]);
+
+  return {
+    loginTaken: Boolean(loginAccount[0]),
+    emailTaken: Boolean(email[0]),
+  };
+}
+
 export async function getAuthorAccountByAuthorId(authorId: number) {
   const [account] = await db
     .select()

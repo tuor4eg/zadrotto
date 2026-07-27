@@ -1,4 +1,5 @@
 import { canViewMediaItemCover } from "@/db/queries/media-items";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { fetchS3Object } from "@/lib/services/minio";
 
@@ -29,7 +30,12 @@ export async function GET(_request: Request, { params }: CoverRouteContext) {
   }
 
   const currentAuthor = (await getCurrentAuthor()) ?? undefined;
-  const canViewCover = await canViewMediaItemCover(objectKey, currentAuthor);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(currentAuthor?.id);
+  const canViewCover = await canViewMediaItemCover(
+    objectKey,
+    accessibleMediaTypeCodes,
+    currentAuthor,
+  );
 
   if (!canViewCover) {
     return new Response("Обложка не найдена.", { status: 404 });

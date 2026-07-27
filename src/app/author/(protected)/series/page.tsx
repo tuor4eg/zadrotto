@@ -119,7 +119,7 @@ export default async function AuthorFranchisesPage({ searchParams }: AuthorFranc
         <div>
           <h2 className="font-serif text-3xl leading-none text-stone-950">Серии</h2>
           <p className="mt-2 text-sm text-stone-600">
-            История предложенных серий и их привязок к тайтлам.
+            Заявки на модерации и отклонённые предложения серий и привязок.
           </p>
         </div>
         <Badge variant="outline">{items.length} всего</Badge>
@@ -132,7 +132,7 @@ export default async function AuthorFranchisesPage({ searchParams }: AuthorFranc
       {items.length === 0 ? (
         <Card>
           <CardContent className="p-5 text-sm text-stone-500">
-            Пока нет предложений по сериям.
+            Нет заявок на модерации или отклонённых предложений.
           </CardContent>
         </Card>
       ) : visibleItems.length === 0 ? (

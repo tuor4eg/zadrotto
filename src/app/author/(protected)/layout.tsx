@@ -55,6 +55,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Профиль
             </Link>
             <Link
+              href="/author/settings/media-types"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Интересы
+            </Link>
+            <Link
               href="/"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >

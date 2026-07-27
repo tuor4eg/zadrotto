@@ -26,7 +26,7 @@ function getFormNumber(formData: FormData, key: string) {
 }
 
 function getProfileInput(formData: FormData) {
-  return parseAuthorAccessProfileFormInput({
+  const parsed = parseAuthorAccessProfileFormInput({
     name: getFormString(formData, "name"),
     canPublishMediaWithoutReview: getFormString(formData, "canPublishMediaWithoutReview"),
     canPublishFranchisesWithoutReview: getFormString(formData, "canPublishFranchisesWithoutReview"),
@@ -38,6 +38,26 @@ function getProfileInput(formData: FormData) {
     coverSearchesPerHour: getFormString(formData, "coverSearchesPerHour"),
     coverSearchesPerDay: getFormString(formData, "coverSearchesPerDay"),
   });
+
+  if (!parsed.ok) {
+    return parsed;
+  }
+
+  const mediaTypeIds = formData
+    .getAll("mediaTypeIds")
+    .map((value) => typeof value === "string" ? Number(value) : Number.NaN);
+
+  if (mediaTypeIds.some((id) => !Number.isSafeInteger(id) || id <= 0)) {
+    return { ok: false as const, error: "invalid-type" };
+  }
+
+  return {
+    ok: true as const,
+    value: {
+      ...parsed.value,
+      mediaTypeIds,
+    },
+  };
 }
 
 function revalidateAuthorProfileSurfaces() {

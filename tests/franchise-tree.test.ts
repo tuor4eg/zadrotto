@@ -114,12 +114,44 @@ describe("franchise tree display and traversal", () => {
     assert.match(adminTreeQuerySource, /if \(!normalizedSearchQuery \|\| visibleIds\.has\(row\.id\)\)/);
   });
 
-  it("renders the complete admin tree without pagination and disables deletion for non-leaf nodes", () => {
-    assert.match(adminSeriesPageSource, /getAdminFranchiseTree\(searchQuery\)/);
-    assert.match(adminSeriesPageSource, /function AdminFranchiseTreeRows\(/);
-    assert.match(adminSeriesPageSource, /AdminFranchiseTreeRows\(\{ nodes: franchise\.children, depth: depth \+ 1 \}\)/);
-    assert.match(adminSeriesPageSource, /disabled=\{franchise\.mediaItemsCount > 0 \|\| franchise\.children\.length > 0\}/);
-    assert.doesNotMatch(adminSeriesPageSource, /PaginationNav|getAdminFranchises|ADMIN_FRANCHISES_PAGE_SIZE/);
+  it("paginates the admin list and disables deletion for non-leaf nodes", () => {
+    const adminListQuerySource = getFunctionSource(
+      franchisesQuerySource,
+      "getAdminFranchises",
+      "getAdminFranchiseTree",
+    );
+
+    assert.match(
+      adminSeriesPageSource,
+      /getAdminFranchises\(\{[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize: ADMIN_FRANCHISES_PAGE_SIZE,[\s\S]*searchQuery/,
+    );
+    assert.match(adminSeriesPageSource, /ADMIN_FRANCHISES_PAGE_SIZE = 50/);
+    assert.match(
+      adminSeriesPageSource,
+      /paginationSearchParams = \{[\s\S]*q: searchQuery \|\| undefined/,
+    );
+    assert.match(
+      adminSeriesPageSource,
+      /<PaginationNav[\s\S]*basePath="\/admin\/series"[\s\S]*searchParams=\{paginationSearchParams\}/,
+    );
+    assert.match(adminSeriesPageSource, /disabled=\{franchise\.mediaItemsCount > 0 \|\| franchise\.childrenCount > 0\}/);
+    assert.match(
+      adminListQuerySource,
+      /childrenCount: sql<number>`\([\s\S]*select count\(\*\)::int[\s\S]*where child\.parent_id = \$\{franchises\.id\}/,
+    );
+    assert.match(adminListQuerySource, /parentId: franchises\.parentId/);
+    assert.match(
+      adminListQuerySource,
+      /parentTitle: sql<string \| null>`\([\s\S]*select parent\.title[\s\S]*where parent\.id = \$\{franchises\.parentId\}/,
+    );
+    assert.match(adminListQuerySource, /\.groupBy\([\s\S]*franchises\.parentId/);
+    assert.match(adminListQuerySource, /\.limit\(input\.pageSize\)/);
+    assert.match(adminListQuerySource, /\.offset\(getOffset\(page, input\.pageSize\)\)/);
+    assert.match(adminListQuerySource, /pageSize: input\.pageSize,[\s\S]*totalCount,[\s\S]*totalPages/);
+    assert.match(
+      adminSeriesPageSource,
+      /franchise\.parentTitle \? \([\s\S]*Внутри: \{franchise\.parentTitle\}/,
+    );
   });
 
   it("also refuses to delete a node that gained children after the admin page was rendered", () => {

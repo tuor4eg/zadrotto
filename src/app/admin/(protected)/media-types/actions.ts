@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import {
   createMediaType,
   deleteMediaTypeIfUnused,
+  setMediaTypePublicAvailability,
   updateMediaType,
 } from "@/db/queries/media-types";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
@@ -34,8 +35,40 @@ function readMediaTypeForm(formData: FormData) {
     value: {
       name,
       description: normalizeOptionalMediaTypeString(getFormString(formData, "description")),
+      isPubliclyAvailable: formData.get("isPubliclyAvailable") === "1",
+      isAvailableToGuests: formData.get("isAvailableToGuests") === "1",
+      enabledByDefault: formData.get("enabledByDefault") === "1",
     },
   };
+}
+
+export async function setMediaTypePublicAvailabilityAction(formData: FormData) {
+  await requireAdminUser();
+
+  const mediaTypeId = parseRequiredMediaTypeId(getFormString(formData, "mediaTypeId"));
+
+  if (!mediaTypeId.ok) {
+    redirect("/admin/media-types?error=invalid-type");
+  }
+
+  let mediaType;
+
+  try {
+    mediaType = await setMediaTypePublicAvailability(
+      mediaTypeId.value,
+      formData.get("isPubliclyAvailable") === "1",
+    );
+  } catch (error) {
+    console.error(error);
+    redirect(`/admin/media-types?error=${getAdminFormErrorCode(error)}`);
+  }
+
+  if (!mediaType) {
+    redirect("/admin/media-types?error=invalid-type");
+  }
+
+  revalidateMediaTypeSurfaces();
+  redirect(`/admin/media-types?visibility-updated=1`);
 }
 
 function revalidateMediaTypeSurfaces() {
@@ -46,6 +79,10 @@ function revalidateMediaTypeSurfaces() {
   revalidatePath("/admin/media-carriers/new");
   revalidatePath("/author/media");
   revalidatePath("/author/media/new");
+  revalidatePath("/author/settings/media-types");
+  revalidatePath("/series");
+  revalidatePath("/series/[code]", "page");
+  revalidatePath("/media/[code]", "page");
   revalidatePath("/");
 }
 
