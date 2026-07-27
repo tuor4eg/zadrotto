@@ -298,10 +298,14 @@ export async function getPublishedFranchisesPage(input: {
     parentPath: Array<{ code: string; title: string }> = [],
   ): Array<Omit<FranchiseTreeNode, "children" | "parentId"> & {
     parentPath: Array<{ code: string; title: string }>;
-  }> => nodes.flatMap(({ children, parentId: _parentId, ...node }) => [
-    { ...node, parentPath },
-    ...flattenTree(children, [...parentPath, { code: node.code, title: node.title }]),
-  ]);
+  }> => nodes.flatMap(({ children, parentId, ...node }) => {
+    void parentId;
+
+    return [
+      { ...node, parentPath },
+      ...flattenTree(children, [...parentPath, { code: node.code, title: node.title }]),
+    ];
+  });
   const visibleItems = flattenTree(tree);
   const totalCount = visibleItems.length;
   const totalPages = getTotalPages(totalCount, input.pageSize);
