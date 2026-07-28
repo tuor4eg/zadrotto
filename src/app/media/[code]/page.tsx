@@ -10,8 +10,8 @@ import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import {
   getMediaItemByCode,
-  getOtherMediaItemsFromFranchises,
   getPublicMediaItemMetadataByCode,
+  getRelatedFranchiseSections,
 } from "@/db/queries/media-items";
 import {
   getAccessibleMediaTypeCodes,
@@ -85,17 +85,12 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
   const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises] = await Promise.all([
-    Promise.all(
-      publishedFranchiseLinks.map(async (franchise) => ({
-        franchise,
-        items: await getOtherMediaItemsFromFranchises(
-          [franchise.id],
-          item.id,
-          enabledMediaTypeCodes,
-          currentAuthor?.id,
-        ),
-      })),
-    ),
+    getRelatedFranchiseSections({
+      franchises: publishedFranchiseLinks,
+      currentMediaItemId: item.id,
+      enabledMediaTypeCodes,
+      currentAuthorId: currentAuthor?.id,
+    }),
     getPublishedReviewsForMediaItem(item.id),
     getAllMediaTypeOptions(),
     currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),

@@ -53,7 +53,7 @@ type RelatedMediaItem = {
 };
 
 type RelatedFranchiseSection = {
-  franchise: MediaItemDetailsItem["franchises"][number];
+  franchise: Pick<MediaItemDetailsItem["franchises"][number], "id" | "code" | "title">;
   items: RelatedMediaItem[];
 };
 
@@ -124,7 +124,7 @@ function FranchiseRelatedTitle({
   franchise,
   linkClassName,
 }: {
-  franchise?: MediaItemDetailsItem["franchises"][number];
+  franchise?: RelatedFranchiseSection["franchise"];
   linkClassName?: string;
 }) {
   if (!franchise) {
@@ -185,15 +185,17 @@ export function MediaItemDetails({
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
-    relatedFranchiseSections ??
-    (item.franchises.length > 0
-      ? [
-          {
-            franchise: item.franchises[0],
-            items: relatedItems,
-          },
-        ]
-      : []);
+    (
+      relatedFranchiseSections ??
+      (item.franchises.length > 0
+        ? [
+            {
+              franchise: item.franchises[0],
+              items: relatedItems,
+            },
+          ]
+        : [])
+    ).filter((section) => section.items.length > 0);
 
   if (variant === "archive") {
     return (
@@ -476,7 +478,7 @@ function ArchiveMediaItemDetails({
                 pageUrl={item.coverSourcePageUrl}
               />
               {adjacentShelfSlot ? (
-                <div className="mt-6">
+                <div className="mt-6 hidden lg:block">
                   {adjacentShelfSlot}
                 </div>
               ) : null}
@@ -597,6 +599,12 @@ function ArchiveMediaItemDetails({
               <div className="mt-6">
                 <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
               </div>
+
+              {adjacentShelfSlot ? (
+                <div className="mt-6 lg:hidden">
+                  {adjacentShelfSlot}
+                </div>
+              ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
                 {noteSlot}

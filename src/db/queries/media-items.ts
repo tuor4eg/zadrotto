@@ -51,6 +51,10 @@ import type {
   MediaItemDuplicateCheckInput,
   MediaItemDuplicateMatch,
 } from "@/lib/media/media-item-duplicates";
+import {
+  getRelatedFranchiseSectionSources,
+  type RelatedFranchiseSource,
+} from "@/lib/media/related-franchises";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -1678,11 +1682,29 @@ export async function getOtherMediaItemsFromFranchises(
   currentMediaItemId: number,
   enabledMediaTypeCodes: readonly string[],
   currentAuthorId?: number,
+  includeDescendants = false,
+  excludedMediaItemIds: readonly number[] = [],
 ) {
   if (franchiseIds.length === 0) {
     return [];
   }
 
+  const franchiseCondition = includeDescendants
+    ? sql`${mediaItemFranchises.franchiseId} in (
+        with recursive published_descendants as (
+          select ${franchises.id}
+          from ${franchises}
+          where ${franchises.id} in ${franchiseIds}
+            and ${franchises.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
+          union all
+          select child.id
+          from ${franchises} child
+          inner join published_descendants parent on child.parent_id = parent.id
+          where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+        )
+        select id from published_descendants
+      )`
+    : inArray(mediaItemFranchises.franchiseId, franchiseIds);
   const items = await db
     .select({
       id: mediaItems.id,
@@ -1705,8 +1727,11 @@ export async function getOtherMediaItemsFromFranchises(
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
-        inArray(mediaItemFranchises.franchiseId, franchiseIds),
+        franchiseCondition,
         ne(mediaItems.id, currentMediaItemId),
+        excludedMediaItemIds.length > 0
+          ? not(inArray(mediaItems.id, [...excludedMediaItemIds]))
+          : undefined,
         eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         publishedMediaItemCondition,
         getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
@@ -1732,4 +1757,31 @@ export async function getOtherMediaItemsFromFranchises(
     coverUrl: resolveCoverUrl(item.coverUrl),
     coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
   }));
+}
+
+export async function getRelatedFranchiseSections(input: {
+  franchises: RelatedFranchiseSource[];
+  currentMediaItemId: number;
+  enabledMediaTypeCodes: readonly string[];
+  currentAuthorId?: number;
+}) {
+  const sectionSources = getRelatedFranchiseSectionSources(input.franchises);
+  const relatedSections = [];
+  const shownMediaItemIds = new Set<number>();
+
+  for (const section of sectionSources) {
+    const items = await getOtherMediaItemsFromFranchises(
+      [section.franchise.id],
+      input.currentMediaItemId,
+      input.enabledMediaTypeCodes,
+      input.currentAuthorId,
+      section.includeDescendants,
+      [...shownMediaItemIds],
+    );
+
+    items.forEach((item) => shownMediaItemIds.add(item.id));
+    relatedSections.push({ franchise: section.franchise, items });
+  }
+
+  return relatedSections;
 }

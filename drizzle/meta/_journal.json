@@ -302,6 +302,13 @@
       "when": 1785348000000,
       "tag": "0042_media_type_guest_access",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785434400000,
+      "tag": "0043_author_avatars",
+      "breakpoints": true
     }
   ]
 }

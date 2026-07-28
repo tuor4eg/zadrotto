@@ -9,9 +9,11 @@ import {
   createAuthor,
   deleteAuthorIfUnused,
   getAuthorById,
+  replaceAuthorAvatarObjectKey,
   unblockAuthor,
   updateAuthor,
 } from "@/db/queries/authors";
+import { deleteAuthorAvatarBestEffort } from "@/lib/avatars/storage";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error-messages";
 import { canAssignAuthorAccessProfile } from "@/lib/authors/access-profiles";
@@ -238,6 +240,33 @@ export async function unblockAuthorAction(formData: FormData) {
   redirect("/admin/authors?updated=unblocked");
 }
 
+export async function removeAuthorAvatarAdminAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const authorId = getFormNumber(formData, "authorId");
+  if (!authorId) redirect("/admin/authors?error=invalid-author");
+
+  const author = await getAuthorById(authorId);
+  if (!author) redirect("/admin/authors?error=invalid-author");
+
+  const replaced = await replaceAuthorAvatarObjectKey({ authorId, objectKey: null });
+  if (!replaced) redirect("/admin/authors?error=invalid-author");
+
+  await deleteAuthorAvatarBestEffort(replaced.previousObjectKey);
+  revalidatePath("/admin/authors");
+  revalidatePath(`/admin/authors/${authorId}`);
+  revalidatePath("/", "layout");
+  await logActivity({
+    action: "author.avatar.removed",
+    actorType: "admin",
+    adminUserId: adminUser.id,
+    entityType: "author",
+    entityId: author.id,
+    entityLabel: author.name,
+    message: "Администратор удалил аватар автора.",
+  });
+  redirect(`/admin/authors/${authorId}?updated=avatar-removed`);
+}
+
 export async function deleteAuthorAction(formData: FormData) {
   const adminUser = await requireAdminUser();
 
@@ -262,18 +291,19 @@ export async function deleteAuthorAction(formData: FormData) {
     redirect(`/admin/authors?error=${getAdminFormErrorCode(error)}`);
   }
 
-  if (deleteResult === "not-found") {
+  if (deleteResult.status === "not-found") {
     redirect("/admin/authors?error=invalid-author");
   }
 
-  if (deleteResult === "has-data") {
+  if (deleteResult.status === "has-data") {
     redirect("/admin/authors?error=author-has-data");
   }
 
-  if (deleteResult === "last-system-author") {
+  if (deleteResult.status === "last-system-author") {
     redirect("/admin/authors?error=last-system-author");
   }
 
+  await deleteAuthorAvatarBestEffort(deleteResult.avatarObjectKey);
   revalidatePath("/admin/authors");
   await logActivity({
     action: "author.deleted",

@@ -207,6 +207,7 @@ export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
+  avatarObjectKey: text("avatar_object_key"),
   isSystem: boolean("is_system").default(false).notNull(),
   accessProfileId: integer("access_profile_id")
     .notNull()
@@ -218,6 +219,9 @@ export const authors = pgTable("authors", {
   ...timestamps(),
 }, (table) => [
   index("authors_access_profile_id_idx").on(table.accessProfileId),
+  uniqueIndex("authors_avatar_object_key_unique")
+    .on(table.avatarObjectKey)
+    .where(sql`${table.avatarObjectKey} is not null`),
 ]);
 
 export const authorMediaTypeSettings = pgTable(

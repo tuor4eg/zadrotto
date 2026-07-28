@@ -1,12 +1,15 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
 import { ArrowLeft, Edit3 } from "lucide-react";
+import { notFound } from "next/navigation";
 
 import { Badge } from "@/components/ui/badge";
+import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmAction } from "@/components/ui/confirm-action";
 import { getAdminAuthorProfileById } from "@/db/queries/authors";
 import { PageHeader } from "../../admin-ui";
+import { removeAuthorAvatarAdminAction } from "../actions";
 
 type AdminAuthorPageProps = {
   params: Promise<{
@@ -99,6 +102,30 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
       />
 
       <Card>
+        <CardContent className="flex flex-wrap items-center gap-4 pt-6">
+          <Avatar name={author.name} objectKey={author.avatarObjectKey} className="size-20 text-2xl" />
+          <div>
+            <div className="font-medium">Аватар автора</div>
+            {author.avatarObjectKey ? (
+              <div className="mt-2">
+                <ConfirmAction
+                  action={removeAuthorAvatarAdminAction}
+                  fields={[{ name: "authorId", value: author.id }]}
+                  title="Удалить аватар?"
+                  description={`Аватар автора «${author.name}» будет удалён без возможности восстановления.`}
+                  triggerLabel="Удалить аватар"
+                  triggerAriaLabel={`Удалить аватар автора ${author.name}`}
+                  confirmLabel="Удалить"
+                />
+              </div>
+            ) : (
+              <p className="mt-1 text-sm text-stone-500">Используются инициалы.</p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
           <CardTitle>Сводка</CardTitle>
         </CardHeader>
@@ -117,6 +144,10 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
               <dd className="mt-1">
                 <Badge variant="outline">{author.accessProfileName}</Badge>
               </dd>
+            </div>
+            <div>
+              <dt className="text-stone-500">Логин</dt>
+              <dd className="mt-1 font-medium text-stone-950">{author.login ?? "—"}</dd>
             </div>
             <div>
               <dt className="text-stone-500">Зарегистрирован</dt>

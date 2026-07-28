@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
@@ -35,6 +35,10 @@ export function ArchiveSelect<TValue extends string>({
   value,
 }: ArchiveSelectProps<TValue>) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuLayout, setMenuLayout] = useState({
+    maxHeight: 288,
+    placement: "bottom" as "bottom" | "top",
+  });
   const selectId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
@@ -70,6 +74,44 @@ export function ArchiveSelect<TValue extends string>({
     };
   }, [isOpen, updateOpen]);
 
+  useLayoutEffect(() => {
+    if (!isOpen || !rootRef.current) {
+      return;
+    }
+
+    function updateMenuLayout() {
+      const triggerRect = rootRef.current?.getBoundingClientRect();
+
+      if (!triggerRect) {
+        return;
+      }
+
+      const viewportTop = window.visualViewport?.offsetTop ?? 0;
+      const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+      const viewportBottom = viewportTop + viewportHeight;
+      const availableAbove = triggerRect.top - viewportTop - 16;
+      const availableBelow = viewportBottom - triggerRect.bottom - 16;
+      const placement = availableBelow >= Math.min(288, availableAbove) ? "bottom" : "top";
+      const availableHeight = placement === "bottom" ? availableBelow : availableAbove;
+
+      setMenuLayout({
+        maxHeight: Math.max(0, Math.min(288, availableHeight)),
+        placement,
+      });
+    }
+
+    updateMenuLayout();
+    window.addEventListener("resize", updateMenuLayout);
+    window.visualViewport?.addEventListener("resize", updateMenuLayout);
+    window.visualViewport?.addEventListener("scroll", updateMenuLayout);
+
+    return () => {
+      window.removeEventListener("resize", updateMenuLayout);
+      window.visualViewport?.removeEventListener("resize", updateMenuLayout);
+      window.visualViewport?.removeEventListener("scroll", updateMenuLayout);
+    };
+  }, [isOpen]);
+
   return (
     <div ref={rootRef} className={cn("relative", className)}>
       <button
@@ -97,7 +139,11 @@ export function ArchiveSelect<TValue extends string>({
           id={selectId}
           role="listbox"
           aria-label={ariaLabel}
-          className="archive-paper-surface archive-scrollbar absolute right-0 top-full z-[80] mt-2 max-h-[min(18rem,calc(100vh-8rem))] w-[min(16rem,calc(100vw-2rem))] min-w-full overflow-y-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
+          className={cn(
+            "archive-paper-surface archive-scrollbar absolute right-0 z-[80] w-[min(16rem,calc(100vw-2rem))] min-w-full overflow-y-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]",
+            menuLayout.placement === "bottom" ? "top-full mt-2" : "bottom-full mb-2",
+          )}
+          style={{ maxHeight: menuLayout.maxHeight }}
         >
           {options.map((option) => {
             const selected = option.value === value;

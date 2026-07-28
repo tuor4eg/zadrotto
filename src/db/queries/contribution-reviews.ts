@@ -31,6 +31,7 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       id: contributions.id,
       authorName: authors.name,
       authorCode: authors.code,
+      authorAvatarObjectKey: authors.avatarObjectKey,
       title: contributionReviews.title,
       body: contributionReviews.body,
       publishedAt: contributions.reviewedAt,

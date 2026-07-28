@@ -10,6 +10,12 @@ const registrationActions = readFileSync("src/app/author/register/actions.ts", "
 const registrationPage = readFileSync("src/app/author/register/page.tsx", "utf8");
 const authFeatures = readFileSync("src/lib/auth/features.ts", "utf8");
 const profilePage = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
+const profileLayout = readFileSync("src/app/author/(protected)/profile/layout.tsx", "utf8");
+const profileNavigation = readFileSync("src/app/author/(protected)/profile/profile-nav.tsx", "utf8");
+const profileSessionsPage = readFileSync(
+  "src/app/author/(protected)/profile/sessions/page.tsx",
+  "utf8",
+);
 const legacyOnboardingPage = readFileSync("src/app/author/onboarding/page.tsx", "utf8");
 const resetPasswordPage = readFileSync("src/app/author/reset-password/page.tsx", "utf8");
 const legacySecurityPage = readFileSync("src/app/author/(protected)/settings/security/page.tsx", "utf8");
@@ -290,11 +296,22 @@ describe("author auth persistence contracts", () => {
     assert.match(layout, /href="\/author\/profile"[\s\S]*Профиль/);
     assert.match(legacyOnboardingPage, /redirectToAuthorProfile\(searchParams\)/);
     assert.match(legacySecurityPage, /redirectToAuthorProfile\(searchParams\)/);
-    assert.match(profilePage, /value=\{account\.login \?\? ""\}[\s\S]*Логин задаётся один раз и не изменяется/);
+    assert.match(profilePage, /Логин[\s\S]*account\.login \?\? "—"/);
     assert.doesNotMatch(profilePage, /changeAuthorLoginAction|Сменить логин/);
     assert.doesNotMatch(profileActions, /changeAuthorLoginAction|Автор изменил логин/);
-    assert.match(profilePage, /id="profileLogin"[\s\S]*disabled/);
     assert.match(profileActions, /function readPassword[\s\S]*return typeof value === "string" \? value : ""/);
+  });
+
+  it("separates general profile settings from session management", () => {
+    assert.match(profileLayout, /<ProfileNav/);
+    assert.match(profileNavigation, /href: "\/author\/profile"[\s\S]*label: "Общие"/);
+    assert.match(profileNavigation, /href: "\/author\/profile\/sessions"[\s\S]*label: "Сессии"/);
+
+    assert.doesNotMatch(profilePage, /getAuthorSessions|revokeAuthorSessionAction|Завершить .*сесси|Выйти везде/);
+    assert.match(profileSessionsPage, /getAuthorSessions\(current\.author\.id\)/);
+    assert.match(profileSessionsPage, /revokeAuthorSessionAction/);
+    assert.match(profileSessionsPage, /Завершить остальные сессии/);
+    assert.match(profileSessionsPage, /Выйти везде/);
   });
 
   it("loads profile email state without normalized credentials", () => {

@@ -6,6 +6,7 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
+import { Avatar } from "@/components/ui/avatar";
 import { getAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
 import { getAuthors, type AuthorActivityFilter } from "@/db/queries/authors";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
@@ -237,7 +238,9 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   key={author.id}
                   className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm"
                 >
-                  <div className="min-w-0">
+                  <div className="flex min-w-0 items-center gap-3">
+                    <Avatar name={author.name} objectKey={author.avatarObjectKey} />
+                    <div className="min-w-0">
                     <Link
                       href={`/admin/authors/${author.id}`}
                       className="block break-words font-medium text-stone-950 underline-offset-2 transition-colors hover:text-stone-700 hover:underline"
@@ -249,6 +252,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                         {author.blockedAt ? "неактивен" : "активен"}
                       </Badge>
                       <Badge variant="outline">{author.accessProfileName}</Badge>
+                    </div>
                     </div>
                   </div>
 
@@ -299,12 +303,15 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   return (
                     <TR key={author.id}>
                       <TD className="min-w-0 overflow-hidden">
-                        <Link
-                          href={`/admin/authors/${author.id}`}
-                          className="block truncate font-medium text-stone-950 underline-offset-2 transition-colors hover:text-stone-700 hover:underline"
-                        >
-                          {author.name}
-                        </Link>
+                        <div className="flex items-center gap-2">
+                          <Avatar name={author.name} objectKey={author.avatarObjectKey} className="size-8 text-xs" />
+                          <Link
+                            href={`/admin/authors/${author.id}`}
+                            className="block truncate font-medium text-stone-950 underline-offset-2 transition-colors hover:text-stone-700 hover:underline"
+                          >
+                            {author.name}
+                          </Link>
+                        </div>
                       </TD>
                       <TD>
                         <div className="flex flex-wrap gap-1.5">

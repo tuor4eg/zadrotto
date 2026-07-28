@@ -2,6 +2,7 @@ import { and, asc, desc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  authorAccounts,
   authorAccessProfiles,
   authorAccessTokens,
   authors,
@@ -10,10 +11,10 @@ import {
 } from "@/db/schema";
 
 export type DeleteAuthorResult =
-  | "deleted"
-  | "has-data"
-  | "last-system-author"
-  | "not-found";
+  | { status: "deleted"; avatarObjectKey: string | null }
+  | { status: "has-data" }
+  | { status: "last-system-author" }
+  | { status: "not-found" };
 export type AuthorActivityFilter = "active" | "blocked";
 
 const authorUsageCountSql = sql<number>`(
@@ -47,6 +48,7 @@ export async function getAuthors(input?: {
       id: authors.id,
       code: authors.code,
       name: authors.name,
+      avatarObjectKey: authors.avatarObjectKey,
       isSystem: authors.isSystem,
       accessProfileId: authorAccessProfiles.id,
       accessProfileName: authorAccessProfiles.name,
@@ -63,6 +65,7 @@ export async function getAuthors(input?: {
       authors.id,
       authors.code,
       authors.name,
+      authors.avatarObjectKey,
       authors.isSystem,
       authorAccessProfiles.id,
       authorAccessProfiles.name,
@@ -77,6 +80,7 @@ export async function getAuthorOptions() {
     .select({
       id: authors.id,
       name: authors.name,
+      avatarObjectKey: authors.avatarObjectKey,
       isSystem: authors.isSystem,
       accessProfileName: authorAccessProfiles.name,
     })
@@ -91,6 +95,7 @@ export async function getAuthorById(id: number) {
       id: authors.id,
       code: authors.code,
       name: authors.name,
+      avatarObjectKey: authors.avatarObjectKey,
       isSystem: authors.isSystem,
       accessProfileId: authors.accessProfileId,
       accessProfileCode: authorAccessProfiles.code,
@@ -120,7 +125,9 @@ export async function getAdminAuthorProfileById(id: number) {
       id: authors.id,
       code: authors.code,
       name: authors.name,
+      avatarObjectKey: authors.avatarObjectKey,
       isSystem: authors.isSystem,
+      login: authorAccounts.login,
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
@@ -146,6 +153,7 @@ export async function getAdminAuthorProfileById(id: number) {
     })
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
+    .leftJoin(authorAccounts, eq(authorAccounts.authorId, authors.id))
     .where(eq(authors.id, id))
     .limit(1);
 
@@ -162,6 +170,49 @@ export async function authorExistsById(id: number) {
     .limit(1);
 
   return Boolean(author);
+}
+
+export async function isAssignedAuthorAvatarObjectKey(objectKey: string) {
+  const [author] = await db
+    .select({ id: authors.id })
+    .from(authors)
+    .where(eq(authors.avatarObjectKey, objectKey))
+    .limit(1);
+
+  return Boolean(author);
+}
+
+export async function replaceAuthorAvatarObjectKey(input: {
+  authorId: number;
+  objectKey: string | null;
+}) {
+  return db.transaction(async (tx) => {
+    const [existing] = await tx
+      .select({ avatarObjectKey: authors.avatarObjectKey })
+      .from(authors)
+      .where(eq(authors.id, input.authorId))
+      .limit(1)
+      .for("update");
+
+    if (!existing) return null;
+
+    await tx
+      .update(authors)
+      .set({ avatarObjectKey: input.objectKey, updatedAt: new Date() })
+      .where(eq(authors.id, input.authorId));
+
+    return { previousObjectKey: existing.avatarObjectKey };
+  });
+}
+
+export async function updateAuthorDisplayName(authorId: number, name: string) {
+  const [author] = await db
+    .update(authors)
+    .set({ name, updatedAt: new Date() })
+    .where(eq(authors.id, authorId))
+    .returning({ id: authors.id, name: authors.name });
+
+  return author ?? null;
 }
 
 export async function createAuthor(input: {
@@ -240,7 +291,7 @@ export async function unblockAuthor(id: number) {
   return author ?? null;
 }
 
-export async function deleteAuthorIfUnused(id: number) {
+export async function deleteAuthorIfUnused(id: number): Promise<DeleteAuthorResult> {
   const [usage] = await db
     .select({
       count: authorUsageCountByIdSql(id),
@@ -251,11 +302,11 @@ export async function deleteAuthorIfUnused(id: number) {
     .limit(1);
 
   if (!usage) {
-    return "not-found" satisfies DeleteAuthorResult;
+    return { status: "not-found" } satisfies DeleteAuthorResult;
   }
 
   if (usage.count > 0) {
-    return "has-data" satisfies DeleteAuthorResult;
+    return { status: "has-data" } satisfies DeleteAuthorResult;
   }
 
   if (usage.isSystem) {
@@ -267,7 +318,7 @@ export async function deleteAuthorIfUnused(id: number) {
       .where(eq(authors.isSystem, true));
 
     if (!systemAuthors || systemAuthors.count <= 1) {
-      return "last-system-author" satisfies DeleteAuthorResult;
+      return { status: "last-system-author" } satisfies DeleteAuthorResult;
     }
   }
 
@@ -279,10 +330,13 @@ export async function deleteAuthorIfUnused(id: number) {
       .where(eq(authors.id, id))
       .returning({
         id: authors.id,
+        avatarObjectKey: authors.avatarObjectKey,
       });
 
     return deletedAuthor;
   });
 
-  return author ? "deleted" : "not-found";
+  return author
+    ? { status: "deleted", avatarObjectKey: author.avatarObjectKey }
+    : { status: "not-found" };
 }

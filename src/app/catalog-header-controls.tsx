@@ -310,9 +310,9 @@ export function CatalogHeaderControls({
 
   return (
     <div
-      className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-hidden ${
+      className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible ${
         compact
-          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2"
+          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2 lg:overflow-hidden"
           : "lg:contents"
       }`}
     >

@@ -15,12 +15,121 @@ import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
 import { getUniqueViolationConstraint } from "@/lib/common/app-error-messages";
+import {
+  deleteAuthorAvatarBestEffort,
+  parseAvatarCrop,
+  uploadAuthorAvatar,
+} from "@/lib/avatars/storage";
+import { replaceAuthorAvatarObjectKey, updateAuthorDisplayName } from "@/db/queries/authors";
+import { normalizeAuthorDisplayName } from "@/lib/authors/display-name";
 
 const PROFILE_PATH = "/author/profile";
+const SESSIONS_PATH = "/author/profile/sessions";
 
 export async function logoutAuthorToTokenLogin() {
   await clearAuthorSessionCookie();
   redirect("/author/token");
+}
+
+export async function updateAuthorAvatarAction(formData: FormData) {
+  const current = await getCurrentAuthorSession();
+  if (!current) redirect("/author/login");
+
+  const file = formData.get("avatarFile");
+  const crop = parseAvatarCrop({
+    x: formData.get("cropX"),
+    y: formData.get("cropY"),
+    width: formData.get("cropWidth"),
+    height: formData.get("cropHeight"),
+  });
+  if (!(file instanceof File) || !crop) redirect(`${PROFILE_PATH}?avatarError=invalid`);
+
+  const uploaded = await uploadAuthorAvatar({
+    authorId: current.author.id,
+    file,
+    crop,
+  });
+  if (!uploaded.ok) redirect(`${PROFILE_PATH}?avatarError=${uploaded.error}`);
+
+  let replaced;
+  try {
+    replaced = await replaceAuthorAvatarObjectKey({
+      authorId: current.author.id,
+      objectKey: uploaded.objectKey,
+    });
+  } catch (error) {
+    await deleteAuthorAvatarBestEffort(uploaded.objectKey);
+    console.error(error);
+    redirect(`${PROFILE_PATH}?avatarError=avatar-upload`);
+  }
+  if (!replaced) {
+    await deleteAuthorAvatarBestEffort(uploaded.objectKey);
+    redirect(`${PROFILE_PATH}?avatarError=avatar-upload`);
+  }
+
+  await deleteAuthorAvatarBestEffort(replaced.previousObjectKey);
+  revalidatePath("/", "layout");
+  await logActivity({
+    action: "author.avatar.updated",
+    actorType: "author",
+    authorId: current.author.id,
+    entityType: "author",
+    entityId: current.author.id,
+    entityLabel: current.author.name,
+    message: "Автор обновил аватар.",
+  });
+  redirect(`${PROFILE_PATH}?avatarUpdated=1`);
+}
+
+export async function removeAuthorAvatarAction() {
+  const current = await getCurrentAuthorSession();
+  if (!current) redirect("/author/login");
+
+  const replaced = await replaceAuthorAvatarObjectKey({
+    authorId: current.author.id,
+    objectKey: null,
+  });
+  if (!replaced) redirect(`${PROFILE_PATH}?avatarError=avatar-upload`);
+
+  await deleteAuthorAvatarBestEffort(replaced.previousObjectKey);
+  revalidatePath("/", "layout");
+  await logActivity({
+    action: "author.avatar.removed",
+    actorType: "author",
+    authorId: current.author.id,
+    entityType: "author",
+    entityId: current.author.id,
+    entityLabel: current.author.name,
+    message: "Автор удалил аватар.",
+  });
+  redirect(`${PROFILE_PATH}?avatarRemoved=1`);
+}
+
+export async function updateAuthorDisplayNameAction(formData: FormData) {
+  const current = await getCurrentAuthorSession();
+  if (!current) redirect("/author/login");
+
+  const value = formData.get("displayName");
+  const name = normalizeAuthorDisplayName(typeof value === "string" ? value : "");
+  if (!name) redirect(`${PROFILE_PATH}?displayNameError=invalid`);
+
+  const author = await updateAuthorDisplayName(current.author.id, name);
+  if (!author) redirect(`${PROFILE_PATH}?displayNameError=unavailable`);
+
+  revalidatePath("/", "layout");
+  revalidatePath("/admin/authors");
+  revalidatePath(`/admin/authors/${current.author.id}`);
+  revalidatePath(`/admin/authors/${current.author.id}/edit`);
+  await logActivity({
+    action: "author.display-name.updated",
+    actorType: "author",
+    authorId: current.author.id,
+    entityType: "author",
+    entityId: current.author.id,
+    entityLabel: name,
+    message: "Автор изменил отображаемое имя.",
+  });
+  redirect(`${PROFILE_PATH}?displayNameUpdated=1`);
 }
 
 function read(formData: FormData, key: string) {
@@ -170,6 +279,6 @@ export async function revokeAuthorSessionAction(formData: FormData) {
       }
     }
   }
-  revalidatePath(PROFILE_PATH);
+  revalidatePath(SESSIONS_PATH);
   await logActivity({ action: "author.session.revoked", actorType: "author", authorId: current.author.id, entityType: "author-account", entityId: current.author.id, message: "Автор завершил сессию.", metadata: { scope: intent } });
 }

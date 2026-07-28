@@ -5,12 +5,14 @@ import Link from "next/link";
 import { useEffect, useId, useState } from "react";
 
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/common/utils";
 
 type MediaItemReview = {
   id: number;
   authorName: string;
   authorCode: string;
+  authorAvatarObjectKey: string | null;
   title: string;
   body: string;
   publishedAt: Date | string | null;
@@ -188,7 +190,12 @@ function ReviewBookModal({
             <h2 id={titleId} className="mt-3 pr-10 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
               {review.title}
             </h2>
-            <div className="mt-5 flex flex-wrap gap-2 font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
+            <div className="mt-5 flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.12em] text-stone-500">
+              <Avatar
+                name={review.authorName}
+                objectKey={review.authorAvatarObjectKey}
+                className="size-8 font-sans text-[10px]"
+              />
               <span>{review.authorName}</span>
               {publishedAt ? <span>{publishedAt}</span> : null}
             </div>
