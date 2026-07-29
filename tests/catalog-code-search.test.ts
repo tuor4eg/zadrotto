@@ -45,10 +45,13 @@ describe("catalog code search", () => {
       mediaQuerySource,
       /sql`lower\(\$\{mediaItemTitleAliases\.value\}\) like \$\{pattern\}`/,
     );
-    assert.match(seriesQuerySource, /sql`lower\(\$\{franchises\.title\}\) like \$\{`%\$\{normalizedSearchQuery\}%`\}`/);
     assert.match(
       seriesQuerySource,
-      /sql`lower\(\$\{franchises\.originalTitle\}\) like \$\{`%\$\{normalizedSearchQuery\}%`\}`/,
+      /\[row\.title, row\.originalTitle, row\.code\][\s\S]*\.includes\(normalizedSearch(?:Query)?\)/,
+    );
+    assert.match(
+      seriesQuerySource,
+      /const normalizedSearchQuery = searchQuery\.trim\(\)\.toLowerCase\(\)/,
     );
   });
 });

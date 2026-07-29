@@ -1,12 +1,16 @@
 import Link from "next/link";
 import { Edit3, Plus, Trash2 } from "lucide-react";
+import type { ReactNode } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
-import { getAdminFranchises } from "@/db/queries/franchises";
+import {
+  getAdminFranchises,
+  type AdminFranchiseTreeNode,
+} from "@/db/queries/franchises";
 import { parsePage } from "@/lib/common/pagination";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { PageHeader, EmptyState } from "../admin-ui";
@@ -25,6 +29,49 @@ type AdminFranchisesPageProps = {
 };
 
 const ADMIN_FRANCHISES_PAGE_SIZE = 50;
+
+function AdminFranchiseTreeRows({
+  nodes,
+  depth = 0,
+}: {
+  nodes: AdminFranchiseTreeNode[];
+  depth?: number;
+}): ReactNode[] {
+  return nodes.flatMap((franchise) => [
+    <TR key={franchise.id}>
+      <TD className="min-w-0 overflow-hidden">
+        <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: `${depth * 1.25}rem` }}>
+          <span aria-hidden="true" className="shrink-0 text-stone-400">{depth > 0 ? "↳" : "•"}</span>
+          <div className="min-w-0">
+            <div className="truncate font-medium text-stone-950">{franchise.title}</div>
+            {franchise.originalTitle ? (
+              <div className="mt-1 truncate text-xs text-stone-500">{franchise.originalTitle}</div>
+            ) : null}
+          </div>
+        </div>
+      </TD>
+      <TD><Badge variant="outline">{franchise.mediaItemsCount}</Badge></TD>
+      <TD className="px-2">
+        <div className="flex flex-nowrap justify-end gap-1.5">
+          <Tooltip label="Изменить">
+            <Link href={`/admin/series/${franchise.id}/edit`} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label={`Изменить серию ${franchise.title}`}>
+              <Edit3 />
+            </Link>
+          </Tooltip>
+          <form action={deleteFranchiseAction} className="shrink-0">
+            <input type="hidden" name="franchiseId" value={franchise.id} />
+            <Tooltip label={franchise.mediaItemsCount > 0 || franchise.children.length > 0 ? "Нельзя удалить: есть записи или дочерние серии" : "Удалить"}>
+              <Button type="submit" variant="destructive" size="icon" disabled={franchise.mediaItemsCount > 0 || franchise.children.length > 0} className="shrink-0" aria-label={`Удалить серию ${franchise.title}`}>
+                <Trash2 />
+              </Button>
+            </Tooltip>
+          </form>
+        </div>
+      </TD>
+    </TR>,
+    ...AdminFranchiseTreeRows({ nodes: franchise.children, depth: depth + 1 }),
+  ]);
+}
 
 export default async function AdminFranchisesPage({
   searchParams,
@@ -93,43 +140,7 @@ export default async function AdminFranchisesPage({
                   <TH className="w-28 px-2 text-right">Действия</TH>
                 </tr>
               </THead>
-              <TBody>
-                {franchises.map((franchise) => (
-                  <TR key={franchise.id}>
-                    <TD className="min-w-0 overflow-hidden">
-                      <div className="min-w-0">
-                        <div className="truncate font-medium text-stone-950">{franchise.title}</div>
-                        {franchise.originalTitle ? (
-                          <div className="mt-1 truncate text-xs text-stone-500">{franchise.originalTitle}</div>
-                        ) : null}
-                        {franchise.parentTitle ? (
-                          <div className="mt-1 truncate text-xs text-stone-500">
-                            Внутри: {franchise.parentTitle}
-                          </div>
-                        ) : null}
-                      </div>
-                    </TD>
-                    <TD><Badge variant="outline">{franchise.mediaItemsCount}</Badge></TD>
-                    <TD className="px-2">
-                      <div className="flex flex-nowrap justify-end gap-1.5">
-                        <Tooltip label="Изменить">
-                          <Link href={`/admin/series/${franchise.id}/edit`} className={buttonVariants({ variant: "outline", size: "icon" })} aria-label={`Изменить серию ${franchise.title}`}>
-                            <Edit3 />
-                          </Link>
-                        </Tooltip>
-                        <form action={deleteFranchiseAction} className="shrink-0">
-                          <input type="hidden" name="franchiseId" value={franchise.id} />
-                          <Tooltip label={franchise.mediaItemsCount > 0 || franchise.childrenCount > 0 ? "Нельзя удалить: есть записи или дочерние серии" : "Удалить"}>
-                            <Button type="submit" variant="destructive" size="icon" disabled={franchise.mediaItemsCount > 0 || franchise.childrenCount > 0} className="shrink-0" aria-label={`Удалить серию ${franchise.title}`}>
-                              <Trash2 />
-                            </Button>
-                          </Tooltip>
-                        </form>
-                      </div>
-                    </TD>
-                  </TR>
-                ))}
-              </TBody>
+              <TBody><AdminFranchiseTreeRows nodes={franchises} /></TBody>
             </Table>
           </TableWrap>
           <PaginationNav
@@ -138,7 +149,7 @@ export default async function AdminFranchisesPage({
             page={franchisesResult.page}
             pageSize={franchisesResult.pageSize}
             searchParams={paginationSearchParams}
-            totalCount={franchisesResult.totalCount}
+            totalCount={franchisesResult.paginationTotalCount}
             totalPages={franchisesResult.totalPages}
           />
         </>

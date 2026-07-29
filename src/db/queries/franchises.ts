@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQL } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -293,31 +293,20 @@ export async function getPublishedFranchisesPage(input: {
     input.searchQuery,
     input.enabledMediaTypeCodes,
   );
-  const flattenTree = (
-    nodes: FranchiseTreeNode[],
-    parentPath: Array<{ code: string; title: string }> = [],
-  ): Array<Omit<FranchiseTreeNode, "children" | "parentId"> & {
-    parentPath: Array<{ code: string; title: string }>;
-  }> => nodes.flatMap(({ children, parentId, ...node }) => {
-    void parentId;
-
-    return [
-      { ...node, parentPath },
-      ...flattenTree(children, [...parentPath, { code: node.code, title: node.title }]),
-    ];
-  });
-  const visibleItems = flattenTree(tree);
-  const totalCount = visibleItems.length;
-  const totalPages = getTotalPages(totalCount, input.pageSize);
+  const countNodes = (nodes: FranchiseTreeNode[]): number =>
+    nodes.reduce((count, node) => count + 1 + countNodes(node.children), 0);
+  const paginationTotalCount = tree.length;
+  const totalPages = getTotalPages(paginationTotalCount, input.pageSize);
   const page = clampPage(input.page, totalPages);
   const offset = getOffset(page, input.pageSize);
-  const items = visibleItems.slice(offset, offset + input.pageSize);
+  const items = tree.slice(offset, offset + input.pageSize);
 
   return {
     items,
     page,
     pageSize: input.pageSize,
-    totalCount,
+    paginationTotalCount,
+    totalCount: countNodes(tree),
     totalPages,
   };
 }
@@ -519,89 +508,23 @@ export async function findPublishedFranchiseDuplicateCandidates(input: {
   return [...exactMatches, ...similarMatches.filter((match) => !exactIds.has(match.id))];
 }
 
-function adminFranchiseSearchCondition(searchQuery: string) {
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-
-  if (!normalizedSearchQuery) {
-    return undefined;
-  }
-
-  const pattern = `%${normalizedSearchQuery}%`;
-
-  return or(
-    sql`lower(${franchises.title}) like ${pattern}`,
-    sql`lower(${franchises.originalTitle}) like ${pattern}`,
-    sql`lower(${franchises.code}) like ${pattern}`,
-  );
-}
-
-function adminFranchiseFilterConditions(input: {
-  searchQuery: string;
-}) {
-  const conditions: SQL[] = [];
-  const searchCondition = adminFranchiseSearchCondition(input.searchQuery);
-
-  if (searchCondition) {
-    conditions.push(searchCondition);
-  }
-
-  return conditions.length > 0 ? and(...conditions) : undefined;
-}
-
 export async function getAdminFranchises(input: {
   page: number;
   pageSize: number;
   searchQuery: string;
 }) {
-  const filterCondition = adminFranchiseFilterConditions(input);
-  const [{ totalCount }] = await db
-    .select({ totalCount: sql<number>`count(*)::int` })
-    .from(franchises)
-    .where(filterCondition);
-  const totalPages = getTotalPages(totalCount, input.pageSize);
+  const tree = await getAdminFranchiseTree(input.searchQuery);
+  const paginationTotalCount = tree.items.length;
+  const totalPages = getTotalPages(paginationTotalCount, input.pageSize);
   const page = clampPage(input.page, totalPages);
-  const items = await db
-    .select({
-      id: franchises.id,
-      parentId: franchises.parentId,
-      parentTitle: sql<string | null>`(
-        select parent.title
-        from franchises parent
-        where parent.id = ${franchises.parentId}
-      )`,
-      code: franchises.code,
-      title: franchises.title,
-      originalTitle: franchises.originalTitle,
-      mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int`,
-      childrenCount: sql<number>`(
-        select count(*)::int
-        from franchises child
-        where child.parent_id = ${franchises.id}
-      )`,
-      publicationStatus: franchises.publicationStatus,
-      createdByAuthorId: franchises.createdByAuthorId,
-    })
-    .from(franchises)
-    .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
-    .where(filterCondition)
-    .groupBy(
-      franchises.id,
-      franchises.parentId,
-      franchises.code,
-      franchises.title,
-      franchises.originalTitle,
-      franchises.publicationStatus,
-      franchises.createdByAuthorId,
-    )
-    .orderBy(asc(franchises.title), asc(franchises.code))
-    .limit(input.pageSize)
-    .offset(getOffset(page, input.pageSize));
+  const offset = getOffset(page, input.pageSize);
 
   return {
-    items,
+    items: tree.items.slice(offset, offset + input.pageSize),
     page,
     pageSize: input.pageSize,
-    totalCount,
+    paginationTotalCount,
+    totalCount: tree.totalCount,
     totalPages,
   };
 }

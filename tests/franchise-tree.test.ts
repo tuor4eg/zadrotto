@@ -114,7 +114,7 @@ describe("franchise tree display and traversal", () => {
     assert.match(adminTreeQuerySource, /if \(!normalizedSearchQuery \|\| visibleIds\.has\(row\.id\)\)/);
   });
 
-  it("paginates the admin list and disables deletion for non-leaf nodes", () => {
+  it("paginates complete admin branches and disables deletion for non-leaf nodes", () => {
     const adminListQuerySource = getFunctionSource(
       franchisesQuerySource,
       "getAdminFranchises",
@@ -134,24 +134,21 @@ describe("franchise tree display and traversal", () => {
       adminSeriesPageSource,
       /<PaginationNav[\s\S]*basePath="\/admin\/series"[\s\S]*searchParams=\{paginationSearchParams\}/,
     );
-    assert.match(adminSeriesPageSource, /disabled=\{franchise\.mediaItemsCount > 0 \|\| franchise\.childrenCount > 0\}/);
-    assert.match(
-      adminListQuerySource,
-      /childrenCount: sql<number>`\([\s\S]*select count\(\*\)::int[\s\S]*where child\.parent_id = \$\{franchises\.id\}/,
-    );
-    assert.match(adminListQuerySource, /parentId: franchises\.parentId/);
-    assert.match(
-      adminListQuerySource,
-      /parentTitle: sql<string \| null>`\([\s\S]*select parent\.title[\s\S]*where parent\.id = \$\{franchises\.parentId\}/,
-    );
-    assert.match(adminListQuerySource, /\.groupBy\([\s\S]*franchises\.parentId/);
-    assert.match(adminListQuerySource, /\.limit\(input\.pageSize\)/);
-    assert.match(adminListQuerySource, /\.offset\(getOffset\(page, input\.pageSize\)\)/);
-    assert.match(adminListQuerySource, /pageSize: input\.pageSize,[\s\S]*totalCount,[\s\S]*totalPages/);
+    assert.match(adminSeriesPageSource, /function AdminFranchiseTreeRows\(/);
     assert.match(
       adminSeriesPageSource,
-      /franchise\.parentTitle \? \([\s\S]*Внутри: \{franchise\.parentTitle\}/,
+      /AdminFranchiseTreeRows\(\{ nodes: franchise\.children, depth: depth \+ 1 \}\)/,
     );
+    assert.match(adminSeriesPageSource, /<AdminFranchiseTreeRows nodes=\{franchises\} \/>/);
+    assert.match(adminSeriesPageSource, /disabled=\{franchise\.mediaItemsCount > 0 \|\| franchise\.children\.length > 0\}/);
+    assert.match(
+      adminListQuerySource,
+      /getAdminFranchiseTree\(input\.searchQuery\)/,
+    );
+    assert.match(adminListQuerySource, /const paginationTotalCount = tree\.items\.length/);
+    assert.match(adminListQuerySource, /items: tree\.items\.slice\(offset, offset \+ input\.pageSize\)/);
+    assert.match(adminListQuerySource, /paginationTotalCount,[\s\S]*totalCount: tree\.totalCount/);
+    assert.doesNotMatch(adminListQuerySource, /\.limit\(|\.offset\(/);
   });
 
   it("also refuses to delete a node that gained children after the admin page was rendered", () => {

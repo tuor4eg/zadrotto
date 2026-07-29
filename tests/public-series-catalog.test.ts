@@ -55,8 +55,13 @@ describe("public series tree", () => {
 });
 
 describe("public series catalog UI", () => {
-  it("renders a compact flat page with counts, empty states, and archive pagination", () => {
-    assert.doesNotMatch(catalogPageSource, /function SeriesTree\(|<SeriesTree/);
+  it("renders the paginated roots as a recursive tree with counts and empty states", () => {
+    assert.match(catalogPageSource, /function SeriesTree\(/);
+    assert.match(
+      catalogPageSource,
+      /series\.children\.length > 0[\s\S]*<SeriesTree nodes=\{series\.children\} depth=\{depth \+ 1\}/,
+    );
+    assert.match(catalogPageSource, /<SeriesTree nodes=\{seriesPage\.items\} \/>/);
     assert.match(
       catalogPageSource,
       /SERIES_PAGE_SIZE_OPTIONS = \[24, 48, 72\][\s\S]*DEFAULT_SERIES_PAGE_SIZE = 24/,
@@ -66,11 +71,6 @@ describe("public series catalog UI", () => {
       /getEnabledMediaTypeCodes\(currentAuthor\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
     );
     assert.match(catalogPageSource, /seriesPage\.items\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
-    assert.match(catalogPageSource, /seriesPage\.items\.map\(\(series\) => \(/);
-    assert.match(
-      catalogPageSource,
-      /series\.parentPath\.length > 0[\s\S]*series\.parentPath\.map\(\(parent\) => parent\.title\)\.join\(" \/ "\)/,
-    );
     assert.match(catalogPageSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
     assert.match(catalogPageSource, /formatMediaItemsCount\(series\.mediaItemsCount\)/);
     assert.match(
@@ -79,7 +79,7 @@ describe("public series catalog UI", () => {
     );
   });
 
-  it("flattens the visible tree after subtree counts and paginates it with parent context", () => {
+  it("paginates complete root branches without flattening or splitting them", () => {
     const pageQuerySource = getFunctionSource(
       "getPublishedFranchisesPage",
       "getPublishedFranchiseBranch",
@@ -90,21 +90,15 @@ describe("public series catalog UI", () => {
       pageQuerySource,
       /getPublishedFranchiseTree\([\s\S]*input\.searchQuery,[\s\S]*input\.enabledMediaTypeCodes/,
     );
+    assert.match(pageQuerySource, /const paginationTotalCount = tree\.length/);
     assert.match(
       pageQuerySource,
-      /const flattenTree = \([\s\S]*parentPath: Array<\{ code: string; title: string \}> = \[\]/,
+      /const items = tree\.slice\(offset, offset \+ input\.pageSize\)/,
     );
-    assert.match(
-      pageQuerySource,
-      /\{ \.\.\.node, parentPath \},[\s\S]*flattenTree\(children, \[\.\.\.parentPath, \{ code: node\.code, title: node\.title \}\]\)/,
-    );
-    assert.match(pageQuerySource, /const totalCount = visibleItems\.length/);
-    assert.match(
-      pageQuerySource,
-      /const items = visibleItems\.slice\(offset, offset \+ input\.pageSize\)/,
-    );
+    assert.match(pageQuerySource, /totalCount: countNodes\(tree\)/);
+    assert.doesNotMatch(pageQuerySource, /flattenTree/);
     assert.doesNotMatch(pageQuerySource, /\.limit\(|\.offset\(/);
-    assert.match(pageQuerySource, /pageSize: input\.pageSize,[\s\S]*totalCount,[\s\S]*totalPages/);
+    assert.match(pageQuerySource, /pageSize: input\.pageSize,[\s\S]*paginationTotalCount,[\s\S]*totalCount: countNodes\(tree\),[\s\S]*totalPages/);
   });
 
   it("keeps filters in pagination links and offers page-size and direct-page controls", () => {

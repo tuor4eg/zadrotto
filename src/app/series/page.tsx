@@ -1,7 +1,10 @@
 import Link from "next/link";
 
 import { PaginationNav } from "@/components/pagination-nav";
-import { getPublishedFranchisesPage } from "@/db/queries/franchises";
+import {
+  getPublishedFranchisesPage,
+  type FranchiseTreeNode,
+} from "@/db/queries/franchises";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
@@ -25,6 +28,35 @@ function formatMediaItemsCount(count: number) {
   const label = plural === "one" ? "запись" : plural === "few" ? "записи" : "записей";
 
   return `${count} ${label}`;
+}
+
+function SeriesTree({ nodes, depth = 0 }: { nodes: FranchiseTreeNode[]; depth?: number }) {
+  return nodes.map((series) => (
+    <div key={series.id} className={depth > 0 ? "border-l border-stone-300/80" : ""}>
+      <Link
+        className="group flex items-center justify-between gap-5 px-4 py-2.5 transition-colors hover:bg-stone-50/70 sm:px-5"
+        href={`/series/${series.code}`}
+        style={depth > 0 ? { paddingLeft: `${1 + depth * 1.25}rem` } : undefined}
+      >
+        <div className="min-w-0">
+          <h2 className="break-words font-serif text-lg leading-tight text-stone-950 group-hover:underline group-hover:decoration-stone-400 group-hover:underline-offset-4">
+            {series.title}
+          </h2>
+          {series.originalTitle && series.originalTitle !== series.title ? (
+            <p className="mt-0.5 break-words font-mono text-[0.65rem] uppercase tracking-[0.08em] text-stone-500">
+              {series.originalTitle}
+            </p>
+          ) : null}
+        </div>
+        <p className="shrink-0 font-mono text-[0.65rem] uppercase tracking-[0.1em] text-stone-600">
+          {formatMediaItemsCount(series.mediaItemsCount)}
+        </p>
+      </Link>
+      {series.children.length > 0 ? (
+        <SeriesTree nodes={series.children} depth={depth + 1} />
+      ) : null}
+    </div>
+  ));
 }
 
 export default async function SeriesPage({ searchParams }: SeriesPageProps) {
@@ -84,34 +116,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
           </div>
         ) : (
           <section aria-label="Серии" className="archive-paper archive-panel divide-y divide-stone-300/80">
-            {seriesPage.items.map((series) => (
-              <Link
-                key={series.id}
-                className="group flex items-center justify-between gap-4 px-4 py-2.5 transition-colors hover:bg-stone-50/70 sm:px-5"
-                href={`/series/${series.code}`}
-              >
-                <div className="flex min-w-0 flex-col gap-0.5 sm:flex-row sm:items-baseline sm:gap-3">
-                  <div className="min-w-0">
-                    {series.parentPath.length > 0 ? (
-                      <p className="truncate font-mono text-[0.6rem] uppercase tracking-[0.08em] text-stone-500">
-                        {series.parentPath.map((parent) => parent.title).join(" / ")}
-                      </p>
-                    ) : null}
-                    <h2 className="break-words font-serif text-lg leading-tight text-stone-950 group-hover:underline group-hover:decoration-stone-400 group-hover:underline-offset-4">
-                      {series.title}
-                    </h2>
-                  </div>
-                  {series.originalTitle && series.originalTitle !== series.title ? (
-                    <p className="truncate font-mono text-[0.65rem] uppercase tracking-[0.08em] text-stone-500">
-                      {series.originalTitle}
-                    </p>
-                  ) : null}
-                </div>
-                <p className="shrink-0 font-mono text-[0.65rem] uppercase tracking-[0.1em] text-stone-600">
-                  {formatMediaItemsCount(series.mediaItemsCount)}
-                </p>
-              </Link>
-            ))}
+            <SeriesTree nodes={seriesPage.items} />
           </section>
         )}
 
@@ -123,7 +128,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
           pageSizeOptions={SERIES_PAGE_SIZE_OPTIONS}
           searchParams={paginationSearchParams}
           showPageJump
-          totalCount={seriesPage.totalCount}
+          totalCount={seriesPage.paginationTotalCount}
           totalPages={seriesPage.totalPages}
           variant="archive"
         />
