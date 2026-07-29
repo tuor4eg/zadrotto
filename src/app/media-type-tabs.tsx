@@ -118,35 +118,20 @@ export function MediaTypeTabs({
     [mediaTypeCounts],
   );
   const tabs = useMemo<MediaTypeTabItem[]>(
-    () => {
-      if (availableMediaTypes.length === 1) {
-        const [mediaType] = availableMediaTypes;
-
-        return [
-          {
-            count: countByMediaType.get(mediaType) ?? totalCount,
-            label: getMediaTypeLabel(mediaType, mediaTypes),
-            selected: selectedMediaType === "all" || selectedMediaType === mediaType,
-            value: "all",
-          },
-        ];
-      }
-
-      return [
-        {
-          count: totalCount,
-          label: "Все",
-          selected: selectedMediaType === "all",
-          value: "all",
-        },
-        ...availableMediaTypes.map((mediaType) => ({
-          count: countByMediaType.get(mediaType) ?? 0,
-          label: getMediaTypeLabel(mediaType, mediaTypes),
-          selected: selectedMediaType === mediaType,
-          value: mediaType,
-        })),
-      ];
-    },
+    () => [
+      {
+        count: totalCount,
+        label: "Все",
+        selected: selectedMediaType === "all",
+        value: "all",
+      },
+      ...availableMediaTypes.map((mediaType) => ({
+        count: countByMediaType.get(mediaType) ?? 0,
+        label: getMediaTypeLabel(mediaType, mediaTypes),
+        selected: selectedMediaType === mediaType,
+        value: mediaType,
+      })),
+    ],
     [availableMediaTypes, countByMediaType, mediaTypes, selectedMediaType, totalCount],
   );
   const selectedIndex = Math.max(

@@ -17,6 +17,10 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Выбранная серия не найдена.";
   }
 
+  if (error === "franchise-depth-limit") {
+    return "Достигнута максимальная глубина вложенности серий.";
+  }
+
   if (error === "duplicate-code") {
     return "Серия с таким названием уже существует.";
   }

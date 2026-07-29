@@ -41,7 +41,9 @@ function AdminFranchiseTreeRows({
     <TR key={franchise.id}>
       <TD className="min-w-0 overflow-hidden">
         <div className="flex min-w-0 items-center gap-2" style={{ paddingLeft: `${depth * 1.25}rem` }}>
-          <span aria-hidden="true" className="shrink-0 text-stone-400">{depth > 0 ? "↳" : "•"}</span>
+          {depth > 0 ? (
+            <span aria-hidden="true" className="shrink-0 text-stone-400">↳</span>
+          ) : null}
           <div className="min-w-0">
             <div className="truncate font-medium text-stone-950">{franchise.title}</div>
             {franchise.originalTitle ? (
@@ -50,7 +52,9 @@ function AdminFranchiseTreeRows({
           </div>
         </div>
       </TD>
-      <TD><Badge variant="outline">{franchise.mediaItemsCount}</Badge></TD>
+      <TD className="px-0 text-right sm:px-4 sm:text-left">
+        <Badge variant="outline">{franchise.mediaItemsCount}</Badge>
+      </TD>
       <TD className="px-2">
         <div className="flex flex-nowrap justify-end gap-1.5">
           <Tooltip label="Изменить">
@@ -136,7 +140,9 @@ export default async function AdminFranchisesPage({
               <THead>
                 <tr>
                   <TH>Название</TH>
-                  <TH className="w-20">Записи</TH>
+                  <TH className="w-12 px-0 text-right sm:w-20 sm:px-4 sm:text-left">
+                    <span className="sr-only sm:not-sr-only">Записи</span>
+                  </TH>
                   <TH className="w-28 px-2 text-right">Действия</TH>
                 </tr>
               </THead>

@@ -12,6 +12,7 @@ import { getArchiveSettings } from "@/db/queries/archive-settings";
 import {
   authorCanUseFranchiseIds,
   createFranchise,
+  getPublishedFranchiseOptionById,
   moveAuthorFranchisesForMediaSubmission,
 } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
@@ -82,6 +83,8 @@ export type CreateAuthorInlineFranchiseState = {
     id: number;
     title: string;
     originalTitle: string | null;
+    parentIds: number[];
+    path: string;
     publicationStatus: "private" | "submitted" | "published" | "rejected";
   } | null;
 };
@@ -234,9 +237,14 @@ function shouldRemoveCover(formData: FormData) {
 
 function readFranchiseForm(formData: FormData) {
   const title = getFormString(formData, "title");
+  const parentId = parseOptionalPositiveInteger(getFormString(formData, "parentId"));
 
   if (!title) {
     return { ok: false as const, error: "required" };
+  }
+
+  if (!parentId.ok) {
+    return { ok: false as const, error: "invalid-franchise" };
   }
 
   return {
@@ -245,6 +253,7 @@ function readFranchiseForm(formData: FormData) {
       title,
       originalTitle: normalizeOptionalFormString(getFormString(formData, "originalTitle")),
       description: normalizeOptionalFormString(getFormString(formData, "description")),
+      parentId: parentId.value,
     },
   };
 }
@@ -395,6 +404,14 @@ export async function createAuthorInlineFranchiseAction(
     return { error: input.error, franchise: null };
   }
 
+  const parent = input.value.parentId
+    ? await getPublishedFranchiseOptionById(input.value.parentId)
+    : null;
+
+  if (input.value.parentId && !parent) {
+    return { error: "invalid-franchise", franchise: null };
+  }
+
   const duplicateCheck = await validateFranchiseDuplicateCheck(formData, input.value);
   if (!duplicateCheck.ok) {
     return { error: duplicateCheck.error, franchise: null };
@@ -414,6 +431,10 @@ export async function createAuthorInlineFranchiseAction(
   } catch (error) {
     if (isUniqueViolation(error)) {
       return { error: "duplicate-code", franchise: null };
+    }
+
+    if (error instanceof Error && error.message === "franchise-depth-limit") {
+      return { error: "franchise-depth-limit", franchise: null };
     }
 
     console.error(error);
@@ -442,6 +463,8 @@ export async function createAuthorInlineFranchiseAction(
       id: franchise.id,
       title: input.value.title,
       originalTitle: input.value.originalTitle,
+      parentIds: parent ? [...parent.parentIds, parent.id] : [],
+      path: parent ? `${parent.path} / ${input.value.title}` : input.value.title,
       publicationStatus: franchise.publicationStatus,
     },
   };

@@ -324,7 +324,7 @@ export function AdminMediaForm({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 md:col-span-2">
+        <div className="min-w-0 flex flex-col gap-2 md:col-span-2">
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="admin-media-title">Название</Label>
             {isEditing ? (

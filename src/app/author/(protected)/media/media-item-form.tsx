@@ -519,7 +519,7 @@ export function MediaItemForm({
           )}
         </div>
 
-        <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
+        <div className="min-w-0 flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
           <div className="flex items-center justify-between gap-3">
             <Label htmlFor="author-media-title">Название</Label>
             {isEditing ? (
@@ -681,6 +681,9 @@ export function MediaItemForm({
             />
             {canCreateFranchise ? (
               <InlineFranchiseDialog
+                options={franchiseOptions.filter(
+                  (franchise) => franchise.publicationStatus === "published",
+                )}
                 onCreated={(franchise) => {
                   setFranchiseOptions((currentFranchises) => {
                     const nextFranchises = currentFranchises.some(
@@ -750,7 +753,7 @@ export function MediaItemForm({
                     </span>
                   </span>
                 </div>
-                <div className="h-1.5 overflow-hidden bg-sky-200">
+                <div className="h-1.5 max-w-full overflow-hidden bg-sky-200 [contain:paint]">
                   <div className="title-search-progress h-full w-2/5 rounded-r-full bg-sky-600 shadow-[0_0_14px_rgba(37,99,235,0.45)]" />
                 </div>
               </div>

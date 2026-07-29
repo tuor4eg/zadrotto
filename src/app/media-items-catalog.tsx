@@ -120,7 +120,6 @@ export function MediaItemsCatalog({
     mediaTypeFilter !== "all" ||
     searchQuery !== "" ||
     yearFilter !== null;
-  const hasItems = items.length > 0;
   const paginationSearchParams = {
     mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
@@ -173,7 +172,7 @@ export function MediaItemsCatalog({
   return (
     <ArchiveCatalogLayout
       toolbar={
-        hasItems ? (
+        archiveTotalCount > 0 ? (
           <MediaTypeTabs
             availableMediaTypes={availableMediaTypes}
             mediaTypeCounts={mediaTypeCountRows}
@@ -211,7 +210,11 @@ export function MediaItemsCatalog({
       {items.length === 0 ? (
         <div className="col-span-full rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <span>Ничего не найдено.</span>
+            <span>
+              {mediaTypeFilter === "all"
+                ? "Ничего не найдено."
+                : "Записи выбранного типа не найдены."}
+            </span>
             {currentAuthor ? (
               <button
                 type="button"

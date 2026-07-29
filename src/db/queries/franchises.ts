@@ -201,6 +201,59 @@ export async function getPublishedFranchiseOptions() {
     .orderBy(asc(franchises.title));
 }
 
+export async function getPublishedFranchiseOptionById(id: number) {
+  const [franchise] = await db
+    .select({
+      id: franchises.id,
+      parentId: franchises.parentId,
+      title: franchises.title,
+      originalTitle: franchises.originalTitle,
+      publicationStatus: franchises.publicationStatus,
+    })
+    .from(franchises)
+    .where(and(eq(franchises.id, id), publishedFranchiseCondition))
+    .limit(1);
+
+  if (!franchise) {
+    return null;
+  }
+
+  const parentIds: number[] = [];
+  const path = [franchise.title];
+  const visitedIds = new Set([franchise.id]);
+  let parentId = franchise.parentId;
+
+  while (parentId && !visitedIds.has(parentId)) {
+    visitedIds.add(parentId);
+    const [parent] = await db
+      .select({
+        id: franchises.id,
+        parentId: franchises.parentId,
+        title: franchises.title,
+      })
+      .from(franchises)
+      .where(and(eq(franchises.id, parentId), publishedFranchiseCondition))
+      .limit(1);
+
+    if (!parent) {
+      break;
+    }
+
+    parentIds.unshift(parent.id);
+    path.unshift(parent.title);
+    parentId = parent.parentId;
+  }
+
+  return {
+    id: franchise.id,
+    title: franchise.title,
+    originalTitle: franchise.originalTitle,
+    publicationStatus: franchise.publicationStatus,
+    parentIds,
+    path: path.join(" / "),
+  };
+}
+
 export async function searchPublishedMediaItemsForFranchise(input: {
   authorId: number;
   enabledMediaTypeCodes: readonly string[];

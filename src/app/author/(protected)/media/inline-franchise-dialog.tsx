@@ -8,6 +8,10 @@ import { Button } from "@/components/ui/button";
 import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import {
+  SearchableFranchiseSelect,
+  type SearchableFranchiseOption,
+} from "@/components/ui/searchable-franchise-select";
+import {
   createAuthorInlineFranchiseAction,
   type CreateAuthorInlineFranchiseState,
 } from "./actions";
@@ -18,11 +22,14 @@ type InlineFranchise = {
   id: number;
   title: string;
   originalTitle: string | null;
+  parentIds: number[];
+  path: string;
   publicationStatus: "private" | "submitted" | "published" | "rejected";
 };
 
 type InlineFranchiseDialogProps = {
   onCreated: (franchise: InlineFranchise) => void;
+  options: SearchableFranchiseOption[];
 };
 
 const initialState: CreateAuthorInlineFranchiseState = {
@@ -30,10 +37,11 @@ const initialState: CreateAuthorInlineFranchiseState = {
   franchise: null,
 };
 
-export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps) {
+export function InlineFranchiseDialog({ onCreated, options }: InlineFranchiseDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [originalTitle, setOriginalTitle] = useState("");
+  const [parentId, setParentId] = useState("");
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createAuthorInlineFranchiseAction,
@@ -63,12 +71,15 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
     formRef.current?.reset();
     setTitle("");
     setOriginalTitle("");
+    setParentId("");
+    setDuplicateBlocked(false);
     setOpen(false);
   }, [onCreated, state.franchise]);
 
   function closeDialog() {
     setTitle("");
     setOriginalTitle("");
+    setParentId("");
     setDuplicateBlocked(false);
     setOpen(false);
   }
@@ -149,6 +160,21 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
             originalTitle={originalTitle}
             onBlockedChange={setDuplicateBlocked}
           />
+
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="author-inline-franchise-parent">Родительская серия</Label>
+            <SearchableFranchiseSelect
+              id="author-inline-franchise-parent"
+              name="parentId"
+              options={options}
+              searchByTitleOnly
+              value={parentId}
+              onChange={setParentId}
+            />
+            <p className="text-xs leading-5 text-stone-500">
+              Без выбранного родителя серия будет корневой.
+            </p>
+          </div>
 
           <div className="flex flex-col gap-2">
             <Label htmlFor="author-inline-franchise-description">Описание</Label>

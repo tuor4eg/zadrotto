@@ -143,7 +143,7 @@ export function MediaTitleCandidatePicker({
   }
 
   return (
-    <div className="relative">
+    <div className="relative min-w-0 max-w-full">
       {visibleCandidates.length > 0 ? (
         <div className="absolute left-0 right-0 top-2 z-20 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
           <div className="max-h-72 overflow-y-auto p-1">
@@ -215,7 +215,7 @@ export function MediaTitleCandidatePicker({
               </span>
             </span>
           </div>
-          <div className="h-1.5 overflow-hidden bg-amber-200">
+          <div className="h-1.5 max-w-full overflow-hidden bg-amber-200 [contain:paint]">
             <div className="title-search-progress h-full w-2/5 rounded-r-full bg-amber-600 shadow-[0_0_14px_rgba(217,119,6,0.65)]" />
           </div>
         </div>
