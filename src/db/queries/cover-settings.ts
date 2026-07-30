@@ -24,6 +24,7 @@ import {
   getCoverProviderDefaultSettings,
   getCoverProviderSettingKey,
   type CoverProviderMediaSetting,
+  type TitleSearchMode,
 } from "@/lib/covers/provider-settings";
 import type { CoverProviderCode } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
@@ -38,6 +39,8 @@ export type CoverProviderSettingsValue = {
   mediaType: MediaType;
   providerCode: CoverProviderCode;
   enabled: boolean;
+  titleSearchMode: TitleSearchMode;
+  coverSearchEnabled: boolean;
   priority: number;
 };
 
@@ -75,6 +78,8 @@ function isKnownProviderSetting(
     mediaType: string;
     providerCode: string;
     enabled: boolean;
+    titleSearchMode: string;
+    coverSearchEnabled: boolean;
     priority: number;
   },
   defaultSettings: readonly CoverProviderMediaSetting[],
@@ -83,6 +88,9 @@ function isKnownProviderSetting(
     (setting) =>
       setting.mediaType === value.mediaType &&
       setting.providerCode === value.providerCode &&
+      (value.titleSearchMode === "parallel" ||
+        value.titleSearchMode === "fallback" ||
+        value.titleSearchMode === "off") &&
       isKnownProviderCode(value.providerCode),
   );
 }
@@ -94,6 +102,8 @@ async function ensureCoverProviderSettingsExistDisabled(providerCode: CoverProvi
       mediaType: setting.mediaType,
       providerCode: setting.providerCode,
       enabled: false,
+      titleSearchMode: setting.titleSearchMode,
+      coverSearchEnabled: setting.coverSearchEnabled,
       priority: setting.priority,
       updatedAt: new Date(),
     }));
@@ -182,6 +192,8 @@ export async function getCoverProviderSettings(): Promise<CoverProviderSettingsV
         mediaType: providerSettings.mediaType,
         providerCode: providerSettings.providerCode,
         enabled: providerSettings.enabled,
+        titleSearchMode: providerSettings.titleSearchMode,
+        coverSearchEnabled: providerSettings.coverSearchEnabled,
         priority: providerSettings.priority,
       })
       .from(providerSettings)
@@ -208,6 +220,12 @@ export async function getCoverProviderSettings(): Promise<CoverProviderSettingsV
     mediaType: defaults.mediaType,
     providerCode: defaults.providerCode,
     enabled: rowsByKey.get(getCoverProviderSettingKey(defaults))?.enabled ?? defaults.enabled,
+    titleSearchMode:
+      rowsByKey.get(getCoverProviderSettingKey(defaults))?.titleSearchMode ??
+      defaults.titleSearchMode,
+    coverSearchEnabled:
+      rowsByKey.get(getCoverProviderSettingKey(defaults))?.coverSearchEnabled ??
+      defaults.coverSearchEnabled,
     priority: rowsByKey.get(getCoverProviderSettingKey(defaults))?.priority ?? defaults.priority,
   })).sort(
     (left, right) =>
@@ -227,6 +245,8 @@ export async function updateCoverProviderSettings(
       mediaType: provider.mediaType,
       providerCode: provider.providerCode,
       enabled: provider.enabled,
+      titleSearchMode: provider.titleSearchMode,
+      coverSearchEnabled: provider.coverSearchEnabled,
       priority: provider.priority,
       updatedAt: new Date(),
     }));
@@ -239,6 +259,8 @@ export async function updateCoverProviderSettings(
         target: [providerSettings.mediaType, providerSettings.providerCode],
         set: {
           enabled: sql`excluded.enabled`,
+          titleSearchMode: sql`excluded.title_search_mode`,
+          coverSearchEnabled: sql`excluded.cover_search_enabled`,
           priority: sql`excluded.priority`,
           updatedAt: sql`excluded.updated_at`,
         },

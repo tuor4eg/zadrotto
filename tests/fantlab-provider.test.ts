@@ -326,9 +326,9 @@ describe("FantLab provider", () => {
     assert.deepEqual(
       getCoverProviderDefaultSettings().filter((setting) => setting.mediaType === "book"),
       [
-        { mediaType: "book", providerCode: "open-library", enabled: true, priority: 10 },
-        { mediaType: "book", providerCode: "google-books", enabled: true, priority: 20 },
-        { mediaType: "book", providerCode: "fantlab", enabled: true, priority: 30 },
+        { mediaType: "book", providerCode: "open-library", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 10 },
+        { mediaType: "book", providerCode: "google-books", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 20 },
+        { mediaType: "book", providerCode: "fantlab", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 30 },
       ],
     );
     assert.deepEqual(

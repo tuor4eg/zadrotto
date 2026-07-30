@@ -309,6 +309,13 @@
       "when": 1785434400000,
       "tag": "0043_author_avatars",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785520800000,
+      "tag": "0044_provider_search_modes",
+      "breakpoints": true
     }
   ]
 }

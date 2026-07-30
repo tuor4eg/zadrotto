@@ -156,6 +156,8 @@ export const providerSettings = pgTable(
       .references(() => mediaTypes.code),
     providerCode: text("provider_code").notNull(),
     enabled: boolean("enabled").default(true).notNull(),
+    titleSearchMode: text("title_search_mode").default("parallel").notNull(),
+    coverSearchEnabled: boolean("cover_search_enabled").default(true).notNull(),
     priority: integer("priority").default(100).notNull(),
     ...timestamps(),
   },
@@ -165,6 +167,10 @@ export const providerSettings = pgTable(
       name: "provider_settings_pk",
     }),
     check("provider_settings_priority_check", sql`${table.priority} >= 1`),
+    check(
+      "provider_settings_title_search_mode_check",
+      sql`${table.titleSearchMode} in ('parallel', 'fallback', 'off')`,
+    ),
   ],
 );
 

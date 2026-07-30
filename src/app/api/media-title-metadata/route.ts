@@ -114,7 +114,10 @@ export async function POST(request: Request) {
           sourceProvider: metadata.provider,
           sourceExternalId: metadata.externalId,
           sourceUrl: metadata.sourceUrl,
-          metadataCandidateToken: createMediaMetadataCandidateToken(metadata),
+          metadataCandidateToken: createMediaMetadataCandidateToken({
+            ...metadata,
+            mediaType,
+          }),
         }
       : null,
   });

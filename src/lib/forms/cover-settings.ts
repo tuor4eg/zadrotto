@@ -6,6 +6,8 @@ import {
 import {
   getCoverProviderDefaultSettings,
   getCoverProviderSettingKey,
+  TITLE_SEARCH_MODES,
+  type TitleSearchMode,
 } from "@/lib/covers/provider-settings";
 import type { CoverProviderCode } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
@@ -32,6 +34,8 @@ export type CoverProviderSettingsFormInput = {
   mediaType: MediaType;
   providerCode: CoverProviderCode;
   enabled: boolean;
+  titleSearchMode: TitleSearchMode;
+  coverSearchEnabled: boolean;
   priority: number;
 };
 
@@ -137,10 +141,25 @@ export function parseCoverProviderSettingsFormInput(formData: FormData) {
       return { ok: false as const, error: "invalid-provider" as const };
     }
 
+    const rawTitleSearchMode = formData.get(`providerTitleSearchMode:${settingKey}`);
+    const titleSearchMode =
+      typeof rawTitleSearchMode === "string"
+        ? TITLE_SEARCH_MODES.find((mode) => mode === rawTitleSearchMode)
+        : undefined;
+
+    if (!titleSearchMode) {
+      return { ok: false as const, error: "invalid-provider" as const };
+    }
+
+    const coverSearchEnabled =
+      formData.get(`providerCoverSearchEnabled:${settingKey}`) === "1";
+
     settings.push({
       mediaType: provider.mediaType,
       providerCode: provider.providerCode,
       enabled: formData.get(`providerEnabled:${settingKey}`) === "1",
+      titleSearchMode,
+      coverSearchEnabled,
       priority: priority.value,
     });
   }

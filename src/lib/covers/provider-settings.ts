@@ -2,10 +2,15 @@ import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import type { CoverProviderCode, MediaProvider } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
 
+export const TITLE_SEARCH_MODES = ["parallel", "fallback", "off"] as const;
+export type TitleSearchMode = (typeof TITLE_SEARCH_MODES)[number];
+
 export type CoverProviderMediaSetting = {
   mediaType: MediaType;
   providerCode: CoverProviderCode;
   enabled: boolean;
+  titleSearchMode: TitleSearchMode;
+  coverSearchEnabled: boolean;
   priority: number;
 };
 
@@ -52,6 +57,9 @@ export function getCoverProviderDefaultSettings(
         mediaType,
         providerCode: provider.code,
         enabled: true,
+        titleSearchMode:
+          mediaType === "anime" && provider.code === "tmdb" ? "off" : "parallel",
+        coverSearchEnabled: true,
         priority,
       });
     }

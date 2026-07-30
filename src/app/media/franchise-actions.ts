@@ -7,6 +7,7 @@ import {
   createAuthorMediaItemFranchiseLinks,
   findPublishedFranchiseDuplicateCandidates,
   getFranchiseByCode,
+  getPublishedFranchiseOptionById,
   requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
@@ -119,11 +120,17 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
       .filter((value) => Number.isInteger(value) && value > 0),
   )] : [];
   const newFranchiseTitle = mode === "new" ? getFormString(formData, "title") : "";
+  const newFranchiseParentIdValue = mode === "new" ? getFormString(formData, "parentId") : "";
+  const newFranchiseParentId = newFranchiseParentIdValue ? Number(newFranchiseParentIdValue) : null;
 
   if (
     (mode !== "existing" && mode !== "new") ||
     (mode === "existing" && franchiseIds.length === 0 && removalIds.length === 0) ||
-    (mode === "new" && !newFranchiseTitle)
+    (mode === "new" && (
+      !newFranchiseTitle ||
+      (newFranchiseParentId !== null &&
+        (!Number.isSafeInteger(newFranchiseParentId) || newFranchiseParentId <= 0))
+    ))
   ) {
     return initialErrorState;
   }
@@ -160,6 +167,13 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
       }
     } else if (mode === "new") {
       const title = newFranchiseTitle;
+      const parent = newFranchiseParentId
+        ? await getPublishedFranchiseOptionById(newFranchiseParentId)
+        : null;
+
+      if (newFranchiseParentId && !parent) {
+        return initialErrorState;
+      }
 
       const franchiseInput = {
         title,
@@ -190,6 +204,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         description: normalizeOptionalFranchiseString(getFormString(formData, "description")),
         mediaItemId,
         originalTitle: franchiseInput.originalTitle,
+        parentId: parent?.id ?? null,
         publicationStatus,
         title,
       });

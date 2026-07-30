@@ -42,6 +42,7 @@ describe("author inline franchise parent selection", () => {
       dialogSource,
       /<SearchableFranchiseSelect[\s\S]*name="parentId"[\s\S]*options=\{options\}[\s\S]*value=\{parentId\}[\s\S]*onChange=\{setParentId\}/,
     );
+    assert.doesNotMatch(dialogSource, /searchByTitleOnly/);
   });
 
   it("parses and validates an optional published parent before creation", () => {

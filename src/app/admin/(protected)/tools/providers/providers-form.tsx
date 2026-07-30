@@ -1,10 +1,19 @@
 "use client";
 
-import { GripVertical, KeyRound, Power, PowerOff, Save, X } from "lucide-react";
+import {
+  GripVertical,
+  Image as ImageIcon,
+  ImageOff,
+  KeyRound,
+  Power,
+  PowerOff,
+  Save,
+  X,
+} from "lucide-react";
 import { useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/form";
+import { Input, Label, Select } from "@/components/ui/form";
 import { Tooltip } from "@/components/ui/tooltip";
 import type {
   CoverProviderCredentialStatus,
@@ -110,8 +119,8 @@ export function ProvidersForm({
                     className={cn(
                       "grid items-center gap-3 rounded-md border border-stone-100 bg-stone-50/60 p-3 transition-colors",
                       requiresCredentials
-                        ? "grid-cols-[auto_minmax(0,1fr)_auto_auto]"
-                        : "grid-cols-[auto_minmax(0,1fr)_auto]",
+                        ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]"
+                        : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]",
                       draggedProviderKey === settingKey && "border-stone-300 bg-stone-100",
                     )}
                   >
@@ -149,36 +158,92 @@ export function ProvidersForm({
                         </button>
                       </Tooltip>
                     ) : null}
+                    <Select
+                      aria-label={`Поиск названий: ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
+                      className="h-9 w-[9.5rem] text-xs"
+                      disabled={isProviderPending || !provider.enabled || !canEnable}
+                      value={provider.titleSearchMode}
+                      onChange={(event) =>
+                        updateProviderAndSave(settingKey, {
+                          titleSearchMode: event.currentTarget.value as CoverProviderSettingsValue["titleSearchMode"],
+                        })
+                      }
+                    >
+                      <option value="parallel">Названия: сразу</option>
+                      <option value="fallback">Названия: резерв</option>
+                      <option value="off">Названия: выкл.</option>
+                    </Select>
                     <Tooltip
                       label={
-                        !provider.enabled && !canEnable
+                        !provider.coverSearchEnabled && !canEnable
                           ? "Сначала авторизуйтесь"
-                          : provider.enabled
-                            ? "Выключить"
-                            : "Включить"
+                          : provider.coverSearchEnabled
+                            ? "Выключить поиск обложек"
+                            : "Включить поиск обложек"
                       }
                     >
                       <button
                         type="button"
-                        aria-label={`${provider.enabled ? "Выключить" : "Включить"} ${
-                          COVER_PROVIDER_LABELS[provider.providerCode]
-                        }`}
+                        aria-label={`${provider.coverSearchEnabled ? "Выключить" : "Включить"} поиск обложек ${
+                          COVER_PROVIDER_LABELS[provider.providerCode]}`}
                         className={cn(
                           "inline-flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50",
-                          provider.enabled
+                          provider.coverSearchEnabled
                             ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
                             : "border-stone-200 bg-white text-stone-400 hover:bg-stone-100 hover:text-stone-700",
                         )}
-                        disabled={isProviderPending || (!provider.enabled && !canEnable)}
-                        onClick={() => toggleProviderAndSave(settingKey)}
+                        disabled={
+                          isProviderPending || !provider.enabled || !canEnable
+                        }
+                        onClick={() =>
+                          updateProviderAndSave(settingKey, {
+                            coverSearchEnabled: !provider.coverSearchEnabled,
+                          })
+                        }
                       >
-                        {provider.enabled ? (
-                          <Power className="size-4" />
+                        {provider.coverSearchEnabled ? (
+                          <ImageIcon className="size-4" />
                         ) : (
-                          <PowerOff className="size-4" />
+                          <ImageOff className="size-4" />
                         )}
                       </button>
                     </Tooltip>
+                    <div className="ml-1 border-l border-stone-200 pl-3">
+                      <Tooltip
+                        label={
+                          !provider.enabled && !canEnable
+                            ? "Сначала авторизуйтесь"
+                            : provider.enabled
+                              ? "Выключить провайдера"
+                              : "Включить провайдера"
+                        }
+                      >
+                        <button
+                          type="button"
+                          aria-label={`${provider.enabled ? "Выключить" : "Включить"} ${
+                            COVER_PROVIDER_LABELS[provider.providerCode]
+                          }`}
+                          className={cn(
+                            "inline-flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50",
+                            provider.enabled
+                              ? "border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100"
+                              : "border-stone-200 bg-white text-stone-400 hover:bg-stone-100 hover:text-stone-700",
+                          )}
+                          disabled={isProviderPending || (!provider.enabled && !canEnable)}
+                          onClick={() =>
+                            updateProviderAndSave(settingKey, {
+                              enabled: !provider.enabled,
+                            })
+                          }
+                        >
+                          {provider.enabled ? (
+                            <Power className="size-4" />
+                          ) : (
+                            <PowerOff className="size-4" />
+                          )}
+                        </button>
+                      </Tooltip>
+                    </div>
                   </div>
                 );
               })}
@@ -209,12 +274,21 @@ export function ProvidersForm({
     </div>
   );
 
-  function toggleProviderAndSave(settingKey: string) {
+  function updateProviderAndSave(
+    settingKey: string,
+    update: Partial<
+      Pick<CoverProviderSettingsValue, "coverSearchEnabled" | "titleSearchMode">
+      & Pick<CoverProviderSettingsValue, "enabled">
+    >,
+  ) {
     const nextGroups = providerGroups.map((group) => ({
       ...group,
       providers: group.providers.map((provider) =>
         getCoverProviderSettingKey(provider) === settingKey
-          ? { ...provider, enabled: !provider.enabled }
+          ? {
+              ...provider,
+              ...update,
+            }
           : provider,
       ),
     }));
@@ -295,6 +369,14 @@ function buildProviderSettingsFormData(groups: ReturnType<typeof groupProviderSe
 
       if (provider.enabled) {
         formData.set(`providerEnabled:${settingKey}`, "1");
+      }
+      formData.set(
+        `providerTitleSearchMode:${settingKey}`,
+        provider.titleSearchMode,
+      );
+
+      if (provider.coverSearchEnabled) {
+        formData.set(`providerCoverSearchEnabled:${settingKey}`, "1");
       }
     });
   }

@@ -5,6 +5,7 @@ import { useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
+import { matchesFranchiseSearch } from "@/lib/franchises/search";
 
 export type SearchableFranchiseOption = {
   disabled?: boolean;
@@ -30,20 +31,11 @@ function formatFranchiseOption(option: SearchableFranchiseOption) {
   return option.title;
 }
 
-function normalizeSearchValue(value: string) {
-  return value.trim().toLowerCase();
-}
-
 function matchesSearch(option: SearchableFranchiseOption, searchValue: string, searchByTitleOnly: boolean) {
-  if (!searchValue) {
-    return true;
-  }
-
-  return (searchByTitleOnly ? [option.title] : [option.title, option.originalTitle])
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-    .includes(searchValue);
+  return matchesFranchiseSearch(
+    searchByTitleOnly ? [option.title] : [option.title, option.originalTitle],
+    searchValue,
+  );
 }
 
 export function SearchableFranchiseSelect({
@@ -59,10 +51,9 @@ export function SearchableFranchiseSelect({
   const selectedOption = options.find((option) => String(option.id) === value) ?? null;
   const [query, setQuery] = useState(selectedOption ? formatFranchiseOption(selectedOption) : "");
   const [open, setOpen] = useState(false);
-  const normalizedQuery = normalizeSearchValue(query);
   const visibleOptions = useMemo(
-    () => options.filter((option) => matchesSearch(option, normalizedQuery, searchByTitleOnly)),
-    [normalizedQuery, options, searchByTitleOnly],
+    () => options.filter((option) => matchesSearch(option, query, searchByTitleOnly)),
+    [options, query, searchByTitleOnly],
   );
 
   useEffect(() => {

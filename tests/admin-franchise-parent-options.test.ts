@@ -9,13 +9,13 @@ test("parent options keep the actual title separate from the display path", () =
 
   assert.match(query, /title: row\.title, originalTitle: row\.originalTitle, path: getPath\(row\)/);
   assert.match(select, /searchByTitleOnly/);
-  assert.match(select, /searchByTitleOnly \? \[option\.title\]/);
+  assert.match(select, /\[option\.title, option\.originalTitle\]/);
   assert.match(select, /option\.path && option\.path !== option\.title/);
-  assert.match(form, /searchByTitleOnly/);
+  assert.doesNotMatch(form, /searchByTitleOnly/);
   assert.match(form, /selectedParent\.path/);
 });
 
-test("parent selection searches only the candidate title and excludes the current subtree", () => {
+test("parent selection searches title and original title but excludes the current subtree", () => {
   const query = readFileSync("src/db/queries/franchises.ts", "utf8");
   const select = readFileSync("src/components/ui/searchable-franchise-select.tsx", "utf8");
   const parentOptionsStart = query.indexOf("export async function getAdminFranchiseParentOptions");
@@ -37,7 +37,6 @@ test("parent selection searches only the candidate title and excludes the curren
     /for \(const row of rows\) \{[\s\S]*while \(parentId\) \{[\s\S]*if \(parentId === franchiseId\) \{ excluded\.add\(row\.id\); break; \}/,
   );
   assert.match(parentOptions, /rows\.filter\(\(row\) => !excluded\.has\(row\.id\)\)/);
-  assert.match(matcher, /searchByTitleOnly \? \[option\.title\] : \[option\.title, option\.originalTitle\]/);
+  assert.match(matcher, /\[option\.title, option\.originalTitle\]/);
   assert.doesNotMatch(matcher, /option\.path/);
-  assert.doesNotMatch(matcher, /option\.originalTitle.*searchByTitleOnly/);
 });

@@ -99,7 +99,11 @@ export async function POST(request: Request) {
   return NextResponse.json({
     candidates: candidates.map((candidate) => ({
       ...candidate,
-      titleSourceToken: createMediaTitleSourceToken(candidate),
+      titleSourceToken: createMediaTitleSourceToken({
+        provider: candidate.provider,
+        externalId: candidate.externalId,
+        mediaType: candidate.mediaType,
+      }),
     })),
   });
 }

@@ -94,11 +94,13 @@ describe("metadata candidate source", () => {
     const token = createMediaTitleSourceToken({
       provider: "anilist",
       externalId: " 100 ",
+      mediaType: "anime",
     });
 
     assert.deepEqual(verifyMediaTitleSourceToken(token), {
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
     });
   });
 
@@ -113,6 +115,7 @@ describe("metadata candidate source", () => {
       const token = createMediaTitleSourceToken({
         provider: "anilist",
         externalId: "100",
+        mediaType: "anime",
       });
       const unknownProviderToken = createMediaTitleSourceToken({
         provider: "unknown-provider",
@@ -135,6 +138,7 @@ describe("metadata candidate source", () => {
     const metadataToken = createMediaMetadataCandidateToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
       sourceUrl: "https://anilist.co/anime/100",
       facts: { genres: ["Adventure"] },
     });
@@ -149,6 +153,7 @@ describe("metadata candidate source", () => {
     assert.deepEqual(verifyMediaMetadataCandidateToken(metadataToken), {
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
       sourceUrl: "https://anilist.co/anime/100",
       facts: { genres: ["Adventure"] },
     });
@@ -173,6 +178,7 @@ describe("metadata form mutation", () => {
   it("keeps metadata when the selected source did not change", () => {
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken: null,
         titleSourceToken: null,
         sourceChanged: false,
@@ -184,6 +190,7 @@ describe("metadata form mutation", () => {
   it("deletes metadata when the selected source was cleared", () => {
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken: null,
         titleSourceToken: null,
         sourceChanged: true,
@@ -197,10 +204,12 @@ describe("metadata form mutation", () => {
     const titleSourceToken = createMediaTitleSourceToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
     });
 
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken: null,
         titleSourceToken,
         sourceChanged: true,
@@ -221,12 +230,14 @@ describe("metadata form mutation", () => {
     const metadataCandidateToken = createMediaMetadataCandidateToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
       sourceUrl: "https://anilist.co/anime/100",
       facts: { genres: ["Adventure"] },
     });
 
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken,
         titleSourceToken: null,
         sourceChanged: true,
@@ -240,16 +251,19 @@ describe("metadata form mutation", () => {
     const metadataCandidateToken = createMediaMetadataCandidateToken({
       provider: "tmdb",
       externalId: "8953",
+      mediaType: "anime",
       sourceUrl: "https://www.themoviedb.org/movie/8953",
       facts: { runtimeMinutes: 126 },
     });
     const titleSourceToken = createMediaTitleSourceToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
     });
 
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken,
         titleSourceToken,
         sourceChanged: true,
@@ -264,16 +278,19 @@ describe("metadata form mutation", () => {
     const metadataCandidateToken = createMediaMetadataCandidateToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
       sourceUrl: "https://anilist.co/anime/100",
       facts,
     });
     const titleSourceToken = createMediaTitleSourceToken({
       provider: "anilist",
       externalId: "100",
+      mediaType: "anime",
     });
 
     assert.deepEqual(
       resolveMediaMetadataFormMutation({
+        expectedMediaType: "anime",
         metadataCandidateToken,
         titleSourceToken,
         sourceChanged: true,
@@ -287,6 +304,78 @@ describe("metadata form mutation", () => {
         fetchedAt: undefined,
       },
     );
+  });
+
+  it("rejects signed title and metadata tokens from another media type", () => {
+    process.env.COVER_CANDIDATE_SECRET = "test-secret";
+    const titleSourceToken = createMediaTitleSourceToken({
+      provider: "anilist",
+      externalId: "100",
+      mediaType: "anime",
+    });
+    const metadataCandidateToken = createMediaMetadataCandidateToken({
+      provider: "anilist",
+      externalId: "100",
+      mediaType: "anime",
+      sourceUrl: "https://anilist.co/anime/100",
+      facts: { genres: ["Adventure"] },
+    });
+
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        expectedMediaType: "film",
+        metadataCandidateToken: null,
+        titleSourceToken,
+        sourceChanged: true,
+      }),
+      { type: "reject" },
+    );
+    assert.deepEqual(
+      resolveMediaMetadataFormMutation({
+        expectedMediaType: "film",
+        metadataCandidateToken,
+        titleSourceToken,
+        sourceChanged: true,
+      }),
+      { type: "reject" },
+    );
+  });
+});
+
+describe("metadata token caller contracts", () => {
+  it("signs API tokens with media type and validates form tokens against the item type", () => {
+    const titleCandidatesRoute = readFileSync(
+      "src/app/api/media-title-candidates/route.ts",
+      "utf8",
+    );
+    const metadataRoute = readFileSync(
+      "src/app/api/media-title-metadata/route.ts",
+      "utf8",
+    );
+
+    assert.match(
+      titleCandidatesRoute,
+      /titleSourceToken: createMediaTitleSourceToken\(\{[\s\S]*provider: candidate\.provider,[\s\S]*externalId: candidate\.externalId,[\s\S]*mediaType: candidate\.mediaType/,
+    );
+    assert.match(
+      metadataRoute,
+      /createMediaMetadataCandidateToken\(\{[\s\S]*\.\.\.metadata,[\s\S]*mediaType/,
+    );
+
+    for (const actionPath of [
+      "src/app/admin/(protected)/media/actions.ts",
+      "src/app/author/(protected)/media/actions.ts",
+    ]) {
+      const source = readFileSync(actionPath, "utf8");
+      assert.match(
+        source,
+        /resolveMediaMetadataFormMutation\(\{[\s\S]*expectedMediaType/,
+      );
+      assert.match(
+        source,
+        /getMediaItemMetadataMutation\(formData, form\.value\.mediaType\)/,
+      );
+    }
   });
 });
 
@@ -445,6 +534,261 @@ describe("cover provider registry", () => {
     );
   });
 
+  it("runs parallel title providers together and skips fallback after a match", async () => {
+    const calls: string[] = [];
+    const titleProviders = [
+      {
+        code: "jikan",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("jikan");
+          await Promise.resolve();
+          return [];
+        },
+      },
+      {
+        code: "anilist",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("anilist");
+          await Promise.resolve();
+          return [{
+            id: "anime:1",
+            provider: "anilist",
+            externalId: "1",
+            mediaType: "anime",
+            title: "Match",
+            originalTitle: null,
+            description: null,
+            coverUrl: null,
+            sourcePageUrl: null,
+            releaseYear: null,
+          }];
+        },
+      },
+      {
+        code: "tmdb",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("tmdb");
+          return [];
+        },
+      },
+    ] satisfies MediaProvider[];
+    const settings = [
+      { mediaType: "anime", providerCode: "jikan", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 10 },
+      { mediaType: "anime", providerCode: "anilist", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 20 },
+      { mediaType: "anime", providerCode: "tmdb", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 30 },
+    ] as const;
+
+    const candidates = await searchTitleCandidates(
+      { mediaType: "anime", query: "Match" },
+      titleProviders,
+      customOptions,
+      settings,
+    );
+
+    assert.deepEqual(calls, ["jikan", "anilist"]);
+    assert.equal(candidates[0]?.provider, "anilist");
+  });
+
+  it("tries fallback title providers sequentially until one returns a match", async () => {
+    const calls: string[] = [];
+    const titleProviders = [
+      {
+        code: "jikan",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("jikan");
+          return [];
+        },
+      },
+      {
+        code: "anilist",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("anilist");
+          return [{
+            id: "anime:2",
+            provider: "anilist",
+            externalId: "2",
+            mediaType: "anime",
+            title: "Fallback match",
+            originalTitle: null,
+            description: null,
+            coverUrl: null,
+            sourcePageUrl: null,
+            releaseYear: null,
+          }];
+        },
+      },
+      {
+        code: "tmdb",
+        mediaTypes: ["anime"],
+        async searchTitleCandidates() {
+          calls.push("tmdb");
+          return [];
+        },
+      },
+    ] satisfies MediaProvider[];
+    const settings = [
+      { mediaType: "anime", providerCode: "jikan", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 10 },
+      { mediaType: "anime", providerCode: "anilist", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 20 },
+      { mediaType: "anime", providerCode: "tmdb", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 30 },
+    ] as const;
+
+    const candidates = await searchTitleCandidates(
+      { mediaType: "anime", query: "Fallback match" },
+      titleProviders,
+      customOptions,
+      settings,
+    );
+
+    assert.deepEqual(calls, ["jikan", "anilist"]);
+    assert.equal(candidates[0]?.provider, "anilist");
+  });
+
+  it("keeps cover search enabled independently from title search mode", async () => {
+    const provider = {
+      code: "anilist",
+      mediaTypes: ["anime"],
+      async searchCoverCandidates() {
+        return [{ ...baseCandidate, provider: "anilist", id: "anime:cover" }];
+      },
+      async searchTitleCandidates() {
+        throw new Error("title search must stay off");
+      },
+    } satisfies MediaProvider;
+    const settings = [{
+      mediaType: "anime",
+      providerCode: "anilist",
+      enabled: true,
+      titleSearchMode: "off",
+      coverSearchEnabled: true,
+      priority: 10,
+    }] as const;
+
+    assert.deepEqual(getTitleProvidersForMediaType("anime", [provider], settings), []);
+    assert.deepEqual(
+      (await searchCoverCandidates(
+        { mediaType: "anime", title: "Anime", originalTitle: null, releaseYear: null },
+        [provider],
+        customOptions,
+        settings,
+      )).map((candidate) => candidate.id),
+      ["anime:cover"],
+    );
+  });
+
+  it("does not load title metadata when title search mode is off", async () => {
+    let metadataCalls = 0;
+    const provider = {
+      code: "anilist",
+      mediaTypes: ["anime"],
+      async getTitleMetadata() {
+        metadataCalls += 1;
+        return {
+          provider: "anilist",
+          externalId: "1",
+          sourceUrl: "https://anilist.co/anime/1",
+          facts: { genres: ["Adventure"] },
+        };
+      },
+    } satisfies MediaProvider;
+    const settings = [{
+      mediaType: "anime",
+      providerCode: "anilist",
+      enabled: true,
+      titleSearchMode: "off",
+      coverSearchEnabled: true,
+      priority: 10,
+    }] as const;
+
+    assert.equal(
+      await getTitleMetadata(
+        { provider: "anilist", externalId: "1", mediaType: "anime" },
+        [provider],
+        customOptions,
+        settings,
+      ),
+      null,
+    );
+    assert.equal(metadataCalls, 0);
+  });
+
+  it("does not run exact-source cover lookup when cover search is disabled", async () => {
+    let exactCoverCalls = 0;
+    const provider = {
+      code: "anilist",
+      mediaTypes: ["anime"],
+      async getCoverCandidatesByTitleSource() {
+        exactCoverCalls += 1;
+        return [{ ...baseCandidate, provider: "anilist", id: "anime:exact-cover" }];
+      },
+    } satisfies MediaProvider;
+    const settings = [{
+      mediaType: "anime",
+      providerCode: "anilist",
+      enabled: true,
+      titleSearchMode: "parallel",
+      coverSearchEnabled: false,
+      priority: 10,
+    }] as const;
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        {
+          mediaType: "anime",
+          title: "Anime",
+          originalTitle: null,
+          releaseYear: null,
+          titleSource: { provider: "anilist", externalId: "1" },
+        },
+        [provider],
+        customOptions,
+        settings,
+      ),
+      [],
+    );
+    assert.equal(exactCoverCalls, 0);
+  });
+
+  it("uses enabled as a master switch without discarding child modes", async () => {
+    const provider = {
+      code: "anilist",
+      mediaTypes: ["anime"],
+      async searchCoverCandidates() {
+        throw new Error("disabled provider must not search covers");
+      },
+      async searchTitleCandidates() {
+        throw new Error("disabled provider must not search titles");
+      },
+      async getTitleMetadata() {
+        throw new Error("disabled provider must not load metadata");
+      },
+    } satisfies MediaProvider;
+    const settings = [{
+      mediaType: "anime",
+      providerCode: "anilist",
+      enabled: false,
+      titleSearchMode: "parallel",
+      coverSearchEnabled: true,
+      priority: 10,
+    }] as const;
+
+    assert.deepEqual(getCoverProvidersForMediaType("anime", [provider], settings), []);
+    assert.deepEqual(getTitleProvidersForMediaType("anime", [provider], settings), []);
+    assert.equal(
+      await getTitleMetadata(
+        { provider: "anilist", externalId: "1", mediaType: "anime" },
+        [provider],
+        customOptions,
+        settings,
+      ),
+      null,
+    );
+  });
+
   it("includes ComicVine as the default comic provider", () => {
     assert.deepEqual(
       getCoverProviderDefaultSettings()
@@ -452,9 +796,17 @@ describe("cover provider registry", () => {
         .map((provider) => ({
           providerCode: provider.providerCode,
           enabled: provider.enabled,
+          titleSearchMode: provider.titleSearchMode,
+          coverSearchEnabled: provider.coverSearchEnabled,
           priority: provider.priority,
         })),
-      [{ providerCode: "comic-vine", enabled: true, priority: 10 }],
+      [{
+        providerCode: "comic-vine",
+        enabled: true,
+        titleSearchMode: "parallel",
+        coverSearchEnabled: true,
+        priority: 10,
+      }],
     );
   });
 
@@ -462,9 +814,30 @@ describe("cover provider registry", () => {
     assert.deepEqual(
       getCoverProviderDefaultSettings().filter((provider) => provider.mediaType === "anime"),
       [
-        { mediaType: "anime", providerCode: "jikan", enabled: true, priority: 10 },
-        { mediaType: "anime", providerCode: "anilist", enabled: true, priority: 20 },
-        { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 30 },
+        {
+          mediaType: "anime",
+          providerCode: "jikan",
+          enabled: true,
+          titleSearchMode: "parallel",
+          coverSearchEnabled: true,
+          priority: 10,
+        },
+        {
+          mediaType: "anime",
+          providerCode: "anilist",
+          enabled: true,
+          titleSearchMode: "parallel",
+          coverSearchEnabled: true,
+          priority: 20,
+        },
+        {
+          mediaType: "anime",
+          providerCode: "tmdb",
+          enabled: true,
+          titleSearchMode: "off",
+          coverSearchEnabled: true,
+          priority: 30,
+        },
       ],
     );
   });
@@ -1488,9 +1861,16 @@ describe("cover settings form", () => {
 
       formData.append("providerSettingKey", settingKey);
       formData.set(`providerPriority:${settingKey}`, "10");
+      formData.set(`providerTitleSearchMode:${settingKey}`, "parallel");
+      formData.set(`providerCoverSearchEnabled:${settingKey}`, "1");
+      formData.set(`providerEnabled:${settingKey}`, "1");
     }
 
-    formData.set("providerEnabled:film:tmdb", "1");
+    formData.set("providerTitleSearchMode:film:tmdb", "fallback");
+    formData.delete("providerCoverSearchEnabled:film:tmdb");
+    formData.delete("providerEnabled:film:tmdb");
+    formData.set("providerTitleSearchMode:anime:anilist", "off");
+    formData.delete("providerCoverSearchEnabled:anime:anilist");
 
     const parsed = parseCoverProviderSettingsFormInput(formData);
 
@@ -1501,7 +1881,14 @@ describe("cover settings form", () => {
             (provider) => provider.mediaType === "film" && provider.providerCode === "tmdb",
           )
         : null,
-      { mediaType: "film", providerCode: "tmdb", enabled: true, priority: 10 },
+      {
+        mediaType: "film",
+        providerCode: "tmdb",
+        enabled: false,
+        titleSearchMode: "fallback",
+        coverSearchEnabled: false,
+        priority: 10,
+      },
     );
     assert.deepEqual(
       parsed.ok
@@ -1509,8 +1896,51 @@ describe("cover settings form", () => {
             (provider) => provider.mediaType === "anime" && provider.providerCode === "anilist",
           )
         : null,
-      { mediaType: "anime", providerCode: "anilist", enabled: false, priority: 10 },
+      {
+        mediaType: "anime",
+        providerCode: "anilist",
+        enabled: true,
+        titleSearchMode: "off",
+        coverSearchEnabled: false,
+        priority: 10,
+      },
     );
+  });
+
+  it("keeps migration defaults independent from the legacy master switch", () => {
+    const migration = readFileSync("drizzle/0044_provider_search_modes.sql", "utf8");
+
+    assert.match(
+      migration,
+      /ADD COLUMN "title_search_mode" text DEFAULT 'parallel' NOT NULL/,
+    );
+    assert.match(
+      migration,
+      /ADD COLUMN "cover_search_enabled" boolean DEFAULT true NOT NULL/,
+    );
+    assert.match(
+      migration,
+      /WHERE "media_type" = 'anime' AND "provider_code" = 'tmdb'/,
+    );
+    assert.doesNotMatch(migration, /CASE WHEN "enabled"|cover_search_enabled" = "enabled"/);
+  });
+
+  it("rejects unknown provider title search modes", () => {
+    const formData = new FormData();
+
+    for (const setting of getCoverProviderDefaultSettings()) {
+      const settingKey = `${setting.mediaType}:${setting.providerCode}`;
+      formData.append("providerSettingKey", settingKey);
+      formData.set(`providerPriority:${settingKey}`, "10");
+      formData.set(`providerTitleSearchMode:${settingKey}`, "parallel");
+    }
+
+    formData.set("providerTitleSearchMode:anime:tmdb", "unknown");
+
+    assert.deepEqual(parseCoverProviderSettingsFormInput(formData), {
+      ok: false,
+      error: "invalid-provider",
+    });
   });
 
   it("parses provider daily rate limits", () => {

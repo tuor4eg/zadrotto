@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { COVER_PROVIDER_CODES, type MediaProviderCode } from "@/lib/covers/types";
+import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
 const METADATA_CANDIDATE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 const TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
@@ -8,6 +9,7 @@ const TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 export type MediaMetadataCandidateTokenPayload = {
   provider: MediaProviderCode;
   externalId: string;
+  mediaType: MediaType;
   sourceUrl: string | null;
   facts: Record<string, unknown>;
   exp: number;
@@ -18,6 +20,7 @@ export type MediaMetadataCandidate = Omit<MediaMetadataCandidateTokenPayload, "e
 type MediaTitleSourceTokenPayload = {
   provider: MediaProviderCode;
   externalId: string;
+  mediaType: MediaType;
   exp: number;
 };
 
@@ -72,10 +75,12 @@ export function isMediaProviderCode(value: unknown): value is MediaProviderCode 
 export function createMediaTitleSourceToken(source: {
   provider: MediaProviderCode;
   externalId: string;
+  mediaType: MediaType;
 }) {
   const payload = encodeBase64UrlJson({
     provider: source.provider,
     externalId: source.externalId,
+    mediaType: source.mediaType,
     exp: Math.floor(Date.now() / 1000) + TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS,
   } satisfies MediaTitleSourceTokenPayload);
 
@@ -97,6 +102,7 @@ export function verifyMediaTitleSourceToken(token: string) {
       !isMediaProviderCode(value.provider) ||
       typeof value.externalId !== "string" ||
       !value.externalId.trim() ||
+      !isMediaTypeCode(value.mediaType as string) ||
       typeof value.exp !== "number" ||
       value.exp <= Math.floor(Date.now() / 1000)
     ) {
@@ -106,6 +112,7 @@ export function verifyMediaTitleSourceToken(token: string) {
     return {
       provider: value.provider,
       externalId: value.externalId.trim(),
+      mediaType: value.mediaType,
     };
   } catch {
     return null;
@@ -135,6 +142,7 @@ function isMediaMetadataCandidateTokenPayload(
     isMediaProviderCode(value.provider) &&
     typeof value.externalId === "string" &&
     value.externalId.trim().length > 0 &&
+    isMediaTypeCode(value.mediaType as string) &&
     (value.sourceUrl === null || isAbsoluteHttpUrl(value.sourceUrl)) &&
     isPlainRecord(value.facts) &&
     typeof value.exp === "number"
@@ -172,6 +180,7 @@ export function verifyMediaMetadataCandidateToken(token: string) {
     return {
       provider: decodedPayload.provider,
       externalId: decodedPayload.externalId,
+      mediaType: decodedPayload.mediaType,
       sourceUrl: decodedPayload.sourceUrl,
       facts: decodedPayload.facts,
     } satisfies MediaMetadataCandidate;

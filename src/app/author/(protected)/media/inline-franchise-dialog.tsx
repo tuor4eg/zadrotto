@@ -167,7 +167,6 @@ export function InlineFranchiseDialog({ onCreated, options }: InlineFranchiseDia
               id="author-inline-franchise-parent"
               name="parentId"
               options={options}
-              searchByTitleOnly
               value={parentId}
               onChange={setParentId}
             />

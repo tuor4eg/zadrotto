@@ -201,8 +201,9 @@ function getCoverSourceFromItem(item: {
   };
 }
 
-function getMediaItemMetadataMutation(formData: FormData) {
+function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
   return resolveMediaMetadataFormMutation({
+    expectedMediaType,
     metadataCandidateToken: getOptionalMetadataCandidateToken(formData),
     titleSourceToken:
       normalizeOptionalFormString(getFormString(formData, "metadataTitleSourceToken")),
@@ -273,7 +274,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=${duplicateCheck.error}`);
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData);
+  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
@@ -392,7 +393,7 @@ export async function createAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/new?error=too-many-aliases-${maxTitleAliases}`);
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData);
+  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect("/admin/media/new?error=invalid-metadata");

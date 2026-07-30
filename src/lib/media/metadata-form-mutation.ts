@@ -17,11 +17,12 @@ export type MediaMetadataFormMutation =
     };
 
 export function resolveMediaMetadataFormMutation(input: {
+  expectedMediaType: string;
   metadataCandidateToken: string | null;
   titleSourceToken: string | null;
   sourceChanged: boolean;
 }): MediaMetadataFormMutation {
-  const { metadataCandidateToken, sourceChanged, titleSourceToken } = input;
+  const { expectedMediaType, metadataCandidateToken, sourceChanged, titleSourceToken } = input;
 
   if (!metadataCandidateToken && !sourceChanged) {
     return { type: "keep" };
@@ -35,6 +36,10 @@ export function resolveMediaMetadataFormMutation(input: {
     return { type: "reject" };
   }
 
+  if (selectedSource && selectedSource.mediaType !== expectedMediaType) {
+    return { type: "reject" };
+  }
+
   const metadata = metadataCandidateToken
     ? verifyMediaMetadataCandidateToken(metadataCandidateToken)
     : null;
@@ -43,12 +48,17 @@ export function resolveMediaMetadataFormMutation(input: {
     return { type: "reject" };
   }
 
+  if (metadata && metadata.mediaType !== expectedMediaType) {
+    return { type: "reject" };
+  }
+
   if (metadata) {
     if (
       (sourceChanged && !selectedSource) ||
       (selectedSource &&
         (metadata.provider !== selectedSource.provider ||
-          metadata.externalId !== selectedSource.externalId))
+          metadata.externalId !== selectedSource.externalId ||
+          metadata.mediaType !== selectedSource.mediaType))
     ) {
       return { type: "reject" };
     }

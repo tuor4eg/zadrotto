@@ -360,8 +360,9 @@ function getCoverSourceFromItem(item: {
   };
 }
 
-function getMediaItemMetadataMutation(formData: FormData) {
+function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
   return resolveMediaMetadataFormMutation({
+    expectedMediaType,
     metadataCandidateToken: getOptionalMetadataCandidateToken(formData),
     titleSourceToken:
       normalizeOptionalFormString(getFormString(formData, "metadataTitleSourceToken")),
@@ -499,7 +500,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, firstExperience.error));
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData);
+  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
@@ -733,7 +734,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=${duplicateCheck.error}`);
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData);
+  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);

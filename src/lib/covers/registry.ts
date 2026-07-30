@@ -6,6 +6,7 @@ import {
 import {
   getCoverProviderDefaultSettings,
   getCoverProviderSettingKey,
+  type TitleSearchMode,
 } from "@/lib/covers/provider-settings";
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
@@ -28,7 +29,9 @@ import type { MediaType } from "@/lib/media/types";
 export type CoverProviderRuntimeSetting = {
   mediaType: MediaType;
   providerCode: CoverProviderCode;
-  enabled: boolean;
+  enabled?: boolean;
+  titleSearchMode?: TitleSearchMode;
+  coverSearchEnabled?: boolean;
   priority: number;
 };
 
@@ -58,10 +61,7 @@ export function getConfiguredCoverProviders(
     )
     .filter((provider) => {
       const setting = settingsByProviderCode.get(
-        getCoverProviderSettingKey({
-          mediaType,
-          providerCode: provider.code,
-        }),
+        getCoverProviderSettingKey({ mediaType, providerCode: provider.code }),
       );
 
       return setting?.enabled ?? true;
@@ -87,8 +87,39 @@ export function getCoverProvidersForMediaType(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   return getConfiguredCoverProviders(mediaType, providers, providerSettings).filter(
-    (provider) => provider.searchCoverCandidates,
+    (provider) => {
+      const setting = getProviderSettingsMap(providerSettings).get(
+        getCoverProviderSettingKey({ mediaType, providerCode: provider.code }),
+      );
+
+      return Boolean(
+        (provider.searchCoverCandidates || provider.getCoverCandidatesByTitleSource) &&
+          (setting?.coverSearchEnabled ?? setting?.enabled ?? true),
+      );
+    },
   );
+}
+
+function getConfiguredTitleProvidersForMediaType(
+  mediaType: string,
+  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
+) {
+  const settings = getProviderSettingsMap(providerSettings);
+
+  return getConfiguredCoverProviders(mediaType, providers, providerSettings)
+    .filter((provider) => provider.searchTitleCandidates)
+    .map((provider) => ({
+      provider,
+      mode:
+        settings.get(getCoverProviderSettingKey({ mediaType, providerCode: provider.code }))
+          ?.titleSearchMode ??
+        (settings.get(getCoverProviderSettingKey({ mediaType, providerCode: provider.code }))
+          ?.enabled === false
+          ? "off"
+          : "parallel"),
+    }))
+    .filter(({ mode }) => mode !== "off");
 }
 
 export function getTitleProvidersForMediaType(
@@ -96,9 +127,11 @@ export function getTitleProvidersForMediaType(
   providers: readonly MediaProvider[] = COVER_PROVIDERS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
-  return getConfiguredCoverProviders(mediaType, providers, providerSettings).filter(
-    (provider) => provider.searchTitleCandidates,
-  );
+  return getConfiguredTitleProvidersForMediaType(
+    mediaType,
+    providers,
+    providerSettings,
+  ).map(({ provider }) => provider);
 }
 
 export function getMetadataProviderForMediaType(
@@ -107,6 +140,14 @@ export function getMetadataProviderForMediaType(
   providers: readonly MediaProvider[] = COVER_PROVIDERS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
+  const setting = getProviderSettingsMap(providerSettings).get(
+    getCoverProviderSettingKey({ mediaType, providerCode }),
+  );
+
+  if (setting?.titleSearchMode === "off" || (!setting?.titleSearchMode && setting?.enabled === false)) {
+    return undefined;
+  }
+
   return getConfiguredCoverProviders(mediaType, providers, providerSettings).find(
     (provider) => provider.code === providerCode && provider.getTitleMetadata,
   );
@@ -119,7 +160,7 @@ export async function searchCoverCandidates(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   if (input.titleSource) {
-    const configuredProviders = getConfiguredCoverProviders(
+    const configuredProviders = getCoverProvidersForMediaType(
       input.mediaType,
       providers,
       providerSettings,
@@ -283,14 +324,24 @@ export async function searchTitleCandidates(
     return [];
   }
 
-  const settledResults = await Promise.allSettled(
-    getTitleProvidersForMediaType(input.mediaType, providers, providerSettings)
+  const configuredProviders = getConfiguredTitleProvidersForMediaType(
+    input.mediaType,
+    providers,
+    providerSettings,
+  ).filter(
+    ({ provider }) =>
+      !coverProviderRequiresCredentials(provider.code) ||
+      Boolean(options.providerCredentials?.[provider.code]),
+  );
+  const parallelResults = await Promise.allSettled(
+    configuredProviders
+      .filter(({ mode }) => mode === "parallel")
       .filter(
-        (provider) =>
+        ({ provider }) =>
           !coverProviderRequiresCredentials(provider.code) ||
           Boolean(options.providerCredentials?.[provider.code]),
       )
-      .map(async (provider) => {
+      .map(async ({ provider }) => {
         const canSearch = options.beforeProviderSearch
           ? await options.beforeProviderSearch(provider.code)
           : true;
@@ -303,9 +354,37 @@ export async function searchTitleCandidates(
       }),
   );
 
-  return normalizeTitleCandidates(
-    settledResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
-  ).slice(0, options.candidateLimit);
+  const parallelCandidates = normalizeTitleCandidates(
+    parallelResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+  );
+
+  if (parallelCandidates.length > 0) {
+    return parallelCandidates.slice(0, options.candidateLimit);
+  }
+
+  for (const { provider } of configuredProviders.filter(({ mode }) => mode === "fallback")) {
+    const canSearch = options.beforeProviderSearch
+      ? await options.beforeProviderSearch(provider.code)
+      : true;
+
+    if (!canSearch || !provider.searchTitleCandidates) {
+      continue;
+    }
+
+    try {
+      const candidates = normalizeTitleCandidates(
+        await provider.searchTitleCandidates({ ...input, query }, options),
+      );
+
+      if (candidates.length > 0) {
+        return candidates.slice(0, options.candidateLimit);
+      }
+    } catch {
+      continue;
+    }
+  }
+
+  return [];
 }
 
 function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {

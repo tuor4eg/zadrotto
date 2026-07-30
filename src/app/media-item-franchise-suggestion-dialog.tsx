@@ -9,7 +9,10 @@ import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check"
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
-import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
+import {
+  SearchableFranchiseSelect,
+  type SearchableFranchiseOption,
+} from "@/components/ui/searchable-franchise-select";
 import {
   submitAuthorMediaItemFranchiseSuggestionAction,
   type MediaItemFranchiseSuggestionState,
@@ -42,6 +45,7 @@ export function MediaItemFranchiseSuggestionDialog({
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
   const [title, setTitle] = useState("");
   const [originalTitle, setOriginalTitle] = useState("");
+  const [parentId, setParentId] = useState("");
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const [franchiseRemovalIds, setFranchiseRemovalIds] = useState<string[]>([]);
   const [removalConfirmationOpen, setRemovalConfirmationOpen] = useState(false);
@@ -57,6 +61,7 @@ export function MediaItemFranchiseSuggestionDialog({
     removalConfirmedRef.current = false;
     setTitle("");
     setOriginalTitle("");
+    setParentId("");
     setFranchiseSelectResetKey((currentKey) => currentKey + 1);
     setOpen(false);
   }
@@ -189,6 +194,21 @@ export function MediaItemFranchiseSuggestionDialog({
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-title">Название</Label><Input id="media-new-franchise-title" name="title" required disabled={isPending} autoFocus value={title} onChange={(event) => setTitle(event.currentTarget.value)} /></div>
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-original-title">Оригинальное название</Label><Input id="media-new-franchise-original-title" name="originalTitle" disabled={isPending} value={originalTitle} onChange={(event) => setOriginalTitle(event.currentTarget.value)} /></div>
                 <FranchiseDuplicateCheck title={title} originalTitle={originalTitle} onBlockedChange={setDuplicateBlocked} />
+                <div className="grid gap-2">
+                  <Label htmlFor="media-new-franchise-parent">Родительская серия</Label>
+                  <SearchableFranchiseSelect
+                    id="media-new-franchise-parent"
+                    name="parentId"
+                    options={franchises.map((franchise) => ({
+                      ...franchise,
+                      disabled: false,
+                      disabledLabel: undefined,
+                    }))}
+                    value={parentId}
+                    onChange={setParentId}
+                  />
+                  <p className="text-xs leading-5 text-stone-500">Без выбранного родителя серия будет корневой.</p>
+                </div>
                 <div className="grid gap-2"><Label htmlFor="media-new-franchise-description">Описание</Label><Textarea id="media-new-franchise-description" name="description" rows={4} disabled={isPending} /></div>
               </>}
               {errorMessage ? <p className="text-sm text-red-700" role="alert">{errorMessage}</p> : null}

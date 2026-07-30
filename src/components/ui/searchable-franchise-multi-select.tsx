@@ -6,6 +6,7 @@ import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
+import { matchesFranchiseSearch } from "@/lib/franchises/search";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 
@@ -18,20 +19,11 @@ type SearchableFranchiseMultiSelectProps = {
   value: string[];
 };
 
-function normalizeSearchValue(value: string) {
-  return value.trim().toLowerCase();
-}
-
 function matchesSearch(option: SearchableFranchiseOption, searchValue: string) {
-  if (!searchValue) {
-    return true;
-  }
-
-  return [option.title, option.path, option.originalTitle]
-    .filter(Boolean)
-    .join(" ")
-    .toLowerCase()
-    .includes(searchValue);
+  return matchesFranchiseSearch(
+    [option.title, option.path, option.originalTitle],
+    searchValue,
+  );
 }
 
 export function SearchableFranchiseMultiSelect({
@@ -59,7 +51,7 @@ export function SearchableFranchiseMultiSelect({
   );
   const visibleOptions = useMemo(
     () => options.filter((option) =>
-      matchesSearch(option, normalizeSearchValue(query)) &&
+      matchesSearch(option, query) &&
       (!hideSelectedAncestors || selectedIds.has(String(option.id)) || !selectedAncestorIds.has(option.id))),
     [hideSelectedAncestors, options, query, selectedAncestorIds, selectedIds],
   );

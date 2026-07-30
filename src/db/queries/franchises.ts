@@ -1264,6 +1264,7 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
   description: string | null;
   mediaItemId: number;
   originalTitle: string | null;
+  parentId: number | null;
   publicationStatus: "published" | "submitted";
   title: string;
 }) {
@@ -1286,6 +1287,7 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
         originalTitle: input.originalTitle,
         description: input.description,
         createdByAuthorId: input.authorId,
+        parentId: input.parentId,
         publicationStatus: input.publicationStatus,
       })
       .returning({ id: franchises.id, code: franchises.code, title: franchises.title });
