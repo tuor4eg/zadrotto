@@ -188,6 +188,91 @@ export async function getAdminFranchiseOptions() {
   });
 }
 
+export async function getAiFranchiseCandidates(currentAuthorId?: number) {
+  const visibilityCondition = currentAuthorId
+    ? or(publishedFranchiseCondition, eq(franchises.createdByAuthorId, currentAuthorId))
+    : undefined;
+  const mediaVisibilityCondition = currentAuthorId
+    ? or(publishedMediaItemCondition, eq(mediaItems.createdByAuthorId, currentAuthorId))
+    : undefined;
+  const linkVisibilityCondition = currentAuthorId
+    ? or(
+        eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        eq(mediaItemFranchises.createdByAuthorId, currentAuthorId),
+      )
+    : undefined;
+  const [franchiseRows, mediaRows] = await Promise.all([
+    db
+      .select({
+        id: franchises.id,
+        parentId: franchises.parentId,
+        title: franchises.title,
+        originalTitle: franchises.originalTitle,
+        description: franchises.description,
+      })
+      .from(franchises)
+      .where(visibilityCondition)
+      .orderBy(asc(franchises.title), asc(franchises.id)),
+    db
+      .select({
+        franchiseId: mediaItemFranchises.franchiseId,
+        title: mediaItems.title,
+        mediaType: mediaItems.mediaType,
+        releaseYear: mediaItems.releaseYear,
+      })
+      .from(mediaItemFranchises)
+      .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
+      .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+      .where(and(
+        visibilityCondition,
+        mediaVisibilityCondition,
+        linkVisibilityCondition,
+      ))
+      .orderBy(
+        asc(mediaItemFranchises.franchiseId),
+        desc(mediaItems.releaseYear),
+        asc(mediaItems.title),
+      ),
+  ]);
+  const rowsById = new Map(franchiseRows.map((row) => [row.id, row]));
+  const mediaByFranchiseId = new Map<number, typeof mediaRows>();
+
+  for (const media of mediaRows) {
+    const items = mediaByFranchiseId.get(media.franchiseId) ?? [];
+    if (items.length < 5) {
+      items.push(media);
+      mediaByFranchiseId.set(media.franchiseId, items);
+    }
+  }
+
+  return franchiseRows.map((row) => {
+    const path = [row.title];
+    const visitedIds = new Set([row.id]);
+    let parentId = row.parentId;
+
+    while (parentId && !visitedIds.has(parentId)) {
+      visitedIds.add(parentId);
+      const parent = rowsById.get(parentId);
+      if (!parent) break;
+      path.unshift(parent.title);
+      parentId = parent.parentId;
+    }
+
+    return {
+      id: row.id,
+      path: path.join(" / "),
+      title: row.title,
+      originalTitle: row.originalTitle,
+      description: row.description,
+      mediaItems: (mediaByFranchiseId.get(row.id) ?? []).map((item) => ({
+        title: item.title,
+        mediaType: item.mediaType,
+        releaseYear: item.releaseYear,
+      })),
+    };
+  });
+}
+
 export async function getPublishedFranchiseOptions() {
   return db
     .select({

@@ -1,11 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { AlertTriangle, Loader2, RefreshCw, Search } from "lucide-react";
+import { AlertTriangle, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
+import { FranchiseSuggestionStatus } from "@/components/ui/franchise-suggestion-status";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import {
   MediaMetadataFacts,
@@ -19,6 +20,7 @@ import {
 import { RatingExperienceFields } from "@/components/ui/rating-experience-fields";
 import { RatingScoreButtons } from "@/components/ui/rating-score-buttons";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
+import { Tooltip } from "@/components/ui/tooltip";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -28,6 +30,11 @@ import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-sour
 import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
 import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
+import {
+  appendUniqueFranchiseIds,
+  requestFranchiseSuggestions,
+  resolveSuggestedFranchises,
+} from "@/lib/ai/scenarios/suggest-franchises-client";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
 import { InlineFranchiseDialog } from "./inline-franchise-dialog";
@@ -69,6 +76,7 @@ type MediaItemFormProps = {
   error?: string;
   maxTitleAliases: number;
   titleAliasTooltipSide?: "bottom" | "left" | "right" | "top";
+  canSuggestFranchises?: boolean;
 };
 
 type MediaTitleMetadataResponse = {
@@ -180,6 +188,7 @@ export function MediaItemForm({
   successRedirectTo,
   maxTitleAliases,
   titleAliasTooltipSide = "bottom",
+  canSuggestFranchises = false,
 }: MediaItemFormProps) {
   const isEditing = Boolean(values?.id);
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
@@ -227,6 +236,7 @@ export function MediaItemForm({
   );
   const [franchiseOptions, setFranchiseOptions] = useState(franchises);
   const [franchiseSelectResetKey, setFranchiseSelectResetKey] = useState(0);
+  const [isSuggestingFranchises, setIsSuggestingFranchises] = useState(false);
   const [localErrorToast, setLocalErrorToast] = useState<AuthorToast | null>(null);
   const [duplicateMatches, setDuplicateMatches] = useState<LocalMediaDuplicateMatch[]>([]);
   const [duplicateExactMatchIds, setDuplicateExactMatchIds] = useState<number[]>([]);
@@ -447,6 +457,60 @@ export function MediaItemForm({
     }
   }
 
+  async function suggestFranchises() {
+    if (!title.trim() || !selectedMediaType || isSuggestingFranchises) return;
+    metadataRequestVersionRef.current += 1;
+    setIsSuggestingFranchises(true);
+    setLocalErrorToast(null);
+
+    try {
+      const franchiseIds = await requestFranchiseSuggestions({
+        title,
+        originalTitle,
+        aliases,
+        description,
+        mediaType: selectedMediaType,
+        mediaTypeLabel: selectedMediaTypeLabel,
+        releaseYear: /^\d+$/.test(releaseYear) ? Number(releaseYear) : null,
+        mediaCarrier: mediaCarriers.find(
+          (carrier) => String(carrier.id) === selectedMediaCarrierId,
+        )?.name ?? null,
+        metadata: selectedMetadata?.facts ?? {},
+        selectedFranchiseIds: selectedFranchiseIds.map(Number),
+      });
+      const suggested = resolveSuggestedFranchises(
+        franchiseOptions,
+        selectedFranchiseIds,
+        franchiseIds,
+      );
+
+      if (suggested.length === 0) {
+        setLocalErrorToast({
+          id: `franchise-suggestions-empty-${Date.now()}`,
+          tone: "success",
+          text: "Подходящих серий не найдено.",
+        });
+        return;
+      }
+      setSelectedFranchiseIds((current) =>
+        appendUniqueFranchiseIds(current, suggested.map((option) => option.id)));
+      setFranchiseSelectResetKey((current) => current + 1);
+      setLocalErrorToast({
+        id: `franchise-suggestions-${Date.now()}`,
+        tone: "success",
+        text: `Добавлены серии: ${suggested.map((option) => option.title).join(", ")}.`,
+      });
+    } catch {
+      setLocalErrorToast({
+        id: `franchise-suggestions-error-${Date.now()}`,
+        tone: "error",
+        text: "Не удалось подобрать серии. Попробуйте ещё раз позже.",
+      });
+    } finally {
+      setIsSuggestingFranchises(false);
+    }
+  }
+
   return (
     <form action={action} className="grid gap-5" noValidate>
       <AuthorToasts messages={toastMessages} />
@@ -473,7 +537,10 @@ export function MediaItemForm({
         </>
       ) : null}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      <fieldset
+        className="grid gap-4 border-0 p-0 sm:grid-cols-2 lg:grid-cols-3"
+        disabled={isSuggestingFranchises}
+      >
         <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
           <Label id="author-media-type-label" htmlFor={isEditing ? undefined : "author-media-type"}>
             Тип медиа
@@ -647,26 +714,27 @@ export function MediaItemForm({
           />
         </div>
 
-        <div className="flex flex-col gap-2">
-          <Label htmlFor="author-media-carrier">
-            Носитель
-          </Label>
-          <Select
-            id="author-media-carrier"
-            name="mediaCarrierId"
-            value={selectedMediaCarrierId}
-            onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
-          >
-            <option value="">Не выбран</option>
-            {availableMediaCarriers.map((carrier) => (
-              <option key={carrier.id} value={carrier.id}>
-                {carrier.name}
-              </option>
-            ))}
-          </Select>
-        </div>
+        <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_7rem]">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="author-media-carrier">
+              Носитель
+            </Label>
+            <Select
+              id="author-media-carrier"
+              name="mediaCarrierId"
+              value={selectedMediaCarrierId}
+              onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
+            >
+              <option value="">Не выбран</option>
+              {availableMediaCarriers.map((carrier) => (
+                <option key={carrier.id} value={carrier.id}>
+                  {carrier.name}
+                </option>
+              ))}
+            </Select>
+          </div>
 
-        <div className="flex flex-col gap-2">
+          <div className="flex min-w-0 flex-col gap-2">
           <Label htmlFor="author-media-franchise">
             Серия
           </Label>
@@ -705,10 +773,29 @@ export function MediaItemForm({
                 }}
               />
             ) : null}
+            {canSuggestFranchises ? (
+              <Tooltip
+                label="Предложить серии"
+                className="[&_[role=tooltip]]:left-auto [&_[role=tooltip]]:right-0 [&_[role=tooltip]]:translate-x-0"
+              >
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  className="h-10 w-10 shrink-0"
+                  aria-label="Предложить серии"
+                  disabled={!title.trim() || isSuggestingFranchises}
+                  onClick={() => void suggestFranchises()}
+                >
+                  <Sparkles className={isSuggestingFranchises ? "animate-pulse" : undefined} />
+                </Button>
+              </Tooltip>
+            ) : null}
           </div>
-        </div>
+          <FranchiseSuggestionStatus visible={isSuggestingFranchises} />
+          </div>
 
-        <div className="flex flex-col gap-2">
+          <div className="flex flex-col gap-2">
           <Label htmlFor="author-media-release-year">
             Год
           </Label>
@@ -718,6 +805,7 @@ export function MediaItemForm({
             type="number"
             min="0"
             max="9999"
+            className="w-28 max-w-full"
             value={releaseYear}
             onChange={(event) => {
               metadataRequestVersionRef.current += 1;
@@ -730,6 +818,7 @@ export function MediaItemForm({
               setDuplicateStatus("idle");
             }}
           />
+          </div>
         </div>
 
         {canSearchLocalDuplicates ? (
@@ -947,10 +1036,15 @@ export function MediaItemForm({
           ) : null}
           <MediaMetadataFacts metadata={selectedMetadata} />
         </div>
-      </div>
+      </fieldset>
 
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" name="intent" value="draft" disabled={isDuplicateSubmissionBlocked}>
+        <Button
+          type="submit"
+          name="intent"
+          value="draft"
+          disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises}
+        >
           {submitLabel}
         </Button>
         {!isEditing && createAndSubmitLabel ? (
@@ -959,7 +1053,7 @@ export function MediaItemForm({
             variant="positive"
             name="intent"
             value="submit"
-            disabled={isDuplicateSubmissionBlocked}
+            disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises}
           >
             {createAndSubmitLabel}
           </Button>

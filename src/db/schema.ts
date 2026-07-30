@@ -209,6 +209,96 @@ export const providerRateLimits = pgTable(
   ],
 );
 
+export const aiProviderSettings = pgTable(
+  "ai_provider_settings",
+  {
+    providerCode: text("provider_code").primaryKey(),
+    enabled: boolean("enabled").default(false).notNull(),
+    defaultModelId: text("default_model_id"),
+    settings: jsonb("settings").$type<Record<string, unknown>>().default({}).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("ai_provider_settings_code_check", sql`btrim(${table.providerCode}) <> ''`),
+  ],
+);
+
+export const aiProviderCredentials = pgTable(
+  "ai_provider_credentials",
+  {
+    providerCode: text("provider_code").primaryKey(),
+    encryptedPayload: text("encrypted_payload").notNull(),
+    keyHint: text("key_hint").notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("ai_provider_credentials_code_check", sql`btrim(${table.providerCode}) <> ''`),
+  ],
+);
+
+export const aiScenarioProfiles = pgTable(
+  "ai_scenario_profiles",
+  {
+    id: serial("id").primaryKey(),
+    key: text("key").notNull(),
+    name: text("name").notNull(),
+    providerCode: text("provider_code").notNull(),
+    modelId: text("model_id"),
+    instruction: text("instruction"),
+    parameters: jsonb("parameters").$type<Record<string, unknown>>().default({}).notNull(),
+    config: jsonb("config").$type<Record<string, unknown>>().default({}).notNull(),
+    enabled: boolean("enabled").default(false).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    uniqueIndex("ai_scenario_profiles_key_unique").on(table.key),
+    check("ai_scenario_profiles_key_check", sql`btrim(${table.key}) <> ''`),
+    check("ai_scenario_profiles_provider_code_check", sql`btrim(${table.providerCode}) <> ''`),
+  ],
+);
+
+export const aiCallLogs = pgTable(
+  "ai_call_logs",
+  {
+    id: serial("id").primaryKey(),
+    scenarioProfileId: integer("scenario_profile_id").references(() => aiScenarioProfiles.id, {
+      onDelete: "set null",
+    }),
+    profileKey: text("profile_key").notNull(),
+    providerCode: text("provider_code"),
+    modelId: text("model_id"),
+    status: text("status").notNull(),
+    latencyMs: integer("latency_ms").notNull(),
+    inputTokens: integer("input_tokens"),
+    outputTokens: integer("output_tokens"),
+    providerRequestId: text("provider_request_id"),
+    errorCode: text("error_code"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("ai_call_logs_created_at_idx").on(table.createdAt),
+    index("ai_call_logs_profile_created_at_idx").on(table.profileKey, table.createdAt),
+    index("ai_call_logs_status_created_at_idx").on(table.status, table.createdAt),
+    check("ai_call_logs_status_check", sql`${table.status} in ('success', 'failure')`),
+    check("ai_call_logs_latency_check", sql`${table.latencyMs} >= 0`),
+    check("ai_call_logs_input_tokens_check", sql`${table.inputTokens} is null or ${table.inputTokens} >= 0`),
+    check("ai_call_logs_output_tokens_check", sql`${table.outputTokens} is null or ${table.outputTokens} >= 0`),
+    check(
+      "ai_call_logs_error_code_check",
+      sql`${table.errorCode} is null or ${table.errorCode} in ('configuration', 'authentication', 'rate-limit', 'timeout', 'provider-unavailable', 'invalid-response')`,
+    ),
+  ],
+);
+
 export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
   code: text("code").notNull().unique(),
@@ -832,6 +922,10 @@ export type ProviderSettings = typeof providerSettings.$inferSelect;
 export type NewProviderSettings = typeof providerSettings.$inferInsert;
 export type ProviderCredentials = typeof providerCredentials.$inferSelect;
 export type NewProviderCredentials = typeof providerCredentials.$inferInsert;
+export type AiProviderSettings = typeof aiProviderSettings.$inferSelect;
+export type AiProviderCredentials = typeof aiProviderCredentials.$inferSelect;
+export type AiScenarioProfile = typeof aiScenarioProfiles.$inferSelect;
+export type AiCallLog = typeof aiCallLogs.$inferSelect;
 export type AdminUser = typeof adminUsers.$inferSelect;
 export type NewAdminUser = typeof adminUsers.$inferInsert;
 export type AdminActivityLog = typeof adminActivityLogs.$inferSelect;

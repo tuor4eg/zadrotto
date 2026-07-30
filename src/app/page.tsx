@@ -9,10 +9,12 @@ import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { ArchiveAuthorMediaSuggestion } from "./archive-author-media-suggestion";
 import { CatalogStickyHeader } from "./catalog-sticky-header";
@@ -105,11 +107,12 @@ export default async function Home({ searchParams }: HomeProps) {
       }),
       getCatalogReleaseYearBounds(enabledMediaTypeCodes),
       currentAuthor
-        ? Promise.all([
+          ? Promise.all([
             getFranchiseOptions(currentAuthor.id),
             getMediaCarrierOptions(),
+            isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
           ]).then(
-            ([franchises, mediaCarriers]) => ({
+            ([franchises, mediaCarriers, canSuggestFranchises]) => ({
               canCreateFranchise: canAuthorCreateFranchise({
                 canPublishFranchisesWithoutReview:
                   currentAuthor.canPublishFranchisesWithoutReview,
@@ -117,6 +120,7 @@ export default async function Home({ searchParams }: HomeProps) {
               canPublishFranchisesWithoutReview:
                 currentAuthor.canPublishFranchisesWithoutReview,
               canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
+              canSuggestFranchises,
               franchises,
               publishedFranchises: franchises.filter(
                 (franchise) => franchise.publicationStatus === "published",
@@ -228,6 +232,7 @@ export default async function Home({ searchParams }: HomeProps) {
           action={createAuthorMediaItemAction}
           canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
+          canSuggestFranchises={authorMediaSuggestionData.canSuggestFranchises}
           franchises={authorMediaSuggestionData.franchises}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}

@@ -1,11 +1,13 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getAccessibleMediaTypeOptions } from "@/db/queries/media-types";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { parseAuthorMediaTypeFilter } from "@/lib/authors/media-filters";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
 import { MediaItemForm } from "../media-item-form";
@@ -20,12 +22,20 @@ type NewAuthorMediaPageProps = {
 
 export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMediaPageProps) {
   const author = await requireAuthor();
-  const [params, franchises, mediaCarriers, effectiveMediaTypes, archiveSettings] = await Promise.all([
+  const [
+    params,
+    franchises,
+    mediaCarriers,
+    effectiveMediaTypes,
+    archiveSettings,
+    canSuggestFranchises,
+  ] = await Promise.all([
     searchParams,
     getFranchiseOptions(author.id),
     getMediaCarrierOptions(),
     getAccessibleMediaTypeOptions(author.id),
     getArchiveSettings(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
   ]);
   const mediaTypes = effectiveMediaTypes;
   const { error } = params;
@@ -58,6 +68,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             maxTitleAliases={archiveSettings.maxTitleAliases}
+            canSuggestFranchises={canSuggestFranchises}
             values={initialMediaType === "all" ? undefined : { mediaType: initialMediaType }}
             createAndSubmitLabel={createAndSubmitLabel}
             canCreateFranchise={canAuthorCreateFranchise({

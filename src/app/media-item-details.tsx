@@ -5,9 +5,10 @@ import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
+import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
+import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
-import type { PublicationStatus } from "@/lib/media/publication-status";
 import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -21,14 +22,7 @@ type MediaItemDetailsItem = {
   aliases?: string[];
   description: string | null;
   mediaType: MediaType;
-  franchises: Array<{
-    id: number;
-    code: string;
-    title: string;
-    originalTitle: string | null;
-    publicationStatus: PublicationStatus;
-    path?: Array<{ id: number; code: string; title: string }>;
-  }>;
+  franchises: MediaItemFranchiseLink[];
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
   metadataFacts?: Record<string, unknown> | null;
@@ -79,46 +73,6 @@ type MediaItemDetailsProps = {
   relatedItems?: RelatedMediaItem[];
   relatedFranchiseSections?: RelatedFranchiseSection[];
 };
-
-function FranchiseLinks({
-  franchises,
-  className,
-}: {
-  franchises: MediaItemDetailsItem["franchises"];
-  className: string;
-}) {
-  if (franchises.length === 0) {
-    return <>—</>;
-  }
-
-  return (
-    <div className="flex flex-wrap gap-1.5">
-      {franchises.map((franchise) => (
-        franchise.publicationStatus === "published" ? (
-          <span key={franchise.id} className="inline-flex flex-wrap items-center gap-x-1.5">
-            {(franchise.path ?? [franchise]).map((part, index) => (
-              <Fragment key={part.id}>
-                {index > 0 ? <span aria-hidden="true">/</span> : null}
-                <Link href={`/series/${part.code}`} className={className}>
-                  {part.title}
-                </Link>
-              </Fragment>
-            ))}
-          </span>
-        ) : (
-          <span key={franchise.id} className={`${className} text-stone-500`}>
-            {franchise.path?.map((part, index) => (
-              <Fragment key={part.id}>
-                {index > 0 ? " / " : null}
-                {part.title}
-              </Fragment>
-            )) ?? franchise.title} <span className="text-xs">(на проверке)</span>
-          </span>
-        )
-      ))}
-    </div>
-  );
-}
 
 function FranchiseRelatedTitle({
   franchise,
@@ -272,8 +226,9 @@ export function MediaItemDetails({
               {(item.franchises.length > 0 || showFranchiseSection) ? (
                 <div className="flex flex-wrap gap-1.5 text-sm text-zinc-500">
                   <span className="border border-zinc-200 px-3 py-2">Серии:</span>
-                  <FranchiseLinks
+                  <MediaItemFranchiseLinks
                     franchises={item.franchises}
+                    containerClassName="flex flex-wrap gap-1.5"
                     className="border border-zinc-200 px-3 py-2 font-medium text-zinc-800 transition-colors hover:border-zinc-950 hover:text-zinc-950"
                   />
                 </div>
@@ -528,8 +483,9 @@ function ArchiveMediaItemDetails({
                       <span className="font-sans normal-case tracking-normal">{franchiseActions}</span>
                     </dt>
                     <dd className="mt-1">
-                      <FranchiseLinks
+                      <MediaItemFranchiseLinks
                         franchises={item.franchises}
+                        containerClassName="flex flex-wrap gap-1.5"
                         className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
                       />
                     </dd>

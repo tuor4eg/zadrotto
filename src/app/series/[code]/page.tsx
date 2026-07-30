@@ -18,11 +18,13 @@ import {
   type FranchiseBranchNode,
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { SeriesMediaLinkSearch } from "./series-media-link-search";
 import { SeriesMediaUnlinkTile } from "./series-media-unlink-tile";
@@ -114,13 +116,18 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
     getMediaItemsByFranchiseId(franchise.id, enabledMediaTypeCodes, currentAuthor?.id),
     getPublishedFranchiseBranch(franchise.id, enabledMediaTypeCodes),
     currentAuthor
-      ? Promise.all([getFranchiseOptions(currentAuthor.id), getMediaCarrierOptions()]).then(
-          ([franchises, mediaCarriers]) => ({
+      ? Promise.all([
+          getFranchiseOptions(currentAuthor.id),
+          getMediaCarrierOptions(),
+          isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
+        ]).then(
+          ([franchises, mediaCarriers, canSuggestFranchises]) => ({
             canCreateFranchise: canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview:
                 currentAuthor.canPublishFranchisesWithoutReview,
             }),
             canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
+            canSuggestFranchises,
             franchises,
             mediaCarriers,
           }),
@@ -342,6 +349,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
           action={createAuthorMediaItemAction}
           canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
+          canSuggestFranchises={authorMediaSuggestionData.canSuggestFranchises}
           defaultFranchiseIds={[franchise.id]}
           franchises={authorMediaSuggestionData.franchises}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}

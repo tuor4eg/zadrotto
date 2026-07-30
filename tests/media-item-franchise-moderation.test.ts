@@ -77,9 +77,15 @@ describe("public franchise links", () => {
 
   it("always shows the series dossier section and exposes suggestions only to authors", () => {
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
+    const franchiseLinks = readFileSync(
+      "src/components/archive/media-item-franchise-links.tsx",
+      "utf8",
+    );
 
     assert.match(preview, />\s*Серии\s*</);
     assert.match(preview, /item\.franchises\.length > 0[\s\S]*Не указаны/);
+    assert.match(preview, /<MediaItemFranchiseLinks[\s\S]*franchises=\{item\.franchises\}/);
+    assert.match(franchiseLinks, /\(franchise\.path \?\? \[franchise\]\)\.map/);
     assert.match(
       preview,
       /currentAuthor \? \([\s\S]*<MediaItemFranchiseSuggestionDialog[\s\S]*mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/,

@@ -130,6 +130,8 @@ Do not scan all skill files.
 
 Use a skill only when the task clearly matches it.
 
+The `ai-integrations` skill is mandatory for changes to AI providers, credentials, models, scenarios, prompts, AI endpoints, or AI-powered UI flows.
+
 The `media-carrier-skins` skill is mandatory for any work on media carrier visual skins: cover/frame assets, placeholders, cover geometry, carrier fonts, hover effects, rating panel styling, or archive presentation tied to a carrier/media type.
 
 Do not scan all skills for every task.

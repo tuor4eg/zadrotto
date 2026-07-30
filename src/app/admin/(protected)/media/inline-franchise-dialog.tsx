@@ -174,6 +174,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
         type="button"
         variant="outline"
         size="icon"
+        className="h-10 w-10 shrink-0"
         aria-label="Добавить серию"
         onClick={() => setOpen(true)}
       >

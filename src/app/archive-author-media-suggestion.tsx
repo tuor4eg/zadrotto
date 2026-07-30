@@ -17,6 +17,7 @@ type ArchiveAuthorMediaSuggestionProps = {
   action: (formData: FormData) => void | Promise<void>;
   canCreateFranchise: boolean;
   canPublishMediaWithoutReview: boolean;
+  canSuggestFranchises: boolean;
   defaultFranchiseIds?: number[];
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
@@ -61,6 +62,7 @@ export function ArchiveAuthorMediaSuggestion({
   action,
   canCreateFranchise,
   canPublishMediaWithoutReview,
+  canSuggestFranchises,
   defaultFranchiseIds = [],
   franchises,
   mediaCarriers,
@@ -190,16 +192,14 @@ export function ArchiveAuthorMediaSuggestion({
                         Предложить запись
                       </div>
                     </div>
-                    <ArchiveTooltip label="Закрыть" side="bottom">
-                      <button
-                        type="button"
-                        className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
-                        aria-label="Закрыть форму предложения"
-                        onClick={() => setModalState(null)}
-                      >
-                        <X className="size-4" />
-                      </button>
-                    </ArchiveTooltip>
+                    <button
+                      type="button"
+                      className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
+                      aria-label="Закрыть форму предложения"
+                      onClick={() => setModalState(null)}
+                    >
+                      <X className="size-4" />
+                    </button>
                   </div>
                 </div>
 
@@ -209,6 +209,7 @@ export function ArchiveAuthorMediaSuggestion({
                     action={action}
                     cancelHref={currentArchivePath}
                     canCreateFranchise={canCreateFranchise}
+                    canSuggestFranchises={canSuggestFranchises}
                     createAndSubmitLabel={createAndSubmitLabel}
                     errorParamName="suggestionError"
                     errorRedirectTo={currentArchivePath}

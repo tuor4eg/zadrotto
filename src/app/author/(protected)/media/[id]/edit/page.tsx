@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { Alert } from "@/components/ui/alert";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
@@ -15,6 +16,7 @@ import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { isAuthorEditablePublicationStatus } from "@/lib/forms/author-media";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { AuthorToasts } from "../../../author-toasts";
 import { updateAuthorMediaItemAction } from "../../actions";
 import { MediaItemForm } from "../../media-item-form";
@@ -42,6 +44,7 @@ export default async function EditAuthorMediaPage({
     accessibleMediaTypes,
     effectiveMediaTypes,
     archiveSettings,
+    canSuggestFranchises,
   ] = await Promise.all([
     params,
     searchParams,
@@ -50,6 +53,7 @@ export default async function EditAuthorMediaPage({
     getAccessibleMediaTypeOptions(author.id),
     getEffectiveMediaTypeOptions(author.id),
     getArchiveSettings(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
   ]);
   const mediaItemId = Number(id);
 
@@ -114,6 +118,7 @@ export default async function EditAuthorMediaPage({
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             maxTitleAliases={archiveSettings.maxTitleAliases}
+            canSuggestFranchises={canSuggestFranchises}
             canCreateFranchise={canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}

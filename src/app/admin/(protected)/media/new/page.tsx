@@ -4,10 +4,12 @@ import { ArrowLeft } from "lucide-react";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { PageHeader } from "../../admin-ui";
 import { createAdminMediaItemAction } from "../actions";
 import { AdminMediaForm } from "../media-form";
@@ -20,13 +22,22 @@ type NewAdminMediaPageProps = {
 };
 
 export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaPageProps) {
-  const [{ error }, authors, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
+  const [
+    { error },
+    authors,
+    franchises,
+    mediaCarriers,
+    mediaTypes,
+    archiveSettings,
+    canSuggestFranchises,
+  ] = await Promise.all([
     searchParams,
     getAuthorOptions(),
     getAdminFranchiseOptions(),
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
     getArchiveSettings(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
   ]);
 
   return (
@@ -55,6 +66,7 @@ export default async function NewAdminMediaPage({ searchParams }: NewAdminMediaP
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             maxTitleAliases={archiveSettings.maxTitleAliases}
+            canSuggestFranchises={canSuggestFranchises}
             requireAuthor
             values={{ releaseYear: new Date().getFullYear() }}
             errorMessage={getAdminMediaErrorMessage(error)}

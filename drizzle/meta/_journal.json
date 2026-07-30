@@ -316,6 +316,27 @@
       "when": 1785520800000,
       "tag": "0044_provider_search_modes",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1785607200000,
+      "tag": "0045_ai_providers",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1785693600000,
+      "tag": "0046_ai_scenario_inheritance",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1785780000000,
+      "tag": "0047_ai_scenario_catalog_config",
+      "breakpoints": true
     }
   ]
 }

@@ -1,134 +1,143 @@
 # Zadrotto
 
-Локальный Next.js-проект для ранней картотеки культурных тайтлов.
+«Журнал, которого не было» — Next.js-приложение для картотеки игр, фильмов, сериалов, книг, комиксов, аниме и других культурных записей.
+
+Сейчас проект включает публичный архив, кабинет автора, админку, оценки и рецензии, серии, обложки, импорт метаданных и вспомогательные AI-сценарии. Подробнее о продуктовых границах — в [`PROJECT_CONTEXT.md`](./PROJECT_CONTEXT.md).
+
+## Стек
+
+- Next.js 16, React 19, TypeScript;
+- PostgreSQL и Drizzle ORM;
+- Tailwind CSS;
+- S3-compatible storage для обложек;
+- Redis для rate limit;
+- `node:test` через `tsx`.
 
 ## Локальный запуск
 
-1. Подними PostgreSQL и укажи подключение в `.env`.
-2. Установи зависимости:
+Требуются Node.js 20+, PostgreSQL и Redis. Для работы с обложками нужен S3-compatible storage; локально можно использовать MinIO.
+
+1. Подготовь окружение:
 
 ```bash
+cp .env.example .env
 npm install
 ```
 
-3. Накати локальную схему:
+2. Укажи в `.env` как минимум:
+
+```env
+DATABASE_URL=postgres://user:password@localhost:5432/zadrotto
+SITE_URL=http://localhost:3000
+ADMIN_LOGIN=admin
+ADMIN_PASSWORD=change-me
+ADMIN_SESSION_SECRET=change-this-to-a-long-random-secret
+AUTHOR_SESSION_SECRET=change-this-to-another-long-random-secret
+AI_PROVIDER_CREDENTIALS_KEY=change-this-to-a-separate-long-random-ai-provider-key
+REDIS_URL=redis://127.0.0.1:6379
+```
+
+Секреты сессий и ключи шифрования должны быть длинными случайными значениями. `ADMIN_PASSWORD` используется только seed-скриптом; в базе хранится hash.
+
+3. Накати миграции и создай первого администратора:
 
 ```bash
 npm run db:migrate
-```
-
-4. Создай первого admin user:
-
-```bash
 npm run db:seed:admin
 ```
 
-Seed читает `ADMIN_LOGIN` и `ADMIN_PASSWORD` из `.env`, хранит только hash пароля и пропускает создание, если admin user уже существует.
-
-5. Запусти dev-сервер:
+4. Запусти приложение:
 
 ```bash
 npm run dev
 ```
 
-Приложение будет доступно на http://localhost:3000.
+Основные адреса:
 
-## Admin
+- публичный архив — <http://localhost:3000>;
+- админка — <http://localhost:3000/admin>;
+- вход автора — <http://localhost:3000/author/login>.
 
-Для пустой админки и авторского входа нужны env-переменные:
+Администратор входит по логину и паролю. Автор использует выданный администратором access token либо регистрацию, если она включена. Сессии хранятся в `httpOnly` cookie; исходные access token в базе не сохраняются.
 
-```env
-ADMIN_LOGIN=admin
-ADMIN_PASSWORD=change-me
-ADMIN_SESSION_SECRET=change-this-to-a-long-random-secret
-AUTHOR_SESSION_SECRET=change-this-to-another-long-random-secret
-```
+## Обложки и MinIO
 
-`ADMIN_PASSWORD` используется только seed-скриптом. В базе хранится `password_hash`.
-
-После seed админка доступна на http://localhost:3000/admin. Сессия хранится только в `httpOnly` cookie `admin_session`; `localStorage` и bearer token не используются.
-
-## Author
-
-Авторский вход доступен на http://localhost:3000/author/login. Он принимает одноразово показанный в админке access token, сверяет только hash из таблицы `author_access_tokens` и создает `httpOnly` cookie `author_session`. Исходный access token не хранится ни в базе, ни во фронтенде.
-
-## MinIO для обложек
-
-UI загрузки пока нет. Поле `media_items.cover_url` уже достаточно: в нем можно хранить либо полный публичный URL, либо object key внутри S3-бакета, например `covers/dune.jpg`.
-
-Для локального S3-compatible storage можно поднять MinIO:
+Поднять Redis и MinIO из production compose-файла для локальной разработки можно так:
 
 ```bash
-docker run --rm \
-  --name zadrotto-minio \
-  -p 9000:9000 \
-  -p 9001:9001 \
-  -e MINIO_ROOT_USER=minioadmin \
-  -e MINIO_ROOT_PASSWORD=minioadmin \
-  -v zadrotto-minio-data:/data \
-  quay.io/minio/minio server /data --console-address ":9001"
+docker compose --profile local up -d redis minio
 ```
 
-После запуска:
+Консоль MinIO будет доступна на <http://localhost:9001>. Создай bucket из `S3_BUCKET` и разреши публичное чтение объектов. Настройки подключения уже перечислены в `.env.example`.
 
-1. Открой http://localhost:9001.
-2. Войди с `minioadmin` / `minioadmin`.
-3. Создай bucket `zadrotto-covers`.
-4. Сделай bucket публичным для чтения объектов.
-5. Загружай будущие обложки, например в префикс `covers/`.
+Приложение умеет загружать обложки, искать варианты через настроенных провайдеров и создавать уменьшенные версии. `media_items.cover_url` поддерживает object key внутри bucket и готовый `http(s)` URL.
 
-Минимальная локальная env-конфигурация:
+Для существующих обложек можно запустить:
+
+```bash
+npm run covers:backfill-thumbs
+```
+
+## Внешние и AI-провайдеры
+
+Источники названий, метаданных и обложек настраиваются в разделе инструментов администратора.
+
+AI настраивается в `/admin/tools/ai`:
+
+1. В «Провайдерах» сохрани credentials, обнови список моделей и выбери модель по умолчанию.
+2. Проверь модель тестовым prompt.
+3. В «Сценариях» настрой и включи нужную системную операцию.
+
+Сейчас зарегистрирован OpenRouter и сценарий «Предложить серии». Сценарий наследует модель и параметры провайдера, если они явно не переопределены. Credentials шифруются ключом `AI_PROVIDER_CREDENTIALS_KEY` и не передаются в браузер или логи. AI-результат всегда проверяется сервером и не считается источником истины.
+
+## Регистрация авторов и email
+
+Регистрация управляется переменной `AUTHOR_REGISTRATION_ENABLED` и настройками в `/admin/settings/authors`. Для локальной разработки можно задать:
 
 ```env
-S3_ENDPOINT=http://127.0.0.1:9000
-S3_REGION=us-east-1
-S3_BUCKET=zadrotto-covers
-S3_ACCESS_KEY_ID=minioadmin
-S3_SECRET_ACCESS_KEY=minioadmin
-S3_FORCE_PATH_STYLE=true
-S3_PUBLIC_BASE_URL=http://127.0.0.1:9000/zadrotto-covers
+AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION=true
 ```
 
-Если `cover_url` равен `covers/dune.jpg`, приложение покажет обложку по публичному URL:
+В production эта опция игнорируется. Email credentials и очередь настраиваются в `/admin/tools/email`; для них нужны `EMAIL_OUTBOX_ENCRYPTION_KEY`, `EMAIL_PROVIDER_CREDENTIALS_KEY` и общий `AUTH_EMAIL_WORKER_SECRET`.
 
-```txt
-http://127.0.0.1:9000/zadrotto-covers/covers/dune.jpg
-```
+Production compose включает два worker-контейнера:
 
-Если `cover_url` уже содержит `https://...` или `http://...`, он используется без изменений.
+- `email-worker` доставляет очередь писем;
+- `auth-cleanup-worker` запускает очистку истёкших auth-данных.
 
-## Production: регистрация авторов и фоновые задачи
-
-Image-based deploy из `docker-compose.yml` включает два лёгких worker-контейнера:
-
-- `email-worker` раз в минуту вызывает внутреннюю доставку email;
-- `auth-cleanup-worker` раз в минуту проверяет расписание очистки; фактический интервал хранится в настройках Email.
-
-Для приложения нужны `AUTHOR_REGISTRATION_ENABLED` (по умолчанию `false`), ключи
-`EMAIL_OUTBOX_ENCRYPTION_KEY`, `EMAIL_PROVIDER_CREDENTIALS_KEY` и общий
-`AUTH_EMAIL_WORKER_SECRET`. Одинаковое значение `AUTH_EMAIL_WORKER_SECRET` должно быть
-передано приложению и обоим worker-контейнерам. Переменная
-`AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE` оставлена только как временный переходный fallback;
-профиль новых авторов следует выбрать в `/admin/settings/authors`.
-
-Для локальной разработки можно задать
-`AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION=true`: новые аккаунты сразу активируются,
-а письмо подтверждения не создаётся. В production эта опция игнорируется.
-
-Worker-контейнеры не публикуют порты и не получают доступ к базе данных. Ошибки сети,
-неуспешные HTTP-ответы и запуск раньше приложения повторяются через минуту. Оба worker’а
-только опрашивают scheduler; параллельный запуск защищён DB lease.
-Посмотреть их работу можно так:
+Оба worker’а обращаются только к защищённым внутренним endpoint и не имеют прямого доступа к базе.
 
 ```bash
 docker compose logs -f email-worker auth-cleanup-worker
 ```
 
-Для разового безопасного запуска email endpoint с тем же секретом:
+## Production compose
+
+`docker-compose.yml` использует готовые образы приложения и migrator:
 
 ```bash
-docker compose run --rm --no-deps --entrypoint /bin/sh email-worker -c \
-  'curl --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $AUTH_EMAIL_WORKER_SECRET" http://app:3000/api/internal/auth-email-outbox'
+docker compose --profile migrate run --rm migrate
+docker compose --profile seed run --rm seed-admin
+docker compose up -d app redis email-worker auth-cleanup-worker
 ```
 
-Для cleanup замени конечный путь на `/api/internal/auth-cleanup`.
+Перед запуском заполни production `.env`, установи `SECURE_COOKIES=true` и передай одинаковый `AUTH_EMAIL_WORKER_SECRET` приложению и worker-контейнерам.
+
+## Команды
+
+```bash
+npm run dev              # dev-сервер
+npm run typecheck        # TypeScript
+npm run lint             # ESLint
+npm test                 # тесты
+npm run check            # typecheck, lint и тесты
+npm run db:generate      # создать миграцию Drizzle
+npm run db:migrate       # применить миграции
+npm run db:seed:admin    # создать первого администратора
+```
+
+Production build автоматически после обычных изменений не запускается:
+
+```bash
+npm run build
+```

@@ -18,12 +18,14 @@ import {
 import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
 import { getAuthorOptions } from "@/db/queries/authors";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 
@@ -81,7 +83,16 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [{ id }, query, authors, franchises, mediaCarriers, mediaTypes, archiveSettings] = await Promise.all([
+  const [
+    { id },
+    query,
+    authors,
+    franchises,
+    mediaCarriers,
+    mediaTypes,
+    archiveSettings,
+    canSuggestFranchises,
+  ] = await Promise.all([
     params,
     searchParams,
     getAuthorOptions(),
@@ -89,6 +100,7 @@ export default async function EditAdminMediaPage({
     getMediaCarrierOptions(),
     getMediaTypeOptions(),
     getArchiveSettings(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
   ]);
   const mediaItemId = Number(id);
 
@@ -150,6 +162,7 @@ export default async function EditAdminMediaPage({
               mediaCarriers={mediaCarriers}
               mediaTypes={mediaTypes}
               maxTitleAliases={archiveSettings.maxTitleAliases}
+              canSuggestFranchises={canSuggestFranchises}
               requireAuthor
               values={item}
               metadata={metadata}

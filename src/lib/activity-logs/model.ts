@@ -12,6 +12,8 @@ export const ACTIVITY_ENTITY_TYPES = [
   "email-automation",
   "email-outbox",
   "cover-provider",
+  "ai-provider",
+  "ai-scenario",
   "cover-settings",
   "archive-settings",
   "franchise",
@@ -81,6 +83,12 @@ export const ACTIVITY_ACTIONS = [
   "archive-settings.updated",
   "cover-providers.updated",
   "cover-provider-credentials.updated",
+  "ai-provider.settings.updated",
+  "ai-provider.credentials.updated",
+  "ai-provider.tested",
+  "ai-scenario.created",
+  "ai-scenario.deleted",
+  "ai-scenario.updated",
 ] as const;
 
 export type ActivityActorType = (typeof ACTIVITY_ACTOR_TYPES)[number];
@@ -115,6 +123,8 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   "email-automation": "Автоматизация email",
   "email-outbox": "Очередь email",
   "cover-provider": "Провайдер обложек",
+  "ai-provider": "AI-провайдер",
+  "ai-scenario": "AI-сценарий",
   "cover-settings": "Настройки обложек",
   "archive-settings": "Настройки архива",
   franchise: "Серия",
@@ -184,6 +194,12 @@ export const ACTIVITY_ACTION_LABELS = {
   "archive-settings.updated": "Настройки архива изменены",
   "cover-providers.updated": "Провайдеры обложек изменены",
   "cover-provider-credentials.updated": "Авторизация провайдера сохранена",
+  "ai-provider.settings.updated": "Настройки AI-провайдера изменены",
+  "ai-provider.credentials.updated": "Авторизация AI-провайдера сохранена",
+  "ai-provider.tested": "AI-провайдер проверен",
+  "ai-scenario.created": "AI-сценарий создан",
+  "ai-scenario.deleted": "AI-сценарий удалён",
+  "ai-scenario.updated": "AI-сценарий изменён",
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([
@@ -208,6 +224,8 @@ const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([
   "email-provider.retry-requested",
   "email-automation.updated",
   "email-outbox.retry-requested",
+  "ai-provider.credentials.updated",
+  "ai-provider.tested",
   "author-token.created",
   "author-token.revoked",
   "author-token.restored",
@@ -227,6 +245,7 @@ const CRITICAL_ACTIVITY_ACTIONS = new Set<ActivityAction>([
   "author.blocked",
   "author.deleted",
   "cover-provider-credentials.updated",
+  "ai-provider.credentials.updated",
 ]);
 
 const SECRET_KEY_PARTS = [

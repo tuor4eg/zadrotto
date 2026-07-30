@@ -11,8 +11,9 @@ import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
-import { ImageViewer } from "@/components/ui/image-viewer";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
+import { ImageViewer } from "@/components/ui/image-viewer";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
@@ -218,17 +219,11 @@ export function MediaCatalogPreview({
             ) : null}
           </div>
           {item.franchises.length > 0 ? (
-            <div className="mt-1 flex flex-wrap gap-x-2 gap-y-1">
-              {item.franchises.map((franchise) => (
-                <Link
-                  key={franchise.id}
-                  href={`/series/${franchise.code}`}
-                  className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
-                >
-                  {franchise.title}
-                </Link>
-              ))}
-            </div>
+            <MediaItemFranchiseLinks
+              franchises={item.franchises}
+              containerClassName="mt-1 flex flex-wrap gap-x-2 gap-y-1"
+              className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+            />
           ) : (
             <div className="mt-1 text-stone-500">Не указаны</div>
           )}

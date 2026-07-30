@@ -5,6 +5,7 @@ import Link from "next/link";
 import {
   Archive,
   Activity,
+  BrainCircuit,
   ChevronDown,
   FileClock,
   FileText,
@@ -123,6 +124,7 @@ function getAdminNavGroups({
       items: [
         { href: "/admin/settings/general", icon: Settings, label: "Настройки" },
         { href: "/admin/tools/providers", icon: Plug, label: "Провайдеры" },
+        { href: "/admin/tools/ai", icon: BrainCircuit, label: "AI" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
         { href: "/admin/tools/email", icon: Mail, label: "Email" },
         { href: "/admin/tools/activity", icon: Activity, label: "Журнал" },
