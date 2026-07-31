@@ -750,6 +750,14 @@ describe("AI persistence and UI security contracts", () => {
       "src/app/archive-author-media-suggestion.tsx",
     ), "utf8");
     const archivePage = await readFile(path.join(root, "src/app/page.tsx"), "utf8");
+    const mediaItemPage = await readFile(path.join(
+      root,
+      "src/app/media/[code]/page.tsx",
+    ), "utf8");
+    const franchiseSuggestionDialog = await readFile(path.join(
+      root,
+      "src/app/media-item-franchise-suggestion-dialog.tsx",
+    ), "utf8");
     const seriesPage = await readFile(path.join(
       root,
       "src/app/series/[code]/page.tsx",
@@ -864,6 +872,18 @@ describe("AI persistence and UI security contracts", () => {
     assert.match(clientHelper, /fetch\("\/api\/media\/suggest-franchises"/);
     assert.match(clientHelper, /export function resolveSuggestedFranchises/);
     assert.match(clientHelper, /export function appendUniqueFranchiseIds/);
+    assert.match(franchiseSuggestionDialog, /requestFranchiseSuggestions\(\{/);
+    assert.match(franchiseSuggestionDialog, /assignedFranchises\.map/);
+    assert.match(franchiseSuggestionDialog, /resolveSuggestedFranchises\(franchises, excludedIds/);
+    assert.match(franchiseSuggestionDialog, /appendUniqueFranchiseIds\(current/);
+    assert.match(franchiseSuggestionDialog, /aria-label="Предложить серии"/);
+    assert.match(franchiseSuggestionDialog, /label="Предложить серии" side="left"/);
+    assert.match(franchiseSuggestionDialog, /min-w-0 flex-1["><]+SearchableFranchiseMultiSelect/);
+    assert.match(
+      franchiseSuggestionDialog,
+      /<FranchiseSuggestionStatus visible=\{isSuggestingFranchises\} \/>/,
+    );
+    assert.match(franchiseSuggestionDialog, /Не удалось подобрать серии\. Попробуйте ещё раз\./);
     assert.match(mediaForm, /requestFranchiseSuggestions\(\{/);
     assert.match(mediaForm, /resolveSuggestedFranchises\(/);
     assert.match(mediaForm, /appendUniqueFranchiseIds\(/);
@@ -917,6 +937,7 @@ describe("AI persistence and UI security contracts", () => {
       authorMediaNewPage,
       authorMediaEditPage,
       archivePage,
+      mediaItemPage,
       seriesPage,
     ]) {
       assert.match(

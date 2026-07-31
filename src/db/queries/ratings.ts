@@ -1,7 +1,8 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { mediaItems, ratings } from "@/db/schema";
+import { authorMediaStatuses, mediaItems, ratings } from "@/db/schema";
+import { lockAuthorMediaState } from "@/db/queries/author-media-statuses";
 
 function getCurrentMoscowYear() {
   return Number(
@@ -19,22 +20,19 @@ export async function upsertAuthorRating(input: {
 }) {
   const now = new Date();
 
-  await db
-    .insert(ratings)
-    .values({
-      mediaItemId: input.mediaItemId,
-      authorId: input.authorId,
-      score: input.score,
-      createdAt: now,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: [ratings.mediaItemId, ratings.authorId],
-      set: {
-        score: input.score,
-        updatedAt: now,
-      },
-    });
+  await db.transaction(async (tx) => {
+    await lockAuthorMediaState(tx, input);
+    await tx
+      .delete(authorMediaStatuses)
+      .where(and(eq(authorMediaStatuses.mediaItemId, input.mediaItemId), eq(authorMediaStatuses.authorId, input.authorId)));
+    await tx
+      .insert(ratings)
+      .values({ ...input, createdAt: now, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [ratings.mediaItemId, ratings.authorId],
+        set: { score: input.score, updatedAt: now },
+      });
+  });
 }
 
 export async function getAuthorRating(mediaItemId: number, authorId: number) {

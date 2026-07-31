@@ -20,6 +20,7 @@ import {
 
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/authors/media-experiences";
 import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/model";
+import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
@@ -826,6 +827,30 @@ export const ratings = pgTable(
     check(
       "ratings_score_whole_1_to_10_check",
       sql`${table.score} >= 10 and ${table.score} <= 100 and ${table.score} % 10 = 0`,
+    ),
+  ],
+);
+
+export const authorMediaStatuses = pgTable(
+  "author_media_statuses",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    mediaItemId: integer("media_item_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    status: text("status").$type<AuthorMediaStatus>().notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    unique("author_media_statuses_author_media_unique").on(table.authorId, table.mediaItemId),
+    index("author_media_statuses_author_status_idx").on(table.authorId, table.status),
+    index("author_media_statuses_media_item_id_idx").on(table.mediaItemId),
+    check(
+      "author_media_statuses_status_check",
+      sql`${table.status} in (${sql.join(AUTHOR_MEDIA_STATUSES.map((status) => sql`${status}`), sql`, `)})`,
     ),
   ],
 );

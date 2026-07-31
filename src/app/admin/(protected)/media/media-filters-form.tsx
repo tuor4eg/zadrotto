@@ -37,6 +37,7 @@ type AdminMediaFiltersFormProps = {
 
 const SORT_LABELS: Record<CatalogSort, string> = {
   title: "По названию",
+  created_at: "По дате добавления",
   release_year: "По году",
   average_score: "По средней оценке",
   ratings_count: "По количеству оценок",

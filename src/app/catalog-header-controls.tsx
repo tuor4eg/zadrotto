@@ -9,7 +9,9 @@ import {
   CalendarCheck,
   ChevronDown,
   Check,
+  EyeOff,
   History,
+  Heart,
   Library,
   Search,
   Star,
@@ -49,6 +51,7 @@ type YearSelectValue = "all" | `${number}`;
 
 const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   title: "Название",
+  created_at: "Дата добавления",
   release_year: "Год выпуска",
   average_score: "Средняя оценка",
   ratings_count: "Количество оценок",
@@ -58,14 +61,18 @@ const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
 
 const AUTHOR_RATING_FILTER_LABELS: Record<AuthorRatingFilter, string> = {
   all: "Все",
-  rated: "Оцененные мной",
-  unrated: "Без моей оценки",
+  rated: "Оценённые",
+  wanted: "Желаемое",
+  skipped: "Пропущенное",
+  unmarked: "Без оценки и статуса",
 };
 
 const AUTHOR_RATING_FILTER_ICONS: Record<AuthorRatingFilter, React.ReactNode> = {
   all: <Library className="size-4" />,
   rated: <Check className="size-4" />,
-  unrated: <X className="size-4" />,
+  wanted: <Heart className="size-4" />,
+  skipped: <EyeOff className="size-4" />,
+  unmarked: <X className="size-4" />,
 };
 
 const CATALOG_YEAR_MODE_LABELS: Record<CatalogYearMode, string> = {
@@ -183,6 +190,8 @@ export function CatalogHeaderControls({
     ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
   );
   const yearModeOptions = CATALOG_YEAR_MODES;
+  const hasActiveFilters =
+    (currentAuthor && authorRatingFilter !== "all") || yearFilter !== null;
 
   const replaceFilters = useCallback(
     (nextFilters: {
@@ -312,7 +321,7 @@ export function CatalogHeaderControls({
     <div
       className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible ${
         compact
-          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2 lg:overflow-hidden"
+          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2 lg:overflow-visible"
           : "lg:contents"
       }`}
     >
@@ -369,9 +378,19 @@ export function CatalogHeaderControls({
             aria-expanded={openSelect === "filters"}
             aria-controls={filtersMenuId}
             onClick={() => setOpenSelect(openSelect === "filters" ? null : "filters")}
-            className="archive-control-surface inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            className={`archive-control-surface relative inline-flex h-9 w-9 items-center justify-center rounded-md border font-mono text-xs uppercase tracking-[0.12em] shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+              hasActiveFilters
+                ? "border-red-900/50 bg-red-900/10 text-red-950 hover:border-red-900 hover:bg-red-900/15"
+                : "border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50"
+            }`}
           >
             {yearFilter === null ? <Library className="size-4" /> : <Calendar className="size-4" />}
+            {hasActiveFilters ? (
+              <span
+                aria-hidden="true"
+                className="absolute right-1 top-1 size-1.5 rounded-full bg-red-800 shadow-[0_0_0_1px_rgba(255,255,255,0.8)]"
+              />
+            ) : null}
             <ChevronDown className="sr-only" />
           </button>
 
@@ -382,7 +401,7 @@ export function CatalogHeaderControls({
               className="archive-paper-surface fixed inset-x-3 top-[5.25rem] z-[80] w-auto rounded-md border border-stone-500/70 p-2 shadow-[0_14px_26px_rgba(28,25,23,0.24)] sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(19rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-1.5rem)]"
             >
               {currentAuthor ? (
-                <div className="grid gap-1">
+                <div className="grid">
                   {Object.entries(AUTHOR_RATING_FILTER_LABELS).map(([value, label]) => {
                     const filter = value as AuthorRatingFilter;
                     const selected = authorRatingFilter === filter;

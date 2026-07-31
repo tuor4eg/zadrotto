@@ -1,7 +1,8 @@
 import type { MediaType, MediaTypeOption } from "../lib/media/types";
+import type { AuthorMediaStatus } from "../lib/media/author-media-status";
 
 export type MediaTypeFilter = MediaType | "all";
-export type AuthorRatingFilter = "all" | "rated" | "unrated";
+export type AuthorRatingFilter = "all" | "rated" | "wanted" | "skipped" | "unmarked";
 export type CatalogYearMode = "release" | "experience" | "rating";
 export type CatalogYearFilter = number | null;
 
@@ -9,6 +10,7 @@ const MIN_CATALOG_YEAR = 1900;
 
 export const CATALOG_SORTS = [
   "title",
+  "created_at",
   "release_year",
   "average_score",
   "ratings_count",
@@ -32,6 +34,7 @@ export const AUTHOR_ONLY_CATALOG_YEAR_MODES = [
 
 export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDirection> = {
   title: "asc",
+  created_at: "desc",
   release_year: "asc",
   average_score: "desc",
   ratings_count: "desc",
@@ -47,12 +50,14 @@ export type CatalogFilterItem = {
   mediaType: MediaType;
   releaseYear: number | null;
   currentAuthorScore: number | null;
+  currentAuthorStatus?: AuthorMediaStatus | null;
   currentAuthorRatedAt?: Date | string | null;
   currentAuthorFirstExperiencedAt?: Date | string | null;
 };
 
 export type CatalogSortItem = {
   title: string;
+  createdAt: Date | string;
   mediaType: MediaType;
   releaseYear: number | null;
   averageScore: number | null;
@@ -87,7 +92,11 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
       (mediaTypeFilter === "all" || item.mediaType === mediaTypeFilter) &&
       (authorRatingFilter === "all" ||
         (authorRatingFilter === "rated" && item.currentAuthorScore !== null) ||
-        (authorRatingFilter === "unrated" && item.currentAuthorScore === null)) &&
+        (authorRatingFilter === "wanted" && item.currentAuthorStatus === "wanted") ||
+        (authorRatingFilter === "skipped" && item.currentAuthorStatus === "skipped") ||
+        (authorRatingFilter === "unmarked" &&
+          item.currentAuthorScore === null &&
+          item.currentAuthorStatus == null)) &&
       matchesYear(item, yearFilter, yearMode) &&
       matchesSearch(item, normalizedSearchQuery),
   );
@@ -103,7 +112,13 @@ export function parseMediaTypeFilter(
 }
 
 export function parseAuthorRatingFilter(filter: string | null): AuthorRatingFilter {
-  return filter === "rated" || filter === "unrated" ? filter : "all";
+  if (filter === "unrated") {
+    return "unmarked";
+  }
+
+  return filter === "rated" || filter === "wanted" || filter === "skipped" || filter === "unmarked"
+    ? filter
+    : "all";
 }
 
 export function parseCatalogYear(value: string | null): CatalogYearFilter {
@@ -217,6 +232,16 @@ export function sortCatalogItems<TItem extends CatalogSortItem>(
 ) {
   return [...items].sort((left, right) => {
     const titleFallback = compareTitles(left.title, right.title);
+
+    if (sort === "created_at") {
+      return (
+        compareNullableNumbers(
+          getDateTime(left.createdAt),
+          getDateTime(right.createdAt),
+          direction,
+        ) || titleFallback
+      );
+    }
 
     if (sort === "release_year") {
       return compareNullableNumbers(left.releaseYear, right.releaseYear, direction) || titleFallback;

@@ -66,6 +66,7 @@ type MediaItemDetailsProps = {
   mediaTypes: MediaTypeOption[];
   compactRatingSlot?: React.ReactNode;
   ratingSlot?: React.ReactNode;
+  titleActions?: React.ReactNode;
   noteSlot?: React.ReactNode;
   franchiseActions?: React.ReactNode;
   headerActions?: React.ReactNode;
@@ -127,6 +128,7 @@ export function MediaItemDetails({
   mediaTypes,
   compactRatingSlot,
   ratingSlot,
+  titleActions,
   noteSlot,
   franchiseActions,
   headerActions,
@@ -162,6 +164,7 @@ export function MediaItemDetails({
         mediaTypes={mediaTypes}
         compactRatingSlot={compactRatingSlot}
         ratingSlot={ratingSlot}
+        titleActions={titleActions}
         noteSlot={noteSlot}
         franchiseActions={franchiseActions}
         headerActions={headerActions}
@@ -238,6 +241,7 @@ export function MediaItemDetails({
                 <h1 className="text-4xl font-semibold leading-tight text-zinc-950 sm:text-5xl">
                   {item.title}
                 </h1>
+                {titleActions}
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <p className="text-lg text-zinc-500">{item.originalTitle}</p>
                 ) : null}
@@ -334,6 +338,7 @@ function ArchiveMediaItemDetails({
   mediaTypes,
   compactRatingSlot,
   ratingSlot,
+  titleActions,
   noteSlot,
   franchiseActions,
   headerActions,
@@ -452,6 +457,7 @@ function ArchiveMediaItemDetails({
                 >
                   <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
                 </div>
+                {titleActions}
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
                     {item.originalTitle}

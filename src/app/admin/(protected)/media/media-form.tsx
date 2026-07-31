@@ -531,7 +531,6 @@ export function AdminMediaForm({
               options={franchiseOptions}
               value={selectedFranchiseIds}
               onChange={setSelectedFranchiseIds}
-              hideSelectedAncestors
             />
             <InlineFranchiseDialog
               onCreated={(franchise) => {
@@ -540,7 +539,7 @@ export function AdminMediaForm({
                     (currentFranchise) => currentFranchise.id === franchise.id,
                   )
                     ? currentFranchises
-                    : [...currentFranchises, { ...franchise, parentIds: [], path: franchise.title }];
+                    : [...currentFranchises, franchise];
 
                   return [...nextFranchises].sort((left, right) =>
                     left.title.localeCompare(right.title, "ru"),

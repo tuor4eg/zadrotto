@@ -8,6 +8,7 @@ import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggest
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { MediaItemTile } from "@/app/media-item-tile";
+import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
@@ -368,7 +369,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
 
                     <div className="grid grid-cols-3 content-start gap-2.5 border-t border-stone-300/70 p-3 md:grid-cols-4 xl:grid-cols-6">
                       {section.items.map((item) => currentAuthor && item.hasDirectFranchiseLink ? (
-                        <SeriesMediaUnlinkTile key={item.id} canPublishFranchisesWithoutReview={currentAuthor.canPublishFranchisesWithoutReview} franchiseCode={franchise.code} item={item} mediaTypes={mediaTypes} currentAuthorScore={item.currentAuthorScore} />
+                        <SeriesMediaUnlinkTile key={item.id} canPublishFranchisesWithoutReview={currentAuthor.canPublishFranchisesWithoutReview} franchiseCode={franchise.code} item={item} mediaTypes={mediaTypes} currentAuthorScore={item.currentAuthorScore} currentAuthorStatus={item.currentAuthorStatus} />
+                      ) : currentAuthor ? (
+                        <MediaItemStatusTile key={item.id} currentAuthorScore={item.currentAuthorScore} currentAuthorStatus={item.currentAuthorStatus} item={item} href={`/media/${item.code}`} mediaTypes={mediaTypes} />
                       ) : (
                         <MediaItemTile key={item.id} currentAuthorScore={currentAuthor ? item.currentAuthorScore : undefined} item={item} href={`/media/${item.code}`} mediaTypes={mediaTypes} />
                       ))}

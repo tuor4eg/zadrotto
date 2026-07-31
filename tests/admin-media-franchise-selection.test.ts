@@ -19,16 +19,13 @@ function getFunctionSource(name: string, nextName: string) {
 describe("admin media franchise selection", () => {
   const optionsQuerySource = getFunctionSource(
     "getAdminFranchiseOptions",
-    "getPublishedFranchiseOptions",
+    "getAiFranchiseCandidates",
   );
 
-  it("maps every series to its complete parent path and ancestry ids", () => {
-    assert.match(optionsQuerySource, /const parentIds: number\[\] = \[\]/);
-    assert.match(optionsQuerySource, /const path = \[row\.title\]/);
-    assert.match(optionsQuerySource, /while \(parentId\) \{/);
-    assert.match(optionsQuerySource, /parentIds\.unshift\(parent\.id\)/);
-    assert.match(optionsQuerySource, /path\.unshift\(parent\.title\)/);
-    assert.match(optionsQuerySource, /parentIds,[\s\S]*path: path\.join\(" \/ "\)/);
+  it("uses the same flat series options as the other media forms", () => {
+    assert.match(optionsQuerySource, /id: franchises\.id,[\s\S]*title: franchises\.title/);
+    assert.doesNotMatch(optionsQuerySource, /parentIds/);
+    assert.doesNotMatch(optionsQuerySource, /path: path\.join/);
   });
 
   it("displays the complete path for selected series", () => {
@@ -44,7 +41,7 @@ describe("admin media franchise selection", () => {
     assert.match(multiSelectSource, /onChange\(\[\.\.\.nextValue, optionId\]\)/);
   });
 
-  it("enables hierarchical deduplication only for the admin media form", () => {
-    assert.match(adminMediaFormSource, /<SearchableFranchiseMultiSelect[\s\S]*hideSelectedAncestors/);
+  it("does not enable the legacy hierarchical mode in the admin media form", () => {
+    assert.doesNotMatch(adminMediaFormSource, /hideSelectedAncestors/);
   });
 });

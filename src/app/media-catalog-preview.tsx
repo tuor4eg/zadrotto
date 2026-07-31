@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
+import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { ArchiveCover } from "@/app/media-item-tile";
@@ -23,6 +24,7 @@ import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCatalogPreviewProps = {
   canPublishFranchisesWithoutReview: boolean;
+  canSuggestFranchises: boolean;
   currentAdmin: boolean;
   currentAuthor: {
     name: string;
@@ -58,6 +60,7 @@ function CoverSourceAttribution({
 
 export function MediaCatalogPreview({
   canPublishFranchisesWithoutReview,
+  canSuggestFranchises,
   currentAdmin,
   currentAuthor,
   franchises,
@@ -157,6 +160,13 @@ export function MediaCatalogPreview({
             frame={mediaCarrierFrame}
           />
         </div>
+        {currentAuthor && item.currentAuthorScore === null ? (
+          <AuthorMediaStatusControls
+            currentAuthorScore={item.currentAuthorScore}
+            currentAuthorStatus={item.currentAuthorStatus}
+            mediaItemCode={item.code}
+          />
+        ) : null}
         {item.originalTitle && item.originalTitle !== item.title ? (
           <div className={`mt-2 ${labelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
             {item.originalTitle}
@@ -199,7 +209,6 @@ export function MediaCatalogPreview({
             size="compact"
           />
         </div>
-
         <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
           <div className="flex items-center justify-between gap-3">
             <div className={`${labelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
@@ -209,12 +218,24 @@ export function MediaCatalogPreview({
               <MediaItemFranchiseSuggestionDialog
                 assignedFranchises={item.franchises}
                 canPublishWithoutReview={canPublishFranchisesWithoutReview}
+                canSuggestFranchises={canSuggestFranchises}
                 franchises={mapFranchiseSuggestionOptions(
                   franchises,
                   item.franchiseLinkStatuses,
                 )}
                 mediaItemCode={item.code}
                 mediaItemId={item.id}
+                franchiseSuggestionInput={{
+                  title: item.title,
+                  originalTitle: item.originalTitle,
+                  aliases: item.aliases,
+                  description: item.description,
+                  mediaType: item.mediaType,
+                  mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
+                  releaseYear: item.releaseYear,
+                  mediaCarrier: item.mediaCarrierName,
+                  metadata: item.metadataFacts ?? {},
+                }}
               />
             ) : null}
           </div>

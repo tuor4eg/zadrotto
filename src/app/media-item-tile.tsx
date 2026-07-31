@@ -16,6 +16,7 @@ import {
 
 type MediaItemTileItem = {
   averageScore: number | null;
+  code: string;
   coverThumbUrl?: string | null;
   coverUrl: string | null;
   id: number;

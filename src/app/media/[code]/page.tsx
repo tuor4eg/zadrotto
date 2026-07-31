@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
+import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
@@ -19,12 +20,14 @@ import {
   getEnabledMediaTypeCodes,
 } from "@/db/queries/media-types";
 import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -84,7 +87,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises] = await Promise.all([
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises] = await Promise.all([
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -94,6 +97,9 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     getPublishedReviewsForMediaItem(item.id),
     getAllMediaTypeOptions(),
     currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
+    currentAuthor
+      ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
+      : Promise.resolve(false),
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -155,12 +161,24 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               <MediaItemFranchiseSuggestionDialog
                 assignedFranchises={item.franchises}
                 canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
+                canSuggestFranchises={canSuggestFranchises}
                 franchises={mapFranchiseSuggestionOptions(
                   publishedFranchises,
                   item.franchiseLinkStatuses,
                 )}
                 mediaItemCode={item.code}
                 mediaItemId={item.id}
+                franchiseSuggestionInput={{
+                  title: item.title,
+                  originalTitle: item.originalTitle,
+                  aliases: item.aliases,
+                  description: item.description,
+                  mediaType: item.mediaType,
+                  mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
+                  releaseYear: item.releaseYear,
+                  mediaCarrier: item.mediaCarrierName,
+                  metadata: item.metadataFacts ?? {},
+                }}
               />
             ) : null
           }
@@ -172,6 +190,15 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
                   currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
                 }
                 reviews={reviews}
+              />
+            ) : null
+          }
+          titleActions={
+            currentAuthor && item.currentAuthorScore === null ? (
+              <AuthorMediaStatusControls
+                currentAuthorScore={item.currentAuthorScore}
+                currentAuthorStatus={item.currentAuthorStatus}
+                mediaItemCode={item.code}
               />
             ) : null
           }

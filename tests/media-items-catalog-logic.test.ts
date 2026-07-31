@@ -40,6 +40,7 @@ const items: TestCatalogItem[] = [
     mediaType: "film",
     releaseYear: 1972,
     currentAuthorScore: null,
+    currentAuthorStatus: "wanted",
     currentAuthorRatedAt: null,
     currentAuthorFirstExperiencedAt: null,
   },
@@ -51,8 +52,33 @@ const items: TestCatalogItem[] = [
     mediaType: "anime",
     releaseYear: 2024,
     currentAuthorScore: 80,
+    currentAuthorStatus: null,
     currentAuthorRatedAt: new Date("2025-03-01T00:00:00Z"),
     currentAuthorFirstExperiencedAt: "2024-01-01",
+  },
+  {
+    id: 4,
+    title: "Неинтересная запись",
+    originalTitle: null,
+    code: "skipped-item",
+    mediaType: "film",
+    releaseYear: 2000,
+    currentAuthorScore: null,
+    currentAuthorStatus: "skipped",
+    currentAuthorRatedAt: null,
+    currentAuthorFirstExperiencedAt: null,
+  },
+  {
+    id: 5,
+    title: "Неразмеченная запись",
+    originalTitle: null,
+    code: "unmarked-item",
+    mediaType: "book",
+    releaseYear: 2001,
+    currentAuthorScore: null,
+    currentAuthorStatus: null,
+    currentAuthorRatedAt: null,
+    currentAuthorFirstExperiencedAt: null,
   },
 ];
 
@@ -64,6 +90,7 @@ const sortableItems: TestSortableItem[] = [
   {
     id: 1,
     title: "Zeta",
+    createdAt: "2026-01-02T00:00:00Z",
     mediaType: "film",
     releaseYear: 2001,
     averageScore: 80,
@@ -75,6 +102,7 @@ const sortableItems: TestSortableItem[] = [
   {
     id: 2,
     title: "Alpha",
+    createdAt: "2026-01-04T00:00:00Z",
     mediaType: "game",
     releaseYear: null,
     averageScore: 95,
@@ -86,6 +114,7 @@ const sortableItems: TestSortableItem[] = [
   {
     id: 3,
     title: "Beta",
+    createdAt: "2026-01-01T00:00:00Z",
     mediaType: "book",
     releaseYear: 1999,
     averageScore: null,
@@ -97,6 +126,7 @@ const sortableItems: TestSortableItem[] = [
   {
     id: 4,
     title: "Gamma",
+    createdAt: "2026-01-03T00:00:00Z",
     mediaType: "game",
     releaseYear: 1999,
     averageScore: 95,
@@ -148,7 +178,7 @@ describe("filterCatalogItems", () => {
   it("combines search with media type filter", () => {
     assert.deepEqual(
       filterCatalogItems(items, "", "film", "all").map((item) => item.id),
-      [2],
+      [2, 4],
     );
     assert.deepEqual(
       filterCatalogItems(items, "solaris", "game", "all").map((item) => item.id),
@@ -162,12 +192,16 @@ describe("filterCatalogItems", () => {
       [1, 3],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "", "all", "unrated").map((item) => item.id),
+      filterCatalogItems(items, "", "all", "wanted").map((item) => item.id),
       [2],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "solar", "film", "unrated").map((item) => item.id),
-      [2],
+      filterCatalogItems(items, "", "all", "skipped").map((item) => item.id),
+      [4],
+    );
+    assert.deepEqual(
+      filterCatalogItems(items, "", "all", "unmarked").map((item) => item.id),
+      [5],
     );
     assert.deepEqual(
       filterCatalogItems(items, "solar", "film", "rated").map((item) => item.id),
@@ -193,6 +227,7 @@ describe("filterCatalogItems", () => {
 
 describe("parseCatalogSort", () => {
   it("keeps known catalog sort values and falls back to title", () => {
+    assert.equal(parseCatalogSort("created_at"), "created_at");
     assert.equal(parseCatalogSort("release_year"), "release_year");
     assert.equal(parseCatalogSort("my_rating_score"), "my_rating_score");
     assert.equal(parseCatalogSort("my_first_experience_year"), "my_first_experience_year");
@@ -218,9 +253,15 @@ describe("parseMediaTypeFilter", () => {
 describe("parseAuthorRatingFilter", () => {
   it("keeps known author rating filters and falls back to all", () => {
     assert.equal(parseAuthorRatingFilter("rated"), "rated");
-    assert.equal(parseAuthorRatingFilter("unrated"), "unrated");
+    assert.equal(parseAuthorRatingFilter("wanted"), "wanted");
+    assert.equal(parseAuthorRatingFilter("skipped"), "skipped");
+    assert.equal(parseAuthorRatingFilter("unmarked"), "unmarked");
     assert.equal(parseAuthorRatingFilter("unknown"), "all");
     assert.equal(parseAuthorRatingFilter(null), "all");
+  });
+
+  it("maps the legacy unrated filter to unmarked", () => {
+    assert.equal(parseAuthorRatingFilter("unrated"), "unmarked");
   });
 });
 
@@ -262,6 +303,17 @@ describe("sortCatalogItems", () => {
     assert.deepEqual(
       sortCatalogItems(sortableItems, "title").map((item) => item.id),
       [2, 3, 4, 1],
+    );
+  });
+
+  it("sorts by date added with newest records first by default", () => {
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "created_at").map((item) => item.id),
+      [2, 4, 1, 3],
+    );
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "created_at", "asc").map((item) => item.id),
+      [3, 1, 4, 2],
     );
   });
 

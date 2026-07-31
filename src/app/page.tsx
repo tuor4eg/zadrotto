@@ -209,6 +209,7 @@ export default async function Home({ searchParams }: HomeProps) {
           canPublishFranchisesWithoutReview={
             authorMediaSuggestionData?.canPublishFranchisesWithoutReview ?? false
           }
+          canSuggestFranchises={authorMediaSuggestionData?.canSuggestFranchises ?? false}
           items={catalog.items}
           mediaTypeCounts={mediaTypeCounts}
           mediaTypeFilter={mediaTypeFilter}

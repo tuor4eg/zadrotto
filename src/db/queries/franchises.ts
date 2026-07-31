@@ -2,12 +2,13 @@ import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } f
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
-import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
+import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -34,6 +35,17 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
         limit 1
       )`
     : sql<number | null>`null`;
+
+const currentAuthorStatusSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<AuthorMediaStatus | null>`(
+        select ${authorMediaStatuses.status}
+        from ${authorMediaStatuses}
+        where ${authorMediaStatuses.mediaItemId} = ${mediaItems.id}
+          and ${authorMediaStatuses.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<AuthorMediaStatus | null>`null`;
 
 type FranchiseLink = {
   id: number;
@@ -148,44 +160,15 @@ export async function getFranchiseTitlesByIds(ids: readonly number[]) {
 }
 
 export async function getAdminFranchiseOptions() {
-  const rows = await db
+  return db
     .select({
       id: franchises.id,
-      parentId: franchises.parentId,
       title: franchises.title,
       originalTitle: franchises.originalTitle,
       publicationStatus: franchises.publicationStatus,
     })
     .from(franchises)
     .orderBy(asc(franchises.title), asc(franchises.code));
-  const rowsById = new Map(rows.map((row) => [row.id, row]));
-
-  return rows.map((row) => {
-    const parentIds: number[] = [];
-    const path = [row.title];
-    let parentId = row.parentId;
-
-    while (parentId) {
-      const parent = rowsById.get(parentId);
-
-      if (!parent) {
-        break;
-      }
-
-      parentIds.unshift(parent.id);
-      path.unshift(parent.title);
-      parentId = parent.parentId;
-    }
-
-    return {
-      id: row.id,
-      title: row.title,
-      originalTitle: row.originalTitle,
-      publicationStatus: row.publicationStatus,
-      parentIds,
-      path: path.join(" / "),
-    };
-  });
 }
 
 export async function getAiFranchiseCandidates(currentAuthorId?: number) {
@@ -1605,6 +1588,7 @@ export async function getMediaItemsByFranchiseId(
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+      currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
       hasDirectFranchiseLink: sql<boolean>`bool_or(${mediaItemFranchises.franchiseId} = ${franchiseId})`,
     })
     .from(mediaItems)

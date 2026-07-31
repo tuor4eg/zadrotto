@@ -48,7 +48,9 @@ export function ArchiveCatalogLayout({
     : undefined;
   const previewPanelStyle: CSSProperties | undefined = fixedPreview.isFixed
     ? {
+        height: fixedPreview.height,
         left: fixedPreview.left,
+        maxHeight: fixedPreview.height,
         minHeight: fixedPreview.minHeight,
         position: "fixed",
         top: FIXED_PREVIEW_TOP_OFFSET,
@@ -56,7 +58,11 @@ export function ArchiveCatalogLayout({
         zIndex: 20,
       }
     : fixedPreview.minHeight > 0
-      ? { minHeight: fixedPreview.minHeight }
+      ? {
+          height: fixedPreview.height,
+          maxHeight: fixedPreview.height,
+          minHeight: fixedPreview.minHeight,
+        }
       : undefined;
 
   useEffect(() => {
@@ -84,7 +90,7 @@ export function ArchiveCatalogLayout({
         0,
         window.innerHeight - panelTop - FIXED_PREVIEW_BOTTOM_OFFSET,
       );
-      const height = Math.max(previewPanel.offsetHeight, availableHeight);
+      const height = availableHeight;
       const nextState: FixedPreviewState = {
         height,
         isFixed,
@@ -157,7 +163,9 @@ export function ArchiveCatalogLayout({
           className="archive-paper archive-panel archive-stack archive-stack-left relative flex w-full min-w-0 flex-col overflow-visible"
           style={previewPanelStyle}
         >
-          {preview}
+          <div className="archive-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+            {preview}
+          </div>
         </article>
       </div>
     </section>

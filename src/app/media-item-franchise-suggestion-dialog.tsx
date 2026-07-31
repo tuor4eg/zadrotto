@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, Plus, Trash2, X } from "lucide-react";
+import { Check, Plus, Sparkles, Trash2, X } from "lucide-react";
 import { useActionState, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { FranchiseSuggestionStatus } from "@/components/ui/franchise-suggestion-status";
 import { Input, Label, Textarea } from "@/components/ui/form";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import {
@@ -17,13 +18,21 @@ import {
   submitAuthorMediaItemFranchiseSuggestionAction,
   type MediaItemFranchiseSuggestionState,
 } from "@/app/media/franchise-actions";
+import {
+  appendUniqueFranchiseIds,
+  requestFranchiseSuggestions,
+  resolveSuggestedFranchises,
+} from "@/lib/ai/scenarios/suggest-franchises-client";
+import type { SuggestFranchisesMediaInput } from "@/lib/ai/scenarios/suggest-franchises";
 
 const initialState: MediaItemFranchiseSuggestionState = { error: null, success: false };
 
 export function MediaItemFranchiseSuggestionDialog({
   assignedFranchises,
   canPublishWithoutReview,
+  canSuggestFranchises,
   franchises,
+  franchiseSuggestionInput,
   mediaItemCode,
   mediaItemId,
 }: {
@@ -35,7 +44,9 @@ export function MediaItemFranchiseSuggestionDialog({
     title: string;
   }>;
   canPublishWithoutReview: boolean;
+  canSuggestFranchises: boolean;
   franchises: SearchableFranchiseOption[];
+  franchiseSuggestionInput: Omit<SuggestFranchisesMediaInput, "selectedFranchiseIds">;
   mediaItemCode: string;
   mediaItemId: number;
 }) {
@@ -49,6 +60,8 @@ export function MediaItemFranchiseSuggestionDialog({
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const [franchiseRemovalIds, setFranchiseRemovalIds] = useState<string[]>([]);
   const [removalConfirmationOpen, setRemovalConfirmationOpen] = useState(false);
+  const [isSuggestingFranchises, setIsSuggestingFranchises] = useState(false);
+  const [aiMessage, setAiMessage] = useState<{ tone: "error" | "success"; text: string } | null>(null);
   const removalConfirmedRef = useRef(false);
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -62,6 +75,7 @@ export function MediaItemFranchiseSuggestionDialog({
     setTitle("");
     setOriginalTitle("");
     setParentId("");
+    setAiMessage(null);
     setFranchiseSelectResetKey((currentKey) => currentKey + 1);
     setOpen(false);
   }
@@ -93,6 +107,46 @@ export function MediaItemFranchiseSuggestionDialog({
     removalConfirmedRef.current = true;
     setRemovalConfirmationOpen(false);
     formRef.current?.requestSubmit();
+  }
+
+  async function suggestFranchises() {
+    if (isSuggestingFranchises) return;
+
+    setIsSuggestingFranchises(true);
+    setAiMessage(null);
+
+    try {
+      const excludedIds = [
+        ...assignedFranchises.map((franchise) => String(franchise.id)),
+        ...selectedFranchiseIds,
+      ];
+      const franchiseIds = await requestFranchiseSuggestions({
+        ...franchiseSuggestionInput,
+        selectedFranchiseIds: excludedIds.map(Number),
+      });
+      const suggested = resolveSuggestedFranchises(franchises, excludedIds, franchiseIds);
+
+      if (suggested.length === 0) {
+        setAiMessage({ tone: "success", text: "Подходящих серий не найдено." });
+        return;
+      }
+
+      setSelectedFranchiseIds((current) =>
+        appendUniqueFranchiseIds(current, suggested.map((franchise) => franchise.id)),
+      );
+      setFranchiseSelectResetKey((currentKey) => currentKey + 1);
+      setAiMessage({
+        tone: "success",
+        text: `Добавлены серии: ${suggested.map((franchise) => franchise.title).join(", ")}.`,
+      });
+    } catch {
+      setAiMessage({
+        tone: "error",
+        text: "Не удалось подобрать серии. Попробуйте ещё раз.",
+      });
+    } finally {
+      setIsSuggestingFranchises(false);
+    }
   }
 
   const errorMessage = state.error === "duplicate"
@@ -176,7 +230,8 @@ export function MediaItemFranchiseSuggestionDialog({
                 <Button type="button" variant={mode === "existing" ? "default" : "ghost"} size="sm" className={mode === "existing" ? "flex-1" : "flex-1 bg-white hover:bg-stone-50"} onClick={() => setMode("existing")}>Выбрать существующую</Button>
                 <Button type="button" variant={mode === "new" ? "default" : "ghost"} size="sm" className={mode === "new" ? "flex-1" : "flex-1 bg-white hover:bg-stone-50"} onClick={() => setMode("new")}>Создать новую</Button>
               </div>
-              {mode === "existing" ? <div className="grid gap-2"><Label htmlFor="media-franchise-ids">Серии</Label><SearchableFranchiseMultiSelect key={franchiseSelectResetKey} id="media-franchise-ids" name="franchiseIds" options={franchises} value={selectedFranchiseIds} onChange={setSelectedFranchiseIds} />
+              {mode === "existing" ? <div className="grid gap-2"><Label htmlFor="media-franchise-ids">Серии</Label><div className="flex min-w-0 items-center gap-2"><div className="min-w-0 flex-1"><SearchableFranchiseMultiSelect key={franchiseSelectResetKey} id="media-franchise-ids" name="franchiseIds" options={franchises} value={selectedFranchiseIds} onChange={setSelectedFranchiseIds} /></div>{canSuggestFranchises ? <ArchiveTooltip label="Предложить серии" side="left"><Button type="button" variant="outline" size="icon" className="h-10 w-10 shrink-0" aria-label="Предложить серии" disabled={isPending || isSuggestingFranchises} onClick={() => void suggestFranchises()}><Sparkles className={isSuggestingFranchises ? "animate-pulse" : undefined} /></Button></ArchiveTooltip> : null}</div><FranchiseSuggestionStatus visible={isSuggestingFranchises} />
+                {aiMessage ? <p className={`text-xs leading-5 ${aiMessage.tone === "error" ? "text-red-700" : "text-stone-600"}`} role={aiMessage.tone === "error" ? "alert" : "status"}>{aiMessage.text}</p> : null}
                 {assignedFranchises.length > 0 ? (
                   <div className="mt-1 grid gap-2">
                     <p className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">Уже назначены</p>

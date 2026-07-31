@@ -16,6 +16,7 @@ import {
 } from "@/app/media-items-catalog-logic";
 import { MediaTypeTabs } from "@/app/media-type-tabs";
 import { MediaItemTile } from "@/app/media-item-tile";
+import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { ArchiveCatalogLayout } from "@/components/archive/archive-catalog-layout";
 import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
@@ -29,6 +30,7 @@ import {
 type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;
   canPublishFranchisesWithoutReview: boolean;
+  canSuggestFranchises: boolean;
   currentAdmin: boolean;
   defaultPageSize: number;
   items: CatalogMediaItem[];
@@ -72,6 +74,7 @@ function updateFilterParam(
 export function MediaItemsCatalog({
   authorRatingFilter,
   canPublishFranchisesWithoutReview,
+  canSuggestFranchises,
   currentAdmin,
   currentAuthor,
   defaultPageSize,
@@ -198,6 +201,7 @@ export function MediaItemsCatalog({
       preview={
         <MediaCatalogPreview
           canPublishFranchisesWithoutReview={canPublishFranchisesWithoutReview}
+          canSuggestFranchises={canSuggestFranchises}
           currentAdmin={currentAdmin}
           currentAuthor={currentAuthor}
           franchises={publishedFranchises}
@@ -233,18 +237,25 @@ export function MediaItemsCatalog({
           </div>
         </div>
       ) : null}
-      {items.map((item) => (
-        <MediaItemTile
-          key={item.id}
-          currentAuthorScore={
-            currentAuthor !== null ? item.currentAuthorScore : undefined
-          }
-          href={`/media/${item.code}`}
-          item={item}
-          onSelect={() => setSelectedId(item.id)}
-          selected={selectedItem?.id === item.id}
-        />
-      ))}
+      {items.map((item) => {
+        const tileProps = {
+          href: `/media/${item.code}`,
+          item,
+          onSelect: () => setSelectedId(item.id),
+          selected: selectedItem?.id === item.id,
+        };
+
+        return currentAuthor ? (
+          <MediaItemStatusTile
+            key={item.id}
+            {...tileProps}
+            currentAuthorScore={item.currentAuthorScore}
+            currentAuthorStatus={item.currentAuthorStatus}
+          />
+        ) : (
+          <MediaItemTile key={item.id} {...tileProps} />
+        );
+      })}
     </ArchiveCatalogLayout>
   );
 }

@@ -27,6 +27,7 @@ import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
 import {
   authorMediaExperiences,
+  authorMediaStatuses,
   authors,
   contributionMediaItems,
   contributions,
@@ -40,6 +41,7 @@ import {
   mediaTypes,
   ratings,
 } from "@/db/schema";
+import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import type { MediaType } from "@/lib/media/types";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import type { PublicationStatus } from "@/lib/media/publication-status";
@@ -257,6 +259,17 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
       )`
     : sql<number | null>`null`;
 
+const currentAuthorStatusSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<AuthorMediaStatus | null>`(
+        select ${authorMediaStatuses.status}
+        from ${authorMediaStatuses}
+        where ${authorMediaStatuses.mediaItemId} = ${mediaItems.id}
+          and ${authorMediaStatuses.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<AuthorMediaStatus | null>`null`;
+
 const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
   currentAuthorId
     ? sql<Date | null>`(
@@ -326,6 +339,20 @@ const currentAuthorRatingExistsCondition = (currentAuthorId: number) =>
       .where(and(eq(ratings.mediaItemId, mediaItems.id), eq(ratings.authorId, currentAuthorId))),
   );
 
+const currentAuthorStatusCondition = (currentAuthorId: number, status: AuthorMediaStatus) =>
+  exists(
+    db
+      .select({ id: authorMediaStatuses.id })
+      .from(authorMediaStatuses)
+      .where(
+        and(
+          eq(authorMediaStatuses.mediaItemId, mediaItems.id),
+          eq(authorMediaStatuses.authorId, currentAuthorId),
+          eq(authorMediaStatuses.status, status),
+        ),
+      ),
+  );
+
 function catalogFilterConditions(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
@@ -352,11 +379,19 @@ function catalogFilterConditions(input: {
   if (input.currentAuthorId && input.authorRatingFilter !== "all") {
     const ratingExistsCondition = currentAuthorRatingExistsCondition(input.currentAuthorId);
 
-    conditions.push(
-      input.authorRatingFilter === "rated"
-        ? ratingExistsCondition
-        : not(ratingExistsCondition),
-    );
+    if (input.authorRatingFilter === "rated") {
+      conditions.push(ratingExistsCondition);
+    } else if (input.authorRatingFilter === "wanted" || input.authorRatingFilter === "skipped") {
+      conditions.push(currentAuthorStatusCondition(input.currentAuthorId, input.authorRatingFilter));
+    } else {
+      conditions.push(
+        not(ratingExistsCondition),
+        not(exists(db.select({ id: authorMediaStatuses.id }).from(authorMediaStatuses).where(and(
+          eq(authorMediaStatuses.mediaItemId, mediaItems.id),
+          eq(authorMediaStatuses.authorId, input.currentAuthorId),
+        )))),
+      );
+    }
   }
 
   if (input.yearFilter !== null) {
@@ -410,6 +445,13 @@ function catalogOrderBy(
   currentAuthorId?: number,
 ) {
   const titleOrder = direction === "asc" ? asc(mediaItems.title) : desc(mediaItems.title);
+
+  if (sort === "created_at") {
+    return [
+      direction === "asc" ? asc(mediaItems.createdAt) : desc(mediaItems.createdAt),
+      asc(mediaItems.title),
+    ];
+  }
 
   if (sort === "release_year") {
     return [
@@ -473,6 +515,7 @@ const catalogMediaItemsQuery = (input: {
   db
     .select({
       id: mediaItems.id,
+      createdAt: mediaItems.createdAt,
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
@@ -494,6 +537,7 @@ const catalogMediaItemsQuery = (input: {
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
+      currentAuthorStatus: currentAuthorStatusSql(input.currentAuthorId),
       currentAuthorRatedAt: currentAuthorRatedAtSql(input.currentAuthorId),
       currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(
         input.currentAuthorId,
@@ -509,6 +553,7 @@ const catalogMediaItemsQuery = (input: {
     .where(input.filterCondition)
     .groupBy(
       mediaItems.id,
+      mediaItems.createdAt,
       mediaItems.code,
       mediaItems.title,
       mediaItems.originalTitle,
@@ -1634,6 +1679,7 @@ export async function getMediaItemByCode(
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+      currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
       currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(currentAuthorId),
       currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(
         currentAuthorId,

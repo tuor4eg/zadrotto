@@ -14,24 +14,32 @@ describe("series media unlink tile", () => {
     );
     assert.match(
       pageSource,
-      /\) : \([\s\S]*<MediaItemTile key=\{item\.id\}/,
+      /\) : currentAuthor \? \([\s\S]*<MediaItemStatusTile key=\{item\.id\}/,
     );
     assert.match(
       pageSource,
-      /<MediaItemTile key=\{item\.id\} currentAuthorScore=\{currentAuthor \? item\.currentAuthorScore : undefined\}/,
+      /currentAuthorStatus=\{item\.currentAuthorStatus\}/,
     );
     assert.match(
       queriesSource,
       /hasDirectFranchiseLink: sql<boolean>`bool_or\(\$\{mediaItemFranchises\.franchiseId\} = \$\{franchiseId\}\)`/,
     );
+    assert.match(
+      queriesSource,
+      /currentAuthorStatus: currentAuthorStatusSql\(currentAuthorId\)/,
+    );
   });
 
   it("places the unlink affordance at the tile's top-left corner", () => {
-    assert.match(tileSource, /className="group relative min-w-0"/);
-    assert.match(tileSource, /className="absolute left-2 top-2 z-30/);
+    assert.match(tileSource, /className="group relative min-w-0 touch-pan-y"/);
+    assert.match(tileSource, /absolute left-2 top-2 z-30 flex items-start gap-1/);
     assert.match(tileSource, /<ArchiveTooltip label="Удалить из серии" side="right"/);
     assert.match(tileSource, /aria-label=\{`Удалить запись \$\{item\.title\} из серии`\}/);
     assert.match(tileSource, /<Unlink className="size-3\.5" \/>/);
+    assert.match(
+      tileSource,
+      /<Unlink[\s\S]*<AuthorMediaStatusControls[\s\S]*variant="tile"/,
+    );
   });
 
   it("opens confirmation before invoking the existing removal action", () => {
@@ -54,14 +62,19 @@ describe("series media unlink tile", () => {
 
   it("hides the action on desktop until hover and reveals it after a mobile left swipe", () => {
     assert.match(tileSource, /md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100/);
-    assert.match(tileSource, /md:focus-visible:opacity-100/);
-    assert.match(tileSource, /max-md:focus-visible:pointer-events-auto max-md:focus-visible:opacity-100/);
+    assert.match(tileSource, /md:focus-within:pointer-events-auto md:focus-within:opacity-100/);
+    assert.match(tileSource, /max-md:focus-within:pointer-events-auto max-md:focus-within:opacity-100/);
     assert.match(tileSource, /event\.clientX - pointerStartX\.current < -40/);
     assert.match(tileSource, /setUnlinkedActionRevealed\(true\)/);
     assert.match(tileSource, /event\.currentTarget\.setPointerCapture\(event\.pointerId\)/);
   });
 
   it("cancels interrupted gestures and prevents a completed swipe from navigating the tile link", () => {
+    assert.match(tileSource, /className="group relative min-w-0 touch-pan-y"/);
+    assert.match(
+      tileSource,
+      /event\.pointerType === "mouse" && window\.matchMedia\("\(min-width: 1280px\)"\)\.matches/,
+    );
     assert.match(tileSource, /onPointerCancel=\{\(event\) => \{[\s\S]*pointerStartX\.current = null;[\s\S]*didSwipeToReveal\.current = false/);
     assert.match(tileSource, /onClickCapture=\{\(event\) => \{[\s\S]*if \(!didSwipeToReveal\.current\) return;[\s\S]*event\.preventDefault\(\);[\s\S]*event\.stopPropagation\(\);[\s\S]*didSwipeToReveal\.current = false/);
     assert.match(tileSource, /event\.currentTarget\.releasePointerCapture\(event\.pointerId\)/);

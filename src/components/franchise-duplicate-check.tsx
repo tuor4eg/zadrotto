@@ -70,10 +70,20 @@ export function FranchiseDuplicateCheck({
   }, [canSearch, key]);
 
   if (!canSearch) return null;
-  return (
-    <div className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">
+  const hiddenFields = (
+    <>
       <input type="hidden" name="franchiseDuplicateCheckToken" value={token} />
       <input type="hidden" name="franchiseDuplicateAcknowledged" value={acknowledged ? "1" : ""} />
+    </>
+  );
+
+  if (status === "ready" && matches.length === 0) {
+    return hiddenFields;
+  }
+
+  return (
+    <div className="grid gap-2 rounded-md border border-stone-200 bg-stone-50 p-3 text-sm">
+      {hiddenFields}
       {status === "loading" ? <p className="text-stone-500">Проверяем уже созданные серии…</p> : null}
       {status === "error" ? <p className="text-red-700">Не удалось проверить существующие серии. Попробуйте ещё раз.</p> : null}
       {matches.length > 0 ? <><p className={exactMatches.length ? "font-medium text-red-700" : "font-medium text-amber-800"}>{exactMatches.length ? "Такая серия уже есть в архиве." : "Проверьте похожие серии в архиве."}</p><ul className="grid gap-1">{matches.map((match) => <li key={match.id}><Link href={`/series/${match.code}`} target="_blank" className="underline underline-offset-2">{match.title}{match.originalTitle ? ` (${match.originalTitle})` : ""}</Link></li>)}</ul></> : null}

@@ -6,19 +6,22 @@ import { useRef, useState, useTransition, type ComponentProps } from "react";
 import { useRouter } from "next/navigation";
 
 import { MediaItemTile } from "@/app/media-item-tile";
+import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { Button } from "@/components/ui/button";
 import { removeAuthorSeriesMediaLinkAction } from "./actions";
+import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 
 type Props = {
   canPublishFranchisesWithoutReview: boolean;
   franchiseCode: string;
   item: ComponentProps<typeof MediaItemTile>["item"] & { code: string };
   mediaTypes: ComponentProps<typeof MediaItemTile>["mediaTypes"];
-  currentAuthorScore?: number | null;
+  currentAuthorScore: number | null;
+  currentAuthorStatus: AuthorMediaStatus | null;
 };
 
-export function SeriesMediaUnlinkTile({ canPublishFranchisesWithoutReview, franchiseCode, item, mediaTypes, currentAuthorScore }: Props) {
+export function SeriesMediaUnlinkTile({ canPublishFranchisesWithoutReview, franchiseCode, item, mediaTypes, currentAuthorScore, currentAuthorStatus }: Props) {
   const router = useRouter();
   const [confirming, setConfirming] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -42,9 +45,11 @@ export function SeriesMediaUnlinkTile({ canPublishFranchisesWithoutReview, franc
 
   return (
     <div
-      className="group relative min-w-0"
+      className="group relative min-w-0 touch-pan-y"
       onPointerDown={(event) => {
-        if (event.pointerType === "mouse") return;
+        const isDesktopMouse =
+          event.pointerType === "mouse" && window.matchMedia("(min-width: 1280px)").matches;
+        if (isDesktopMouse) return;
         event.currentTarget.setPointerCapture(event.pointerId);
         pointerStartX.current = event.clientX;
         didSwipeToReveal.current = false;
@@ -70,16 +75,26 @@ export function SeriesMediaUnlinkTile({ canPublishFranchisesWithoutReview, franc
       }}
     >
       <MediaItemTile currentAuthorScore={currentAuthorScore} item={item} href={`/media/${item.code}`} mediaTypes={mediaTypes} />
-      <ArchiveTooltip label="Удалить из серии" side="right" className="absolute left-2 top-2 z-30">
-        <button
-          type="button"
-          className={`grid size-7 place-items-center rounded-full border border-red-200 bg-red-50/95 text-red-700 shadow-sm transition-all hover:border-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700 md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:focus-visible:pointer-events-auto md:focus-visible:opacity-100 ${unlinkedActionRevealed ? "max-md:opacity-100" : "max-md:pointer-events-none max-md:opacity-0 max-md:focus-visible:pointer-events-auto max-md:focus-visible:opacity-100"}`}
-          aria-label={`Удалить запись ${item.title} из серии`}
-          onClick={() => { setMessage(null); setConfirming(true); setUnlinkedActionRevealed(false); }}
-        >
-          <Unlink className="size-3.5" />
-        </button>
-      </ArchiveTooltip>
+      <div className={`absolute left-2 top-2 z-30 flex items-start gap-1 transition-opacity md:pointer-events-none md:opacity-0 md:group-hover:pointer-events-auto md:group-hover:opacity-100 md:focus-within:pointer-events-auto md:focus-within:opacity-100 ${unlinkedActionRevealed ? "max-md:pointer-events-auto max-md:opacity-100" : "max-md:pointer-events-none max-md:opacity-0 max-md:focus-within:pointer-events-auto max-md:focus-within:opacity-100"}`}>
+        <ArchiveTooltip label="Удалить из серии" side="right">
+          <button
+            type="button"
+            className="grid size-7 place-items-center rounded-full border border-red-200 bg-red-50/95 text-red-700 shadow-sm transition-all hover:border-red-700 hover:bg-red-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-700"
+            aria-label={`Удалить запись ${item.title} из серии`}
+            onClick={() => { setMessage(null); setConfirming(true); setUnlinkedActionRevealed(false); }}
+          >
+            <Unlink className="size-3.5" />
+          </button>
+        </ArchiveTooltip>
+        {currentAuthorScore === null ? (
+          <AuthorMediaStatusControls
+            currentAuthorScore={currentAuthorScore}
+            currentAuthorStatus={currentAuthorStatus}
+            mediaItemCode={item.code}
+            variant="tile"
+          />
+        ) : null}
+      </div>
       {message ? <p className="absolute inset-x-1 bottom-1 z-30 rounded bg-stone-950/85 px-1.5 py-1 text-center text-[10px] leading-tight text-stone-50" role="status">{message}</p> : null}
       {confirming ? createPortal(
         <div className="fixed inset-0 z-[120] grid place-items-center bg-stone-950/55 p-4" role="presentation">
