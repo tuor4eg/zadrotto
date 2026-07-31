@@ -1,3 +1,4 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
@@ -87,6 +88,42 @@ function getFranchiseMediaSections(
 
 function getFranchiseDescendants(nodes: FranchiseBranchNode[]): FranchiseBranchNode[] {
   return nodes.flatMap((node) => [node, ...getFranchiseDescendants(node.children)]);
+}
+
+export async function generateMetadata({ params }: FranchisePageProps): Promise<Metadata> {
+  const { code } = await params;
+  const [franchise, currentAuthor] = await Promise.all([
+    getFranchiseByCode(code),
+    getCurrentAuthor(),
+  ]);
+
+  if (!franchise) {
+    return {};
+  }
+
+  const enabledMediaTypeCodes = (
+    await getEffectiveMediaTypeOptions(currentAuthor?.id)
+  )
+    .filter(({ isEnabled }) => isEnabled)
+    .map(({ code: mediaTypeCode }) => mediaTypeCode);
+  const items = await getMediaItemsByFranchiseId(
+    franchise.id,
+    enabledMediaTypeCodes,
+    currentAuthor?.id,
+  );
+  const title = `${franchise.title} · ${formatMediaItemsCount(items.length)}`;
+
+  return {
+    title,
+    openGraph: {
+      type: "website",
+      title,
+    },
+    twitter: {
+      card: "summary",
+      title,
+    },
+  };
 }
 
 export default async function FranchisePage({ params, searchParams }: FranchisePageProps) {

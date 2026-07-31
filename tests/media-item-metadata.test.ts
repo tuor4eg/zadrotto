@@ -6,6 +6,7 @@ import { getSiteOrigin } from "../src/lib/site-url";
 
 const layoutSource = readFileSync("src/app/layout.tsx", "utf8");
 const mediaItemPageSource = readFileSync("src/app/media/[code]/page.tsx", "utf8");
+const seriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const mediaItemsQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
 
 describe("site origin", () => {
@@ -53,5 +54,24 @@ describe("public media item metadata", () => {
       mediaItemsQuerySource.slice(start, end),
       /and\([\s\S]*eq\(mediaItems\.code, code\),[\s\S]*publishedMediaItemCondition,[\s\S]*eq\(mediaTypes\.isPubliclyAvailable, true\),[\s\S]*\)/,
     );
+  });
+});
+
+describe("public series metadata", () => {
+  it("uses the series title and record count in page, Open Graph, and Twitter titles", () => {
+    const start = seriesPageSource.indexOf("export async function generateMetadata");
+    const end = seriesPageSource.indexOf("export default async function FranchisePage", start);
+
+    assert.notEqual(start, -1);
+    assert.notEqual(end, -1);
+
+    const metadataSource = seriesPageSource.slice(start, end);
+
+    assert.match(
+      metadataSource,
+      /const title = `\$\{franchise\.title\} · \$\{formatMediaItemsCount\(items\.length\)\}`/,
+    );
+    assert.match(metadataSource, /openGraph:\s*{[\s\S]*?title,/);
+    assert.match(metadataSource, /twitter:\s*{[\s\S]*?title,/);
   });
 });

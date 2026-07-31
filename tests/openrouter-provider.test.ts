@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import { openRouterAiProvider } from "@/lib/ai/providers/openrouter";
+import { deepSeekAiProvider } from "@/lib/ai/providers/deepseek";
 import { aiProviderRegistry } from "@/lib/ai/registry";
 import { AiError, type AiGenerationRequest } from "@/lib/ai/types";
 
@@ -379,8 +380,12 @@ describe("OpenRouter generation", () => {
 });
 
 describe("production AI registry", () => {
-  it("contains only OpenRouter", () => {
-    assert.deepEqual(aiProviderRegistry.list().map(({ code }) => code), ["openrouter"]);
+  it("contains OpenRouter and DeepSeek", () => {
+    assert.deepEqual(aiProviderRegistry.list().map(({ code }) => code), [
+      "openrouter",
+      "deepseek",
+    ]);
     assert.equal(aiProviderRegistry.get("openrouter"), openRouterAiProvider);
+    assert.equal(aiProviderRegistry.get("deepseek"), deepSeekAiProvider);
   });
 });

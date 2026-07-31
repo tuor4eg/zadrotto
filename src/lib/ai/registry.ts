@@ -1,4 +1,5 @@
 import { AiError, type AiProviderAdapter } from "./types";
+import { deepSeekAiProvider } from "./providers/deepseek";
 import { openRouterAiProvider } from "./providers/openrouter";
 
 export function createAiProviderRegistry(adapters: readonly AiProviderAdapter[]) {
@@ -23,4 +24,7 @@ export function createAiProviderRegistry(adapters: readonly AiProviderAdapter[])
   };
 }
 
-export const aiProviderRegistry = createAiProviderRegistry([openRouterAiProvider]);
+export const aiProviderRegistry = createAiProviderRegistry([
+  openRouterAiProvider,
+  deepSeekAiProvider,
+]);

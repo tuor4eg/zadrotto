@@ -2,6 +2,10 @@
 
 This project is still in pre-release development. The entries below group the existing commit history into product milestones rather than individual changes.
 
+## [0.9.0.0009] - 2026-07-31
+
+Added direct DeepSeek API support with model discovery, encrypted credentials, configurable thinking mode, and structured JSON generation. Integrated the provider with existing scenarios, smoke tests, and AI call logging.
+
 ## [0.8.0.0008] - 2026-07-30
 
 Added login-based author accounts, registration and email administration. Expanded external data support with AniList and FantLab, title aliases, media-type permissions, avatars, and a hierarchical series workflow.
