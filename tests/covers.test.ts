@@ -359,7 +359,7 @@ describe("metadata token caller contracts", () => {
     );
     assert.match(
       metadataRoute,
-      /createMediaMetadataCandidateToken\(\{[\s\S]*\.\.\.metadata,[\s\S]*mediaType/,
+      /createMediaMetadataCandidateToken\(\{[\s\S]*\.\.\.result\.metadata,[\s\S]*mediaType/,
     );
 
     for (const actionPath of [
@@ -581,7 +581,7 @@ describe("cover provider registry", () => {
       { mediaType: "anime", providerCode: "tmdb", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 30 },
     ] as const;
 
-    const candidates = await searchTitleCandidates(
+    const result = await searchTitleCandidates(
       { mediaType: "anime", query: "Match" },
       titleProviders,
       customOptions,
@@ -589,7 +589,8 @@ describe("cover provider registry", () => {
     );
 
     assert.deepEqual(calls, ["jikan", "anilist"]);
-    assert.equal(candidates[0]?.provider, "anilist");
+    assert.equal(result.candidates[0]?.provider, "anilist");
+    assert.equal(result.error, null);
   });
 
   it("tries fallback title providers sequentially until one returns a match", async () => {
@@ -637,7 +638,7 @@ describe("cover provider registry", () => {
       { mediaType: "anime", providerCode: "tmdb", enabled: true, titleSearchMode: "fallback", coverSearchEnabled: true, priority: 30 },
     ] as const;
 
-    const candidates = await searchTitleCandidates(
+    const result = await searchTitleCandidates(
       { mediaType: "anime", query: "Fallback match" },
       titleProviders,
       customOptions,
@@ -645,7 +646,8 @@ describe("cover provider registry", () => {
     );
 
     assert.deepEqual(calls, ["jikan", "anilist"]);
-    assert.equal(candidates[0]?.provider, "anilist");
+    assert.equal(result.candidates[0]?.provider, "anilist");
+    assert.equal(result.error, null);
   });
 
   it("keeps cover search enabled independently from title search mode", async () => {
@@ -675,7 +677,7 @@ describe("cover provider registry", () => {
         [provider],
         customOptions,
         settings,
-      )).map((candidate) => candidate.id),
+      )).candidates.map((candidate) => candidate.id),
       ["anime:cover"],
     );
   });
@@ -704,14 +706,14 @@ describe("cover provider registry", () => {
       priority: 10,
     }] as const;
 
-    assert.equal(
+    assert.deepEqual(
       await getTitleMetadata(
         { provider: "anilist", externalId: "1", mediaType: "anime" },
         [provider],
         customOptions,
         settings,
       ),
-      null,
+      { metadata: null, error: null },
     );
     assert.equal(metadataCalls, 0);
   });
@@ -748,7 +750,7 @@ describe("cover provider registry", () => {
         customOptions,
         settings,
       ),
-      [],
+      { candidates: [], error: null },
     );
     assert.equal(exactCoverCalls, 0);
   });
@@ -778,14 +780,14 @@ describe("cover provider registry", () => {
 
     assert.deepEqual(getCoverProvidersForMediaType("anime", [provider], settings), []);
     assert.deepEqual(getTitleProvidersForMediaType("anime", [provider], settings), []);
-    assert.equal(
+    assert.deepEqual(
       await getTitleMetadata(
         { provider: "anilist", externalId: "1", mediaType: "anime" },
         [provider],
         customOptions,
         settings,
       ),
-      null,
+      { metadata: null, error: null },
     );
   });
 
@@ -1268,6 +1270,37 @@ describe("cover provider registry", () => {
     }
   });
 
+  it("rejects anime cover search when both TMDB branches are unavailable", async () => {
+    const provider = createTmdbProvider("anime");
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async (input) => {
+      const url = new URL(String(input));
+
+      if (url.pathname === "/3/search/tv" || url.pathname === "/3/search/movie") {
+        throw new Error("TMDB search is unavailable");
+      }
+
+      throw new Error(`Unexpected TMDB request: ${url.pathname}`);
+    };
+
+    try {
+      await assert.rejects(
+        () => provider.searchCoverCandidates!(
+          { title: "Anime", originalTitle: null, mediaType: "anime", releaseYear: null },
+          {
+            candidateLimit: 8,
+            tmdbResultScanLimit: 3,
+            providerCredentials: { tmdb: { accessToken: "test-token" } },
+          },
+        ),
+        /TMDB anime search is unavailable/,
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("keeps successful anime image groups when another TMDB images request fails", async () => {
     const provider = createTmdbProvider("anime");
     const originalFetch = globalThis.fetch;
@@ -1394,8 +1427,89 @@ describe("cover provider registry", () => {
         providers,
         customOptions,
       ),
-      [baseCandidate, { ...baseCandidate, id: "external:2", imageUrl: "https://example.com/dune-2.jpg" }],
+      {
+        candidates: [
+          baseCandidate,
+          { ...baseCandidate, id: "external:2", imageUrl: "https://example.com/dune-2.jpg" },
+        ],
+        error: null,
+      },
     );
+  });
+
+  it("reports provider unavailability when every cover provider fails", async () => {
+    const unavailableProviders = [{
+      code: "open-library",
+      mediaTypes: ["book"],
+      async searchCoverCandidates() {
+        throw new Error("provider is down");
+      },
+    }] satisfies CoverProvider[];
+
+    assert.deepEqual(
+      await searchCoverCandidates(
+        { title: "Dune", originalTitle: null, mediaType: "book", releaseYear: null },
+        unavailableProviders,
+        customOptions,
+      ),
+      { candidates: [], error: "provider-unavailable" },
+    );
+  });
+
+  it("reports title provider errors only when no other provider succeeds", async () => {
+    const unavailableProvider = {
+      code: "google-books",
+      mediaTypes: ["book"],
+      async searchTitleCandidates() {
+        throw new Error("provider is down");
+      },
+    } satisfies MediaProvider;
+    const successfulProvider = {
+      code: "open-library",
+      mediaTypes: ["book"],
+      async searchTitleCandidates() {
+        return [{
+          id: "work:1",
+          provider: "open-library",
+          externalId: "1",
+          mediaType: "book",
+          title: "Dune",
+          originalTitle: null,
+          description: null,
+          coverUrl: null,
+          sourcePageUrl: null,
+          releaseYear: 1965,
+        }];
+      },
+    } satisfies MediaProvider;
+    const titleSearchOptions = {
+      ...customOptions,
+      providerCredentials: { "google-books": { apiKey: "test-key" } },
+    } satisfies CoverSearchOptions;
+    const titleProviderSettings = [
+      { mediaType: "book", providerCode: "google-books", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 10 },
+      { mediaType: "book", providerCode: "open-library", enabled: true, titleSearchMode: "parallel", coverSearchEnabled: true, priority: 20 },
+    ] as const;
+
+    assert.deepEqual(
+      await searchTitleCandidates(
+        { mediaType: "book", query: "Dune" },
+        [unavailableProvider],
+        titleSearchOptions,
+        titleProviderSettings,
+      ),
+      { candidates: [], error: "provider-unavailable" },
+    );
+
+    const successfulResult = await searchTitleCandidates(
+      { mediaType: "book", query: "Dune" },
+      [unavailableProvider, successfulProvider],
+      titleSearchOptions,
+      titleProviderSettings,
+    );
+
+    assert.equal(successfulResult.candidates[0]?.provider, "open-library");
+    assert.equal(successfulResult.error, null);
   });
 
   it("does not search without a title", async () => {
@@ -1410,7 +1524,7 @@ describe("cover provider registry", () => {
         providers,
         customOptions,
       ),
-      [],
+      { candidates: [], error: null },
     );
   });
 
@@ -1457,7 +1571,7 @@ describe("cover provider registry", () => {
         exactProviders,
         customOptions,
       ),
-      [baseCandidate],
+      { candidates: [baseCandidate], error: null },
     );
     assert.equal(directLookupCalls, 1);
     assert.equal(textSearchCalls, 0);
@@ -1540,7 +1654,7 @@ describe("cover provider registry", () => {
           { mediaType: "anime", providerCode: "tmdb", enabled: true, priority: 30 },
         ],
       ),
-      [exactAniListCover, jikanCover, tmdbCover],
+      { candidates: [exactAniListCover, jikanCover, tmdbCover], error: null },
     );
     assert.deepEqual(fallbackCalls, ["jikan", "tmdb"]);
   });
@@ -1585,7 +1699,7 @@ describe("cover provider registry", () => {
         animeProviders,
         customOptions,
       ),
-      [jikanCover],
+      { candidates: [jikanCover], error: null },
     );
   });
 
@@ -1674,10 +1788,10 @@ describe("cover provider registry", () => {
         guardedProviders,
         {
           ...customOptions,
-          beforeProviderSearch: async () => false,
+          beforeProviderSearch: async () => "provider-daily-limit",
         },
       ),
-      [],
+      { candidates: [], error: "provider-daily-limit" },
     );
     assert.equal(calls, 0);
   });
@@ -1730,8 +1844,8 @@ describe("cover provider registry", () => {
         titleProviders,
         customOptions,
       ),
-      [
-        {
+      {
+        candidates: [{
           id: "work:/works/OL27448W",
           provider: "open-library",
           externalId: "/works/OL27448W",
@@ -1742,8 +1856,9 @@ describe("cover provider registry", () => {
           coverUrl: null,
           sourcePageUrl: "https://openlibrary.org/works/OL27448W",
           releaseYear: 1965,
-        },
-      ],
+        }],
+        error: null,
+      },
     );
   });
 
@@ -1782,15 +1897,18 @@ describe("cover provider registry", () => {
         },
       ),
       {
-        provider: "tmdb",
-        externalId: "1",
-        sourceUrl: "https://www.themoviedb.org/movie/1",
-        facts: {
-          runtimeMinutes: 136,
+        metadata: {
+          provider: "tmdb",
+          externalId: "1",
+          sourceUrl: "https://www.themoviedb.org/movie/1",
+          facts: {
+            runtimeMinutes: 136,
+          },
         },
+        error: null,
       },
     );
-    assert.equal(
+    assert.deepEqual(
       await getTitleMetadata(
         {
           provider: "tmdb",
@@ -1803,10 +1921,29 @@ describe("cover provider registry", () => {
           providerCredentials: {
             tmdb: { accessToken: "test-token" },
           },
-          beforeProviderSearch: async () => false,
+          beforeProviderSearch: async () => "provider-daily-limit",
         },
       ),
-      null,
+      { metadata: null, error: "provider-daily-limit" },
+    );
+  });
+
+  it("returns a structured error when title metadata provider throws", async () => {
+    const metadataProvider = {
+      code: "open-library",
+      mediaTypes: ["book"],
+      async getTitleMetadata() {
+        throw new Error("provider is down");
+      },
+    } satisfies MediaProvider;
+
+    assert.deepEqual(
+      await getTitleMetadata(
+        { provider: "open-library", externalId: "1", mediaType: "book" },
+        [metadataProvider],
+        customOptions,
+      ),
+      { metadata: null, error: "provider-unavailable" },
     );
   });
 });

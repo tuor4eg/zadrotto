@@ -1,6 +1,7 @@
 import {
   checkFixedWindowRateLimit,
   checkFixedWindowRateLimits,
+  getFixedWindowRateLimitUsage,
 } from "@/lib/rate-limits/redis";
 import type { CoverProviderRateLimitValue } from "@/db/queries/cover-settings";
 import type { CoverProviderCode } from "@/lib/covers/types";
@@ -20,6 +21,31 @@ export type AuthorCoverSearchLimits = {
   coverSearchesPerHour: number | null;
   coverSearchesPerDay: number | null;
 };
+
+export type ProviderCoverSearchRateLimitUsage = {
+  providerCode: CoverProviderCode;
+  used: number | null;
+};
+
+export async function getProviderCoverSearchRateLimitUsage(
+  rateLimits: readonly CoverProviderRateLimitValue[],
+): Promise<ProviderCoverSearchRateLimitUsage[]> {
+  return Promise.all(
+    rateLimits.map(async (limit) => {
+      const result = await getFixedWindowRateLimitUsage({
+        keyPrefix: "cover-search:provider",
+        subject: limit.providerCode,
+        window: "day",
+        limit: limit.searchesPerDay,
+      });
+
+      return {
+        providerCode: limit.providerCode,
+        used: result.ok ? result.used : null,
+      };
+    }),
+  );
+}
 
 export async function checkAuthorCoverSearchRateLimit(
   author: AuthorCoverSearchLimits,
@@ -73,11 +99,14 @@ export function createProviderCoverSearchRateLimiter(
   const limitsByProviderCode = new Map(
     rateLimits.map((limit) => [limit.providerCode, limit.searchesPerDay]),
   );
-  let unavailable = false;
+  let blockedError: "provider-daily-limit" | "rate-limit-unavailable" | null = null;
 
   return {
+    getBlockedError() {
+      return blockedError;
+    },
     hasUnavailableLimitCheck() {
-      return unavailable;
+      return blockedError === "rate-limit-unavailable";
     },
     async canSearchProvider(providerCode: CoverProviderCode) {
       const result = await checkFixedWindowRateLimit({
@@ -88,11 +117,16 @@ export function createProviderCoverSearchRateLimiter(
       });
 
       if (!result.ok) {
-        unavailable = true;
-        return false;
+        blockedError = "rate-limit-unavailable";
+        return "rate-limit-unavailable" as const;
       }
 
-      return result.allowed;
+      if (!result.allowed) {
+        blockedError ??= "provider-daily-limit";
+        return "provider-daily-limit" as const;
+      }
+
+      return true;
     },
   };
 }

@@ -2,6 +2,7 @@ import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -52,7 +53,7 @@ export const googleBooksProvider: MediaProvider = {
       projection: "lite",
       key: apiKey,
     });
-    const data = await fetchJson<GoogleBooksResponse>(url);
+    const data = await fetchSearchJson<GoogleBooksResponse>(url);
 
     return (data?.items ?? [])
       .filter((item) => item.id)
@@ -75,7 +76,7 @@ export const googleBooksProvider: MediaProvider = {
     const url = buildUrl(`https://www.googleapis.com/books/v1/volumes/${input.externalId}`, {
       key: apiKey,
     });
-    const details = await fetchJson<GoogleBookDetailsResponse>(url);
+    const details = await fetchSearchJson<GoogleBookDetailsResponse>(url);
 
     if (!details?.id) {
       return null;
@@ -111,7 +112,7 @@ export const googleBooksProvider: MediaProvider = {
       projection: "lite",
       key: apiKey,
     });
-    const data = await fetchJson<GoogleBooksResponse>(url);
+    const data = await fetchSearchJson<GoogleBooksResponse>(url);
 
     const candidates: CoverCandidate[] = [];
 

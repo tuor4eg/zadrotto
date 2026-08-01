@@ -2,6 +2,7 @@ import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
 
@@ -161,7 +162,7 @@ function getFantLabOriginalTitle(item: FantLabRecord, title: string) {
 
 async function searchFantLabWorks(query: string) {
   return getFantLabWorks(
-    await fetchJson<unknown>(
+    await fetchSearchJson<unknown>(
       buildUrl(`${FANTLAB_API_ORIGIN}/search-txt`, { q: query }),
     ),
   );
@@ -175,7 +176,7 @@ async function getFantLabWork(externalId: string) {
   }
 
   const works = getFantLabWorks(
-    await fetchJson<unknown>(
+    await fetchSearchJson<unknown>(
       buildUrl(`${FANTLAB_API_ORIGIN}/search-ids`, { w: workId }),
     ),
   );

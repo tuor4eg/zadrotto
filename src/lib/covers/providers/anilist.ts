@@ -1,5 +1,5 @@
 import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
-import { fetchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
+import { fetchSearchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
 
 type AniListMedia = {
   id?: number;
@@ -75,7 +75,7 @@ const ANILIST_MEDIA_FIELDS = `
 `;
 
 async function queryAniList(query: string, variables: Record<string, unknown>) {
-  return fetchJson<AniListResponse>(ANILIST_URL, {
+  return fetchSearchJson<AniListResponse>(ANILIST_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",

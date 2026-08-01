@@ -1,7 +1,7 @@
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   buildUrl,
-  fetchJson,
+  fetchSearchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -191,21 +191,21 @@ function createTmdbClient(input: { accessToken: string; mediaType: TmdbMediaType
         ...(releaseYear ? (tmdbType === "movie" ? { year: releaseYear } : { first_air_date_year: releaseYear }) : {}),
       });
 
-      return fetchJson<TmdbSearchResponse>(url, { headers });
+      return fetchSearchJson<TmdbSearchResponse>(url, { headers });
     },
     searchImages(id: number, originalLanguage: string | null | undefined) {
       const imagesUrl = buildUrl(`https://api.themoviedb.org/3/${tmdbType}/${id}/images`, {
         include_image_language: getUniqueTmdbImageLanguages(originalLanguage).join(","),
       });
 
-      return fetchJson<TmdbImagesResponse>(imagesUrl, { headers });
+      return fetchSearchJson<TmdbImagesResponse>(imagesUrl, { headers });
     },
     searchMetadata(id: number) {
       const metadataUrl = buildUrl(`https://api.themoviedb.org/3/${tmdbType}/${id}`, {
         language: "ru-RU",
       });
 
-      return fetchJson<TmdbMovieDetailsResponse | TmdbSeriesDetailsResponse>(metadataUrl, { headers });
+      return fetchSearchJson<TmdbMovieDetailsResponse | TmdbSeriesDetailsResponse>(metadataUrl, { headers });
     },
     sourcePageUrl(id: number) {
       return `https://www.themoviedb.org/${tmdbType}/${id}`;
@@ -382,9 +382,38 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
           return (await Promise.all(candidateRequests)).flat();
         }
 
-        return (await Promise.allSettled(candidateRequests)).flatMap((result) =>
-          result.status === "fulfilled" ? result.value : [],
-        );
+        const imageResults = await Promise.allSettled(candidateRequests);
+        const candidates = imageResults.flatMap((result, index) => {
+          if (result.status === "fulfilled") {
+            return result.value;
+          }
+
+          const item = searchResults[index];
+
+          if (!item?.poster_path) {
+            return [];
+          }
+
+          return [{
+            id: `${client.tmdbType}:${item.id}:${item.poster_path}`,
+            provider: "tmdb" as const,
+            title: getTmdbTitle(item, query),
+            imageUrl: client.posterUrl(item.poster_path),
+            sourcePageUrl: client.sourcePageUrl(item.id!),
+            year: getTmdbYear(item) ?? undefined,
+            confidence: item.popularity,
+          }];
+        });
+
+        if (
+          imageResults.length > 0 &&
+          imageResults.every((result) => result.status === "rejected") &&
+          candidates.length === 0
+        ) {
+          throw new Error("TMDB image search is unavailable.");
+        }
+
+        return candidates;
       }
 
       if (mediaType !== "anime") {
@@ -397,6 +426,11 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
       const clientResults = await Promise.allSettled(
         clients.map((client) => searchClientCandidates(client, true)),
       );
+
+      if (clientResults.every((result) => result.status === "rejected")) {
+        throw new Error("TMDB anime search is unavailable.");
+      }
+
       const candidateLists = clientResults.map((result) =>
         result.status === "fulfilled" ? result.value : [],
       );

@@ -93,7 +93,9 @@ export type ProviderSearchOptions = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   providerCredentials?: Partial<Record<MediaProviderCode, Record<string, string>>>;
-  beforeProviderSearch?: (providerCode: MediaProviderCode) => Promise<boolean>;
+  beforeProviderSearch?: (
+    providerCode: MediaProviderCode,
+  ) => Promise<boolean | "provider-daily-limit" | "rate-limit-unavailable">;
 };
 
 export type CoverSearchOptions = ProviderSearchOptions;

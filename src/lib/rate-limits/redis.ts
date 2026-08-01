@@ -30,6 +30,16 @@ export type FixedWindowRateLimitInput = {
   now?: Date;
 };
 
+export type RateLimitUsageResult =
+  | {
+      ok: true;
+      used: number;
+    }
+  | {
+      ok: false;
+      error: "unavailable";
+    };
+
 type RateLimitCounterClient = Pick<RedisClientType, "eval" | "expire" | "multi">;
 
 const WINDOW_MS = {
@@ -236,4 +246,34 @@ export async function checkFixedWindowRateLimit(
 
     return { ok: false, error: "unavailable" };
   }
+}
+
+export async function getFixedWindowRateLimitUsage(
+  input: FixedWindowRateLimitInput,
+): Promise<RateLimitUsageResult> {
+  const client = await getRedisClient();
+
+  if (!client) {
+    return { ok: false, error: "unavailable" };
+  }
+
+  try {
+    return await getFixedWindowRateLimitUsageWithClient(input, client);
+  } catch (error) {
+    console.error(error);
+
+    return { ok: false, error: "unavailable" };
+  }
+}
+
+export async function getFixedWindowRateLimitUsageWithClient(
+  input: FixedWindowRateLimitInput,
+  client: Pick<RedisClientType, "get">,
+): Promise<RateLimitUsageResult> {
+  const rawCount = await client.get(getFixedWindowRateLimitKey(input));
+  const count = rawCount === null ? 0 : Number(rawCount);
+
+  return Number.isSafeInteger(count) && count >= 0
+    ? { ok: true, used: count }
+    : { ok: false, error: "unavailable" };
 }

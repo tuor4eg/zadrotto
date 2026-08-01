@@ -4,9 +4,15 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
 import { CoverPreview } from "@/app/author/(protected)/media/cover-preview";
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { cn } from "@/lib/common/utils";
 import { COVER_IMAGE_TYPES, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
+import {
+  COVER_REQUEST_ERROR_MESSAGES,
+  isCoverRequestError,
+  type CoverRequestError,
+} from "@/lib/covers/provider-errors";
 import type { MediaTitleCandidate, SignedCoverCandidate } from "@/lib/covers/types";
 
 const EMPTY_FILE_LABEL = "Файл не выбран";
@@ -35,7 +41,11 @@ type CoverPickerProps = {
 
 type CoverCandidatesResponse = {
   candidates?: SignedCoverCandidate[];
-  error?: "author-rate-limit" | "rate-limit-unavailable";
+  error?:
+    | "author-rate-limit"
+    | "provider-daily-limit"
+    | "provider-unavailable"
+    | "rate-limit-unavailable";
 };
 
 function hasCoverSearchInput(values: CoverSearchValues) {
@@ -61,6 +71,10 @@ export function CoverPicker({
   const [selectedCandidateToken, setSelectedCandidateToken] = useState("");
   const [candidates, setCandidates] = useState<SignedCoverCandidate[]>([]);
   const [candidatesSearchKey, setCandidatesSearchKey] = useState("");
+  const [searchError, setSearchError] = useState<{
+    code: CoverRequestError;
+    searchKey: string;
+  } | null>(null);
   const [searchStatus, setSearchStatus] = useState<
     "idle" | "loading" | "empty" | "error" | "limited" | "unavailable"
   >("idle");
@@ -81,6 +95,8 @@ export function CoverPicker({
   );
   const hasSearchInput = hasCoverSearchInput(coverSearchValues);
   const shouldSearch = canSearchCandidates && !previewUrl && hasSearchInput;
+  const visibleSearchError =
+    shouldSearch && searchError?.searchKey === coverSearchKey ? searchError : null;
   const isSearching = searchStatus === "loading" || isPending;
   const visibleCandidates =
     canSearchCandidates && hasSearchInput && candidatesSearchKey === coverSearchKey
@@ -106,30 +122,28 @@ export function CoverPicker({
 
     const data = (await response.json()) as CoverCandidatesResponse;
 
-    if (response.status === 429 || data.error === "author-rate-limit") {
-      return { candidates: [], status: "limited" as const };
-    }
-
-    if (response.status === 503 || data.error === "rate-limit-unavailable") {
-      return { candidates: [], status: "unavailable" as const };
+    if (isCoverRequestError(data.error)) {
+      return { candidates: [], error: data.error };
     }
 
     if (!response.ok) {
       return null;
     }
 
-    return { candidates: data.candidates ?? [], status: "ok" as const };
+    return { candidates: data.candidates ?? [], error: null };
   };
 
   const searchCandidates = () => {
     if (!canSearchCandidates || !hasSearchInput) {
       setCandidates([]);
+      setSearchError(null);
       setSearchStatus("idle");
       return;
     }
 
     startTransition(async () => {
       setSearchStatus("loading");
+      setSearchError(null);
 
       try {
         const result = await fetchCandidates();
@@ -142,13 +156,8 @@ export function CoverPicker({
 
         setCandidates(result.candidates);
         setCandidatesSearchKey(coverSearchKey);
-        setSearchStatus(
-          result.status === "ok"
-            ? result.candidates.length > 0
-              ? "idle"
-              : "empty"
-            : result.status,
-        );
+        setSearchError(result.error ? { code: result.error, searchKey: coverSearchKey } : null);
+        setSearchStatus(result.error ? "unavailable" : result.candidates.length > 0 ? "idle" : "empty");
       } catch {
         setCandidates([]);
         setCandidatesSearchKey("");
@@ -171,13 +180,8 @@ export function CoverPicker({
 
             setCandidates(result.candidates);
             setCandidatesSearchKey(coverSearchKey);
-            setSearchStatus(
-              result.status === "ok"
-                ? result.candidates.length > 0
-                  ? "idle"
-                  : "empty"
-                : result.status,
-            );
+            setSearchError(result.error ? { code: result.error, searchKey: coverSearchKey } : null);
+            setSearchStatus(result.error ? "unavailable" : result.candidates.length > 0 ? "idle" : "empty");
           })
           .catch(() => {
             if (isActive) {
@@ -200,6 +204,14 @@ export function CoverPicker({
 
   return (
     <>
+      <ArchiveToasts
+        key={`cover-search-toasts-${coverSearchKey}-${shouldSearch}`}
+        messages={visibleSearchError ? [{
+          id: `cover-search-${visibleSearchError.code}-${coverSearchKey}`,
+          tone: "error",
+          text: COVER_REQUEST_ERROR_MESSAGES[visibleSearchError.code],
+        } satisfies ArchiveToast] : []}
+      />
       <input
         type="hidden"
         name="coverAction"
@@ -320,6 +332,7 @@ export function CoverPicker({
                       size="sm"
                       className="mt-2 w-full"
                       onClick={() => {
+                        setSearchError(null);
                         setSelectedCandidateToken(candidate.token);
                         setIsCoverRemoved(false);
                         setFileName(`Вариант: ${candidate.title}`);
@@ -344,16 +357,6 @@ export function CoverPicker({
           {searchStatus === "error" ? (
             <p className="text-xs text-stone-500">
               Не удалось получить варианты. Ручная загрузка доступна.
-            </p>
-          ) : null}
-          {searchStatus === "limited" ? (
-            <p className="text-xs text-stone-500">
-              Лимит поиска исчерпан, попробуйте позже.
-            </p>
-          ) : null}
-          {searchStatus === "unavailable" ? (
-            <p className="text-xs text-stone-500">
-              Поиск временно недоступен. Можно загрузить файл вручную.
             </p>
           ) : null}
         </div>

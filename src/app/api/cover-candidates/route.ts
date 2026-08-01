@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     getCoverProviderCredentialsForSearch(),
   ]);
   const providerRateLimiter = createProviderCoverSearchRateLimiter(providerRateLimits);
-  const candidates = await searchCoverCandidates(
+  const result = await searchCoverCandidates(
     {
       title,
       originalTitle,
@@ -112,18 +112,18 @@ export async function POST(request: Request) {
     providerSettings,
   );
 
-  if (providerRateLimiter.hasUnavailableLimitCheck() && candidates.length === 0) {
+  if (result.error) {
     return NextResponse.json(
       {
         candidates: [],
-        error: "rate-limit-unavailable",
+        error: result.error,
       },
-      { status: 503 },
+      { status: result.error === "provider-daily-limit" ? 429 : 503 },
     );
   }
 
   return NextResponse.json({
-    candidates: candidates.map((candidate) => ({
+    candidates: result.candidates.map((candidate) => ({
       ...candidate,
       token: createCoverCandidateToken(candidate),
     })),

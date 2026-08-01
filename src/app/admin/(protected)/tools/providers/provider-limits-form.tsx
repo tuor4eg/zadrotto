@@ -14,6 +14,7 @@ import {
   COVER_SETTINGS_FORM_LIMITS,
   formatCoverMaxMegabytes,
 } from "@/lib/forms/cover-settings";
+import type { ProviderCoverSearchRateLimitUsage } from "@/lib/covers/rate-limits";
 import { AdminToasts, type AdminToast } from "../../admin-toasts";
 import {
   type UpdateCoverSettingsState,
@@ -27,9 +28,11 @@ const initialState: UpdateCoverSettingsState = {
 
 export function ProviderLimitsForm({
   providerRateLimits,
+  providerRateLimitUsage,
   settings,
 }: {
   providerRateLimits: CoverProviderRateLimitValue[];
+  providerRateLimitUsage: ProviderCoverSearchRateLimitUsage[];
   settings: CoverSettingsValue;
 }) {
   const [state, formAction, isPending] = useActionState(
@@ -40,6 +43,9 @@ export function ProviderLimitsForm({
     ...(state.success ? [{ id: "success", tone: "success" as const, text: state.success }] : []),
     ...(state.error ? [{ id: "error", tone: "error" as const, text: state.error }] : []),
   ] satisfies AdminToast[];
+  const usageByProviderCode = new Map(
+    providerRateLimitUsage.map((usage) => [usage.providerCode, usage.used]),
+  );
 
   return (
     <div className="grid gap-5">
@@ -65,6 +71,10 @@ export function ProviderLimitsForm({
                 max={COVER_SETTINGS_FORM_LIMITS.providerSearchesPerDay.max}
                 defaultValue={providerLimit.searchesPerDay.toString()}
                 disabled={isPending}
+                description={formatProviderRateLimitUsage({
+                  limit: providerLimit.searchesPerDay,
+                  used: usageByProviderCode.get(providerLimit.providerCode) ?? null,
+                })}
               />
             ))}
           </div>
@@ -118,6 +128,7 @@ export function ProviderLimitsForm({
 
 function NumberField({
   defaultValue,
+  description,
   disabled,
   id,
   label,
@@ -126,6 +137,7 @@ function NumberField({
   name,
 }: {
   defaultValue: string;
+  description?: string;
   disabled?: boolean;
   id: string;
   label: string;
@@ -147,6 +159,23 @@ function NumberField({
         defaultValue={defaultValue}
         disabled={disabled}
       />
+      {description ? <p className="text-xs text-stone-500">{description}</p> : null}
     </div>
   );
+}
+
+function formatProviderRateLimitUsage({
+  limit,
+  used,
+}: {
+  limit: number;
+  used: number | null;
+}) {
+  if (used === null) {
+    return "Использование недоступно";
+  }
+
+  return used >= limit
+    ? `Лимит исчерпан: ${used} из ${limit}`
+    : `Использовано сегодня: ${used} из ${limit}`;
 }

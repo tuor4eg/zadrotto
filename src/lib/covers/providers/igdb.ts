@@ -1,6 +1,6 @@
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
-  fetchJson,
+  fetchSearchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -61,7 +61,7 @@ async function getIgdbAccessToken(credentials: { clientId: string; clientSecret:
   url.searchParams.set("client_secret", credentials.clientSecret);
   url.searchParams.set("grant_type", "client_credentials");
 
-  const token = await fetchJson<TwitchTokenResponse>(url, { method: "POST" });
+  const token = await fetchSearchJson<TwitchTokenResponse>(url, { method: "POST" });
 
   if (!token?.access_token) {
     return null;
@@ -93,7 +93,7 @@ function getIgdbYear(firstReleaseDate: number | undefined) {
 }
 
 function createIgdbClient(credentials: { clientId: string; clientSecret: string }) {
-  async function fetchGames(body: string) {
+  async function fetchGames(body: string, strict = false) {
     const accessToken = await getIgdbAccessToken(credentials);
 
     if (!accessToken) {
@@ -111,6 +111,10 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
     });
 
     if (!response.ok) {
+      if (strict) {
+        throw new Error(`Provider search failed with HTTP ${response.status}.`);
+      }
+
       return [];
     }
 
@@ -128,6 +132,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
         ]
           .filter(Boolean)
           .join(" "),
+        true,
       );
     },
     async getGameMetadata(id: number) {
@@ -137,6 +142,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
           `where id = ${id};`,
           "limit 1;",
         ].join(" "),
+        true,
       );
 
       return game ?? null;

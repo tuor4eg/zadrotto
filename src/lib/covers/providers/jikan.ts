@@ -2,6 +2,7 @@ import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
 
@@ -77,7 +78,7 @@ export const jikanProvider: MediaProvider = {
       limit: options.candidateLimit,
       sfw: true,
     });
-    const data = await fetchJson<JikanSearchResponse>(url);
+    const data = await fetchSearchJson<JikanSearchResponse>(url);
 
     return (data?.data ?? [])
       .filter((item) => item.mal_id)
@@ -107,7 +108,7 @@ export const jikanProvider: MediaProvider = {
       return null;
     }
 
-    const details = await fetchJson<JikanAnimeDetailsResponse>(
+    const details = await fetchSearchJson<JikanAnimeDetailsResponse>(
       new URL(`https://api.jikan.moe/v4/anime/${id}/full`),
     );
 
@@ -148,7 +149,7 @@ export const jikanProvider: MediaProvider = {
       limit: options.candidateLimit,
       sfw: true,
     });
-    const data = await fetchJson<JikanSearchResponse>(url);
+    const data = await fetchSearchJson<JikanSearchResponse>(url);
 
     const candidates: CoverCandidate[] = [];
 

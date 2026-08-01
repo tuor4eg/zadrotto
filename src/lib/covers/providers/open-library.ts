@@ -2,6 +2,7 @@ import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
 
@@ -48,7 +49,7 @@ export const openLibraryProvider: MediaProvider = {
       title: query,
       limit: options.candidateLimit,
     });
-    const data = await fetchJson<OpenLibrarySearchResponse>(url);
+    const data = await fetchSearchJson<OpenLibrarySearchResponse>(url);
 
     return (data?.docs ?? [])
       .filter((item) => item.key || item.title)
@@ -73,7 +74,7 @@ export const openLibraryProvider: MediaProvider = {
       return null;
     }
 
-    const work = await fetchJson<OpenLibraryWorkResponse>(
+    const work = await fetchSearchJson<OpenLibraryWorkResponse>(
       new URL(`https://openlibrary.org${workKey}.json`),
     );
     const authorKeys = (work?.authors ?? [])
@@ -82,7 +83,7 @@ export const openLibraryProvider: MediaProvider = {
       .slice(0, 8);
     const authors = await Promise.all(
       authorKeys.map(async (authorKey) => {
-        const author = await fetchJson<OpenLibraryAuthorResponse>(
+        const author = await fetchSearchJson<OpenLibraryAuthorResponse>(
           new URL(`https://openlibrary.org${authorKey}.json`),
         );
 
@@ -118,7 +119,7 @@ export const openLibraryProvider: MediaProvider = {
       title: query,
       limit: options.candidateLimit,
     });
-    const data = await fetchJson<OpenLibrarySearchResponse>(url);
+    const data = await fetchSearchJson<OpenLibrarySearchResponse>(url);
 
     return (data?.docs ?? [])
       .filter((item) => item.cover_i)

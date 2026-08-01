@@ -2,6 +2,7 @@ import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
 
@@ -89,7 +90,7 @@ export const comicVineProvider: MediaProvider = {
       limit: options.candidateLimit,
       field_list: "id,name,deck,description,start_year,site_detail_url,image,publisher,count_of_issues",
     });
-    const data = await fetchJson<ComicVineResponse<ComicVineVolume[]>>(url, {
+    const data = await fetchSearchJson<ComicVineResponse<ComicVineVolume[]>>(url, {
       headers: getComicVineHeaders(),
     });
 
@@ -126,7 +127,7 @@ export const comicVineProvider: MediaProvider = {
       format: "json",
       field_list: "id,name,start_year,site_detail_url,publisher,count_of_issues",
     });
-    const data = await fetchJson<ComicVineResponse<ComicVineVolume>>(url, {
+    const data = await fetchSearchJson<ComicVineResponse<ComicVineVolume>>(url, {
       headers: getComicVineHeaders(),
     });
 
@@ -170,7 +171,7 @@ export const comicVineProvider: MediaProvider = {
       limit: options.candidateLimit,
       field_list: "id,name,start_year,site_detail_url,image",
     });
-    const data = await fetchJson<ComicVineResponse<ComicVineVolume[]>>(url, {
+    const data = await fetchSearchJson<ComicVineResponse<ComicVineVolume[]>>(url, {
       headers: getComicVineHeaders(),
     });
 

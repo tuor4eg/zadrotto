@@ -2,6 +2,7 @@ import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
   fetchJson,
+  fetchSearchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -65,7 +66,7 @@ export const rawgProvider: MediaProvider = {
       search: query,
       page_size: options.candidateLimit,
     });
-    const data = await fetchJson<RawgResponse>(url);
+    const data = await fetchSearchJson<RawgResponse>(url);
 
     return (data?.results ?? [])
       .filter((item) => item.id)
@@ -94,7 +95,7 @@ export const rawgProvider: MediaProvider = {
     const url = buildUrl(`https://api.rawg.io/api/games/${input.externalId}`, {
       key: apiKey,
     });
-    const details = await fetchJson<RawgGameDetailsResponse>(url);
+    const details = await fetchSearchJson<RawgGameDetailsResponse>(url);
 
     if (!details?.id) {
       return null;
@@ -132,7 +133,7 @@ export const rawgProvider: MediaProvider = {
       search: query,
       page_size: options.candidateLimit,
     });
-    const data = await fetchJson<RawgResponse>(url);
+    const data = await fetchSearchJson<RawgResponse>(url);
 
     return (data?.results ?? [])
       .filter((item) => item.id && item.background_image)

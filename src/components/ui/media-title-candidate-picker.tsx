@@ -3,7 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { cn } from "@/lib/common/utils";
+import {
+  COVER_REQUEST_ERROR_MESSAGES,
+  isCoverRequestError,
+  type CoverRequestError,
+} from "@/lib/covers/provider-errors";
 import type { SignedMediaTitleCandidate } from "@/lib/covers/types";
 
 const TITLE_SEARCH_DELAY_MS = 500;
@@ -11,7 +17,11 @@ const MIN_TITLE_SEARCH_LENGTH = 2;
 
 type MediaTitleCandidatesResponse = {
   candidates?: SignedMediaTitleCandidate[];
-  error?: "author-rate-limit" | "rate-limit-unavailable";
+  error?:
+    | "author-rate-limit"
+    | "provider-daily-limit"
+    | "provider-unavailable"
+    | "rate-limit-unavailable";
 };
 
 type MediaTitleCandidatePickerProps = {
@@ -46,6 +56,10 @@ export function MediaTitleCandidatePicker({
   const [candidates, setCandidates] = useState<SignedMediaTitleCandidate[]>([]);
   const [candidateSearchKey, setCandidateSearchKey] = useState("");
   const [suppressedSearchKey, setSuppressedSearchKey] = useState<string | null>(null);
+  const [searchError, setSearchError] = useState<{
+    code: CoverRequestError;
+    searchKey: string;
+  } | null>(null);
   const [status, setStatus] = useState<
     "idle" | "loading" | "empty" | "error" | "limited" | "unavailable"
   >("idle");
@@ -59,6 +73,10 @@ export function MediaTitleCandidatePicker({
   const searchKey = useMemo(() => JSON.stringify(searchInput), [searchInput]);
   const canSearch = !disabled && hasTitleSearchInput(searchInput);
   const shouldSuppressSearch = suppressedSearchKey === searchKey;
+  const visibleSearchError =
+    canSearch && !shouldSuppressSearch && searchError?.searchKey === searchKey
+      ? searchError
+      : null;
   const visibleCandidates =
     canSearch && !shouldSuppressSearch && candidateSearchKey === searchKey
       ? candidates
@@ -79,6 +97,7 @@ export function MediaTitleCandidatePicker({
     const controller = new AbortController();
     const timeoutId = window.setTimeout(() => {
       setStatus("loading");
+      setSearchError(null);
 
       void fetch("/api/media-title-candidates", {
         method: "POST",
@@ -93,16 +112,10 @@ export function MediaTitleCandidatePicker({
             return;
           }
 
-          if (response.status === 429 || data.error === "author-rate-limit") {
+          if (isCoverRequestError(data.error)) {
             setCandidates([]);
             setCandidateSearchKey(searchKey);
-            setStatus("limited");
-            return;
-          }
-
-          if (response.status === 503 || data.error === "rate-limit-unavailable") {
-            setCandidates([]);
-            setCandidateSearchKey(searchKey);
+            setSearchError({ code: data.error, searchKey });
             setStatus("unavailable");
             return;
           }
@@ -144,6 +157,14 @@ export function MediaTitleCandidatePicker({
 
   return (
     <div className="relative min-w-0 max-w-full">
+      <ArchiveToasts
+        key={`title-search-toasts-${searchKey}-${canSearch}-${shouldSuppressSearch}`}
+        messages={visibleSearchError ? [{
+          id: `title-search-${visibleSearchError.code}-${searchKey}`,
+          tone: "error",
+          text: COVER_REQUEST_ERROR_MESSAGES[visibleSearchError.code],
+        } satisfies ArchiveToast] : []}
+      />
       {visibleCandidates.length > 0 ? (
         <div className="absolute left-0 right-0 top-2 z-20 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
           <div className="max-h-72 overflow-y-auto p-1">
@@ -153,6 +174,7 @@ export function MediaTitleCandidatePicker({
                 type="button"
                 className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-sm p-2 text-left transition-colors hover:bg-stone-100 focus-visible:bg-stone-100 focus-visible:outline-none"
                 onClick={() => {
+                  setSearchError(null);
                   setSuppressedSearchKey(
                     JSON.stringify({
                       mediaType,
@@ -228,8 +250,6 @@ export function MediaTitleCandidatePicker({
         >
           {status === "empty" ? "Подходящие тайтлы не найдены." : null}
           {status === "error" ? "Не удалось получить варианты тайтла." : null}
-          {status === "limited" ? "Лимит поиска исчерпан, попробуйте позже." : null}
-          {status === "unavailable" ? "Поиск временно недоступен." : null}
         </p>
       )}
     </div>

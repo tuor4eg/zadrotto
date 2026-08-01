@@ -25,6 +25,13 @@ import type { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import type { MediaTitleCandidate, SignedMediaTitleCandidate } from "@/lib/covers/types";
+import {
+  COVER_REQUEST_ERROR_MESSAGES,
+  getAggregatedProviderRequestError,
+  isCoverRequestError,
+  type CoverRequestError,
+  type ProviderRequestError,
+} from "@/lib/covers/provider-errors";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
 import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
 import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
@@ -72,11 +79,15 @@ type AdminMediaFormProps = {
 };
 
 type MediaTitleMetadataResponse = {
+  error?: unknown;
   metadata?: (MediaMetadataFactsValue & { metadataCandidateToken?: string | null }) | null;
 };
 
+type FetchedMediaTitleMetadata = NonNullable<MediaTitleMetadataResponse["metadata"]>;
+
 type MediaTitleCandidatesResponse = {
   candidates?: SignedMediaTitleCandidate[];
+  error?: unknown;
 };
 
 type MediaTitleMetadataRequest = Pick<MediaTitleCandidate, "externalId" | "mediaType" | "provider">;
@@ -88,13 +99,12 @@ async function fetchMediaTitleCandidates(input: { mediaType: MediaType; query: s
     body: JSON.stringify(input),
   });
 
-  if (!response.ok) {
-    return [];
-  }
-
   const data = (await response.json().catch(() => ({}))) as MediaTitleCandidatesResponse;
 
-  return data.candidates ?? [];
+  return {
+    candidates: response.ok ? data.candidates ?? [] : [],
+    error: isCoverRequestError(data.error) ? data.error : null,
+  };
 }
 
 async function fetchMediaTitleMetadata(candidate: MediaTitleMetadataRequest) {
@@ -108,13 +118,12 @@ async function fetchMediaTitleMetadata(candidate: MediaTitleMetadataRequest) {
     }),
   });
 
-  if (!response.ok) {
-    return null;
-  }
-
   const data = (await response.json().catch(() => ({}))) as MediaTitleMetadataResponse;
 
-  return data.metadata ?? null;
+  return {
+    error: isCoverRequestError(data.error) ? data.error : null,
+    metadata: response.ok ? data.metadata ?? null : null,
+  };
 }
 
 export function AdminMediaForm({
@@ -205,37 +214,67 @@ export function AdminMediaForm({
     setLocalErrorToast(null);
 
     try {
+      const titleCandidatesResult = metadataRefreshSource
+        ? null
+        : await fetchMediaTitleCandidates({
+              mediaType: selectedMediaType,
+              query: title,
+            });
+
+      if (titleCandidatesResult?.error) {
+        if (metadataRequestVersionRef.current === requestVersion) {
+          setLocalErrorToast(
+            createProviderErrorToast("metadata-refresh", titleCandidatesResult.error),
+          );
+        }
+        return;
+      }
+
       const refreshSources = metadataRefreshSource
         ? [metadataRefreshSource]
         : rankMetadataRefreshCandidates(
-            await fetchMediaTitleCandidates({
-              mediaType: selectedMediaType,
-              query: title,
-            }),
+            titleCandidatesResult?.candidates ?? [],
             { originalTitle, releaseYear, title },
           );
 
       if (refreshSources.length === 0) {
-        setLocalErrorToast({
-          id: `metadata-refresh-${Date.now()}`,
-          tone: "error",
-          text: "Не удалось найти тайтл у провайдера.",
-        });
+        if (metadataRequestVersionRef.current === requestVersion) {
+          setLocalErrorToast({
+            id: `metadata-refresh-${Date.now()}`,
+            tone: "error",
+            text: "Не удалось найти тайтл у провайдера.",
+          });
+        }
         return;
       }
 
-      let nextMetadata: Awaited<ReturnType<typeof fetchMediaTitleMetadata>> = null;
+      let nextMetadata: FetchedMediaTitleMetadata | null = null;
+      const providerErrors: ProviderRequestError[] = [];
       let nextTitleSource: Pick<
         SignedMediaTitleCandidate,
         "provider" | "externalId" | "titleSourceToken"
       > | null = null;
 
       for (const refreshSource of refreshSources) {
-        nextMetadata = await fetchMediaTitleMetadata({
+        const metadataResult = await fetchMediaTitleMetadata({
           provider: refreshSource.provider,
           externalId: refreshSource.externalId,
           mediaType: refreshSource.mediaType,
         });
+        nextMetadata = metadataResult.metadata;
+
+        if (metadataResult.error) {
+          if (metadataResult.error === "author-rate-limit") {
+            if (metadataRequestVersionRef.current === requestVersion) {
+              setLocalErrorToast(
+                createProviderErrorToast("metadata-refresh", metadataResult.error),
+              );
+            }
+            return;
+          }
+          providerErrors.push(metadataResult.error);
+          continue;
+        }
 
         if (nextMetadata) {
           if (
@@ -253,11 +292,18 @@ export function AdminMediaForm({
       }
 
       if (!nextMetadata) {
-        setLocalErrorToast({
-          id: `metadata-refresh-${Date.now()}`,
-          tone: "error",
-          text: "Не удалось обновить факты.",
-        });
+        if (metadataRequestVersionRef.current === requestVersion) {
+          const providerError = getAggregatedProviderRequestError(providerErrors);
+          setLocalErrorToast(
+            providerError
+              ? createProviderErrorToast("metadata-refresh", providerError)
+              : {
+                  id: `metadata-refresh-${Date.now()}`,
+                  tone: "error",
+                  text: "Не удалось обновить факты.",
+                },
+          );
+        }
         return;
       }
 
@@ -272,6 +318,10 @@ export function AdminMediaForm({
           });
           setHasSelectedNewTitleSource(true);
         }
+      }
+    } catch {
+      if (metadataRequestVersionRef.current === requestVersion) {
+        setLocalErrorToast(createProviderErrorToast("metadata-refresh", "provider-unavailable"));
       }
     } finally {
       setIsRefreshingMetadata(false);
@@ -472,14 +522,27 @@ export function AdminMediaForm({
                 if (isEditing) setIsTitleProviderSearchOpen(false);
 
                 void fetchMediaTitleMetadata(candidate)
-                  .then((metadata) => {
-                    if (metadataRequestVersionRef.current !== requestVersion || !metadata) {
+                  .then((result) => {
+                    if (metadataRequestVersionRef.current !== requestVersion) {
                       return;
                     }
-                    setSelectedMetadata(metadata);
-                    setMetadataCandidateToken(metadata.metadataCandidateToken ?? "");
+
+                    if (result.error) {
+                      setLocalErrorToast(createProviderErrorToast("metadata-select", result.error));
+                      return;
+                    }
+
+                    if (!result.metadata) return;
+                    setSelectedMetadata(result.metadata);
+                    setMetadataCandidateToken(result.metadata.metadataCandidateToken ?? "");
                   })
-                  .catch(() => undefined);
+                  .catch(() => {
+                    if (metadataRequestVersionRef.current === requestVersion) {
+                      setLocalErrorToast(
+                        createProviderErrorToast("metadata-select", "provider-unavailable"),
+                      );
+                    }
+                  });
               }}
             />
           ) : null}
@@ -710,4 +773,12 @@ export function AdminMediaForm({
       </div>
     </form>
   );
+}
+
+function createProviderErrorToast(prefix: string, error: CoverRequestError): AdminToast {
+  return {
+    id: `${prefix}-${error}-${Date.now()}`,
+    tone: "error",
+    text: COVER_REQUEST_ERROR_MESSAGES[error],
+  };
 }

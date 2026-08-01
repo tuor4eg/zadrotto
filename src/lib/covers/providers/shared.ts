@@ -41,3 +41,19 @@ export async function fetchJson<T>(url: URL, init?: RequestInit) {
 
   return (await response.json()) as T;
 }
+
+export async function fetchSearchJson<T>(url: URL, init?: RequestInit) {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      accept: "application/json",
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Provider search failed with HTTP ${response.status}.`);
+  }
+
+  return (await response.json()) as T;
+}

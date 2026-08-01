@@ -9,6 +9,10 @@ import {
   type TitleSearchMode,
 } from "@/lib/covers/provider-settings";
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
+import {
+  getAggregatedProviderRequestError,
+  type ProviderRequestError,
+} from "@/lib/covers/provider-errors";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import type {
   CoverCandidate,
@@ -19,6 +23,7 @@ import type {
   MediaProviderCode,
   MediaTitleCandidate,
   MediaTitleMetadata,
+  ProviderSearchOptions,
   TitleSearchInput,
   TitleSearchOptions,
   TitleMetadataInput,
@@ -41,6 +46,43 @@ const DEFAULT_COVER_SEARCH_OPTIONS = {
 } satisfies CoverSearchOptions;
 
 const DEFAULT_PROVIDER_SETTINGS = getCoverProviderDefaultSettings();
+
+export type ProviderSearchError = ProviderRequestError;
+
+export type ProviderSearchResult<T> = {
+  candidates: T[];
+  error: ProviderSearchError | null;
+};
+
+function getAggregatedSearchError(errors: readonly ProviderSearchError[]) {
+  return getAggregatedProviderRequestError(errors);
+}
+
+async function canSearchProvider(
+  providerCode: MediaProviderCode,
+  options: ProviderSearchOptions,
+): Promise<{ allowed: boolean; error: ProviderSearchError | null }> {
+  const result = options.beforeProviderSearch
+    ? await options.beforeProviderSearch(providerCode)
+    : true;
+
+  if (result === true) return { allowed: true, error: null };
+  if (result === "rate-limit-unavailable") {
+    return { allowed: false, error: "rate-limit-unavailable" };
+  }
+
+  return { allowed: false, error: "provider-daily-limit" };
+}
+
+function buildProviderSearchResult<T>(
+  candidates: T[],
+  errors: readonly ProviderSearchError[],
+): ProviderSearchResult<T> {
+  return {
+    candidates,
+    error: candidates.length > 0 ? null : getAggregatedSearchError(errors),
+  };
+}
 
 function getProviderSettingsMap(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
@@ -159,6 +201,8 @@ export async function searchCoverCandidates(
   options: CoverSearchOptions = DEFAULT_COVER_SEARCH_OPTIONS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
+  const errors: ProviderSearchError[] = [];
+
   if (input.titleSource) {
     const configuredProviders = getCoverProvidersForMediaType(
       input.mediaType,
@@ -176,15 +220,19 @@ export async function searchCoverCandidates(
     );
 
     if (input.mediaType !== "anime" && (!provider || !canUseExactProvider)) {
-      return [];
+      return buildProviderSearchResult([], errors);
     }
 
-    const canSearch =
-      provider && canUseExactProvider && options.beforeProviderSearch
-        ? await options.beforeProviderSearch(provider.code)
-        : canUseExactProvider;
+    const exactPermission = provider && canUseExactProvider
+      ? await canSearchProvider(provider.code, options)
+      : { allowed: false, error: null };
+    const canSearch = canUseExactProvider && exactPermission.allowed;
 
-    if (input.mediaType !== "anime" && !canSearch) return [];
+    if (exactPermission.error) errors.push(exactPermission.error);
+
+    if (input.mediaType !== "anime" && !canSearch) {
+      return buildProviderSearchResult([], errors);
+    }
 
     let exactCandidates: CoverCandidate[] = [];
 
@@ -194,12 +242,13 @@ export async function searchCoverCandidates(
           await provider.getCoverCandidatesByTitleSource(input, options),
         ).slice(0, options.candidateLimit);
       } catch {
+        errors.push("provider-unavailable");
         exactCandidates = [];
       }
     }
 
     if (input.mediaType !== "anime" || exactCandidates.length >= options.candidateLimit) {
-      return exactCandidates;
+      return buildProviderSearchResult(exactCandidates, errors);
     }
 
     let candidates = exactCandidates;
@@ -214,11 +263,10 @@ export async function searchCoverCandidates(
         continue;
       }
 
-      const canSearchFallback = options.beforeProviderSearch
-        ? await options.beforeProviderSearch(fallbackProvider.code)
-        : true;
+      const fallbackPermission = await canSearchProvider(fallbackProvider.code, options);
 
-      if (!canSearchFallback) {
+      if (!fallbackPermission.allowed) {
+        if (fallbackPermission.error) errors.push(fallbackPermission.error);
         continue;
       }
 
@@ -236,6 +284,7 @@ export async function searchCoverCandidates(
           options.candidateLimit,
         );
       } catch {
+        errors.push("provider-unavailable");
         continue;
       }
 
@@ -244,14 +293,14 @@ export async function searchCoverCandidates(
       }
     }
 
-    return candidates;
+    return buildProviderSearchResult(candidates, errors);
   }
 
   const normalizedTitle = input.title.trim();
   const normalizedOriginalTitle = input.originalTitle?.trim() || null;
 
   if (!normalizedTitle && !normalizedOriginalTitle) {
-    return [];
+    return buildProviderSearchResult([], errors);
   }
 
   const settledResults = await Promise.allSettled(
@@ -263,28 +312,40 @@ export async function searchCoverCandidates(
       )
       .map(async (provider) => {
         const searchCoverCandidates = provider.searchCoverCandidates;
-        const canSearch = options.beforeProviderSearch
-          ? await options.beforeProviderSearch(provider.code)
-          : true;
+        const permission = await canSearchProvider(provider.code, options);
 
-        if (!canSearch || !searchCoverCandidates) {
-          return [];
+        if (!permission.allowed || !searchCoverCandidates) {
+          return { candidates: [], error: permission.error };
         }
 
-        return searchCoverCandidates(
-          {
-            ...input,
-            title: normalizedTitle,
-            originalTitle: normalizedOriginalTitle,
-          },
-          options,
-        );
+        return {
+          candidates: await searchCoverCandidates(
+            {
+              ...input,
+              title: normalizedTitle,
+              originalTitle: normalizedOriginalTitle,
+            },
+            options,
+          ),
+          error: null,
+        };
       }),
   );
 
-  return normalizeCoverCandidates(
-    settledResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+  const candidates = normalizeCoverCandidates(
+    settledResults.flatMap((result) =>
+      result.status === "fulfilled" ? result.value.candidates : [],
+    ),
   ).slice(0, options.candidateLimit);
+  const settledErrors = settledResults.flatMap((result) =>
+    result.status === "rejected"
+      ? ["provider-unavailable" as const]
+      : result.value.error
+        ? [result.value.error]
+        : [],
+  );
+
+  return buildProviderSearchResult(candidates, settledErrors);
 }
 
 function normalizeTitleCandidates(candidates: MediaTitleCandidate[]) {
@@ -318,10 +379,11 @@ export async function searchTitleCandidates(
   options: TitleSearchOptions = DEFAULT_COVER_SEARCH_OPTIONS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
+  const errors: ProviderSearchError[] = [];
   const query = input.query.trim();
 
   if (!query) {
-    return [];
+    return buildProviderSearchResult([], errors);
   }
 
   const configuredProviders = getConfiguredTitleProvidersForMediaType(
@@ -342,32 +404,46 @@ export async function searchTitleCandidates(
           Boolean(options.providerCredentials?.[provider.code]),
       )
       .map(async ({ provider }) => {
-        const canSearch = options.beforeProviderSearch
-          ? await options.beforeProviderSearch(provider.code)
-          : true;
+        const permission = await canSearchProvider(provider.code, options);
 
-        if (!canSearch || !provider.searchTitleCandidates) {
-          return [];
+        if (!permission.allowed || !provider.searchTitleCandidates) {
+          return { candidates: [], error: permission.error };
         }
 
-        return provider.searchTitleCandidates({ ...input, query }, options);
+        return {
+          candidates: await provider.searchTitleCandidates({ ...input, query }, options),
+          error: null,
+        };
       }),
   );
 
   const parallelCandidates = normalizeTitleCandidates(
-    parallelResults.flatMap((result) => (result.status === "fulfilled" ? result.value : [])),
+    parallelResults.flatMap((result) =>
+      result.status === "fulfilled" ? result.value.candidates : [],
+    ),
+  );
+  errors.push(
+    ...parallelResults.flatMap((result) =>
+      result.status === "rejected"
+        ? ["provider-unavailable" as const]
+        : result.value.error
+          ? [result.value.error]
+          : [],
+    ),
   );
 
   if (parallelCandidates.length > 0) {
-    return parallelCandidates.slice(0, options.candidateLimit);
+    return buildProviderSearchResult(
+      parallelCandidates.slice(0, options.candidateLimit),
+      errors,
+    );
   }
 
   for (const { provider } of configuredProviders.filter(({ mode }) => mode === "fallback")) {
-    const canSearch = options.beforeProviderSearch
-      ? await options.beforeProviderSearch(provider.code)
-      : true;
+    const permission = await canSearchProvider(provider.code, options);
 
-    if (!canSearch || !provider.searchTitleCandidates) {
+    if (!permission.allowed || !provider.searchTitleCandidates) {
+      if (permission.error) errors.push(permission.error);
       continue;
     }
 
@@ -377,14 +453,15 @@ export async function searchTitleCandidates(
       );
 
       if (candidates.length > 0) {
-        return candidates.slice(0, options.candidateLimit);
+        return buildProviderSearchResult(candidates.slice(0, options.candidateLimit), errors);
       }
     } catch {
+      errors.push("provider-unavailable");
       continue;
     }
   }
 
-  return [];
+  return buildProviderSearchResult([], errors);
 }
 
 function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
@@ -438,16 +515,21 @@ export async function getTitleMetadata(
     (coverProviderRequiresCredentials(provider.code) &&
       !options.providerCredentials?.[provider.code])
   ) {
-    return null;
+    return { metadata: null, error: null };
   }
 
-  const canSearch = options.beforeProviderSearch
-    ? await options.beforeProviderSearch(provider.code)
-    : true;
+  const permission = await canSearchProvider(provider.code, options);
 
-  if (!canSearch) {
-    return null;
+  if (!permission.allowed) {
+    return { metadata: null, error: permission.error };
   }
 
-  return normalizeTitleMetadata(await provider.getTitleMetadata(input, options));
+  try {
+    return {
+      metadata: normalizeTitleMetadata(await provider.getTitleMetadata(input, options)),
+      error: null,
+    };
+  } catch {
+    return { metadata: null, error: "provider-unavailable" as const };
+  }
 }

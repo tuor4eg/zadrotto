@@ -225,6 +225,7 @@ export function MediaCatalogPreview({
                 )}
                 mediaItemCode={item.code}
                 mediaItemId={item.id}
+                triggerTooltipSide="left"
                 franchiseSuggestionInput={{
                   title: item.title,
                   originalTitle: item.originalTitle,
