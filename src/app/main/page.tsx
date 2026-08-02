@@ -14,16 +14,15 @@ import {
   Loader2,
   PanelsTopLeft,
   Shapes,
-  Shield,
   Shuffle,
   Sparkles,
   Star,
   Tv,
-  UserCircle,
   type LucideIcon,
 } from "lucide-react";
 
 import { ArchiveCover } from "@/app/media-item-tile";
+import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import {
   createMainPageDataPromises,
   type MainPageMediaItem,
@@ -164,26 +163,12 @@ export default async function MainPage() {
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <header className="archive-paper archive-panel flex flex-col gap-4 px-5 py-5 sm:flex-row sm:items-center sm:justify-between lg:px-7">
-          <Link href="/" className="flex min-w-0 items-center gap-4">
-            <Image
-              src="/site-logo.png"
-              alt=""
-              width={56}
-              height={56}
-              className="size-12 shrink-0 object-contain sm:size-14"
-              priority
-            />
-            <span className="min-w-0 sm:translate-y-1.5">
-              <span className="block truncate font-serif text-2xl leading-tight sm:text-4xl">Журнал, которого не было</span>
-              <span className="mt-1 block font-mono text-[9px] uppercase tracking-[0.18em] text-stone-600 sm:text-[10px]">База хранит факты. Журнал достает из них память.</span>
-            </span>
-          </Link>
-          <nav className="flex shrink-0 gap-2">
-            {currentAdmin ? <Link className="archive-control-surface inline-flex h-10 items-center gap-2 rounded-md border border-stone-300/80 px-3 font-mono text-xs uppercase tracking-wider" href="/admin"><Shield className="size-4" />Админка</Link> : null}
-            <Link className="archive-control-surface inline-flex h-10 items-center gap-2 rounded-md border border-stone-300/80 px-3 font-mono text-xs uppercase tracking-wider" href={currentAuthor ? "/author" : "/author/login"}><UserCircle className="size-5" />{currentAuthor ? "Профиль" : "Войти"}</Link>
-          </nav>
-        </header>
+        <ArchiveSiteHeader
+          brandHref="/"
+          currentAdminUser={Boolean(currentAdmin)}
+          currentAuthor={Boolean(currentAuthor)}
+          variant="main"
+        />
 
         <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px] xl:grid-rows-[auto_auto_auto]">
           <div className="flex min-w-0 flex-col gap-3 xl:contents">

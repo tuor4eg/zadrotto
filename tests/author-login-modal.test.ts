@@ -9,7 +9,10 @@ const tokenFormSource = readFileSync("src/app/author/token/author-token-login-fo
 const tokenPageSource = readFileSync("src/app/author/token/page.tsx", "utf8");
 const profileActionsSource = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
 const profilePageSource = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
-const headerSource = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
+const headerSource = readFileSync(
+  "src/components/archive/archive-site-header.tsx",
+  "utf8",
+);
 const ratingDialogSource = readFileSync("src/app/media-item-rating-dialog.tsx", "utf8");
 
 describe("author login modal contracts", () => {

@@ -238,7 +238,7 @@ body {
 
 .archive-catalog-page {
   --archive-catalog-page-padding-x: 0.75rem;
-  --archive-catalog-page-padding-y: 1rem;
+  --archive-catalog-page-padding-y: 0.75rem;
 
   padding:
     calc(var(--archive-catalog-page-padding-y) + env(safe-area-inset-top))
@@ -272,13 +272,17 @@ body {
   display: none;
 }
 
-.archive-paper {
-  position: relative;
+.archive-paper,
+.archive-textured-block {
   background:
     radial-gradient(circle at 20% 15%, rgb(var(--archive-paper-grain-primary) / 8%) 0 1px, transparent 1px),
     radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),
     linear-gradient(135deg, rgb(var(--archive-paper-start) / 88%), rgb(var(--archive-paper-end) / 90%));
   background-size: 9px 9px, 13px 13px, auto;
+}
+
+.archive-paper {
+  position: relative;
 }
 
 .archive-paper-surface {
@@ -287,6 +291,13 @@ body {
     radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),
     linear-gradient(135deg, rgb(var(--archive-paper-start)), rgb(var(--archive-paper-end)));
   background-size: 9px 9px, 13px 13px, auto;
+}
+
+.archive-textured-block {
+  position: relative;
+  border: 1px solid rgb(var(--archive-paper-edge) / 22%);
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgb(var(--archive-shadow) / 12%);
 }
 
 .archive-notebook-note {

@@ -166,7 +166,7 @@ export function MediaItemsCatalog({
 
   if (archiveTotalCount === 0 && !hasActiveFilters) {
     return (
-      <div className="archive-paper archive-panel p-6 text-sm text-stone-600">
+      <div className="archive-textured-block p-6 text-sm text-stone-600">
         Пока в архиве нет записей.
       </div>
     );

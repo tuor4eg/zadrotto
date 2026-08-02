@@ -19,7 +19,7 @@ type ArchiveCatalogLayoutProps = {
   toolbar?: ReactNode;
 };
 
-const FIXED_PREVIEW_TOP_OFFSET = 96;
+const FIXED_PREVIEW_TOP_OFFSET = 84;
 const FIXED_PREVIEW_BOTTOM_OFFSET = 16;
 
 const EMPTY_FIXED_PREVIEW_STATE: FixedPreviewState = {
@@ -139,7 +139,7 @@ export function ArchiveCatalogLayout({
 
   return (
     <section className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(290px,0.28fr)]">
-      <div className="archive-paper archive-panel archive-stack archive-stack-right flex min-h-0 min-w-0 flex-col p-4">
+      <div className="archive-textured-block flex min-h-0 min-w-0 flex-col p-4">
         {toolbar}
 
         <div
@@ -160,9 +160,16 @@ export function ArchiveCatalogLayout({
       >
         <article
           ref={previewPanelRef}
-          className="archive-paper archive-panel archive-stack archive-stack-left relative flex w-full min-w-0 flex-col overflow-visible"
+          className="archive-textured-block relative flex w-full min-w-0 flex-col overflow-visible"
           style={previewPanelStyle}
         >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/clip-transparent-trimmed.png"
+            alt=""
+            aria-hidden="true"
+            className="pointer-events-none absolute -top-3 right-4 z-50 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
+          />
           <div className="archive-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
             {preview}
           </div>
