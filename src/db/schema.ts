@@ -134,6 +134,11 @@ export const archiveSettings = pgTable(
     id: integer("id").primaryKey().default(1),
     maxTitleAliases: integer("max_title_aliases").default(3).notNull(),
     maxFranchiseDepth: integer("max_franchise_depth").default(3).notNull(),
+    dailyDossierMinAverageScore: integer("daily_dossier_min_average_score")
+      .default(6)
+      .notNull(),
+    recentlyViewedHistoryLimit: integer("recently_viewed_history_limit").default(50).notNull(),
+    recentlyViewedTtlDays: integer("recently_viewed_ttl_days").default(90).notNull(),
     updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
@@ -146,6 +151,12 @@ export const archiveSettings = pgTable(
       sql`${table.maxTitleAliases} between 1 and 10`,
     ),
     check("archive_settings_max_franchise_depth_check", sql`${table.maxFranchiseDepth} between 2 and 5`),
+    check(
+      "archive_settings_daily_dossier_min_average_score_check",
+      sql`${table.dailyDossierMinAverageScore} between 0 and 10`,
+    ),
+    check("archive_settings_recently_viewed_history_limit_check", sql`${table.recentlyViewedHistoryLimit} between 1 and 500`),
+    check("archive_settings_recently_viewed_ttl_days_check", sql`${table.recentlyViewedTtlDays} between 1 and 365`),
   ],
 );
 

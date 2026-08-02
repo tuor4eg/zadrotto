@@ -7,6 +7,7 @@ import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
 import { MediaItemReviews } from "@/app/media-item-reviews";
+import { RecentlyViewedMarker } from "@/app/media/recently-viewed-marker";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import {
@@ -103,6 +104,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      {currentAuthor ? <RecentlyViewedMarker code={item.code} /> : null}
       <div className="mx-auto w-full max-w-6xl">
         <MediaItemDetails
           item={item}

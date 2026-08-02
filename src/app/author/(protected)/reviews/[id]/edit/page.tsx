@@ -5,6 +5,7 @@ import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { getAuthorReviewForEdit } from "@/db/queries/contribution-reviews";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getReviewFormErrorMessage } from "@/lib/forms/contribution-review";
 import {
@@ -34,7 +35,12 @@ export default async function EditAuthorReviewPage({
     notFound();
   }
 
-  const review = await getAuthorReviewForEdit(author.id, contributionId);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  const review = await getAuthorReviewForEdit(
+    author.id,
+    contributionId,
+    accessibleMediaTypeCodes,
+  );
 
   if (!review) {
     notFound();

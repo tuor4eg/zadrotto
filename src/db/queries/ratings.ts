@@ -1,6 +1,7 @@
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { authorMediaStatuses, mediaItems, ratings } from "@/db/schema";
 import { lockAuthorMediaState } from "@/db/queries/author-media-statuses";
 
@@ -56,7 +57,10 @@ export async function deleteAuthorRating(input: {
     .where(and(eq(ratings.mediaItemId, input.mediaItemId), eq(ratings.authorId, input.authorId)));
 }
 
-export async function getAuthorRatingSummary(authorId: number) {
+export async function getAuthorRatingSummary(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
   const currentYear = getCurrentMoscowYear();
   const [totalRows, distribution, scoreDistribution, latestRatings] = await Promise.all([
     db
@@ -67,7 +71,11 @@ export async function getAuthorRatingSummary(authorId: number) {
           sql<number>`count(${ratings.id}) filter (where extract(year from ${ratings.createdAt} at time zone 'Europe/Moscow') = ${currentYear})::int`,
       })
       .from(ratings)
-      .where(eq(ratings.authorId, authorId)),
+      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
+      .where(and(
+        eq(ratings.authorId, authorId),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      )),
     db
       .select({
         mediaType: mediaItems.mediaType,
@@ -75,7 +83,10 @@ export async function getAuthorRatingSummary(authorId: number) {
       })
       .from(ratings)
       .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
-      .where(eq(ratings.authorId, authorId))
+      .where(and(
+        eq(ratings.authorId, authorId),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ))
       .groupBy(mediaItems.mediaType),
     db
       .select({
@@ -83,7 +94,11 @@ export async function getAuthorRatingSummary(authorId: number) {
         ratingsCount: sql<number>`count(${ratings.id})::int`,
       })
       .from(ratings)
-      .where(eq(ratings.authorId, authorId))
+      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
+      .where(and(
+        eq(ratings.authorId, authorId),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ))
       .groupBy(ratings.score),
     db
       .select({
@@ -94,7 +109,10 @@ export async function getAuthorRatingSummary(authorId: number) {
       })
       .from(ratings)
       .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
-      .where(eq(ratings.authorId, authorId))
+      .where(and(
+        eq(ratings.authorId, authorId),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ))
       .orderBy(desc(ratings.updatedAt), desc(ratings.id))
       .limit(5),
   ]);

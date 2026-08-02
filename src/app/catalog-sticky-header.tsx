@@ -149,7 +149,8 @@ export function CatalogStickyHeader({
           : "mx-auto -mt-2 w-full max-w-none flex-wrap justify-center px-2 py-2 lg:ml-auto lg:mt-0 lg:justify-between lg:py-4 lg:pl-5 lg:pr-4"
       }`}
     >
-      <div
+      <Link
+        href="/main"
         className={`min-w-0 items-center gap-4 overflow-hidden lg:transition-[max-width,opacity,transform] lg:duration-200 ${
           isCompact
             ? "hidden"
@@ -175,7 +176,7 @@ export function CatalogStickyHeader({
             База хранит факты. Журнал достает из них память.
           </p>
         </div>
-      </div>
+      </Link>
 
       <div
         className={`grid w-full min-w-0 items-center gap-2 text-sm ${

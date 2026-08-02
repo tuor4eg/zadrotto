@@ -6,6 +6,12 @@ export const AVERAGE_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: "border-emerald-950/25 bg-emerald-50/90 text-emerald-950",
 };
 
+export const AVERAGE_RATING_TEXT_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-950",
+  medium: "text-stone-950",
+  good: "text-emerald-950",
+};
+
 export const AUTHOR_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "border-red-950/25 bg-red-700 text-red-50",
   medium: "border-stone-950/25 bg-stone-700 text-stone-50",

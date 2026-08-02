@@ -8,6 +8,7 @@ import {
   getPublishedMediaItemForReview,
   upsertAuthorReview,
 } from "@/db/queries/contribution-reviews";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   getReviewFormErrorMessage,
@@ -76,7 +77,11 @@ export async function saveAuthorReviewAction(
     };
   }
 
-  const mediaItem = await getPublishedMediaItemForReview(mediaItemId);
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  const mediaItem = await getPublishedMediaItemForReview(
+    mediaItemId,
+    accessibleMediaTypeCodes,
+  );
 
   if (!mediaItem) {
     return {
@@ -86,7 +91,11 @@ export async function saveAuthorReviewAction(
   }
 
   if (contributionId) {
-    const existingReview = await getAuthorReviewForEdit(author.id, contributionId);
+    const existingReview = await getAuthorReviewForEdit(
+      author.id,
+      contributionId,
+      accessibleMediaTypeCodes,
+    );
 
     if (!existingReview) {
       notFound();

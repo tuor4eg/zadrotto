@@ -3,7 +3,7 @@ import Link from "next/link";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import {
@@ -39,10 +39,13 @@ function formatDate(value: Date | string | null) {
 
 export default async function AuthorPage() {
   const author = await requireAuthor();
-  const [summary, reviewSummary, mediaTypes] = await Promise.all([
-    getAuthorRatingSummary(author.id),
-    getAuthorReviewSummary(author.id),
-    getMediaTypeOptions(),
+  const mediaTypes = (await getEffectiveMediaTypeOptions(author.id)).filter(
+    ({ isEnabled }) => isEnabled,
+  );
+  const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
+  const [summary, reviewSummary] = await Promise.all([
+    getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
+    getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
   ]);
   const distributionByMediaType = new Map(
     summary.distribution.map((item) => [item.mediaType, item.ratingsCount]),

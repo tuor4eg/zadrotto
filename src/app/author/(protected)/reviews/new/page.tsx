@@ -8,6 +8,10 @@ import {
   getPublishedMediaItemForReview,
   searchPublishedMediaItemsForReview,
 } from "@/db/queries/contribution-reviews";
+import {
+  getAccessibleMediaTypeCodes,
+  getEnabledMediaTypeCodes,
+} from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getReviewFormErrorMessage } from "@/lib/forms/contribution-review";
 import { AuthorToasts } from "../../author-toasts";
@@ -32,10 +36,14 @@ export default async function NewAuthorReviewPage({ searchParams }: NewAuthorRev
   const mediaItemId = parsePositiveInteger(params.mediaItemId);
   const query = params.q?.trim() ?? "";
   const errorMessage = getReviewFormErrorMessage(params.error);
+  const [accessibleMediaTypeCodes, enabledMediaTypeCodes] = await Promise.all([
+    getAccessibleMediaTypeCodes(author.id),
+    getEnabledMediaTypeCodes(author.id),
+  ]);
 
   if (mediaItemId) {
     const [mediaItem, existingReview] = await Promise.all([
-      getPublishedMediaItemForReview(mediaItemId),
+      getPublishedMediaItemForReview(mediaItemId, accessibleMediaTypeCodes),
       getAuthorReviewForMediaItem(author.id, mediaItemId),
     ]);
 
@@ -81,7 +89,7 @@ export default async function NewAuthorReviewPage({ searchParams }: NewAuthorRev
     );
   }
 
-  const items = await searchPublishedMediaItemsForReview(query);
+  const items = await searchPublishedMediaItemsForReview(query, enabledMediaTypeCodes);
 
   return (
     <div className="flex flex-col gap-5">

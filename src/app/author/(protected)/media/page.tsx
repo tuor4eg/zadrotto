@@ -8,7 +8,7 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorMediaItems } from "@/db/queries/media-items";
-import { getMediaTypeOptions } from "@/db/queries/media-types";
+import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import {
   filterAuthorMediaItems,
   parseAuthorMediaStatusFilter,
@@ -131,12 +131,11 @@ function formatDate(value: Date | string | null) {
 }
 
 export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageProps) {
-  const [author, params, mediaTypes] = await Promise.all([
-    requireAuthor(),
-    searchParams,
-    getMediaTypeOptions(),
-  ]);
-  const items = await getAuthorMediaItems(author.id);
+  const [author, params] = await Promise.all([requireAuthor(), searchParams]);
+  const effectiveMediaTypes = await getEffectiveMediaTypeOptions(author.id);
+  const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
+  const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
+  const items = await getAuthorMediaItems(author.id, enabledMediaTypeCodes);
   const mediaTypesByItemsCount = sortMediaTypesByCount(
     mediaTypes,
     Array.from(

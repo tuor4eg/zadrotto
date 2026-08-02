@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorReviews } from "@/db/queries/contribution-reviews";
+import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
@@ -43,7 +44,8 @@ function formatDate(value: Date | null) {
 
 export default async function AuthorReviewsPage({ searchParams }: AuthorReviewsPageProps) {
   const [author, params] = await Promise.all([requireAuthor(), searchParams]);
-  const reviews = await getAuthorReviews(author.id);
+  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(author.id);
+  const reviews = await getAuthorReviews(author.id, enabledMediaTypeCodes);
   const toast: AuthorToast | null =
     params.saved === "1"
       ? { id: "saved", tone: "success", text: "Черновик рецензии сохранен." }

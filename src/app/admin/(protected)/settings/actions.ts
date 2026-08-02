@@ -32,6 +32,11 @@ import { isCoverProviderCode } from "@/lib/covers/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
 import { parseMediaItemTitleAliasLimit } from "@/lib/media/title-aliases";
+import { parseDailyDossierMinAverageScore } from "@/lib/main-page/daily-dossier-settings";
+import {
+  parseRecentlyViewedHistoryLimit,
+  parseRecentlyViewedTtlDays,
+} from "@/lib/main-page/recently-viewed-settings";
 
 export type ChangeAdminPasswordState = {
   error: string | null;
@@ -85,15 +90,27 @@ export async function updateArchiveSettingsAction(
     getFormString(formData, "mediaItemTitleAliasLimit"),
   );
   const maxFranchiseDepth = Number(getFormString(formData, "maxFranchiseDepth"));
+  const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
+    getFormString(formData, "dailyDossierMinAverageScore"),
+  );
+  const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(
+    getFormString(formData, "recentlyViewedHistoryLimit"),
+  );
+  const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(
+    getFormString(formData, "recentlyViewedTtlDays"),
+  );
 
-  if (mediaItemTitleAliasLimit === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
-    return { error: "Укажите максимум альтернативных названий от 1 до 10 и глубину серий от 2 до 5.", success: null };
+  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+    return { error: "Проверьте ограничения общих настроек.", success: null };
   }
 
   try {
     await updateArchiveSettings({
       maxTitleAliases: mediaItemTitleAliasLimit,
       maxFranchiseDepth,
+      dailyDossierMinAverageScore,
+      recentlyViewedHistoryLimit,
+      recentlyViewedTtlDays,
       updatedByAdminId: adminUser.id,
     });
     await logActivity({
@@ -103,7 +120,13 @@ export async function updateArchiveSettingsAction(
       entityType: "archive-settings",
       entityId: 1,
       message: "Общие настройки обновлены.",
-      metadata: { mediaItemTitleAliasLimit, maxFranchiseDepth },
+      metadata: {
+        dailyDossierMinAverageScore,
+        recentlyViewedHistoryLimit,
+        recentlyViewedTtlDays,
+        mediaItemTitleAliasLimit,
+        maxFranchiseDepth,
+      },
     });
   } catch (error) {
     if (error instanceof Error && error.message === "Franchise depth is below existing tree") {

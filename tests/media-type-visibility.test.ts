@@ -263,6 +263,51 @@ describe("media type visibility query boundaries", () => {
     );
   });
 
+  it("uses enabled types for author lists and summaries", () => {
+    const mediaItemsQuery = read("src/db/queries/media-items.ts");
+    const reviewsQuery = read("src/db/queries/contribution-reviews.ts");
+    const ratingsQuery = read("src/db/queries/ratings.ts");
+
+    for (const [source, functionName] of [
+      [mediaItemsQuery, "getAuthorMediaItems"],
+      [reviewsQuery, "getAuthorReviews"],
+      [reviewsQuery, "getAuthorReviewSummary"],
+      [reviewsQuery, "searchPublishedMediaItemsForReview"],
+      [ratingsQuery, "getAuthorRatingSummary"],
+    ]) {
+      const functionSource = getExportedFunctionSource(source, functionName);
+      assert.match(functionSource, /enabledMediaTypeCodes/);
+      assert.match(functionSource, /getMediaTypeCodeFilterSql/);
+    }
+
+    const authorMediaPage = read("src/app/author/(protected)/media/page.tsx");
+    assert.match(authorMediaPage, /getEffectiveMediaTypeOptions\(author\.id\)/);
+    assert.match(authorMediaPage, /filter\(\(\{ isEnabled \}\) => isEnabled\)/);
+    assert.doesNotMatch(authorMediaPage, /get(?:All)?MediaTypeOptions\(\)/);
+  });
+
+  it("uses accessible types for direct review selection and editing", () => {
+    const reviewsQuery = read("src/db/queries/contribution-reviews.ts");
+
+    for (const functionName of [
+      "getPublishedMediaItemForReview",
+      "getAuthorReviewForEdit",
+    ]) {
+      const source = getExportedFunctionSource(reviewsQuery, functionName);
+      assert.match(source, /accessibleMediaTypeCodes/);
+      assert.match(source, /getMediaTypeCodeFilterSql/);
+      assert.doesNotMatch(source, /enabledMediaTypeCodes/);
+    }
+
+    for (const path of [
+      "src/app/author/(protected)/reviews/new/page.tsx",
+      "src/app/author/(protected)/reviews/[id]/edit/page.tsx",
+      "src/app/author/(protected)/reviews/actions.ts",
+    ]) {
+      assert.match(read(path), /getAccessibleMediaTypeCodes\(author\.id\)/);
+    }
+  });
+
   it("keeps administrative queries and forms outside author scopes", () => {
     const adminPage = read("src/app/admin/(protected)/media/page.tsx");
 

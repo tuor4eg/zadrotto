@@ -650,7 +650,10 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
   };
 }
 
-export async function getAuthorMediaItems(authorId: number) {
+export async function getAuthorMediaItems(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
   return db
     .select({
       id: mediaItems.id,
@@ -676,6 +679,7 @@ export async function getAuthorMediaItems(authorId: number) {
       and(
         eq(mediaItems.createdByAuthorId, authorId),
         ne(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ),
     )
     .orderBy(asc(mediaItems.title));

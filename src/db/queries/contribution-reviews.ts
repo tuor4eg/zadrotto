@@ -1,6 +1,7 @@
 import { and, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import {
   authors,
   contributionMediaItems,
@@ -51,7 +52,10 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
     .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id));
 }
 
-export async function getAuthorReviews(authorId: number) {
+export async function getAuthorReviews(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
   return db
     .select({
       id: contributions.id,
@@ -68,11 +72,18 @@ export async function getAuthorReviews(authorId: number) {
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
     .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
-    .where(and(eq(contributions.authorId, authorId), eq(contributions.type, "review")))
+    .where(and(
+      eq(contributions.authorId, authorId),
+      eq(contributions.type, "review"),
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+    ))
     .orderBy(desc(contributions.updatedAt), desc(contributions.id));
 }
 
-export async function getAuthorReviewSummary(authorId: number) {
+export async function getAuthorReviewSummary(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
   const [statusCounts, latestReviews] = await Promise.all([
     db
       .select({
@@ -80,7 +91,12 @@ export async function getAuthorReviewSummary(authorId: number) {
         reviewsCount: sql<number>`count(${contributions.id})::int`,
       })
       .from(contributions)
-      .where(and(eq(contributions.authorId, authorId), eq(contributions.type, "review")))
+      .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+      .where(and(
+        eq(contributions.authorId, authorId),
+        eq(contributions.type, "review"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ))
       .groupBy(contributions.status),
     db
       .select({
@@ -94,7 +110,11 @@ export async function getAuthorReviewSummary(authorId: number) {
       .from(contributions)
       .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
       .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
-      .where(and(eq(contributions.authorId, authorId), eq(contributions.type, "review")))
+      .where(and(
+        eq(contributions.authorId, authorId),
+        eq(contributions.type, "review"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ))
       .orderBy(desc(contributions.updatedAt), desc(contributions.id))
       .limit(5),
   ]);
@@ -108,7 +128,11 @@ export async function getAuthorReviewSummary(authorId: number) {
   };
 }
 
-export async function getAuthorReviewForEdit(authorId: number, contributionId: number) {
+export async function getAuthorReviewForEdit(
+  authorId: number,
+  contributionId: number,
+  accessibleMediaTypeCodes: readonly string[],
+) {
   const [review] = await db
     .select({
       id: contributions.id,
@@ -128,6 +152,7 @@ export async function getAuthorReviewForEdit(authorId: number, contributionId: n
         eq(contributions.id, contributionId),
         eq(contributions.authorId, authorId),
         eq(contributions.type, "review"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
       ),
     )
     .limit(1);
@@ -154,7 +179,10 @@ export async function getAuthorReviewForMediaItem(authorId: number, mediaItemId:
   return review ?? null;
 }
 
-export async function searchPublishedMediaItemsForReview(query: string) {
+export async function searchPublishedMediaItemsForReview(
+  query: string,
+  enabledMediaTypeCodes: readonly string[],
+) {
   const normalizedQuery = query.trim();
   const condition = normalizedQuery
     ? and(
@@ -187,12 +215,18 @@ export async function searchPublishedMediaItemsForReview(query: string) {
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
-    .where(condition)
+    .where(and(
+      condition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+    ))
     .orderBy(desc(mediaItems.updatedAt), desc(mediaItems.id))
     .limit(30);
 }
 
-export async function getPublishedMediaItemForReview(mediaItemId: number) {
+export async function getPublishedMediaItemForReview(
+  mediaItemId: number,
+  accessibleMediaTypeCodes: readonly string[],
+) {
   const [item] = await db
     .select({
       id: mediaItems.id,
@@ -201,7 +235,11 @@ export async function getPublishedMediaItemForReview(mediaItemId: number) {
     })
     .from(mediaItems)
     .where(
-      and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS)),
+      and(
+        eq(mediaItems.id, mediaItemId),
+        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
+      ),
     )
     .limit(1);
 
