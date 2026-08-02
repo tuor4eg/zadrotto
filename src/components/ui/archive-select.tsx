@@ -34,6 +34,7 @@ export function ArchiveSelect<TValue extends string>({
   triggerClassName,
   value,
 }: ArchiveSelectProps<TValue>) {
+  const desiredMenuHeight = options.length * 36 + 10;
   const [isOpen, setIsOpen] = useState(false);
   const [menuLayout, setMenuLayout] = useState({
     maxHeight: 288,
@@ -91,11 +92,12 @@ export function ArchiveSelect<TValue extends string>({
       const viewportBottom = viewportTop + viewportHeight;
       const availableAbove = triggerRect.top - viewportTop - 16;
       const availableBelow = viewportBottom - triggerRect.bottom - 16;
-      const placement = availableBelow >= Math.min(288, availableAbove) ? "bottom" : "top";
+      const placement =
+        availableBelow >= Math.min(desiredMenuHeight, availableAbove) ? "bottom" : "top";
       const availableHeight = placement === "bottom" ? availableBelow : availableAbove;
 
       setMenuLayout({
-        maxHeight: Math.max(0, Math.min(288, availableHeight)),
+        maxHeight: Math.max(0, Math.min(desiredMenuHeight, availableHeight)),
         placement,
       });
     }
@@ -110,7 +112,7 @@ export function ArchiveSelect<TValue extends string>({
       window.visualViewport?.removeEventListener("resize", updateMenuLayout);
       window.visualViewport?.removeEventListener("scroll", updateMenuLayout);
     };
-  }, [isOpen]);
+  }, [desiredMenuHeight, isOpen]);
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>

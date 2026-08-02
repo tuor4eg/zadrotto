@@ -1,0 +1,32 @@
+import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { describe, it } from "node:test";
+
+const query = readFileSync("src/db/queries/main-page.ts", "utf8");
+const page = readFileSync("src/app/main/page.tsx", "utf8");
+
+describe("main page streaming", () => {
+  it("starts independent data promises without a mega await", () => {
+    assert.match(query, /export function createMainPageDataPromises/);
+    for (const key of ["top", "newItems", "reviews", "latestRatings", "wanted", "about"]) {
+      assert.match(query, new RegExp(`${key}:`));
+    }
+    assert.doesNotMatch(query, /export async function getMainPageData/);
+    assert.doesNotMatch(query, /await Promise\.all\(\[\s*topRowsPromise/);
+    assert.match(query, /published[\s\S]*enabledMediaTypeCodes|PUBLISHED_PUBLICATION_STATUS[\s\S]*enabledMediaTypeCodes/);
+    assert.match(query, /getRotatedMediaTypeCodes[\s\S]*roundRobinMediaTypeItems/);
+  });
+
+  it("renders section shells with independent suspense boundaries", () => {
+    assert.match(page, /import \{ Suspense \} from "react"/);
+    assert.match(page, /Loader2[\s\S]*animate-spin/);
+    assert.match(page, /role="status" aria-label="Загрузка"/);
+    for (const key of ["top", "newItems", "reviews", "latestRatings", "wanted"]) {
+      assert.match(page, new RegExp(`Suspense[\\s\\S]*SectionItems promise=\\{data\\.${key}\\}`));
+    }
+    assert.match(page, /DossierContent[\s\S]*promise=\{dossierPromise\}/);
+    assert.match(page, /AboutArchive promise=\{data\.about\}/);
+    assert.match(page, /RandomDossierLink promise=\{dossierPromise\}/);
+    assert.doesNotMatch(page, /await\s+createMainPageDataPromises\(/);
+  });
+});

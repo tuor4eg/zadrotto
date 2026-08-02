@@ -16,6 +16,12 @@ import {
   parseRecentlyViewedHistoryLimit,
   parseRecentlyViewedTtlDays,
 } from "@/lib/main-page/recently-viewed-settings";
+import {
+  DEFAULT_TOP_ARCHIVE_MIN_AVERAGE_SCORE,
+  DEFAULT_TOP_ARCHIVE_MIN_RATINGS_COUNT,
+  parseTopArchiveMinAverageScore,
+  parseTopArchiveMinRatingsCount,
+} from "@/lib/main-page/top-archive-settings";
 
 const ARCHIVE_SETTINGS_ID = 1;
 
@@ -25,6 +31,8 @@ export type ArchiveSettingsValue = {
   maxFranchiseDepth: number;
   recentlyViewedHistoryLimit: number;
   recentlyViewedTtlDays: number;
+  topArchiveMinAverageScore: number;
+  topArchiveMinRatingsCount: number;
 };
 
 export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
@@ -35,6 +43,8 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
       dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
       recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
+      topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
+      topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
     })
     .from(archiveSettings)
     .where(eq(archiveSettings.id, ARCHIVE_SETTINGS_ID))
@@ -54,6 +64,12 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
     recentlyViewedTtlDays:
       parseRecentlyViewedTtlDays(settings?.recentlyViewedTtlDays) ??
       DEFAULT_RECENTLY_VIEWED_TTL_DAYS,
+    topArchiveMinAverageScore:
+      parseTopArchiveMinAverageScore(settings?.topArchiveMinAverageScore) ??
+      DEFAULT_TOP_ARCHIVE_MIN_AVERAGE_SCORE,
+    topArchiveMinRatingsCount:
+      parseTopArchiveMinRatingsCount(settings?.topArchiveMinRatingsCount) ??
+      DEFAULT_TOP_ARCHIVE_MIN_RATINGS_COUNT,
   };
 }
 
@@ -67,8 +83,10 @@ export async function updateArchiveSettings(
   );
   const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(input.recentlyViewedHistoryLimit);
   const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(input.recentlyViewedTtlDays);
+  const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(input.topArchiveMinAverageScore);
+  const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(input.topArchiveMinRatingsCount);
 
-  if (maxTitleAliases === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (maxTitleAliases === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     throw new Error("Invalid archive settings");
   }
   const rows = await db.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
@@ -85,6 +103,8 @@ export async function updateArchiveSettings(
       dailyDossierMinAverageScore,
       recentlyViewedHistoryLimit,
       recentlyViewedTtlDays,
+      topArchiveMinAverageScore,
+      topArchiveMinRatingsCount,
       updatedByAdminId: input.updatedByAdminId,
     })
     .onConflictDoUpdate({
@@ -95,6 +115,8 @@ export async function updateArchiveSettings(
         dailyDossierMinAverageScore,
         recentlyViewedHistoryLimit,
         recentlyViewedTtlDays,
+        topArchiveMinAverageScore,
+        topArchiveMinRatingsCount,
         updatedByAdminId: input.updatedByAdminId,
         updatedAt: new Date(),
       },
@@ -105,6 +127,8 @@ export async function updateArchiveSettings(
       dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
       recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
+      topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
+      topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
     });
 
   return settings;

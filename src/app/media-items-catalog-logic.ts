@@ -15,6 +15,7 @@ export const CATALOG_SORTS = [
   "average_score",
   "ratings_count",
   "my_rating_score",
+  "my_rating_date",
   "my_first_experience_year",
 ] as const;
 
@@ -24,6 +25,7 @@ export type CatalogSortDirection = "asc" | "desc";
 export const DEFAULT_CATALOG_SORT: CatalogSort = "title";
 export const AUTHOR_ONLY_CATALOG_SORTS = [
   "my_rating_score",
+  "my_rating_date",
   "my_first_experience_year",
 ] as const satisfies readonly CatalogSort[];
 
@@ -39,6 +41,7 @@ export const DEFAULT_CATALOG_SORT_DIRECTIONS: Record<CatalogSort, CatalogSortDir
   average_score: "desc",
   ratings_count: "desc",
   my_rating_score: "desc",
+  my_rating_date: "desc",
   my_first_experience_year: "asc",
 };
 
@@ -262,6 +265,16 @@ export function sortCatalogItems<TItem extends CatalogSortItem>(
         compareNullableNumbers(
           left.currentAuthorScore ?? null,
           right.currentAuthorScore ?? null,
+          direction,
+        ) || titleFallback
+      );
+    }
+
+    if (sort === "my_rating_date") {
+      return (
+        compareNullableNumbers(
+          getDateTime(left.currentAuthorRatedAt),
+          getDateTime(right.currentAuthorRatedAt),
           direction,
         ) || titleFallback
       );

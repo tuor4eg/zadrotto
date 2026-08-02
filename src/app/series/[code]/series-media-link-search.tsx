@@ -1,12 +1,13 @@
 "use client";
 
-import { useEffect, useRef, useState, useTransition } from "react";
-import { Loader2, Minus, Plus } from "lucide-react";
+import { useCallback, useEffect, useRef, useState, useTransition } from "react";
+import { Loader2, Minus, Plus, Search } from "lucide-react";
 
 import {
   addAuthorSeriesMediaLinkAction,
   removeAuthorSeriesMediaLinkAction,
 } from "./actions";
+import { cn } from "@/lib/common/utils";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
 type SearchItem = {
@@ -38,6 +39,23 @@ export function SeriesMediaLinkSearch({
   const [, startTransition] = useTransition();
   const queryRef = useRef("");
   const rootRef = useRef<HTMLDivElement>(null);
+  const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [scrollShadow, setScrollShadow] = useState({ bottom: false, top: false });
+  const updateScrollShadow = useCallback(() => {
+    const scrollArea = scrollAreaRef.current;
+
+    if (!scrollArea) {
+      setScrollShadow({ bottom: false, top: false });
+      return;
+    }
+
+    const maxScrollTop = scrollArea.scrollHeight - scrollArea.clientHeight;
+
+    setScrollShadow({
+      bottom: scrollArea.scrollTop < maxScrollTop - 1,
+      top: scrollArea.scrollTop > 1,
+    });
+  }, []);
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -195,16 +213,28 @@ export function SeriesMediaLinkSearch({
   const searchPending = normalizedQuery.length >= 2 && !hasResolvedCurrentQuery;
   const dropdownOpen = open && normalizedQuery.length >= 2;
 
+  useEffect(() => {
+    if (!dropdownOpen) {
+      return;
+    }
+
+    const animationFrame = window.requestAnimationFrame(updateScrollShadow);
+
+    return () => window.cancelAnimationFrame(animationFrame);
+  }, [dropdownOpen, loading, message, searchError, updateScrollShadow, visibleItems.length]);
+
   return (
     <div ref={rootRef} className="relative mt-4 w-0 min-w-full border-t border-dashed border-stone-300 pt-4">
       <label className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-700" htmlFor="series-media-search">
         Добавить запись
       </label>
-      <input
-        className="mt-2 h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 px-3 font-mono text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-950"
-        aria-controls="series-media-search-results"
-        id="series-media-search"
-        onChange={(event) => {
+      <div className="relative mt-2">
+        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+        <input
+          className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 py-2 pl-9 pr-3 font-mono text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-950"
+          aria-controls="series-media-search-results"
+          id="series-media-search"
+          onChange={(event) => {
           const nextQuery = event.target.value;
           const normalizedNextQuery = nextQuery.trim();
 
@@ -219,23 +249,29 @@ export function SeriesMediaLinkSearch({
             setResolvedQuery("");
             setSearchError(null);
           }
-        }}
-        onFocus={() => {
-          if (normalizedQuery.length >= 2) {
-            setOpen(true);
-          }
-        }}
-        placeholder="Начните вводить название"
-        type="search"
-        value={query}
-      />
+          }}
+          onFocus={() => {
+            if (normalizedQuery.length >= 2) {
+              setOpen(true);
+            }
+          }}
+          placeholder="Начните вводить название"
+          type="search"
+          value={query}
+        />
+      </div>
       {dropdownOpen ? (
         <div
           aria-label="Результаты поиска записей"
-          className="series-media-search-scrollbar absolute left-0 right-0 top-full z-[80] mt-1 max-h-[min(18rem,calc(100vh-8rem))] min-w-0 overflow-x-hidden overflow-y-auto rounded-md border border-stone-500/70 bg-[rgb(var(--archive-paper-end))] shadow-[0_14px_26px_rgba(28,25,23,0.24)]"
+          className="absolute left-0 right-0 top-full z-[80] mt-1 min-w-0 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg"
           id="series-media-search-results"
           role="region"
         >
+          <div
+            ref={scrollAreaRef}
+            className="max-h-[min(18rem,calc(100vh-8rem))] min-w-0 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+            onScroll={updateScrollShadow}
+          >
           {message ? <p className="px-3 py-2 text-xs text-stone-600" role="status">{message}</p> : null}
           {loading || searchPending ? <p className="px-3 py-3 text-sm text-stone-500">Ищем записи…</p> : null}
           {hasResolvedCurrentQuery && searchError ? (
@@ -296,6 +332,19 @@ export function SeriesMediaLinkSearch({
               })}
             </ul>
           ) : null}
+          </div>
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 top-0 h-4 bg-gradient-to-b from-stone-950/12 to-transparent transition-opacity",
+              scrollShadow.top ? "opacity-100" : "opacity-0",
+            )}
+          />
+          <div
+            className={cn(
+              "pointer-events-none absolute inset-x-0 bottom-0 h-4 bg-gradient-to-t from-stone-950/12 to-transparent transition-opacity",
+              scrollShadow.bottom ? "opacity-100" : "opacity-0",
+            )}
+          />
         </div>
       ) : null}
     </div>

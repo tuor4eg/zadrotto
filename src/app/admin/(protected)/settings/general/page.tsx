@@ -5,5 +5,5 @@ import { SettingsSectionHeader } from "../settings-section-header";
 
 export default async function AdminGeneralSettingsPage() {
   const settings = await getArchiveSettings();
-  return <section><SettingsSectionHeader icon={<Archive />} title="Общие" description="Ограничения для записей, досье дня, истории просмотров и структуры серий." /><div className="mt-5"><ArchiveSettingsForm dailyDossierMinAverageScore={settings.dailyDossierMinAverageScore} mediaItemTitleAliasLimit={settings.maxTitleAliases} maxFranchiseDepth={settings.maxFranchiseDepth} recentlyViewedHistoryLimit={settings.recentlyViewedHistoryLimit} recentlyViewedTtlDays={settings.recentlyViewedTtlDays} /></div></section>;
+  return <section><SettingsSectionHeader icon={<Archive />} title="Общие" description="Ограничения для записей, топа архива, досье дня, истории просмотров и структуры серий." /><div className="mt-5"><ArchiveSettingsForm dailyDossierMinAverageScore={settings.dailyDossierMinAverageScore} mediaItemTitleAliasLimit={settings.maxTitleAliases} maxFranchiseDepth={settings.maxFranchiseDepth} recentlyViewedHistoryLimit={settings.recentlyViewedHistoryLimit} recentlyViewedTtlDays={settings.recentlyViewedTtlDays} topArchiveMinAverageScore={settings.topArchiveMinAverageScore} topArchiveMinRatingsCount={settings.topArchiveMinRatingsCount} /></div></section>;
 }

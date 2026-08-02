@@ -487,6 +487,16 @@ function catalogOrderBy(
     ];
   }
 
+  if (sort === "my_rating_date" && currentAuthorId) {
+    return [
+      direction === "asc"
+        ? sql`${currentAuthorRatedAtSql(currentAuthorId)} asc nulls last`
+        : sql`${currentAuthorRatedAtSql(currentAuthorId)} desc nulls last`,
+      asc(mediaItems.title),
+      asc(mediaItems.id),
+    ];
+  }
+
   if (sort === "my_first_experience_year" && currentAuthorId) {
     return [
       direction === "asc"

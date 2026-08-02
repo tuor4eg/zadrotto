@@ -139,6 +139,8 @@ export const archiveSettings = pgTable(
       .notNull(),
     recentlyViewedHistoryLimit: integer("recently_viewed_history_limit").default(50).notNull(),
     recentlyViewedTtlDays: integer("recently_viewed_ttl_days").default(90).notNull(),
+    topArchiveMinAverageScore: integer("top_archive_min_average_score").default(0).notNull(),
+    topArchiveMinRatingsCount: integer("top_archive_min_ratings_count").default(1).notNull(),
     updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
@@ -157,6 +159,8 @@ export const archiveSettings = pgTable(
     ),
     check("archive_settings_recently_viewed_history_limit_check", sql`${table.recentlyViewedHistoryLimit} between 1 and 500`),
     check("archive_settings_recently_viewed_ttl_days_check", sql`${table.recentlyViewedTtlDays} between 1 and 365`),
+    check("archive_settings_top_archive_min_average_score_check", sql`${table.topArchiveMinAverageScore} between 0 and 10`),
+    check("archive_settings_top_archive_min_ratings_count_check", sql`${table.topArchiveMinRatingsCount} between 0 and 1000`),
   ],
 );
 

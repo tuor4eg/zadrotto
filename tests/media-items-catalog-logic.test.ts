@@ -230,6 +230,7 @@ describe("parseCatalogSort", () => {
     assert.equal(parseCatalogSort("created_at"), "created_at");
     assert.equal(parseCatalogSort("release_year"), "release_year");
     assert.equal(parseCatalogSort("my_rating_score"), "my_rating_score");
+    assert.equal(parseCatalogSort("my_rating_date"), "my_rating_date");
     assert.equal(parseCatalogSort("my_first_experience_year"), "my_first_experience_year");
     assert.equal(parseCatalogSort("unknown"), "title");
     assert.equal(parseCatalogSort(null), "title");
@@ -346,6 +347,17 @@ describe("sortCatalogItems", () => {
     assert.deepEqual(
       sortCatalogItems(sortableItems, "my_rating_score", "asc").map((item) => item.id),
       [1, 3, 4, 2],
+    );
+  });
+
+  it("sorts by current author rating date with newest ratings first", () => {
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "my_rating_date").map((item) => item.id),
+      [3, 1, 4, 2],
+    );
+    assert.deepEqual(
+      sortCatalogItems(sortableItems, "my_rating_date", "asc").map((item) => item.id),
+      [4, 1, 3, 2],
     );
   });
 

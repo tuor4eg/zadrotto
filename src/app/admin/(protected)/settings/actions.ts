@@ -37,6 +37,10 @@ import {
   parseRecentlyViewedHistoryLimit,
   parseRecentlyViewedTtlDays,
 } from "@/lib/main-page/recently-viewed-settings";
+import {
+  parseTopArchiveMinAverageScore,
+  parseTopArchiveMinRatingsCount,
+} from "@/lib/main-page/top-archive-settings";
 
 export type ChangeAdminPasswordState = {
   error: string | null;
@@ -99,8 +103,14 @@ export async function updateArchiveSettingsAction(
   const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(
     getFormString(formData, "recentlyViewedTtlDays"),
   );
+  const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(
+    getFormString(formData, "topArchiveMinAverageScore"),
+  );
+  const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(
+    getFormString(formData, "topArchiveMinRatingsCount"),
+  );
 
-  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     return { error: "Проверьте ограничения общих настроек.", success: null };
   }
 
@@ -111,6 +121,8 @@ export async function updateArchiveSettingsAction(
       dailyDossierMinAverageScore,
       recentlyViewedHistoryLimit,
       recentlyViewedTtlDays,
+      topArchiveMinAverageScore,
+      topArchiveMinRatingsCount,
       updatedByAdminId: adminUser.id,
     });
     await logActivity({
@@ -124,6 +136,8 @@ export async function updateArchiveSettingsAction(
         dailyDossierMinAverageScore,
         recentlyViewedHistoryLimit,
         recentlyViewedTtlDays,
+        topArchiveMinAverageScore,
+        topArchiveMinRatingsCount,
         mediaItemTitleAliasLimit,
         maxFranchiseDepth,
       },

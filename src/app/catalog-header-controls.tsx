@@ -56,6 +56,7 @@ const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
   average_score: "Средняя оценка",
   ratings_count: "Количество оценок",
   my_rating_score: "Моя оценка",
+  my_rating_date: "Дата оценки",
   my_first_experience_year: "Год знакомства",
 };
 

@@ -315,9 +315,11 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
             </div>
           </div>
 
-          <div className="p-6 sm:p-8">
-            <ArchiveNote text={franchise.description} maxWidthClassName="max-w-none" />
-          </div>
+          {franchise.description?.trim() ? (
+            <div className="p-6 sm:p-8">
+              <ArchiveNote text={franchise.description} maxWidthClassName="max-w-none" />
+            </div>
+          ) : null}
 
           {franchiseBranch && franchiseBranch.children.length > 0 ? (
             <section className="border-t border-stone-300/80 px-6 py-6 sm:px-8" aria-labelledby="franchise-branch-heading">

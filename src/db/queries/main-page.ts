@@ -16,15 +16,20 @@ import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { PUBLISHED_CONTRIBUTION_STATUS } from "@/lib/contributions/model";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { parseDailyDossierMinAverageScore } from "@/lib/main-page/daily-dossier-settings";
+import {
+  getRotatedMediaTypeCodes,
+  parseTopArchiveMinAverageScore,
+  parseTopArchiveMinRatingsCount,
+  roundRobinMediaTypeItems,
+} from "@/lib/main-page/top-archive-settings";
 
 const SECTION_SIZES = {
   top: 12,
   newItems: 12,
   reviews: 12,
+  latestRatings: 12,
   wanted: 12,
 } as const;
-
-export const MAIN_PAGE_RECENT_SECTION_SIZE = 12;
 
 export type MainPageMediaItem = {
   averageScore: number | null;
@@ -50,34 +55,36 @@ const globalDailyDossierCondition = and(
   eq(mediaTypes.enabledByDefault, true),
 );
 
-function takeSection(items: MainPageMediaItem[], offset: number, size: number) {
-  if (items.length === 0) {
-    return [];
-  }
-
-  const sectionSize = Math.min(size, items.length);
-
-  return Array.from(
-    { length: sectionSize },
-    (_, index) => items[(offset + index) % items.length],
-  );
-}
-
-export async function getMainPageData(input: {
+export function createMainPageDataPromises(input: {
   currentAuthorId?: number;
   enabledMediaTypeCodes: readonly string[];
+  topArchiveMinAverageScore: number;
+  topArchiveMinRatingsCount: number;
+  utcDate?: Date;
 }) {
   const { currentAuthorId, enabledMediaTypeCodes } = input;
+  const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(
+    input.topArchiveMinAverageScore,
+  );
+  const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(
+    input.topArchiveMinRatingsCount,
+  );
+
+  if (topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null) {
+    throw new Error("Invalid top archive settings");
+  }
 
   if (enabledMediaTypeCodes.length === 0) {
     return {
-      counts: [],
-      sections: { top: [], newItems: [], reviews: [], recent: [], wanted: [] },
-      totalCount: 0,
+      about: Promise.resolve({ counts: [], totalCount: 0 }),
+      latestRatings: Promise.resolve([]),
+      newItems: Promise.resolve([]),
+      reviews: Promise.resolve([]),
+      top: Promise.resolve([]),
+      wanted: Promise.resolve([]),
     };
   }
 
-  const totalSampleSize = Object.values(SECTION_SIZES).reduce((sum, size) => sum + size, 0);
   const accessCondition = and(
     eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     inArray(mediaItems.mediaType, [...enabledMediaTypeCodes]),
@@ -101,39 +108,57 @@ export async function getMainPageData(input: {
     title: mediaItems.title,
   };
 
-  const createMediaItemsQuery = () => db
+  const createMediaItemsQuery = (extraCondition?: ReturnType<typeof eq>) => db
     .select(mediaItemSelection)
     .from(mediaItems)
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(accessCondition)
+    .where(and(accessCondition, extraCondition))
     .groupBy(
       mediaItems.id,
       mediaCarriers.code,
       mediaItemMetadata.facts,
     );
 
-  const [randomRows, topRows, newestRows, reviewRows, wantedRows, countRows] = await Promise.all([
-    createMediaItemsQuery()
-      .orderBy(sql`random()`)
-      .limit(totalSampleSize),
-    createMediaItemsQuery()
-      .having(sql`count(${ratings.id}) > 0`)
-      .orderBy(
-        sql`${averageScoreSql} desc nulls last`,
-        sql`${ratingsCountSql} desc`,
-        sql`lower(${mediaItems.title}) asc`,
-        sql`${mediaItems.id} asc`,
-      )
-      .limit(SECTION_SIZES.top),
-    createMediaItemsQuery()
+  const topEligibilityCondition = and(
+    topArchiveMinAverageScore > 0
+      ? sql`${averageScoreSql} >= ${topArchiveMinAverageScore * 10}`
+      : undefined,
+    topArchiveMinRatingsCount > 0
+      ? sql`${ratingsCountSql} >= ${topArchiveMinRatingsCount}`
+      : undefined,
+  );
+  const rotatedMediaTypeCodes = getRotatedMediaTypeCodes(
+    enabledMediaTypeCodes,
+    input.utcDate ?? new Date(),
+  );
+  const topRowsPromise = Promise.all(
+    rotatedMediaTypeCodes.map((mediaTypeCode) =>
+      createMediaItemsQuery(eq(mediaItems.mediaType, mediaTypeCode))
+        .having(topEligibilityCondition)
+        .orderBy(
+          sql`${averageScoreSql} desc nulls last`,
+          sql`${ratingsCountSql} desc`,
+          sql`lower(${mediaItems.title}) asc`,
+          sql`${mediaItems.id} asc`,
+        )
+        .limit(SECTION_SIZES.top),
+    ),
+  ).then((groups) => roundRobinMediaTypeItems(groups, SECTION_SIZES.top));
+
+  const resolveMediaItems = <T extends MainPageMediaItem>(rows: T[]) => rows.map((item) => ({
+    ...item,
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+    coverUrl: resolveCoverUrl(item.coverUrl),
+  }));
+  const newItemsPromise = createMediaItemsQuery()
       .orderBy(
         sql`${mediaItems.createdAt} desc`,
         sql`${mediaItems.id} desc`,
       )
-      .limit(SECTION_SIZES.newItems),
-    db
+      .limit(SECTION_SIZES.newItems);
+  const reviewsPromise = db
       .select(mediaItemSelection)
       .from(mediaItems)
       .innerJoin(
@@ -161,8 +186,17 @@ export async function getMainPageData(input: {
         sql`max(${contributions.createdAt}) desc`,
         sql`${mediaItems.id} desc`,
       )
-      .limit(SECTION_SIZES.reviews),
-    currentAuthorId
+      .limit(SECTION_SIZES.reviews);
+  const latestRatingsPromise = currentAuthorId
+      ? createMediaItemsQuery()
+          .having(sql`count(${ratings.id}) filter (where ${ratings.authorId} = ${currentAuthorId}) > 0`)
+          .orderBy(
+            sql`max(${ratings.updatedAt}) filter (where ${ratings.authorId} = ${currentAuthorId}) desc`,
+            sql`${mediaItems.id} desc`,
+          )
+          .limit(SECTION_SIZES.latestRatings)
+      : Promise.resolve([]);
+  const wantedPromise = currentAuthorId
       ? db
           .select(mediaItemSelection)
           .from(mediaItems)
@@ -189,8 +223,8 @@ export async function getMainPageData(input: {
             sql`${mediaItems.id} desc`,
           )
           .limit(SECTION_SIZES.wanted)
-      : Promise.resolve([]),
-    db
+      : Promise.resolve([]);
+  const countRowsPromise = db
       .select({
         count: sql<number>`count(${mediaItems.id})::int`,
         mediaType: mediaItems.mediaType,
@@ -200,31 +234,18 @@ export async function getMainPageData(input: {
       .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
       .where(accessCondition)
       .groupBy(mediaItems.mediaType, mediaTypes.name)
-      .orderBy(sql`count(${mediaItems.id}) desc`, mediaTypes.name),
-  ]);
-
-  const resolveMediaItems = (rows: typeof randomRows) => rows.map((item) => ({
-    ...item,
-    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
-    coverUrl: resolveCoverUrl(item.coverUrl),
-  }));
-  const items = resolveMediaItems(randomRows);
-  let offset = 0;
-  const sections = {} as Record<MainPageSectionKey, MainPageMediaItem[]>;
-
-  for (const [key, size] of Object.entries(SECTION_SIZES) as [MainPageSectionKey, number][]) {
-    sections[key] = takeSection(items, offset, size);
-    offset += size;
-  }
-  sections.top = resolveMediaItems(topRows);
-  sections.newItems = resolveMediaItems(newestRows);
-  sections.reviews = resolveMediaItems(reviewRows);
-  sections.wanted = resolveMediaItems(wantedRows);
+      .orderBy(sql`count(${mediaItems.id}) desc`, mediaTypes.name);
 
   return {
-    counts: countRows,
-    sections,
-    totalCount: countRows.reduce((sum, item) => sum + item.count, 0),
+    about: countRowsPromise.then((counts) => ({
+      counts,
+      totalCount: counts.reduce((sum, item) => sum + item.count, 0),
+    })),
+    latestRatings: latestRatingsPromise.then(resolveMediaItems),
+    newItems: newItemsPromise.then(resolveMediaItems),
+    reviews: reviewsPromise.then(resolveMediaItems),
+    top: topRowsPromise.then(resolveMediaItems),
+    wanted: wantedPromise.then(resolveMediaItems),
   };
 }
 
@@ -310,46 +331,4 @@ export async function getEligibleDailyDossierById(
   }).limit(1);
 
   return resolveDailyDossierItem(item);
-}
-
-export async function getRecentlyViewedMediaItems(input: {
-  accessibleMediaTypeCodes: readonly string[];
-  authorId: number;
-  ids: readonly number[];
-}) {
-  if (input.ids.length === 0 || input.accessibleMediaTypeCodes.length === 0) return [];
-
-  const rows = await db
-    .select({
-      averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      code: mediaItems.code,
-      coverThumbUrl: mediaItems.coverThumbUrl,
-      coverUrl: mediaItems.coverUrl,
-      currentAuthorScore: sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${input.authorId})::int`,
-      id: mediaItems.id,
-      mediaCarrierCode: mediaCarriers.code,
-      mediaType: mediaItems.mediaType,
-      metadataFacts: mediaItemMetadata.facts,
-      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
-      releaseYear: mediaItems.releaseYear,
-      title: mediaItems.title,
-    })
-    .from(mediaItems)
-    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
-    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
-    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(and(
-      inArray(mediaItems.id, [...input.ids].slice(0, 500)),
-      inArray(mediaItems.mediaType, [...input.accessibleMediaTypeCodes]),
-      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-      eq(mediaTypes.isPubliclyAvailable, true),
-    ))
-    .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts);
-  const byId = new Map(rows.map((row) => [row.id, resolveDailyDossierItem(row)]));
-
-  return input.ids.flatMap((id) => {
-    const item = byId.get(id);
-    return item ? [item] : [];
-  });
 }
