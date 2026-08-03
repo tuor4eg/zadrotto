@@ -36,6 +36,10 @@ function getGoogleBookImageUrl(imageLinks: GoogleBookImageLinks | undefined) {
   );
 }
 
+function getGoogleBookPageUrl(infoLink: string | undefined, id: string) {
+  return infoLink ?? `https://books.google.com/books?id=${encodeURIComponent(id)}`;
+}
+
 export const googleBooksProvider: MediaProvider = {
   code: "google-books",
   mediaTypes: ["book"],
@@ -67,7 +71,7 @@ export const googleBooksProvider: MediaProvider = {
         originalTitle: item.volumeInfo?.subtitle ?? null,
         description: item.volumeInfo?.description ?? null,
         coverUrl: getGoogleBookImageUrl(item.volumeInfo?.imageLinks),
-        sourcePageUrl: item.volumeInfo?.infoLink ?? null,
+        sourcePageUrl: getGoogleBookPageUrl(item.volumeInfo?.infoLink, item.id!),
         releaseYear: getFirstYear(item.volumeInfo?.publishedDate) ?? null,
       }));
   },
@@ -85,7 +89,7 @@ export const googleBooksProvider: MediaProvider = {
     return {
       provider: "google-books",
       externalId: input.externalId,
-      sourceUrl: details.volumeInfo?.infoLink ?? null,
+      sourceUrl: getGoogleBookPageUrl(details.volumeInfo?.infoLink, details.id),
       facts: {
         authors: details.volumeInfo?.authors ?? null,
       },
@@ -96,7 +100,7 @@ export const googleBooksProvider: MediaProvider = {
     const details = await fetchJson<GoogleBookDetailsResponse>(buildUrl(`https://www.googleapis.com/books/v1/volumes/${input.titleSource?.externalId}`, { key: apiKey }));
     const imageUrl = getGoogleBookImageUrl(details?.volumeInfo?.imageLinks);
     if (!details?.id || !imageUrl) return [];
-    return [{ id: `volume:${details.id}`, provider: "google-books", title: details.volumeInfo?.title ?? input.title, imageUrl, sourcePageUrl: details.volumeInfo?.infoLink ?? null, year: getFirstYear(details.volumeInfo?.publishedDate) ?? undefined }];
+    return [{ id: `volume:${details.id}`, provider: "google-books", title: details.volumeInfo?.title ?? input.title, imageUrl, sourcePageUrl: getGoogleBookPageUrl(details.volumeInfo?.infoLink, details.id), year: getFirstYear(details.volumeInfo?.publishedDate) ?? undefined }];
   },
   async searchCoverCandidates(input, options) {
     const query = normalizeSearchQuery(input);
@@ -128,7 +132,7 @@ export const googleBooksProvider: MediaProvider = {
         provider: "google-books",
         title: item.volumeInfo?.title ?? query,
         imageUrl,
-        sourcePageUrl: item.volumeInfo?.infoLink ?? null,
+        sourcePageUrl: getGoogleBookPageUrl(item.volumeInfo?.infoLink, item.id),
         year: getFirstYear(item.volumeInfo?.publishedDate),
       });
     }

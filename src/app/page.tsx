@@ -300,6 +300,10 @@ export default async function MainPage() {
             >
               {index === 0 ? (
                 label
+              ) : index === 1 ? (
+                <Link className="hover:text-stone-950" href="/about">
+                  {label}
+                </Link>
               ) : (
                 <a aria-disabled="true" className="cursor-default" tabIndex={-1}>
                   {label}

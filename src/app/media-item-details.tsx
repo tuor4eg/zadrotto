@@ -5,6 +5,7 @@ import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
+import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
@@ -93,27 +94,6 @@ function FranchiseRelatedTitle({
         {franchise.title}
       </Link>
     </>
-  );
-}
-
-function CoverSourceAttribution({
-  provider,
-  pageUrl,
-}: {
-  provider?: string | null;
-  pageUrl?: string | null;
-}) {
-  if (provider !== "rawg" || !pageUrl) {
-    return null;
-  }
-
-  return (
-    <Link
-      href={pageUrl}
-      className="mt-2 inline-flex w-fit text-xs text-stone-500 underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950"
-    >
-      Обложка: RAWG
-    </Link>
   );
 }
 

@@ -81,6 +81,9 @@ export function MediaTitleCandidatePicker({
     canSearch && !shouldSuppressSearch && candidateSearchKey === searchKey
       ? candidates
       : [];
+  const hasVisibleGoogleBooksCandidates = visibleCandidates.some(
+    (candidate) => candidate.provider === "google-books",
+  );
   const isPreparingSearch =
     canSearch &&
     !shouldSuppressSearch &&
@@ -167,52 +170,76 @@ export function MediaTitleCandidatePicker({
       />
       {visibleCandidates.length > 0 ? (
         <div className="absolute left-0 right-0 top-2 z-20 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+          {hasVisibleGoogleBooksCandidates ? (
+            <div className="border-b border-stone-200 px-3 py-2">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="https://books.google.com/googlebooks/images/poweredby.png"
+                alt="Powered by Google"
+                className="h-auto w-[62px]"
+              />
+            </div>
+          ) : null}
           <div className="max-h-72 overflow-y-auto p-1">
             {visibleCandidates.map((candidate) => (
-              <button
+              <div
                 key={`${candidate.provider}:${candidate.id}`}
-                type="button"
-                className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-3 rounded-sm p-2 text-left transition-colors hover:bg-stone-100 focus-visible:bg-stone-100 focus-visible:outline-none"
-                onClick={() => {
-                  setSearchError(null);
-                  setSuppressedSearchKey(
-                    JSON.stringify({
-                      mediaType,
-                      query: candidate.title.trim(),
-                    }),
-                  );
-                  setCandidates([]);
-                  setCandidateSearchKey("");
-                  setStatus("idle");
-                  onSelect(candidate);
-                }}
+                className="rounded-sm hover:bg-stone-100 focus-within:bg-stone-100"
               >
-                <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded bg-stone-100 text-xs font-medium uppercase text-stone-400">
-                  {candidate.coverUrl ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={candidate.coverUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    candidate.provider.slice(0, 2)
-                  )}
-                </span>
-                <span className="min-w-0">
-                  <span className="block truncate text-sm font-medium text-stone-950">
-                    {candidate.title}
+                <button
+                  type="button"
+                  className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-3 p-2 pb-1 text-left focus-visible:outline-none"
+                  onClick={() => {
+                    setSearchError(null);
+                    setSuppressedSearchKey(
+                      JSON.stringify({
+                        mediaType,
+                        query: candidate.title.trim(),
+                      }),
+                    );
+                    setCandidates([]);
+                    setCandidateSearchKey("");
+                    setStatus("idle");
+                    onSelect(candidate);
+                  }}
+                >
+                  <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded bg-stone-100 text-xs font-medium uppercase text-stone-400">
+                    {candidate.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={candidate.coverUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      candidate.provider.slice(0, 2)
+                    )}
                   </span>
-                  {candidate.originalTitle ? (
-                    <span className="block truncate text-xs text-stone-500">
-                      {candidate.originalTitle}
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm font-medium text-stone-950">
+                      {candidate.title}
                     </span>
-                  ) : null}
-                  <span className="mt-1 block text-xs text-stone-500">
-                    {getCandidateMeta(candidate)}
+                    {candidate.originalTitle ? (
+                      <span className="block truncate text-xs text-stone-500">
+                        {candidate.originalTitle}
+                      </span>
+                    ) : null}
+                    <span className="mt-1 block text-xs text-stone-500">
+                      {getCandidateMeta(candidate)}
+                    </span>
                   </span>
-                </span>
-              </button>
+                </button>
+                {candidate.provider === "google-books" ? (
+                  <a
+                    href={candidate.sourcePageUrl ?? `https://books.google.com/books?id=${encodeURIComponent(candidate.externalId)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="mb-2 ml-[4.25rem] inline-flex text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-950"
+                  >
+                    Открыть в Google Books
+                  </a>
+                ) : null}
+              </div>
             ))}
           </div>
         </div>

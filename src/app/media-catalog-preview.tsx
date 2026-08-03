@@ -13,6 +13,7 @@ import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-s
 import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
@@ -34,29 +35,6 @@ type MediaCatalogPreviewProps = {
   item: CatalogMediaItem | null;
   mediaTypes: MediaTypeOption[];
 };
-
-function CoverSourceAttribution({
-  provider,
-  pageUrl,
-}: {
-  provider?: string | null;
-  pageUrl?: string | null;
-}) {
-  if (provider !== "rawg" || !pageUrl) {
-    return null;
-  }
-
-  return (
-    <a
-      href={pageUrl}
-      target="_blank"
-      rel="noreferrer"
-      className="mt-2 inline-flex text-xs text-stone-600 underline decoration-stone-400 underline-offset-4 transition-colors hover:text-stone-950"
-    >
-      Обложка: RAWG
-    </a>
-  );
-}
 
 export function MediaCatalogPreview({
   canPublishFranchisesWithoutReview,

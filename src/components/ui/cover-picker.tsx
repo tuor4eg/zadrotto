@@ -102,6 +102,9 @@ export function CoverPicker({
     canSearchCandidates && hasSearchInput && candidatesSearchKey === coverSearchKey
       ? candidates
       : [];
+  const hasVisibleGoogleBooksCandidates = visibleCandidates.some(
+    (candidate) => candidate.provider === "google-books",
+  );
   const isSupportedFileType = (file: File) =>
     COVER_IMAGE_TYPES.some((type) => type === file.type);
 
@@ -302,48 +305,70 @@ export function CoverPicker({
       {!previewUrl ? (
         <div className="mt-3 grid gap-3">
           {visibleCandidates.length > 0 ? (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              {visibleCandidates.map((candidate) => {
-                const isSelected = selectedCandidateToken === candidate.token;
+            <div className="grid gap-3">
+              {hasVisibleGoogleBooksCandidates ? (
+                <div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="https://books.google.com/googlebooks/images/poweredby.png"
+                    alt="Powered by Google"
+                    className="h-auto w-[62px]"
+                  />
+                </div>
+              ) : null}
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                {visibleCandidates.map((candidate) => {
+                  const isSelected = selectedCandidateToken === candidate.token;
 
-                return (
-                  <div
-                    key={`${candidate.provider}:${candidate.id}`}
-                    className={cn(
-                      "rounded-md border bg-white p-2 transition-colors",
-                      isSelected ? "border-stone-950" : "border-stone-200",
-                    )}
-                  >
-                    <CoverPreview
-                      src={candidate.imageUrl}
-                      alt={candidate.title}
-                      buttonClassName="block w-full overflow-hidden rounded bg-stone-100 text-left transition-opacity hover:opacity-90"
-                      thumbnailClassName="aspect-square w-full object-cover"
-                    />
-                    <span className="mt-2 block truncate text-xs font-medium text-stone-900">
-                      {candidate.title}
-                    </span>
-                    <span className="block text-xs text-stone-500">
-                      {candidate.year ? `${candidate.provider}, ${candidate.year}` : candidate.provider}
-                    </span>
-                    <Button
-                      type="button"
-                      variant={isSelected ? "default" : "outline"}
-                      size="sm"
-                      className="mt-2 w-full"
-                      onClick={() => {
-                        setSearchError(null);
-                        setSelectedCandidateToken(candidate.token);
-                        setIsCoverRemoved(false);
-                        setFileName(`Вариант: ${candidate.title}`);
-                        setPreviewUrl(candidate.imageUrl);
-                      }}
+                  return (
+                    <div
+                      key={`${candidate.provider}:${candidate.id}`}
+                      className={cn(
+                        "rounded-md border bg-white p-2 transition-colors",
+                        isSelected ? "border-stone-950" : "border-stone-200",
+                      )}
                     >
-                      {isSelected ? "Выбрано" : "Выбрать"}
-                    </Button>
-                  </div>
-                );
-              })}
+                      <CoverPreview
+                        src={candidate.imageUrl}
+                        alt={candidate.title}
+                        buttonClassName="block w-full overflow-hidden rounded bg-stone-100 text-left transition-opacity hover:opacity-90"
+                        thumbnailClassName="aspect-square w-full object-cover"
+                      />
+                      <span className="mt-2 block truncate text-xs font-medium text-stone-900">
+                        {candidate.title}
+                      </span>
+                      <span className="block text-xs text-stone-500">
+                        {candidate.year ? `${candidate.provider}, ${candidate.year}` : candidate.provider}
+                      </span>
+                      {candidate.provider === "google-books" ? (
+                        <a
+                          href={candidate.sourcePageUrl ?? `https://books.google.com/books?id=${encodeURIComponent(candidate.id.replace(/^volume:/, ""))}`}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-1 inline-flex text-xs font-medium text-blue-700 underline underline-offset-2 hover:text-blue-950"
+                        >
+                          Google Books
+                        </a>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant={isSelected ? "default" : "outline"}
+                        size="sm"
+                        className="mt-2 w-full"
+                        onClick={() => {
+                          setSearchError(null);
+                          setSelectedCandidateToken(candidate.token);
+                          setIsCoverRemoved(false);
+                          setFileName(`Вариант: ${candidate.title}`);
+                          setPreviewUrl(candidate.imageUrl);
+                        }}
+                      >
+                        {isSelected ? "Выбрано" : "Выбрать"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           ) : null}
           {searchStatus === "loading" ? (
