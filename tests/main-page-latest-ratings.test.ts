@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const query = readFileSync("src/db/queries/main-page.ts", "utf8");
-const page = readFileSync("src/app/main/page.tsx", "utf8");
+const page = readFileSync("src/app/page.tsx", "utf8");
 
 describe("main page latest ratings", () => {
   it("selects only the current author's latest ratings with stable ordering", () => {
@@ -23,7 +23,7 @@ describe("main page latest ratings", () => {
   });
 
   it("renders the real section and removes user-facing history", () => {
-    assert.match(page, /href="\/\?sort=my_rating_date&mine=rated"[\s\S]*title="Мои последние оценки"/);
+    assert.match(page, /href="\/archive\?sort=my_rating_date&mine=rated"[\s\S]*title="Мои последние оценки"/);
     assert.match(page, /SectionItems promise=\{data\.latestRatings\}/);
     assert.match(page, /Когда вы начнете оценивать и добавлять записи в желаемое/);
     assert.doesNotMatch(page, /history|Недавно просмотренное|getRecentlyViewed/);

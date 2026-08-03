@@ -60,7 +60,7 @@ describe("top archive settings", () => {
       "src/app/admin/(protected)/settings/archive/archive-settings-form.tsx",
       "utf8",
     );
-    const page = readFileSync("src/app/main/page.tsx", "utf8");
+    const page = readFileSync("src/app/page.tsx", "utf8");
     const query = readFileSync("src/db/queries/main-page.ts", "utf8");
 
     assert.match(schema, /topArchiveMinAverageScore: integer\("top_archive_min_average_score"\)\.default\(0\)\.notNull\(\)/);

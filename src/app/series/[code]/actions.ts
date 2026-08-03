@@ -22,6 +22,7 @@ export type SeriesMediaLinkActionResult = {
 
 function revalidateSeriesMediaSurfaces(franchiseCode: string, mediaItemCode: string) {
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath("/series");
   revalidatePath(`/series/${franchiseCode}`);
   revalidatePath(`/media/${mediaItemCode}`);

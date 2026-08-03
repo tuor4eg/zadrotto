@@ -89,9 +89,9 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
           >
             <Link
               className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-              href="/"
+              href="/archive"
             >
-              Главная
+              Архив
             </Link>
           </nav>
           <h1 className="mt-3 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">

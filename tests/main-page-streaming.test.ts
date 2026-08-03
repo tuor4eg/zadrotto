@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const query = readFileSync("src/db/queries/main-page.ts", "utf8");
-const page = readFileSync("src/app/main/page.tsx", "utf8");
+const page = readFileSync("src/app/page.tsx", "utf8");
 
 describe("main page streaming", () => {
   it("starts independent data promises without a mega await", () => {

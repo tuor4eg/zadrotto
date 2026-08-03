@@ -399,7 +399,7 @@ export function CatalogHeaderControls({
             <div
               id={filtersMenuId}
               role="menu"
-              className="fixed inset-x-3 top-[5.25rem] z-[80] w-auto rounded-md border border-stone-300 bg-stone-50 p-2 shadow-lg sm:absolute sm:inset-x-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[min(19rem,calc(100vw-2rem))] sm:max-w-[calc(100vw-1.5rem)]"
+              className="archive-catalog-filter-menu z-[80] rounded-md border border-stone-300 bg-stone-50 p-2 shadow-lg"
             >
               {currentAuthor ? (
                 <div className="grid">

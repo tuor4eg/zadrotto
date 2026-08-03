@@ -15,6 +15,7 @@ const SETTINGS_PATH = "/author/settings/media-types";
 function revalidateMediaTypeVisibilitySurfaces() {
   revalidatePath(SETTINGS_PATH);
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath("/series");
   revalidatePath("/series/[code]", "page");
   revalidatePath("/media/[code]", "page");

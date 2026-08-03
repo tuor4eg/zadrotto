@@ -127,9 +127,9 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
                 <li>
                   <Link
                     className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                    href="/"
+                    href="/archive"
                   >
-                    Главная
+                    Архив
                   </Link>
                 </li>
                 <li aria-hidden="true" className="text-stone-400">
@@ -138,7 +138,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
                 <li>
                   <Link
                     className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                    href={`/?type=${encodeURIComponent(item.mediaType)}`}
+                    href={`/archive?type=${encodeURIComponent(item.mediaType)}`}
                   >
                     {getMediaTypeLabel(item.mediaType, mediaTypes)}
                   </Link>

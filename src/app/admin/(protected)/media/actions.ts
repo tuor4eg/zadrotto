@@ -181,6 +181,7 @@ function revalidateMediaSurfaces(input: {
   revalidatePath(`/author/media/${input.id}`);
   revalidatePath(`/author/media/${input.id}/edit`);
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath(`/media/${input.code}`);
 
   for (const franchise of input.franchises) {

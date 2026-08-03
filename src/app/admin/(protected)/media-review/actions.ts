@@ -63,6 +63,7 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
 
   if (item.publicationStatus === "published") {
     revalidatePath("/");
+    revalidatePath("/archive");
     revalidatePath(`/media/${item.code}`);
     redirect("/admin/media-review?approved=1");
   }

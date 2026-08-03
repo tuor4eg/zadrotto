@@ -749,7 +749,7 @@ describe("AI persistence and UI security contracts", () => {
       root,
       "src/app/archive-author-media-suggestion.tsx",
     ), "utf8");
-    const archivePage = await readFile(path.join(root, "src/app/page.tsx"), "utf8");
+    const archivePage = await readFile(path.join(root, "src/app/archive/page.tsx"), "utf8");
     const mediaItemPage = await readFile(path.join(
       root,
       "src/app/media/[code]/page.tsx",

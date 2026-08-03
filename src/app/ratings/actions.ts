@@ -33,6 +33,7 @@ function revalidateRatingPaths(input: {
   franchiseCodes: string[];
 }) {
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath(`/media/${input.mediaItemCode}`);
   revalidatePath(`/author/media/${input.mediaItemId}`);
   revalidatePath("/author/media");

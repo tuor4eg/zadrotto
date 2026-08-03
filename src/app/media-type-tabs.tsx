@@ -56,6 +56,7 @@ function MediaTypeTab({
   const distanceFromSelected = Math.abs(index - selectedIndex);
   const overlap = index === 0 ? 0 : Math.min(82, 26 + distanceFromSelected * 16);
   const mobileOverlap = index === 0 ? 0 : Math.min(38, 14 + distanceFromSelected * 8);
+  const hasOverlap = index > 0 && !isSelected && index !== selectedIndex + 1;
   const zIndex = isSelected ? 60 : Math.max(1, 34 - distanceFromSelected);
 
   return (
@@ -65,14 +66,14 @@ function MediaTypeTab({
       aria-selected={isSelected}
       onClick={onClick}
       style={{
-        "--tab-mobile-overlap": index === 0 ? "0px" : `${-mobileOverlap}px`,
-        "--tab-overlap": index === 0 ? "0px" : `${-overlap}px`,
+        "--tab-mobile-overlap": hasOverlap ? `${-mobileOverlap}px` : "0px",
+        "--tab-overlap": hasOverlap ? `${-overlap}px` : "0px",
         zIndex,
       } as CSSProperties}
       className={cn(
         "group relative shrink-0 rounded-t-[14px] px-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80] ml-[var(--tab-mobile-overlap)] lg:ml-[var(--tab-overlap)] lg:grow lg:rounded-t-[18px] lg:px-6 lg:text-xs lg:tracking-[0.12em]",
         isSelected
-          ? "archive-paper-surface h-12 min-w-[116px] pb-3 pt-3 text-stone-950 shadow-[12px_0_22px_rgba(68,64,60,0.32),0_-7px_18px_rgba(68,64,60,0.22)] after:absolute after:inset-x-0 after:-bottom-px after:h-1 after:bg-[rgb(var(--archive-paper-end))] after:content-[''] lg:h-16 lg:min-w-[156px] lg:pb-4 lg:pt-5"
+          ? "archive-media-type-tab-active h-12 min-w-[116px] pb-3 pt-3 text-stone-950 lg:h-16 lg:min-w-[156px] lg:pb-4 lg:pt-5"
           : cn(
               "h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
               paperClassName,

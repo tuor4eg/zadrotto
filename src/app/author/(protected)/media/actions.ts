@@ -662,6 +662,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       message: "Запись опубликована автором.",
     });
     revalidatePath("/");
+    revalidatePath("/archive");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect(
       getCreateSuccessRedirectWithMediaItem(
@@ -873,6 +874,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
       message: "Запись опубликована автором.",
     });
     revalidatePath("/");
+    revalidatePath("/archive");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect("/author/media?published=1");
   }

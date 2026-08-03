@@ -243,9 +243,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                   <li className="shrink-0">
                     <Link
                       className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                      href="/"
+                      href="/archive"
                     >
-                      Главная
+                      Архив
                     </Link>
                   </li>
                   <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>

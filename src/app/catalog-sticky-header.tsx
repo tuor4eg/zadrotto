@@ -96,7 +96,7 @@ export function CatalogStickyHeader({
 
   return (
     <ArchiveSiteHeader
-      brandHref="/main"
+      brandHref="/"
       compact={isCompact}
       controls={
         <CatalogHeaderControls

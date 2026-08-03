@@ -7,7 +7,7 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorAccessTokens } from "@/db/queries/author-access-tokens";
-import { getAuthors } from "@/db/queries/authors";
+import { getAuthorOptions } from "@/db/queries/authors";
 import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
@@ -117,7 +117,7 @@ export default async function AdminAuthorTokensPage({
 }: AdminAuthorTokensPageProps) {
   const [tokens, authors, params] = await Promise.all([
     getAuthorAccessTokens(),
-    getAuthors(),
+    getAuthorOptions(),
     searchParams,
   ]);
   const errorMessage = getAdminFormErrorMessage(params.error);

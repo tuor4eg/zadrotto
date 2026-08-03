@@ -5,7 +5,7 @@ import { Copy, KeyRound } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
-import type { getAuthors } from "@/db/queries/authors";
+import type { getAuthorOptions } from "@/db/queries/authors";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import {
   createAuthorTokenAction,
@@ -13,7 +13,7 @@ import {
 } from "./actions";
 
 type AuthorTokenCreateFormProps = {
-  authors: Awaited<ReturnType<typeof getAuthors>>;
+  authors: Awaited<ReturnType<typeof getAuthorOptions>>;
 };
 
 const initialState: CreateAuthorTokenState = {

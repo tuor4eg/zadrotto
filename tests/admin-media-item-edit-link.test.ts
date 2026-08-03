@@ -6,7 +6,7 @@ const editLinkSource = readFileSync(
   "src/components/archive/admin-entity-edit-link.tsx",
   "utf8",
 );
-const homeSource = readFileSync("src/app/page.tsx", "utf8");
+const homeSource = readFileSync("src/app/archive/page.tsx", "utf8");
 const catalogSource = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const previewSource = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 const mediaPageSource = readFileSync("src/app/media/[code]/page.tsx", "utf8");

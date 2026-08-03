@@ -2,7 +2,8 @@ import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } f
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
-import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import type { MainPageMediaItem } from "@/db/queries/main-page";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -267,6 +268,91 @@ export async function getPublishedFranchiseOptions() {
     .from(franchises)
     .where(publishedFranchiseCondition)
     .orderBy(asc(franchises.title));
+}
+
+export async function getRandomPublishedFranchisePreview(input: {
+  currentAuthorId?: number;
+  enabledMediaTypeCodes: readonly string[];
+}): Promise<{
+  franchise: { code: string; title: string };
+  items: MainPageMediaItem[];
+} | null> {
+  if (input.enabledMediaTypeCodes.length === 0) {
+    return null;
+  }
+
+  const [franchise] = await db
+    .select({
+      id: franchises.id,
+      code: franchises.code,
+      title: franchises.title,
+    })
+    .from(franchises)
+    .innerJoin(
+      mediaItemFranchises,
+      eq(mediaItemFranchises.franchiseId, franchises.id),
+    )
+    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+    .where(and(
+      publishedFranchiseCondition,
+      eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
+    ))
+    .groupBy(franchises.id)
+    .having(sql`count(distinct ${mediaItemFranchises.mediaItemId}) >= 5`)
+    .orderBy(sql`random()`)
+    .limit(1);
+
+  if (!franchise) {
+    return null;
+  }
+
+  const averageScoreSql = sql<number | null>`avg(${ratings.score})::float`;
+  const rows = await db
+    .select({
+      averageScore: averageScoreSql,
+      code: mediaItems.code,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverUrl: mediaItems.coverUrl,
+      currentAuthorScore: input.currentAuthorId
+        ? sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${input.currentAuthorId})::int`
+        : sql<number | null>`null`,
+      id: mediaItems.id,
+      mediaCarrierCode: mediaCarriers.code,
+      mediaType: mediaItems.mediaType,
+      metadataFacts: mediaItemMetadata.facts,
+      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
+      releaseYear: mediaItems.releaseYear,
+      title: mediaItems.title,
+    })
+    .from(mediaItemFranchises)
+    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(and(
+      eq(mediaItemFranchises.franchiseId, franchise.id),
+      eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
+    ))
+    .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts)
+    .orderBy(
+      sql`${mediaItems.releaseYear} desc nulls last`,
+      asc(mediaItems.title),
+      asc(mediaItems.id),
+    )
+    .limit(12);
+
+  return {
+    franchise,
+    items: rows.map((item) => ({
+      ...item,
+      coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      coverUrl: resolveCoverUrl(item.coverUrl),
+    })),
+  };
 }
 
 export async function getPublishedFranchiseOptionById(id: number) {

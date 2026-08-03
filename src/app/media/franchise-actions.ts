@@ -228,6 +228,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
 
   revalidatePath(`/media/${mediaItemCode}`);
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath("/admin/franchise-review");
   revalidatePath("/admin", "layout");
   if (affectedFranchises.length > 0) {

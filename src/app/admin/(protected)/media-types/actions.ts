@@ -84,6 +84,7 @@ function revalidateMediaTypeSurfaces() {
   revalidatePath("/series/[code]", "page");
   revalidatePath("/media/[code]", "page");
   revalidatePath("/");
+  revalidatePath("/archive");
 }
 
 export async function createMediaTypeAction(formData: FormData) {

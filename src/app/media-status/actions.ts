@@ -56,6 +56,7 @@ export async function toggleAuthorMediaStatusAction(
   }
 
   revalidatePath("/");
+  revalidatePath("/archive");
   revalidatePath(`/media/${mediaItem.code}`);
   revalidatePath(`/author/media/${mediaItem.id}`);
   revalidatePath("/author/media");

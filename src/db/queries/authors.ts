@@ -17,10 +17,10 @@ export type DeleteAuthorResult =
   | { status: "not-found" };
 export type AuthorActivityFilter = "active" | "blocked";
 
-const authorUsageCountSql = sql<number>`(
-  count(distinct ${ratings.id}) +
-  count(distinct ${mediaItems.id})
-)::int`;
+const authorHasUsageSql = sql<boolean>`(
+  exists(select 1 from ${ratings} where ${ratings.authorId} = ${authors.id})
+  or exists(select 1 from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id})
+)`;
 
 function authorUsageCountByIdSql(authorId: number) {
   return sql<number>`(
@@ -54,24 +54,11 @@ export async function getAuthors(input?: {
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
-      usageCount: authorUsageCountSql,
+      hasUsage: authorHasUsageSql,
     })
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
-    .leftJoin(ratings, eq(ratings.authorId, authors.id))
-    .leftJoin(mediaItems, eq(mediaItems.createdByAuthorId, authors.id))
     .where(and(activityCondition, accessProfileCondition))
-    .groupBy(
-      authors.id,
-      authors.code,
-      authors.name,
-      authors.avatarObjectKey,
-      authors.isSystem,
-      authorAccessProfiles.id,
-      authorAccessProfiles.name,
-      authors.createdAt,
-      authors.blockedAt,
-    )
     .orderBy(desc(authors.isSystem), asc(authors.name), asc(authors.code));
 }
 

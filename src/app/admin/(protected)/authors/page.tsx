@@ -153,7 +153,7 @@ function AuthorActions({
         label={
           isLastSystemAuthor
             ? "Нельзя удалить последнего системного автора"
-            : author.usageCount > 0
+            : author.hasUsage
               ? "Нельзя удалить: есть данные"
               : "Удалить"
         }
@@ -231,7 +231,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
           <div className="grid gap-3 sm:hidden">
             {authors.map((author) => {
               const isLastSystemAuthor = author.isSystem && systemAuthorsCount <= 1;
-              const canDeleteAuthor = author.usageCount === 0 && !isLastSystemAuthor;
+              const canDeleteAuthor = !author.hasUsage && !isLastSystemAuthor;
 
               return (
                 <div
@@ -257,20 +257,12 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   </div>
 
                   <div className="mt-4 grid gap-3 border-t border-stone-100 pt-3 text-sm">
-                    <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <div className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
-                          Создан
-                        </div>
-                        <div className="text-xs tabular-nums text-stone-500">
-                          {formatCreatedAt(author.createdAt)}
-                        </div>
+                    <div>
+                      <div className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
+                        Создан
                       </div>
-                      <div className="text-right">
-                        <div className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
-                          Данные
-                        </div>
-                        <Badge variant="outline">{author.usageCount}</Badge>
+                      <div className="text-xs tabular-nums text-stone-500">
+                        {formatCreatedAt(author.createdAt)}
                       </div>
                     </div>
 
@@ -298,7 +290,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
               <TBody>
                 {authors.map((author) => {
                   const isLastSystemAuthor = author.isSystem && systemAuthorsCount <= 1;
-                  const canDeleteAuthor = author.usageCount === 0 && !isLastSystemAuthor;
+                  const canDeleteAuthor = !author.hasUsage && !isLastSystemAuthor;
 
                   return (
                     <TR key={author.id}>
