@@ -162,32 +162,34 @@ function ReviewBookModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="relative max-h-[calc(100vh-2.5rem)] w-full max-w-5xl overflow-hidden rounded-md border border-stone-300/80 bg-stone-100 shadow-2xl shadow-stone-950/35"
+        className="relative flex max-h-[calc(100vh-2.5rem)] w-full max-w-5xl flex-col gap-2"
       >
-        {canEditReview ? (
-          <Link
-            href={`/author/reviews/${review.id}/edit`}
-            className="absolute right-14 top-3 z-10 grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/85 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-            aria-label="Редактировать рецензию"
+        <div className="flex shrink-0 justify-end gap-2">
+          {canEditReview ? (
+            <Link
+              href={`/author/reviews/${review.id}/edit`}
+              className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+              aria-label="Редактировать рецензию"
+            >
+              <Pencil className="size-4" />
+            </Link>
+          ) : null}
+          <button
+            type="button"
+            onClick={onClose}
+            className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            aria-label="Закрыть рецензию"
           >
-            <Pencil className="size-4" />
-          </Link>
-        ) : null}
-        <button
-          type="button"
-          onClick={onClose}
-          className="absolute right-3 top-3 z-10 grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/85 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-          aria-label="Закрыть рецензию"
-        >
-          <X className="size-4" />
-        </button>
+            <X className="size-4" />
+          </button>
+        </div>
 
-        <div className="grid max-h-[calc(100vh-2.5rem)] min-h-0 overflow-hidden bg-[linear-gradient(90deg,rgba(120,113,108,0.12),transparent_48%,rgba(120,113,108,0.18)_50%,transparent_52%,rgba(120,113,108,0.12)),linear-gradient(135deg,#fffdf5,#f3ead6)] lg:h-[620px] lg:grid-cols-2 lg:gap-0">
+        <div className="grid max-h-[calc(100vh-5.75rem)] min-h-0 overflow-hidden rounded-md border border-stone-300/80 bg-[linear-gradient(90deg,rgba(120,113,108,0.12),transparent_48%,rgba(120,113,108,0.18)_50%,transparent_52%,rgba(120,113,108,0.12)),linear-gradient(135deg,#fffdf5,#f3ead6)] shadow-2xl shadow-stone-950/35 lg:h-[min(620px,calc(100vh-5.75rem))] lg:grid-cols-2 lg:gap-0">
           <section className="min-h-0 overflow-hidden border-stone-300/70 p-5 sm:p-7 lg:border-r lg:p-9">
             <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
               Рецензия
             </div>
-            <h2 id={titleId} className="mt-3 pr-10 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
+            <h2 id={titleId} className="mt-3 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
               {review.title}
             </h2>
             <div className="mt-5 flex flex-wrap items-center gap-2 font-mono text-xs uppercase tracking-[0.12em] text-stone-500">

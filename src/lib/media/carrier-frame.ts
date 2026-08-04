@@ -267,8 +267,8 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   "film/reel": {
     assetPath: "/mediaCarriers/video/reel/reel.png",
     aspectRatioClassName: "aspect-[1000/1040]",
-    compactSizeClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
-    compactViewportClassName: "w-[min(100%,18rem)] max-w-full sm:h-[min(32vh,300px)] sm:w-auto",
+    compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
+    compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
     coverAreaClassName: "left-[21.4%] top-[7.6%] h-[64.8%] w-[41.8%]",
     displayFontClassName: "media-carrier-font-film-reel",
     fontClassName: "media-carrier-font-film-reel",

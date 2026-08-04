@@ -1,41 +1,25 @@
 import Link from "next/link";
+import {
+  CalendarCheck,
+  ChartNoAxesColumn,
+  FileText,
+  Gauge,
+  Info,
+  Shapes,
+  Star,
+} from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ResponsiveTileGrid } from "@/components/archive/responsive-tile-grid";
+import { Card, CardContent } from "@/components/ui/card";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
+import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import { requireAuthor } from "@/lib/auth/author-auth";
-import {
-  CONTRIBUTION_STATUS_VALUE_LABELS,
-  type ContributionStatus,
-} from "@/lib/contributions/model";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import { RATING_SCORE_VALUES, formatScore } from "@/lib/ratings/score";
 import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
-
-const REVIEW_STATUS_BADGE_VARIANTS: Record<
-  ContributionStatus,
-  "default" | "outline" | "positive" | "warning" | "destructive"
-> = {
-  draft: "outline",
-  submitted: "warning",
-  published: "positive",
-  rejected: "destructive",
-  hidden: "default",
-};
-
-function formatDate(value: Date | string | null) {
-  if (!value) {
-    return "—";
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    dateStyle: "medium",
-    timeStyle: "short",
-    timeZone: "Europe/Moscow",
-  }).format(new Date(value));
-}
+import { AuthorMediaInterestsDonut } from "./author-media-interests-donut";
 
 export default async function AuthorPage() {
   const author = await requireAuthor();
@@ -47,6 +31,36 @@ export default async function AuthorPage() {
     getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
     getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
   ]);
+  const latestMediaItemIds = [...new Set([
+    ...summary.latestRatings.map((rating) => rating.mediaItemId),
+    ...reviewSummary.latestReviews.map((review) => review.mediaItemId),
+  ])];
+  const latestMediaItems = await getMediaItemTilesByIds(latestMediaItemIds, author.id);
+  const latestMediaItemsById = new Map(latestMediaItems.map((item) => [item.id, item]));
+  const latestRatingTiles = summary.latestRatings.flatMap((rating) => {
+    const item = latestMediaItemsById.get(rating.mediaItemId);
+
+    return item
+      ? [{
+          currentAuthorScore: item.currentAuthorScore,
+          href: `/media/${item.code}`,
+          item,
+          key: `rating-${rating.mediaItemId}`,
+        }]
+      : [];
+  });
+  const latestReviewTiles = reviewSummary.latestReviews.flatMap((review) => {
+    const item = latestMediaItemsById.get(review.mediaItemId);
+
+    return item
+      ? [{
+          currentAuthorScore: item.currentAuthorScore,
+          href: `/author/reviews/${review.id}/edit`,
+          item,
+          key: `review-${review.id}`,
+        }]
+      : [];
+  });
   const distributionByMediaType = new Map(
     summary.distribution.map((item) => [item.mediaType, item.ratingsCount]),
   );
@@ -57,6 +71,11 @@ export default async function AuthorPage() {
       mediaType: item.mediaType,
     })),
   );
+  const interestItems = mediaTypesByRatingCount.map((mediaType) => ({
+    code: mediaType.code,
+    count: distributionByMediaType.get(mediaType.code) ?? 0,
+    label: getMediaTypeLabel(mediaType.code, mediaTypes),
+  }));
   const distributionByScore = new Map(
     summary.scoreDistribution.map((item) => [item.score, item.ratingsCount]),
   );
@@ -64,193 +83,146 @@ export default async function AuthorPage() {
     1,
     ...summary.scoreDistribution.map((item) => item.ratingsCount),
   );
+  const scoreDistributionValues = [...RATING_SCORE_VALUES].reverse();
+  const statistics = [
+    { Icon: Star, label: "Оценок", value: summary.ratingsCount },
+    { Icon: Gauge, label: "Средняя", value: formatScore(summary.averageScore) },
+    { Icon: CalendarCheck, label: "Оценено в этом году", value: summary.currentYearRatingsCount },
+    { Icon: FileText, label: "Рецензий", value: reviewSummary.reviewsCount },
+  ];
 
   return (
-    <div className="flex flex-col gap-6">
-      <section className="grid gap-3 md:grid-cols-4">
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Оценок
-            </span>
-            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {summary.ratingsCount}
-            </span>
+    <div className="author-dashboard flex flex-col gap-3">
+      <section className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,0.65fr)]">
+        <Card className="archive-paper archive-panel h-full">
+          <CardContent className="p-4 sm:px-5 sm:pt-5">
+            <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
+              <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+                <Shapes className="size-5 shrink-0 text-red-950/70" />
+                Мои интересы
+              </h2>
+            </div>
+            <AuthorMediaInterestsDonut items={interestItems} />
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Средняя
-            </span>
-            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {formatScore(summary.averageScore)}
-            </span>
-          </CardContent>
-        </Card>
+        <Card className="archive-paper archive-panel h-full">
+          <CardContent className="flex h-full flex-col p-4 sm:px-5 sm:pt-5">
+            <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
+              <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+                <ChartNoAxesColumn className="size-5 shrink-0 text-red-950/70" />
+                Распределение оценок
+              </h2>
+            </div>
+            <div
+              aria-label="Распределение количества оценок от 1 до 10"
+              className="flex min-h-0 flex-1 flex-col"
+              role="img"
+            >
+              <div className="relative grid min-h-32 flex-1 grid-cols-10 items-end gap-1 border-b border-stone-400/50 sm:gap-1.5">
+                {scoreDistributionValues.map((score) => {
+                  const count = distributionByScore.get(score) ?? 0;
+                  const toneClassName = RATING_BAR_TONE_CLASS_NAMES[getRatingTone(score)];
+                  const barHeightPercent = count > 0
+                    ? Math.max(2, (count / maxScoreDistributionCount) * 88)
+                    : 0;
 
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Оценено в этом году
-            </span>
-            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {summary.currentYearRatingsCount}
-            </span>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.14em] text-stone-500">
-              Рецензий
-            </span>
-            <span className="mt-1.5 block font-mono text-2xl font-semibold tabular-nums text-stone-950">
-              {reviewSummary.reviewsCount}
-            </span>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              По типам медиа
-            </span>
-            <div className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
-              {mediaTypesByRatingCount.map((mediaType) => {
-                const count = distributionByMediaType.get(mediaType.code) ?? 0;
-
-                return (
-                  <div
-                    key={mediaType.code}
-                    className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 rounded-md border border-stone-200 bg-stone-100/80 px-2.5 py-2 shadow-[inset_0_1px_0_rgba(255,255,255,0.45)]"
+                  return (
+                    <span
+                      key={score}
+                      className="relative h-full min-w-0"
+                    >
+                      <span
+                        className="absolute inset-x-0 text-center font-mono text-[10px] font-semibold leading-none tabular-nums text-stone-700"
+                        style={{ bottom: `calc(${barHeightPercent}% + 0.125rem)` }}
+                      >
+                        {count}
+                      </span>
+                      <span
+                        className={`absolute bottom-0 left-1/2 block w-full max-w-6 -translate-x-1/2 rounded-t-sm ${
+                          count > 0 ? toneClassName : "bg-transparent"
+                        }`}
+                        style={{ height: `${barHeightPercent}%` }}
+                      />
+                    </span>
+                  );
+                })}
+              </div>
+              <div className="mt-1 grid grid-cols-10 gap-1 text-center sm:gap-1.5">
+                {scoreDistributionValues.map((score) => (
+                  <span
+                    key={score}
+                    className="font-mono text-[10px] font-semibold leading-none tabular-nums text-stone-950"
                   >
-                    <span className="truncate text-xs text-stone-600">
-                      {getMediaTypeLabel(mediaType.code, mediaTypes)}
-                    </span>
-                    <span className="font-mono text-sm font-semibold leading-none tabular-nums text-stone-950">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
+                    {formatScore(score)}
+                  </span>
+                ))}
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardContent className="p-3">
-            <span className="block font-mono text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-              Распределение оценок
-            </span>
-            <div className="mt-2 grid gap-1.5">
-              {RATING_SCORE_VALUES.map((score) => {
-                const count = distributionByScore.get(score) ?? 0;
-                const toneClassName = RATING_BAR_TONE_CLASS_NAMES[getRatingTone(score)];
-                const width = `${Math.max(3, (count / maxScoreDistributionCount) * 100)}%`;
-
-                return (
-                  <div
-                    key={score}
-                    className="grid grid-cols-[2rem_minmax(0,1fr)_2rem] items-center gap-2"
-                  >
-                    <span className="font-mono text-xs font-semibold tabular-nums text-stone-700">
-                      {formatScore(score)}
-                    </span>
-                    <span className="h-5 overflow-hidden rounded-sm border border-stone-200 bg-stone-100">
-                      <span
-                        className={`block h-full rounded-sm ${
-                          count > 0 ? toneClassName : "bg-stone-200/80"
-                        }`}
-                        style={{ width }}
-                      />
-                    </span>
-                    <span className="text-right font-mono text-xs font-semibold tabular-nums text-stone-950">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
+        <Card className="archive-paper archive-panel h-full">
+          <CardContent className="p-4 sm:px-5 sm:pt-5">
+            <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
+              <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+                <Info className="size-5 shrink-0 text-red-950/70" />
+                Статистика
+              </h2>
+            </div>
+            <div className="divide-y divide-dashed divide-stone-400/35">
+              {statistics.map(({ Icon, label, value }) => (
+                <div
+                  key={label}
+                  className="flex items-center justify-between gap-4 py-2"
+                >
+                  <span className="flex items-center gap-2 font-serif text-lg">
+                    <Icon className="size-4 text-red-950/65" />
+                    {label}
+                  </span>
+                  <strong className="shrink-0 font-mono text-sm font-normal tabular-nums text-stone-600">
+                    {value}
+                  </strong>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
       </section>
 
       <section className="grid gap-3 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="border-b border-stone-200 px-4 py-3">
-            <CardTitle className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
+        <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5">
+          <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
+            <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+              <Star className="size-5 shrink-0 text-red-950/70" />
               Последние оценки
-            </CardTitle>
-          </CardHeader>
-
-          {summary.latestRatings.length === 0 ? (
-            <CardContent className="p-4 text-sm text-stone-500">Пока нет оценок.</CardContent>
-          ) : (
-            <CardContent className="divide-y divide-stone-200 p-0">
-              {summary.latestRatings.map((rating) => (
-                <Link
-                  key={rating.mediaItemCode}
-                  href={`/media/${rating.mediaItemCode}`}
-                  className="grid grid-cols-[minmax(0,1fr)_auto] gap-3 px-4 py-3 transition-colors hover:bg-stone-100"
-                >
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-stone-950">
-                      {rating.mediaItemTitle}
-                    </span>
-                    <span className="mt-1 block text-xs text-stone-500">
-                      Обновлено: {formatDate(rating.updatedAt)}
-                    </span>
-                  </span>
-                  <span className="font-mono text-sm font-semibold tabular-nums text-stone-950">
-                    {formatScore(rating.score)}
-                  </span>
-                </Link>
-              ))}
-            </CardContent>
-          )}
+            </h2>
+            <Link href="/archive?sort=my_rating_date&mine=rated" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
+              Смотреть всё →
+            </Link>
+          </div>
+          <ResponsiveTileGrid
+            initialColumnCount={3}
+            items={latestRatingTiles}
+            variant="top"
+          />
         </Card>
 
-        <Card>
-          <CardHeader className="border-b border-stone-200 px-4 py-3">
-            <CardTitle className="font-mono text-xs uppercase tracking-[0.18em] text-stone-500">
+        <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5">
+          <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
+            <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+              <FileText className="size-5 shrink-0 text-red-950/70" />
               Последние рецензии
-            </CardTitle>
-          </CardHeader>
-
-          {reviewSummary.latestReviews.length === 0 ? (
-            <CardContent className="p-4 text-sm text-stone-500">Пока нет рецензий.</CardContent>
-          ) : (
-            <CardContent className="divide-y divide-stone-200 p-0">
-              {reviewSummary.latestReviews.map((review) => (
-                <Link
-                  key={review.id}
-                  href={`/author/reviews/${review.id}/edit`}
-                  className="grid gap-2 px-4 py-3 transition-colors hover:bg-stone-100"
-                >
-                  <span className="flex flex-wrap items-center gap-2">
-                    <Badge variant={REVIEW_STATUS_BADGE_VARIANTS[review.status]}>
-                      {CONTRIBUTION_STATUS_VALUE_LABELS[review.status]}
-                    </Badge>
-                    <span className="text-xs text-stone-500">
-                      Обновлено: {formatDate(review.updatedAt)}
-                    </span>
-                  </span>
-                  <span className="min-w-0">
-                    <span className="block truncate text-sm font-medium text-stone-950">
-                      {review.reviewTitle}
-                    </span>
-                    <span className="mt-1 block truncate text-xs text-stone-500">
-                      {review.mediaItemTitle}
-                    </span>
-                  </span>
-                </Link>
-              ))}
-            </CardContent>
-          )}
+            </h2>
+            <Link href="/author/reviews" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
+              Смотреть всё →
+            </Link>
+          </div>
+          <ResponsiveTileGrid
+            initialColumnCount={3}
+            items={latestReviewTiles}
+            variant="top"
+          />
         </Card>
       </section>
     </div>

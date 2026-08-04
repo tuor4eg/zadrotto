@@ -40,4 +40,18 @@ describe("public media reviews layout", () => {
       /className="mt-6 lg:hidden"/,
     );
   });
+
+  it("keeps review modal actions above the paper without overlaying its heading", () => {
+    assert.match(
+      reviews,
+      /role="dialog"[\s\S]*className="relative flex max-h-\[calc\(100vh-2\.5rem\)\] w-full max-w-5xl flex-col gap-2"/,
+    );
+    assert.match(reviews, /className="flex shrink-0 justify-end gap-2"/);
+    assert.match(
+      reviews,
+      /grid max-h-\[calc\(100vh-5\.75rem\)\][^\"]*rounded-md border border-stone-300\/80[^\"]*lg:h-\[min\(620px,calc\(100vh-5\.75rem\)\)\]/,
+    );
+    assert.doesNotMatch(reviews, /absolute right-(?:14|3) top-3/);
+    assert.doesNotMatch(reviews, /<h2 id=\{titleId\} className="[^"]*pr-10/);
+  });
 });

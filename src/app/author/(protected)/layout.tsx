@@ -1,9 +1,11 @@
+import Image from "next/image";
 import Link from "next/link";
 
 import { logoutAuthor } from "@/app/author/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { requireAuthor } from "@/lib/auth/author-auth";
+import { AuthorProposalsMenu } from "./author-proposals-menu";
 
 export const dynamic = "force-dynamic";
 
@@ -15,39 +17,46 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
   const author = await requireAuthor();
 
   return (
-    <main className="archive-page min-h-screen px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
-      <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-        <header className="flex flex-wrap items-center justify-between gap-4 border-b border-stone-400/40 pb-5">
-          <div className="flex min-w-0 items-center gap-3">
-            <Avatar
-              name={author.name}
-              objectKey={author.avatarObjectKey}
-              className="size-12 border border-stone-50/30"
-            />
-            <h1 className="font-serif text-4xl leading-none text-stone-50">
-              Кабинет автора: {author.name}
-            </h1>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2">
+    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <header
+          className="archive-main-brand-header archive-paper archive-panel relative z-20"
+          style={{ overflow: "visible" }}
+        >
+          <div className="flex items-center justify-between gap-3 px-3 py-3 pr-2 lg:gap-4 lg:px-7 lg:py-5">
+            <div className="flex min-w-0 items-center gap-3 lg:gap-4">
+              <Link href="/" className="shrink-0" aria-label="На главную">
+                <Image
+                  src="/site-logo.png"
+                  alt=""
+                  width={56}
+                  height={56}
+                  className="size-11 object-contain lg:size-14"
+                  priority
+                />
+              </Link>
+              <h1 className="min-w-0 break-words font-serif text-xl leading-tight text-stone-950 lg:text-4xl">
+                Кабинет автора: {author.name}
+              </h1>
+            </div>
             <Link
               href="/author"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
+              aria-label="Главная кабинета автора"
+              className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
             >
-              Главная
+              <Avatar
+                name={author.name}
+                objectKey={author.avatarObjectKey}
+                className="size-11 shrink-0 border border-stone-300/80 lg:size-12"
+              />
             </Link>
-            <Link
-              href="/author/media"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Предложения
-            </Link>
-            <Link
-              href="/author/series"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Серии
-            </Link>
+          </div>
+
+          <nav
+            aria-label="Навигация кабинета автора"
+            className="flex flex-wrap items-center gap-2 border-t border-stone-300/70 px-3 py-3 lg:px-7"
+          >
+            <AuthorProposalsMenu />
             <Link
               href="/author/reviews"
               className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -66,22 +75,16 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
             >
               Интересы
             </Link>
-            <Link
-              href="/"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Архив
-            </Link>
             <form action={logoutAuthor}>
               <Button type="submit" variant="outline" size="sm" className="cursor-pointer">
                 Выйти
               </Button>
             </form>
-          </div>
+          </nav>
         </header>
 
         <section
-          className="archive-paper-surface archive-panel p-5 sm:p-6"
+          className="archive-paper-surface archive-panel author-content-shell p-5 sm:p-6"
           style={{ overflow: "visible" }}
         >
           {children}

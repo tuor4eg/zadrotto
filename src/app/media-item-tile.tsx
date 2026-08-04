@@ -14,7 +14,7 @@ import {
   getRatingTone,
 } from "@/lib/ratings/tone";
 
-type MediaItemTileItem = {
+export type MediaItemTileItem = {
   averageScore: number | null;
   code: string;
   coverThumbUrl?: string | null;

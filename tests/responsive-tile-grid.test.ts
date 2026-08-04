@@ -2,9 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-import { getTileGridColumnCount } from "../src/app/main/responsive-tile-grid";
+import {
+  getInitialTileGridColumnCount,
+  getTileGridColumnCount,
+} from "../src/components/archive/responsive-tile-grid";
 
-const gridSource = readFileSync("src/app/main/responsive-tile-grid.tsx", "utf8");
+const gridSource = readFileSync("src/components/archive/responsive-tile-grid.tsx", "utf8");
 
 describe("responsive tile grid", () => {
   it("keeps at least three columns after measurement on narrow containers", () => {
@@ -19,7 +22,12 @@ describe("responsive tile grid", () => {
   });
 
   it("keeps stable initial columns and limits only the rendered items", () => {
-    assert.match(gridSource, /useState\(variant === "top" \? 7 : 6\)/);
+    assert.equal(getInitialTileGridColumnCount(undefined, "top"), 7);
+    assert.equal(getInitialTileGridColumnCount(undefined, "compact"), 6);
+    assert.equal(getInitialTileGridColumnCount(3, "top"), 3);
+    assert.equal(getInitialTileGridColumnCount(0, "top"), 1);
+    assert.equal(getInitialTileGridColumnCount(Number.NaN, "top"), 7);
+    assert.match(gridSource, /getInitialTileGridColumnCount\(initialColumnCount, variant\)/);
     assert.match(gridSource, /const visibleItems = items\.slice\(0, columnCount\)/);
     assert.match(gridSource, /repeat\(\$\{columnCount\}, minmax\(0, 1fr\)\)/);
   });

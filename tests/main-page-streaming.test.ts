@@ -29,4 +29,12 @@ describe("main page streaming", () => {
     assert.match(page, /RandomDossierLink promise=\{dossierPromise\}/);
     assert.doesNotMatch(page, /await\s+createMainPageDataPromises\(/);
   });
+
+  it("matches the dossier action height and hover treatment to the header action", () => {
+    assert.match(
+      page,
+      /className="archive-control-surface mt-auto flex h-9 shrink-0[^"]*transition-\[border-color,background-color,width,padding\] hover:border-stone-700 hover:bg-stone-50">Открыть/,
+    );
+    assert.doesNotMatch(page, /mt-auto flex h-10[^>]*>Открыть/);
+  });
 });

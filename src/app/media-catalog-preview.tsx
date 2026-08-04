@@ -1,10 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import {
-  ArrowRight,
-  FolderOpen,
-} from "lucide-react";
+import { FolderOpen } from "lucide-react";
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
 import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
@@ -15,9 +12,11 @@ import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
+import { buttonVariants } from "@/components/ui/button";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
+import { cn } from "@/lib/common/utils";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatAuthorsFact } from "@/lib/media/metadata-facts";
@@ -67,15 +66,11 @@ export function MediaCatalogPreview({
   return (
     <div className="flex flex-1 p-3 sm:p-4">
       <div className="flex flex-1 flex-col p-3 sm:p-4">
-        <div className={`${labelFontClassName} text-sm uppercase leading-6 text-stone-950`}>
-          Досье
-        </div>
-
         <div
           className={
             hasCarrierFrame
-              ? "mt-3 overflow-visible rounded-sm"
-              : "mt-3 mx-auto w-full max-w-[13rem] overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
+              ? "overflow-visible rounded-sm"
+              : "mx-auto w-full max-w-[13rem] overflow-hidden rounded-sm border border-stone-400 bg-stone-950 p-1.5 shadow-xl shadow-stone-950/20"
           }
         >
           <div
@@ -131,13 +126,6 @@ export function MediaCatalogPreview({
             frame={mediaCarrierFrame}
           />
         </div>
-        {currentAuthor && item.currentAuthorScore === null ? (
-          <AuthorMediaStatusControls
-            currentAuthorScore={item.currentAuthorScore}
-            currentAuthorStatus={item.currentAuthorStatus}
-            mediaItemCode={item.code}
-          />
-        ) : null}
         {item.originalTitle && item.originalTitle !== item.title ? (
           <div className={`mt-2 ${labelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
             {item.originalTitle}
@@ -151,6 +139,34 @@ export function MediaCatalogPreview({
               <span className="min-w-0 truncate">{metaItem}</span>
             </span>
           ))}
+        </div>
+
+        <div className="mt-3 flex items-start gap-2">
+          <Link
+            href={`/media/${item.code}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "icon" }),
+              "w-auto px-3",
+            )}
+          >
+            <FolderOpen />
+            Открыть
+          </Link>
+          {currentAuthor && item.currentAuthorScore === null ? (
+            <AuthorMediaStatusControls
+              className="mt-0"
+              currentAuthorScore={item.currentAuthorScore}
+              currentAuthorStatus={item.currentAuthorStatus}
+              mediaItemCode={item.code}
+            />
+          ) : null}
+          {currentAdmin ? (
+            <AdminEntityEditLink
+              ariaLabel={`Редактировать запись ${item.title}`}
+              href={`/admin/media/${item.id}/edit`}
+              tooltipLabel="Редактировать запись"
+            />
+          ) : null}
         </div>
 
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">
@@ -222,23 +238,6 @@ export function MediaCatalogPreview({
           )}
         </div>
 
-        <div className="mt-5 flex gap-2">
-          <Link
-            href={`/media/${item.code}`}
-            className="inline-flex min-w-0 flex-1 items-center justify-center gap-3 rounded-md border border-stone-400 bg-stone-50/65 px-4 py-3 font-mono text-sm text-stone-950 transition-colors hover:border-stone-950 hover:bg-stone-100"
-          >
-            <FolderOpen className="size-5" />
-            Открыть досье
-            <ArrowRight className="size-5" />
-          </Link>
-          {currentAdmin ? (
-            <AdminEntityEditLink
-              ariaLabel={`Редактировать запись ${item.title}`}
-              href={`/admin/media/${item.id}/edit`}
-              tooltipLabel="Редактировать запись"
-            />
-          ) : null}
-        </div>
       </div>
     </div>
   );

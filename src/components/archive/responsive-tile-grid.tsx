@@ -2,8 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 
-import { MediaItemTile } from "@/app/media-item-tile";
-import type { MainPageMediaItem } from "@/db/queries/main-page";
+import { MediaItemTile, type MediaItemTileItem } from "@/app/media-item-tile";
 
 const GRID_GAP = 12;
 const TARGET_CARD_WIDTH = {
@@ -11,8 +10,16 @@ const TARGET_CARD_WIDTH = {
   top: 140,
 } as const;
 
+export type ResponsiveTileDescriptor = {
+  currentAuthorScore?: number | null;
+  href: string;
+  item: MediaItemTileItem;
+  key: number | string;
+};
+
 type ResponsiveTileGridProps = {
-  items: MainPageMediaItem[];
+  initialColumnCount?: number;
+  items: ResponsiveTileDescriptor[];
   variant?: keyof typeof TARGET_CARD_WIDTH;
 };
 
@@ -26,12 +33,26 @@ export function getTileGridColumnCount(
   );
 }
 
+export function getInitialTileGridColumnCount(
+  initialColumnCount: number | undefined,
+  variant: keyof typeof TARGET_CARD_WIDTH,
+) {
+  const defaultColumnCount = variant === "top" ? 7 : 6;
+
+  return initialColumnCount === undefined || !Number.isFinite(initialColumnCount)
+    ? defaultColumnCount
+    : Math.max(1, Math.floor(initialColumnCount));
+}
+
 export function ResponsiveTileGrid({
+  initialColumnCount,
   items,
   variant = "compact",
 }: ResponsiveTileGridProps) {
   const gridRef = useRef<HTMLDivElement>(null);
-  const [columnCount, setColumnCount] = useState(variant === "top" ? 7 : 6);
+  const [columnCount, setColumnCount] = useState(() =>
+    getInitialTileGridColumnCount(initialColumnCount, variant),
+  );
 
   useEffect(() => {
     const grid = gridRef.current;
@@ -69,12 +90,12 @@ export function ResponsiveTileGrid({
       className="grid gap-3"
       style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
     >
-      {visibleItems.map((item) => (
+      {visibleItems.map((descriptor) => (
         <MediaItemTile
-          key={item.id}
-          currentAuthorScore={item.currentAuthorScore}
-          href={`/media/${item.code}`}
-          item={item}
+          key={descriptor.key}
+          currentAuthorScore={descriptor.currentAuthorScore}
+          href={descriptor.href}
+          item={descriptor.item}
         />
       ))}
     </div>

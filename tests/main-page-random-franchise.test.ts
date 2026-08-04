@@ -84,7 +84,10 @@ describe("main page random franchise preview", () => {
     assert.match(pageSource, /href="\/series"/);
     assert.match(pageSource, /href=\{`\/series\/\$\{preview\.franchise\.code\}`\}/);
     assert.match(pageSource, /Случайная серия/);
-    assert.match(pageSource, /ResponsiveTileGrid items=\{preview\.items\} variant="top"/);
+    assert.match(
+      pageSource,
+      /ResponsiveTileGrid items=\{getMainTileDescriptors\(preview\.items\)\} variant="top"/,
+    );
     assert.match(pageSource, /Серия появится, когда в архиве будет хотя бы пять связанных записей\./);
 
     const previewSection = pageSource.indexOf("<RandomFranchiseSection");

@@ -103,6 +103,7 @@ export async function getAuthorReviewSummary(
         id: contributions.id,
         status: contributions.status,
         updatedAt: contributions.updatedAt,
+        mediaItemId: mediaItems.id,
         mediaItemCode: mediaItems.code,
         mediaItemTitle: mediaItems.title,
         reviewTitle: contributionReviews.title,

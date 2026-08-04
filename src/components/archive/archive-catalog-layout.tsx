@@ -170,7 +170,7 @@ export function ArchiveCatalogLayout({
             aria-hidden="true"
             className="pointer-events-none absolute -top-3 right-4 z-50 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
           />
-          <div className="archive-scrollbar min-h-0 flex-1 overflow-x-hidden overflow-y-auto">
+          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
             {preview}
           </div>
         </article>

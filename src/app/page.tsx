@@ -24,6 +24,10 @@ import {
 import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import {
+  ResponsiveTileGrid,
+  type ResponsiveTileDescriptor,
+} from "@/components/archive/responsive-tile-grid";
+import {
   createMainPageDataPromises,
   type MainPageMediaItem,
 } from "@/db/queries/main-page";
@@ -38,7 +42,6 @@ import {
   AVERAGE_RATING_TEXT_TONE_CLASS_NAMES,
   getRatingTone,
 } from "@/lib/ratings/tone";
-import { ResponsiveTileGrid } from "./main/responsive-tile-grid";
 import { MainLoginButton } from "./main/main-login-button";
 
 const MEDIA_TYPE_ICONS: Record<string, LucideIcon> = {
@@ -110,9 +113,18 @@ function MainSectionLoader({ minHeight = "min-h-40" }: { minHeight?: string }) {
   return <div className={`grid place-items-center ${minHeight}`} role="status" aria-label="Загрузка"><Loader2 className="size-6 animate-spin text-red-950/65" /></div>;
 }
 
+function getMainTileDescriptors(items: MainPageMediaItem[]): ResponsiveTileDescriptor[] {
+  return items.map((item) => ({
+    currentAuthorScore: item.currentAuthorScore,
+    href: `/media/${item.code}`,
+    item,
+    key: item.id,
+  }));
+}
+
 async function SectionItems({ promise }: { promise: Promise<MainPageMediaItem[]> }) {
   const items = await promise;
-  return <ResponsiveTileGrid items={items} variant="top" />;
+  return <ResponsiveTileGrid items={getMainTileDescriptors(items)} variant="top" />;
 }
 
 async function DossierContent({
@@ -128,7 +140,7 @@ async function DossierContent({
   const item = globalItem && enabledMediaTypeCodes.includes(globalItem.mediaType) ? globalItem : null;
   if (!item) return <p className="py-8 text-center font-mono text-sm text-stone-500">Досье появится вместе с первой записью.</p>;
   const ratingClassName = AVERAGE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(item.averageScore)];
-  return <div className="grid items-stretch grid-cols-[minmax(0,7rem)_1fr] gap-4 xl:[grid-template-columns:calc((min(1480px,calc(100vw_-_3.5rem))_-_444px)/7)_minmax(0,1fr)]"><Link href={`/media/${item.code}`} className="block aspect-[2/3] overflow-hidden rounded-md border border-stone-300/80 bg-stone-100"><ArchiveCover carrierFrame={false} item={{ ...item, coverUrl: item.coverThumbUrl ?? item.coverUrl }} className="h-full w-full" /></Link><div className="flex min-h-0 min-w-0 flex-col overflow-hidden [contain:size]"><h3 className="line-clamp-2 font-serif text-xl" title={item.title}>{item.title}</h3><p className="mt-1 truncate font-mono text-xs uppercase tracking-wider text-stone-600">{mediaTypes.find((type) => type.code === item.mediaType)?.name ?? item.mediaType}{item.releaseYear ? ` · ${item.releaseYear}` : ""}</p><div className="mt-3 shrink-0"><FiveStarRating className={ratingClassName} score={item.averageScore} /><p className="mt-2 font-mono text-xs text-stone-600">{formatRatingsCount(item.ratingsCount)}</p></div><Link href={`/media/${item.code}`} className="archive-control-surface mt-auto flex h-10 shrink-0 items-center justify-center rounded-md border border-stone-300/80 px-3 text-center font-mono text-xs uppercase tracking-wider">Открыть</Link></div></div>;
+  return <div className="grid items-stretch grid-cols-[minmax(0,7rem)_1fr] gap-4 xl:[grid-template-columns:calc((min(1480px,calc(100vw_-_3.5rem))_-_444px)/7)_minmax(0,1fr)]"><Link href={`/media/${item.code}`} className="block aspect-[2/3] overflow-hidden rounded-md border border-stone-300/80 bg-stone-100"><ArchiveCover carrierFrame={false} item={{ ...item, coverUrl: item.coverThumbUrl ?? item.coverUrl }} className="h-full w-full" /></Link><div className="flex min-h-0 min-w-0 flex-col overflow-hidden [contain:size]"><h3 className="line-clamp-2 font-serif text-xl" title={item.title}>{item.title}</h3><p className="mt-1 truncate font-mono text-xs uppercase tracking-wider text-stone-600">{mediaTypes.find((type) => type.code === item.mediaType)?.name ?? item.mediaType}{item.releaseYear ? ` · ${item.releaseYear}` : ""}</p><div className="mt-3 shrink-0"><FiveStarRating className={ratingClassName} score={item.averageScore} /><p className="mt-2 font-mono text-xs text-stone-600">{formatRatingsCount(item.ratingsCount)}</p></div><Link href={`/media/${item.code}`} className="archive-control-surface mt-auto flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 px-3 text-center font-mono text-xs uppercase tracking-wider text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50">Открыть</Link></div></div>;
 }
 
 async function RandomDossierLink({ promise }: { promise: Promise<MainPageMediaItem | null> }) {
@@ -165,7 +177,7 @@ async function RandomFranchiseSection({
       ) : "Случайная серия"}
     >
       {preview ? (
-        <ResponsiveTileGrid items={preview.items} variant="top" />
+        <ResponsiveTileGrid items={getMainTileDescriptors(preview.items)} variant="top" />
       ) : (
         <p className="py-8 text-center font-mono text-sm text-stone-500">
           Серия появится, когда в архиве будет хотя бы пять связанных записей.

@@ -15,6 +15,7 @@ type ArchiveSelectProps<TValue extends string> = {
   ariaLabel: string;
   className?: string;
   compact?: boolean;
+  menuClassName?: string;
   onOpenChange?: (isOpen: boolean) => void;
   onIconClick?: (value: TValue) => void;
   onChange: (value: TValue) => void;
@@ -27,6 +28,7 @@ export function ArchiveSelect<TValue extends string>({
   ariaLabel,
   className,
   compact = false,
+  menuClassName,
   onOpenChange,
   onIconClick,
   onChange,
@@ -144,6 +146,7 @@ export function ArchiveSelect<TValue extends string>({
           className={cn(
             "archive-paper-surface archive-scrollbar absolute right-0 z-[80] w-[min(16rem,calc(100vw-2rem))] min-w-full overflow-y-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]",
             menuLayout.placement === "bottom" ? "top-full mt-2" : "bottom-full mb-2",
+            menuClassName,
           )}
           style={{ maxHeight: menuLayout.maxHeight }}
         >

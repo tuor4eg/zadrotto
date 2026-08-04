@@ -8,6 +8,7 @@ import {
   type ToggleAuthorMediaStatusState,
 } from "@/app/media-status/actions";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { cn } from "@/lib/common/utils";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 
 const INITIAL_STATE: ToggleAuthorMediaStatusState = { error: null };
@@ -28,11 +29,13 @@ const STATUS_OPTIONS = [
 ] as const;
 
 export function AuthorMediaStatusControls({
+  className,
   currentAuthorScore,
   currentAuthorStatus,
   mediaItemCode,
   variant = "detail",
 }: {
+  className?: string;
   currentAuthorScore: number | null;
   currentAuthorStatus: AuthorMediaStatus | null;
   mediaItemCode: string;
@@ -42,7 +45,7 @@ export function AuthorMediaStatusControls({
   const disabled = currentAuthorScore !== null || pending;
 
   return (
-    <div className={variant === "detail" ? "mt-2" : undefined}>
+    <div className={cn(variant === "detail" && "mt-2", className)}>
       <div className={variant === "detail" ? "flex gap-2" : "flex gap-1"}>
         {STATUS_OPTIONS.map(({ status, label, activeLabel, Icon }) => {
           const active = currentAuthorStatus === status;

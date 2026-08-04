@@ -102,6 +102,7 @@ export async function getAuthorRatingSummary(
       .groupBy(ratings.score),
     db
       .select({
+        mediaItemId: mediaItems.id,
         mediaItemCode: mediaItems.code,
         mediaItemTitle: mediaItems.title,
         score: ratings.score,

@@ -497,6 +497,7 @@ export function CatalogHeaderControls({
         <ArchiveSelect
           ariaLabel={`${getSortTooltip(sort)}, ${getSortDirectionLabel(sortDirection)}`}
           compact
+          menuClassName="archive-catalog-sort-menu border-stone-300 p-2 shadow-lg"
           onOpenChange={(isOpen) => setOpenSelect(isOpen ? "sort" : null)}
           options={sortOptions.map(([value, label]) => {
             const optionSort = value as CatalogSort;
