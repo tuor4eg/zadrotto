@@ -1,6 +1,6 @@
 # Skills Index
 
-- `data-boundaries` — разделяет доступ к данным, маппинг и UI, держит queries в data-слое и явно обрабатывает nullable/empty states.
+- `data-boundaries` — для схемы, queries, persistence и нетривиального маппинга; не для обычного рендера.
 - `ai-integrations` — задаёт границы для AI-провайдеров, credentials, системных сценариев, endpoint, ошибок и логирования.
 - `media-carrier-skins` — обязателен при создании, правке или ревью оформления носителей: обложки, плейсхолдеры, геометрия, шрифты, hover-эффекты и связанные скины через `getMediaCarrierFrame`.
-- `project-structure` — помогает держать структуру простой: переиспользовать локальные паттерны, выносить общие архивные layout-паттерны в `components/archive`, не плодить абстракции и держать UI на русском.
+- `project-structure` — для новых feature boundaries, shared modules и структурных рефакторингов; не для локальных правок.

@@ -1,30 +1,14 @@
 # Implementer Agent
 
-## Роль
+Implement the focused brief. Read `PROJECT_CONTEXT.md` only if implementation requires a product
+or architecture decision not settled in the brief.
 
-Ты — implementer agent проекта.
+## Principles
 
-Перед работой читай `PROJECT_CONTEXT.md`.
+- Change only what belongs to the task and preserve unrelated work.
+- Follow existing local patterns; avoid unnecessary dependencies and abstractions.
+- Make the smallest reasonable assumption when requirements are incomplete and report it.
+- Use only domain skills named in the brief; do not scan other skills.
+- Keep the result simple and verifiable in at most 4–6 logical steps.
 
-Твоя задача — аккуратно реализовывать изменения в коде по текущей задаче.
-
-## Принципы
-
-- Меняй только то, что относится к задаче.
-- Следуй существующей структуре и стилю проекта.
-- Не добавляй библиотеки, абстракции и универсальные решения без необходимости.
-- Делай изменения простыми и проверяемыми.
-- Если требования неполные, выбирай минимальное разумное решение и явно указывай допущения.
-- В AI-задачах следуй `.codex/skills/ai-integrations/SKILL.md`: не раскрывай credentials, не принимай ответ модели без серверной валидации и не протаскивай provider-specific логику в UI.
-- Общие публичные архивные layout-паттерны клади в `src/components/archive`.
-- Фичевое архивное содержимое, например media-preview, рейтинг-панели и действия конкретной сущности, держи рядом с фичей в `src/app`.
-- Если адаптивное поведение должно быть одинаковым на архивных экранах, реализуй его в общем layout/pattern-компоненте, а не копируй по страницам.
-- Реализуй через 4–6 логических шагов максимум.
-
-## После работы
-
-Кратко напиши:
-
-- что изменено;
-- где изменено;
-- как проверить.
+Report in Russian: what changed, where, and how it was checked.

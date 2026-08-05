@@ -2,148 +2,64 @@
 
 ## Project agents
 
-Specialized agents are stored in `.codex/agents`.
+Specialists live in `.codex/agents`:
 
-Use existing agents when their role is directly relevant:
+- `architect` — architecture, data model, product and feature boundaries;
+- `implementer` — substantial independent implementation;
+- `tester` — non-trivial test design or a separate test-writing pass;
+- `reviewer` — risky diffs, regressions, security and data integrity.
 
-- `architect` — architecture, data model, product structure, feature boundaries
-- `implementer` — code implementation
-- `reviewer` — review, regressions, edge cases, data integrity
-- `tester` — test strategy, unit/component tests, checking important scenarios
-
-Do not generate new temporary agents for these roles.
+The primary agent normally implements, tests, and reviews focused changes itself. Spawn a
+specialist only when the task is large, risky, or contains an independent subtask that benefits
+from separate context. Do not create temporary agents duplicating these roles. Pass specialists a
+focused brief and the minimum useful conversation history.
 
 ## Context discipline
 
-Keep context small.
+Keep context small. Before work, state the workflow phase and open only directly relevant skills
+or files. Do not scan the repository, agents, skills, or Next.js docs without a concrete need.
 
-Do not read the whole repository unless explicitly required.
-
-Do not load all agents or all skills by default.
-
-Before meaningful work:
-
-- read `PROJECT_CONTEXT.md`
-- choose only the agents needed for the task
-- check only directly relevant `.codex/skills`
-- state the current workflow phase
-
-If local project agents cannot be run as separate sub-agents, use only the relevant role instructions manually.
+Read `PROJECT_CONTEXT.md` for product meaning, architecture, data-model decisions, or large
+features. It is not required for local fixes, routine implementation, tests, or review when no
+product decision is involved.
 
 ## Workflow
 
-Choose the minimal workflow needed for the task:
+Choose the smallest workflow covering the risk. Consider `architect → implementer → tester →
+reviewer` only for large features combining several risk areas, such as schema changes with an
+integration, security boundary, import, or non-trivial public/admin flow. A schema or UI change
+alone does not require four agents.
 
-- architecture, data model, product boundaries → use `architect`
-- code implementation → use `implementer`
-- testable behavior → use `tester`
-- finished diff, risky behavior, regressions → use `reviewer`
+For small mechanical changes—copy, labels, minor styles, formatting, obvious local bugs—work
+directly without project agents.
 
-Use the full workflow:
+## Project invariants
 
-1. `architect`
-2. `implementer`
-3. `tester`
-4. `reviewer`
-
-only for large or risky features.
-
-This may apply to changes that affect:
-
-- data model
-- database schema
-- public pages
-- admin flows
-- imports
-- ratings
-- media item logic
-- project structure
-- integrations
-- non-trivial UI behavior
-
-Use `tester` especially for changes that affect:
-
-- data formatting
-- filtering
-- search
-- helpers
-- data mapping
-- database-related behavior
-- user-visible logic
-
-## Small changes
-
-For small mechanical changes, do not use the full workflow.
-
-Examples:
-
-- fixing a typo
-- renaming a label
-- adjusting copy
-- minor styling tweaks
-- small obvious bug fixes
-- formatting-only changes
-
-## Project context
-
-`PROJECT_CONTEXT.md` is the main source of project meaning and current direction.
-
-Read it before making product or architectural decisions.
-
-For small mechanical changes, reading it is optional unless the change affects project behavior or meaning.
-
-## General rules
-
-Keep changes focused.
-
-Do not rewrite unrelated code.
-
-Do not add libraries, abstractions, workflows, or integrations without a clear reason.
-
-Prefer simple, reversible decisions while the project is still early and may change conceptually.
-
-Respond to the user in Russian unless asked otherwise.
-
-### UI terminology
-
-- In user-facing interface text, call a `MediaItem` «запись».
-- Do not use «тайтл» in labels, messages, tooltips, notifications, activity logs, or other text visible to users.
-- «Тайтл» is acceptable only in implementation discussions, internal documentation, and code terminology.
+- Keep changes focused and preserve unrelated work.
+- This is an early MVP: prefer simple, reversible decisions and avoid speculative abstractions or
+  dependencies.
+- Integrations, AI, Telegram, and visual experiments must not become foundations of the domain.
+- Respond in Russian unless asked otherwise.
+- In user-facing text call `MediaItem` «запись». Do not use «тайтл» in labels, messages,
+  notifications, tooltips, or activity logs.
 
 ## Verification
 
-Do not run `npm run build` automatically after routine UI/code changes. In this project the Next.js/Turbopack production build can be heavy enough to freeze or crash VS Code.
-
-Prefer lighter checks first:
-
-- inspect the focused diff;
-- use `rg` to verify imports/usages;
-- run targeted tests or type/lint checks only when they are available and relevant.
-
-Ask the user before running `npm run build`, unless they explicitly requested a production build check.
+Use the lightest relevant checks: focused diff, `rg`, targeted tests, typecheck, or targeted lint.
+Do not run `npm run build` unless the user explicitly asks or approves it; the production build can
+freeze or crash VS Code.
 
 ## Skills
 
-Read `.codex/SKILLS_INDEX.md` when choosing a skill.
-Open a skill file only when it directly matches the task.
-Do not scan all skill files.
+Use `.codex/SKILLS_INDEX.md` only when the relevant skill is not already clear. Open only skills
+whose descriptions directly match the task.
 
-Use a skill only when the task clearly matches it.
-
-The `ai-integrations` skill is mandatory for changes to AI providers, credentials, models, scenarios, prompts, AI endpoints, or AI-powered UI flows.
-
-The `media-carrier-skins` skill is mandatory for any work on media carrier visual skins: cover/frame assets, placeholders, cover geometry, carrier fonts, hover effects, rating panel styling, or archive presentation tied to a carrier/media type.
-
-Do not scan all skills for every task.
-
-Open only the directly relevant skill file.
+- `ai-integrations` is mandatory for AI providers, credentials, models, scenarios, prompts,
+  endpoints, or AI-powered UI.
+- `media-carrier-skins` is mandatory for carrier-specific covers, frames, placeholders, geometry,
+  fonts, hover effects, rating styles, or archive presentation.
 
 ## Next.js
 
-This project may use a Next.js version with breaking changes.
-
-Prefer project-local patterns already used in the codebase.
-
-Read the relevant guide in `node_modules/next/dist/docs/` only when using unfamiliar or version-sensitive Next.js APIs.
-
-Do not scan Next.js docs for routine changes.
+Prefer existing project patterns. Read the relevant guide in `node_modules/next/dist/docs/` only
+for unfamiliar or version-sensitive APIs.
