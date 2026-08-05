@@ -225,6 +225,17 @@ export const providerRateLimits = pgTable(
   ],
 );
 
+export const providerImageSettings = pgTable("provider_image_settings", {
+  providerCode: text("provider_code").primaryKey(),
+  proxyImagesEnabled: boolean("proxy_images_enabled").default(false).notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+    onDelete: "set null",
+  }),
+  ...timestamps(),
+}, (table) => [
+  check("provider_image_settings_code_check", sql`btrim(${table.providerCode}) <> ''`),
+]);
+
 export const aiProviderSettings = pgTable(
   "ai_provider_settings",
   {

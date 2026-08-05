@@ -5,6 +5,7 @@ import { Search } from "lucide-react";
 
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { cn } from "@/lib/common/utils";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import {
   COVER_REQUEST_ERROR_MESSAGES,
   isCoverRequestError,
@@ -205,11 +206,11 @@ export function MediaTitleCandidatePicker({
                 >
                   <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded bg-stone-100 text-xs font-medium uppercase text-stone-400">
                     {candidate.coverUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
+                      <ImageWithFallback
                         src={candidate.coverUrl}
                         alt=""
                         className="h-full w-full object-cover"
+                        fallback={candidate.provider.slice(0, 2)}
                       />
                     ) : (
                       candidate.provider.slice(0, 2)

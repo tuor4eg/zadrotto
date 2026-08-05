@@ -8,6 +8,7 @@ import {
 } from "@/db/queries/admin-users";
 import {
   getCoverProviderCredentialStatuses,
+  updateCoverProviderImageSetting,
   updateCoverProviderRateLimits,
   updateCoverProviderSettings,
   updateCoverProviderCredentials,
@@ -66,6 +67,40 @@ export type UpdateCoverProviderSettingsState = {
   error: string | null;
   success: string | null;
 };
+
+export async function updateCoverProviderImageSettingAction(
+  providerCode: string,
+  proxyImagesEnabled: boolean,
+): Promise<UpdateCoverProviderSettingsState> {
+  const adminUser = await requireAdminUser();
+  if (!isCoverProviderCode(providerCode)) {
+    return { error: "Неизвестный провайдер.", success: null };
+  }
+  try {
+    await updateCoverProviderImageSetting({ providerCode, proxyImagesEnabled, updatedByAdminId: adminUser.id });
+    await logActivity({
+      action: "cover-provider-image-relay.updated",
+      actorType: "admin",
+      adminUserId: adminUser.id,
+      entityType: "cover-provider",
+      entityLabel: providerCode,
+      message: proxyImagesEnabled
+        ? "Серверная загрузка изображений провайдера включена."
+        : "Серверная загрузка изображений провайдера выключена.",
+      metadata: { providerCode, proxyImagesEnabled },
+    });
+  } catch (error) {
+    console.error(error);
+    return { error: getAdminFormErrorMessage(getAdminFormErrorCode(error)), success: null };
+  }
+  revalidatePath("/admin/tools/providers");
+  return {
+    error: null,
+    success: proxyImagesEnabled
+      ? "Изображения будут загружаться через сервер."
+      : "Прямая загрузка изображений восстановлена.",
+  };
+}
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);

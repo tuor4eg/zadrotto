@@ -8,7 +8,8 @@ import {
 } from "@/lib/forms/author-media";
 import { deleteS3Object, fetchS3Object, uploadS3Object } from "@/lib/services/minio";
 import { verifyCoverCandidateToken } from "@/lib/covers/candidates";
-import type { CoverCandidate, CoverSourceInput } from "@/lib/covers/types";
+import type { CoverSourceInput } from "@/lib/covers/types";
+import { fetchProviderImage } from "@/lib/covers/provider-image-relay";
 
 export type CoverUploadResult =
   | {
@@ -225,20 +226,6 @@ export async function uploadManualCover(input: {
   });
 }
 
-async function fetchExternalCover(candidate: CoverCandidate) {
-  const response = await fetch(candidate.imageUrl, {
-    headers: {
-      accept: "image/jpeg,image/png,image/webp",
-    },
-  });
-
-  if (!response.ok) {
-    return null;
-  }
-
-  return response;
-}
-
 export async function uploadExternalCoverFromToken(input: {
   authorId?: number;
   mediaItemCode: string;
@@ -251,14 +238,20 @@ export async function uploadExternalCoverFromToken(input: {
     return { ok: false, error: "cover-upload" };
   }
 
-  const response = await fetchExternalCover(candidate);
+  const image = await fetchProviderImage({
+    providerCode: candidate.provider,
+    imageUrl: candidate.imageUrl,
+    maxBytes: input.maxBytes ?? 5 * 1024 * 1024,
+  });
 
-  if (!response) {
+  if (!image.ok) {
+    if (image.error === "too-large") return { ok: false, error: "cover-too-large" };
+    if (image.error === "unsupported-type") return { ok: false, error: "cover-type" };
     return { ok: false, error: "cover-upload" };
   }
 
-  const contentType = response.headers.get("content-type")?.split(";")[0]?.trim() ?? "";
-  const body = Buffer.from(await response.arrayBuffer());
+  const contentType = image.contentType;
+  const body = image.body;
   const validation = validateCoverFileInput({
     size: body.byteLength,
     type: contentType,

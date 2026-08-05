@@ -27,6 +27,28 @@ export type ProviderCoverSearchRateLimitUsage = {
   used: number | null;
 };
 
+const PROVIDER_IMAGE_RELAY_REQUESTS_PER_MINUTE = 60;
+
+export async function checkProviderImageRelayRateLimit(
+  subject: string,
+  checker = checkFixedWindowRateLimit,
+) {
+  const result = await checker({
+    keyPrefix: "provider-image-relay",
+    subject,
+    window: "minute",
+    limit: PROVIDER_IMAGE_RELAY_REQUESTS_PER_MINUTE,
+  });
+
+  // Preview images should remain available when Redis is temporarily unavailable.
+  if (!result.ok) return { allowed: true, retryAfterSeconds: undefined };
+
+  return {
+    allowed: result.allowed,
+    retryAfterSeconds: result.allowed ? undefined : result.retryAfterSeconds,
+  };
+}
+
 export async function getProviderCoverSearchRateLimitUsage(
   rateLimits: readonly CoverProviderRateLimitValue[],
 ): Promise<ProviderCoverSearchRateLimitUsage[]> {

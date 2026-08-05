@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 
 type CoverPreviewProps = {
   src: string;
@@ -26,8 +27,12 @@ export function CoverPreview({
         aria-label="Открыть обложку в полном размере"
         title="Открыть обложку"
       >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={src} alt={alt} className={thumbnailClassName} />
+        <ImageWithFallback
+          src={src}
+          alt={alt}
+          className={thumbnailClassName}
+          fallback={<span className="grid min-h-20 place-items-center px-2 text-center text-xs text-stone-500">Изображение недоступно</span>}
+        />
       </button>
 
       {isPreviewOpen ? (
@@ -49,11 +54,11 @@ export function CoverPreview({
             >
               Закрыть просмотр
             </button>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            <ImageWithFallback
               src={src}
               alt={alt}
               className="max-h-[82vh] max-w-[92vw] object-contain"
+              fallback={<span className="p-8 text-sm text-white">Изображение недоступно</span>}
             />
           </div>
         </div>

@@ -4,6 +4,7 @@ import {
   getCoverProviderCredentialsForSearch,
   getCoverProviderRateLimits,
   getCoverProviderSettings,
+  getCoverProviderImageSettings,
   getCoverSettings,
 } from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -16,6 +17,7 @@ import {
 } from "@/lib/covers/rate-limits";
 import { searchCoverCandidates } from "@/lib/covers/registry";
 import { isCoverProviderCode } from "@/lib/covers/types";
+import { getProviderImageRelayUrl } from "@/lib/covers/provider-image-relay";
 import { isMediaTypeCode } from "@/lib/media/types";
 
 type CoverCandidatesRequestBody = {
@@ -87,11 +89,12 @@ export async function POST(request: Request) {
     }
   }
 
-  const [coverSettings, providerSettings, providerRateLimits, providerCredentials] = await Promise.all([
+  const [coverSettings, providerSettings, providerRateLimits, providerCredentials, imageSettings] = await Promise.all([
     getCoverSettings(),
     getCoverProviderSettings(),
     getCoverProviderRateLimits(),
     getCoverProviderCredentialsForSearch(),
+    getCoverProviderImageSettings(),
   ]);
   const providerRateLimiter = createProviderCoverSearchRateLimiter(providerRateLimits);
   const result = await searchCoverCandidates(
@@ -123,9 +126,17 @@ export async function POST(request: Request) {
   }
 
   return NextResponse.json({
-    candidates: result.candidates.map((candidate) => ({
-      ...candidate,
-      token: createCoverCandidateToken(candidate),
-    })),
+    candidates: result.candidates.map((candidate) => {
+      const proxyEnabled = imageSettings.some(
+        (setting) => setting.providerCode === candidate.provider && setting.proxyImagesEnabled,
+      );
+      return {
+        ...candidate,
+        imageUrl: proxyEnabled
+          ? getProviderImageRelayUrl(candidate.provider, candidate.imageUrl)
+          : candidate.imageUrl,
+        token: createCoverCandidateToken(candidate),
+      };
+    }),
   });
 }

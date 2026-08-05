@@ -4,6 +4,7 @@ import {
   getCoverProviderCredentialsForSearch,
   getCoverProviderRateLimits,
   getCoverProviderSettings,
+  getCoverProviderImageSettings,
   getCoverSettings,
 } from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -16,6 +17,7 @@ import {
 import { searchTitleCandidates } from "@/lib/covers/registry";
 import { createMediaTitleSourceToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode } from "@/lib/media/types";
+import { getProviderImageRelayUrl } from "@/lib/covers/provider-image-relay";
 
 type MediaTitleCandidatesRequestBody = {
   mediaType?: unknown;
@@ -64,11 +66,12 @@ export async function POST(request: Request) {
     }
   }
 
-  const [coverSettings, providerSettings, providerRateLimits, providerCredentials] = await Promise.all([
+  const [coverSettings, providerSettings, providerRateLimits, providerCredentials, imageSettings] = await Promise.all([
     getCoverSettings(),
     getCoverProviderSettings(),
     getCoverProviderRateLimits(),
     getCoverProviderCredentialsForSearch(),
+    getCoverProviderImageSettings(),
   ]);
   const providerRateLimiter = createProviderCoverSearchRateLimiter(providerRateLimits);
   const result = await searchTitleCandidates(
@@ -99,6 +102,9 @@ export async function POST(request: Request) {
   return NextResponse.json({
     candidates: result.candidates.map((candidate) => ({
       ...candidate,
+      coverUrl: candidate.coverUrl && imageSettings.some(
+        (setting) => setting.providerCode === candidate.provider && setting.proxyImagesEnabled,
+      ) ? getProviderImageRelayUrl(candidate.provider, candidate.coverUrl) : candidate.coverUrl,
       titleSourceToken: createMediaTitleSourceToken({
         provider: candidate.provider,
         externalId: candidate.externalId,

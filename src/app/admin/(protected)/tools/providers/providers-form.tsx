@@ -4,6 +4,7 @@ import {
   GripVertical,
   Image as ImageIcon,
   ImageOff,
+  CloudDownload,
   KeyRound,
   Power,
   PowerOff,
@@ -18,6 +19,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import type {
   CoverProviderCredentialStatus,
   CoverProviderSettingsValue,
+  CoverProviderImageSetting,
 } from "@/db/queries/cover-settings";
 import { cn } from "@/lib/common/utils";
 import {
@@ -35,6 +37,7 @@ import {
   type UpdateCoverProviderSettingsState,
   updateCoverProviderCredentialsAction,
   updateCoverProviderSettingsAction,
+  updateCoverProviderImageSettingAction,
 } from "../../settings/actions";
 
 const initialProviderState: UpdateCoverProviderSettingsState = {
@@ -47,16 +50,21 @@ export function ProvidersForm({
   credentialStatuses,
   mediaTypes,
   providerSettings,
+  imageSettings,
 }: {
   credentialStatuses: CoverProviderCredentialStatus[];
   mediaTypes: MediaTypeOption[];
   providerSettings: CoverProviderSettingsValue[];
+  imageSettings: CoverProviderImageSetting[];
 }) {
   const [providerState, setProviderState] =
     useState<UpdateCoverProviderSettingsState>(initialProviderState);
   const [isProviderPending, startProviderTransition] = useTransition();
   const [providerGroups, setProviderGroups] = useState(() =>
     groupProviderSettings(providerSettings),
+  );
+  const [proxiedProviderCodes, setProxiedProviderCodes] = useState(
+    () => new Set(imageSettings.filter((setting) => setting.proxyImagesEnabled).map((setting) => setting.providerCode)),
   );
   const [credentialStatusByProviderCode, setCredentialStatusByProviderCode] = useState(
     () => new Map(credentialStatuses.map((status) => [status.providerCode, status])),
@@ -93,6 +101,7 @@ export function ProvidersForm({
                 const credentialStatus = credentialStatusByProviderCode.get(provider.providerCode);
                 const hasCredentials = Boolean(credentialStatus?.hasCredentials);
                 const canEnable = !requiresCredentials || hasCredentials;
+                const proxyImagesEnabled = proxiedProviderCodes.has(provider.providerCode);
 
                 return (
                   <div
@@ -119,8 +128,8 @@ export function ProvidersForm({
                     className={cn(
                       "grid items-center gap-3 rounded-md border border-stone-100 bg-stone-50/60 p-3 transition-colors",
                       requiresCredentials
-                        ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]"
-                        : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto]",
+                        ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
+                        : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]",
                       draggedProviderKey === settingKey && "border-stone-300 bg-stone-100",
                     )}
                   >
@@ -206,6 +215,22 @@ export function ProvidersForm({
                         ) : (
                           <ImageOff className="size-4" />
                         )}
+                      </button>
+                    </Tooltip>
+                    <Tooltip label={proxyImagesEnabled ? "Загружать изображения напрямую" : "Загружать изображения через сервер"}>
+                      <button
+                        type="button"
+                        aria-label={`${proxyImagesEnabled ? "Выключить" : "Включить"} загрузку изображений через сервер для ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
+                        className={cn(
+                          "inline-flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50",
+                          proxyImagesEnabled
+                            ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
+                            : "border-stone-200 bg-white text-stone-400 hover:bg-stone-100 hover:text-stone-700",
+                        )}
+                        disabled={isProviderPending}
+                        onClick={() => saveImageSetting(provider.providerCode, !proxyImagesEnabled)}
+                      >
+                        <CloudDownload className="size-4" />
                       </button>
                     </Tooltip>
                     <div className="ml-1 border-l border-stone-200 pl-3">
@@ -294,6 +319,19 @@ export function ProvidersForm({
     }));
 
     saveProviderGroups(nextGroups, providerGroups);
+  }
+
+  function saveImageSetting(providerCode: CoverProviderSettingsValue["providerCode"], enabled: boolean) {
+    const previous = new Set(proxiedProviderCodes);
+    const next = new Set(previous);
+    if (enabled) next.add(providerCode); else next.delete(providerCode);
+    setProxiedProviderCodes(next);
+    setProviderState(initialProviderState);
+    startProviderTransition(async () => {
+      const state = await updateCoverProviderImageSettingAction(providerCode, enabled);
+      setProviderState(state);
+      if (state.error) setProxiedProviderCodes(previous);
+    });
   }
 
   function moveProviderAndSave(input: {

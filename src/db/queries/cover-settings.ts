@@ -4,6 +4,7 @@ import { db } from "@/db";
 import {
   providerCredentials,
   providerRateLimits,
+  providerImageSettings,
   providerSettings,
   coverSettings,
 } from "@/db/schema";
@@ -54,6 +55,11 @@ export type CoverProviderCredentialStatus = {
 export type CoverProviderRateLimitValue = {
   providerCode: CoverProviderCode;
   searchesPerDay: number;
+};
+
+export type CoverProviderImageSetting = {
+  providerCode: CoverProviderCode;
+  proxyImagesEnabled: boolean;
 };
 
 export const DEFAULT_COVER_SETTINGS = {
@@ -315,6 +321,50 @@ export async function updateCoverProviderRateLimits(
   }
 
   return getCoverProviderRateLimits();
+}
+
+export async function getCoverProviderImageSettings(): Promise<CoverProviderImageSetting[]> {
+  const rows = await db.select({
+    providerCode: providerImageSettings.providerCode,
+    proxyImagesEnabled: providerImageSettings.proxyImagesEnabled,
+  }).from(providerImageSettings);
+  const rowsByCode = new Map(
+    rows.filter((row): row is CoverProviderImageSetting => isKnownProviderCode(row.providerCode))
+      .map((row) => [row.providerCode, row]),
+  );
+
+  return [...new Set(getKnownProviderCodes())].map((providerCode) => ({
+    providerCode,
+    proxyImagesEnabled: rowsByCode.get(providerCode)?.proxyImagesEnabled ?? false,
+  }));
+}
+
+export async function getCoverProviderImageSetting(providerCode: CoverProviderCode) {
+  const [row] = await db.select({
+    proxyImagesEnabled: providerImageSettings.proxyImagesEnabled,
+  }).from(providerImageSettings)
+    .where(eq(providerImageSettings.providerCode, providerCode))
+    .limit(1);
+
+  return row?.proxyImagesEnabled ?? false;
+}
+
+export async function updateCoverProviderImageSetting(input: {
+  providerCode: CoverProviderCode;
+  proxyImagesEnabled: boolean;
+  updatedByAdminId: number;
+}) {
+  await db.insert(providerImageSettings).values({
+    ...input,
+    updatedAt: new Date(),
+  }).onConflictDoUpdate({
+    target: providerImageSettings.providerCode,
+    set: {
+      proxyImagesEnabled: input.proxyImagesEnabled,
+      updatedByAdminId: input.updatedByAdminId,
+      updatedAt: new Date(),
+    },
+  });
 }
 
 export async function getCoverProviderCredentialStatuses(): Promise<
