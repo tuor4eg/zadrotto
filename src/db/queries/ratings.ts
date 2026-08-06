@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNotNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -62,7 +62,7 @@ export async function getAuthorRatingSummary(
   enabledMediaTypeCodes: readonly string[],
 ) {
   const currentYear = getCurrentMoscowYear();
-  const [totalRows, distribution, scoreDistribution, latestRatings] = await Promise.all([
+  const [totalRows, distribution, releaseYearDistribution, scoreDistribution, latestRatings] = await Promise.all([
     db
       .select({
         ratingsCount: sql<number>`count(${ratings.id})::int`,
@@ -88,6 +88,20 @@ export async function getAuthorRatingSummary(
         getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ))
       .groupBy(mediaItems.mediaType),
+    db
+      .select({
+        year: mediaItems.releaseYear,
+        ratingsCount: sql<number>`count(${ratings.id})::int`,
+      })
+      .from(ratings)
+      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
+      .where(and(
+        eq(ratings.authorId, authorId),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+        isNotNull(mediaItems.releaseYear),
+      ))
+      .groupBy(mediaItems.releaseYear)
+      .orderBy(asc(mediaItems.releaseYear)),
     db
       .select({
         score: ratings.score,
@@ -124,6 +138,9 @@ export async function getAuthorRatingSummary(
     averageScore: totals?.averageScore ?? null,
     currentYearRatingsCount: totals?.currentYearRatingsCount ?? 0,
     distribution,
+    releaseYearDistribution: releaseYearDistribution.flatMap((item) =>
+      item.year === null ? [] : [{ year: item.year, count: item.ratingsCount }],
+    ),
     scoreDistribution,
     latestRatings,
   };

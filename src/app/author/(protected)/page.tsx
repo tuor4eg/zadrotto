@@ -5,7 +5,6 @@ import {
   FileText,
   Gauge,
   Info,
-  Shapes,
   Star,
 } from "lucide-react";
 
@@ -19,7 +18,7 @@ import { requireAuthor } from "@/lib/auth/author-auth";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import { RATING_SCORE_VALUES, formatScore } from "@/lib/ratings/score";
 import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
-import { AuthorMediaInterestsDonut } from "./author-media-interests-donut";
+import { AuthorMediaInterestsPanel } from "./author-media-interests-panel";
 
 export default async function AuthorPage() {
   const author = await requireAuthor();
@@ -96,13 +95,10 @@ export default async function AuthorPage() {
       <section className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,0.65fr)]">
         <Card className="archive-paper archive-panel h-full">
           <CardContent className="p-4 sm:px-5 sm:pt-5">
-            <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
-              <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
-                <Shapes className="size-5 shrink-0 text-red-950/70" />
-                Мои интересы
-              </h2>
-            </div>
-            <AuthorMediaInterestsDonut items={interestItems} />
+            <AuthorMediaInterestsPanel
+              items={interestItems}
+              yearlyItems={summary.releaseYearDistribution}
+            />
           </CardContent>
         </Card>
 

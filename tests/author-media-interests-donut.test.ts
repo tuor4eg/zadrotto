@@ -19,6 +19,10 @@ const dashboardSource = readFileSync(
   "src/app/author/(protected)/page.tsx",
   "utf8",
 );
+const panelSource = readFileSync(
+  "src/app/author/(protected)/author-media-interests-panel.tsx",
+  "utf8",
+);
 
 describe("author media interests donut", () => {
   it("builds proportional segments only for positive counts with bounded gaps", () => {
@@ -87,8 +91,9 @@ describe("author media interests donut", () => {
     );
     assert.match(
       dashboardSource,
-      /<AuthorMediaInterestsDonut items=\{interestItems\} \/>/,
+      /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}/,
     );
+    assert.match(panelSource, /<AuthorMediaInterestsDonut items=\{items\} \/>/);
   });
 
   it("provides full accessible text while hover remains a visual enhancement", () => {

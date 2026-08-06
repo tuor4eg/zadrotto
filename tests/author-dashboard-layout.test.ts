@@ -5,6 +5,10 @@ import { describe, it } from "node:test";
 import { RATING_SCORE_VALUES, formatScore } from "../src/lib/ratings/score";
 
 const source = readFileSync("src/app/author/(protected)/page.tsx", "utf8");
+const interestsPanelSource = readFileSync(
+  "src/app/author/(protected)/author-media-interests-panel.tsx",
+  "utf8",
+);
 const layoutSource = readFileSync("src/app/author/(protected)/layout.tsx", "utf8");
 const globalsSource = readFileSync("src/app/globals.css", "utf8");
 
@@ -22,17 +26,15 @@ describe("author dashboard layout", () => {
       analyticsSection[1],
       /grid items-stretch gap-3 lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)_minmax\(14rem,0\.65fr\)\]/,
     );
-    assert.match(
-      analyticsSection[2],
-      /Мои интересы[\s\S]*Распределение оценок[\s\S]*Статистика/,
-    );
+    assert.match(interestsPanelSource, /Мои интересы/);
+    assert.match(analyticsSection[2], /AuthorMediaInterestsPanel[\s\S]*Распределение оценок[\s\S]*Статистика/);
     assert.equal(
       analyticsSection[2].match(
         /<Card className="archive-paper archive-panel h-full">/g,
       )?.length,
       3,
     );
-    assert.match(source, /<AuthorMediaInterestsDonut items=\{interestItems\} \/>/);
+    assert.match(source, /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}[\s\S]*yearlyItems=\{summary\.releaseYearDistribution\}/);
     assert.doesNotMatch(analyticsSection[1], /(?:sm|md):grid-cols/);
   });
 
@@ -74,11 +76,13 @@ describe("author dashboard layout", () => {
   });
 
   it("uses the main-page heading pattern for all dashboard cards", () => {
-    assert.equal(source.match(/<h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">/g)?.length, 5);
-    assert.equal(source.match(/className="size-5 shrink-0 text-red-950\/70"/g)?.length, 5);
-    assert.equal(source.match(/mb-4 flex[^\"]*border-b border-stone-400\/25[^\"]*pb-3/g)?.length, 5);
+    const combinedSource = `${source}\n${interestsPanelSource}`;
+
+    assert.equal(combinedSource.match(/<h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">/g)?.length, 5);
+    assert.equal(combinedSource.match(/className="size-5 shrink-0 text-red-950\/70"/g)?.length, 5);
+    assert.equal(combinedSource.match(/mb-4 flex[^\"]*border-b border-stone-400\/25[^\"]*pb-3/g)?.length, 5);
     for (const icon of ["Shapes", "ChartNoAxesColumn", "Info", "Star", "FileText"]) {
-      assert.match(source, new RegExp(`<${icon} className=`));
+      assert.match(combinedSource, new RegExp(`<${icon} className=`));
     }
   });
 
