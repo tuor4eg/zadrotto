@@ -51,7 +51,7 @@ describe("protected author layout", () => {
     assert.doesNotMatch(header, /Журнал, которого не было|База хранит факты/);
     assert.match(header, /<nav\s+aria-label="Навигация кабинета автора"/);
     assert.match(header, /style=\{\{ overflow: "visible" \}\}/);
-    assert.match(header, /<AuthorProposalsMenu \/>/);
+    assert.match(header, /href="\/author"[\s\S]*?>\s*Статистика\s*<\/Link>[\s\S]*?<AuthorProposalsMenu \/>/);
     assert.match(header, /href="\/author\/profile"/);
     assert.match(header, /action=\{logoutAuthor\}/);
   });

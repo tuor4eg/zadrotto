@@ -128,6 +128,8 @@ describe("public series catalog UI", () => {
     assert.match(seriesPageSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);
     assert.match(seriesPageSource, /href=\{`\/series\/\$\{parent\.code\}`\}/);
     assert.match(seriesPageSource, /Все серии[\s\S]*parentBreadcrumbs\.map[\s\S]*aria-current="page"/);
+    assert.match(seriesPageSource, /<ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">/);
+    assert.doesNotMatch(seriesPageSource, /flex-1 truncate text-stone-800/);
   });
 
   it("shows the current series branch before its media items when it has descendants", () => {

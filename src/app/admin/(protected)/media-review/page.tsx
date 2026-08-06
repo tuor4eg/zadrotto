@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Check, Eye, X } from "lucide-react";
+import { Check, Pencil, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -66,13 +66,13 @@ function ReviewMediaCover({
 function ReviewMediaActions({ item }: { item: SubmittedMediaItem }) {
   return (
     <div className="flex items-center justify-end gap-1.5">
-      <Tooltip label="Смотреть">
+      <Tooltip label="Редактировать">
         <Link
-          href={`/admin/media-review/${item.id}`}
-          aria-label={`Смотреть заявку ${item.title}`}
+          href={`/admin/media/${item.id}/edit`}
+          aria-label={`Редактировать запись ${item.title}`}
           className={buttonVariants({ variant: "outline", size: "icon" })}
         >
-          <Eye />
+          <Pencil />
         </Link>
       </Tooltip>
       <Tooltip label="Одобрить">

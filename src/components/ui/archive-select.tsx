@@ -36,13 +36,13 @@ export function ArchiveSelect<TValue extends string>({
   triggerClassName,
   value,
 }: ArchiveSelectProps<TValue>) {
-  const desiredMenuHeight = options.length * 36 + 10;
   const [isOpen, setIsOpen] = useState(false);
   const [menuLayout, setMenuLayout] = useState({
     maxHeight: 288,
     placement: "bottom" as "bottom" | "top",
   });
   const selectId = useId();
+  const menuRef = useRef<HTMLDivElement>(null);
   const rootRef = useRef<HTMLDivElement>(null);
   const selectedOption = options.find((option) => option.value === value) ?? options[0];
 
@@ -92,6 +92,9 @@ export function ArchiveSelect<TValue extends string>({
       const viewportTop = window.visualViewport?.offsetTop ?? 0;
       const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
       const viewportBottom = viewportTop + viewportHeight;
+      const desiredMenuHeight = menuRef.current
+        ? menuRef.current.scrollHeight + menuRef.current.clientTop * 2
+        : options.length * 36 + 18;
       const availableAbove = triggerRect.top - viewportTop - 16;
       const availableBelow = viewportBottom - triggerRect.bottom - 16;
       const placement =
@@ -114,7 +117,7 @@ export function ArchiveSelect<TValue extends string>({
       window.visualViewport?.removeEventListener("resize", updateMenuLayout);
       window.visualViewport?.removeEventListener("scroll", updateMenuLayout);
     };
-  }, [desiredMenuHeight, isOpen]);
+  }, [isOpen, options.length]);
 
   return (
     <div ref={rootRef} className={cn("relative", className)}>
@@ -140,6 +143,7 @@ export function ArchiveSelect<TValue extends string>({
 
       {isOpen ? (
         <div
+          ref={menuRef}
           id={selectId}
           role="listbox"
           aria-label={ariaLabel}

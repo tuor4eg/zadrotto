@@ -231,15 +231,15 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible pt-8">
           <div className="archive-franchise-sticker">
-            <div className="flex min-w-0 items-center gap-3 font-mono text-xs">
-              <p className="shrink-0 font-semibold uppercase tracking-[0.18em] text-red-800">
+            <div className="flex min-w-0 items-start gap-3 font-mono text-xs">
+              <p className="shrink-0 font-semibold uppercase leading-5 tracking-[0.18em] text-red-800">
                 Серия
               </p>
               <nav
                 aria-label="Хлебные крошки"
                 className="min-w-0 flex-1 leading-5 text-stone-600"
               >
-                <ol className="flex min-w-0 items-center gap-x-2">
+                <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
                   <li className="shrink-0">
                     <Link
                       className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
@@ -260,9 +260,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                   {parentBreadcrumbs.map((parent) => (
                     <Fragment key={parent.id}>
                       <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-                      <li className="shrink-0">
+                      <li className="min-w-0">
                         <Link
-                          className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                          className="break-words underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
                           href={`/series/${parent.code}`}
                         >
                           {parent.title}
@@ -273,10 +273,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                   <li aria-hidden="true" className="shrink-0 text-stone-400">
                     /
                   </li>
-                  <li
-                    className="min-w-0 flex-1 truncate text-stone-800"
-                    aria-current="page"
-                  >
+                  <li className="min-w-0 break-words text-stone-800" aria-current="page">
                     {franchise.title}
                   </li>
                 </ol>

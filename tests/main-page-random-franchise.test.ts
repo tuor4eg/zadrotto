@@ -83,6 +83,7 @@ describe("main page random franchise preview", () => {
     assert.doesNotMatch(pageSource, /await\s+getRandomPublishedFranchisePreview\(/);
     assert.match(pageSource, /href="\/series"/);
     assert.match(pageSource, /href=\{`\/series\/\$\{preview\.franchise\.code\}`\}/);
+    assert.match(pageSource, /<Section[\s\S]*?showAllLink=\{false\}[\s\S]*?title=\{preview/);
     assert.match(pageSource, /Случайная серия/);
     assert.match(
       pageSource,

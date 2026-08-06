@@ -1360,59 +1360,6 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
   return item ? withResolvedFranchises(item) : null;
 }
 
-export async function getSubmittedAuthorMediaItemForAdminView(mediaItemId: number) {
-  const [item] = await db
-    .select({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      description: mediaItems.description,
-      mediaType: mediaItems.mediaType,
-      franchises: franchisesJsonSql(mediaItems.id, false),
-      mediaCarrierCode: mediaCarriers.code,
-      mediaCarrierName: mediaCarriers.name,
-      releaseYear: mediaItems.releaseYear,
-      coverUrl: mediaItems.coverUrl,
-      coverThumbUrl: mediaItems.coverThumbUrl,
-      submittedAt: mediaItems.submittedAt,
-      authorName: authors.name,
-      authorCode: authors.code,
-      averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      ratingsCount: sql<number>`count(${ratings.id})::int`,
-    })
-    .from(mediaItems)
-    .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
-    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, "submitted")))
-    .groupBy(
-      mediaItems.id,
-      mediaItems.code,
-      mediaItems.title,
-      mediaItems.originalTitle,
-      mediaItems.description,
-      mediaItems.mediaType,
-      mediaCarriers.code,
-      mediaCarriers.name,
-      mediaItems.releaseYear,
-      mediaItems.coverUrl,
-      mediaItems.coverThumbUrl,
-      mediaItems.submittedAt,
-      authors.name,
-      authors.code,
-    )
-    .limit(1);
-
-  return item
-    ? {
-        ...withResolvedFranchises(item),
-        coverUrl: resolveCoverUrl(item.coverUrl),
-        coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
-      }
-    : null;
-}
-
 export async function reviewSubmittedAuthorMediaItem(input: {
   mediaItemId: number;
   adminUserId: number;

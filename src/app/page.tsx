@@ -59,10 +59,11 @@ type SectionProps = {
   className?: string;
   href: string;
   icon: React.ReactNode;
+  showAllLink?: boolean;
   title: React.ReactNode;
 };
 
-function Section({ children, className, href, icon, title }: SectionProps) {
+function Section({ children, className, href, icon, showAllLink = true, title }: SectionProps) {
   return (
     <section className={`archive-paper archive-panel min-w-0 p-4 sm:px-5 sm:pt-5 ${className ?? ""}`}>
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
@@ -70,9 +71,11 @@ function Section({ children, className, href, icon, title }: SectionProps) {
           <span className="shrink-0 text-red-950/70">{icon}</span>
           {title}
         </h2>
-        <Link href={href} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
-          Смотреть всё →
-        </Link>
+        {showAllLink ? (
+          <Link href={href} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
+            Смотреть всё →
+          </Link>
+        ) : null}
       </div>
       {children}
     </section>
@@ -164,6 +167,7 @@ async function RandomFranchiseSection({
     <Section
       href="/series"
       icon={<Shuffle className="size-5" />}
+      showAllLink={false}
       title={preview ? (
         <span className="flex min-w-0 items-baseline gap-2">
           <span className="shrink-0">Случайная серия</span>
@@ -291,7 +295,7 @@ export default async function MainPage() {
         </div>
 
         <Suspense fallback={(
-          <Section href="/series" icon={<Shuffle className="size-5" />} title="Случайная серия">
+          <Section href="/series" icon={<Shuffle className="size-5" />} showAllLink={false} title="Случайная серия">
             <MainSectionLoader minHeight="min-h-52" />
           </Section>
         )}>

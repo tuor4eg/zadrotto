@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowLeft, Eye, EyeOff, FileText, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowLeft, Check, Eye, EyeOff, FileText, RotateCcw, Trash2, X } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
@@ -17,6 +17,7 @@ import {
 } from "@/app/admin/(protected)/media/actions";
 import { AdminMediaForm } from "@/app/admin/(protected)/media/media-form";
 import { getAdminMediaErrorMessage } from "@/app/admin/(protected)/media/messages";
+import { reviewAuthorMediaItemAction } from "@/app/admin/(protected)/media-review/actions";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
@@ -74,6 +75,31 @@ function PublicationStatusButton({
       >
         {published ? <EyeOff /> : <RotateCcw />}
         {published ? "Снять с публикации" : "Вернуть на публикацию"}
+      </Button>
+    </form>
+  );
+}
+
+function ReviewButton({
+  mediaItemId,
+  decision,
+}: {
+  mediaItemId: number;
+  decision: "published" | "rejected";
+}) {
+  const approved = decision === "published";
+
+  return (
+    <form action={reviewAuthorMediaItemAction}>
+      <input type="hidden" name="mediaItemId" value={mediaItemId} />
+      <input type="hidden" name="decision" value={decision} />
+      <Button
+        type="submit"
+        variant={approved ? "positive" : "destructive"}
+        className="w-full"
+      >
+        {approved ? <Check /> : <X />}
+        {approved ? "Одобрить" : "Отклонить"}
       </Button>
     </form>
   );
@@ -193,44 +219,53 @@ export default async function EditAdminMediaPage({
           </div>
 
           <div className="grid gap-2 border-t border-stone-100 pt-4">
-            {isPublished ? (
-              <Link
-                href={`/media/${item.code}`}
-                className={`${buttonVariants({ variant: "outline" })} w-full`}
-              >
-                <Eye />
-                Смотреть на сайте
-              </Link>
+            {item.publicationStatus === "submitted" ? (
+              <>
+                <ReviewButton mediaItemId={item.id} decision="published" />
+                <ReviewButton mediaItemId={item.id} decision="rejected" />
+              </>
             ) : (
-              <Button type="button" variant="outline" disabled className="w-full">
-                <Eye />
-                Карточка не опубликована
-              </Button>
-            )}
+              <>
+                {isPublished ? (
+                  <Link
+                    href={`/media/${item.code}`}
+                    className={`${buttonVariants({ variant: "outline" })} w-full`}
+                  >
+                    <Eye />
+                    Смотреть на сайте
+                  </Link>
+                ) : (
+                  <Button type="button" variant="outline" disabled className="w-full">
+                    <Eye />
+                    Карточка не опубликована
+                  </Button>
+                )}
 
-            <PublicationStatusButton mediaItemId={item.id} published={isPublished} />
-            <Tooltip
-              className="w-full"
-              label={
-                isPublished
-                  ? "Сначала снимите запись с публикации"
-                  : "Удалить вместе со связанными материалами"
-              }
-            >
-              <ConfirmAction
-                action={deleteAdminMediaItemAction}
-                disabled={isPublished}
-                confirmLabel="Удалить"
-                description={`Запись «${item.title}» будет удалена вместе со связанными оценками, рецензиями и пользовательскими отметками. Это действие нельзя отменить.`}
-                fields={[{ name: "mediaItemId", value: item.id }]}
-                title="Удалить запись?"
-                triggerAriaLabel={`Удалить запись ${item.title}`}
-                triggerIcon={<Trash2 />}
-                triggerLabel="Удалить"
-                triggerVariant="destructive"
-                className="w-full"
-              />
-            </Tooltip>
+                <PublicationStatusButton mediaItemId={item.id} published={isPublished} />
+                <Tooltip
+                  className="w-full"
+                  label={
+                    isPublished
+                      ? "Сначала снимите запись с публикации"
+                      : "Удалить вместе со связанными материалами"
+                  }
+                >
+                  <ConfirmAction
+                    action={deleteAdminMediaItemAction}
+                    disabled={isPublished}
+                    confirmLabel="Удалить"
+                    description={`Запись «${item.title}» будет удалена вместе со связанными оценками, рецензиями и пользовательскими отметками. Это действие нельзя отменить.`}
+                    fields={[{ name: "mediaItemId", value: item.id }]}
+                    title="Удалить запись?"
+                    triggerAriaLabel={`Удалить запись ${item.title}`}
+                    triggerIcon={<Trash2 />}
+                    triggerLabel="Удалить"
+                    triggerVariant="destructive"
+                    className="w-full"
+                  />
+                </Tooltip>
+              </>
+            )}
           </div>
 
           <div className="space-y-2 text-sm text-stone-600">

@@ -97,7 +97,7 @@ describe("archive site header", () => {
     assert.match(sharedSource, /: "sr-only lg:not-sr-only"/);
     assert.match(
       sharedSource,
-      /className="size-11 shrink-0 object-contain lg:size-14"[\s\S]*text-xl[^"]*lg:text-4xl[\s\S]*hidden[^"]*lg:block/,
+      /className="size-11 shrink-0 object-contain lg:size-14"[\s\S]*text-\[clamp\(0\.6875rem,3\.75vw,1\.25rem\)\][^"]*lg:text-4xl[\s\S]*hidden[^"]*lg:block/,
     );
   });
 

@@ -46,7 +46,7 @@ export async function reviewAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
-  revalidatePath(`/admin/media-review/${mediaItemId}`);
+  revalidatePath(`/admin/media/${mediaItemId}/edit`);
   revalidatePath("/author/media");
   await logActivity({
     action: item.publicationStatus === "published" ? "media-review.approved" : "media-review.rejected",

@@ -56,6 +56,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
             aria-label="Навигация кабинета автора"
             className="flex flex-wrap items-center gap-2 border-t border-stone-300/70 px-3 py-3 lg:px-7"
           >
+            <Link
+              href="/author"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Статистика
+            </Link>
             <AuthorProposalsMenu />
             <Link
               href="/author/reviews"
