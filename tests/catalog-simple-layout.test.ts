@@ -91,12 +91,19 @@ describe("simple catalog layout", () => {
     );
     assert.match(
       globalsSource,
-      /\.archive-media-type-tab::before\s*\{[\s\S]*clip-path: polygon\(round 6px, 0 0, calc\(100% - 18px\) 0, 100% 18px/,
+      /\.archive-media-type-tab::before\s*\{[\s\S]*calc\(100% - var\(--archive-media-type-tab-shape-size\)\)[\s\S]*100% var\(--archive-media-type-tab-shape-size\)/,
     );
     assert.match(
       globalsSource,
-      /\.archive-media-type-tab-active::before\s*\{[\s\S]*56% 0,[\s\S]*calc\(56% \+ 16px\) 16px,[\s\S]*calc\(100% - 18px\) 16px,[\s\S]*100% 34px/,
+      /\.archive-media-type-tab-active::before\s*\{[\s\S]*56% 0,[\s\S]*calc\(56% \+ var\(--archive-media-type-tab-shape-size\)\) var\(--archive-media-type-tab-shape-size\),[\s\S]*100% var\(--archive-media-type-tab-double-shape-size\)/,
     );
+    assert.match(globalsSource, /\.archive-media-type-tab\s*\{[\s\S]*0\.833333rem/);
+    assert.match(globalsSource, /@media \(min-width: 1024px\)[\s\S]*\.archive-media-type-tab\s*\{[\s\S]*1rem/);
+    assert.match(
+      globalsSource,
+      /-webkit-clip-path: polygon\([\s\S]*clip-path: polygon\(/,
+    );
+    assert.doesNotMatch(globalsSource, /polygon\(\s*round/);
     assert.match(tabsSource, /inline-flex shrink-0 items-end justify-center/);
     assert.match(tabsSource, /archive-media-type-tab-active[^"]*pb-2\.5[^"]*lg:pb-3/);
     assert.match(
@@ -121,7 +128,7 @@ describe("simple catalog layout", () => {
     );
     assert.match(
       globalsSource,
-      /\.archive-media-type-tab-active-shadow > span\s*\{[\s\S]*clip-path: polygon\([\s\S]*56% 0,[\s\S]*100% 34px/,
+      /\.archive-media-type-tab-active-shadow > span\s*\{[\s\S]*clip-path: polygon\([\s\S]*56% 0,[\s\S]*100% var\(--archive-media-type-tab-double-shape-size\)/,
     );
     assert.match(tabsSource, /className="archive-media-type-tab-active-shadow"/);
     assert.match(tabsSource, /isSelected[\s\S]*archive-media-type-tab-active/);
@@ -133,7 +140,10 @@ describe("simple catalog layout", () => {
       globalsSource,
       /\.archive-media-type-tab-inactive::after\s*\{[\s\S]*right: -10px;[\s\S]*width: 22px;[\s\S]*filter: blur\(8px\)/,
     );
-    assert.doesNotMatch(globalsSource, /\.archive-media-type-tab-inactive\s*\{[\s\S]*box-shadow/);
+    assert.doesNotMatch(
+      globalsSource.match(/\.archive-media-type-tab-inactive\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
+      /box-shadow/,
+    );
     assert.match(
       tabsSource,
       /"--tab-mobile-overlap": hasOverlap[\s\S]*"--tab-overlap": hasOverlap/,

@@ -283,6 +283,11 @@ body {
   background-size: 9px 9px, 13px 13px, auto;
 }
 
+.archive-media-type-tab {
+  --archive-media-type-tab-shape-size: 0.833333rem;
+  --archive-media-type-tab-double-shape-size: 1.666666rem;
+}
+
 .archive-media-type-tab::before {
   position: absolute;
   inset: 0;
@@ -290,7 +295,21 @@ body {
   box-shadow:
     inset 1px 1px 0 rgb(255 255 255 / 46%),
     inset -1px 0 0 rgb(68 64 60 / 18%);
-  clip-path: polygon(round 6px, 0 0, calc(100% - 18px) 0, 100% 18px, 100% 100%, 0 100%);
+  border-top-left-radius: 6px;
+  -webkit-clip-path: polygon(
+    0 0,
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
+    100% 100%,
+    0 100%
+  );
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
+    100% 100%,
+    0 100%
+  );
   content: "";
   pointer-events: none;
 }
@@ -309,13 +328,21 @@ body {
     var(--archive-bg-start)
   );
   background-size: 9px 9px, 13px 13px;
-  clip-path: polygon(
-    round 6px,
+  -webkit-clip-path: polygon(
     0 0,
     56% 0,
-    calc(56% + 16px) 16px,
-    calc(100% - 18px) 16px,
-    100% 34px,
+    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    100% var(--archive-media-type-tab-double-shape-size),
+    100% calc(100% + 6px),
+    0 calc(100% + 6px)
+  );
+  clip-path: polygon(
+    0 0,
+    56% 0,
+    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    100% var(--archive-media-type-tab-double-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
@@ -336,14 +363,23 @@ body {
 .archive-media-type-tab-active-shadow > span {
   position: absolute;
   inset: 0;
+  border-top-left-radius: 6px;
   background: rgb(var(--archive-shadow));
-  clip-path: polygon(
-    round 6px,
+  -webkit-clip-path: polygon(
     0 0,
     56% 0,
-    calc(56% + 16px) 16px,
-    calc(100% - 18px) 16px,
-    100% 34px,
+    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    100% var(--archive-media-type-tab-double-shape-size),
+    100% calc(100% + 6px),
+    0 calc(100% + 6px)
+  );
+  clip-path: polygon(
+    0 0,
+    56% 0,
+    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
+    100% var(--archive-media-type-tab-double-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
@@ -359,6 +395,13 @@ body {
     inset 1px 1px 0 rgb(255 255 255 / 36%),
     inset -1px 0 0 rgb(68 64 60 / 18%),
     inset 0 -6px 10px -10px rgb(var(--archive-shadow) / 34%);
+}
+
+@media (min-width: 1024px) {
+  .archive-media-type-tab {
+    --archive-media-type-tab-shape-size: 1rem;
+    --archive-media-type-tab-double-shape-size: 2rem;
+  }
 }
 
 .archive-media-type-tab-inactive::after {

@@ -3,11 +3,13 @@ import { getFranchiseOptions } from "@/db/queries/franchises";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeOptions } from "@/db/queries/media-types";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { parseAuthorMediaTypeFilter } from "@/lib/authors/media-filters";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
+import { sortMediaTypesByCount } from "@/lib/media/types";
 import { AuthorToasts } from "../../author-toasts";
 import { createAuthorMediaItemAction } from "../actions";
 import { MediaItemForm } from "../media-item-form";
@@ -29,6 +31,7 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
     effectiveMediaTypes,
     archiveSettings,
     canSuggestFranchises,
+    mediaTypeCounts,
   ] = await Promise.all([
     searchParams,
     getFranchiseOptions(author.id),
@@ -36,8 +39,9 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
     getAccessibleMediaTypeOptions(author.id),
     getArchiveSettings(),
     isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
+    getPublishedMediaTypeCounts(),
   ]);
-  const mediaTypes = effectiveMediaTypes;
+  const mediaTypes = sortMediaTypesByCount(effectiveMediaTypes, mediaTypeCounts);
   const { error } = params;
   const initialMediaType = parseAuthorMediaTypeFilter(params.type, mediaTypes);
   const errorMessage = getAuthorMediaFormErrorMessage(error);

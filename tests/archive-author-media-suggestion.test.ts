@@ -40,6 +40,19 @@ describe("archive author media suggestion placement", () => {
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);
   });
 
+  it("sorts creation media types by the same record counts as archive tabs", () => {
+    const authorCreatePageSource = readFileSync(
+      "src/app/author/(protected)/media/new/page.tsx",
+      "utf8",
+    );
+    assert.match(homePageSource, /mediaTypesByCount = sortMediaTypesByCount\(mediaTypes, mediaTypeCounts\)/);
+    assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion[\s\S]*mediaTypes=\{mediaTypesByCount\}/);
+    assert.match(authorCreatePageSource, /getPublishedMediaTypeCounts\(\)/);
+    assert.match(authorCreatePageSource, /sortMediaTypesByCount\(effectiveMediaTypes, mediaTypeCounts\)/);
+    assert.match(franchisePageSource, /getPublishedMediaTypeCounts\(\)/);
+    assert.match(franchisePageSource, /sortMediaTypesByCount\(mediaTypes, authorMediaSuggestionData\.mediaTypeCounts\)/);
+  });
+
   it("returns to the current page with matching success and error toast params", () => {
     assert.match(suggestionSource, /errorParamName="suggestionError"/);
     assert.match(suggestionSource, /appendParam\(currentArchivePath, "suggested", "created"\)/);

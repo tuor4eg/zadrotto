@@ -20,6 +20,7 @@ import {
   type FranchiseBranchNode,
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
@@ -27,7 +28,7 @@ import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
-import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import { getMediaTypeLabel, sortMediaTypesByCount, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { SeriesMediaLinkSearch } from "./series-media-link-search";
 import { SeriesMediaUnlinkTile } from "./series-media-unlink-tile";
 
@@ -158,8 +159,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
           getFranchiseOptions(currentAuthor.id),
           getMediaCarrierOptions(),
           isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
+          getPublishedMediaTypeCounts(),
         ]).then(
-          ([franchises, mediaCarriers, canSuggestFranchises]) => ({
+          ([franchises, mediaCarriers, canSuggestFranchises, mediaTypeCounts]) => ({
             canCreateFranchise: canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview:
                 currentAuthor.canPublishFranchisesWithoutReview,
@@ -168,6 +170,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
             canSuggestFranchises,
             franchises,
             mediaCarriers,
+            mediaTypeCounts,
           }),
         )
       : Promise.resolve(null),
@@ -393,7 +396,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
           franchises={authorMediaSuggestionData.franchises}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter="all"
-          mediaTypes={mediaTypes}
+          mediaTypes={sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)}
           searchQuery=""
         />
       ) : null}

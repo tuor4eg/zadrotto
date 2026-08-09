@@ -31,6 +31,7 @@ import {
 import { MediaItemsCatalog } from "@/app/media-items-catalog";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
+import { sortMediaTypesByCount } from "@/lib/media/types";
 
 const CATALOG_PAGE_SIZE_OPTIONS = [24, 48, 72, 96] as const;
 const DEFAULT_CATALOG_PAGE_SIZE = 48;
@@ -131,6 +132,7 @@ export default async function Home({ searchParams }: HomeProps) {
         : Promise.resolve(null),
     ]);
   const suggestionErrorMessage = getAuthorMediaFormErrorMessage(params.suggestionError);
+  const mediaTypesByCount = sortMediaTypesByCount(mediaTypes, mediaTypeCounts);
   const suggestedItemId = Number(params.suggestedItemId);
   const suggestedItemHref =
     Number.isInteger(suggestedItemId) && suggestedItemId > 0
@@ -237,7 +239,7 @@ export default async function Home({ searchParams }: HomeProps) {
           franchises={authorMediaSuggestionData.franchises}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
-          mediaTypes={mediaTypes}
+          mediaTypes={mediaTypesByCount}
           searchQuery={searchQuery}
         />
       ) : null}

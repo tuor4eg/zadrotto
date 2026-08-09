@@ -645,6 +645,17 @@ export async function getCatalogMediaTypeCounts(input: {
     .groupBy(mediaItems.mediaType);
 }
 
+export async function getPublishedMediaTypeCounts() {
+  return db
+    .select({
+      mediaType: mediaItems.mediaType,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(mediaItems)
+    .where(publishedMediaItemCondition)
+    .groupBy(mediaItems.mediaType);
+}
+
 export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[]) {
   const [bounds] = await db
     .select({
