@@ -1,10 +1,8 @@
 export const EMAIL_AUTOMATION_DEFAULTS = {
-  deliveryIntervalSeconds: 60,
   deliveryBatchSize: 10,
   deliveryMaxAttempts: 5,
   retryBaseSeconds: 120,
   retryMaxSeconds: 3600,
-  cleanupIntervalSeconds: 86400,
   challengeRetentionHours: 24,
   sessionRetentionDays: 7,
   staleRegistrationDays: 7,
@@ -20,12 +18,10 @@ export type EmailAutomationSettingsInput = {
 };
 
 const RANGES: Record<keyof EmailAutomationSettingsInput, readonly [number, number]> = {
-  deliveryIntervalSeconds: [60, 3600],
   deliveryBatchSize: [1, 50],
   deliveryMaxAttempts: [1, 20],
   retryBaseSeconds: [60, 86400],
   retryMaxSeconds: [60, 604800],
-  cleanupIntervalSeconds: [3600, 604800],
   challengeRetentionHours: [1, 720],
   sessionRetentionDays: [1, 365],
   staleRegistrationDays: [1, 90],

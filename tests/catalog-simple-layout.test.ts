@@ -114,6 +114,9 @@ describe("simple catalog layout", () => {
     assert.match(previewSource, /<ArchiveRatingPanel/);
     assert.match(previewSource, /<MediaItemRatingDialog/);
     assert.match(previewSource, /<AuthorMediaStatusControls/);
+    assert.match(previewSource, /Открыть досье/);
+    assert.match(previewSource, /variant="preview"/);
+    assert.match(previewSource, /mt-auto flex justify-end pt-4/);
     assert.match(previewSource, /<MediaItemFranchiseLinks/);
     assert.match(previewSource, /<MediaItemFranchiseSuggestionDialog/);
   });

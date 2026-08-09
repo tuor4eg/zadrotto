@@ -1,7 +1,7 @@
 import "server-only";
 
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
-import { getEmailAutomationOverview } from "@/db/queries/email-automation";
+import { getEmailAutomationSettings } from "@/db/queries/email-automation";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
@@ -18,7 +18,7 @@ const emailOutboxDeliveryHandler: JobHandlerDefinition<Record<string, never>> = 
   label: "Доставка системных email",
   parsePayload: parseEmptyPayload,
   async execute() {
-    const { settings } = await getEmailAutomationOverview();
+    const settings = await getEmailAutomationSettings();
     const result = await deliverPendingAuthorEmails(settings);
     if (!result.ok) {
       throw new JobError("email-unavailable", "Email-провайдер недоступен.");
@@ -31,7 +31,7 @@ const authCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   label: "Очистка авторской аутентификации",
   parsePayload: parseEmptyPayload,
   async execute() {
-    const { settings } = await getEmailAutomationOverview();
+    const settings = await getEmailAutomationSettings();
     await cleanupAuthorAuthData(settings);
   },
 };

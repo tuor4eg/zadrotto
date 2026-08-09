@@ -25,8 +25,8 @@ push: clean-next
 
 # Pull fresh runtime images and restart the application with background workers.
 deploy:
-	docker compose pull app email-worker auth-cleanup-worker jobs-scheduler jobs-worker
-	docker compose up -d app email-worker auth-cleanup-worker jobs-scheduler jobs-worker
+	docker compose pull app jobs-scheduler jobs-worker
+	docker compose up -d --remove-orphans app jobs-scheduler jobs-worker
 
 # Pull the fresh migrator image and apply migrations.
 migrate:

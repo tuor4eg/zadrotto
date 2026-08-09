@@ -614,12 +614,10 @@ export const emailAutomationSettings = pgTable(
   "email_automation_settings",
   {
     id: integer("id").primaryKey().default(1),
-    deliveryIntervalSeconds: integer("delivery_interval_seconds").default(60).notNull(),
     deliveryBatchSize: integer("delivery_batch_size").default(10).notNull(),
     deliveryMaxAttempts: integer("delivery_max_attempts").default(5).notNull(),
     retryBaseSeconds: integer("retry_base_seconds").default(120).notNull(),
     retryMaxSeconds: integer("retry_max_seconds").default(3600).notNull(),
-    cleanupIntervalSeconds: integer("cleanup_interval_seconds").default(86400).notNull(),
     challengeRetentionHours: integer("challenge_retention_hours").default(24).notNull(),
     sessionRetentionDays: integer("session_retention_days").default(7).notNull(),
     staleRegistrationDays: integer("stale_registration_days").default(7).notNull(),
@@ -630,35 +628,15 @@ export const emailAutomationSettings = pgTable(
   },
   (table) => [
     check("email_automation_settings_singleton_id_check", sql`${table.id} = 1`),
-    check("email_automation_delivery_interval_check", sql`${table.deliveryIntervalSeconds} between 60 and 3600`),
     check("email_automation_delivery_batch_check", sql`${table.deliveryBatchSize} between 1 and 50`),
     check("email_automation_delivery_attempts_check", sql`${table.deliveryMaxAttempts} between 1 and 20`),
     check("email_automation_retry_base_check", sql`${table.retryBaseSeconds} between 60 and 86400`),
     check("email_automation_retry_max_check", sql`${table.retryMaxSeconds} between ${table.retryBaseSeconds} and 604800`),
-    check("email_automation_cleanup_interval_check", sql`${table.cleanupIntervalSeconds} between 3600 and 604800`),
     check("email_automation_challenge_retention_check", sql`${table.challengeRetentionHours} between 1 and 720`),
     check("email_automation_session_retention_check", sql`${table.sessionRetentionDays} between 1 and 365`),
     check("email_automation_registration_retention_check", sql`${table.staleRegistrationDays} between 1 and 90`),
     check("email_automation_sent_retention_check", sql`${table.sentOutboxRetentionDays} between 1 and 365`),
     check("email_automation_failed_retention_check", sql`${table.failedOutboxRetentionDays} between 7 and 730`),
-  ],
-);
-
-export const emailAutomationJobs = pgTable(
-  "email_automation_jobs",
-  {
-    job: text("job").primaryKey(),
-    nextRunAt: timestamp("next_run_at", { withTimezone: true }).defaultNow().notNull(),
-    leaseUntil: timestamp("lease_until", { withTimezone: true }),
-    lastStartedAt: timestamp("last_started_at", { withTimezone: true }),
-    lastFinishedAt: timestamp("last_finished_at", { withTimezone: true }),
-    lastStatus: text("last_status"),
-    lastError: text("last_error"),
-    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (table) => [
-    check("email_automation_jobs_job_check", sql`${table.job} in ('delivery', 'cleanup')`),
-    check("email_automation_jobs_status_check", sql`${table.lastStatus} is null or ${table.lastStatus} in ('success', 'failure')`),
   ],
 );
 

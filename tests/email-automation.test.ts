@@ -6,7 +6,7 @@ import { calculateEmailRetryDelaySeconds, sanitizeEmailDeliveryError, validateEm
 const read = (path: string) => readFileSync(path, "utf8");
 
 test("validates automation ranges and retry ordering", () => {
-  const valid = { deliveryIntervalSeconds: 60, deliveryBatchSize: 10, deliveryMaxAttempts: 5, retryBaseSeconds: 120, retryMaxSeconds: 3600, cleanupIntervalSeconds: 86400, challengeRetentionHours: 24, sessionRetentionDays: 7, staleRegistrationDays: 7, sentOutboxRetentionDays: 30, failedOutboxRetentionDays: 30 };
+  const valid = { deliveryBatchSize: 10, deliveryMaxAttempts: 5, retryBaseSeconds: 120, retryMaxSeconds: 3600, challengeRetentionHours: 24, sessionRetentionDays: 7, staleRegistrationDays: 7, sentOutboxRetentionDays: 30, failedOutboxRetentionDays: 30 };
   assert.deepEqual(validateEmailAutomationSettings(valid), valid);
   assert.equal(validateEmailAutomationSettings({ ...valid, deliveryBatchSize: 0 }), null);
   assert.equal(validateEmailAutomationSettings({ ...valid, retryMaxSeconds: 60 }), null);
@@ -27,39 +27,38 @@ test("sanitizes delivery errors before persistence and bounds length", () => {
   assert.ok(sanitized.length <= 500);
 });
 
-test("schema and migration define singleton settings, leased jobs and queue indexes", () => {
+test("schema keeps email settings while the cutover migration removes the legacy scheduler", () => {
   const schema = read("src/db/schema.ts");
   const migration = read("drizzle/0034_email_automation.sql");
+  const cutover = read("drizzle/0055_remove_legacy_email_automation.sql");
   const journal = read("drizzle/meta/_journal.json");
+  assert.match(schema, /email_automation_settings/);
+  assert.doesNotMatch(schema, /emailAutomationJobs|deliveryIntervalSeconds|cleanupIntervalSeconds/);
   for (const source of [schema, migration]) {
-    assert.match(source, /email_automation_settings/);
-    assert.match(source, /email_automation_jobs/);
-    assert.match(source, /delivery_interval/);
     assert.match(source, /retry_max/);
     assert.match(source, /failed_outbox_retention/);
     assert.match(source, /email_automation_settings_singleton_id_check/);
     assert.match(source, /email_automation_delivery_attempts_check/);
     assert.match(source, /email_automation_retry_max_check/);
-    assert.match(source, /email_automation_jobs_job_check/);
-    assert.match(source, /email_automation_jobs_status_check/);
   }
   assert.match(migration, /INSERT INTO "email_automation_settings" \("id"\) VALUES \(1\)/);
   assert.match(migration, /INSERT INTO "email_automation_jobs"[\s\S]*'delivery'[\s\S]*'cleanup'/);
+  assert.match(cutover, /DROP TABLE "email_automation_jobs"/);
+  assert.match(cutover, /DROP COLUMN "delivery_interval_seconds"/);
+  assert.match(cutover, /DROP COLUMN "cleanup_interval_seconds"/);
   assert.match(migration, /email_outbox_status_created_id_idx/);
   assert.match(migration, /email_outbox_created_id_idx/);
   assert.match(journal, /0034_email_automation/);
+  assert.match(journal, /0055_remove_legacy_email_automation/);
 });
 
-test("scheduler claims due unlocked jobs with a shared fifteen minute lease and snapshots settings", () => {
+test("email handlers read settings without using the legacy scheduler", () => {
   const query = read("src/db/queries/email-automation.ts");
-  assert.match(query, /lte\(emailAutomationJobs\.nextRunAt, now\)/);
-  assert.match(query, /isNull\(emailAutomationJobs\.leaseUntil\)[\s\S]*lte\(emailAutomationJobs\.leaseUntil, now\)/);
-  assert.match(query, /EMAIL_AUTOMATION_LEASE_MS/);
-  assert.match(read("src/lib/auth/email-automation.ts"), /EMAIL_AUTOMATION_LEASE_MS = 15 \* 60 \* 1000/);
-  assert.match(query, /for\("update", \{ skipLocked: true \}\)/);
-  assert.match(query, /settings: settings \?\? EMAIL_AUTOMATION_DEFAULTS/);
-  assert.match(query, /input\.ok \? input\.intervalSeconds : 60/);
-  assert.match(query, /eq\(emailAutomationJobs\.leaseUntil, input\.leaseUntil\)/);
+  const handlers = read("src/lib/jobs/handlers.ts");
+  assert.match(query, /getEmailAutomationSettings/);
+  assert.match(query, /settings \?\? EMAIL_AUTOMATION_DEFAULTS/);
+  assert.doesNotMatch(query, /emailAutomationJobs|claimEmailAutomationJob|finishEmailAutomationJob/);
+  assert.match(handlers, /getEmailAutomationSettings/);
 });
 
 test("delivery uses dynamic attempts, backoff, sanitization and sending-only completion", () => {
@@ -133,15 +132,6 @@ test("queue filters auto-submit inline and dates use the journal local-time comp
   assert.doesNotMatch(page, /toLocaleString\("ru-RU"\)/);
 });
 
-test("automation job dates use the user's local timezone", () => {
-  const page = read("src/app/admin/(protected)/tools/email/general/page.tsx");
-  assert.match(page, /ActivityLogTime/);
-  assert.match(page, /job\.lastStartedAt\.toISOString\(\)/);
-  assert.match(page, /job\.lastFinishedAt\.toISOString\(\)/);
-  assert.match(page, /job\.nextRunAt\.toISOString\(\)/);
-  assert.doesNotMatch(page, /toLocaleString\("ru-RU"\)/);
-});
-
 test("settings mutation writes its required prepared audit in the same transaction", () => {
   const action = read("src/app/admin/(protected)/tools/email/general/actions.ts");
   const query = read("src/db/queries/email-automation.ts");
@@ -163,10 +153,9 @@ test("provider and queue durable mutations insert prepared audits in their trans
   assert.match(outboxQuery, /retryFailedEmailOutbox[\s\S]*db\.transaction[\s\S]*update\(emailOutbox\)[\s\S]*insert\(adminActivityLogs\)/);
 });
 
-test("both production workers poll the DB-backed scheduler every minute", () => {
+test("production uses only the generic jobs runner", () => {
   const compose = read("docker-compose.yml");
-  const emailWorker = compose.slice(compose.indexOf("  email-worker:"), compose.indexOf("  auth-cleanup-worker:"));
-  const cleanupWorker = compose.slice(compose.indexOf("  auth-cleanup-worker:"), compose.indexOf("  redis:"));
-  for (const worker of [emailWorker, cleanupWorker]) assert.match(worker, /sleep 60/);
-  assert.doesNotMatch(cleanupWorker, /sleep 86400/);
+  assert.match(compose, /jobs-scheduler:/);
+  assert.match(compose, /jobs-worker:/);
+  assert.doesNotMatch(compose, /email-worker:|auth-cleanup-worker:|AUTH_EMAIL_WORKER_SECRET/);
 });

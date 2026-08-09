@@ -225,21 +225,18 @@ describe("Resend author email", () => {
     const env = readFileSync(".env.example", "utf8");
     assert.match(env, /EMAIL_PROVIDER_CREDENTIALS_KEY=/);
     assert.match(env, /EMAIL_OUTBOX_ENCRYPTION_KEY=/);
-    assert.match(env, /AUTH_EMAIL_WORKER_SECRET=/);
+    assert.doesNotMatch(env, /AUTH_EMAIL_WORKER_SECRET=/);
     assert.doesNotMatch(env, /AUTH_EMAIL_WEBHOOK|RESEND_API_KEY/);
   });
 
-  it("wires production auth workers without ports or database credentials", () => {
+  it("wires the generic jobs runner and removes legacy auth workers", () => {
     const compose = readFileSync("docker-compose.yml", "utf8");
     const commonEnvironment = compose.slice(0, compose.indexOf("services:"));
-    const app = compose.slice(compose.indexOf("  app:"), compose.indexOf("  email-worker:"));
-    const emailWorker = compose.slice(compose.indexOf("  email-worker:"), compose.indexOf("  auth-cleanup-worker:"));
-    const cleanupWorker = compose.slice(compose.indexOf("  auth-cleanup-worker:"), compose.indexOf("  jobs-scheduler:"));
+    const app = compose.slice(compose.indexOf("  app:"), compose.indexOf("  jobs-scheduler:"));
 
     for (const variable of [
       "AUTHOR_REGISTRATION_ENABLED: ${AUTHOR_REGISTRATION_ENABLED:-false}",
       "AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE: ${AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE:-}",
-      "AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}",
     ]) assert.match(app, new RegExp(variable.replace(/[${}]/g, "\\$&")));
     assert.match(app, /<<: \*common-runtime-environment/);
     for (const variable of [
@@ -247,30 +244,14 @@ describe("Resend author email", () => {
       "EMAIL_PROVIDER_CREDENTIALS_KEY: ${EMAIL_PROVIDER_CREDENTIALS_KEY}",
     ]) assert.match(commonEnvironment, new RegExp(variable.replace(/[${}]/g, "\\$&")));
 
-    for (const worker of [emailWorker, cleanupWorker]) {
-      assert.match(worker, /image: curlimages\/curl:8\.21\.0/);
-      assert.match(worker, /restart: unless-stopped/);
-      assert.match(worker, /while true; do/);
-      assert.match(worker, /if response=\$\$\(curl/);
-      assert.match(worker, /--fail-with-body/);
-      assert.match(worker, /request failed; retrying (?:later|in 60 seconds)/);
-      assert.match(worker, /Authorization: Bearer \$\$\{AUTH_EMAIL_WORKER_SECRET\}/);
-      assert.match(worker, /--connect-timeout 5 --max-time 30/);
-      assert.match(worker, /depends_on:\s+- app/);
-      assert.doesNotMatch(worker, /DATABASE_URL|ports:/);
-    }
-    assert.match(emailWorker, /\/api\/internal\/auth-email-outbox/);
-    assert.match(emailWorker, /sleep 60/);
-    assert.match(cleanupWorker, /\/api\/internal\/auth-cleanup/);
-    assert.match(cleanupWorker, /request completed[\s\S]*request failed; retrying later[\s\S]*sleep 60/);
-    assert.doesNotMatch(cleanupWorker, /sleep 86400/);
+    assert.match(compose, /jobs-scheduler:[\s\S]*command: npm run jobs:scheduler/);
+    assert.match(compose, /jobs-worker:[\s\S]*command: npm run jobs:worker/);
+    assert.doesNotMatch(compose, /email-worker:|auth-cleanup-worker:|AUTH_EMAIL_WORKER_SECRET|curlimages\/curl/);
   });
 
-  it("documents safe coexistence with the disabled generic email jobs", () => {
+  it("documents the completed cutover to generic email jobs", () => {
     const readme = readFileSync("README.md", "utf8");
-    assert.match(readme, /Миграция создаёт выключенные задания `auth\.email-outbox-delivery` и `auth\.cleanup`/);
-    assert.match(readme, /legacy `email-worker` и `auth-cleanup-worker` остаются включёнными/);
-    assert.match(readme, /сначала останови их, затем включи новые задания/);
-    assert.match(readme, /избежать двойной доставки/);
+    assert.match(readme, /универсальный jobs worker/);
+    assert.doesNotMatch(readme, /legacy `email-worker`|AUTH_EMAIL_WORKER_SECRET/);
   });
 });

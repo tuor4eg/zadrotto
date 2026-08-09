@@ -77,7 +77,12 @@ describe("author media status action and controls", () => {
     assert.match(controls, /activeLabel: "Отменить пропуск"/);
     assert.match(controls, /currentAuthorScore !== null \|\| pending/);
     assert.match(controls, /const actionLabel = active \? activeLabel : label/);
-    assert.match(controls, /<ArchiveTooltip label=\{actionLabel\} side="bottom">/);
+    assert.match(
+      controls,
+      /<ArchiveTooltip[\s\S]*?label=\{actionLabel\}[\s\S]*?side="bottom">/,
+    );
+    assert.match(controls, /variant\?: "detail" \| "preview" \| "tile"/);
+    assert.match(controls, /variant === "preview" \? "grid grid-cols-2 gap-2"/);
     assert.match(controls, /aria-label=\{actionLabel\}/);
     assert.match(controls, /aria-pressed=\{active\}/);
     assert.match(catalogPreview, /currentAuthor && item\.currentAuthorScore === null/);

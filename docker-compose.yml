@@ -34,7 +34,6 @@ services:
       AUTHOR_REGISTRATION_ENABLED: ${AUTHOR_REGISTRATION_ENABLED:-false}
       AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION: ${AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION:-false}
       AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE: ${AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE:-}
-      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       SECURE_COOKIES: ${SECURE_COOKIES:-true}
       S3_ENDPOINT: ${S3_ENDPOINT}
@@ -46,48 +45,6 @@ services:
       S3_PUBLIC_BASE_URL: ${S3_PUBLIC_BASE_URL}
     depends_on:
       - redis
-
-  email-worker:
-    image: curlimages/curl:8.21.0
-    restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        while true; do
-          if response=$$(curl --silent --show-error --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $${AUTH_EMAIL_WORKER_SECRET}" http://app:3000/api/internal/auth-email-outbox 2>&1); then
-            echo "auth-email-outbox: request completed"
-            [ -z "$$response" ] || echo "$$response"
-          else
-            echo "auth-email-outbox: request failed; retrying later"
-            [ -z "$$response" ] || echo "$$response"
-          fi
-          sleep 60
-        done
-    environment:
-      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
-    depends_on:
-      - app
-
-  auth-cleanup-worker:
-    image: curlimages/curl:8.21.0
-    restart: unless-stopped
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        while true; do
-          if response=$$(curl --silent --show-error --fail-with-body --connect-timeout 5 --max-time 30 --request POST --header "Authorization: Bearer $${AUTH_EMAIL_WORKER_SECRET}" http://app:3000/api/internal/auth-cleanup 2>&1); then
-            echo "auth-cleanup: request completed"
-            [ -z "$$response" ] || echo "$$response"
-          else
-            echo "auth-cleanup: request failed; retrying later"
-            [ -z "$$response" ] || echo "$$response"
-          fi
-          sleep 60
-        done
-    environment:
-      AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}
-    depends_on:
-      - app
 
   jobs-scheduler:
     image: ghcr.io/tuor4eg/zadrotto-jobs:latest

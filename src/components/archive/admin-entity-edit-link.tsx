@@ -13,7 +13,7 @@ export function AdminEntityEditLink({
   ariaLabel: string;
   href: string;
   tooltipLabel: string;
-  tooltipSide?: "bottom" | "right" | "top";
+  tooltipSide?: "bottom" | "left" | "right" | "top";
 }) {
   return (
     <ArchiveTooltip label={tooltipLabel} side={tooltipSide}>

@@ -164,16 +164,16 @@ export function MediaCatalogPreview({
           ))}
         </div>
 
-        <div className="mt-3 flex items-start gap-2">
+        <div className="mt-3 grid gap-2">
           <Link
             href={`/media/${item.code}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
-              "w-auto px-3 hover:border-stone-700 hover:bg-stone-50 hover:text-stone-700",
+              "w-full px-3 hover:border-stone-700 hover:bg-stone-50 hover:text-stone-700",
             )}
           >
             <FolderOpen />
-            Досье
+            Открыть досье
           </Link>
           {currentAuthor && item.currentAuthorScore === null ? (
             <AuthorMediaStatusControls
@@ -181,13 +181,7 @@ export function MediaCatalogPreview({
               currentAuthorScore={item.currentAuthorScore}
               currentAuthorStatus={item.currentAuthorStatus}
               mediaItemCode={item.code}
-            />
-          ) : null}
-          {currentAdmin ? (
-            <AdminEntityEditLink
-              ariaLabel={`Редактировать запись ${item.title}`}
-              href={`/admin/media/${item.id}/edit`}
-              tooltipLabel="Редактировать запись"
+              variant="preview"
             />
           ) : null}
         </div>
@@ -237,6 +231,17 @@ export function MediaCatalogPreview({
             <div className="mt-1 text-stone-500">Не указаны</div>
           ) : null}
         </div>
+
+        {currentAdmin ? (
+          <div className="mt-auto flex justify-end pt-4">
+            <AdminEntityEditLink
+              ariaLabel={`Редактировать запись ${item.title}`}
+              href={`/admin/media/${item.id}/edit`}
+              tooltipLabel="Редактировать запись"
+              tooltipSide="left"
+            />
+          </div>
+        ) : null}
 
       </div>
     </div>

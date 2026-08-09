@@ -98,18 +98,7 @@ AI настраивается в `/admin/tools/ai`:
 AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION=true
 ```
 
-В production эта опция игнорируется. Email credentials и очередь настраиваются в `/admin/tools/email`; для них нужны `EMAIL_OUTBOX_ENCRYPTION_KEY`, `EMAIL_PROVIDER_CREDENTIALS_KEY` и общий `AUTH_EMAIL_WORKER_SECRET`.
-
-Production compose включает два worker-контейнера:
-
-- `email-worker` доставляет очередь писем;
-- `auth-cleanup-worker` запускает очистку истёкших auth-данных.
-
-Оба worker’а обращаются только к защищённым внутренним endpoint и не имеют прямого доступа к базе.
-
-```bash
-docker compose logs -f email-worker auth-cleanup-worker
-```
+В production эта опция игнорируется. Email credentials и очередь настраиваются в `/admin/tools/email`; для них нужны `EMAIL_OUTBOX_ENCRYPTION_KEY` и `EMAIL_PROVIDER_CREDENTIALS_KEY`. Доставку писем и очистку auth-данных выполняет универсальный jobs worker.
 
 ## Универсальные фоновые задачи
 
@@ -129,7 +118,7 @@ docker compose up -d jobs-scheduler jobs-worker
 docker compose up -d --scale jobs-worker=2 jobs-worker
 ```
 
-Миграция создаёт выключенные задания `auth.email-outbox-delivery` и `auth.cleanup`. До отдельного контролируемого cutover legacy `email-worker` и `auth-cleanup-worker` остаются включёнными: сначала останови их, затем включи новые задания в `/admin/tools/jobs`, чтобы избежать двойной доставки.
+Миграция создаёт задания `auth.email-outbox-delivery` и `auth.cleanup` выключенными. После первого развёртывания их нужно включить в `/admin/tools/jobs`; расписание и история запусков управляются там же.
 
 ## Production compose
 
@@ -138,10 +127,10 @@ docker compose up -d --scale jobs-worker=2 jobs-worker
 ```bash
 docker compose --profile migrate run --rm migrate
 docker compose --profile seed run --rm seed-admin
-docker compose up -d app redis email-worker auth-cleanup-worker jobs-scheduler jobs-worker
+docker compose up -d app redis jobs-scheduler jobs-worker
 ```
 
-Перед запуском заполни production `.env`, установи `SECURE_COOKIES=true` и передай одинаковый `AUTH_EMAIL_WORKER_SECRET` приложению и worker-контейнерам.
+Перед запуском заполни production `.env` и установи `SECURE_COOKIES=true`.
 
 ## Команды
 
