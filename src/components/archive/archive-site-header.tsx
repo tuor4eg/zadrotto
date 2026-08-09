@@ -96,7 +96,7 @@ export function ArchiveSiteHeader({
         ? `archive-catalog-header archive-textured-block ${sticky ? "archive-sticky-header" : ""} ${
             compact ? "archive-catalog-header-compact" : ""
           }`
-        : "archive-main-brand-header archive-paper archive-panel flex items-center justify-between gap-3 px-3 py-3 pr-2 lg:gap-4 lg:px-7 lg:py-5"}
+        : "archive-main-brand-header archive-paper archive-panel grid grid-cols-[minmax(0,1fr)_auto] items-center gap-3 px-3 py-3 pr-2 lg:flex lg:justify-between lg:gap-4 lg:px-7 lg:py-5"}
       >
         {isCatalog ? <div className="archive-catalog-brand-row">
           <header className="archive-catalog-brand-landmark min-w-0">
@@ -142,10 +142,12 @@ export function ArchiveSiteHeader({
         {isCatalog ? (
           <div className="archive-catalog-controls-row">{controls}</div>
         ) : (
-          <ActionsContainer aria-label="Основная навигация" className="flex shrink-0 gap-2">
-            {controls}
-            {adminLink}
-            {authorAction}
+          <ActionsContainer aria-label="Основная навигация" className="contents lg:flex lg:shrink-0 lg:gap-2">
+            {controls ? <div className="col-span-2 row-start-2 lg:col-auto lg:row-auto">{controls}</div> : null}
+            <div className="col-start-2 row-start-1 flex shrink-0 gap-2 lg:col-auto lg:row-auto">
+              {adminLink}
+              {authorAction}
+            </div>
           </ActionsContainer>
         )}
       </SiteHeaderContainer>

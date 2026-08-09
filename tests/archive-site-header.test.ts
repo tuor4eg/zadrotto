@@ -87,12 +87,13 @@ describe("archive site header", () => {
   it("keeps the main header on its independent non-catalog layout", () => {
     assert.match(
       sharedSource,
-      /: "archive-main-brand-header archive-paper archive-panel flex items-center justify-between gap-3 px-3 py-3 pr-2[^"]*lg:px-7 lg:py-5"/,
+      /: "archive-main-brand-header archive-paper archive-panel grid grid-cols-\[minmax\(0,1fr\)_auto\][^"]*lg:flex lg:justify-between[^"]*lg:px-7 lg:py-5"/,
     );
     assert.match(
       sharedSource,
-      /<ActionsContainer aria-label="Основная навигация" className="flex shrink-0 gap-2">[\s\S]*\{adminLink\}[\s\S]*\{authorAction\}/,
+      /<ActionsContainer aria-label="Основная навигация" className="contents lg:flex[^\"]*">[\s\S]*col-span-2 row-start-2[\s\S]*\{adminLink\}[\s\S]*\{authorAction\}/,
     );
+    assert.match(mainSource, /className="relative w-full lg:w-\[298px\]"/);
     assert.match(sharedSource, /: "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"/);
     assert.match(sharedSource, /: "sr-only lg:not-sr-only"/);
     assert.match(

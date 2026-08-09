@@ -212,7 +212,8 @@ export function MediaItemDetails({
                   <MediaItemFranchiseLinks
                     franchises={item.franchises}
                     containerClassName="flex flex-wrap gap-1.5"
-                    className="border border-zinc-200 px-3 py-2 font-medium text-zinc-800 transition-colors hover:border-zinc-950 hover:text-zinc-950"
+                    className="rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white"
+                    trailingAction={franchiseActions}
                   />
                 </div>
               ) : null}
@@ -466,13 +467,14 @@ function ArchiveMediaItemDetails({
                   <div>
                     <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
                       <span className={labelFontClassName}>Серия</span>
-                      <span className="font-sans normal-case tracking-normal">{franchiseActions}</span>
+                      {item.franchises.length === 0 ? franchiseActions : null}
                     </dt>
                     <dd className="mt-1">
                       <MediaItemFranchiseLinks
                         franchises={item.franchises}
                         containerClassName="flex flex-wrap gap-1.5"
-                        className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                        className="rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white"
+                        trailingAction={item.franchises.length > 0 ? franchiseActions : null}
                       />
                     </dd>
                   </div>

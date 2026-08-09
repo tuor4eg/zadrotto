@@ -13,6 +13,7 @@ import {
   Info,
   Loader2,
   PanelsTopLeft,
+  Search,
   Shapes,
   Shuffle,
   Sparkles,
@@ -114,6 +115,30 @@ function FiveStarRating({ className, score }: { className: string; score: number
 
 function MainSectionLoader({ minHeight = "min-h-40" }: { minHeight?: string }) {
   return <div className={`grid place-items-center ${minHeight}`} role="status" aria-label="Загрузка"><Loader2 className="size-6 animate-spin text-red-950/65" /></div>;
+}
+
+function MainArchiveSearch() {
+  return (
+    <form action="/archive" method="get" role="search" aria-label="Поиск по архиву">
+      <label className="sr-only" htmlFor="main-archive-search">
+        Поиск по архиву
+      </label>
+      <div className="relative w-full lg:w-[298px]">
+        <Search
+          aria-hidden="true"
+          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-500"
+        />
+        <input
+          id="main-archive-search"
+          name="q"
+          type="search"
+          autoComplete="off"
+          className="archive-control-surface h-9 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-3 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
+          placeholder="Поиск"
+        />
+      </div>
+    </form>
+  );
 }
 
 function getMainTileDescriptors(items: MainPageMediaItem[]): ResponsiveTileDescriptor[] {
@@ -220,6 +245,7 @@ export default async function MainPage() {
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <ArchiveSiteHeader
           brandHref="/"
+          controls={<MainArchiveSearch />}
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           variant="main"

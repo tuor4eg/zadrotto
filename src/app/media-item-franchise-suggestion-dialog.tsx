@@ -36,6 +36,7 @@ export function MediaItemFranchiseSuggestionDialog({
   mediaItemCode,
   mediaItemId,
   triggerTooltipSide = "bottom",
+  triggerTooltipPortal = false,
 }: {
   assignedFranchises: Array<{
     id: number;
@@ -51,6 +52,7 @@ export function MediaItemFranchiseSuggestionDialog({
   mediaItemCode: string;
   mediaItemId: number;
   triggerTooltipSide?: "bottom" | "left" | "right" | "top";
+  triggerTooltipPortal?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<"existing" | "new">("existing");
@@ -165,8 +167,8 @@ export function MediaItemFranchiseSuggestionDialog({
 
   return (
     <>
-      <ArchiveTooltip label={label} side={triggerTooltipSide}>
-        <Button type="button" variant="outline" size="icon" aria-label={label} onClick={() => setOpen(true)}>
+      <ArchiveTooltip label={label} portal={triggerTooltipPortal} side={triggerTooltipSide}>
+        <Button type="button" size="icon" className="size-7 rounded-full bg-[var(--archive-bg-end)] hover:bg-[var(--archive-bg-start)]" aria-label={label} onClick={() => setOpen(true)}>
           <Plus />
         </Button>
       </ArchiveTooltip>

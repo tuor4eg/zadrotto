@@ -46,6 +46,16 @@ describe("archive route split", () => {
     assert.doesNotMatch(catalogHeader, /\/main/);
   });
 
+  it("submits the main-page search to the archive only on form submission", () => {
+    assert.match(
+      mainPage,
+      /<form action="\/archive" method="get" role="search" aria-label="Поиск по архиву">/,
+    );
+    assert.match(mainPage, /<input[\s\S]*name="q"[\s\S]*type="search"/);
+    assert.match(mainPage, /<ArchiveSiteHeader[\s\S]*controls=\{<MainArchiveSearch \/>\}/);
+    assert.doesNotMatch(mainPage, /onChange=|useDebouncedSearchDraft/);
+  });
+
   it("links public archive breadcrumbs and media types to the catalog", () => {
     assert.match(mediaPage, /href="\/archive"[\s\S]*Архив/);
     assert.match(seriesCatalogPage, /href="\/archive"[\s\S]*Архив/);

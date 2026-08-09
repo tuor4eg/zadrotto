@@ -25,13 +25,13 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
         >
           <div className="flex items-center justify-between gap-3 px-3 py-3 pr-2 lg:gap-4 lg:px-7 lg:py-5">
             <div className="flex min-w-0 items-center gap-3 lg:gap-4">
-              <Link href="/" className="shrink-0" aria-label="На главную">
+              <Link href="/" className="flex shrink-0 lg:mt-1" aria-label="На главную">
                 <Image
                   src="/site-logo.png"
                   alt=""
                   width={56}
                   height={56}
-                  className="size-11 object-contain lg:size-14"
+                  className="size-11 shrink-0 object-contain lg:size-14"
                   priority
                 />
               </Link>

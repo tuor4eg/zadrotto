@@ -62,6 +62,29 @@ export function MediaCatalogPreview({
     item.releaseYear ? String(item.releaseYear) : null,
     formatAuthorsFact(item.metadataFacts),
   ].filter((value): value is string => Boolean(value));
+  const franchiseAction = currentAuthor ? (
+    <MediaItemFranchiseSuggestionDialog
+      assignedFranchises={item.franchises}
+      canPublishWithoutReview={canPublishFranchisesWithoutReview}
+      canSuggestFranchises={canSuggestFranchises}
+      franchises={mapFranchiseSuggestionOptions(franchises, item.franchiseLinkStatuses)}
+      mediaItemCode={item.code}
+      mediaItemId={item.id}
+      triggerTooltipPortal
+      triggerTooltipSide={item.franchises.length === 0 ? "right" : "left"}
+      franchiseSuggestionInput={{
+        title: item.title,
+        originalTitle: item.originalTitle,
+        aliases: item.aliases,
+        description: item.description,
+        mediaType: item.mediaType,
+        mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
+        releaseYear: item.releaseYear,
+        mediaCarrier: item.mediaCarrierName,
+        metadata: item.metadataFacts ?? {},
+      }}
+    />
+  ) : null;
 
   return (
     <div className="flex flex-1 p-3 sm:p-4">
@@ -150,7 +173,7 @@ export function MediaCatalogPreview({
             )}
           >
             <FolderOpen />
-            Открыть
+            Досье
           </Link>
           {currentAuthor && item.currentAuthorScore === null ? (
             <AuthorMediaStatusControls
@@ -197,45 +220,22 @@ export function MediaCatalogPreview({
           />
         </div>
         <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2">
             <div className={`${labelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
               Серии
             </div>
-            {currentAuthor ? (
-              <MediaItemFranchiseSuggestionDialog
-                assignedFranchises={item.franchises}
-                canPublishWithoutReview={canPublishFranchisesWithoutReview}
-                canSuggestFranchises={canSuggestFranchises}
-                franchises={mapFranchiseSuggestionOptions(
-                  franchises,
-                  item.franchiseLinkStatuses,
-                )}
-                mediaItemCode={item.code}
-                mediaItemId={item.id}
-                triggerTooltipSide="left"
-                franchiseSuggestionInput={{
-                  title: item.title,
-                  originalTitle: item.originalTitle,
-                  aliases: item.aliases,
-                  description: item.description,
-                  mediaType: item.mediaType,
-                  mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
-                  releaseYear: item.releaseYear,
-                  mediaCarrier: item.mediaCarrierName,
-                  metadata: item.metadataFacts ?? {},
-                }}
-              />
-            ) : null}
+            {item.franchises.length === 0 ? franchiseAction : null}
           </div>
           {item.franchises.length > 0 ? (
             <MediaItemFranchiseLinks
               franchises={item.franchises}
-              containerClassName="mt-1 flex flex-wrap gap-x-2 gap-y-1"
-              className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+              containerClassName="mt-1 flex flex-wrap items-center gap-1.5"
+              className="rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white"
+              trailingAction={franchiseAction}
             />
-          ) : (
+          ) : !currentAuthor ? (
             <div className="mt-1 text-stone-500">Не указаны</div>
-          )}
+          ) : null}
         </div>
 
       </div>
