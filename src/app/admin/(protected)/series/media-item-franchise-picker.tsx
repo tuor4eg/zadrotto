@@ -10,6 +10,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { type getAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
+import { normalizeSearchText } from "@/lib/search/normalize";
 import { addMediaItemToFranchiseAction } from "./actions";
 
 type AvailableMediaItem = Awaited<
@@ -21,10 +22,6 @@ type MediaItemFranchisePickerProps = {
   items: AvailableMediaItem[];
   mediaTypes: MediaTypeOption[];
 };
-
-function normalizeSearchValue(value: string) {
-  return value.trim().toLowerCase();
-}
 
 function itemMatchesSearch(
   item: AvailableMediaItem,
@@ -42,10 +39,9 @@ function itemMatchesSearch(
     PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus],
   ]
     .filter(Boolean)
-    .join(" ")
-    .toLowerCase();
+    .join(" ");
 
-  return searchableText.includes(searchValue);
+  return normalizeSearchText(searchableText).includes(searchValue);
 }
 
 export function MediaItemFranchisePicker({
@@ -54,7 +50,7 @@ export function MediaItemFranchisePicker({
   mediaTypes,
 }: MediaItemFranchisePickerProps) {
   const [searchValue, setSearchValue] = useState("");
-  const normalizedSearchValue = normalizeSearchValue(searchValue);
+  const normalizedSearchValue = normalizeSearchText(searchValue);
   const visibleItems = useMemo(() => {
     if (!normalizedSearchValue) {
       return [];

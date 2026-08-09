@@ -8,6 +8,7 @@ import { cn } from "@/lib/common/utils";
 import { matchesFranchiseSearch } from "@/lib/franchises/search";
 
 export type SearchableFranchiseOption = {
+  code?: string;
   disabled?: boolean;
   disabledLabel?: string;
   id: number;
@@ -33,7 +34,9 @@ function formatFranchiseOption(option: SearchableFranchiseOption) {
 
 function matchesSearch(option: SearchableFranchiseOption, searchValue: string, searchByTitleOnly: boolean) {
   return matchesFranchiseSearch(
-    searchByTitleOnly ? [option.title] : [option.title, option.originalTitle],
+    searchByTitleOnly
+      ? [option.title]
+      : [option.title, option.originalTitle, option.path, option.code],
     searchValue,
   );
 }

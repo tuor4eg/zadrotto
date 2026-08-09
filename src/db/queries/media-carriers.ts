@@ -1,10 +1,12 @@
 import { and, asc, eq, or, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
+import { containsNormalizedSearchSql } from "@/db/search";
 import { mediaCarrierMediaTypes, mediaCarriers, mediaItems } from "@/db/schema";
 import type { MediaTypeFilter } from "@/app/media-items-catalog-logic";
 import type { MediaCarrierFormInput } from "@/lib/forms/media-carrier";
 import type { MediaType } from "@/lib/media/types";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 const mediaItemsCountSql = sql<number>`count(distinct ${mediaItems.id})::int`;
 const mediaCarrierMediaTypesSql = sql<MediaType[]>`coalesce(
@@ -34,16 +36,14 @@ function adminMediaCarrierFilterConditions(input: {
   searchQuery: string;
 }) {
   const conditions: SQL[] = [];
-  const normalizedSearchQuery = input.searchQuery.trim().toLowerCase();
+  const normalizedSearchQuery = normalizeSearchText(input.searchQuery);
 
   if (normalizedSearchQuery) {
-    const pattern = `%${normalizedSearchQuery}%`;
-
     conditions.push(
       or(
-        sql`lower(${mediaCarriers.name}) like ${pattern}`,
-        sql`lower(${mediaCarriers.code}) like ${pattern}`,
-        sql`lower(${mediaCarriers.description}) like ${pattern}`,
+        containsNormalizedSearchSql(mediaCarriers.name, normalizedSearchQuery),
+        containsNormalizedSearchSql(mediaCarriers.code, normalizedSearchQuery),
+        containsNormalizedSearchSql(mediaCarriers.description, normalizedSearchQuery),
       )!,
     );
   }

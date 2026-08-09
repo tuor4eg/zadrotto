@@ -150,6 +150,11 @@ describe("matchesSearch", () => {
     assert.equal(matchesSearch(items[0], "tarkovsky"), false);
   });
 
+  it("treats е and ё as equivalent", () => {
+    assert.equal(matchesSearch({ ...items[0], title: "Ёжик" }, "ежик"), true);
+    assert.equal(matchesSearch({ ...items[0], aliases: ["Ежик"] }, "ёжик"), true);
+  });
+
   it("matches every item for an empty normalized query", () => {
     assert.equal(matchesSearch(items[2], ""), true);
   });

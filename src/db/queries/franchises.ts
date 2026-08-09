@@ -2,6 +2,7 @@ import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } f
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
+import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
 import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
@@ -10,6 +11,7 @@ import { resolveCoverUrl } from "@/lib/services/minio";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -129,6 +131,7 @@ export async function getFranchiseByCode(code: string) {
 export async function getFranchiseOptions(currentAuthorId?: number) {
   return db
     .select({
+      code: franchises.code,
       id: franchises.id,
       title: franchises.title,
       originalTitle: franchises.originalTitle,
@@ -260,6 +263,7 @@ export async function getAiFranchiseCandidates(currentAuthorId?: number) {
 export async function getPublishedFranchiseOptions() {
   return db
     .select({
+      code: franchises.code,
       id: franchises.id,
       title: franchises.title,
       originalTitle: franchises.originalTitle,
@@ -358,6 +362,7 @@ export async function getRandomPublishedFranchisePreview(input: {
 export async function getPublishedFranchiseOptionById(id: number) {
   const [franchise] = await db
     .select({
+      code: franchises.code,
       id: franchises.id,
       parentId: franchises.parentId,
       title: franchises.title,
@@ -399,6 +404,7 @@ export async function getPublishedFranchiseOptionById(id: number) {
   }
 
   return {
+    code: franchise.code,
     id: franchise.id,
     title: franchise.title,
     originalTitle: franchise.originalTitle,
@@ -414,13 +420,12 @@ export async function searchPublishedMediaItemsForFranchise(input: {
   franchiseId: number;
   searchQuery: string;
 }) {
-  const normalizedSearchQuery = input.searchQuery.trim().toLowerCase();
+  const normalizedSearchQuery = normalizeSearchText(input.searchQuery);
 
   if (normalizedSearchQuery.length < 2) {
     return [];
   }
 
-  const pattern = `%${normalizedSearchQuery}%`;
   const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
   const rows = await db
     .select({
@@ -450,9 +455,9 @@ export async function searchPublishedMediaItemsForFranchise(input: {
           ne(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         ),
         or(
-          sql`lower(${mediaItems.title}) like ${pattern}`,
-          sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
-          sql`('-' || lower(${mediaItems.code}) || '-') like ${codePattern}`,
+          containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
+          containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
+          sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
           exists(
             db
               .select({ id: mediaItemTitleAliases.id })
@@ -460,7 +465,7 @@ export async function searchPublishedMediaItemsForFranchise(input: {
               .where(
                 and(
                   eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                  sql`lower(${mediaItemTitleAliases.value}) like ${pattern}`,
+                  containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
                 ),
               ),
           ),
@@ -560,10 +565,72 @@ export async function getPublishedFranchiseBranch(
   return findBranch(roots);
 }
 
+async function getFranchiseSearchVisibleIds(input: {
+  publishedOnly: boolean;
+  searchQuery: string;
+}) {
+  const normalizedSearchQuery = normalizeSearchText(input.searchQuery);
+
+  if (!normalizedSearchQuery) {
+    return null;
+  }
+
+  const directVisibility = input.publishedOnly
+    ? sql`publication_status = ${PUBLISHED_PUBLICATION_STATUS}`
+    : sql`true`;
+  const ancestorVisibility = input.publishedOnly
+    ? sql`parent.publication_status = ${PUBLISHED_PUBLICATION_STATUS}`
+    : sql`true`;
+  const descendantVisibility = input.publishedOnly
+    ? sql`child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}`
+    : sql`true`;
+  const pattern = `%${normalizedSearchQuery}%`;
+  const rows = await db.execute<{ id: number }>(sql`
+    with recursive direct_matches as (
+      select id, parent_id
+      from franchises
+      where ${directVisibility}
+        and (
+          ${normalizeSearchSql(sql.raw("title"))} like ${pattern}
+          or ${normalizeSearchSql(sql.raw("original_title"))} like ${pattern}
+          or ${normalizeSearchSql(sql.raw("code"))} like ${pattern}
+        )
+    ), ancestors as (
+      select id, parent_id from direct_matches
+      union
+      select parent.id, parent.parent_id
+      from franchises parent
+      inner join ancestors child on child.parent_id = parent.id
+      where ${ancestorVisibility}
+    ), descendants as (
+      select id, parent_id from direct_matches
+      union
+      select child.id, child.parent_id
+      from franchises child
+      inner join descendants parent on child.parent_id = parent.id
+      where ${descendantVisibility}
+    )
+    select id from ancestors
+    union
+    select id from descendants
+  `);
+
+  return rows.map((row) => row.id);
+}
+
 export async function getPublishedFranchiseTree(
   searchQuery: string,
   enabledMediaTypeCodes: readonly string[],
 ) {
+  const visibleIds = await getFranchiseSearchVisibleIds({
+    publishedOnly: true,
+    searchQuery,
+  });
+
+  if (visibleIds?.length === 0) {
+    return [];
+  }
+
   const rows = await db
     .select({
       id: franchises.id,
@@ -573,7 +640,10 @@ export async function getPublishedFranchiseTree(
       originalTitle: franchises.originalTitle,
     })
     .from(franchises)
-    .where(publishedFranchiseCondition)
+    .where(and(
+      publishedFranchiseCondition,
+      visibleIds ? inArray(franchises.id, visibleIds) : undefined,
+    ))
     .orderBy(asc(franchises.title), asc(franchises.code));
   const links = await db
     .select({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId })
@@ -583,44 +653,12 @@ export async function getPublishedFranchiseTree(
       eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      visibleIds ? inArray(mediaItemFranchises.franchiseId, visibleIds) : undefined,
     ));
-  const normalizedSearch = searchQuery.trim().toLowerCase();
-  const matches = new Set(rows.filter((row) => !normalizedSearch || [row.title, row.originalTitle, row.code]
-    .filter(Boolean).join(" ").toLowerCase().includes(normalizedSearch)).map((row) => row.id));
-  const rowById = new Map(rows.map((row) => [row.id, row]));
-  const childrenByParentId = new Map<number | null, number[]>();
-
-  for (const row of rows) {
-    childrenByParentId.set(row.parentId, [
-      ...(childrenByParentId.get(row.parentId) ?? []),
-      row.id,
-    ]);
-  }
-
-  if (normalizedSearch) {
-    for (const id of [...matches]) {
-      let parentId = rowById.get(id)?.parentId ?? null;
-      while (parentId) {
-        matches.add(parentId);
-        parentId = rowById.get(parentId)?.parentId ?? null;
-      }
-
-      const descendantIds = [...(childrenByParentId.get(id) ?? [])];
-
-      while (descendantIds.length > 0) {
-        const descendantId = descendantIds.pop()!;
-
-        matches.add(descendantId);
-        descendantIds.push(...(childrenByParentId.get(descendantId) ?? []));
-      }
-    }
-  }
 
   const nodes = new Map<number, FranchiseTreeNode>();
   for (const row of rows) {
-    if (!normalizedSearch || matches.has(row.id)) {
-      nodes.set(row.id, { ...row, mediaItemsCount: 0, children: [] });
-    }
+    nodes.set(row.id, { ...row, mediaItemsCount: 0, children: [] });
   }
   const mediaIdsByFranchise = new Map<number, Set<number>>();
   for (const link of links) {
@@ -664,7 +702,7 @@ export async function findPublishedFranchiseDuplicateCandidates(input: {
   originalTitle: string | null;
 }): Promise<FranchiseDuplicateMatch[]> {
   const searchTerms = [input.title, input.originalTitle]
-    .map((value) => value?.trim().replace(/\s+/g, " ").toLowerCase() ?? "")
+    .map((value) => normalizeSearchText(value ?? ""))
     .filter((value) => value.length >= 2);
 
   if (searchTerms.length === 0) {
@@ -679,18 +717,16 @@ export async function findPublishedFranchiseDuplicateCandidates(input: {
   };
   const exactCondition = or(
     ...searchTerms.flatMap((searchTerm) => [
-      sql`lower(regexp_replace(trim(${franchises.title}), '\\s+', ' ', 'g')) = ${searchTerm}`,
-      sql`lower(regexp_replace(trim(coalesce(${franchises.originalTitle}, '')), '\\s+', ' ', 'g')) = ${searchTerm}`,
+      sql`${normalizeSearchSql(franchises.title)} = ${searchTerm}`,
+      sql`${normalizeSearchSql(franchises.originalTitle)} = ${searchTerm}`,
     ]),
   );
   const similarCondition = or(
     ...searchTerms.flatMap((searchTerm) => {
-      const pattern = `%${searchTerm}%`;
-
       return [
-        sql`lower(${franchises.title}) like ${pattern}`,
-        sql`lower(${franchises.originalTitle}) like ${pattern}`,
-        sql`lower(${franchises.code}) like ${pattern}`,
+        containsNormalizedSearchSql(franchises.title, searchTerm),
+        containsNormalizedSearchSql(franchises.originalTitle, searchTerm),
+        containsNormalizedSearchSql(franchises.code, searchTerm),
       ];
     }),
   );
@@ -748,7 +784,20 @@ export type AdminFranchiseTreeNode = {
 };
 
 export async function getAdminFranchiseTree(searchQuery: string) {
-  const rows = await db
+  const visibleIds = await getFranchiseSearchVisibleIds({
+    publishedOnly: false,
+    searchQuery,
+  });
+
+  if (visibleIds?.length === 0) {
+    const [{ totalCount }] = await db
+      .select({ totalCount: sql<number>`count(*)::int` })
+      .from(franchises);
+
+    return { items: [], totalCount };
+  }
+
+  const [rows, [{ totalCount }]] = await Promise.all([db
     .select({
       id: franchises.id,
       parentId: franchises.parentId,
@@ -760,6 +809,7 @@ export async function getAdminFranchiseTree(searchQuery: string) {
     })
     .from(franchises)
     .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
+    .where(visibleIds ? inArray(franchises.id, visibleIds) : undefined)
     .groupBy(
       franchises.id,
       franchises.parentId,
@@ -768,54 +818,14 @@ export async function getAdminFranchiseTree(searchQuery: string) {
       franchises.originalTitle,
       franchises.publicationStatus,
     )
-    .orderBy(asc(franchises.title), asc(franchises.code));
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
-  const rowsById = new Map(rows.map((row) => [row.id, row]));
-  const childrenByParentId = new Map<number | null, number[]>();
-
-  for (const row of rows) {
-    childrenByParentId.set(row.parentId, [
-      ...(childrenByParentId.get(row.parentId) ?? []),
-      row.id,
-    ]);
-  }
-
-  const visibleIds = new Set(
-    rows
-      .filter((row) => !normalizedSearchQuery || [row.title, row.originalTitle, row.code]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(normalizedSearchQuery))
-      .map((row) => row.id),
-  );
-
-  if (normalizedSearchQuery) {
-    for (const id of [...visibleIds]) {
-      let parentId = rowsById.get(id)?.parentId ?? null;
-
-      while (parentId) {
-        visibleIds.add(parentId);
-        parentId = rowsById.get(parentId)?.parentId ?? null;
-      }
-
-      const descendantIds = [...(childrenByParentId.get(id) ?? [])];
-
-      while (descendantIds.length > 0) {
-        const descendantId = descendantIds.pop()!;
-
-        visibleIds.add(descendantId);
-        descendantIds.push(...(childrenByParentId.get(descendantId) ?? []));
-      }
-    }
-  }
+    .orderBy(asc(franchises.title), asc(franchises.code)), db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(franchises)]);
 
   const nodesById = new Map<number, AdminFranchiseTreeNode>();
 
   for (const row of rows) {
-    if (!normalizedSearchQuery || visibleIds.has(row.id)) {
-      nodesById.set(row.id, { ...row, children: [] });
-    }
+    nodesById.set(row.id, { ...row, children: [] });
   }
 
   const roots: AdminFranchiseTreeNode[] = [];
@@ -830,7 +840,7 @@ export async function getAdminFranchiseTree(searchQuery: string) {
     }
   }
 
-  return { items: roots, totalCount: rows.length };
+  return { items: roots, totalCount };
 }
 
 export async function getAdminFranchiseById(id: number) {
@@ -855,7 +865,7 @@ export async function getAdminFranchiseById(id: number) {
 
 export async function getAdminFranchiseParentOptions(franchiseId?: number) {
   const rows = await db
-    .select({ id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle })
+    .select({ code: franchises.code, id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle })
     .from(franchises)
     .orderBy(asc(franchises.title), asc(franchises.code));
   const byId = new Map(rows.map((row) => [row.id, row]));
@@ -882,12 +892,12 @@ export async function getAdminFranchiseParentOptions(franchiseId?: number) {
     return parts.join(" / ");
   };
   return rows.filter((row) => !excluded.has(row.id)).map((row) => ({
-    id: row.id, title: row.title, originalTitle: row.originalTitle, path: getPath(row),
+    code: row.code, id: row.id, title: row.title, originalTitle: row.originalTitle, path: getPath(row),
   }));
 }
 
 export async function getAdminFranchiseChildCandidates(franchiseId: number) {
-  const rows = await db.select({ id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle }).from(franchises).orderBy(asc(franchises.title));
+  const rows = await db.select({ code: franchises.code, id: franchises.id, parentId: franchises.parentId, title: franchises.title, originalTitle: franchises.originalTitle }).from(franchises).orderBy(asc(franchises.title));
   const byId = new Map(rows.map((row) => [row.id, row]));
   const related = new Set<number>([franchiseId]);
   let ancestorId = byId.get(franchiseId)?.parentId ?? null;
@@ -904,7 +914,7 @@ export async function getAdminFranchiseChildCandidates(franchiseId: number) {
     while (parentId) { const parent = byId.get(parentId); if (!parent) break; parts.unshift(parent.title); parentId = parent.parentId; }
     return parts.join(" / ");
   };
-  return rows.filter((row) => !related.has(row.id)).map((row) => ({ id: row.id, title: row.title, originalTitle: row.originalTitle, path: path(row) }));
+  return rows.filter((row) => !related.has(row.id)).map((row) => ({ code: row.code, id: row.id, title: row.title, originalTitle: row.originalTitle, path: path(row) }));
 }
 
 export async function getAdminFranchiseChildren(franchiseId: number) {

@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
+import { normalizeSearchText } from "../src/lib/search/normalize";
+
 const mediaQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
 const seriesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 
 function matchesCodeSegment(code: string, query: string) {
-  const normalizedSegments = query.trim().toLowerCase().replace(/\s+/g, "-").split("-");
-  const codeSegments = code.toLowerCase().split("-");
+  const normalizedSegments = normalizeSearchText(query).replace(/\s+/g, "-").split("-");
+  const codeSegments = normalizeSearchText(code).split("-");
   const firstSegmentIndex = codeSegments.indexOf(normalizedSegments[0]);
 
   return normalizedSegments.every(
@@ -30,7 +32,7 @@ describe("catalog code search", () => {
         true,
       );
       assert.equal(
-        /sql`\(\'-\' \|\| lower\(\$\{(?:mediaItems|franchises)\.code\}\) \|\| \'-\'\) like \$\{codePattern\}`/.test(
+        /sql`\(\'-\' \|\| \$\{normalizeSearchSql\((?:mediaItems|franchises)\.code\)\} \|\| \'-\'\) like \$\{codePattern\}`/.test(
           source,
         ),
         true,
@@ -39,19 +41,19 @@ describe("catalog code search", () => {
   });
 
   it("keeps substring matching for media titles, original titles, and aliases", () => {
-    assert.match(mediaQuerySource, /sql`lower\(\$\{mediaItems\.title\}\) like \$\{pattern\}`/);
-    assert.match(mediaQuerySource, /sql`lower\(\$\{mediaItems\.originalTitle\}\) like \$\{pattern\}`/);
+    assert.match(mediaQuerySource, /containsNormalizedSearchSql\(mediaItems\.title, normalizedSearchQuery\)/);
+    assert.match(mediaQuerySource, /containsNormalizedSearchSql\(mediaItems\.originalTitle, normalizedSearchQuery\)/);
     assert.match(
       mediaQuerySource,
-      /sql`lower\(\$\{mediaItemTitleAliases\.value\}\) like \$\{pattern\}`/,
+      /containsNormalizedSearchSql\(mediaItemTitleAliases\.value, normalizedSearchQuery\)/,
     );
     assert.match(
       seriesQuerySource,
-      /\[row\.title, row\.originalTitle, row\.code\][\s\S]*\.includes\(normalizedSearch(?:Query)?\)/,
+      /with recursive direct_matches as \([\s\S]*normalizeSearchSql/,
     );
     assert.match(
       seriesQuerySource,
-      /const normalizedSearchQuery = searchQuery\.trim\(\)\.toLowerCase\(\)/,
+      /const normalizedSearchQuery = normalizeSearchText\(input\.searchQuery\)/,
     );
   });
 });

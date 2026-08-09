@@ -25,24 +25,12 @@ type MediaTypeTabItem = {
   value: MediaTypeFilter;
 };
 
-const TAB_PAPER_CLASSES = [
-  "bg-[#b8a0a4]",
-  "bg-[#d6aba2]",
-  "bg-[#d2b691]",
-  "bg-[#cbb79e]",
-  "bg-[#b7bdac]",
-  "bg-[#aec2c6]",
-  "bg-[#c5b9b8]",
-  "bg-[#aaa3ad]",
-];
-
 function MediaTypeTab({
   index,
   isSelected,
   label,
   count,
   onClick,
-  paperClassName,
   selectedIndex,
 }: {
   count: number;
@@ -50,7 +38,6 @@ function MediaTypeTab({
   isSelected: boolean;
   label: string;
   onClick: () => void;
-  paperClassName: string;
   selectedIndex: number;
 }) {
   const distanceFromSelected = Math.abs(index - selectedIndex);
@@ -71,15 +58,17 @@ function MediaTypeTab({
         zIndex,
       } as CSSProperties}
       className={cn(
-        "group relative shrink-0 rounded-t-[14px] px-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] shadow-[-8px_0_14px_rgba(68,64,60,0.20),inset_1px_1px_0_rgba(255,255,255,0.46),inset_-1px_0_0_rgba(68,64,60,0.18)] transition-[background-color,color,transform,box-shadow] hover:z-[80] focus-visible:z-[80] ml-[var(--tab-mobile-overlap)] lg:ml-[var(--tab-overlap)] lg:grow lg:rounded-t-[18px] lg:px-6 lg:text-xs lg:tracking-[0.12em]",
+        "archive-media-type-tab group relative inline-flex shrink-0 items-end justify-center px-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] transition-[color,transform,filter] hover:z-[80] focus-visible:z-[80] ml-[var(--tab-mobile-overlap)] lg:ml-[var(--tab-overlap)] lg:max-w-[220px] lg:grow lg:px-6 lg:text-xs lg:tracking-[0.12em]",
         isSelected
-          ? "archive-media-type-tab-active h-12 min-w-[116px] pb-3 pt-3 text-stone-950 lg:h-16 lg:min-w-[156px] lg:pb-4 lg:pt-5"
-          : cn(
-              "h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
-              paperClassName,
-            ),
+          ? "archive-media-type-tab-active h-12 min-w-[116px] pb-2.5 pt-3 text-stone-950 lg:h-16 lg:min-w-[156px] lg:pb-3 lg:pt-5"
+          : "archive-media-type-tab-inactive h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
       )}
     >
+      {isSelected ? (
+        <span aria-hidden="true" className="archive-media-type-tab-active-shadow">
+          <span />
+        </span>
+      ) : null}
       <span className="relative z-10 inline-flex max-w-full items-baseline justify-center gap-2">
         <span className="truncate">{label}</span>
         <span
@@ -156,7 +145,6 @@ export function MediaTypeTabs({
                 isSelected={tab.selected}
                 label={tab.label}
                 count={tab.count}
-                paperClassName={TAB_PAPER_CLASSES[index % TAB_PAPER_CLASSES.length]}
                 selectedIndex={selectedIndex}
                 onClick={() => onChange(tab.value)}
               />

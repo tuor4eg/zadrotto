@@ -1,7 +1,8 @@
 import type { SignedMediaTitleCandidate } from "@/lib/covers/types";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 function normalizeCandidateTitle(value: string | null | undefined) {
-  return value?.trim().toLowerCase() ?? "";
+  return normalizeSearchText(value ?? "");
 }
 
 export function rankMetadataRefreshCandidates(

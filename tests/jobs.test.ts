@@ -110,3 +110,37 @@ test("standalone worker has an independent recovery loop and server-only runtime
   assert.match(makefile, /--target jobs-runner/);
   assert.match(makefile, /docker push \$\(JOBS_IMAGE\)/);
 });
+
+test("job history is retained per schedule and cleanup preserves active runs", async () => {
+  const [queries, schema, handlers, migration] = await Promise.all([
+    readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/db/schema.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/jobs/handlers.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0057_job_run_history.sql", import.meta.url), "utf8"),
+  ]);
+  assert.match(schema, /historyRetentionDays: integer\("history_retention_days"\)\.default\(30\)\.notNull\(\)/);
+  assert.match(schema, /jobs_history_retention_days_check/);
+  assert.match(queries, /terminalStatuses: JobRunStatus\[\] = \["succeeded", "failed", "cancelled"\]/);
+  assert.doesNotMatch(queries, /terminalStatuses[^;]+"queued"/);
+  assert.doesNotMatch(queries, /terminalStatuses[^;]+"running"/);
+  assert.match(handlers, /type: "jobs\.cleanup-history"/);
+  assert.match(migration, /'jobs-history-cleanup'[\s\S]*'30 3 \* \* \*'[\s\S]*true/);
+});
+
+test("jobs admin separates schedules from paginated run history", async () => {
+  const [layout, nav, schedules, journal, queries] = await Promise.all([
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/layout.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-tools-nav.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/schedules/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/journal/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8"),
+  ]);
+  assert.match(layout, /lg:grid-cols-\[220px_minmax\(0,1fr\)\]/);
+  assert.match(nav, /Расписания/);
+  assert.match(nav, /Журнал/);
+  assert.match(schedules, /getLatestJobRuns/);
+  assert.match(journal, /pageSize/);
+  assert.match(journal, /Страница \{result\.page\} из \{result\.totalPages\}/);
+  assert.match(queries, /selectDistinctOn\(\[jobRuns\.jobId\]/);
+  assert.match(queries, /offset\(\(page - 1\) \* pageSize\)/);
+});

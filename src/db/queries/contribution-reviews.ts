@@ -1,7 +1,8 @@
-import { and, desc, eq, exists, ilike, inArray, or, sql } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
+import { containsNormalizedSearchSql } from "@/db/search";
 import {
   authors,
   contributionMediaItems,
@@ -16,6 +17,7 @@ import {
   type ContributionStatus,
 } from "@/lib/contributions/model";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 export async function getSubmittedContributionReviewCountForAdmin() {
   const [result] = await db
@@ -184,14 +186,14 @@ export async function searchPublishedMediaItemsForReview(
   query: string,
   enabledMediaTypeCodes: readonly string[],
 ) {
-  const normalizedQuery = query.trim();
+  const normalizedQuery = normalizeSearchText(query);
   const condition = normalizedQuery
     ? and(
         eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         or(
-          ilike(mediaItems.title, `%${normalizedQuery}%`),
-          ilike(mediaItems.originalTitle, `%${normalizedQuery}%`),
-          ilike(mediaItems.code, `%${normalizedQuery}%`),
+          containsNormalizedSearchSql(mediaItems.title, normalizedQuery),
+          containsNormalizedSearchSql(mediaItems.originalTitle, normalizedQuery),
+          containsNormalizedSearchSql(mediaItems.code, normalizedQuery),
           exists(
             db
               .select({ id: mediaItemTitleAliases.id })
@@ -199,7 +201,7 @@ export async function searchPublishedMediaItemsForReview(
               .where(
                 and(
                   eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                  ilike(mediaItemTitleAliases.value, `%${normalizedQuery}%`),
+                  containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedQuery),
                 ),
               ),
           ),

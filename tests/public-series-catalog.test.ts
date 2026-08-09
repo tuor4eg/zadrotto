@@ -25,13 +25,13 @@ describe("public series tree", () => {
   );
 
   it("returns only published series and links, preserving each matching branch with parents and descendants", () => {
-    assert.match(treeQuerySource, /\.where\(publishedFranchiseCondition\)/);
+    assert.match(treeQuerySource, /publishedFranchiseCondition,[\s\S]*visibleIds \? inArray\(franchises\.id, visibleIds\)/);
     assert.match(treeQuerySource, /eq\(mediaItemFranchises\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/);
     assert.match(treeQuerySource, /publishedMediaItemCondition/);
-    assert.match(treeQuerySource, /if \(normalizedSearch\) \{[\s\S]*matches\.add\(parentId\)/);
-    assert.match(treeQuerySource, /const childrenByParentId = new Map<number \| null, number\[\]>\(\)/);
-    assert.match(treeQuerySource, /const descendantIds = \[\.\.\.\(childrenByParentId\.get\(id\) \?\? \[\]\)\]/);
-    assert.match(treeQuerySource, /matches\.add\(descendantId\)/);
+    assert.match(treeQuerySource, /getFranchiseSearchVisibleIds\(\{[\s\S]*publishedOnly: true/);
+    assert.match(querySource, /with recursive direct_matches as/);
+    assert.match(querySource, /inner join ancestors child on child\.parent_id = parent\.id/);
+    assert.match(querySource, /inner join descendants parent on child\.parent_id = parent\.id/);
     assert.match(treeQuerySource, /const parent = node\.parentId \? nodes\.get\(node\.parentId\) : undefined/);
     assert.match(treeQuerySource, /if \(parent\) parent\.children\.push\(node\); else roots\.push\(node\);/);
   });

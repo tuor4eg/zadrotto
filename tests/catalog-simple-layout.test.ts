@@ -76,7 +76,9 @@ describe("simple catalog layout", () => {
     assert.match(tabsSource, /onClick=\{\(\) => onChange\(tab\.value\)\}/);
     assert.match(tabsSource, /\{count\}/);
     assert.match(tabsSource, /overflow-x-auto/);
-    assert.match(tabsSource, /TAB_PAPER_CLASSES/);
+    assert.doesNotMatch(tabsSource, /TAB_PAPER_CLASSES|bg-\[#/);
+    assert.match(tabsSource, /archive-media-type-tab-inactive/);
+    assert.match(tabsSource, /archive-media-type-tab group/);
     assert.match(tabsSource, /selectedIndex/);
     assert.match(tabsSource, /role="tooltip"/);
     assert.match(tabsSource, /archive-paper-surface/);
@@ -87,12 +89,51 @@ describe("simple catalog layout", () => {
       globalsSource,
       /\.archive-media-type-tab-active\s*\{[\s\S]*background: transparent;/,
     );
-    assert.match(globalsSource, /\.archive-media-type-tab-active\s*\{[\s\S]*box-shadow:/);
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab::before\s*\{[\s\S]*clip-path: polygon\(round 6px, 0 0, calc\(100% - 18px\) 0, 100% 18px/,
+    );
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-active::before\s*\{[\s\S]*56% 0,[\s\S]*calc\(56% \+ 16px\) 16px,[\s\S]*calc\(100% - 18px\) 16px,[\s\S]*100% 34px/,
+    );
+    assert.match(tabsSource, /inline-flex shrink-0 items-end justify-center/);
+    assert.match(tabsSource, /archive-media-type-tab-active[^"]*pb-2\.5[^"]*lg:pb-3/);
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-inactive::before\s*\{[\s\S]*background-color: color-mix[\s\S]*inset 0 -6px 10px -10px[^;]*\/ 34%/,
+    );
+    assert.doesNotMatch(
+      globalsSource.match(/\.archive-media-type-tab-active::before\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
+      /linear-gradient/,
+    );
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-active::before\s*\{[\s\S]*background-color: color-mix\([\s\S]*archive-paper-start[\s\S]*88%[\s\S]*archive-bg-start/,
+    );
+    assert.doesNotMatch(
+      globalsSource.match(/\.archive-media-type-tab-active::before\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
+      /inset 0 7px|drop-shadow/,
+    );
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-active-shadow\s*\{[\s\S]*clip-path: inset\(-20px -20px 1px -20px\);[\s\S]*filter: drop-shadow\(0 -6px 9px rgb\(var\(--archive-shadow\) \/ 34%\)\)/,
+    );
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-active-shadow > span\s*\{[\s\S]*clip-path: polygon\([\s\S]*56% 0,[\s\S]*100% 34px/,
+    );
+    assert.match(tabsSource, /className="archive-media-type-tab-active-shadow"/);
     assert.match(tabsSource, /isSelected[\s\S]*archive-media-type-tab-active/);
     assert.match(
       tabsSource,
       /const hasOverlap = index > 0 && !isSelected && index !== selectedIndex \+ 1/,
     );
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-inactive::after\s*\{[\s\S]*right: -10px;[\s\S]*width: 22px;[\s\S]*filter: blur\(8px\)/,
+    );
+    assert.doesNotMatch(globalsSource, /\.archive-media-type-tab-inactive\s*\{[\s\S]*box-shadow/);
     assert.match(
       tabsSource,
       /"--tab-mobile-overlap": hasOverlap[\s\S]*"--tab-overlap": hasOverlap/,

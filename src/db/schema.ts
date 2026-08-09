@@ -23,6 +23,7 @@ import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/m
 import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
+import { normalizedSearchIndexSql } from "@/db/search";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
@@ -57,6 +58,9 @@ export const franchises = pgTable("franchises", {
   index("franchises_parent_id_idx").on(table.parentId),
   index("franchises_created_by_author_id_idx").on(table.createdByAuthorId),
   index("franchises_publication_status_idx").on(table.publicationStatus),
+  index("franchises_title_search_idx").using("gin", normalizedSearchIndexSql(table.title)),
+  index("franchises_original_title_search_idx").using("gin", normalizedSearchIndexSql(table.originalTitle)),
+  index("franchises_code_search_idx").using("gin", normalizedSearchIndexSql(table.code)),
   check(
     "franchises_parent_not_self_check",
     sql`${table.parentId} is null or ${table.parentId} <> ${table.id}`,
@@ -674,6 +678,7 @@ export const jobs = pgTable(
     timeoutSeconds: integer("timeout_seconds").default(300).notNull(),
     retryBaseSeconds: integer("retry_base_seconds").default(60).notNull(),
     retryMaxSeconds: integer("retry_max_seconds").default(3600).notNull(),
+    historyRetentionDays: integer("history_retention_days").default(30).notNull(),
     ...timestamps(),
   },
   (table) => [
@@ -684,6 +689,7 @@ export const jobs = pgTable(
     check("jobs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
     check("jobs_retry_base_seconds_check", sql`${table.retryBaseSeconds} >= 1`),
     check("jobs_retry_max_seconds_check", sql`${table.retryMaxSeconds} >= ${table.retryBaseSeconds}`),
+    check("jobs_history_retention_days_check", sql`${table.historyRetentionDays} between 1 and 365`),
   ],
 );
 
@@ -724,6 +730,7 @@ export const jobRuns = pgTable(
     index("job_runs_queue_idx").on(table.availableAt, table.id).where(sql`${table.status} = 'queued'`),
     index("job_runs_recovery_idx").on(table.lockExpiresAt).where(sql`${table.status} = 'running'`),
     index("job_runs_job_created_idx").on(table.jobId, table.createdAt),
+    index("job_runs_job_finished_idx").on(table.jobId, table.finishedAt),
     index("job_runs_type_created_idx").on(table.type, table.createdAt),
     uniqueIndex("job_runs_scheduled_job_occurrence_unique")
       .on(table.jobId, table.scheduledFor)
@@ -748,6 +755,11 @@ export const mediaCarriers = pgTable(
     description: text("description"),
     ...timestamps(),
   },
+  (table) => [
+    index("media_carriers_name_search_idx").using("gin", normalizedSearchIndexSql(table.name)),
+    index("media_carriers_description_search_idx").using("gin", normalizedSearchIndexSql(table.description)),
+    index("media_carriers_code_search_idx").using("gin", normalizedSearchIndexSql(table.code)),
+  ],
 );
 
 export const mediaCarrierMediaTypes = pgTable(
@@ -803,6 +815,9 @@ export const mediaItems = pgTable(
     index("media_items_media_type_idx").on(table.mediaType),
     index("media_items_release_year_idx").on(table.releaseYear),
     index("media_items_title_idx").on(table.title),
+    index("media_items_title_search_idx").using("gin", normalizedSearchIndexSql(table.title)),
+    index("media_items_original_title_search_idx").using("gin", normalizedSearchIndexSql(table.originalTitle)),
+    index("media_items_code_search_idx").using("gin", normalizedSearchIndexSql(table.code)),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
     index("media_items_media_carrier_id_idx").on(table.mediaCarrierId),
   ],
@@ -823,6 +838,10 @@ export const mediaItemTitleAliases = pgTable(
       sql`lower(${table.value})`,
     ),
     index("media_item_title_aliases_media_item_id_idx").on(table.mediaItemId),
+    index("media_item_title_aliases_value_search_idx").using(
+      "gin",
+      normalizedSearchIndexSql(table.value),
+    ),
   ],
 );
 

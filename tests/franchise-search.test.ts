@@ -13,6 +13,11 @@ describe("matchesFranchiseSearch", () => {
     assert.equal(matchesFranchiseSearch(["Duck Tales"], "  DUCK   TA  "), true);
   });
 
+  it("treats е and ё as equivalent", () => {
+    assert.equal(matchesFranchiseSearch(["Ёжик в тумане"], "ежик"), true);
+    assert.equal(matchesFranchiseSearch(["Ежик в тумане"], "ёжик"), true);
+  });
+
   it("matches the original title when it differs from the display title", () => {
     assert.equal(matchesFranchiseSearch(["Утиные истории", "DuckTales"], "duck ta"), true);
   });

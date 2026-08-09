@@ -30,6 +30,7 @@ const match = {
 describe("media item duplicate checks", () => {
   it("normalizes title whitespace and casing", () => {
     assert.equal(normalizeMediaItemDuplicateTitle("  The   Matrix  "), "the matrix");
+    assert.equal(normalizeMediaItemDuplicateTitle("ЁЖИК"), "ежик");
   });
 
   it("detects exact duplicates by media type, comparable title and release year", () => {

@@ -64,7 +64,7 @@ describe("author inline franchise parent selection", () => {
     );
     assert.match(
       franchisesQuerySource,
-      /export async function getPublishedFranchiseOptionById\(id: number\)[\s\S]*\.where\(publishedFranchiseCondition\)/,
+      /export async function getPublishedFranchiseOptionById\(id: number\)[\s\S]*\.where\(and\(eq\(franchises\.id, id\), publishedFranchiseCondition\)\)/,
     );
   });
 

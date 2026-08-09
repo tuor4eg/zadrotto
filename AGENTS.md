@@ -42,6 +42,9 @@ directly without project agents.
 - Respond in Russian unless asked otherwise.
 - In user-facing text call `MediaItem` «запись». Do not use «тайтл» in labels, messages,
   notifications, tooltips, or activity logs.
+- For searches over human-readable text, use `normalizeSearchText` and the matching SQL helper
+  instead of custom lowercase, `ILIKE`, or `includes` normalization. Do not apply this rule to
+  technical identifiers, email addresses, logins, tokens, or secrets.
 
 ## Verification
 

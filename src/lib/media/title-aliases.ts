@@ -16,13 +16,13 @@ export function normalizeMediaItemTitleAliases(
   const seen = new Set(
     context
       ? [context.title, context.originalTitle]
-          .flatMap((value) => (value ? [normalizeMediaItemTitleAlias(value).toLowerCase()] : []))
+          .flatMap((value) => (value ? [normalizeSearchText(normalizeMediaItemTitleAlias(value))] : []))
       : [],
   );
 
   return values.flatMap((value) => {
     const normalized = normalizeMediaItemTitleAlias(value);
-    const comparable = normalized.toLowerCase();
+    const comparable = normalizeSearchText(normalized);
 
     if (!normalized || seen.has(comparable)) {
       return [];
@@ -42,3 +42,4 @@ export function parseMediaItemTitleAliasLimit(value: unknown) {
     ? limit
     : null;
 }
+import { normalizeSearchText } from "@/lib/search/normalize";

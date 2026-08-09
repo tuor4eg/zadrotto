@@ -1,5 +1,6 @@
 import type { MediaType, MediaTypeOption } from "../lib/media/types";
 import type { AuthorMediaStatus } from "../lib/media/author-media-status";
+import { matchesNormalizedSearch, normalizeSearchText } from "../lib/search/normalize";
 
 export type MediaTypeFilter = MediaType | "all";
 export type AuthorRatingFilter = "all" | "rated" | "wanted" | "skipped" | "unmarked";
@@ -75,8 +76,9 @@ export function matchesSearch(item: CatalogFilterItem, normalizedSearchQuery: st
     return true;
   }
 
-  return [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])].some(
-    (value) => value !== null && value.toLowerCase().includes(normalizedSearchQuery),
+  return matchesNormalizedSearch(
+    [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])],
+    normalizedSearchQuery,
   );
 }
 
@@ -88,7 +90,7 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
   yearFilter: CatalogYearFilter = null,
   yearMode: CatalogYearMode = "release",
 ) {
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const normalizedSearchQuery = normalizeSearchText(searchQuery);
 
   return items.filter(
     (item) =>

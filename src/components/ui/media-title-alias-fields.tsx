@@ -6,6 +6,7 @@ import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { Tooltip } from "@/components/ui/tooltip";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 type MediaTitleAliasAddButtonProps = {
   aliases: string[];
@@ -64,7 +65,7 @@ export function MediaTitleAliasFields({
   }
 
   const exceedsLimit = aliases.length > limit;
-  const comparableAliases = aliases.map((alias) => alias.trim().toLowerCase());
+  const comparableAliases = aliases.map(normalizeSearchText);
   const duplicateAliasIndexes = new Set(
     comparableAliases.flatMap((alias, index) =>
       alias &&

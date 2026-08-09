@@ -2,6 +2,7 @@ import "server-only";
 
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
+import { cleanupJobRunHistory } from "@/db/queries/jobs";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
@@ -36,7 +37,17 @@ const authCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   },
 };
 
+const jobHistoryCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "jobs.cleanup-history",
+  label: "Очистка истории фоновых задач",
+  parsePayload: parseEmptyPayload,
+  async execute() {
+    await cleanupJobRunHistory();
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
   emailOutboxDeliveryHandler,
   authCleanupHandler,
+  jobHistoryCleanupHandler,
 ]);

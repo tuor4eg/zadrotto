@@ -80,6 +80,7 @@ import { validateFranchiseDuplicateCheck } from "@/lib/franchises/validate-franc
 export type CreateAuthorInlineFranchiseState = {
   error: string | null;
   franchise: {
+    code: string;
     id: number;
     title: string;
     originalTitle: string | null;
@@ -461,6 +462,7 @@ export async function createAuthorInlineFranchiseAction(
   return {
     error: null,
     franchise: {
+      code: franchise.code,
       id: franchise.id,
       title: input.value.title,
       originalTitle: input.value.originalTitle,

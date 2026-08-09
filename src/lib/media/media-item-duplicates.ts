@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { MediaType } from "@/lib/media/types";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 const DUPLICATE_ACKNOWLEDGEMENT_MAX_AGE_SECONDS = 30 * 60;
 
@@ -83,7 +84,7 @@ function isDuplicateAcknowledgementPayload(
 }
 
 export function normalizeMediaItemDuplicateTitle(value: string | null | undefined) {
-  return value?.trim().replace(/\s+/g, " ").toLowerCase() ?? "";
+  return normalizeSearchText(value ?? "");
 }
 
 function getInputComparableTitles(input: MediaItemDuplicateCheckInput) {

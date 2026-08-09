@@ -1,4 +1,5 @@
 import type { PublicationStatus } from "@/lib/media/publication-status";
+import { matchesNormalizedSearch, normalizeSearchText } from "@/lib/search/normalize";
 
 export const AUTHOR_FRANCHISE_SUBMISSION_STATUSES = [
   "submitted",
@@ -32,7 +33,7 @@ export function filterAuthorFranchiseSubmissions<TItem extends AuthorFranchiseSu
     status: AuthorFranchiseSubmissionStatusFilter;
   },
 ) {
-  const normalizedSearchQuery = filters.searchQuery.trim().toLowerCase();
+  const normalizedSearchQuery = normalizeSearchText(filters.searchQuery);
 
   return items.filter((item) => {
     const isVisibleStatus = AUTHOR_FRANCHISE_SUBMISSION_STATUSES.some(
@@ -41,15 +42,13 @@ export function filterAuthorFranchiseSubmissions<TItem extends AuthorFranchiseSu
     const matchesStatus = filters.status === "all" || item.publicationStatus === filters.status;
     const matchesSearch =
       !normalizedSearchQuery ||
-      [
+      matchesNormalizedSearch([
         item.franchiseTitle,
         item.franchiseOriginalTitle,
         item.franchiseCode,
         item.mediaItemTitle,
         item.mediaItemCode,
-      ].some(
-        (value) => value !== null && value !== undefined && value.toLowerCase().includes(normalizedSearchQuery),
-      );
+      ], normalizedSearchQuery);
 
     return isVisibleStatus && matchesStatus && matchesSearch;
   });

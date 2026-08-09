@@ -1,6 +1,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import type { FranchiseDuplicateMatch } from "@/db/queries/franchises";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 const ACKNOWLEDGEMENT_MAX_AGE_SECONDS = 30 * 60;
 
@@ -28,7 +29,7 @@ function getSecret() {
 }
 
 function normalizeTitle(value: string | null | undefined) {
-  return value?.trim().replace(/\s+/g, " ").toLowerCase() ?? "";
+  return normalizeSearchText(value ?? "");
 }
 
 function titles(value: FranchiseDuplicateCheckInput | FranchiseDuplicateMatch) {

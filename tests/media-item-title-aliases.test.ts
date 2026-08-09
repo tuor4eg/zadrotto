@@ -32,6 +32,7 @@ describe("media item title aliases", () => {
       normalizeMediaItemTitleAliases([" First ", "first", "SECOND", " second "]),
       ["First", "SECOND"],
     );
+    assert.deepEqual(normalizeMediaItemTitleAliases(["Ёжик", "ежик"]), ["Ёжик"]);
   });
 
   it("accepts only integer limits within the configured boundaries", () => {
@@ -61,7 +62,7 @@ describe("media item title aliases", () => {
 
     assert.match(mediaQueries, /aliases: mediaItemTitleAliasesSql\(\)/);
     assert.match(mediaQueries, /from\(mediaItemTitleAliases\)/);
-    assert.match(mediaQueries, /lower\(\$\{mediaItemTitleAliases\.value\}\) like \$\{pattern\}/);
+    assert.match(mediaQueries, /containsNormalizedSearchSql\(mediaItemTitleAliases\.value, normalizedSearchQuery\)/);
     assert.match(details, /Также известно как: \{item\.aliases\?\.join\(", "\)\}/);
   });
 });

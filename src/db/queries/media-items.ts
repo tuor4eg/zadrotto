@@ -24,6 +24,7 @@ import type {
 } from "@/app/media-items-catalog-logic";
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
+import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
 import type { DbTransaction } from "@/db/transaction";
 import {
   authorMediaExperiences,
@@ -43,6 +44,7 @@ import {
 } from "@/db/schema";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import type { MediaType } from "@/lib/media/types";
+import { normalizeSearchText } from "@/lib/search/normalize";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import type { PublicationStatus } from "@/lib/media/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
@@ -304,19 +306,18 @@ const currentAuthorFirstExperiencedPrecisionSql = (currentAuthorId?: number) =>
     : sql<"year" | "month" | "day" | null>`null`;
 
 const catalogSearchCondition = (searchQuery: string) => {
-  const normalizedSearchQuery = searchQuery.trim().toLowerCase();
+  const normalizedSearchQuery = normalizeSearchText(searchQuery);
 
   if (!normalizedSearchQuery) {
     return undefined;
   }
 
-  const pattern = `%${normalizedSearchQuery}%`;
   const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
 
   return or(
-    sql`lower(${mediaItems.title}) like ${pattern}`,
-    sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
-    sql`('-' || lower(${mediaItems.code}) || '-') like ${codePattern}`,
+    containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
+    containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
+    sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
     exists(
       db
         .select({ id: mediaItemTitleAliases.id })
@@ -324,7 +325,7 @@ const catalogSearchCondition = (searchQuery: string) => {
         .where(
           and(
             eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-            sql`lower(${mediaItemTitleAliases.value}) like ${pattern}`,
+            containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
           ),
         ),
     ),
@@ -854,7 +855,7 @@ export async function getAuthorPrivateMediaItemLimitUsage(input: {
 
 function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) {
   const searchTerms = [input.title, input.originalTitle, ...(input.aliases ?? [])]
-    .map((value) => value?.trim().toLowerCase() ?? "")
+    .map((value) => normalizeSearchText(value ?? ""))
     .filter((value) => value.length >= 2);
 
   if (searchTerms.length === 0) {
@@ -863,12 +864,10 @@ function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) 
 
   return or(
     ...searchTerms.flatMap((searchTerm) => {
-      const pattern = `%${searchTerm}%`;
-
       return [
-        sql`lower(${mediaItems.title}) like ${pattern}`,
-        sql`lower(${mediaItems.originalTitle}) like ${pattern}`,
-        sql`lower(${mediaItems.code}) like ${pattern}`,
+        containsNormalizedSearchSql(mediaItems.title, searchTerm),
+        containsNormalizedSearchSql(mediaItems.originalTitle, searchTerm),
+        containsNormalizedSearchSql(mediaItems.code, searchTerm),
         exists(
           db
             .select({ id: mediaItemTitleAliases.id })
@@ -876,7 +875,7 @@ function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) 
             .where(
               and(
                 eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                sql`lower(${mediaItemTitleAliases.value}) like ${pattern}`,
+                containsNormalizedSearchSql(mediaItemTitleAliases.value, searchTerm),
               ),
             ),
         ),

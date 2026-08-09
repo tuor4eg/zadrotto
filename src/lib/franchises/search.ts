@@ -1,6 +1,4 @@
-function normalizeSearchText(value: string) {
-  return value.trim().toLocaleLowerCase("ru").replace(/\s+/g, " ");
-}
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 export function matchesFranchiseSearch(values: Array<string | null | undefined>, query: string) {
   const normalizedQuery = normalizeSearchText(query);

@@ -31,7 +31,7 @@ describe("admin media franchise selection", () => {
   it("displays the complete path for selected series", () => {
     assert.match(multiSelectSource, /\{option\.path \?\? option\.title\}/);
     assert.match(multiSelectSource, /aria-label=\{`Убрать серию \$\{option\.path \?\? option\.title\}`\}/);
-    assert.match(multiSelectSource, /\[option\.title, option\.path, option\.originalTitle\]/);
+    assert.match(multiSelectSource, /\[option\.title, option\.path, option\.originalTitle, option\.code\]/);
   });
 
   it("hides selected ancestors and removes them when a descendant is added", () => {

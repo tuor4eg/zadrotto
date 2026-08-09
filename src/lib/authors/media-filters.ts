@@ -4,6 +4,7 @@ import {
   PUBLISHED_PUBLICATION_STATUS,
   type PublicationStatus,
 } from "@/lib/media/publication-status";
+import { matchesNormalizedSearch, normalizeSearchText } from "@/lib/search/normalize";
 
 export type AuthorMediaTypeFilter = MediaType | "all";
 export type AuthorMediaStatusFilter = PublicationStatus | "all";
@@ -37,7 +38,7 @@ export function parseAuthorMediaStatusFilter(value: string | undefined) {
 }
 
 export function normalizeAuthorMediaSearch(value: string | undefined) {
-  return value?.trim().toLowerCase() ?? "";
+  return normalizeSearchText(value ?? "");
 }
 
 export function filterAuthorMediaItems<TItem extends AuthorMediaFilterItem>(
@@ -57,8 +58,9 @@ export function filterAuthorMediaItems<TItem extends AuthorMediaFilterItem>(
       filters.status === "all" || item.publicationStatus === filters.status;
     const matchesSearch =
       !normalizedSearchQuery ||
-      [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])].some(
-        (value) => value !== null && value.toLowerCase().includes(normalizedSearchQuery),
+      matchesNormalizedSearch(
+        [item.title, item.originalTitle, item.code, ...(item.aliases ?? [])],
+        normalizedSearchQuery,
       );
 
     return isVisibleAuthorMediaItem && matchesType && matchesStatus && matchesSearch;

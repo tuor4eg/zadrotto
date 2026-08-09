@@ -1,9 +1,10 @@
-import { and, asc, desc, eq, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobRuns, jobs } from "@/db/schema";
 import {
   calculateJobRetryDelaySeconds,
+  AD_HOC_JOB_HISTORY_RETENTION_DAYS,
   type JobRunSource,
   type JobRunStatus,
 } from "@/lib/jobs/model";
@@ -56,6 +57,7 @@ export async function createPeriodicJob(input: {
   code: string;
   cronExpression: string;
   enabled: boolean;
+  historyRetentionDays: number;
   nextRunAt: Date;
   payload: Record<string, unknown>;
   policy: JobRunPolicy;
@@ -65,6 +67,7 @@ export async function createPeriodicJob(input: {
     code: input.code,
     cronExpression: input.cronExpression,
     enabled: input.enabled,
+    historyRetentionDays: input.historyRetentionDays,
     maxAttempts: input.policy.maxAttempts,
     nextRunAt: input.nextRunAt,
     payload: input.payload,
@@ -81,6 +84,7 @@ export async function updatePeriodicJob(input: {
   cronExpression: string;
   enabled: boolean;
   id: number;
+  historyRetentionDays: number;
   nextRunAt: Date;
   payload: Record<string, unknown>;
   policy: JobRunPolicy;
@@ -90,6 +94,7 @@ export async function updatePeriodicJob(input: {
     code: input.code,
     cronExpression: input.cronExpression,
     enabled: input.enabled,
+    historyRetentionDays: input.historyRetentionDays,
     maxAttempts: input.policy.maxAttempts,
     nextRunAt: input.nextRunAt,
     payload: input.payload,
@@ -289,12 +294,68 @@ export async function getAdminJobs() {
   return db.select().from(jobs).orderBy(asc(jobs.code));
 }
 
-export async function getAdminJobRuns(input: { jobId?: number | null; status?: JobRunStatus | null; type?: string | null }) {
+export async function getLatestJobRuns() {
+  return db.selectDistinctOn([jobRuns.jobId], {
+    attempts: jobRuns.attempts,
+    errorMessage: jobRuns.errorMessage,
+    finishedAt: jobRuns.finishedAt,
+    id: jobRuns.id,
+    jobId: jobRuns.jobId,
+    scheduledFor: jobRuns.scheduledFor,
+    status: jobRuns.status,
+  }).from(jobRuns)
+    .where(isNotNull(jobRuns.jobId))
+    .orderBy(jobRuns.jobId, desc(jobRuns.createdAt), desc(jobRuns.id));
+}
+
+export async function getAdminJobRuns(input: {
+  jobId: number | "adhoc";
+  page: number;
+  pageSize: number;
+  status?: JobRunStatus | null;
+  type?: string | null;
+}) {
   const conditions = [
-    ...(input.jobId ? [eq(jobRuns.jobId, input.jobId)] : []),
+    input.jobId === "adhoc" ? isNull(jobRuns.jobId) : eq(jobRuns.jobId, input.jobId),
     ...(input.status ? [eq(jobRuns.status, input.status)] : []),
     ...(input.type ? [eq(jobRuns.type, input.type)] : []),
   ];
-  return db.select().from(jobRuns).where(conditions.length ? and(...conditions) : undefined)
-    .orderBy(desc(jobRuns.createdAt), desc(jobRuns.id)).limit(200);
+  const where = and(...conditions);
+  const pageSize = [25, 50, 100].includes(input.pageSize) ? input.pageSize : 25;
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(jobRuns).where(where);
+  const totalPages = Math.max(1, Math.ceil(count / pageSize));
+  const page = Math.max(1, Math.min(input.page, totalPages));
+  const items = await db.select().from(jobRuns).where(where)
+    .orderBy(desc(jobRuns.createdAt), desc(jobRuns.id))
+    .limit(pageSize)
+    .offset((page - 1) * pageSize);
+  return { items, page, pageSize, totalCount: count, totalPages };
+}
+
+export async function cleanupJobRunHistory(now = new Date()) {
+  const configuredJobs = await db.select({
+    historyRetentionDays: jobs.historyRetentionDays,
+    id: jobs.id,
+  }).from(jobs);
+  const terminalStatuses: JobRunStatus[] = ["succeeded", "failed", "cancelled"];
+  let deleted = 0;
+  await db.transaction(async (tx) => {
+    for (const job of configuredJobs) {
+      const cutoff = new Date(now.getTime() - job.historyRetentionDays * 24 * 60 * 60 * 1000);
+      const rows = await tx.delete(jobRuns).where(and(
+        eq(jobRuns.jobId, job.id),
+        inArray(jobRuns.status, terminalStatuses),
+        lt(jobRuns.finishedAt, cutoff),
+      )).returning({ id: jobRuns.id });
+      deleted += rows.length;
+    }
+    const adHocCutoff = new Date(now.getTime() - AD_HOC_JOB_HISTORY_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+    const adHocRows = await tx.delete(jobRuns).where(and(
+      isNull(jobRuns.jobId),
+      inArray(jobRuns.status, terminalStatuses),
+      lt(jobRuns.finishedAt, adHocCutoff),
+    )).returning({ id: jobRuns.id });
+    deleted += adHocRows.length;
+  });
+  return deleted;
 }

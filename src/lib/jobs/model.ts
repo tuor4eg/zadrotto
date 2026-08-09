@@ -8,6 +8,10 @@ export const DEFAULT_JOB_MAX_ATTEMPTS = 3;
 export const DEFAULT_JOB_TIMEOUT_SECONDS = 300;
 export const DEFAULT_JOB_RETRY_BASE_SECONDS = 60;
 export const DEFAULT_JOB_RETRY_MAX_SECONDS = 3600;
+export const DEFAULT_JOB_HISTORY_RETENTION_DAYS = 30;
+export const MIN_JOB_HISTORY_RETENTION_DAYS = 1;
+export const MAX_JOB_HISTORY_RETENTION_DAYS = 365;
+export const AD_HOC_JOB_HISTORY_RETENTION_DAYS = 30;
 
 export function calculateJobRetryDelaySeconds(input: {
   attempts: number;

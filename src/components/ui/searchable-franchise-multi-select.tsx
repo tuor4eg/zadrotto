@@ -21,7 +21,7 @@ type SearchableFranchiseMultiSelectProps = {
 
 function matchesSearch(option: SearchableFranchiseOption, searchValue: string) {
   return matchesFranchiseSearch(
-    [option.title, option.path, option.originalTitle],
+    [option.title, option.path, option.originalTitle, option.code],
     searchValue,
   );
 }

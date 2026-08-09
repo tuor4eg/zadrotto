@@ -19,6 +19,7 @@ import { AuthorToasts, type AuthorToast } from "../author-toasts";
 import { getAuthorMediaFormErrorMessage } from "./messages";
 
 type InlineFranchise = {
+  code: string;
   id: number;
   title: string;
   originalTitle: string | null;

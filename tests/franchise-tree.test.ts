@@ -112,11 +112,11 @@ describe("franchise tree display and traversal", () => {
   });
 
   it("keeps every matching admin branch readable through all parents and descendants", () => {
-    assert.match(adminTreeQuerySource, /const visibleIds = new Set\([\s\S]*\.includes\(normalizedSearchQuery\)/);
-    assert.match(adminTreeQuerySource, /while \(parentId\) \{[\s\S]*visibleIds\.add\(parentId\)/);
-    assert.match(adminTreeQuerySource, /const descendantIds = \[\.\.\.\(childrenByParentId\.get\(id\) \?\? \[\]\)\]/);
-    assert.match(adminTreeQuerySource, /while \(descendantIds\.length > 0\) \{[\s\S]*visibleIds\.add\(descendantId\)[\s\S]*descendantIds\.push\(\.\.\.\(childrenByParentId\.get\(descendantId\) \?\? \[\]\)\)/);
-    assert.match(adminTreeQuerySource, /if \(!normalizedSearchQuery \|\| visibleIds\.has\(row\.id\)\)/);
+    assert.match(adminTreeQuerySource, /getFranchiseSearchVisibleIds\(\{[\s\S]*publishedOnly: false/);
+    assert.match(adminTreeQuerySource, /visibleIds \? inArray\(franchises\.id, visibleIds\) : undefined/);
+    assert.match(franchisesQuerySource, /with recursive direct_matches as/);
+    assert.match(franchisesQuerySource, /inner join ancestors child on child\.parent_id = parent\.id/);
+    assert.match(franchisesQuerySource, /inner join descendants parent on child\.parent_id = parent\.id/);
   });
 
   it("paginates complete admin branches and disables deletion for non-leaf nodes", () => {
