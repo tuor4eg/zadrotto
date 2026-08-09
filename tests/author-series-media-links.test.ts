@@ -205,11 +205,15 @@ describe("author series media link client", () => {
     assert.doesNotMatch(clientSource, /role="combobox"|role="listbox"|role="option"/);
   });
 
-  it("uses a solid local surface with a compact right-aligned action", () => {
+  it("uses a solid dropdown with a visually hidden scrollbar and compact action", () => {
     assert.doesNotMatch(clientSource, /archive-paper-surface|archive-scrollbar/);
     assert.match(
       clientSource,
-      /className="series-media-search-scrollbar[\s\S]*bg-\[rgb\(var\(--archive-paper-end\)\)\]/,
+      /className="absolute left-0 right-0 top-full[\s\S]*bg-white shadow-lg"/,
+    );
+    assert.match(
+      clientSource,
+      /overflow-y-auto \[-ms-overflow-style:none\] \[scrollbar-width:none\] \[&::-webkit-scrollbar\]:hidden/,
     );
     assert.match(
       clientSource,

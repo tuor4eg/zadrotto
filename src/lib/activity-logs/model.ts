@@ -19,6 +19,8 @@ export const ACTIVITY_ENTITY_TYPES = [
   "franchise",
   "media-item",
   "review",
+  "job",
+  "job-run",
 ] as const;
 
 export const ACTIVITY_ACTIONS = [
@@ -90,6 +92,13 @@ export const ACTIVITY_ACTIONS = [
   "ai-scenario.created",
   "ai-scenario.deleted",
   "ai-scenario.updated",
+  "job.created",
+  "job.updated",
+  "job.enabled",
+  "job.disabled",
+  "job-run.manual-requested",
+  "job-run.retry-requested",
+  "job-run.cancelled",
 ] as const;
 
 export type ActivityActorType = (typeof ACTIVITY_ACTOR_TYPES)[number];
@@ -131,6 +140,8 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   franchise: "Серия",
   "media-item": "Запись",
   review: "Рецензия",
+  job: "Фоновая задача",
+  "job-run": "Запуск фоновой задачи",
 } satisfies Record<ActivityEntityType, string>;
 
 export const ACTIVITY_ACTION_LABELS = {
@@ -202,6 +213,13 @@ export const ACTIVITY_ACTION_LABELS = {
   "ai-scenario.created": "AI-сценарий создан",
   "ai-scenario.deleted": "AI-сценарий удалён",
   "ai-scenario.updated": "AI-сценарий изменён",
+  "job.created": "Фоновая задача создана",
+  "job.updated": "Фоновая задача изменена",
+  "job.enabled": "Фоновая задача включена",
+  "job.disabled": "Фоновая задача выключена",
+  "job-run.manual-requested": "Ручной запуск фоновой задачи запрошен",
+  "job-run.retry-requested": "Повтор фоновой задачи запрошен",
+  "job-run.cancelled": "Запуск фоновой задачи отменён",
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([

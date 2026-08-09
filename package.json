@@ -17,12 +17,15 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:seed:admin": "tsx src/db/seed-admin.ts",
+    "jobs:scheduler": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/scheduler.ts",
+    "jobs:worker": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/worker.ts",
     "covers:backfill-thumbs": "tsx tools/backfill-cover-thumbs.ts",
     "db:generate-games-import": "tsx tools/import-games-csv.ts --file pasha_games.csv --author pasha"
   },
   "dependencies": {
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "cron-parser": "^5.7.0",
     "drizzle-orm": "^0.45.2",
     "lucide-react": "^1.14.0",
     "moment": "^2.30.1",

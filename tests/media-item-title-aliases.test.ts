@@ -56,7 +56,8 @@ describe("media item title aliases", () => {
     assert.match(aliasFields, /aliases\.length >= limit/);
     assert.match(aliasFields, /name="titleAliases"/);
     assert.match(aliasFields, /Альтернативное название \{index \+ 1\}/);
-    assert.match(settingsForm, /Максимум альтернативных названий/);
+    assert.match(settingsForm, /Альтернативных названий/);
+    assert.match(settingsForm, /От 1 до 10 на одну запись/);
 
     assert.match(mediaQueries, /aliases: mediaItemTitleAliasesSql\(\)/);
     assert.match(mediaQueries, /from\(mediaItemTitleAliases\)/);

@@ -1,5 +1,6 @@
 IMAGE ?= ghcr.io/tuor4eg/zadrotto:latest
 MIGRATOR_IMAGE ?= ghcr.io/tuor4eg/zadrotto-migrator:latest
+JOBS_IMAGE ?= ghcr.io/tuor4eg/zadrotto-jobs:latest
 
 .PHONY: push clean-next deploy migrate seed-admin
 
@@ -15,13 +16,17 @@ push: clean-next
 	docker build \
 		--target migrator \
 		-t $(MIGRATOR_IMAGE) .
+	docker build \
+		--target jobs-runner \
+		-t $(JOBS_IMAGE) .
 	docker push $(IMAGE)
 	docker push $(MIGRATOR_IMAGE)
+	docker push $(JOBS_IMAGE)
 
 # Pull fresh runtime images and restart the application with background workers.
 deploy:
-	docker compose pull app email-worker auth-cleanup-worker
-	docker compose up -d app email-worker auth-cleanup-worker
+	docker compose pull app email-worker auth-cleanup-worker jobs-scheduler jobs-worker
+	docker compose up -d app email-worker auth-cleanup-worker jobs-scheduler jobs-worker
 
 # Pull the fresh migrator image and apply migrations.
 migrate:

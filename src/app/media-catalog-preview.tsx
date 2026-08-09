@@ -169,7 +169,7 @@ export function MediaCatalogPreview({
             href={`/media/${item.code}`}
             className={cn(
               buttonVariants({ variant: "outline", size: "icon" }),
-              "w-auto px-3",
+              "w-auto px-3 hover:border-stone-700 hover:bg-stone-50 hover:text-stone-700",
             )}
           >
             <FolderOpen />

@@ -17,6 +17,14 @@ COPY src/db ./src/db
 COPY src/lib ./src/lib
 COPY tools ./tools
 
+# Node runners keep the source tree and can execute the same handlers as the app.
+FROM base AS jobs-runner
+ENV NODE_ENV=production
+COPY --from=deps /app/node_modules ./node_modules
+COPY package.json ./
+COPY tsconfig.json ./
+COPY src ./src
+
 # Build Next.js in CI.
 FROM base AS builder
 ARG SITE_URL

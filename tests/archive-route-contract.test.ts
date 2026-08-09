@@ -33,7 +33,7 @@ const layoutRevalidationFiles = [
 
 describe("archive route split", () => {
   it("serves the journal at root, the catalog at /archive, and no /main route", () => {
-    assert.match(mainPage, /from "\.\/main\/responsive-tile-grid"/);
+    assert.match(mainPage, /from "@\/components\/archive\/responsive-tile-grid"/);
     assert.match(mainPage, /from "\.\/main\/main-login-button"/);
     assert.match(mainPage, /href="\/archive\?sort=average_score"/);
     assert.match(mainPage, /href="\/archive"[\s\S]*title="Последние рецензии"/);

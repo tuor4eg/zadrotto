@@ -721,13 +721,6 @@ body {
   }
 }
 
-@media (min-width: 1024px) {
-  .archive-franchise-sticker {
-    position: sticky;
-    top: 1rem;
-  }
-}
-
 .archive-franchise-sticker::before {
   position: absolute;
   top: -0.85rem;

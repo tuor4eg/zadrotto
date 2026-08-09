@@ -22,6 +22,7 @@ import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/authors/media-experiences";
 import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/model";
 import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
+import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
@@ -678,6 +679,85 @@ export const emailDeliverySettings = pgTable(
   (table) => [
     check("email_delivery_settings_singleton_id_check", sql`${table.id} = 1`),
     check("email_delivery_settings_provider_check", sql`${table.provider} = 'resend'`),
+  ],
+);
+
+export const jobs = pgTable(
+  "jobs",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    cronExpression: text("cron_expression").notNull(),
+    nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    maxAttempts: integer("max_attempts").default(3).notNull(),
+    timeoutSeconds: integer("timeout_seconds").default(300).notNull(),
+    retryBaseSeconds: integer("retry_base_seconds").default(60).notNull(),
+    retryMaxSeconds: integer("retry_max_seconds").default(3600).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("jobs_scheduler_idx").on(table.enabled, table.nextRunAt),
+    check("jobs_code_check", sql`btrim(${table.code}) <> ''`),
+    check("jobs_type_check", sql`btrim(${table.type}) <> ''`),
+    check("jobs_max_attempts_check", sql`${table.maxAttempts} >= 1`),
+    check("jobs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
+    check("jobs_retry_base_seconds_check", sql`${table.retryBaseSeconds} >= 1`),
+    check("jobs_retry_max_seconds_check", sql`${table.retryMaxSeconds} >= ${table.retryBaseSeconds}`),
+  ],
+);
+
+export const jobRuns = pgTable(
+  "job_runs",
+  {
+    id: serial("id").primaryKey(),
+    jobId: integer("job_id").references(() => jobs.id, { onDelete: "set null" }),
+    retryOfRunId: integer("retry_of_run_id").references((): AnyPgColumn => jobRuns.id, {
+      onDelete: "set null",
+    }),
+    createdByAdminId: integer("created_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    type: text("type").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    source: text("source").notNull(),
+    status: text("status").default("queued").notNull(),
+    scheduledFor: timestamp("scheduled_for", { withTimezone: true }).notNull(),
+    availableAt: timestamp("available_at", { withTimezone: true }).notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    maxAttempts: integer("max_attempts").notNull(),
+    timeoutSeconds: integer("timeout_seconds").notNull(),
+    retryBaseSeconds: integer("retry_base_seconds").notNull(),
+    retryMaxSeconds: integer("retry_max_seconds").notNull(),
+    lockedAt: timestamp("locked_at", { withTimezone: true }),
+    lockedBy: text("locked_by"),
+    lockToken: text("lock_token"),
+    lockExpiresAt: timestamp("lock_expires_at", { withTimezone: true }),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    cancelledAt: timestamp("cancelled_at", { withTimezone: true }),
+    errorCode: text("error_code"),
+    errorMessage: text("error_message"),
+    ...timestamps(),
+  },
+  (table) => [
+    index("job_runs_queue_idx").on(table.availableAt, table.id).where(sql`${table.status} = 'queued'`),
+    index("job_runs_recovery_idx").on(table.lockExpiresAt).where(sql`${table.status} = 'running'`),
+    index("job_runs_job_created_idx").on(table.jobId, table.createdAt),
+    index("job_runs_type_created_idx").on(table.type, table.createdAt),
+    uniqueIndex("job_runs_scheduled_job_occurrence_unique")
+      .on(table.jobId, table.scheduledFor)
+      .where(sql`${table.source} = 'schedule'`),
+    check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
+    check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
+    check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
+    check("job_runs_attempts_check", sql`${table.attempts} >= 0 and ${table.attempts} <= ${table.maxAttempts}`),
+    check("job_runs_max_attempts_check", sql`${table.maxAttempts} >= 1`),
+    check("job_runs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
+    check("job_runs_retry_base_seconds_check", sql`${table.retryBaseSeconds} >= 1`),
+    check("job_runs_retry_max_seconds_check", sql`${table.retryMaxSeconds} >= ${table.retryBaseSeconds}`),
   ],
 );
 

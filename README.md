@@ -111,14 +111,34 @@ Production compose включает два worker-контейнера:
 docker compose logs -f email-worker auth-cleanup-worker
 ```
 
+## Универсальные фоновые задачи
+
+Периодические определения хранятся в `jobs`, а каждый запуск — в `job_runs`. Scheduler читает только cron-расписания (пять частей, UTC) и создаёт запуски; worker получает только `job_runs` и выбирает обработчик по типу. Ручные и событийные операции используют тот же `enqueueJobRun` из `src/lib/jobs/queue.ts`.
+
+Для запуска процессов вне Next.js доступны:
+
+```bash
+npm run jobs:scheduler
+npm run jobs:worker
+```
+
+В Compose используются образы `ghcr.io/tuor4eg/zadrotto-jobs:latest`; worker можно масштабировать без изменения логики очереди:
+
+```bash
+docker compose up -d jobs-scheduler jobs-worker
+docker compose up -d --scale jobs-worker=2 jobs-worker
+```
+
+Миграция создаёт выключенные задания `auth.email-outbox-delivery` и `auth.cleanup`. До отдельного контролируемого cutover legacy `email-worker` и `auth-cleanup-worker` остаются включёнными: сначала останови их, затем включи новые задания в `/admin/tools/jobs`, чтобы избежать двойной доставки.
+
 ## Production compose
 
-`docker-compose.yml` использует готовые образы приложения и migrator:
+`docker-compose.yml` использует готовые образы приложения, migrator и Node runner для фоновых задач:
 
 ```bash
 docker compose --profile migrate run --rm migrate
 docker compose --profile seed run --rm seed-admin
-docker compose up -d app redis email-worker auth-cleanup-worker
+docker compose up -d app redis email-worker auth-cleanup-worker jobs-scheduler jobs-worker
 ```
 
 Перед запуском заполни production `.env`, установи `SECURE_COOKIES=true` и передай одинаковый `AUTH_EMAIL_WORKER_SECRET` приложению и worker-контейнерам.
@@ -134,6 +154,8 @@ npm run check            # typecheck, lint и тесты
 npm run db:generate      # создать миграцию Drizzle
 npm run db:migrate       # применить миграции
 npm run db:seed:admin    # создать первого администратора
+npm run jobs:scheduler   # scheduler фоновых задач
+npm run jobs:worker      # worker фоновых задач
 ```
 
 Production build автоматически после обычных изменений не запускается:

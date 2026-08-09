@@ -231,17 +231,21 @@ describe("Resend author email", () => {
 
   it("wires production auth workers without ports or database credentials", () => {
     const compose = readFileSync("docker-compose.yml", "utf8");
+    const commonEnvironment = compose.slice(0, compose.indexOf("services:"));
     const app = compose.slice(compose.indexOf("  app:"), compose.indexOf("  email-worker:"));
     const emailWorker = compose.slice(compose.indexOf("  email-worker:"), compose.indexOf("  auth-cleanup-worker:"));
-    const cleanupWorker = compose.slice(compose.indexOf("  auth-cleanup-worker:"), compose.indexOf("  redis:"));
+    const cleanupWorker = compose.slice(compose.indexOf("  auth-cleanup-worker:"), compose.indexOf("  jobs-scheduler:"));
 
     for (const variable of [
       "AUTHOR_REGISTRATION_ENABLED: ${AUTHOR_REGISTRATION_ENABLED:-false}",
       "AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE: ${AUTHOR_REGISTRATION_ACCESS_PROFILE_CODE:-}",
-      "EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY}",
-      "EMAIL_PROVIDER_CREDENTIALS_KEY: ${EMAIL_PROVIDER_CREDENTIALS_KEY}",
       "AUTH_EMAIL_WORKER_SECRET: ${AUTH_EMAIL_WORKER_SECRET}",
     ]) assert.match(app, new RegExp(variable.replace(/[${}]/g, "\\$&")));
+    assert.match(app, /<<: \*common-runtime-environment/);
+    for (const variable of [
+      "EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY}",
+      "EMAIL_PROVIDER_CREDENTIALS_KEY: ${EMAIL_PROVIDER_CREDENTIALS_KEY}",
+    ]) assert.match(commonEnvironment, new RegExp(variable.replace(/[${}]/g, "\\$&")));
 
     for (const worker of [emailWorker, cleanupWorker]) {
       assert.match(worker, /image: curlimages\/curl:8\.21\.0/);
@@ -262,11 +266,11 @@ describe("Resend author email", () => {
     assert.doesNotMatch(cleanupWorker, /sleep 86400/);
   });
 
-  it("documents a one-off worker invocation without starting dependencies", () => {
+  it("documents safe coexistence with the disabled generic email jobs", () => {
     const readme = readFileSync("README.md", "utf8");
-    assert.match(readme, /docker compose run --rm --no-deps --entrypoint \/bin\/sh email-worker/);
-    assert.match(readme, /Authorization: Bearer \$AUTH_EMAIL_WORKER_SECRET/);
-    assert.match(readme, /\/api\/internal\/auth-email-outbox/);
-    assert.match(readme, /Для cleanup замени конечный путь на `\/api\/internal\/auth-cleanup`/);
+    assert.match(readme, /Миграция создаёт выключенные задания `auth\.email-outbox-delivery` и `auth\.cleanup`/);
+    assert.match(readme, /legacy `email-worker` и `auth-cleanup-worker` остаются включёнными/);
+    assert.match(readme, /сначала останови их, затем включи новые задания/);
+    assert.match(readme, /избежать двойной доставки/);
   });
 });

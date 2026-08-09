@@ -7,6 +7,10 @@ const schemaSource = readFileSync("src/db/schema.ts", "utf8");
 const franchisesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const mediaItemsQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
 const mediaItemDetailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
+const mediaItemFranchiseLinksSource = readFileSync(
+  "src/components/archive/media-item-franchise-links.tsx",
+  "utf8",
+);
 const adminSeriesPageSource = readFileSync("src/app/admin/(protected)/series/page.tsx", "utf8");
 const publicSeriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 
@@ -93,9 +97,10 @@ describe("franchise tree display and traversal", () => {
     assert.match(mediaItemsQuerySource, /'path', \([\s\S]*with recursive ancestors as \(/);
     assert.match(mediaItemsQuerySource, /where parent\.publication_status = \$\{PUBLISHED_PUBLICATION_STATUS\}/);
     assert.match(mediaItemsQuerySource, /order by depth desc/);
-    assert.match(mediaItemDetailsSource, /\(franchise\.path \?\? \[franchise\]\)\.map\(\(part, index\) => \(/);
-    assert.match(mediaItemDetailsSource, /index > 0 \? <span aria-hidden="true">\/<\/span> : null/);
-    assert.match(mediaItemDetailsSource, /<Link href=\{`\/series\/\$\{part\.code\}`\} className=\{className\}>/);
+    assert.match(mediaItemDetailsSource, /<MediaItemFranchiseLinks/);
+    assert.match(mediaItemFranchiseLinksSource, /\(franchise\.path \?\? \[franchise\]\)\.map\(\(part, index\) => \(/);
+    assert.match(mediaItemFranchiseLinksSource, /index > 0 \? <span aria-hidden="true">\/<\/span> : null/);
+    assert.match(mediaItemFranchiseLinksSource, /<Link href=\{`\/series\/\$\{part\.code\}`\} className=\{className\}>/);
   });
 
   it("includes descendant series on a parent series page and deduplicates records", () => {
