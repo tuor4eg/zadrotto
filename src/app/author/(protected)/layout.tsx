@@ -5,6 +5,8 @@ import { logoutAuthor } from "@/app/author/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Avatar } from "@/components/ui/avatar";
 import { requireAuthor } from "@/lib/auth/author-auth";
+import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { NotificationBadge } from "@/components/ui/notification-badge";
 import { AuthorProposalsMenu } from "./author-proposals-menu";
 
 export const dynamic = "force-dynamic";
@@ -15,6 +17,7 @@ type AuthorLayoutProps = {
 
 export default async function AuthorLayout({ children }: AuthorLayoutProps) {
   const author = await requireAuthor();
+  const incomingFriendRequestCount = await getIncomingFriendRequestCount(author.id);
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -74,6 +77,13 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               Профиль
+            </Link>
+            <Link
+              href="/author/friends"
+              className={`${buttonVariants({ variant: "outline", size: "sm" })} relative`}
+            >
+              Друзья
+              <NotificationBadge count={incomingFriendRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
             </Link>
             <Link
               href="/author/settings/media-types"

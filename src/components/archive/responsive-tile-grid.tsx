@@ -15,6 +15,7 @@ export type ResponsiveTileDescriptor = {
   href: string;
   item: MediaItemTileItem;
   key: number | string;
+  ratingDisplay?: "default" | "author-only";
 };
 
 type ResponsiveTileGridProps = {
@@ -96,6 +97,7 @@ export function ResponsiveTileGrid({
           currentAuthorScore={descriptor.currentAuthorScore}
           href={descriptor.href}
           item={descriptor.item}
+          ratingDisplay={descriptor.ratingDisplay}
         />
       ))}
     </div>

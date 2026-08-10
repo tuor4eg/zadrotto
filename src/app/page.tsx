@@ -34,6 +34,7 @@ import {
 } from "@/db/queries/main-page";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
+import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -223,6 +224,9 @@ export default async function MainPage() {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
+  const incomingFriendRequestCount = currentAuthor
+    ? await getIncomingFriendRequestCount(currentAuthor.id)
+    : 0;
   const [effectiveMediaTypes, archiveSettings] = await Promise.all([
     getEffectiveMediaTypeOptions(currentAuthor?.id),
     getArchiveSettings(),
@@ -248,6 +252,7 @@ export default async function MainPage() {
           controls={<MainArchiveSearch />}
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
+          incomingFriendRequestCount={incomingFriendRequestCount}
           variant="main"
         />
 

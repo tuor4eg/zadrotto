@@ -28,6 +28,7 @@ import { normalizedSearchIndexSql } from "@/db/search";
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
 export const contributionStatusEnum = pgEnum("contribution_status", CONTRIBUTION_STATUSES);
+export const friendshipStatusEnum = pgEnum("friendship_status", ["pending", "accepted"]);
 export const firstExperiencedPrecisionEnum = pgEnum(
   "first_experienced_precision",
   FIRST_EXPERIENCED_PRECISIONS,
@@ -337,6 +338,7 @@ export const authors = pgTable("authors", {
   name: text("name").notNull(),
   avatarObjectKey: text("avatar_object_key"),
   isSystem: boolean("is_system").default(false).notNull(),
+  isDiscoverable: boolean("is_discoverable").default(true).notNull(),
   accessProfileId: integer("access_profile_id")
     .notNull()
     .references(() => authorAccessProfiles.id),
@@ -350,7 +352,42 @@ export const authors = pgTable("authors", {
   uniqueIndex("authors_avatar_object_key_unique")
     .on(table.avatarObjectKey)
     .where(sql`${table.avatarObjectKey} is not null`),
+  index("authors_name_search_idx").using("gin", normalizedSearchIndexSql(table.name)),
 ]);
+
+export const authorFriendships = pgTable(
+  "author_friendships",
+  {
+    id: serial("id").primaryKey(),
+    firstAuthorId: integer("first_author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    secondAuthorId: integer("second_author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    requestedByAuthorId: integer("requested_by_author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    status: friendshipStatusEnum("status").default("pending").notNull(),
+    acceptedAt: timestamp("accepted_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    unique("author_friendships_pair_unique").on(table.firstAuthorId, table.secondAuthorId),
+    index("author_friendships_first_status_idx").on(table.firstAuthorId, table.status),
+    index("author_friendships_second_status_idx").on(table.secondAuthorId, table.status),
+    index("author_friendships_requester_status_idx").on(table.requestedByAuthorId, table.status),
+    check("author_friendships_canonical_pair_check", sql`${table.firstAuthorId} < ${table.secondAuthorId}`),
+    check(
+      "author_friendships_requester_member_check",
+      sql`${table.requestedByAuthorId} in (${table.firstAuthorId}, ${table.secondAuthorId})`,
+    ),
+    check(
+      "author_friendships_accepted_at_check",
+      sql`(${table.status} = 'accepted' and ${table.acceptedAt} is not null) or (${table.status} = 'pending' and ${table.acceptedAt} is null)`,
+    ),
+  ],
+);
 
 export const authorMediaTypeSettings = pgTable(
   "author_media_type_settings",

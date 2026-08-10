@@ -3,6 +3,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 const dashboardSource = readFileSync("src/app/author/(protected)/page.tsx", "utf8");
+const statisticsSource = readFileSync("src/components/author/author-statistics.tsx", "utf8");
 const helperSource = readFileSync("src/db/queries/media-item-tiles.ts", "utf8");
 const ratingsSource = readFileSync("src/db/queries/ratings.ts", "utf8");
 const reviewsSource = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
@@ -82,8 +83,8 @@ describe("author dashboard media tiles", () => {
       /function getMainTileDescriptors[\s\S]*currentAuthorScore: item\.currentAuthorScore[\s\S]*href: `\/media\/\$\{item\.code\}`[\s\S]*item,[\s\S]*key: item\.id/,
     );
     assert.match(mainPageSource, /getMainTileDescriptors\(items\)/);
-    assert.match(dashboardSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant="top"/);
-    assert.match(dashboardSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant="top"/);
+    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant="top"/);
+    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant="top"/);
     assert.doesNotMatch(mainPageSource, /initialColumnCount=/);
   });
 });

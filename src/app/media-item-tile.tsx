@@ -49,6 +49,7 @@ type MediaItemTileProps = {
   item: MediaItemTileItem;
   mediaTypes?: readonly MediaTypeOption[];
   onSelect?: () => void;
+  ratingDisplay?: "default" | "author-only";
   selected?: boolean;
   showMediaTypeLabel?: boolean;
 };
@@ -641,10 +642,13 @@ export function MediaItemTile({
   item,
   mediaTypes = [],
   onSelect,
+  ratingDisplay = "default",
   selected = false,
   showMediaTypeLabel = false,
 }: MediaItemTileProps) {
   const shouldShowAuthorScore = currentAuthorScore !== undefined && currentAuthorScore !== null;
+  const shouldShowAuthorOnly = ratingDisplay === "author-only" && shouldShowAuthorScore;
+  const shouldShowRating = ratingDisplay !== "author-only" || shouldShowAuthorScore;
   const mediaTypeLabel =
     showMediaTypeLabel && mediaTypes.length > 0
       ? getMediaTypeLabel(item.mediaType, mediaTypes)
@@ -685,15 +689,17 @@ export function MediaItemTile({
           {item.title}
         </span>
       </span>
-      <span
-        className={`absolute right-2 top-2 inline-flex h-7 items-center justify-center rounded-full border text-center shadow-sm ${averageRatingToneClassName} ${
-          shouldShowAuthorScore ? "gap-1 pl-2 pr-1" : "w-7"
+      {shouldShowRating ? <span
+        className={`absolute right-2 top-2 inline-flex h-7 items-center justify-center rounded-full border text-center shadow-sm ${
+          shouldShowAuthorOnly ? authorRatingToneClassName : averageRatingToneClassName
+        } ${
+          shouldShowAuthorOnly || !shouldShowAuthorScore ? "w-7" : "gap-1 pl-2 pr-1"
         }`}
       >
         <span className="min-w-3.5 text-center font-mono text-xs leading-none tabular-nums">
-          {formatScore(item.averageScore)}
+          {formatScore(shouldShowAuthorOnly ? currentAuthorScore : item.averageScore)}
         </span>
-        {shouldShowAuthorScore ? (
+        {shouldShowAuthorScore && !shouldShowAuthorOnly ? (
           <span
             className={`grid size-6 place-items-center rounded-full border text-center shadow-sm ${authorRatingToneClassName}`}
           >
@@ -702,7 +708,7 @@ export function MediaItemTile({
             </span>
           </span>
         ) : null}
-      </span>
+      </span> : null}
     </>
   );
 

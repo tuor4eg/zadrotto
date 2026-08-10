@@ -283,6 +283,14 @@ body {
   background-size: 9px 9px, 13px 13px, auto;
 }
 
+.archive-catalog-list-panel {
+  background:
+    radial-gradient(circle at 20% 15%, rgb(var(--archive-paper-grain-primary) / 8%) 0 1px, transparent 1px),
+    radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),
+    linear-gradient(180deg, rgb(var(--archive-paper-start) / 88%), rgb(var(--archive-paper-end) / 90%));
+  background-size: 9px 9px, 13px 13px, auto;
+}
+
 .archive-media-type-tab {
   --archive-media-type-tab-shape-size: 0.833333rem;
   --archive-media-type-tab-double-shape-size: 1.666666rem;
@@ -416,6 +424,11 @@ body {
   content: "";
   filter: blur(8px);
   pointer-events: none;
+}
+
+.archive-media-type-tab-before-active::after {
+  right: auto;
+  left: -10px;
 }
 
 .archive-paper {

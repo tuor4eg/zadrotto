@@ -140,9 +140,11 @@ function AuthorRatingsByReleaseYearChart({ items }: { items: AuthorRatingYearIte
 
 export function AuthorMediaInterestsPanel({
   items,
+  title = "Мои интересы",
   yearlyItems,
 }: {
   items: AuthorMediaInterestItem[];
+  title?: string;
   yearlyItems: AuthorRatingYearItem[];
 }) {
   const [activeTab, setActiveTab] = useState<"types" | "years">("types");
@@ -152,7 +154,7 @@ export function AuthorMediaInterestsPanel({
       <div className="mb-4 flex items-center justify-between gap-2 border-b border-stone-400/25 pb-3">
         <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
           <Shapes className="size-5 shrink-0 text-red-950/70" />
-          Мои интересы
+          {title}
         </h2>
         <div className="flex shrink-0 rounded-md border border-stone-300/80 bg-stone-50/70 p-0.5" role="tablist" aria-label="Вид интересов">
           {([['types', 'По типам'], ['years', 'По годам']] as const).map(([value, label]) => (

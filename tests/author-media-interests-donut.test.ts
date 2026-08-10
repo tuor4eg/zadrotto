@@ -16,7 +16,7 @@ const source = readFileSync(
   "utf8",
 );
 const dashboardSource = readFileSync(
-  "src/app/author/(protected)/page.tsx",
+  "src/components/author/author-statistics.tsx",
   "utf8",
 );
 const panelSource = readFileSync(

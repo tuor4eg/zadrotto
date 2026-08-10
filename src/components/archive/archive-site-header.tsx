@@ -9,6 +9,7 @@ import { Shield, UserCircle } from "lucide-react";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { NotificationBadge } from "@/components/ui/notification-badge";
 
 type ArchiveSiteHeaderProps = {
   brandHref: string;
@@ -16,6 +17,7 @@ type ArchiveSiteHeaderProps = {
   controls?: ReactNode;
   currentAdminUser: boolean;
   currentAuthor: boolean;
+  incomingFriendRequestCount?: number;
   sticky?: boolean;
   variant: "main" | "catalog";
 };
@@ -26,6 +28,7 @@ export function ArchiveSiteHeader({
   controls,
   currentAdminUser,
   currentAuthor,
+  incomingFriendRequestCount = 0,
   sticky = false,
   variant,
 }: ArchiveSiteHeaderProps) {
@@ -35,7 +38,7 @@ export function ArchiveSiteHeader({
   const ActionsContainer = isCatalog ? "div" : "nav";
   const SiteHeaderContainer = isCatalog ? "div" : "header";
   const authorLinkLabel = currentAuthor ? "Профиль" : "Войти";
-  const actionClassName = `archive-control-surface inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+  const actionClassName = `archive-control-surface relative inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
     isCatalog
       ? compact
         ? "w-9 px-0"
@@ -57,6 +60,7 @@ export function ArchiveSiteHeader({
       <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>
         {authorLinkLabel}
       </span>
+      <NotificationBadge count={incomingFriendRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
     </Link>
   ) : (
     <button

@@ -21,6 +21,7 @@ import {
   uploadAuthorAvatar,
 } from "@/lib/avatars/storage";
 import { replaceAuthorAvatarObjectKey, updateAuthorDisplayName } from "@/db/queries/authors";
+import { updateAuthorDiscoverability } from "@/db/queries/friends";
 import { normalizeAuthorDisplayName } from "@/lib/authors/display-name";
 
 const PROFILE_PATH = "/author/profile";
@@ -130,6 +131,17 @@ export async function updateAuthorDisplayNameAction(formData: FormData) {
     message: "Автор изменил отображаемое имя.",
   });
   redirect(`${PROFILE_PATH}?displayNameUpdated=1`);
+}
+
+export async function updateAuthorDiscoverabilityAction(formData: FormData) {
+  const current = await getCurrentAuthorSession();
+  if (!current) redirect("/author/login");
+  const isDiscoverable = formData.get("isDiscoverable") === "1";
+  const updated = await updateAuthorDiscoverability(current.author.id, isDiscoverable);
+  if (!updated) redirect(`${PROFILE_PATH}?discoverabilityError=1`);
+  revalidatePath(`/users/${current.author.id}`);
+  revalidatePath("/author/friends");
+  redirect(`${PROFILE_PATH}?discoverabilityUpdated=1`);
 }
 
 function read(formData: FormData, key: string) {

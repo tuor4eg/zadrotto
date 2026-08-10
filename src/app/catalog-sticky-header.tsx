@@ -17,6 +17,7 @@ type CatalogStickyHeaderProps = {
   authorRatingFilter: AuthorRatingFilter;
   currentAdminUser: boolean;
   currentAuthor: boolean;
+  incomingFriendRequestCount: number;
   mediaTypeFilter: MediaTypeFilter;
   minReleaseYear: number | null;
   searchQuery: string;
@@ -30,6 +31,7 @@ export function CatalogStickyHeader({
   authorRatingFilter,
   currentAdminUser,
   currentAuthor,
+  incomingFriendRequestCount,
   mediaTypeFilter,
   minReleaseYear,
   searchQuery,
@@ -114,6 +116,7 @@ export function CatalogStickyHeader({
       }
       currentAdminUser={currentAdminUser}
       currentAuthor={currentAuthor}
+      incomingFriendRequestCount={incomingFriendRequestCount}
       sticky
       variant="catalog"
     />

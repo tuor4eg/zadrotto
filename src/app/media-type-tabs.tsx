@@ -62,6 +62,7 @@ function MediaTypeTab({
         isSelected
           ? "archive-media-type-tab-active h-12 min-w-[116px] pb-2.5 pt-3 text-stone-950 lg:h-16 lg:min-w-[156px] lg:pb-3 lg:pt-5"
           : "archive-media-type-tab-inactive h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
+        !isSelected && index < selectedIndex && "archive-media-type-tab-before-active",
       )}
     >
       {isSelected ? (

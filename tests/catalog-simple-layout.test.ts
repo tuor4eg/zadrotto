@@ -29,6 +29,11 @@ describe("simple catalog layout", () => {
     assert.match(layoutSource, /archive-textured-block relative flex w-full/);
     assert.doesNotMatch(layoutSource, /archive-(?:paper|panel|stack)/);
     assert.match(catalogSource, /archive-textured-block p-6/);
+    assert.match(layoutSource, /archive-catalog-list-panel archive-textured-block/);
+    assert.match(
+      globalsSource,
+      /\.archive-catalog-list-panel\s*\{[\s\S]*linear-gradient\(180deg,[\s\S]*archive-paper-start[\s\S]*archive-paper-end/,
+    );
   });
 
   it("splits the mobile catalog header and reunifies it on desktop", () => {

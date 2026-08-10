@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 
 export const metadata: Metadata = {
   title: "О проекте — Журнал, которого не было",
@@ -31,6 +32,9 @@ export default async function AboutPage() {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
+  const incomingFriendRequestCount = currentAuthor
+    ? await getIncomingFriendRequestCount(currentAuthor.id)
+    : 0;
 
   return (
     <main className="archive-page min-h-screen px-3 py-3 text-stone-950 sm:px-5 sm:py-5 lg:px-7 lg:py-7">
@@ -39,6 +43,7 @@ export default async function AboutPage() {
           brandHref="/"
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
+          incomingFriendRequestCount={incomingFriendRequestCount}
           variant="main"
         />
 

@@ -139,7 +139,7 @@ export function ArchiveCatalogLayout({
 
   return (
     <section className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(290px,0.28fr)]">
-      <div className="archive-textured-block flex min-h-0 min-w-0 flex-col p-4">
+      <div className="archive-catalog-list-panel archive-textured-block flex min-h-0 min-w-0 flex-col p-4">
         {toolbar}
 
         <div

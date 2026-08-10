@@ -13,6 +13,7 @@ import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
@@ -63,6 +64,9 @@ export default async function Home({ searchParams }: HomeProps) {
     searchParams,
     getArchiveSettings(),
   ]);
+  const incomingFriendRequestCount = currentAuthor
+    ? await getIncomingFriendRequestCount(currentAuthor.id)
+    : 0;
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
@@ -192,6 +196,7 @@ export default async function Home({ searchParams }: HomeProps) {
           authorRatingFilter={authorRatingFilter}
           currentAdminUser={Boolean(currentAdminUser)}
           currentAuthor={Boolean(currentAuthor)}
+          incomingFriendRequestCount={incomingFriendRequestCount}
           mediaTypeFilter={mediaTypeFilter}
           minReleaseYear={releaseYearBounds.minReleaseYear}
           searchQuery={searchQuery}

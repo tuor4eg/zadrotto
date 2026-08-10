@@ -10,7 +10,7 @@ import {
   isAuthorEmailDeliveryConfigured,
   isAuthorEmailVerificationBypassed,
 } from "@/lib/auth/features";
-import { changeAuthorEmailAction, changeAuthorPasswordAction, logoutAuthorToTokenLogin, resendAuthorVerificationAction, updateAuthorDisplayNameAction } from "./actions";
+import { changeAuthorEmailAction, changeAuthorPasswordAction, logoutAuthorToTokenLogin, resendAuthorVerificationAction, updateAuthorDiscoverabilityAction, updateAuthorDisplayNameAction } from "./actions";
 import { AuthorOnboardingForm } from "./author-onboarding-form";
 import { AvatarEditor } from "./avatar-editor";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
@@ -21,6 +21,8 @@ type ProfileQuery = {
   avatarUpdated?: string;
   displayNameError?: string;
   displayNameUpdated?: string;
+  discoverabilityError?: string;
+  discoverabilityUpdated?: string;
   error?: string;
   resent?: string;
   resendError?: string;
@@ -104,10 +106,38 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
       messages={displayNameToast ? [displayNameToast] : []}
     />
   );
+  const discoverabilityToast: AuthorToast | null = query.discoverabilityUpdated
+    ? { id: "discoverability-updated", tone: "success", text: "Настройка видимости сохранена." }
+    : query.discoverabilityError
+      ? { id: "discoverability-error", tone: "error", text: "Не удалось сохранить настройку видимости." }
+      : null;
   const profileIdentitySettings = (
     <>
       {avatarEditor}
       {displayNameForm}
+      <AuthorToasts
+        clearParams={["discoverabilityError", "discoverabilityUpdated"]}
+        messages={discoverabilityToast ? [discoverabilityToast] : []}
+      />
+      <form action={updateAuthorDiscoverabilityAction} className="grid gap-3 rounded-md border p-4">
+        <div>
+          <h3 className="font-semibold">Поиск пользователей</h3>
+          <p className="mt-1 text-sm text-stone-600">
+            Если отключить настройку, профиль останется доступен вам и существующим друзьям.
+          </p>
+        </div>
+        <label className="flex items-center gap-3 text-sm text-stone-800">
+          <input
+            type="checkbox"
+            name="isDiscoverable"
+            value="1"
+            defaultChecked={current.author.isDiscoverable}
+            className="size-4 rounded border-stone-300"
+          />
+          Показывать меня в поиске пользователей
+        </label>
+        <Button type="submit" variant="outline" className="justify-self-start">Сохранить видимость</Button>
+      </form>
     </>
   );
 

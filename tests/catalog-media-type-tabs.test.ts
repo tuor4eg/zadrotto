@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 const catalogSource = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const tabsSource = readFileSync("src/app/media-type-tabs.tsx", "utf8");
+const globalsSource = readFileSync("src/app/globals.css", "utf8");
 
 describe("catalog media type tabs", () => {
   it("keeps only the selected and positive-count media types available", () => {
@@ -48,6 +49,14 @@ describe("catalog media type tabs", () => {
     assert.doesNotMatch(
       catalogSource,
       /nextSearchParams\.delete\("(?:q|year|yearMode|mine)"\)/,
+    );
+  });
+
+  it("mirrors the separating shadow for tabs before the selected tab", () => {
+    assert.match(tabsSource, /index < selectedIndex && "archive-media-type-tab-before-active"/);
+    assert.match(
+      globalsSource,
+      /\.archive-media-type-tab-before-active::after\s*\{[\s\S]*right: auto;[\s\S]*left: -10px;/,
     );
   });
 });

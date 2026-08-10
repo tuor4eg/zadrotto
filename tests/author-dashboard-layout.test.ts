@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 
 import { RATING_SCORE_VALUES, formatScore } from "../src/lib/ratings/score";
 
-const source = readFileSync("src/app/author/(protected)/page.tsx", "utf8");
+const source = readFileSync("src/components/author/author-statistics.tsx", "utf8");
 const interestsPanelSource = readFileSync(
   "src/app/author/(protected)/author-media-interests-panel.tsx",
   "utf8",
@@ -34,12 +34,12 @@ describe("author dashboard layout", () => {
       )?.length,
       3,
     );
-    assert.match(source, /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}[\s\S]*yearlyItems=\{summary\.releaseYearDistribution\}/);
+    assert.match(source, /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}[\s\S]*yearlyItems=\{ratingSummary\.releaseYearDistribution\}/);
     assert.doesNotMatch(analyticsSection[1], /(?:sm|md):grid-cols/);
   });
 
   it("keeps the four existing metrics in one divided statistics list", () => {
-    assert.match(source, /const statistics = \[[\s\S]*summary\.ratingsCount[\s\S]*summary\.averageScore[\s\S]*summary\.currentYearRatingsCount[\s\S]*reviewSummary\.reviewsCount/);
+    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount/);
     assert.match(source, /divide-y divide-dashed divide-stone-400\/35/);
     assert.match(
       source,
@@ -61,7 +61,7 @@ describe("author dashboard layout", () => {
     assert.match(source, /const scoreDistributionValues = \[\.\.\.RATING_SCORE_VALUES\]\.reverse\(\)/);
     assert.match(
       source,
-      /const maxScoreDistributionCount = Math\.max\(\s*1,[\s\S]*summary\.scoreDistribution\.map/,
+      /const maxScoreDistributionCount = Math\.max\(1,[\s\S]*ratingSummary\.scoreDistribution\.map/,
     );
     assert.equal(source.match(/scoreDistributionValues\.map\(\(score\) =>/g)?.length, 2);
     assert.match(source, /CardContent className="flex h-full flex-col p-4 sm:px-5 sm:pt-5"/);
@@ -113,11 +113,11 @@ describe("author dashboard layout", () => {
     );
     assert.match(
       activitySection[2],
-      /Последние оценки[\s\S]*href="\/archive\?sort=my_rating_date&mine=rated"[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}/,
+      /Последние оценки[\s\S]*href=\{ratingsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}/,
     );
     assert.match(
       activitySection[2],
-      /Последние рецензии[\s\S]*href="\/author\/reviews"[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}/,
+      /Последние рецензии[\s\S]*href=\{reviewsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}/,
     );
     assert.equal(activitySection[2].match(/Смотреть всё →/g)?.length, 2);
   });
