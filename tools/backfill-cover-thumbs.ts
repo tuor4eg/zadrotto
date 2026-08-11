@@ -1,14 +1,8 @@
 import "dotenv/config";
 
 import { dbClient } from "@/db";
-import {
-  getMediaItemsMissingCoverThumb,
-  updateMediaItemCoverThumb,
-} from "@/db/queries/cover-thumbs";
-import {
-  createAndUploadCoverThumbFromObjectKey,
-  isS3ObjectKey,
-} from "@/lib/covers/storage";
+import { getMediaItemsMissingCoverThumb } from "@/db/queries/cover-thumbs";
+import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 
 type CliOptions = {
   dryRun: boolean;
@@ -50,48 +44,18 @@ function parseOptions(args: string[]): CliOptions {
 async function main() {
   const options = parseOptions(process.argv.slice(2));
   const items = await getMediaItemsMissingCoverThumb({ limit: options.limit });
-  let skipped = 0;
-  let failed = 0;
-  let updated = 0;
-
   console.log(
     `Found ${items.length} media item(s) without cover thumbnails${
       options.dryRun ? " (dry run)" : ""
     }.`,
   );
 
-  for (const item of items) {
-    if (!isS3ObjectKey(item.coverUrl)) {
-      skipped += 1;
-      console.log(`skip #${item.id}: cover is not an S3 object key`);
-      continue;
-    }
-
-    if (options.dryRun) {
-      console.log(`would backfill #${item.id}: ${item.title}`);
-      continue;
-    }
-
-    try {
-      const coverThumbUrl = await createAndUploadCoverThumbFromObjectKey(item.coverUrl);
-
-      if (!coverThumbUrl) {
-        failed += 1;
-        console.log(`fail #${item.id}: thumbnail was not generated`);
-        continue;
-      }
-
-      await updateMediaItemCoverThumb({
-        mediaItemId: item.id,
-        coverThumbUrl,
-      });
-      updated += 1;
-      console.log(`ok #${item.id}: ${coverThumbUrl}`);
-    } catch (error) {
-      failed += 1;
-      console.error(`fail #${item.id}:`, error);
-    }
+  if (options.dryRun) {
+    for (const item of items) console.log(`would backfill #${item.id}: ${item.title}`);
+    return;
   }
+
+  const { failed, skipped, updated } = await backfillCoverThumbnails({ limit: options.limit });
 
   console.log(`Done. updated=${updated} skipped=${skipped} failed=${failed}`);
 

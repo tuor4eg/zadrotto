@@ -13,6 +13,10 @@ const actionSource = readFileSync(
 const archiveToastsSource = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");
 const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const homePageSource = readFileSync("src/app/archive/page.tsx", "utf8");
+const mediaItemFormSource = readFileSync(
+  "src/app/author/(protected)/media/media-item-form.tsx",
+  "utf8",
+);
 
 function findSuggestionMountFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -31,6 +35,19 @@ function findSuggestionMountFiles(directory: string): string[] {
 }
 
 describe("archive author media suggestion placement", () => {
+  it("locks the shared create and edit form while a submission is pending", () => {
+    assert.match(mediaItemFormSource, /useActionState\(/);
+    assert.match(mediaItemFormSource, /action=\{formAction\}/);
+    assert.match(mediaItemFormSource, /aria-busy=\{isSubmitting\}/);
+    assert.match(
+      mediaItemFormSource,
+      /disabled=\{isSuggestingFranchises \|\| isSubmitting\}/,
+    );
+    assert.match(mediaItemFormSource, /role="status"/);
+    assert.match(mediaItemFormSource, /<Loader2 className="size-4 animate-spin"/);
+    assert.match(mediaItemFormSource, /Пожалуйста, не закрывайте страницу\./);
+  });
+
   it("mounts the shared suggestion layer only in the catalog and franchise page", () => {
     assert.deepEqual(findSuggestionMountFiles("src/app").sort(), [
       "src/app/archive/page.tsx",

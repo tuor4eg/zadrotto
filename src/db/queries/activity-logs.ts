@@ -45,7 +45,7 @@ function getActivityLogFilterCondition(filters: ActivityLogFilters) {
   if (filters.actorType) {
     conditions.push(eq(adminActivityLogs.actorType, filters.actorType));
 
-    if (filters.actorId) {
+    if (filters.actorId && filters.actorType !== "system") {
       conditions.push(
         filters.actorType === "admin"
           ? eq(adminActivityLogs.adminUserId, filters.actorId)

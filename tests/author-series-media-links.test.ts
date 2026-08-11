@@ -165,7 +165,7 @@ describe("author series media link client", () => {
   it("stays inside the series sticker without changing its intrinsic width", () => {
     const stickerStart = pageSource.indexOf('<div className="archive-franchise-sticker">');
     const stickerEnd = pageSource.indexOf(
-      '<div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8">',
+      "{franchise.description?.trim() ? (",
       stickerStart,
     );
     const stickerSource = pageSource.slice(stickerStart, stickerEnd);

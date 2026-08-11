@@ -1,5 +1,7 @@
 import type { Metadata, Viewport } from "next";
+import { Suspense } from "react";
 
+import { RouteTransitionProgress } from "@/components/ui/route-transition-progress";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -21,7 +23,12 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        {children}
+        <Suspense fallback={null}>
+          <RouteTransitionProgress />
+        </Suspense>
+      </body>
     </html>
   );
 }

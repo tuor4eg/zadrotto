@@ -16,6 +16,7 @@ export type CoverUploadResult =
       ok: true;
       coverUrl: string | null;
       coverThumbUrl: string | null;
+      thumbnailError: "cover-thumbnail-generate" | "cover-thumbnail-upload" | null;
       source: CoverSourceInput;
     }
   | {
@@ -98,37 +99,91 @@ async function createCoverThumbBuffer(body: Buffer) {
 }
 
 export async function createAndUploadCoverThumbFromObjectKey(coverUrl: string | null) {
+  const result = await createCoverThumbFromObjectKey(coverUrl);
+
+  return result.ok ? result.coverThumbUrl : null;
+}
+
+export type CoverThumbnailResult =
+  | { ok: true; coverThumbUrl: string }
+  | {
+      ok: false;
+      error: "cover-thumbnail-source" | "cover-thumbnail-generate" | "cover-thumbnail-upload";
+      retryable: boolean;
+    };
+
+export async function createCoverThumbFromObjectKey(
+  coverUrl: string | null,
+): Promise<CoverThumbnailResult> {
   if (!isS3ObjectKey(coverUrl)) {
-    return null;
+    return { ok: false, error: "cover-thumbnail-source", retryable: false };
   }
 
   const objectKey = coverUrl!.trim();
   const thumbObjectKey = buildCoverThumbObjectKey(objectKey);
 
   if (!thumbObjectKey) {
-    return null;
+    return { ok: false, error: "cover-thumbnail-source", retryable: false };
   }
 
-  const response = await fetchS3Object({ objectKey });
+  let response: Awaited<ReturnType<typeof fetchS3Object>>;
+  try {
+    response = await fetchS3Object({ objectKey });
+  } catch (error) {
+    logCoverStorageError("thumbnail-source", error);
+    return { ok: false, error: "cover-thumbnail-source", retryable: true };
+  }
 
   if (!response) {
-    return null;
+    return { ok: false, error: "cover-thumbnail-source", retryable: true };
   }
 
   const body = Buffer.from(await response.arrayBuffer());
   const thumbBody = await createCoverThumbBuffer(body);
 
   if (!thumbBody) {
-    return null;
+    return { ok: false, error: "cover-thumbnail-generate", retryable: false };
   }
 
-  await uploadS3Object({
-    objectKey: thumbObjectKey,
-    body: thumbBody,
-    contentType: "image/webp",
-  });
+  try {
+    await uploadS3Object({
+      objectKey: thumbObjectKey,
+      body: thumbBody,
+      contentType: "image/webp",
+    });
+  } catch (error) {
+    logCoverStorageError("thumbnail-upload", error);
+    return { ok: false, error: "cover-thumbnail-upload", retryable: true };
+  }
 
-  return thumbObjectKey;
+  return { ok: true, coverThumbUrl: thumbObjectKey };
+}
+
+function logCoverStorageError(stage: string, error: unknown) {
+  const source = error && typeof error === "object" ? error as Record<string, unknown> : null;
+  const metadata = source?.$metadata && typeof source.$metadata === "object"
+    ? source.$metadata as Record<string, unknown>
+    : null;
+  const rawMessage = error instanceof Error ? error.message : "";
+  const safeMessage = rawMessage
+    .replace(/https?:\/\/\S+/gi, "[url]")
+    .replace(/(access[_-]?key|secret|token|signature)=?[^\s,]*/gi, "$1=[redacted]")
+    .slice(0, 500);
+
+  console.error("cover storage operation failed", {
+    errorCode:
+      typeof source?.code === "string"
+        ? source.code
+        : typeof source?.Code === "string"
+          ? source.Code
+          : null,
+    errorName: error instanceof Error ? error.name : typeof error,
+    httpStatusCode:
+      typeof metadata?.httpStatusCode === "number" ? metadata.httpStatusCode : null,
+    message: safeMessage || null,
+    requestId: typeof metadata?.requestId === "string" ? metadata.requestId : null,
+    stage,
+  });
 }
 
 async function uploadCoverBuffer(input: {
@@ -149,6 +204,7 @@ async function uploadCoverBuffer(input: {
     });
 
     let uploadedThumbObjectKey: string | null = null;
+    let thumbnailError: "cover-thumbnail-generate" | "cover-thumbnail-upload" | null = null;
     const thumbObjectKey = buildCoverThumbObjectKey(input.objectKey);
     const thumbBody = await createCoverThumbBuffer(input.body);
 
@@ -161,17 +217,22 @@ async function uploadCoverBuffer(input: {
         });
         uploadedThumbObjectKey = thumbObjectKey;
       } catch (error) {
-        console.error(error);
+        thumbnailError = "cover-thumbnail-upload";
+        logCoverStorageError("thumbnail-upload", error);
       }
+    } else {
+      thumbnailError = "cover-thumbnail-generate";
     }
 
     return {
       ok: true,
       coverUrl: input.objectKey,
       coverThumbUrl: uploadedThumbObjectKey,
+      thumbnailError,
       source: input.source,
     };
-  } catch {
+  } catch (error) {
+    logCoverStorageError("original-upload", error);
     return { ok: false, error: "cover-upload" };
   }
 }
@@ -195,6 +256,7 @@ export async function uploadManualCover(input: {
       ok: true,
       coverUrl: null,
       coverThumbUrl: null,
+      thumbnailError: null,
       source: getManualCoverSource(),
     };
   }
@@ -307,6 +369,7 @@ export async function resolveCoverUpload(input: {
     ok: true,
     coverUrl: null,
     coverThumbUrl: null,
+    thumbnailError: null,
     source: getManualCoverSource(),
   };
 }

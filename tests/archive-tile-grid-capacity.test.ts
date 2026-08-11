@@ -25,12 +25,14 @@ describe("archive tile grid capacity", () => {
     assert.equal(getArchiveCatalogPageSize(900, ARCHIVE_CATALOG_GRID_ROW_COUNT), 20);
   });
 
-  it("accepts only archive-aligned page sizes", () => {
+  it("accepts bounded archive page sizes", () => {
     assert.equal(parseArchiveCatalogPageSize(undefined), 20);
     assert.equal(parseArchiveCatalogPageSize("15"), 15);
     assert.equal(parseArchiveCatalogPageSize("20"), 20);
+    assert.equal(parseArchiveCatalogPageSize("24"), 24);
     assert.equal(parseArchiveCatalogPageSize("30"), 30);
-    assert.equal(parseArchiveCatalogPageSize("24"), 20);
+    assert.equal(parseArchiveCatalogPageSize("14"), 20);
+    assert.equal(parseArchiveCatalogPageSize("151"), 20);
   });
 
   it("exports the same grid classes as the archive catalog", () => {

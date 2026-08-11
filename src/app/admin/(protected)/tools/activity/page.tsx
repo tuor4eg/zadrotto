@@ -73,6 +73,10 @@ function parseActorIdFilter(value: string | undefined) {
 }
 
 function getActorLabel(item: ActivityLogItem) {
+  if (item.actorType === "system") {
+    return "Система";
+  }
+
   if (item.actorType === "admin") {
     return item.adminLogin ? `Админ: ${item.adminLogin}` : "Админ";
   }

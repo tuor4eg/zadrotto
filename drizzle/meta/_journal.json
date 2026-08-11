@@ -414,6 +414,13 @@
       "when": 1786300500000,
       "tag": "0058_author_friendships",
       "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1786300600000,
+      "tag": "0059_author_media_creation_requests",
+      "breakpoints": true
     }
   ]
 }

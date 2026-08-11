@@ -5,7 +5,11 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
-import { createAuthorPrivateMediaItemWithLimitCheck } from "@/db/operations/author-media-items";
+import {
+  attachAuthorPrivateMediaItemCover,
+  createAuthorPrivateMediaItemWithLimitCheck,
+  getAuthorMediaItemByCreationRequestId,
+} from "@/db/operations/author-media-items";
 import { upsertAuthorMediaExperience } from "@/db/queries/author-media-experiences";
 import { getCoverSettings } from "@/db/queries/cover-settings";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
@@ -26,7 +30,6 @@ import {
 import { upsertAuthorRating } from "@/db/queries/ratings";
 import {
   deleteAuthorDraftMediaItem,
-  getAuthorPrivateMediaItemLimitUsage,
   getAuthorMediaItemForEdit,
   getAuthorMediaItemForView,
   submitAuthorMediaItemForPublication,
@@ -58,10 +61,6 @@ import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
 import {
-  checkAuthorPrivateMediaLimit,
-  getPrivateMediaLimitWindowStart,
-} from "@/lib/authors/private-media-limits";
-import {
   deleteUploadedCoverFilesIfNeeded,
   isS3ObjectKey,
   resolveCoverUpload,
@@ -76,6 +75,7 @@ import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 import { parseRatingScoreInput } from "@/lib/ratings/score";
 import { validateFranchiseDuplicateCheck } from "@/lib/franchises/validate-franchise-duplicate-check";
+import { enqueueJobRun } from "@/lib/jobs/queue";
 
 export type CreateAuthorInlineFranchiseState = {
   error: string | null;
@@ -159,6 +159,30 @@ function getCreateErrorRedirect(formData: FormData, error: string) {
 
 function getCreateIntent(formData: FormData) {
   return getFormString(formData, "intent") === "submit" ? "submit" : "draft";
+}
+
+function getSavedDraftErrorRedirect(mediaItemId: number, error: string) {
+  return `/author/media/${mediaItemId}/edit?error=${encodeURIComponent(error)}`;
+}
+
+function getExistingCreationRedirect(item: {
+  code: string;
+  id: number;
+  publicationStatus: "private" | "submitted" | "published" | "rejected";
+}) {
+  if (item.publicationStatus === "published") {
+    return `/media/${encodeURIComponent(item.code)}`;
+  }
+
+  if (item.publicationStatus === "private" || item.publicationStatus === "rejected") {
+    return getSavedDraftErrorRedirect(item.id, "already-created");
+  }
+
+  return `/author/media?q=${encodeURIComponent(item.code)}&error=already-created`;
+}
+
+function isUuid(value: string) {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function readCreateRatingScore(formData: FormData) {
@@ -326,29 +350,6 @@ async function validateMediaCarrier(input: {
   });
 }
 
-async function canCreatePrivateMediaItem(author: {
-  id: number;
-  maxDraftMediaItems: number | null;
-  maxDraftMediaItemsPerDay: number | null;
-}) {
-  if (author.maxDraftMediaItems === null && author.maxDraftMediaItemsPerDay === null) {
-    return { ok: true as const };
-  }
-
-  const usage = await getAuthorPrivateMediaItemLimitUsage({
-    authorId: author.id,
-    since: getPrivateMediaLimitWindowStart(),
-  });
-
-  return checkAuthorPrivateMediaLimit({
-    limits: {
-      maxDraftMediaItems: author.maxDraftMediaItems,
-      maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
-    },
-    usage,
-  });
-}
-
 function getCoverSourceFromItem(item: {
   coverSourceProvider: string | null;
   coverSourceExternalId: string | null;
@@ -475,9 +476,23 @@ export async function createAuthorInlineFranchiseAction(
 
 export async function createAuthorMediaItemAction(formData: FormData) {
   const author = await requireAuthor();
+  const authorCreationRequestId = getFormString(formData, "authorCreationRequestId");
   const form = readAuthorMediaForm(formData);
   const ratingScore = readCreateRatingScore(formData);
   const createIntent = getCreateIntent(formData);
+
+  if (!isUuid(authorCreationRequestId)) {
+    redirect(getCreateErrorRedirect(formData, "required"));
+  }
+
+  const existingItem = await getAuthorMediaItemByCreationRequestId({
+    authorId: author.id,
+    authorCreationRequestId,
+  });
+
+  if (existingItem) {
+    redirect(getExistingCreationRedirect(existingItem));
+  }
 
   if (!form.ok) {
     redirect(getCreateErrorRedirect(formData, form.error));
@@ -528,62 +543,32 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, duplicateCheck.error));
   }
 
-  const limit = await canCreatePrivateMediaItem(author);
-
-  if (!limit.ok) {
-    redirect(getCreateErrorRedirect(formData, limit.reason));
-  }
-
   const code = buildAuthorMediaCode({
     mediaType: form.value.mediaType,
     title: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
-  const coverSettings = await getCoverSettings();
-  const cover = await resolveCoverUpload({
+  const result = await createAuthorPrivateMediaItemWithLimitCheck({
     authorId: author.id,
-    mediaItemCode: code,
-    coverFile: getOptionalCoverFile(formData),
-    candidateToken: getOptionalCoverCandidateToken(formData),
-    maxBytes: coverSettings.coverMaxBytes,
+    authorCreationRequestId,
+    code,
+    coverUrl: null,
+    coverThumbUrl: null,
+    coverSource: { provider: null, externalId: null, pageUrl: null },
+    limits: {
+      maxDraftMediaItems: author.maxDraftMediaItems,
+      maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
+    },
+    ...form.value,
   });
 
-  if (!cover.ok) {
-    redirect(getCreateErrorRedirect(formData, cover.error));
-  }
-
-  let result;
-
-  try {
-    result = await createAuthorPrivateMediaItemWithLimitCheck({
-      authorId: author.id,
-      code,
-      coverUrl: cover.coverUrl,
-      coverThumbUrl: cover.coverThumbUrl,
-      coverSource: cover.source,
-      limits: {
-        maxDraftMediaItems: author.maxDraftMediaItems,
-        maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
-      },
-      ...form.value,
-    });
-  } catch (error) {
-    await deleteUploadedCoverFilesIfNeeded({
-      coverUrl: cover.coverUrl,
-      coverThumbUrl: cover.coverThumbUrl,
-    }).catch(console.error);
-    throw error;
-  }
-
   if (!result.ok) {
-    await deleteUploadedCoverFilesIfNeeded({
-      coverUrl: cover.coverUrl,
-      coverThumbUrl: cover.coverThumbUrl,
-    }).catch(console.error);
     redirect(getCreateErrorRedirect(formData, result.reason));
   }
 
-  await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
+  if (!result.created) {
+    redirect(getExistingCreationRedirect(result.item));
+  }
 
   await logActivity({
     action: "media.created",
@@ -600,6 +585,120 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       publicationStatus: "private",
     },
   });
+
+  const coverFile = getOptionalCoverFile(formData);
+  const coverCandidateToken = getOptionalCoverCandidateToken(formData);
+  const coverSettings = await getCoverSettings();
+  const cover = await resolveCoverUpload({
+    authorId: author.id,
+    mediaItemCode: code,
+    coverFile,
+    candidateToken: coverCandidateToken,
+    maxBytes: coverSettings.coverMaxBytes,
+  });
+
+  if (!cover.ok) {
+    console.error("author media cover upload failed", {
+      errorCode: cover.error,
+      mediaItemId: result.item.id,
+      source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
+      stage: "original-upload",
+    });
+    await logActivity({
+      action: "media.cover-upload.failed",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: result.item.id,
+      entityLabel: form.value.title,
+      status: "failure",
+      severity: "warning",
+      message: "Запись сохранена, но обложку загрузить не удалось.",
+      metadata: {
+        errorCode: cover.error,
+        retryable: cover.error === "cover-upload",
+        source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
+        stage: "original-upload",
+      },
+    });
+    redirect(getSavedDraftErrorRedirect(result.item.id, "cover-upload-saved"));
+  }
+
+  if (cover.coverUrl) {
+    const attached = await attachAuthorPrivateMediaItemCover({
+      authorId: author.id,
+      mediaItemId: result.item.id,
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+      coverSource: cover.source,
+    });
+
+    if (!attached) {
+      console.error("author media cover attach failed", {
+        mediaItemId: result.item.id,
+        stage: "database-attach",
+      });
+      await logActivity({
+        action: "media.cover-upload.failed",
+        actorType: "author",
+        authorId: author.id,
+        entityType: "media-item",
+        entityId: result.item.id,
+        entityLabel: form.value.title,
+        status: "failure",
+        severity: "warning",
+        message: "Обложка загружена, но не была привязана к записи.",
+        metadata: {
+          errorCode: "cover-attach",
+          retryable: true,
+          stage: "database-attach",
+        },
+      });
+      await deleteUploadedCoverFilesIfNeeded({
+        coverUrl: cover.coverUrl,
+        coverThumbUrl: cover.coverThumbUrl,
+      }).catch((error) => console.error("cover cleanup after attach failure", {
+        errorName: error instanceof Error ? error.name : typeof error,
+        mediaItemId: result.item.id,
+      }));
+      redirect(getSavedDraftErrorRedirect(result.item.id, "cover-upload-saved"));
+    }
+
+    if (cover.thumbnailError) {
+      console.error("author media cover thumbnail failed", {
+        errorCode: cover.thumbnailError,
+        mediaItemId: result.item.id,
+        stage: "thumbnail",
+      });
+      await logActivity({
+        action: "media.cover-thumbnail.failed",
+        actorType: "author",
+        authorId: author.id,
+        entityType: "media-item",
+        entityId: result.item.id,
+        entityLabel: form.value.title,
+        status: "failure",
+        severity: "warning",
+        message: "Оригинал обложки сохранён, но миниатюра не создана.",
+        metadata: {
+          errorCode: cover.thumbnailError,
+          retryable: cover.thumbnailError === "cover-thumbnail-upload",
+          source: coverFile ? "manual" : "provider",
+          stage: "thumbnail",
+        },
+      });
+      await enqueueJobRun({
+        payload: { mediaItemId: result.item.id },
+        source: "event",
+        type: "media.cover-thumbnails-backfill",
+      }).catch((error) => console.error("cover thumbnail enqueue failed", {
+        errorName: error instanceof Error ? error.name : typeof error,
+        mediaItemId: result.item.id,
+      }));
+    }
+  }
+
+  await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
 
   if (ratingScore.value !== null) {
     await upsertAuthorRating({
@@ -771,33 +870,97 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   });
 
   if (!cover.ok) {
+    console.error("author media cover update failed", {
+      errorCode: cover.error,
+      mediaItemId,
+      stage: "original-upload",
+    });
+    await logActivity({
+      action: "media.cover-upload.failed",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: mediaItemId,
+      entityLabel: form.value.title,
+      status: "failure",
+      severity: "warning",
+      message: "Не удалось обновить обложку записи.",
+      metadata: {
+        errorCode: cover.error,
+        retryable: cover.error === "cover-upload",
+        stage: "original-upload",
+      },
+    });
     redirect(`/author/media/${mediaItemId}/edit?error=${cover.error}`);
   }
 
   const nextCoverUrl = removeCover ? null : (cover.coverUrl ?? item.coverUrl);
-  const nextCoverThumbUrl = removeCover ? null : (cover.coverThumbUrl ?? item.coverThumbUrl);
+  const nextCoverThumbUrl = removeCover
+    ? null
+    : cover.coverUrl
+      ? cover.coverThumbUrl
+      : item.coverThumbUrl;
   const nextCoverSource =
     removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(item);
 
-  if ((removeCover || cover.coverUrl) && isS3ObjectKey(item.coverUrl)) {
-    try {
+  try {
+    await updateAuthorMediaItem({
+      authorId: author.id,
+      mediaItemId,
+      coverUrl: nextCoverUrl,
+      coverThumbUrl: nextCoverThumbUrl,
+      coverSource: nextCoverSource,
+      ...form.value,
+    });
+  } catch (error) {
+    if (cover.coverUrl) {
       await deleteUploadedCoverFilesIfNeeded({
-        coverUrl: item.coverUrl,
-        coverThumbUrl: item.coverThumbUrl,
-      });
-    } catch {
-      redirect(`/author/media/${mediaItemId}/edit?error=cover-delete`);
+        coverUrl: cover.coverUrl,
+        coverThumbUrl: cover.coverThumbUrl,
+      }).catch((cleanupError) => console.error("cover cleanup after media update failure", {
+        errorName: cleanupError instanceof Error ? cleanupError.name : typeof cleanupError,
+        mediaItemId,
+      }));
     }
+    throw error;
   }
 
-  await updateAuthorMediaItem({
-    authorId: author.id,
-    mediaItemId,
-    coverUrl: nextCoverUrl,
-    coverThumbUrl: nextCoverThumbUrl,
-    coverSource: nextCoverSource,
-    ...form.value,
-  });
+  if ((removeCover || cover.coverUrl) && isS3ObjectKey(item.coverUrl)) {
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: item.coverUrl,
+      coverThumbUrl: item.coverThumbUrl,
+    }).catch((error) => console.error("previous cover cleanup failed", {
+      errorName: error instanceof Error ? error.name : typeof error,
+      mediaItemId,
+    }));
+  }
+
+  if (cover.coverUrl && cover.thumbnailError) {
+    await logActivity({
+      action: "media.cover-thumbnail.failed",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: mediaItemId,
+      entityLabel: form.value.title,
+      status: "failure",
+      severity: "warning",
+      message: "Оригинал обложки сохранён, но миниатюра не создана.",
+      metadata: {
+        errorCode: cover.thumbnailError,
+        retryable: cover.thumbnailError === "cover-thumbnail-upload",
+        stage: "thumbnail",
+      },
+    });
+    await enqueueJobRun({
+      payload: { mediaItemId },
+      source: "event",
+      type: "media.cover-thumbnails-backfill",
+    }).catch((error) => console.error("cover thumbnail enqueue failed", {
+      errorName: error instanceof Error ? error.name : typeof error,
+      mediaItemId,
+    }));
+  }
 
   await saveMediaItemMetadataMutation(metadataMutation, mediaItemId);
 

@@ -19,7 +19,7 @@
     "db:seed:admin": "tsx src/db/seed-admin.ts",
     "jobs:scheduler": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/scheduler.ts",
     "jobs:worker": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/worker.ts",
-    "covers:backfill-thumbs": "tsx tools/backfill-cover-thumbs.ts",
+    "covers:backfill-thumbs": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx tools/backfill-cover-thumbs.ts",
     "db:generate-games-import": "tsx tools/import-games-csv.ts --file pasha_games.csv --author pasha"
   },
   "dependencies": {

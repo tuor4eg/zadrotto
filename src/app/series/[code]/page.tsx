@@ -295,6 +295,11 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                 <h1 className="break-words font-serif text-5xl leading-none text-stone-950 sm:text-6xl">
                   {franchise.title}
                 </h1>
+                {franchise.originalTitle && franchise.originalTitle !== franchise.title ? (
+                  <p className="mt-2 break-words font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
+                    {franchise.originalTitle}
+                  </p>
+                ) : null}
               </div>
               <p className="shrink-0 font-mono text-xs uppercase tracking-[0.18em] text-stone-500 lg:text-right">
                 {formatMediaItemsCount(items.length)}
@@ -303,16 +308,6 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
             {currentAuthor ? (
               <SeriesMediaLinkSearch franchiseCode={franchise.code} mediaTypes={mediaTypes} />
             ) : null}
-          </div>
-
-          <div className="px-6 pb-6 pt-3 sm:px-8 sm:pb-8">
-            <div className="mt-3 flex flex-col gap-3">
-              {franchise.originalTitle && franchise.originalTitle !== franchise.title ? (
-                <p className="font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
-                  {franchise.originalTitle}
-                </p>
-              ) : null}
-            </div>
           </div>
 
           {franchise.description?.trim() ? (

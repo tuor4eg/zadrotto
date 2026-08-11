@@ -1,3 +1,6 @@
+import { and, eq, isNull } from "drizzle-orm";
+
+import { db } from "@/db";
 import { mediaItems } from "@/db/schema";
 import { lockAuthorForTransaction, runInTransaction } from "@/db/transaction";
 import type { AuthorMediaItemInput } from "@/db/queries/media-items";
@@ -13,6 +16,7 @@ import {
 } from "@/lib/authors/private-media-limits";
 
 type CreateAuthorPrivateMediaItemInput = AuthorMediaItemInput & {
+  authorCreationRequestId: string;
   limits: {
     maxDraftMediaItems: number | null;
     maxDraftMediaItemsPerDay: number | null;
@@ -20,14 +24,63 @@ type CreateAuthorPrivateMediaItemInput = AuthorMediaItemInput & {
 };
 
 type CreateAuthorPrivateMediaItemResult =
-  | { ok: true; item: { id: number; code: string } }
+  | {
+      ok: true;
+      created: boolean;
+      item: {
+        id: number;
+        code: string;
+        publicationStatus: "private" | "submitted" | "published" | "rejected";
+      };
+    }
   | Extract<AuthorPrivateMediaLimitResult, { ok: false }>;
+
+export async function getAuthorMediaItemByCreationRequestId(input: {
+  authorCreationRequestId: string;
+  authorId: number;
+}) {
+  const [item] = await db
+    .select({
+      id: mediaItems.id,
+      code: mediaItems.code,
+      publicationStatus: mediaItems.publicationStatus,
+    })
+    .from(mediaItems)
+    .where(
+      and(
+        eq(mediaItems.createdByAuthorId, input.authorId),
+        eq(mediaItems.authorCreationRequestId, input.authorCreationRequestId),
+      ),
+    )
+    .limit(1);
+
+  return item ?? null;
+}
 
 export async function createAuthorPrivateMediaItemWithLimitCheck(
   input: CreateAuthorPrivateMediaItemInput,
 ): Promise<CreateAuthorPrivateMediaItemResult> {
   return runInTransaction(async (tx) => {
     await lockAuthorForTransaction(tx, input.authorId);
+
+    const [existingItem] = await tx
+      .select({
+        id: mediaItems.id,
+        code: mediaItems.code,
+        publicationStatus: mediaItems.publicationStatus,
+      })
+      .from(mediaItems)
+      .where(
+        and(
+          eq(mediaItems.createdByAuthorId, input.authorId),
+          eq(mediaItems.authorCreationRequestId, input.authorCreationRequestId),
+        ),
+      )
+      .limit(1);
+
+    if (existingItem) {
+      return { ok: true, created: false, item: existingItem };
+    }
 
     const usage = await getAuthorPrivateMediaItemLimitUsageForExecutor(tx, {
       authorId: input.authorId,
@@ -57,12 +110,14 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
         coverSourceProvider: input.coverSource.provider,
         coverSourceExternalId: input.coverSource.externalId,
         coverSourcePageUrl: input.coverSource.pageUrl,
+        authorCreationRequestId: input.authorCreationRequestId,
         createdByAuthorId: input.authorId,
         publicationStatus: "private",
       })
       .returning({
         id: mediaItems.id,
         code: mediaItems.code,
+        publicationStatus: mediaItems.publicationStatus,
       });
 
     if (!item) {
@@ -72,6 +127,36 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
 
-    return { ok: true, item };
+    return { ok: true, created: true, item };
   });
+}
+
+export async function attachAuthorPrivateMediaItemCover(input: {
+  authorId: number;
+  coverSource: AuthorMediaItemInput["coverSource"];
+  coverThumbUrl: string | null;
+  coverUrl: string;
+  mediaItemId: number;
+}) {
+  const [item] = await db
+    .update(mediaItems)
+    .set({
+      coverUrl: input.coverUrl,
+      coverThumbUrl: input.coverThumbUrl,
+      coverSourceProvider: input.coverSource.provider,
+      coverSourceExternalId: input.coverSource.externalId,
+      coverSourcePageUrl: input.coverSource.pageUrl,
+      updatedAt: new Date(),
+    })
+    .where(
+      and(
+        eq(mediaItems.id, input.mediaItemId),
+        eq(mediaItems.createdByAuthorId, input.authorId),
+        eq(mediaItems.publicationStatus, "private"),
+        isNull(mediaItems.coverUrl),
+      ),
+    )
+    .returning({ id: mediaItems.id });
+
+  return Boolean(item);
 }

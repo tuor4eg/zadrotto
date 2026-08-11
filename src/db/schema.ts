@@ -833,9 +833,11 @@ export const mediaItems = pgTable(
     releaseYear: integer("release_year"),
     coverUrl: text("cover_url"),
     coverThumbUrl: text("cover_thumb_url"),
+    coverThumbAttemptedAt: timestamp("cover_thumb_attempted_at", { withTimezone: true }),
     coverSourceProvider: text("cover_source_provider"),
     coverSourceExternalId: text("cover_source_external_id"),
     coverSourcePageUrl: text("cover_source_page_url"),
+    authorCreationRequestId: text("author_creation_request_id"),
     createdByAuthorId: integer("created_by_author_id").references(() => authors.id),
     publicationStatus: publicationStatusEnum("publication_status")
       .default(PUBLISHED_PUBLICATION_STATUS)
@@ -856,6 +858,11 @@ export const mediaItems = pgTable(
     index("media_items_original_title_search_idx").using("gin", normalizedSearchIndexSql(table.originalTitle)),
     index("media_items_code_search_idx").using("gin", normalizedSearchIndexSql(table.code)),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
+    index("media_items_cover_thumb_attempted_at_idx").on(table.coverThumbAttemptedAt),
+    uniqueIndex("media_items_author_creation_request_id_unique_idx").on(
+      table.createdByAuthorId,
+      table.authorCreationRequestId,
+    ),
     index("media_items_media_carrier_id_idx").on(table.mediaCarrierId),
   ],
 );

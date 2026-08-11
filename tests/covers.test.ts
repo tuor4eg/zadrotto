@@ -2357,6 +2357,7 @@ describe("cover storage helper", () => {
         ok: true,
         coverUrl: null,
         coverThumbUrl: null,
+        thumbnailError: null,
         source: {
           provider: null,
           externalId: null,

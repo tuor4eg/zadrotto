@@ -915,7 +915,10 @@ describe("AI persistence and UI security contracts", () => {
       authorMediaForm,
       /setSelectedFranchiseIds\(\(current\) =>\s*appendUniqueFranchiseIds\(current, suggested\.map/,
     );
-    assert.match(authorMediaForm, /<fieldset[\s\S]*disabled=\{isSuggestingFranchises\}/);
+    assert.match(
+      authorMediaForm,
+      /<fieldset[\s\S]*disabled=\{isSuggestingFranchises \|\| isSubmitting\}/,
+    );
     assert.match(authorMediaForm, /canSuggestFranchises \? \(\s*<Tooltip/);
     assert.match(
       authorMediaForm,
@@ -929,7 +932,7 @@ describe("AI persistence and UI security contracts", () => {
     assert.match(authorMediaForm, /finally \{\s*setIsSuggestingFranchises\(false\)/);
     assert.match(
       authorMediaForm,
-      /disabled=\{isDuplicateSubmissionBlocked \|\| isSuggestingFranchises\}/,
+      /disabled=\{isDuplicateSubmissionBlocked \|\| isSuggestingFranchises \|\| isSubmitting\}/,
     );
     for (const source of [
       adminMediaNewPage,

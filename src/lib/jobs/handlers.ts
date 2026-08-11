@@ -4,6 +4,7 @@ import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
 import { cleanupJobRunHistory } from "@/db/queries/jobs";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
+import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
 
@@ -46,8 +47,59 @@ const jobHistoryCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   },
 };
 
+type CoverThumbnailBackfillPayload = {
+  limit?: number;
+  mediaItemId?: number;
+};
+
+function parseCoverThumbnailBackfillPayload(value: unknown): CoverThumbnailBackfillPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+  }
+
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).some((key) => key !== "limit" && key !== "mediaItemId")) {
+    throw new JobError("invalid-payload", "Задача получила неизвестные параметры.", {
+      retryable: false,
+    });
+  }
+
+  const limit = source.limit === undefined ? undefined : Number(source.limit);
+  const mediaItemId = source.mediaItemId === undefined ? undefined : Number(source.mediaItemId);
+
+  if (limit !== undefined && (!Number.isSafeInteger(limit) || limit < 1 || limit > 200)) {
+    throw new JobError("invalid-payload", "Лимит должен быть от 1 до 200.", { retryable: false });
+  }
+
+  if (mediaItemId !== undefined && (!Number.isSafeInteger(mediaItemId) || mediaItemId < 1)) {
+    throw new JobError("invalid-payload", "Некорректный ID записи.", { retryable: false });
+  }
+
+  return { limit, mediaItemId };
+}
+
+const coverThumbnailBackfillHandler: JobHandlerDefinition<CoverThumbnailBackfillPayload> = {
+  type: "media.cover-thumbnails-backfill",
+  label: "Восстановление миниатюр обложек",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseCoverThumbnailBackfillPayload,
+  async execute({ attempt, payload, runId }) {
+    const result = await backfillCoverThumbnails({ attempt, runId, ...payload });
+
+    if (result.failed > 0) {
+      throw new JobError(
+        "cover-thumbnail-backfill-failed",
+        `Не удалось обработать миниатюры: ${result.failed}.`,
+        { retryable: result.retryableFailed > 0 },
+      );
+    }
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
   emailOutboxDeliveryHandler,
   authCleanupHandler,
   jobHistoryCleanupHandler,
+  coverThumbnailBackfillHandler,
 ]);

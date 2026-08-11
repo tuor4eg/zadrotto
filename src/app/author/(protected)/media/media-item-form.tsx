@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
@@ -200,6 +200,20 @@ export function MediaItemForm({
   canSuggestFranchises = false,
 }: MediaItemFormProps) {
   const isEditing = Boolean(values?.id);
+  const authorCreationRequestIdRef = useRef<string | null>(null);
+  const [, formAction, isSubmitting] = useActionState(
+    async (_state: null, formData: FormData) => {
+      if (!isEditing) {
+        authorCreationRequestIdRef.current ??= crypto.randomUUID();
+        formData.set("authorCreationRequestId", authorCreationRequestIdRef.current);
+      }
+      await action(formData);
+
+      return null;
+    },
+    null,
+  );
+  const [submissionIntent, setSubmissionIntent] = useState<"draft" | "submit">("draft");
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
     values?.mediaType ?? mediaTypes[0]?.code ?? "",
   );
@@ -309,6 +323,11 @@ export function MediaItemForm({
       hasExactDuplicateMatches ||
       (hasPossibleDuplicateMatches && !duplicateAcknowledged));
   const canSearchCoverCandidatesForCurrentTitle = canSearchCoverCandidates;
+  const submissionStatusLabel = isEditing
+    ? "Сохраняем изменения…"
+    : submissionIntent === "submit"
+      ? "Отправляем запись…"
+      : "Сохраняем черновик…";
 
   useEffect(() => {
     if (!canSearchLocalDuplicates) {
@@ -562,7 +581,7 @@ export function MediaItemForm({
   }
 
   return (
-    <form action={action} className="grid gap-5" noValidate>
+    <form action={formAction} aria-busy={isSubmitting} className="grid gap-5" noValidate>
       <AuthorToasts messages={toastMessages} />
 
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -588,8 +607,8 @@ export function MediaItemForm({
       ) : null}
 
       <fieldset
-        className="grid gap-4 border-0 p-0 sm:grid-cols-2 lg:grid-cols-3"
-        disabled={isSuggestingFranchises}
+        className="grid gap-4 border-0 p-0 transition-opacity sm:grid-cols-2 lg:grid-cols-3 disabled:opacity-60"
+        disabled={isSuggestingFranchises || isSubmitting}
       >
         <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
           <Label id="author-media-type-label" htmlFor={isEditing ? undefined : "author-media-type"}>
@@ -1101,14 +1120,33 @@ export function MediaItemForm({
         </div>
       </fieldset>
 
+      {isSubmitting ? (
+        <div
+          className="flex items-center gap-3 rounded-md border border-amber-300/80 bg-amber-50/80 px-3 py-2.5 text-sm text-stone-700 shadow-sm"
+          role="status"
+        >
+          <span className="grid size-8 shrink-0 place-items-center rounded-full bg-stone-950 text-stone-50">
+            <Loader2 className="size-4 animate-spin" aria-hidden="true" />
+          </span>
+          <span>
+            <span className="block font-medium text-stone-950">{submissionStatusLabel}</span>
+            <span className="block text-xs text-stone-500">Пожалуйста, не закрывайте страницу.</span>
+          </span>
+        </div>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <Button
           type="submit"
           name="intent"
           value="draft"
-          disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises}
+          disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises || isSubmitting}
+          onClick={() => setSubmissionIntent("draft")}
         >
-          {submitLabel}
+          {isSubmitting && submissionIntent === "draft" ? (
+            <Loader2 className="animate-spin" aria-hidden="true" />
+          ) : null}
+          {isSubmitting && submissionIntent === "draft" ? submissionStatusLabel : submitLabel}
         </Button>
         {!isEditing && createAndSubmitLabel ? (
           <Button
@@ -1116,19 +1154,29 @@ export function MediaItemForm({
             variant="positive"
             name="intent"
             value="submit"
-            disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises}
+            disabled={isDuplicateSubmissionBlocked || isSuggestingFranchises || isSubmitting}
+            onClick={() => setSubmissionIntent("submit")}
           >
-            {createAndSubmitLabel}
+            {isSubmitting && submissionIntent === "submit" ? (
+              <Loader2 className="animate-spin" aria-hidden="true" />
+            ) : null}
+            {isSubmitting && submissionIntent === "submit"
+              ? submissionStatusLabel
+              : createAndSubmitLabel}
           </Button>
         ) : null}
         {onCancel ? (
-          <Button type="button" variant="outline" onClick={onCancel}>
+          <Button type="button" variant="outline" disabled={isSubmitting} onClick={onCancel}>
             Отмена
           </Button>
         ) : (
           <Link
+            aria-disabled={isSubmitting}
             href={cancelHref}
-            className={buttonVariants({ variant: "outline" })}
+            className={cn(
+              buttonVariants({ variant: "outline" }),
+              isSubmitting && "pointer-events-none opacity-50",
+            )}
           >
             Отмена
           </Link>

@@ -1,4 +1,4 @@
-export const ACTIVITY_ACTOR_TYPES = ["admin", "author"] as const;
+export const ACTIVITY_ACTOR_TYPES = ["admin", "author", "system"] as const;
 export const ACTIVITY_STATUSES = ["success", "failure"] as const;
 export const ACTIVITY_SEVERITIES = ["info", "warning", "critical"] as const;
 
@@ -59,6 +59,9 @@ export const ACTIVITY_ACTIONS = [
   "media.withdrawn",
   "media.published",
   "media.unpublished",
+  "media.cover-upload.failed",
+  "media.cover-thumbnail.failed",
+  "media.cover-thumbnail.recovered",
   "media-review.approved",
   "media-review.rejected",
   "review.approved",
@@ -110,6 +113,7 @@ export type ActivityAction = (typeof ACTIVITY_ACTIONS)[number];
 export const ACTIVITY_ACTOR_TYPE_LABELS = {
   admin: "Админ",
   author: "Автор",
+  system: "Система",
 } satisfies Record<ActivityActorType, string>;
 
 export const ACTIVITY_STATUS_LABELS = {
@@ -180,6 +184,9 @@ export const ACTIVITY_ACTION_LABELS = {
   "media.withdrawn": "Заявка записи отозвана",
   "media.published": "Запись опубликована",
   "media.unpublished": "Запись снята с публикации",
+  "media.cover-upload.failed": "Обложка записи не загружена",
+  "media.cover-thumbnail.failed": "Миниатюра обложки не создана",
+  "media.cover-thumbnail.recovered": "Миниатюра обложки восстановлена",
   "media-review.approved": "Заявка записи одобрена",
   "media-review.rejected": "Заявка записи отклонена",
   "review.approved": "Рецензия одобрена",
