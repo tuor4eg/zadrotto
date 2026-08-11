@@ -6,6 +6,7 @@ import {
   ACTIVITY_SEVERITY_LABELS,
   formatActivityLogDate,
   getDefaultActivitySeverity,
+  getCoverActivityDiagnostic,
   getActivityActionLabel,
   getActivityLogFranchises,
   getActivityEntityTypeLabel,
@@ -15,6 +16,33 @@ import {
 } from "@/lib/activity-logs/model";
 
 describe("activity log metadata", () => {
+  it("reads safe cover diagnostics for the admin journal", () => {
+    assert.deepEqual(
+      getCoverActivityDiagnostic("media.cover-upload.failed", {
+        errorCode: "cover-upload",
+        errorName: null,
+        httpStatusCode: null,
+        requestId: null,
+        retryable: true,
+        source: "provider",
+        stage: "original-upload",
+        storageCode: null,
+      }),
+      {
+        attempt: null,
+        errorCode: "cover-upload",
+        errorName: null,
+        httpStatusCode: null,
+        requestId: null,
+        retryable: true,
+        source: "provider",
+        stage: "original-upload",
+        storageCode: null,
+      },
+    );
+    assert.equal(getCoverActivityDiagnostic("media.created", { errorCode: "ignored" }), null);
+  });
+
   it("removes secret-like fields from metadata", () => {
     const sanitized = sanitizeActivityLogMetadata({
       login: "admin",

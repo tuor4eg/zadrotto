@@ -619,6 +619,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
         retryable: cover.error === "cover-upload",
         source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
         stage: "original-upload",
+        ...cover.diagnostic,
       },
     });
     redirect(getSavedDraftErrorRedirect(result.item.id, "cover-upload-saved"));
@@ -889,6 +890,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
         errorCode: cover.error,
         retryable: cover.error === "cover-upload",
         stage: "original-upload",
+        ...cover.diagnostic,
       },
     });
     redirect(`/author/media/${mediaItemId}/edit?error=${cover.error}`);
@@ -936,6 +938,11 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   }
 
   if (cover.coverUrl && cover.thumbnailError) {
+    console.error("author media cover thumbnail update failed", {
+      errorCode: cover.thumbnailError,
+      mediaItemId,
+      stage: "thumbnail",
+    });
     await logActivity({
       action: "media.cover-thumbnail.failed",
       actorType: "author",

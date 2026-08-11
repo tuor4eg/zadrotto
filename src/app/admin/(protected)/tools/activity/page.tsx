@@ -13,6 +13,7 @@ import {
   ACTIVITY_STATUS_LABELS,
   getActivityActionLabel,
   getActivityEntityTypeLabel,
+  getCoverActivityDiagnostic,
   getFranchiseMediaActivityContext,
   getFranchiseMoveDestination,
   isActivityAction,
@@ -143,6 +144,7 @@ function ActivityLogDetails({
     action: item.action,
     metadata: item.metadata,
   });
+  const coverDiagnostic = getCoverActivityDiagnostic(item.action, item.metadata);
   const contextMediaItem = franchiseMediaContext?.mediaItem &&
     (showPrimaryEntity || item.entityType !== "media-item")
     ? franchiseMediaContext.mediaItem
@@ -206,6 +208,23 @@ function ActivityLogDetails({
         </div>
       ) : item.message ? (
         <div className="text-stone-600">{item.message}</div>
+      ) : null}
+      {coverDiagnostic ? (
+        <div className="break-words font-mono text-[11px] text-stone-600">
+          {[
+            coverDiagnostic.errorCode ? `Код: ${coverDiagnostic.errorCode}` : null,
+            coverDiagnostic.storageCode ? `S3: ${coverDiagnostic.storageCode}` : null,
+            coverDiagnostic.httpStatusCode ? `HTTP: ${coverDiagnostic.httpStatusCode}` : null,
+            coverDiagnostic.errorName ? `Ошибка: ${coverDiagnostic.errorName}` : null,
+            coverDiagnostic.requestId ? `Request ID: ${coverDiagnostic.requestId}` : null,
+            coverDiagnostic.stage ? `Этап: ${coverDiagnostic.stage}` : null,
+            coverDiagnostic.source ? `Источник: ${coverDiagnostic.source}` : null,
+            coverDiagnostic.attempt ? `Попытка: ${coverDiagnostic.attempt}` : null,
+            coverDiagnostic.retryable !== null
+              ? `Повтор: ${coverDiagnostic.retryable ? "да" : "нет"}`
+              : null,
+          ].filter(Boolean).join(" · ")}
+        </div>
       ) : null}
       {item.ipAddress || item.userAgent ? (
         <div className="break-words">

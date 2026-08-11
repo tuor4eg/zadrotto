@@ -22,7 +22,15 @@ export type CoverUploadResult =
   | {
       ok: false;
       error: "cover-type" | "cover-too-large" | "cover-upload";
+      diagnostic?: CoverStorageDiagnostic;
     };
+
+export type CoverStorageDiagnostic = {
+  errorName: string;
+  httpStatusCode: number | null;
+  requestId: string | null;
+  storageCode: string | null;
+};
 
 function buildAdminCoverObjectKey(mediaItemCode: string, contentType: string) {
   const extension = getCoverFileExtension(contentType);
@@ -159,7 +167,7 @@ export async function createCoverThumbFromObjectKey(
   return { ok: true, coverThumbUrl: thumbObjectKey };
 }
 
-function logCoverStorageError(stage: string, error: unknown) {
+function logCoverStorageError(stage: string, error: unknown): CoverStorageDiagnostic {
   const source = error && typeof error === "object" ? error as Record<string, unknown> : null;
   const metadata = source?.$metadata && typeof source.$metadata === "object"
     ? source.$metadata as Record<string, unknown>
@@ -170,8 +178,8 @@ function logCoverStorageError(stage: string, error: unknown) {
     .replace(/(access[_-]?key|secret|token|signature)=?[^\s,]*/gi, "$1=[redacted]")
     .slice(0, 500);
 
-  console.error("cover storage operation failed", {
-    errorCode:
+  const diagnostic: CoverStorageDiagnostic = {
+    storageCode:
       typeof source?.code === "string"
         ? source.code
         : typeof source?.Code === "string"
@@ -180,10 +188,16 @@ function logCoverStorageError(stage: string, error: unknown) {
     errorName: error instanceof Error ? error.name : typeof error,
     httpStatusCode:
       typeof metadata?.httpStatusCode === "number" ? metadata.httpStatusCode : null,
-    message: safeMessage || null,
     requestId: typeof metadata?.requestId === "string" ? metadata.requestId : null,
+  };
+
+  console.error("cover storage operation failed", {
+    ...diagnostic,
+    message: safeMessage || null,
     stage,
   });
+
+  return diagnostic;
 }
 
 async function uploadCoverBuffer(input: {
@@ -232,8 +246,8 @@ async function uploadCoverBuffer(input: {
       source: input.source,
     };
   } catch (error) {
-    logCoverStorageError("original-upload", error);
-    return { ok: false, error: "cover-upload" };
+    const diagnostic = logCoverStorageError("original-upload", error);
+    return { ok: false, error: "cover-upload", diagnostic };
   }
 }
 

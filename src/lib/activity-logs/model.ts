@@ -331,6 +331,46 @@ export function getActivityEntityTypeLabel(entityType: string | null) {
     : entityType;
 }
 
+export function getCoverActivityDiagnostic(
+  action: string,
+  metadata: Record<string, unknown> | null,
+) {
+  if (
+    action !== "media.cover-upload.failed" &&
+    action !== "media.cover-thumbnail.failed" &&
+    action !== "media.cover-thumbnail.recovered"
+  ) {
+    return null;
+  }
+
+  const errorCode = typeof metadata?.errorCode === "string" ? metadata.errorCode : null;
+  const source = typeof metadata?.source === "string" ? metadata.source : null;
+  const stage = typeof metadata?.stage === "string" ? metadata.stage : null;
+  const retryable = typeof metadata?.retryable === "boolean" ? metadata.retryable : null;
+  const attempt = typeof metadata?.attempt === "number" ? metadata.attempt : null;
+  const errorName = typeof metadata?.errorName === "string" ? metadata.errorName : null;
+  const httpStatusCode = typeof metadata?.httpStatusCode === "number"
+    ? metadata.httpStatusCode
+    : null;
+  const requestId = typeof metadata?.requestId === "string" ? metadata.requestId : null;
+  const storageCode = typeof metadata?.storageCode === "string" ? metadata.storageCode : null;
+
+  return errorCode || source || stage || retryable !== null || attempt !== null ||
+      errorName || httpStatusCode !== null || requestId || storageCode
+    ? {
+        attempt,
+        errorCode,
+        errorName,
+        httpStatusCode,
+        requestId,
+        retryable,
+        source,
+        stage,
+        storageCode,
+      }
+    : null;
+}
+
 export function formatActivityLogDate(
   value: Date | string,
   options?: {
