@@ -32,7 +32,7 @@ describe("resilient author media creation", () => {
     );
   });
 
-  it("reuses an existing request before limits and creates a coverless private record", () => {
+  it("reuses an existing request before limits and creates only after the cover upload", () => {
     const existingLookup = authorMediaOperationsSource.indexOf("if (existingItem)");
     const limitLookup = authorMediaOperationsSource.indexOf(
       "getAuthorPrivateMediaItemLimitUsageForExecutor",
@@ -43,12 +43,9 @@ describe("resilient author media creation", () => {
     assert.ok(existingLookup >= 0);
     assert.ok(limitLookup > existingLookup);
     assert.match(authorMediaOperationsSource, /if \(existingItem\) \{[\s\S]*created: false/);
-    assert.match(
-      authorActionsSource,
-      /createAuthorPrivateMediaItemWithLimitCheck\(\{[\s\S]*coverUrl: null,[\s\S]*coverThumbUrl: null/,
-    );
+    assert.match(authorActionsSource, /coverUrl: cover\.coverUrl/);
     assert.match(authorMediaOperationsSource, /publicationStatus: "private"/);
-    assert.ok(authorActionsSource.indexOf("createAuthorPrivateMediaItemWithLimitCheck(") < coverUpload);
+    assert.ok(coverUpload < authorActionsSource.indexOf("createAuthorPrivateMediaItemWithLimitCheck("));
   });
 
   it("keeps one browser request id across retries and redirects duplicate requests to the draft", () => {
@@ -68,25 +65,25 @@ describe("resilient author media creation", () => {
     );
   });
 
-  it("leaves an editable draft and logs a warning when original upload fails", () => {
+  it("returns the cover error to the open form without creating a draft", () => {
     assert.match(
       authorActionsSource,
-      /if \(!cover\.ok\) \{[\s\S]*action: "media\.cover-upload\.failed"[\s\S]*severity: "warning"[\s\S]*stage: "original-upload"[\s\S]*getSavedDraftErrorRedirect\(result\.item\.id, "cover-upload-saved"\)/,
+      /if \(!cover\.ok\) \{[\s\S]*stage: "original-upload"[\s\S]*return \{ error: cover\.error \}/,
     );
     assert.match(
-      authorMediaOperationsSource,
-      /attachAuthorPrivateMediaItemCover[\s\S]*eq\(mediaItems\.createdByAuthorId, input\.authorId\)[\s\S]*eq\(mediaItems\.publicationStatus, "private"\)[\s\S]*isNull\(mediaItems\.coverUrl\)/,
+      authorFormSource,
+      /const \[actionState, formAction, isSubmitting\] = useActionState\([\s\S]*result\?\.error/,
     );
   });
 
   it("logs thumbnail failure and enqueues item recovery without blocking creation", () => {
-    const thumbnailFailure = authorActionsSource.indexOf("if (cover.thumbnailError)");
-    const metadataSave = authorActionsSource.indexOf("await saveMediaItemMetadataMutation", thumbnailFailure);
+    const thumbnailFailure = authorActionsSource.indexOf("if (cover.coverUrl && cover.thumbnailError)");
+    const nextRevalidation = authorActionsSource.indexOf('revalidatePath("/author/media")', thumbnailFailure);
 
     assert.ok(thumbnailFailure >= 0);
-    assert.ok(metadataSave > thumbnailFailure);
+    assert.ok(nextRevalidation > thumbnailFailure);
     assert.match(
-      authorActionsSource.slice(thumbnailFailure, metadataSave),
+      authorActionsSource.slice(thumbnailFailure, nextRevalidation),
       /action: "media\.cover-thumbnail\.failed"[\s\S]*stage: "thumbnail"[\s\S]*payload: \{ mediaItemId: result\.item\.id \}[\s\S]*type: "media\.cover-thumbnails-backfill"/,
     );
   });

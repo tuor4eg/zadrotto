@@ -65,10 +65,6 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Не удалось загрузить обложку. Проверь S3-настройки.";
   }
 
-  if (error === "cover-upload-saved") {
-    return "Запись сохранена как черновик, но обложку загрузить не удалось. Попробуй загрузить её ещё раз.";
-  }
-
   if (error === "already-created") {
     return "Эта запись уже была создана. Продолжи работу с сохранённым черновиком.";
   }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { AlertTriangle, Loader2, RefreshCw, Search, Sparkles } from "lucide-react";
-import { useActionState, useEffect, useMemo, useRef, useState } from "react";
+import { startTransition, useActionState, useEffect, useMemo, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
@@ -63,8 +63,13 @@ type MediaItemFormValues = {
   coverSourcePageUrl?: string | null;
 };
 
+export type MediaItemFormAction = (formData: FormData) =>
+  | void
+  | { error: string | null }
+  | Promise<void | { error: string | null }>;
+
 type MediaItemFormProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: MediaItemFormAction;
   submitLabel: string;
   franchises: Awaited<ReturnType<typeof getFranchiseOptions>>;
   mediaCarriers: Awaited<ReturnType<typeof getMediaCarrierOptions>>;
@@ -201,17 +206,17 @@ export function MediaItemForm({
 }: MediaItemFormProps) {
   const isEditing = Boolean(values?.id);
   const authorCreationRequestIdRef = useRef<string | null>(null);
-  const [, formAction, isSubmitting] = useActionState(
-    async (_state: null, formData: FormData) => {
+  const [actionState, formAction, isSubmitting] = useActionState(
+    async (_state: { error: string | null }, formData: FormData) => {
       if (!isEditing) {
         authorCreationRequestIdRef.current ??= crypto.randomUUID();
         formData.set("authorCreationRequestId", authorCreationRequestIdRef.current);
       }
-      await action(formData);
+      const result = await action(formData);
 
-      return null;
+      return { error: result?.error ?? null };
     },
-    null,
+    { error: null },
   );
   const [submissionIntent, setSubmissionIntent] = useState<"draft" | "submit">("draft");
   const [selectedMediaType, setSelectedMediaType] = useState<MediaType>(
@@ -273,7 +278,16 @@ export function MediaItemForm({
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
   );
-  const toastMessages = localErrorToast ? [localErrorToast] : [];
+  const rawActionErrorMessage = getAuthorMediaFormErrorMessage(actionState.error ?? undefined);
+  const actionErrorMessage = rawActionErrorMessage && actionState.error?.startsWith("cover-")
+    ? `${rawActionErrorMessage} Запись пока не сохранена — попробуй ещё раз.`
+    : rawActionErrorMessage;
+  const toastMessages = [
+    ...(localErrorToast ? [localErrorToast] : []),
+    ...(actionErrorMessage
+      ? [{ id: `submit-${actionState.error}`, tone: "error", text: actionErrorMessage } satisfies AuthorToast]
+      : []),
+  ];
   const metadataRefreshSource = getMediaMetadataRefreshSource({
     mediaType: selectedMediaType,
     titleSource: selectedTitleSource,
@@ -581,7 +595,18 @@ export function MediaItemForm({
   }
 
   return (
-    <form action={formAction} aria-busy={isSubmitting} className="grid gap-5" noValidate>
+    <form
+      action={formAction}
+      aria-busy={isSubmitting}
+      className="grid gap-5"
+      noValidate
+      onSubmit={(event) => {
+        event.preventDefault();
+        const formData = new FormData(event.currentTarget);
+
+        startTransition(() => formAction(formData));
+      }}
+    >
       <AuthorToasts messages={toastMessages} />
 
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -1148,7 +1173,7 @@ export function MediaItemForm({
           ) : null}
           {isSubmitting && submissionIntent === "draft" ? submissionStatusLabel : submitLabel}
         </Button>
-        {!isEditing && createAndSubmitLabel ? (
+        {createAndSubmitLabel ? (
           <Button
             type="submit"
             variant="positive"

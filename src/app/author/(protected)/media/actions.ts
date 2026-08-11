@@ -6,7 +6,6 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import {
-  attachAuthorPrivateMediaItemCover,
   createAuthorPrivateMediaItemWithLimitCheck,
   getAuthorMediaItemByCreationRequestId,
 } from "@/db/operations/author-media-items";
@@ -548,25 +547,64 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     title: form.value.title,
     uniqueId: randomUUID().slice(0, 8),
   });
-  const result = await createAuthorPrivateMediaItemWithLimitCheck({
+  const coverFile = getOptionalCoverFile(formData);
+  const coverCandidateToken = getOptionalCoverCandidateToken(formData);
+  const coverSettings = await getCoverSettings();
+  const cover = await resolveCoverUpload({
     authorId: author.id,
-    authorCreationRequestId,
-    code,
-    coverUrl: null,
-    coverThumbUrl: null,
-    coverSource: { provider: null, externalId: null, pageUrl: null },
-    limits: {
-      maxDraftMediaItems: author.maxDraftMediaItems,
-      maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
-    },
-    ...form.value,
+    mediaItemCode: code,
+    coverFile,
+    candidateToken: coverCandidateToken,
+    maxBytes: coverSettings.coverMaxBytes,
   });
 
+  if (!cover.ok) {
+    console.error("author media cover upload failed", {
+      errorCode: cover.error,
+      source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
+      stage: "original-upload",
+      ...cover.diagnostic,
+    });
+    return { error: cover.error };
+  }
+
+  let result;
+
+  try {
+    result = await createAuthorPrivateMediaItemWithLimitCheck({
+      authorId: author.id,
+      authorCreationRequestId,
+      code,
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+      coverSource: cover.source,
+      limits: {
+        maxDraftMediaItems: author.maxDraftMediaItems,
+        maxDraftMediaItemsPerDay: author.maxDraftMediaItemsPerDay,
+      },
+      ...form.value,
+    });
+  } catch (error) {
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch((cleanupError) => console.error("cover cleanup after create failure", cleanupError));
+    throw error;
+  }
+
   if (!result.ok) {
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch((cleanupError) => console.error("cover cleanup after rejected create", cleanupError));
     redirect(getCreateErrorRedirect(formData, result.reason));
   }
 
   if (!result.created) {
+    await deleteUploadedCoverFilesIfNeeded({
+      coverUrl: cover.coverUrl,
+      coverThumbUrl: cover.coverThumbUrl,
+    }).catch((cleanupError) => console.error("cover cleanup after duplicate create", cleanupError));
     redirect(getExistingCreationRedirect(result.item));
   }
 
@@ -586,119 +624,6 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     },
   });
 
-  const coverFile = getOptionalCoverFile(formData);
-  const coverCandidateToken = getOptionalCoverCandidateToken(formData);
-  const coverSettings = await getCoverSettings();
-  const cover = await resolveCoverUpload({
-    authorId: author.id,
-    mediaItemCode: code,
-    coverFile,
-    candidateToken: coverCandidateToken,
-    maxBytes: coverSettings.coverMaxBytes,
-  });
-
-  if (!cover.ok) {
-    console.error("author media cover upload failed", {
-      errorCode: cover.error,
-      mediaItemId: result.item.id,
-      source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
-      stage: "original-upload",
-    });
-    await logActivity({
-      action: "media.cover-upload.failed",
-      actorType: "author",
-      authorId: author.id,
-      entityType: "media-item",
-      entityId: result.item.id,
-      entityLabel: form.value.title,
-      status: "failure",
-      severity: "warning",
-      message: "Запись сохранена, но обложку загрузить не удалось.",
-      metadata: {
-        errorCode: cover.error,
-        retryable: cover.error === "cover-upload",
-        source: coverFile ? "manual" : coverCandidateToken ? "provider" : "none",
-        stage: "original-upload",
-        ...cover.diagnostic,
-      },
-    });
-    redirect(getSavedDraftErrorRedirect(result.item.id, "cover-upload-saved"));
-  }
-
-  if (cover.coverUrl) {
-    const attached = await attachAuthorPrivateMediaItemCover({
-      authorId: author.id,
-      mediaItemId: result.item.id,
-      coverUrl: cover.coverUrl,
-      coverThumbUrl: cover.coverThumbUrl,
-      coverSource: cover.source,
-    });
-
-    if (!attached) {
-      console.error("author media cover attach failed", {
-        mediaItemId: result.item.id,
-        stage: "database-attach",
-      });
-      await logActivity({
-        action: "media.cover-upload.failed",
-        actorType: "author",
-        authorId: author.id,
-        entityType: "media-item",
-        entityId: result.item.id,
-        entityLabel: form.value.title,
-        status: "failure",
-        severity: "warning",
-        message: "Обложка загружена, но не была привязана к записи.",
-        metadata: {
-          errorCode: "cover-attach",
-          retryable: true,
-          stage: "database-attach",
-        },
-      });
-      await deleteUploadedCoverFilesIfNeeded({
-        coverUrl: cover.coverUrl,
-        coverThumbUrl: cover.coverThumbUrl,
-      }).catch((error) => console.error("cover cleanup after attach failure", {
-        errorName: error instanceof Error ? error.name : typeof error,
-        mediaItemId: result.item.id,
-      }));
-      redirect(getSavedDraftErrorRedirect(result.item.id, "cover-upload-saved"));
-    }
-
-    if (cover.thumbnailError) {
-      console.error("author media cover thumbnail failed", {
-        errorCode: cover.thumbnailError,
-        mediaItemId: result.item.id,
-        stage: "thumbnail",
-      });
-      await logActivity({
-        action: "media.cover-thumbnail.failed",
-        actorType: "author",
-        authorId: author.id,
-        entityType: "media-item",
-        entityId: result.item.id,
-        entityLabel: form.value.title,
-        status: "failure",
-        severity: "warning",
-        message: "Оригинал обложки сохранён, но миниатюра не создана.",
-        metadata: {
-          errorCode: cover.thumbnailError,
-          retryable: cover.thumbnailError === "cover-thumbnail-upload",
-          source: coverFile ? "manual" : "provider",
-          stage: "thumbnail",
-        },
-      });
-      await enqueueJobRun({
-        payload: { mediaItemId: result.item.id },
-        source: "event",
-        type: "media.cover-thumbnails-backfill",
-      }).catch((error) => console.error("cover thumbnail enqueue failed", {
-        errorName: error instanceof Error ? error.name : typeof error,
-        mediaItemId: result.item.id,
-      }));
-    }
-  }
-
   await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
 
   if (ratingScore.value !== null) {
@@ -717,6 +642,39 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     }
 
     revalidatePath("/author");
+  }
+
+  if (cover.coverUrl && cover.thumbnailError) {
+    console.error("author media cover thumbnail failed", {
+      errorCode: cover.thumbnailError,
+      mediaItemId: result.item.id,
+      stage: "thumbnail",
+    });
+    await logActivity({
+      action: "media.cover-thumbnail.failed",
+      actorType: "author",
+      authorId: author.id,
+      entityType: "media-item",
+      entityId: result.item.id,
+      entityLabel: form.value.title,
+      status: "failure",
+      severity: "warning",
+      message: "Оригинал обложки сохранён, но миниатюра не создана.",
+      metadata: {
+        errorCode: cover.thumbnailError,
+        retryable: cover.thumbnailError === "cover-thumbnail-upload",
+        source: coverFile ? "manual" : "provider",
+        stage: "thumbnail",
+      },
+    });
+    await enqueueJobRun({
+      payload: { mediaItemId: result.item.id },
+      source: "event",
+      type: "media.cover-thumbnails-backfill",
+    }).catch((error) => console.error("cover thumbnail enqueue failed", {
+      errorName: error instanceof Error ? error.name : typeof error,
+      mediaItemId: result.item.id,
+    }));
   }
 
   revalidatePath("/author/media");
@@ -987,6 +945,11 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   });
 
   revalidatePath("/author/media");
+
+  if (getCreateIntent(formData) === "submit") {
+    await publishAuthorMediaItemAction(formData);
+  }
+
   redirect("/author/media?updated=1");
 }
 

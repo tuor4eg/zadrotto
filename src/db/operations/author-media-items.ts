@@ -1,4 +1,4 @@
-import { and, eq, isNull } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { mediaItems } from "@/db/schema";
@@ -129,34 +129,4 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
 
     return { ok: true, created: true, item };
   });
-}
-
-export async function attachAuthorPrivateMediaItemCover(input: {
-  authorId: number;
-  coverSource: AuthorMediaItemInput["coverSource"];
-  coverThumbUrl: string | null;
-  coverUrl: string;
-  mediaItemId: number;
-}) {
-  const [item] = await db
-    .update(mediaItems)
-    .set({
-      coverUrl: input.coverUrl,
-      coverThumbUrl: input.coverThumbUrl,
-      coverSourceProvider: input.coverSource.provider,
-      coverSourceExternalId: input.coverSource.externalId,
-      coverSourcePageUrl: input.coverSource.pageUrl,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(mediaItems.id, input.mediaItemId),
-        eq(mediaItems.createdByAuthorId, input.authorId),
-        eq(mediaItems.publicationStatus, "private"),
-        isNull(mediaItems.coverUrl),
-      ),
-    )
-    .returning({ id: mediaItems.id });
-
-  return Boolean(item);
 }

@@ -17,6 +17,10 @@ const mediaItemFormSource = readFileSync(
   "src/app/author/(protected)/media/media-item-form.tsx",
   "utf8",
 );
+const editPageSource = readFileSync(
+  "src/app/author/(protected)/media/[id]/edit/page.tsx",
+  "utf8",
+);
 
 function findSuggestionMountFiles(directory: string): string[] {
   return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -55,6 +59,41 @@ describe("archive author media suggestion placement", () => {
     ]);
     assert.match(franchisePageSource, /defaultFranchiseIds=\{\[franchise\.id\]\}/);
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);
+  });
+
+  it("keeps the suggestion form open when the backdrop is clicked", () => {
+    assert.doesNotMatch(suggestionSource, /onMouseDown=/);
+    assert.match(
+      suggestionSource,
+      /aria-label="Закрыть форму предложения"[\s\S]*onClick=\{\(\) => setModalState\(null\)\}/,
+    );
+  });
+
+  it("keeps the creation form open when a cover upload fails", () => {
+    assert.doesNotMatch(suggestionSource, /Перейти в черновик|Остаться в архиве/);
+    assert.match(
+      actionSource,
+      /const cover = await resolveCoverUpload\([\s\S]*if \(!cover\.ok\) \{[\s\S]*return \{ error: cover\.error \}/,
+    );
+    assert.match(
+      mediaItemFormSource,
+      /const result = await action\(formData\)[\s\S]*return \{ error: result\?\.error \?\? null \}/,
+    );
+    assert.match(
+      mediaItemFormSource,
+      /onSubmit=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)[\s\S]*startTransition\(\(\) => formAction\(formData\)\)/,
+    );
+    assert.match(mediaItemFormSource, /Запись пока не сохранена — попробуй ещё раз/);
+  });
+
+  it("can save and immediately submit an edited draft", () => {
+    assert.match(editPageSource, /Сохранить и опубликовать/);
+    assert.match(editPageSource, /Сохранить и отправить на проверку/);
+    assert.match(mediaItemFormSource, /\{createAndSubmitLabel \? \(/);
+    assert.match(
+      actionSource,
+      /if \(getCreateIntent\(formData\) === "submit"\) \{[\s\S]*publishAuthorMediaItemAction\(formData\)/,
+    );
   });
 
   it("sorts creation media types by the same record counts as archive tabs", () => {

@@ -5,7 +5,10 @@ import { createPortal } from "react-dom";
 import { Plus, X } from "lucide-react";
 import { usePathname, useSearchParams } from "next/navigation";
 
-import { MediaItemForm } from "@/app/author/(protected)/media/media-item-form";
+import {
+  MediaItemForm,
+  type MediaItemFormAction,
+} from "@/app/author/(protected)/media/media-item-form";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
@@ -14,7 +17,7 @@ import type { MediaType } from "@/lib/media/types";
 import type { MediaTypeFilter } from "./media-items-catalog-logic";
 
 type ArchiveAuthorMediaSuggestionProps = {
-  action: (formData: FormData) => void | Promise<void>;
+  action: MediaItemFormAction;
   canCreateFranchise: boolean;
   canPublishMediaWithoutReview: boolean;
   canSuggestFranchises: boolean;
@@ -175,11 +178,6 @@ export function ArchiveAuthorMediaSuggestion({
               aria-modal="true"
               className="fixed inset-0 z-[80] flex min-h-0 justify-center overflow-hidden bg-stone-950/45 px-3 py-5 sm:items-center sm:px-5"
               role="dialog"
-              onMouseDown={(event) => {
-                if (event.target === event.currentTarget) {
-                  setModalState(null);
-                }
-              }}
             >
               <div className="archive-paper archive-panel my-auto flex h-full max-h-[calc(100dvh-2.5rem)] w-full max-w-3xl flex-col shadow-2xl">
                 <div className="shrink-0 p-4 pb-3 sm:p-5 sm:pb-3">

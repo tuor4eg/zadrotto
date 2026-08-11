@@ -114,6 +114,11 @@ export default async function EditAuthorMediaPage({
           <MediaItemForm
             action={updateAuthorMediaItemAction}
             submitLabel="Сохранить"
+            createAndSubmitLabel={
+              author.canPublishMediaWithoutReview
+                ? "Сохранить и опубликовать"
+                : "Сохранить и отправить на проверку"
+            }
             franchises={franchises}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
