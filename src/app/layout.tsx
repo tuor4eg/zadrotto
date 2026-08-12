@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 
 import { RouteTransitionProgress } from "@/components/ui/route-transition-progress";
+import { AchievementToastHost } from "@/components/achievements/achievement-toast-host";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -25,6 +26,9 @@ export default function RootLayout({
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-full flex flex-col">
         {children}
+        <Suspense fallback={null}>
+          <AchievementToastHost />
+        </Suspense>
         <Suspense fallback={null}>
           <RouteTransitionProgress />
         </Suspense>

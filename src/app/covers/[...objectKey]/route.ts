@@ -1,6 +1,7 @@
 import { canViewMediaItemCover } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { fetchS3Object } from "@/lib/services/minio";
 
 const INTERNAL_COVER_PATH = "/_protected-covers";
 
@@ -44,6 +45,22 @@ export async function GET(_request: Request, { params }: CoverRouteContext) {
 
   if (!canViewCover) {
     return new Response("Обложка не найдена.", { status: 404 });
+  }
+
+  if (process.env.NODE_ENV === "development") {
+    const s3Response = await fetchS3Object({ objectKey });
+
+    if (!s3Response?.body) {
+      return new Response("Обложка не найдена.", { status: 404 });
+    }
+
+    return new Response(s3Response.body, {
+      headers: {
+        "Cache-Control": "private, max-age=300",
+        "Content-Type": s3Response.headers.get("content-type") ?? "application/octet-stream",
+        "X-Content-Type-Options": "nosniff",
+      },
+    });
   }
 
   return new Response(null, {

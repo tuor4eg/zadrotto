@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { authorMediaStatuses, mediaItems, ratings } from "@/db/schema";
 import { lockAuthorMediaState } from "@/db/queries/author-media-statuses";
+import { runInDomainEventTransaction } from "@/db/transaction";
 
 function getCurrentMoscowYear() {
   return Number(
@@ -21,8 +22,16 @@ export async function upsertAuthorRating(input: {
 }) {
   const now = new Date();
 
-  await db.transaction(async (tx) => {
+  await runInDomainEventTransaction(async (tx, appendEvent) => {
     await lockAuthorMediaState(tx, input);
+    const [existingRating] = await tx
+      .select({ id: ratings.id })
+      .from(ratings)
+      .where(and(
+        eq(ratings.mediaItemId, input.mediaItemId),
+        eq(ratings.authorId, input.authorId),
+      ))
+      .limit(1);
     await tx
       .delete(authorMediaStatuses)
       .where(and(eq(authorMediaStatuses.mediaItemId, input.mediaItemId), eq(authorMediaStatuses.authorId, input.authorId)));
@@ -33,6 +42,16 @@ export async function upsertAuthorRating(input: {
         target: [ratings.mediaItemId, ratings.authorId],
         set: { score: input.score, updatedAt: now },
       });
+
+    if (!existingRating) {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: `${input.authorId}:${input.mediaItemId}`,
+        aggregateType: "rating",
+        payload: { authorId: input.authorId, mediaItemId: input.mediaItemId },
+        type: "rating.created",
+      });
+    }
   });
 }
 

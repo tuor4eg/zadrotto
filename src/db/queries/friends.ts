@@ -15,6 +15,7 @@ import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { clampArchiveListPageSize } from "@/lib/archive/tile-grid-capacity";
 import { FRIENDS_PAGE_SIZE, type FriendshipViewState } from "@/lib/friends/model";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { runInDomainEventTransaction } from "@/db/transaction";
 
 type UserListRow = {
   avatarObjectKey: string | null;
@@ -150,17 +151,35 @@ export async function declineFriendRequest(authorId: number, requesterId: number
 export async function acceptFriendRequest(authorId: number, requesterId: number) {
   const ids = pair(authorId, requesterId);
   const now = new Date();
-  const updated = await db.update(authorFriendships).set({
-    acceptedAt: now,
-    status: "accepted",
-    updatedAt: now,
-  }).where(and(
-    eq(authorFriendships.firstAuthorId, ids.firstAuthorId),
-    eq(authorFriendships.secondAuthorId, ids.secondAuthorId),
-    eq(authorFriendships.status, "pending"),
-    eq(authorFriendships.requestedByAuthorId, requesterId),
-  )).returning({ id: authorFriendships.id });
-  return updated.length > 0;
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const updated = await tx.update(authorFriendships).set({
+      acceptedAt: now,
+      status: "accepted",
+      updatedAt: now,
+    }).where(and(
+      eq(authorFriendships.firstAuthorId, ids.firstAuthorId),
+      eq(authorFriendships.secondAuthorId, ids.secondAuthorId),
+      eq(authorFriendships.status, "pending"),
+      eq(authorFriendships.requestedByAuthorId, requesterId),
+    )).returning({ id: authorFriendships.id });
+    const friendship = updated[0];
+
+    if (!friendship) return false;
+
+    await appendEvent({
+      actorAuthorId: authorId,
+      aggregateId: String(friendship.id),
+      aggregateType: "friendship",
+      payload: {
+        acceptedByAuthorId: authorId,
+        friendshipId: friendship.id,
+        requestedByAuthorId: requesterId,
+      },
+      type: "friend.accepted",
+    });
+
+    return true;
+  });
 }
 
 export async function removeFriend(authorId: number, friendId: number) {

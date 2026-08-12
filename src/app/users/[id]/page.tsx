@@ -7,6 +7,8 @@ import { FriendshipControls } from "@/app/users/friendship-controls";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { AdaptiveArchivePageSizeSync } from "@/components/archive/adaptive-archive-page-size-sync";
 import { AuthorStatistics } from "@/components/author/author-statistics";
+import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { getAchievementShowcase } from "@/db/queries/achievements";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
@@ -46,6 +48,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const [current, query] = await Promise.all([getCurrentAuthor(), searchParams]);
   const profile = await getPublicUserProfile(id, current?.id);
   if (!profile) notFound();
+  const achievementItems = await getAchievementShowcase(profile.id);
   const view = query.view === "ratings" || query.view === "reviews"
     ? query.view
     : query.journal === "ratings" || query.journal === "reviews"
@@ -104,6 +107,8 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
           <Link href={`${basePath}?view=reviews`} className={buttonVariants({ variant: view === "reviews" ? "default" : "outline", size: "sm" })}>Рецензии</Link>
         </nav> : null}
       </header>
+
+      <AchievementShowcase items={achievementItems} />
 
       {profile.canViewJournal ? <section className="space-y-3">
           {view === "statistics" && statistics ? <AuthorStatistics

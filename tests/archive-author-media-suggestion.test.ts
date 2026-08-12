@@ -83,6 +83,10 @@ describe("archive author media suggestion placement", () => {
       mediaItemFormSource,
       /onSubmit=\{\(event\) => \{[\s\S]*event\.preventDefault\(\)[\s\S]*startTransition\(\(\) => formAction\(formData\)\)/,
     );
+    assert.match(
+      mediaItemFormSource,
+      /const submitter = event\.nativeEvent\.submitter;[\s\S]*formData\.set\(submitter\.name, submitter\.value\)/,
+    );
     assert.match(mediaItemFormSource, /Запись пока не сохранена — попробуй ещё раз/);
   });
 

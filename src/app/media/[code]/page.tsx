@@ -127,6 +127,17 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
                 <li>
                   <Link
                     className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                    href="/"
+                  >
+                    Главная
+                  </Link>
+                </li>
+                <li aria-hidden="true" className="text-stone-400">
+                  /
+                </li>
+                <li>
+                  <Link
+                    className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
                     href="/archive"
                   >
                     Архив

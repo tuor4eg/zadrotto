@@ -18,6 +18,7 @@ import {
 } from "@/lib/contributions/model";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { runInDomainEventTransaction } from "@/db/transaction";
 
 export async function getSubmittedContributionReviewCountForAdmin() {
   const [result] = await db
@@ -261,7 +262,7 @@ export async function upsertAuthorReview(input: {
   const submittedAt = input.status === "submitted" ? now : null;
   const reviewedAt = input.status === "published" ? now : null;
 
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const existingReview = input.contributionId
       ? await tx
           .select({
@@ -278,6 +279,7 @@ export async function upsertAuthorReview(input: {
             ),
           )
           .limit(1)
+          .for("update")
       : await tx
           .select({
             id: contributions.id,
@@ -292,7 +294,8 @@ export async function upsertAuthorReview(input: {
               eq(contributions.type, "review"),
             ),
           )
-          .limit(1);
+          .limit(1)
+          .for("update");
     const existing = existingReview[0];
 
     if (existing && !isAuthorEditableContributionStatus(existing.status)) {
@@ -323,6 +326,16 @@ export async function upsertAuthorReview(input: {
         })
         .where(eq(contributionReviews.contributionId, existing.id));
 
+      if (input.status === "published" && existing.status !== "published") {
+        await appendEvent({
+          actorAuthorId: input.authorId,
+          aggregateId: String(existing.id),
+          aggregateType: "review",
+          payload: { authorId: input.authorId, mediaItemId: input.mediaItemId },
+          type: "review.published",
+        });
+      }
+
       return { ok: true as const, id: existing.id };
     }
 
@@ -352,6 +365,16 @@ export async function upsertAuthorReview(input: {
       contributionId: created.id,
       mediaItemId: input.mediaItemId,
     });
+
+    if (input.status === "published") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: String(created.id),
+        aggregateType: "review",
+        payload: { authorId: input.authorId, mediaItemId: input.mediaItemId },
+        type: "review.published",
+      });
+    }
 
     return { ok: true as const, id: created.id };
   });
@@ -433,7 +456,7 @@ export async function reviewContributionReview(input: {
       : input.decision === "published"
         ? ["submitted", "hidden", "rejected"]
         : ["submitted"];
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [review] = await tx
       .update(contributions)
       .set({
@@ -451,12 +474,23 @@ export async function reviewContributionReview(input: {
         ),
       )
       .returning({
+        authorId: contributions.authorId,
         id: contributions.id,
         mediaItemId: contributions.primaryMediaItemId,
       });
 
     if (!review) {
       return null;
+    }
+
+    if (input.decision === "published") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(review.id),
+        aggregateType: "review",
+        payload: { authorId: review.authorId, mediaItemId: review.mediaItemId },
+        type: "review.published",
+      });
     }
 
     const [mediaItem] = await tx

@@ -22,6 +22,7 @@ import {
   Plug,
   ShieldCheck,
   Tags,
+  Trophy,
   Wrench,
   ListTodo,
   UserRound,
@@ -90,6 +91,7 @@ function getAdminNavGroups({
         { href: "/admin/authors", icon: UserRound, label: "Авторы" },
         { href: "/admin/author-tokens", icon: KeyRound, label: "Токены" },
         { href: "/admin/access-profiles", icon: ShieldCheck, label: "Профили" },
+        { href: "/admin/achievements", icon: Trophy, label: "Ачивки" },
       ],
     },
     {

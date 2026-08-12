@@ -421,6 +421,20 @@
       "when": 1786300600000,
       "tag": "0059_author_media_creation_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1786300700000,
+      "tag": "0060_domain_events_achievements",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1786300800000,
+      "tag": "0061_achievement_presentation",
+      "breakpoints": true
     }
   ]
 }

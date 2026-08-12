@@ -1,4 +1,6 @@
 import { AuthorStatistics } from "@/components/author/author-statistics";
+import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
@@ -9,9 +11,10 @@ export default async function AuthorPage() {
   const author = await requireAuthor();
   const mediaTypes = (await getEffectiveMediaTypeOptions(author.id)).filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
-  const [summary, reviewSummary] = await Promise.all([
+  const [summary, reviewSummary, achievementItems] = await Promise.all([
     getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
     getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
+    getAchievementShowcase(author.id),
   ]);
   const latestMediaItemIds = [...new Set([
     ...summary.latestRatings.map((rating) => rating.mediaItemId),
@@ -28,13 +31,16 @@ export default async function AuthorPage() {
     return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/author/reviews/${review.id}/edit`, item, key: `review-${review.id}` }] : [];
   });
 
-  return <AuthorStatistics
-    latestRatingTiles={latestRatingTiles}
-    latestReviewTiles={latestReviewTiles}
-    mediaTypes={mediaTypes}
-    ratingSummary={summary}
-    ratingsHref="/archive?sort=my_rating_date&mine=rated"
-    reviewCount={reviewSummary.reviewsCount}
-    reviewsHref="/author/reviews"
-  />;
+  return <div className="author-dashboard flex flex-col gap-3">
+    <AuthorStatistics
+      latestRatingTiles={latestRatingTiles}
+      latestReviewTiles={latestReviewTiles}
+      mediaTypes={mediaTypes}
+      ratingSummary={summary}
+      ratingsHref="/archive?sort=my_rating_date&mine=rated"
+      reviewCount={reviewSummary.reviewsCount}
+      reviewsHref="/author/reviews"
+    />
+    <AchievementShowcase items={achievementItems} />
+  </div>;
 }

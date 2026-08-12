@@ -87,12 +87,25 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
             aria-label="Хлебные крошки"
             className="font-mono text-xs uppercase tracking-[0.14em] text-stone-600"
           >
-            <Link
-              className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-              href="/archive"
-            >
-              Архив
-            </Link>
+            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
+              <li>
+                <Link
+                  className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                  href="/"
+                >
+                  Главная
+                </Link>
+              </li>
+              <li aria-hidden="true" className="text-stone-400">/</li>
+              <li>
+                <Link
+                  className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
+                  href="/archive"
+                >
+                  Архив
+                </Link>
+              </li>
+            </ol>
           </nav>
           <h1 className="mt-3 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Все серии

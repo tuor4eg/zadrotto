@@ -603,6 +603,11 @@ export function MediaItemForm({
       onSubmit={(event) => {
         event.preventDefault();
         const formData = new FormData(event.currentTarget);
+        const submitter = event.nativeEvent.submitter;
+
+        if (submitter instanceof HTMLButtonElement && submitter.name) {
+          formData.set(submitter.name, submitter.value);
+        }
 
         startTransition(() => formAction(formData));
       }}

@@ -9,6 +9,13 @@ const mediaItemsQuery = readFileSync("src/db/queries/media-items.ts", "utf8");
 const page = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 
 describe("public media related series", () => {
+  it("starts the record breadcrumb from the home page", () => {
+    assert.match(
+      page,
+      /aria-label="Хлебные крошки"[\s\S]*href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив/,
+    );
+  });
+
   it("builds direct sections before unique nearest-first ancestor sections", () => {
     const root = { id: 1, code: "root", title: "Root" };
     const parentA = { id: 2, code: "parent-a", title: "Parent A" };

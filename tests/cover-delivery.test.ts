@@ -16,7 +16,15 @@ describe("protected cover delivery", () => {
       coverRoute,
       /canViewMediaItemCover\([\s\S]*if \(!canViewCover\)[\s\S]*status: 404[\s\S]*"X-Accel-Redirect"/,
     );
-    assert.doesNotMatch(coverRoute, /fetchS3Object/);
+  });
+
+  it("streams authorized covers directly from S3 during local development", () => {
+    assert.match(
+      coverRoute,
+      /process\.env\.NODE_ENV === "development"[\s\S]*fetchS3Object\(\{ objectKey \}\)[\s\S]*new Response\(s3Response\.body/,
+    );
+    assert.match(coverRoute, /"Cache-Control": "private, max-age=300"/);
+    assert.match(coverRoute, /"X-Content-Type-Options": "nosniff"/);
   });
 
   it("encodes every object key segment and keeps browser caching private", () => {

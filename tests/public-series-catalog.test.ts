@@ -121,8 +121,9 @@ describe("public series catalog UI", () => {
   it("links the series detail breadcrumb through the full catalog", () => {
     assert.match(
       seriesPageSource,
-      /href="\/archive"[\s\S]*Архив[\s\S]*href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
+      /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив[\s\S]*href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
     );
+    assert.match(catalogPageSource, /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив/);
     assert.match(querySource, /const visitedParentIds = new Set\(\[franchise\.id\]\)/);
     assert.match(querySource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
     assert.match(seriesPageSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);

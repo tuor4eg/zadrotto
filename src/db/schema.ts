@@ -16,6 +16,7 @@ import {
   timestamp,
   unique,
   uniqueIndex,
+  uuid,
 } from "drizzle-orm/pg-core";
 
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/authors/media-experiences";
@@ -780,6 +781,110 @@ export const jobRuns = pgTable(
     check("job_runs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
     check("job_runs_retry_base_seconds_check", sql`${table.retryBaseSeconds} >= 1`),
     check("job_runs_retry_max_seconds_check", sql`${table.retryMaxSeconds} >= ${table.retryBaseSeconds}`),
+  ],
+);
+
+export const domainEvents = pgTable(
+  "domain_events",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    type: text("type").notNull(),
+    schemaVersion: integer("schema_version").default(1).notNull(),
+    actorAuthorId: integer("actor_author_id").references(() => authors.id, {
+      onDelete: "set null",
+    }),
+    aggregateType: text("aggregate_type").notNull(),
+    aggregateId: text("aggregate_id").notNull(),
+    payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("domain_events_type_occurred_at_idx").on(table.type, table.occurredAt),
+    index("domain_events_actor_occurred_at_idx").on(table.actorAuthorId, table.occurredAt),
+    check("domain_events_type_check", sql`btrim(${table.type}) <> ''`),
+    check("domain_events_schema_version_check", sql`${table.schemaVersion} >= 1`),
+    check("domain_events_aggregate_type_check", sql`btrim(${table.aggregateType}) <> ''`),
+    check("domain_events_aggregate_id_check", sql`btrim(${table.aggregateId}) <> ''`),
+  ],
+);
+
+export const domainEventOutbox = pgTable(
+  "domain_event_outbox",
+  {
+    eventId: uuid("event_id")
+      .primaryKey()
+      .references(() => domainEvents.id, { onDelete: "cascade" }),
+    dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("domain_event_outbox_pending_idx")
+      .on(table.createdAt)
+      .where(sql`${table.dispatchedAt} is null`),
+  ],
+);
+
+export const domainEventConsumptions = pgTable(
+  "domain_event_consumptions",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => domainEvents.id, { onDelete: "cascade" }),
+    consumerKey: text("consumer_key").notNull(),
+    processedAt: timestamp("processed_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.eventId, table.consumerKey] }),
+    check("domain_event_consumptions_consumer_key_check", sql`btrim(${table.consumerKey}) <> ''`),
+  ],
+);
+
+export const achievements = pgTable(
+  "achievements",
+  {
+    id: serial("id").primaryKey(),
+    code: text("code").notNull().unique(),
+    name: text("name").notNull(),
+    description: text("description").notNull(),
+    imageObjectKey: text("image_object_key"),
+    enabled: boolean("enabled").default(true).notNull(),
+    showWhenLocked: boolean("show_when_locked").default(true).notNull(),
+    displayOrder: integer("display_order").default(0).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    check("achievements_code_check", sql`btrim(${table.code}) <> ''`),
+    check("achievements_name_check", sql`btrim(${table.name}) <> ''`),
+    check("achievements_description_check", sql`btrim(${table.description}) <> ''`),
+  ],
+);
+
+export const userAchievements = pgTable(
+  "user_achievements",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    achievementId: integer("achievement_id")
+      .notNull()
+      .references(() => achievements.id, { onDelete: "restrict" }),
+    sourceEventId: uuid("source_event_id").references(() => domainEvents.id, {
+      onDelete: "set null",
+    }),
+    awardGroupId: uuid("award_group_id").notNull(),
+    awardedAt: timestamp("awarded_at", { withTimezone: true }).defaultNow().notNull(),
+    announcedAt: timestamp("announced_at", { withTimezone: true }),
+  },
+  (table) => [
+    unique("user_achievements_author_achievement_unique").on(
+      table.authorId,
+      table.achievementId,
+    ),
+    index("user_achievements_author_awarded_at_idx").on(table.authorId, table.awardedAt),
+    index("user_achievements_pending_announcement_idx")
+      .on(table.authorId, table.awardGroupId, table.awardedAt)
+      .where(sql`${table.announcedAt} is null`),
   ],
 );
 

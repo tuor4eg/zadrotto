@@ -25,7 +25,7 @@ import type {
 import { DEFAULT_CATALOG_SORT_DIRECTIONS } from "@/app/media-items-catalog-logic";
 import { db } from "@/db";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
-import type { DbTransaction } from "@/db/transaction";
+import { runInDomainEventTransaction, type DbTransaction } from "@/db/transaction";
 import {
   authorMediaExperiences,
   authorMediaStatuses,
@@ -973,7 +973,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
 export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "authorId"> & {
   authorId: number;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [item] = await tx
       .insert(mediaItems)
       .values({
@@ -1001,6 +1001,14 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
+
+    await appendEvent({
+      actorAuthorId: null,
+      aggregateId: String(item.id),
+      aggregateType: "media-item",
+      payload: { mediaItemId: item.id },
+      type: "media.published",
+    });
 
     return item;
   });
@@ -1213,8 +1221,8 @@ export async function submitAuthorMediaItemForPublication(input: {
   nextStatus: Extract<PublicationStatus, "submitted" | "published">;
 }) {
   const now = new Date();
-  const [item] = await db
-    .update(mediaItems)
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.nextStatus,
       submittedAt: input.nextStatus === "submitted" ? now : null,
@@ -1236,7 +1244,18 @@ export async function submitAuthorMediaItemForPublication(input: {
       publicationStatus: mediaItems.publicationStatus,
     });
 
-  return item ?? null;
+    if (item?.publicationStatus === "published") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: String(item.id),
+        aggregateType: "media-item",
+        payload: { mediaItemId: item.id },
+        type: "media.published",
+      });
+    }
+
+    return item ?? null;
+  });
 }
 
 export async function withdrawAuthorMediaItemFromReview(input: {
@@ -1376,8 +1395,8 @@ export async function reviewSubmittedAuthorMediaItem(input: {
   decision: Extract<PublicationStatus, "published" | "rejected">;
 }) {
   const now = new Date();
-  const [item] = await db
-    .update(mediaItems)
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.decision,
       reviewedByAdminId: input.adminUserId,
@@ -1398,7 +1417,7 @@ export async function reviewSubmittedAuthorMediaItem(input: {
     });
 
   if (item) {
-    await db
+    await tx
       .update(franchises)
       .set({
         publicationStatus: input.decision,
@@ -1408,7 +1427,7 @@ export async function reviewSubmittedAuthorMediaItem(input: {
         and(
           eq(franchises.publicationStatus, "submitted"),
           exists(
-            db
+            tx
               .select({ id: mediaItemFranchises.franchiseId })
               .from(mediaItemFranchises)
               .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
@@ -1422,9 +1441,20 @@ export async function reviewSubmittedAuthorMediaItem(input: {
           ),
         ),
       );
+
+    if (item.publicationStatus === "published") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(item.id),
+        aggregateType: "media-item",
+        payload: { mediaItemId: item.id },
+        type: "media.published",
+      });
+    }
   }
 
   return item ?? null;
+  });
 }
 
 export async function updateAdminMediaItemPublicationStatus(input: {
@@ -1432,8 +1462,14 @@ export async function updateAdminMediaItemPublicationStatus(input: {
   nextStatus: Extract<PublicationStatus, "private" | "published">;
 }) {
   const now = new Date();
-  const [item] = await db
-    .update(mediaItems)
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [previous] = await tx
+      .select({ publicationStatus: mediaItems.publicationStatus })
+      .from(mediaItems)
+      .where(eq(mediaItems.id, input.mediaItemId))
+      .limit(1)
+      .for("update");
+    const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.nextStatus,
       submittedAt: null,
@@ -1457,7 +1493,18 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       coverSourcePageUrl: mediaItems.coverSourcePageUrl,
     });
 
-  return item ? withResolvedFranchises(item) : null;
+    if (item && previous?.publicationStatus !== "published" && item.publicationStatus === "published") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(item.id),
+        aggregateType: "media-item",
+        payload: { mediaItemId: item.id },
+        type: "media.published",
+      });
+    }
+
+    return item ? withResolvedFranchises(item) : null;
+  });
 }
 
 export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId: number) {
