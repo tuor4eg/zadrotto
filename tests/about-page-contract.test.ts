@@ -7,6 +7,8 @@ import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 
 const homePageSource = readFileSync("src/app/page.tsx", "utf8");
 const aboutPageSource = readFileSync("src/app/about/page.tsx", "utf8");
+const rulesPageSource = readFileSync("src/app/rules/page.tsx", "utf8");
+const helpPageSource = readFileSync("src/app/help/page.tsx", "utf8");
 const coverSourceAttributionSource = readFileSync(
   "src/components/archive/cover-source-attribution.tsx",
   "utf8",
@@ -87,5 +89,26 @@ describe("about page contracts", () => {
       5,
       "Every Google Books title, metadata and cover mapping must use the page URL fallback",
     );
+  });
+});
+
+describe("rules page contracts", () => {
+  it("links the footer and explains automatic and manual record data", () => {
+    assert.match(homePageSource, /<Link[^>]*href="\/rules"[^>]*>/);
+    assert.match(rulesPageSource, /Правила архива/);
+    assert.match(rulesPageSource, /архив получает из публичных баз данных/);
+    assert.match(rulesPageSource, /запись можно заполнить вручную/);
+    assert.match(rulesPageSource, /Рецензии проходят проверку перед публикацией/);
+  });
+});
+
+describe("help page contracts", () => {
+  it("links the footer and explains the primary and alternative suggestion flows", () => {
+    assert.match(homePageSource, /<Link[^>]*href="\/help"[^>]*>/);
+    assert.match(helpPageSource, /Как добавить то, чего ещё нет в архиве\?/);
+    assert.match(helpPageSource, /кнопку «\+» в левом нижнем углу/);
+    assert.match(helpPageSource, /кабинет автора → «Предложения» → «Записи» → «Добавить»/);
+    assert.match(helpPageSource, /href="\/archive"/);
+    assert.match(helpPageSource, /href="\/rules"/);
   });
 });

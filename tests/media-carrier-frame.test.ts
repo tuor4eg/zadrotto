@@ -256,11 +256,12 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1979 }),
       {
-        assetPath: "/mediaCarriers/video/reel/reel.png",
+        assetPath: "/mediaCarriers/video/reel/reel.png?v=2",
         aspectRatioClassName: "aspect-[1000/1040]",
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
-        coverAreaClassName: "left-[21.4%] top-[7.6%] h-[64.8%] w-[41.8%]",
+        coverAreaClassName:
+          "left-[1.6%] top-[0.4%] h-[78.8%] w-[82%] [clip-path:circle(50%)]",
         displayFontClassName: "media-carrier-font-film-reel",
         fontClassName: "media-carrier-font-film-reel",
         labelFontClassName: "media-carrier-font-film-reel-label",

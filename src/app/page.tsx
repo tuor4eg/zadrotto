@@ -23,7 +23,11 @@ import {
 } from "lucide-react";
 
 import { ArchiveCover } from "@/app/media-item-tile";
+import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
+import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
+import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
   ResponsiveTileGrid,
   type ResponsiveTileDescriptor,
@@ -33,12 +37,18 @@ import {
   type MainPageMediaItem,
 } from "@/db/queries/main-page";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
+import { getFranchiseOptions, getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
+import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
+import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
-import { getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getDailyDossier } from "@/lib/main-page/daily-dossier";
+import { sortMediaTypesByCount } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   AVERAGE_RATING_TEXT_TONE_CLASS_NAMES,
@@ -63,6 +73,15 @@ type SectionProps = {
   icon: React.ReactNode;
   showAllLink?: boolean;
   title: React.ReactNode;
+};
+
+type MainPageProps = {
+  searchParams: Promise<{
+    suggested?: string;
+    suggestedItemCode?: string;
+    suggestedItemId?: string;
+    suggestionError?: string;
+  }>;
 };
 
 function Section({ children, className, href, icon, showAllLink = true, title }: SectionProps) {
@@ -217,21 +236,43 @@ async function RandomFranchiseSection({
   );
 }
 
-export default async function MainPage() {
+export default async function MainPage({ searchParams }: MainPageProps) {
   await connection();
 
-  const [currentAuthor, currentAdmin] = await Promise.all([
+  const [currentAuthor, currentAdmin, params] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
+    searchParams,
   ]);
   const incomingFriendRequestCount = currentAuthor
     ? await getIncomingFriendRequestCount(currentAuthor.id)
     : 0;
-  const [effectiveMediaTypes, archiveSettings] = await Promise.all([
+  const [effectiveMediaTypes, archiveSettings, authorMediaSuggestionData] = await Promise.all([
     getEffectiveMediaTypeOptions(currentAuthor?.id),
     getArchiveSettings(),
+    currentAuthor
+      ? Promise.all([
+          getFranchiseOptions(currentAuthor.id),
+          getMediaCarrierOptions(),
+          isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
+          getPublishedMediaTypeCounts(),
+        ]).then(([franchises, mediaCarriers, canSuggestFranchises, mediaTypeCounts]) => ({
+          canCreateFranchise: canAuthorCreateFranchise({
+            canPublishFranchisesWithoutReview:
+              currentAuthor.canPublishFranchisesWithoutReview,
+          }),
+          canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
+          canSuggestFranchises,
+          franchises,
+          mediaCarriers,
+          mediaTypeCounts,
+        }))
+      : Promise.resolve(null),
   ]);
   const mediaTypes = effectiveMediaTypes.filter((item) => item.isEnabled);
+  const suggestionMediaTypes = authorMediaSuggestionData
+    ? sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)
+    : mediaTypes;
   const enabledMediaTypeCodes = mediaTypes.map((item) => item.code);
   const data = createMainPageDataPromises({
     currentAuthorId: currentAuthor?.id,
@@ -244,8 +285,61 @@ export default async function MainPage() {
     currentAuthorId: currentAuthor?.id,
     enabledMediaTypeCodes,
   });
+  const suggestionErrorMessage = getAuthorMediaFormErrorMessage(params.suggestionError);
+  const suggestedItemId = Number(params.suggestedItemId);
+  const suggestedItemHref =
+    Number.isInteger(suggestedItemId) && suggestedItemId > 0
+      ? params.suggested === "published" && params.suggestedItemCode
+        ? `/media/${encodeURIComponent(params.suggestedItemCode)}`
+        : params.suggested === "created"
+          ? `/author/media/${suggestedItemId}/edit`
+          : params.suggested === "submitted" && params.suggestedItemCode
+            ? `/author/media?q=${encodeURIComponent(params.suggestedItemCode)}`
+            : null
+      : null;
+  const suggestionSuccessMessage =
+    params.suggested === "created"
+      ? "создана в черновиках."
+      : params.suggested === "submitted"
+        ? "создана и отправлена на проверку."
+        : params.suggested === "published"
+          ? "создана и опубликована."
+          : null;
+  const toastMessages = [
+    ...(suggestionSuccessMessage
+      ? [
+          {
+            id: "suggested",
+            ...(suggestedItemHref
+              ? { link: { href: suggestedItemHref, label: "Запись" } }
+              : {}),
+            tone: "success",
+            text: suggestionSuccessMessage,
+          } satisfies ArchiveToast,
+        ]
+      : []),
+    ...(suggestionErrorMessage
+      ? [
+          {
+            id: params.suggestionError ?? "suggestion-error",
+            tone: "error",
+            text: suggestionErrorMessage,
+          } satisfies ArchiveToast,
+        ]
+      : []),
+  ];
+
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <ArchiveToasts
+        clearParams={[
+          "suggested",
+          "suggestedItemCode",
+          "suggestedItemId",
+          "suggestionError",
+        ]}
+        messages={toastMessages}
+      />
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <ArchiveSiteHeader
           brandHref="/"
@@ -351,6 +445,14 @@ export default async function MainPage() {
                 <Link className="hover:text-stone-950" href="/about">
                   {label}
                 </Link>
+              ) : index === 2 ? (
+                <Link className="hover:text-stone-950" href="/rules">
+                  {label}
+                </Link>
+              ) : index === 3 ? (
+                <Link className="hover:text-stone-950" href="/help">
+                  {label}
+                </Link>
               ) : (
                 <a aria-disabled="true" className="cursor-default" tabIndex={-1}>
                   {label}
@@ -360,6 +462,20 @@ export default async function MainPage() {
           ))}
         </footer>
       </div>
+      {currentAuthor && authorMediaSuggestionData ? (
+        <ArchiveAuthorMediaSuggestion
+          action={createAuthorMediaItemAction}
+          canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
+          canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
+          canSuggestFranchises={authorMediaSuggestionData.canSuggestFranchises}
+          franchises={authorMediaSuggestionData.franchises}
+          maxTitleAliases={archiveSettings.maxTitleAliases}
+          mediaCarriers={authorMediaSuggestionData.mediaCarriers}
+          mediaTypeFilter="all"
+          mediaTypes={suggestionMediaTypes}
+          searchQuery=""
+        />
+      ) : null}
     </main>
   );
 }

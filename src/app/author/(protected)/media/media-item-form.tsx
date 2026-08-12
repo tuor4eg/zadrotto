@@ -256,9 +256,15 @@ export function MediaItemForm({
   const [isTitleProviderSearchOpen, setIsTitleProviderSearchOpen] = useState(!isEditing);
   const [titleProviderSearchKey, setTitleProviderSearchKey] = useState(0);
   const [isRefreshingMetadata, setIsRefreshingMetadata] = useState(false);
-  const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(
-    values?.mediaCarrierId ? String(values.mediaCarrierId) : "",
-  );
+  const [selectedMediaCarrierId, setSelectedMediaCarrierId] = useState(() => {
+    if (values?.mediaCarrierId) {
+      return String(values.mediaCarrierId);
+    }
+
+    return selectedMediaType === "game"
+      ? String(mediaCarriers.find((carrier) => carrier.code === "pc")?.id ?? "")
+      : "";
+  });
   const [selectedFranchiseIds, setSelectedFranchiseIds] = useState(
     values?.franchiseIds?.map(String) ?? [],
   );
@@ -403,14 +409,19 @@ export function MediaItemForm({
     setSelectedMetadata(null);
     setMetadataCandidateToken("");
 
-    if (
-      selectedMediaCarrierId &&
-      !mediaCarriers.some(
-        (carrier) =>
-          String(carrier.id) === selectedMediaCarrierId &&
-          carrier.mediaTypes.includes(nextMediaType),
-      )
-    ) {
+    const selectedCarrierSupportsNextMediaType = mediaCarriers.some(
+      (carrier) =>
+        String(carrier.id) === selectedMediaCarrierId &&
+        carrier.mediaTypes.includes(nextMediaType),
+    );
+
+    if (nextMediaType === "game") {
+      if (!selectedCarrierSupportsNextMediaType) {
+        setSelectedMediaCarrierId(
+          String(mediaCarriers.find((carrier) => carrier.code === "pc")?.id ?? ""),
+        );
+      }
+    } else {
       setSelectedMediaCarrierId("");
     }
   }
@@ -826,25 +837,33 @@ export function MediaItemForm({
           />
         </div>
 
-        <div className="grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_7rem]">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="author-media-carrier">
-              Носитель
-            </Label>
-            <Select
-              id="author-media-carrier"
-              name="mediaCarrierId"
-              value={selectedMediaCarrierId}
-              onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
-            >
-              <option value="">Не выбран</option>
-              {availableMediaCarriers.map((carrier) => (
-                <option key={carrier.id} value={carrier.id}>
-                  {carrier.name}
-                </option>
-              ))}
-            </Select>
-          </div>
+        <div
+          className={
+            selectedMediaType === "game"
+              ? "grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,2fr)_7rem]"
+              : "grid gap-4 sm:col-span-2 sm:grid-cols-2 lg:col-span-3 lg:grid-cols-[minmax(0,2fr)_7rem]"
+          }
+        >
+          {selectedMediaType === "game" ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="author-media-carrier">
+                Носитель
+              </Label>
+              <Select
+                id="author-media-carrier"
+                name="mediaCarrierId"
+                value={selectedMediaCarrierId}
+                onChange={(event) => setSelectedMediaCarrierId(event.currentTarget.value)}
+              >
+                <option value="">Не выбран</option>
+                {availableMediaCarriers.map((carrier) => (
+                  <option key={carrier.id} value={carrier.id}>
+                    {carrier.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
 
           <div className="flex min-w-0 flex-col gap-2">
           <Label htmlFor="author-media-franchise">

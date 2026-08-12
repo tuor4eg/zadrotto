@@ -125,7 +125,13 @@ export function InlineFranchiseDialog({ onCreated, options }: InlineFranchiseDia
           </Button>
         </div>
 
-        <form ref={formRef} action={formAction} className="mt-5 grid gap-4" noValidate>
+        <form
+          ref={formRef}
+          action={formAction}
+          className="mt-5 grid gap-4"
+          noValidate
+          onSubmit={(event) => event.stopPropagation()}
+        >
           <AuthorToasts messages={toastMessages} />
 
           <div className="flex flex-col gap-2">

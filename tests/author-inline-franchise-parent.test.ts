@@ -33,6 +33,13 @@ const inlineActionSource = actionsSource.slice(
 );
 
 describe("author inline franchise parent selection", () => {
+  it("does not submit the surrounding new-record form when creating a series", () => {
+    assert.match(
+      dialogSource,
+      /<form[\s\S]*action=\{formAction\}[\s\S]*onSubmit=\{\(event\) => event\.stopPropagation\(\)\}/,
+    );
+  });
+
   it("renders a parent selector with published franchise options", () => {
     assert.match(
       formSource,
