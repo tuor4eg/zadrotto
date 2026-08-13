@@ -412,9 +412,13 @@ export default async function MainPage({ searchParams }: MainPageProps) {
                 <Suspense fallback={<MainSectionLoader minHeight="min-h-44" />}><DossierContent enabledMediaTypeCodes={enabledMediaTypeCodes} mediaTypes={mediaTypes} promise={dossierPromise} /></Suspense>
               </div>
             </section>
-            <section className="archive-paper archive-panel min-h-0 p-4 xl:col-start-2 xl:row-start-2 xl:overflow-hidden xl:[contain:size]">
-              <h2 className="mb-2 flex items-center gap-2 font-serif text-2xl"><Info className="size-5 text-red-950/70" />Об архиве</h2>
-              <Suspense fallback={<MainSectionLoader minHeight="min-h-64" />}><AboutArchive promise={data.about} /></Suspense>
+            <section className="archive-paper archive-panel flex min-h-0 flex-col p-4 xl:col-start-2 xl:row-start-2 xl:overflow-hidden xl:[contain:size]">
+              <h2 className="mb-2 shrink-0 flex items-center gap-2 font-serif text-2xl"><Info className="size-5 text-red-950/70" />Об архиве</h2>
+              <div className="relative min-h-0 flex-1">
+                <div className="h-full overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                  <Suspense fallback={<MainSectionLoader minHeight="min-h-64" />}><AboutArchive promise={data.about} /></Suspense>
+                </div>
+              </div>
             </section>
           </aside>
         </div>

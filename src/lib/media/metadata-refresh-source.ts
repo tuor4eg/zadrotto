@@ -29,6 +29,7 @@ const MEDIA_PROVIDER_CODES = [
   "jikan",
   "anilist",
   "fantlab",
+  "roblox",
 ] as const satisfies readonly MediaProviderCode[];
 
 function isMediaProviderCode(value: string | null | undefined): value is MediaProviderCode {
@@ -83,7 +84,7 @@ function normalizeMetadataExternalId(
     );
   }
 
-  if (provider === "igdb" || provider === "rawg") {
+  if (provider === "igdb" || provider === "rawg" || provider === "roblox") {
     return getColonPartExternalId(value, "game") ?? (value && /^\d+$/.test(value) ? value : null);
   }
 

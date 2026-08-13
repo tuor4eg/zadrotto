@@ -25,6 +25,7 @@ export type MediaCarrierRatingPanelVariant =
   | "modern-tv-guide"
   | "nes-hearts"
   | "ps1-memory-card"
+  | "roblox-plaque"
   | "steam-achievement"
   | "streaming-card"
   | "tv-guide"
@@ -106,6 +107,21 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     coverAreaClassName: "left-[13.2%] top-[3.5%] h-[88.4%] w-[82.2%]",
     placeholderVariant: "dvd-label",
     ratingPanelVariant: "book-note",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
+  "roblox/roblox": {
+    assetPath: "/mediaCarriers/roblox/roblox.webp",
+    aspectRatioClassName: "aspect-[1008/1499]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[17.2%] top-[17%] h-[62.1%] w-[67.5%]",
+    displayFontClassName: "media-carrier-font-roblox",
+    fontClassName: "media-carrier-font-roblox",
+    labelFontClassName: "media-carrier-font-roblox",
+    placeholderVariant: "dvd-label",
+    ratingPanelVariant: "roblox-plaque",
     renderKind: "cartridge",
     sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
     viewportClassName: "h-[min(58vh,520px)]",
@@ -484,6 +500,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "anime") {
     return MEDIA_CARRIER_FRAMES["anime/anime"] ?? null;
+  }
+
+  if (item.mediaType === "roblox") {
+    return MEDIA_CARRIER_FRAMES["roblox/roblox"] ?? null;
   }
 
   if (!item.mediaCarrierCode) {

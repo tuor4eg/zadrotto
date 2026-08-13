@@ -7,6 +7,7 @@ import { igdbProvider } from "@/lib/covers/providers/igdb";
 import { jikanProvider } from "@/lib/covers/providers/jikan";
 import { openLibraryProvider } from "@/lib/covers/providers/open-library";
 import { rawgProvider } from "@/lib/covers/providers/rawg";
+import { robloxProvider } from "@/lib/covers/providers/roblox";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
 
 export const COVER_PROVIDERS = [
@@ -18,6 +19,7 @@ export const COVER_PROVIDERS = [
   fantLabProvider,
   igdbProvider,
   rawgProvider,
+  robloxProvider,
   jikanProvider,
   anilistProvider,
   createTmdbProvider("anime"),

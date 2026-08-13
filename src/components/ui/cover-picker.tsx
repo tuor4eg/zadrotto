@@ -44,6 +44,7 @@ type CoverCandidatesResponse = {
   error?:
     | "author-rate-limit"
     | "provider-daily-limit"
+    | "provider-rate-limit"
     | "provider-unavailable"
     | "rate-limit-unavailable";
 };

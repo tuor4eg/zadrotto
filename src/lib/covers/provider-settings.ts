@@ -24,6 +24,7 @@ export const COVER_PROVIDER_LABELS = {
   jikan: "Jikan",
   anilist: "AniList",
   fantlab: "FantLab",
+  roblox: "Roblox",
 } as const satisfies Record<CoverProviderCode, string>;
 
 export function getCoverProviderSettingKey(input: {

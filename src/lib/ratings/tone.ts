@@ -126,6 +126,18 @@ export const AUTHOR_PS1_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: "text-emerald-700",
 };
 
+export const AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-700",
+  medium: "text-sky-700",
+  good: "text-emerald-700",
+};
+
+export const AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  bad: "text-red-200",
+  medium: "text-blue-100",
+  good: "text-emerald-200",
+};
+
 export const AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "text-red-400 [--streaming-rating-glow:rgba(248,113,113,0.18)]",
   medium: "text-stone-300 [--streaming-rating-glow:rgba(214,211,209,0.14)]",

@@ -435,6 +435,13 @@
       "when": 1786300800000,
       "tag": "0061_achievement_presentation",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1786636800000,
+      "tag": "0062_roblox_media_type",
+      "breakpoints": true
     }
   ]
 }

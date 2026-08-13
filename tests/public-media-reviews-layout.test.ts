@@ -20,7 +20,8 @@ describe("public media reviews layout", () => {
   });
 
   it("renders the review shelf below the cover on desktop and after the archive note on mobile", () => {
-    const coverAttribution = details.indexOf("<CoverSourceAttribution");
+    const archiveDetails = details.indexOf("function ArchiveMediaItemDetails");
+    const coverAttribution = details.indexOf("<CoverSourceAttribution", archiveDetails);
     const desktopShelf = details.indexOf("{adjacentShelfSlot ?", coverAttribution);
     const detailsColumn = details.indexOf('className="flex min-h-[560px]', coverAttribution);
     const archiveNote = details.indexOf("<ArchiveNote", detailsColumn);
@@ -32,6 +33,10 @@ describe("public media reviews layout", () => {
     assert.match(
       details.slice(desktopShelf, detailsColumn),
       /className="mt-6 hidden lg:block"/,
+    );
+    assert.match(
+      details.slice(coverAttribution, desktopShelf + 30),
+      /<\/div>\s*\{adjacentShelfSlot \?/,
     );
     assert.ok(archiveNote > detailsColumn);
     assert.ok(mobileShelf > archiveNote);

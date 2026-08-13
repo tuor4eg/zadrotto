@@ -129,6 +129,14 @@
 }
 
 @font-face {
+  font-family: "Rubik Mono One";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/rubik-mono-one-regular.ttf") format("truetype");
+}
+
+@font-face {
   font-family: "PT Serif";
   font-style: normal;
   font-weight: 400;
@@ -634,6 +642,10 @@ body {
 
 .media-carrier-font-ps1 {
   font-family: "Russo One", "Noto Sans", Arial, sans-serif;
+}
+
+.media-carrier-font-roblox {
+  font-family: "Rubik Mono One", "Noto Sans", Arial, sans-serif;
 }
 
 .media-carrier-font-comic {

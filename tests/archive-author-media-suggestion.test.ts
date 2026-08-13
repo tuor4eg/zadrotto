@@ -110,8 +110,16 @@ describe("archive author media suggestion placement", () => {
       "src/app/author/(protected)/media/new/page.tsx",
       "utf8",
     );
-    assert.match(homePageSource, /mediaTypesByCount = sortMediaTypesByCount\(mediaTypes, mediaTypeCounts\)/);
+    assert.match(
+      homePageSource,
+      /mediaTypesByCount = authorMediaSuggestionData[\s\S]*sortMediaTypesByCount\(mediaTypes, authorMediaSuggestionData\.mediaTypeCounts\)/,
+    );
     assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion[\s\S]*mediaTypes=\{mediaTypesByCount\}/);
+    assert.match(homePageSource, /getPublishedMediaTypeCounts\(\)/);
+    assert.match(
+      homePageSource,
+      /sortMediaTypesByCount\(mediaTypes, authorMediaSuggestionData\.mediaTypeCounts\)/,
+    );
     assert.match(authorCreatePageSource, /getPublishedMediaTypeCounts\(\)/);
     assert.match(authorCreatePageSource, /sortMediaTypesByCount\(effectiveMediaTypes, mediaTypeCounts\)/);
     assert.match(franchisePageSource, /getPublishedMediaTypeCounts\(\)/);

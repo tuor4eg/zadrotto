@@ -1993,6 +1993,7 @@ describe("cover settings form", () => {
       ["anime", "jikan"],
       ["anime", "anilist"],
       ["anime", "tmdb"],
+      ["roblox", "roblox"],
     ]) {
       const settingKey = `${mediaType}:${providerCode}`;
 
@@ -2093,6 +2094,7 @@ describe("cover settings form", () => {
       "rawg",
       "jikan",
       "anilist",
+      "roblox",
     ]) {
       formData.set(`providerSearchesPerDay:${providerCode}`, "1000");
     }

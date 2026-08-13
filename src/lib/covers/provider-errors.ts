@@ -1,6 +1,7 @@
 export type ProviderRequestError =
   | "provider-unavailable"
   | "provider-daily-limit"
+  | "provider-rate-limit"
   | "rate-limit-unavailable";
 
 export type CoverRequestError = ProviderRequestError | "author-rate-limit";
@@ -8,6 +9,7 @@ export type CoverRequestError = ProviderRequestError | "author-rate-limit";
 export const COVER_REQUEST_ERROR_MESSAGES: Record<CoverRequestError, string> = {
   "author-rate-limit": "Ваш лимит поиска исчерпан. Попробуйте позже.",
   "provider-daily-limit": "Суточный лимит провайдера исчерпан. Попробуйте позже.",
+  "provider-rate-limit": "Roblox временно ограничил поиск. Попробуйте чуть позже.",
   "provider-unavailable": "Внешний провайдер временно недоступен. Попробуйте позже.",
   "rate-limit-unavailable": "Не удалось проверить лимиты поиска. Попробуйте позже.",
 };
@@ -20,6 +22,7 @@ export function getAggregatedProviderRequestError(
   errors: readonly ProviderRequestError[],
 ): ProviderRequestError | null {
   if (errors.includes("rate-limit-unavailable")) return "rate-limit-unavailable";
+  if (errors.includes("provider-rate-limit")) return "provider-rate-limit";
   if (errors.includes("provider-daily-limit")) return "provider-daily-limit";
   if (errors.includes("provider-unavailable")) return "provider-unavailable";
   return null;

@@ -28,7 +28,7 @@ describe("provider search error contracts", () => {
       assert.match(source, /error: result\.error/);
       assert.match(
         source,
-        /result\.error === "provider-daily-limit" \? 429 : 503/,
+        /result\.error === "provider-daily-limit" \|\| result\.error === "provider-rate-limit" \? 429 : 503/,
       );
     }
   });

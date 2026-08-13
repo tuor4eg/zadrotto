@@ -24,7 +24,7 @@ import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
-import type { MediaTitleCandidate, SignedMediaTitleCandidate } from "@/lib/covers/types";
+import type { MediaTitleCandidate, MediaTitleMetadata, SignedMediaTitleCandidate } from "@/lib/covers/types";
 import {
   COVER_REQUEST_ERROR_MESSAGES,
   getAggregatedProviderRequestError,
@@ -34,7 +34,10 @@ import {
 } from "@/lib/covers/provider-errors";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
 import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
-import { getMediaTitleCandidateFormFields } from "@/lib/media/title-candidate-form";
+import {
+  getMediaTitleCandidateFormFields,
+  getMediaTitleMetadataFormFields,
+} from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
 import {
   appendUniqueFranchiseIds,
@@ -80,7 +83,10 @@ type AdminMediaFormProps = {
 
 type MediaTitleMetadataResponse = {
   error?: unknown;
-  metadata?: (MediaMetadataFactsValue & { metadataCandidateToken?: string | null }) | null;
+  metadata?: (MediaMetadataFactsValue & {
+    fields?: MediaTitleMetadata["fields"];
+    metadataCandidateToken?: string | null;
+  }) | null;
 };
 
 type FetchedMediaTitleMetadata = NonNullable<MediaTitleMetadataResponse["metadata"]>;
@@ -533,6 +539,15 @@ export function AdminMediaForm({
                     }
 
                     if (!result.metadata) return;
+                    const canonicalFields = getMediaTitleMetadataFormFields(
+                      result.metadata.fields,
+                      nextFields,
+                      isEditing,
+                    );
+                    setTitle(canonicalFields.title);
+                    setOriginalTitle(canonicalFields.originalTitle);
+                    setReleaseYear(canonicalFields.releaseYear);
+                    setDescription(canonicalFields.description);
                     setSelectedMetadata(result.metadata);
                     setMetadataCandidateToken(result.metadata.metadataCandidateToken ?? "");
                   })

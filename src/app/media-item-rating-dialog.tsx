@@ -17,6 +17,7 @@ import {
   ModernTvGuideRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
+  RobloxRatingContent,
   SteamAchievementRatingContent,
   StreamingRatingContent,
   TvGuideRatingContent,
@@ -96,6 +97,7 @@ export function MediaItemRatingPanel({
   const isWin9xWindowPanel = panelVariant === "win9x-window";
   const isWinDvdAeroPanel = panelVariant === "windvd-aero";
   const isPs1MemoryCardPanel = panelVariant === "ps1-memory-card";
+  const isRobloxPlaquePanel = panelVariant === "roblox-plaque";
   const isSteamAchievementPanel = panelVariant === "steam-achievement";
   const isStreamingCardPanel = panelVariant === "streaming-card";
   const isDvdMenuPanel = panelVariant === "dvd-menu";
@@ -116,7 +118,9 @@ export function MediaItemRatingPanel({
     isStreamingCardPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
+    isRobloxPlaquePanel ||
     isPs1MemoryCardPanel;
+
   const tooltipClassName = "flex h-full w-full";
   const ratingPanelClassName = isStandalonePanel
     ? "group relative block h-full w-full min-w-0 cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
@@ -279,6 +283,16 @@ export function MediaItemRatingPanel({
     />
   ) : isPs1MemoryCardPanel ? (
     <Ps1RatingPanelContent
+      compact={isCompact}
+      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
+      detailPrefix={isCompact ? "" : "Знакомство: "}
+      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      score={currentAuthor ? currentAuthorScore : null}
+      tone="author"
+      value={currentAuthor ? undefined : "Войти"}
+    />
+  ) : isRobloxPlaquePanel ? (
+    <RobloxRatingContent
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}

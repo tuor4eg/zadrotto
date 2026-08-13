@@ -9,6 +9,7 @@ import {
   AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
+  AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES,
   AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
@@ -19,6 +20,7 @@ import {
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
+  AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES,
   AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
   AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
@@ -1869,6 +1871,98 @@ export function TvGuideRatingContent({
   );
 }
 
+export function RobloxRatingContent({
+  compact = false,
+  detail,
+  detailPrefix = "",
+  label,
+  score,
+  tone,
+  value,
+}: {
+  compact?: boolean;
+  detail?: string;
+  detailPrefix?: string;
+  label: string;
+  score: number | null;
+  tone: "archive" | "author";
+  value?: string;
+}) {
+  const isAuthor = tone === "author";
+  const hasValueOverride = value !== undefined;
+  const toneClassName = isAuthor
+    ? AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+    : AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+
+  return (
+    <span
+      className={`media-carrier-font-roblox relative flex h-full min-w-0 flex-col items-center overflow-hidden border text-center ${
+        compact ? "min-h-[7.25rem] rounded-lg px-3 pb-3 pt-4" : "min-h-[11rem] rounded-xl px-5 pb-4 pt-5"
+      } ${
+        isAuthor
+          ? "border-blue-950/45 bg-[linear-gradient(145deg,#1689e5_0%,#086dcc_38%,#0754aa_100%)] text-white shadow-[0_3px_0_#06458f,0_8px_16px_rgba(3,54,116,0.26),inset_0_2px_0_rgba(255,255,255,0.26),inset_0_-3px_0_rgba(2,50,112,0.38)]"
+          : "border-stone-400/60 bg-[linear-gradient(145deg,#fffdf7_0%,#f5f1e8_48%,#e7dfd0_100%)] text-stone-800 shadow-[0_7px_0_#c9bda8,0_11px_20px_rgba(87,69,43,0.22),inset_0_2px_0_rgba(255,255,255,0.95),inset_0_-3px_0_rgba(120,113,108,0.18)]"
+      }`}
+    >
+      {isAuthor ? (
+        <span
+          aria-hidden="true"
+          className="absolute inset-x-2 top-[-0.28rem] h-3 rounded-t-xl border border-blue-950/25 bg-blue-600"
+        />
+      ) : null}
+      {["left-3", "right-3"].map((position) => (
+        <span
+          key={position}
+          aria-hidden="true"
+          className={`absolute rounded-full border shadow-[inset_1px_1px_2px_rgba(255,255,255,0.55),inset_-1px_-1px_2px_rgba(15,23,42,0.2)] ${
+            compact
+              ? position === "left-3"
+                ? "left-2 top-2 h-3 w-3"
+                : "right-2 top-2 h-3 w-3"
+              : `top-3 h-4 w-4 ${position}`
+          } ${
+            isAuthor ? "border-blue-950/35 bg-blue-600" : "border-stone-300 bg-stone-100"
+          }`}
+        />
+      ))}
+      <span
+        className={`relative z-10 uppercase drop-shadow-sm ${
+          compact
+            ? "flex min-h-8 max-w-full items-start justify-center px-4 text-[10px] leading-4"
+            : "block text-xs leading-5"
+        } ${isAuthor ? "text-white" : "text-sky-600"}`}
+      >
+        {label}
+      </span>
+      <span
+        className={`relative z-10 block tabular-nums ${toneClassName} ${
+          hasValueOverride
+            ? compact
+              ? "mt-3 text-xs"
+              : "mt-4 text-sm"
+            : compact
+              ? "mt-3 text-3xl leading-none"
+              : "mt-4 text-5xl leading-none"
+        }`}
+      >
+        {value ?? formatScore(score)}
+      </span>
+      {!hasValueOverride ? (
+        <span className={`relative z-10 flex justify-center ${toneClassName} ${compact ? "mt-1 scale-75" : "mt-2"}`}>
+          <RatingStars score={score} />
+        </span>
+      ) : null}
+      <span
+        className={`relative z-10 mt-auto block min-h-4 pt-2 uppercase ${
+          compact ? "text-[8px] leading-3" : "text-[10px] leading-4"
+        } ${detail ? "opacity-90" : "opacity-0"}`}
+      >
+        {detail ? `${detailPrefix}${detail}` : "—"}
+      </span>
+    </span>
+  );
+}
+
 export function ArchiveRatingPanel({
   compact = false,
   displayFontClassName,
@@ -1973,6 +2067,18 @@ export function ArchiveRatingPanel({
   if (ratingPanelVariant === "ps1-memory-card") {
     return (
       <Ps1RatingPanelContent
+        compact={compact}
+        detail={formatRatingsCount(ratingsCount)}
+        label={label}
+        score={score}
+        tone="archive"
+      />
+    );
+  }
+
+  if (ratingPanelVariant === "roblox-plaque") {
+    return (
+      <RobloxRatingContent
         compact={compact}
         detail={formatRatingsCount(ratingsCount)}
         label={label}

@@ -148,20 +148,22 @@ const franchisesJsonSql = (
         : sql``}
 ), '[]'::jsonb)`;
 
-const franchiseIdsSql = (mediaItemId = mediaItems.id) => sql<number[]>`coalesce((
+const correlatedMediaItemIdSql = sql<number>`"media_items"."id"`;
+
+const franchiseIdsSql = () => sql<number[]>`coalesce((
   select array_agg(${mediaItemFranchises.franchiseId} order by ${franchises.title}, ${franchises.code})
   from ${mediaItemFranchises}
   inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}
-  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+  where ${mediaItemFranchises.mediaItemId} = ${correlatedMediaItemIdSql}
 ), array[]::integer[])`;
 
-const mediaItemTitleAliasesSql = (mediaItemId = mediaItems.id) => sql<string[]>`coalesce((
+const mediaItemTitleAliasesSql = () => sql<string[]>`coalesce((
   select jsonb_agg(${mediaItemTitleAliases.value} order by ${mediaItemTitleAliases.id})
   from ${mediaItemTitleAliases}
-  where ${mediaItemTitleAliases.mediaItemId} = ${mediaItemId}
+  where ${mediaItemTitleAliases.mediaItemId} = ${correlatedMediaItemIdSql}
 ), '[]'::jsonb)`;
 
-const franchiseLinkStatusesSql = (mediaItemId = mediaItems.id) => sql<MediaItemFranchiseLinkStatus[]>`coalesce((
+const franchiseLinkStatusesSql = () => sql<MediaItemFranchiseLinkStatus[]>`coalesce((
   select jsonb_agg(
     jsonb_build_object(
       'id', ${mediaItemFranchises.franchiseId},
@@ -169,7 +171,7 @@ const franchiseLinkStatusesSql = (mediaItemId = mediaItems.id) => sql<MediaItemF
     )
   )
   from ${mediaItemFranchises}
-  where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
+  where ${mediaItemFranchises.mediaItemId} = ${correlatedMediaItemIdSql}
 ), '[]'::jsonb)`;
 
 function withResolvedFranchises<T extends { franchises: MediaItemFranchiseLink[] | null }>(
@@ -535,7 +537,7 @@ const catalogMediaItemsQuery = (input: {
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(),
       franchiseLinkStatuses: input.currentAuthorId
-        ? franchiseLinkStatusesSql(mediaItems.id)
+        ? franchiseLinkStatusesSql()
         : sql<MediaItemFranchiseLinkStatus[]>`'[]'::jsonb`,
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
@@ -1685,7 +1687,7 @@ export async function getMediaItemByCode(
       description: mediaItems.description,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, currentAuthorId == null, currentAuthorId),
-      franchiseLinkStatuses: franchiseLinkStatusesSql(mediaItems.id),
+      franchiseLinkStatuses: franchiseLinkStatusesSql(),
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,

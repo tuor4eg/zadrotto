@@ -9,7 +9,8 @@ export type MediaProviderCode =
   | "rawg"
   | "jikan"
   | "anilist"
-  | "fantlab";
+  | "fantlab"
+  | "roblox";
 
 export type CoverProviderCode = MediaProviderCode;
 
@@ -23,6 +24,7 @@ export const COVER_PROVIDER_CODES = [
   "jikan",
   "anilist",
   "fantlab",
+  "roblox",
 ] as const satisfies readonly MediaProviderCode[];
 
 export function isCoverProviderCode(value: string): value is CoverProviderCode {
@@ -76,6 +78,7 @@ export type MediaTitleCandidate = {
   sourcePageUrl: string | null;
   releaseYear: number | null;
   confidence?: number;
+  subtitle?: string | null;
 };
 
 export type SignedMediaTitleCandidate = MediaTitleCandidate & {
@@ -87,6 +90,12 @@ export type MediaTitleMetadata = {
   externalId: string;
   sourceUrl: string | null;
   facts: Record<string, unknown>;
+  fields?: {
+    title?: string | null;
+    originalTitle?: string | null;
+    description?: string | null;
+    releaseYear?: number | null;
+  };
 };
 
 export type ProviderSearchOptions = {

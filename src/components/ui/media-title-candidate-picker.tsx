@@ -21,6 +21,7 @@ type MediaTitleCandidatesResponse = {
   error?:
     | "author-rate-limit"
     | "provider-daily-limit"
+    | "provider-rate-limit"
     | "provider-unavailable"
     | "rate-limit-unavailable";
 };
@@ -34,6 +35,7 @@ type MediaTitleCandidatePickerProps = {
 
 function getCandidateMeta(candidate: SignedMediaTitleCandidate) {
   return [
+    candidate.subtitle?.trim() || null,
     candidate.releaseYear ? String(candidate.releaseYear) : null,
     candidate.provider,
   ]
@@ -258,7 +260,7 @@ export function MediaTitleCandidatePicker({
             </span>
             <span className="min-w-0">
               <span className="block text-sm font-semibold">
-                Ищем тайтлы
+                Ищем записи
               </span>
               <span className="block truncate text-xs text-amber-800">
                 Проверяем провайдеров по названию
@@ -276,8 +278,8 @@ export function MediaTitleCandidatePicker({
             status === "idle" && "sr-only",
           )}
         >
-          {status === "empty" ? "Подходящие тайтлы не найдены." : null}
-          {status === "error" ? "Не удалось получить варианты тайтла." : null}
+          {status === "empty" ? "Подходящие записи не найдены." : null}
+          {status === "error" ? "Не удалось получить варианты записи." : null}
         </p>
       )}
     </div>

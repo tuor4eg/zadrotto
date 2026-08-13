@@ -30,3 +30,12 @@ export function formatAuthorsFact(facts: Record<string, unknown> | null | undefi
 
   return authors.length > 0 ? formatFactList(authors) : null;
 }
+
+export function getDateFactYear(
+  facts: Record<string, unknown> | null | undefined,
+  key: string,
+) {
+  const value = facts?.[key];
+
+  return typeof value === "string" ? value.match(/^(\d{4})/)?.[1] ?? null : null;
+}

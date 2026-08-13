@@ -4,6 +4,7 @@ import {
   getCatalogMediaItems,
   getCatalogMediaTypeCounts,
   getCatalogReleaseYearBounds,
+  getPublishedMediaTypeCounts,
 } from "@/db/queries/media-items";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
@@ -116,8 +117,9 @@ export default async function Home({ searchParams }: HomeProps) {
             getFranchiseOptions(currentAuthor.id),
             getMediaCarrierOptions(),
             isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
+            getPublishedMediaTypeCounts(),
           ]).then(
-            ([franchises, mediaCarriers, canSuggestFranchises]) => ({
+            ([franchises, mediaCarriers, canSuggestFranchises, mediaTypeCounts]) => ({
               canCreateFranchise: canAuthorCreateFranchise({
                 canPublishFranchisesWithoutReview:
                   currentAuthor.canPublishFranchisesWithoutReview,
@@ -131,12 +133,15 @@ export default async function Home({ searchParams }: HomeProps) {
                 (franchise) => franchise.publicationStatus === "published",
               ),
               mediaCarriers,
+              mediaTypeCounts,
             }),
           )
         : Promise.resolve(null),
     ]);
   const suggestionErrorMessage = getAuthorMediaFormErrorMessage(params.suggestionError);
-  const mediaTypesByCount = sortMediaTypesByCount(mediaTypes, mediaTypeCounts);
+  const mediaTypesByCount = authorMediaSuggestionData
+    ? sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)
+    : mediaTypes;
   const suggestedItemId = Number(params.suggestedItemId);
   const suggestedItemHref =
     Number.isInteger(suggestedItemId) && suggestedItemId > 0

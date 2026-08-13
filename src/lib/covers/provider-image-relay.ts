@@ -15,6 +15,7 @@ const PROVIDER_IMAGE_HOSTS: Record<CoverProviderCode, readonly string[]> = {
   jikan: ["cdn.myanimelist.net"],
   anilist: ["s4.anilist.co"],
   fantlab: ["fantlab.ru"],
+  roblox: ["tr.rbxcdn.com"],
 };
 
 type ProviderImageTokenPayload = {

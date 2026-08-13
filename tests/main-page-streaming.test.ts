@@ -30,6 +30,20 @@ describe("main page streaming", () => {
     assert.doesNotMatch(page, /await\s+createMainPageDataPromises\(/);
   });
 
+  it("keeps the about archive widget bounded and scrolls new media types", () => {
+    const aboutArchiveSection = page.match(
+      /<section className="([^"]*xl:col-start-2 xl:row-start-2[^"]*)">/,
+    )?.[1];
+
+    assert.ok(aboutArchiveSection);
+    assert.match(aboutArchiveSection, /overflow-hidden/);
+    assert.match(aboutArchiveSection, /contain:size/);
+    assert.match(
+      page,
+      /className="h-full overflow-y-auto \[-ms-overflow-style:none\] \[scrollbar-width:none\] \[&::-webkit-scrollbar\]:hidden"[\s\S]*<AboutArchive promise=\{data\.about\}/,
+    );
+  });
+
   it("matches the dossier action height and hover treatment to the header action", () => {
     assert.match(
       page,

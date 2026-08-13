@@ -103,7 +103,10 @@ export async function POST(request: Request) {
         error: result.error,
         metadata: null,
       },
-      { status: result.error === "provider-daily-limit" ? 429 : 503 },
+      {
+        status: result.error === "provider-daily-limit" || result.error === "provider-rate-limit" ? 429 : 503,
+        headers: result.error === "provider-rate-limit" ? { "retry-after": "60" } : undefined,
+      },
     );
   }
 
@@ -111,6 +114,7 @@ export async function POST(request: Request) {
     metadata: result.metadata
       ? {
           facts: result.metadata.facts,
+          fields: result.metadata.fields,
           sourceProvider: result.metadata.provider,
           sourceExternalId: result.metadata.externalId,
           sourceUrl: result.metadata.sourceUrl,

@@ -19,7 +19,7 @@ import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { cn } from "@/lib/common/utils";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
-import { formatAuthorsFact } from "@/lib/media/metadata-facts";
+import { formatAuthorsFact, getDateFactYear } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 
 type MediaCatalogPreviewProps = {
@@ -57,9 +57,14 @@ export function MediaCatalogPreview({
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
   const firstFranchiseCode = item.franchises[0]?.code ?? null;
+  const yearLabel = item.releaseYear
+    ? String(item.releaseYear)
+    : item.mediaType === "roblox"
+      ? getDateFactYear(item.metadataFacts, "createdAt")
+      : null;
   const metaItems = [
     getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase(),
-    item.releaseYear ? String(item.releaseYear) : null,
+    yearLabel,
     formatAuthorsFact(item.metadataFacts),
   ].filter((value): value is string => Boolean(value));
   const franchiseAction = currentAuthor ? (

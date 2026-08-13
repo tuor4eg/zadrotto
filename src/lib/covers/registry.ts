@@ -58,6 +58,19 @@ function getAggregatedSearchError(errors: readonly ProviderSearchError[]) {
   return getAggregatedProviderRequestError(errors);
 }
 
+function getProviderExecutionError(error: unknown): ProviderSearchError {
+  if (
+    error &&
+    typeof error === "object" &&
+    "code" in error &&
+    error.code === "provider-rate-limit"
+  ) {
+    return "provider-rate-limit";
+  }
+
+  return "provider-unavailable";
+}
+
 async function canSearchProvider(
   providerCode: MediaProviderCode,
   options: ProviderSearchOptions,
@@ -241,8 +254,8 @@ export async function searchCoverCandidates(
         exactCandidates = normalizeCoverCandidates(
           await provider.getCoverCandidatesByTitleSource(input, options),
         ).slice(0, options.candidateLimit);
-      } catch {
-        errors.push("provider-unavailable");
+      } catch (error) {
+        errors.push(getProviderExecutionError(error));
         exactCandidates = [];
       }
     }
@@ -283,8 +296,8 @@ export async function searchCoverCandidates(
           0,
           options.candidateLimit,
         );
-      } catch {
-        errors.push("provider-unavailable");
+      } catch (error) {
+        errors.push(getProviderExecutionError(error));
         continue;
       }
 
@@ -339,7 +352,7 @@ export async function searchCoverCandidates(
   ).slice(0, options.candidateLimit);
   const settledErrors = settledResults.flatMap((result) =>
     result.status === "rejected"
-      ? ["provider-unavailable" as const]
+      ? [getProviderExecutionError(result.reason)]
       : result.value.error
         ? [result.value.error]
         : [],
@@ -425,7 +438,7 @@ export async function searchTitleCandidates(
   errors.push(
     ...parallelResults.flatMap((result) =>
       result.status === "rejected"
-        ? ["provider-unavailable" as const]
+        ? [getProviderExecutionError(result.reason)]
         : result.value.error
           ? [result.value.error]
           : [],
@@ -455,8 +468,8 @@ export async function searchTitleCandidates(
       if (candidates.length > 0) {
         return buildProviderSearchResult(candidates.slice(0, options.candidateLimit), errors);
       }
-    } catch {
-      errors.push("provider-unavailable");
+    } catch (error) {
+      errors.push(getProviderExecutionError(error));
       continue;
     }
   }
@@ -529,7 +542,7 @@ export async function getTitleMetadata(
       metadata: normalizeTitleMetadata(await provider.getTitleMetadata(input, options)),
       error: null,
     };
-  } catch {
-    return { metadata: null, error: "provider-unavailable" as const };
+  } catch (error) {
+    return { metadata: null, error: getProviderExecutionError(error) };
   }
 }

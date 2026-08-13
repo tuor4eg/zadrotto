@@ -22,6 +22,7 @@ const DATA_PROVIDERS = [
   ["RAWG", "https://rawg.io/"],
   ["Jikan", "https://jikan.moe/"],
   ["AniList", "https://anilist.co/"],
+  ["Roblox", "https://www.roblox.com/"],
 ] as const;
 
 const externalLinkClassName =

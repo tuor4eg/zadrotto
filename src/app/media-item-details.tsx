@@ -11,6 +11,7 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
+import { getDateFactYear } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
@@ -76,6 +77,22 @@ type MediaItemDetailsProps = {
   relatedFranchiseSections?: RelatedFranchiseSection[];
 };
 
+function getStringFact(facts: Record<string, unknown> | null | undefined, key: string) {
+  const value = facts?.[key];
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getRobloxDetailLabels(item: MediaItemDetailsItem) {
+  if (item.mediaType !== "roblox") return [];
+
+  return [
+    getDateFactYear(item.metadataFacts, "createdAt"),
+    getStringFact(item.metadataFacts, "genre"),
+    getStringFact(item.metadataFacts, "genreLevel1"),
+    getStringFact(item.metadataFacts, "creatorName"),
+  ].filter((value): value is string => Boolean(value));
+}
+
 function FranchiseRelatedTitle({
   franchise,
   linkClassName,
@@ -116,6 +133,7 @@ export function MediaItemDetails({
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
+  const robloxDetailLabels = getRobloxDetailLabels(item);
   const [, detailsYearLabel, ...detailsMetaLabels] = getMediaItemSummaryParts({
     ...item,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
@@ -202,6 +220,9 @@ export function MediaItemDetails({
                 {detailsYearLabel ? <span className="mr-2">{detailsYearLabel}</span> : null}
                 {detailsMetaLabels.map((label) => (
                   <span key={label} className="mr-2">{label}</span>
+                ))}
+                {robloxDetailLabels.map((label, index) => (
+                  <span key={`${label}-${index}`} className="mr-2">{label}</span>
                 ))}
                 {meta}
               </div>
@@ -328,6 +349,7 @@ function ArchiveMediaItemDetails({
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
   relatedFranchiseSections: RelatedFranchiseSection[];
 }) {
+  const robloxDetailLabels = getRobloxDetailLabels(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
@@ -339,6 +361,7 @@ function ArchiveMediaItemDetails({
   const archiveInfoLabels = [
     ...(detailsYearLabel ? [detailsYearLabel] : []),
     ...detailsMetaLabels,
+    ...robloxDetailLabels,
   ];
 
   return (
@@ -367,57 +390,65 @@ function ArchiveMediaItemDetails({
               className={
                 hasCarrierFrame
                   ? "mt-6 mx-auto max-w-full sm:max-w-[420px]"
-                  : "mt-6 mx-auto max-w-[360px] rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
+                  : "mt-6 mx-auto max-w-[360px]"
               }
             >
               <div
                 className={
                   hasCarrierFrame
                     ? ""
-                    : "rounded-sm border border-stone-700 bg-stone-900 p-3"
+                    : "rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
                 }
               >
-                {!hasCarrierFrame ? (
-                  <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
-                    Archive cover
-                  </div>
-                ) : null}
                 <div
                   className={
                     hasCarrierFrame
-                      ? `relative max-w-full ${
-                          mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
-                        } overflow-visible rounded-sm`
-                      : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                      ? ""
+                      : "rounded-sm border border-stone-700 bg-stone-900 p-3"
                   }
                 >
-                  {item.coverUrl ? (
-                    <ImageViewer
-                      src={item.coverUrl}
-                      alt={`Обложка: ${item.title}`}
-                      title={item.title}
-                      triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
-                        hasCarrierFrame ? "" : "media-image-lift-trigger"
-                      }`}
-                    >
-                      <ArchiveCover item={item} className="h-full w-full" />
-                    </ImageViewer>
-                  ) : (
-                    <ArchiveCover item={item} className="h-full w-full" />
-                  )}
-                  {!item.coverUrl && !hasCarrierFrame ? (
-                    <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-                      <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
-                        Нет изображения
-                      </span>
+                  {!hasCarrierFrame ? (
+                    <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
+                      Archive cover
                     </div>
                   ) : null}
+                  <div
+                    className={
+                      hasCarrierFrame
+                        ? `relative max-w-full ${
+                            mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
+                          } overflow-visible rounded-sm`
+                        : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                    }
+                  >
+                    {item.coverUrl ? (
+                      <ImageViewer
+                        src={item.coverUrl}
+                        alt={`Обложка: ${item.title}`}
+                        title={item.title}
+                        triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
+                          hasCarrierFrame ? "" : "media-image-lift-trigger"
+                        }`}
+                      >
+                        <ArchiveCover item={item} className="h-full w-full" />
+                      </ImageViewer>
+                    ) : (
+                      <ArchiveCover item={item} className="h-full w-full" />
+                    )}
+                    {!item.coverUrl && !hasCarrierFrame ? (
+                      <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+                        <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
+                          Нет изображения
+                        </span>
+                      </div>
+                    ) : null}
+                  </div>
                 </div>
+                <CoverSourceAttribution
+                  provider={item.coverSourceProvider}
+                  pageUrl={item.coverSourcePageUrl}
+                />
               </div>
-              <CoverSourceAttribution
-                provider={item.coverSourceProvider}
-                pageUrl={item.coverSourcePageUrl}
-              />
               {adjacentShelfSlot ? (
                 <div className="mt-6 hidden lg:block">
                   {adjacentShelfSlot}
