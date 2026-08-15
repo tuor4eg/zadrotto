@@ -15,8 +15,13 @@ import {
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { getCoverProviderDefaultSettings } from "@/lib/covers/provider-settings";
+import {
+  COVER_PROVIDER_SMOKE_TEST_TIMEOUT_MS,
+  runCoverProviderSmokeTest,
+} from "@/lib/covers/provider-smoke-test";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
 import { anilistProvider } from "@/lib/covers/providers/anilist";
+import { fetchSearchJson } from "@/lib/covers/providers/shared";
 import {
   getCoverProvidersForMediaType,
   getTitleProvidersForMediaType,
@@ -84,6 +89,141 @@ describe("cover candidates", () => {
 
     assert.deepEqual(verifyCoverCandidateToken(token), baseCandidate);
     assert.equal(verifyCoverCandidateToken(`${token}x`), null);
+  });
+});
+
+describe("cover provider smoke test", () => {
+  it("rejects an unknown provider-media type pair before a request", async () => {
+    const result = await runCoverProviderSmokeTest({
+      providerCode: "anilist",
+      mediaType: "book",
+      providerCredentials: {},
+    });
+
+    assert.deepEqual(result, {
+      ok: false,
+      error: "invalid-provider",
+      httpStatus: null,
+      latencyMs: null,
+      providerMessage: null,
+    });
+  });
+
+  it("requires stored credentials when the provider needs them", async () => {
+    const result = await runCoverProviderSmokeTest(
+      { providerCode: "tmdb", mediaType: "film", providerCredentials: {} },
+      {
+        providers: [{
+          code: "tmdb",
+          mediaTypes: ["film"],
+          async searchTitleCandidates() {
+            throw new Error("must not be called");
+          },
+        }],
+      },
+    );
+
+    assert.deepEqual(result, {
+      ok: false,
+      error: "missing-credentials",
+      httpStatus: null,
+      latencyMs: null,
+      providerMessage: null,
+    });
+  });
+
+  it("returns the first title and latency after a successful provider request", async () => {
+    const times = [100, 145];
+    const result = await runCoverProviderSmokeTest(
+      { providerCode: "anilist", mediaType: "anime", providerCredentials: {} },
+      {
+        now: () => times.shift() ?? 145,
+        providers: [{
+          code: "anilist",
+          mediaTypes: ["anime"],
+          async searchTitleCandidates() {
+            return [{
+              id: "anime:1", provider: "anilist", externalId: "1", mediaType: "anime",
+              title: "Cowboy Bebop", originalTitle: null, description: null, coverUrl: null,
+              sourcePageUrl: null, releaseYear: null,
+            }];
+          },
+        }],
+      },
+    );
+
+    assert.deepEqual(result, { ok: true, candidateTitle: "Cowboy Bebop", latencyMs: 45 });
+  });
+
+  it("maps provider HTTP failures and timeouts to safe outcomes", async () => {
+    const failed = await runCoverProviderSmokeTest(
+      { providerCode: "tmdb", mediaType: "film", providerCredentials: { tmdb: { accessToken: "test" } } },
+      {
+        providers: [{
+          code: "tmdb",
+          mediaTypes: ["film"],
+          async searchTitleCandidates() {
+            throw new Error("Provider search failed with HTTP 401.");
+          },
+        }],
+      },
+    );
+    const timedOut = await runCoverProviderSmokeTest(
+      { providerCode: "anilist", mediaType: "anime", providerCredentials: {} },
+      {
+        timeoutMs: 1,
+        providers: [{
+          code: "anilist",
+          mediaTypes: ["anime"],
+          async searchTitleCandidates() {
+            return await new Promise<never>(() => {});
+          },
+        }],
+      },
+    );
+
+    assert.equal(COVER_PROVIDER_SMOKE_TEST_TIMEOUT_MS, 15_000);
+    assert.equal(failed.ok, false);
+    assert.equal(failed.error, "invalid-credentials");
+    assert.equal(failed.httpStatus, 401);
+    assert.equal(failed.providerMessage, "Provider search failed with HTTP 401.");
+    assert.equal(timedOut.ok, false);
+    assert.equal(timedOut.error, "timeout");
+    assert.equal(timedOut.httpStatus, null);
+  });
+
+  it("keeps the HTTP status and provider message from a JSON error response", async () => {
+    const originalFetch = globalThis.fetch;
+    globalThis.fetch = async () => new Response(JSON.stringify({
+      errors: [{ message: "The AniList API has been temporarily disabled." }],
+    }), {
+      status: 403,
+      headers: { "content-type": "application/json" },
+    });
+
+    try {
+      const result = await runCoverProviderSmokeTest(
+        { providerCode: "anilist", mediaType: "anime", providerCredentials: {} },
+        {
+          providers: [{
+            code: "anilist",
+            mediaTypes: ["anime"],
+            async searchTitleCandidates() {
+              return fetchSearchJson(new URL("https://graphql.anilist.co"));
+            },
+          }],
+        },
+      );
+
+      assert.equal(result.ok, false);
+      assert.equal(result.httpStatus, 403);
+      assert.equal(
+        result.providerMessage,
+        "The AniList API has been temporarily disabled.",
+      );
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
   });
 });
 

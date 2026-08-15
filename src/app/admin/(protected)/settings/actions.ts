@@ -8,6 +8,7 @@ import {
 } from "@/db/queries/admin-users";
 import {
   getCoverProviderCredentialStatuses,
+  getCoverProviderCredentialsForSearch,
   updateCoverProviderImageSetting,
   updateCoverProviderRateLimits,
   updateCoverProviderSettings,
@@ -29,6 +30,7 @@ import {
 } from "@/lib/forms/cover-settings";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
+import { runCoverProviderSmokeTest } from "@/lib/covers/provider-smoke-test";
 import { isCoverProviderCode } from "@/lib/covers/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
@@ -67,6 +69,56 @@ export type UpdateCoverProviderSettingsState = {
   error: string | null;
   success: string | null;
 };
+
+export type CoverProviderSmokeTestState =
+  | {
+      ok: true;
+      candidateTitle: string | null;
+      latencyMs: number;
+    }
+  | {
+      ok: false;
+      error: "invalid-provider" | "missing-credentials" | "timeout" | "invalid-credentials" | "rate-limited" | "unavailable";
+      httpStatus: number | null;
+      latencyMs: number | null;
+      providerMessage: string | null;
+    };
+
+export async function testCoverProviderAction(
+  providerCode: string,
+  mediaType: string,
+): Promise<CoverProviderSmokeTestState> {
+  await requireAdminUser();
+
+  if (!isCoverProviderCode(providerCode)) {
+    return {
+      ok: false,
+      error: "invalid-provider",
+      httpStatus: null,
+      latencyMs: null,
+      providerMessage: null,
+    };
+  }
+
+  try {
+    const providerCredentials = await getCoverProviderCredentialsForSearch();
+
+    return await runCoverProviderSmokeTest({
+      providerCode,
+      mediaType,
+      providerCredentials,
+    });
+  } catch (error) {
+    console.error(error);
+    return {
+      ok: false,
+      error: "unavailable",
+      httpStatus: null,
+      latencyMs: null,
+      providerMessage: null,
+    };
+  }
+}
 
 export async function updateCoverProviderImageSettingAction(
   providerCode: string,

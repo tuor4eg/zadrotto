@@ -6,12 +6,14 @@ import {
   ImageOff,
   CloudDownload,
   KeyRound,
+  LoaderCircle,
   Power,
   PowerOff,
+  Stethoscope,
   Save,
   X,
 } from "lucide-react";
-import { useId, useState, useTransition } from "react";
+import { useEffect, useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label, Select } from "@/components/ui/form";
@@ -35,6 +37,8 @@ import { AdminToasts, type AdminToast } from "../../admin-toasts";
 import {
   type UpdateCoverProviderCredentialsState,
   type UpdateCoverProviderSettingsState,
+  type CoverProviderSmokeTestState,
+  testCoverProviderAction,
   updateCoverProviderCredentialsAction,
   updateCoverProviderSettingsAction,
   updateCoverProviderImageSettingAction,
@@ -71,6 +75,8 @@ export function ProvidersForm({
   );
   const [credentialModalProvider, setCredentialModalProvider] =
     useState<CoverProviderSettingsValue | null>(null);
+  const [smokeTestProvider, setSmokeTestProvider] =
+    useState<CoverProviderSettingsValue | null>(null);
   const [draggedProviderKey, setDraggedProviderKey] = useState<string | null>(null);
   const toastMessages = [
     ...(providerState.success
@@ -85,12 +91,12 @@ export function ProvidersForm({
     <div className="grid gap-5">
       <AdminToasts messages={toastMessages} />
 
-      <section className="grid gap-4 rounded-md border border-stone-200 bg-white p-4">
+      <section className="grid gap-4 sm:rounded-md sm:border sm:border-stone-200 sm:bg-white sm:p-4">
         <div className="grid gap-4">
           {providerGroups.map((group) => (
             <fieldset
               key={group.mediaType}
-              className="grid gap-3 rounded-md border border-stone-200 p-3"
+              className="grid gap-3 sm:rounded-md sm:border sm:border-stone-200 sm:p-3"
             >
               <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
                 {getMediaTypeName(group.mediaType, mediaTypes)}
@@ -126,71 +132,86 @@ export function ProvidersForm({
                     }}
                     onDragEnd={() => setDraggedProviderKey(null)}
                     className={cn(
-                      "grid items-center gap-3 rounded-md border border-stone-100 bg-stone-50/60 p-3 transition-colors",
+                      "flex flex-col gap-3 rounded-lg border border-stone-200 bg-white p-4 shadow-sm transition-colors sm:grid sm:items-center sm:rounded-md sm:border-stone-100 sm:bg-stone-50/60 sm:p-3 sm:shadow-none",
                       requiresCredentials
-                        ? "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]"
-                        : "grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto]",
+                        ? "sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto_auto]"
+                        : "sm:grid-cols-[auto_minmax(0,1fr)_auto_auto_auto_auto_auto]",
                       draggedProviderKey === settingKey && "border-stone-300 bg-stone-100",
                     )}
                   >
-                    <span
-                      className="cursor-grab text-stone-400 active:cursor-grabbing"
-                      aria-hidden="true"
-                    >
-                      <GripVertical className="size-4" />
-                    </span>
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium text-stone-900">
-                        {COVER_PROVIDER_LABELS[provider.providerCode]}
-                      </div>
-                      {requiresCredentials ? (
-                        <div className="mt-1 truncate text-xs text-stone-500">
-                          {hasCredentials ? "Авторизация настроена" : "Авторизация не настроена"}
+                    <div className="flex items-center gap-3 sm:contents">
+                      <span
+                        className="cursor-grab text-stone-400 active:cursor-grabbing"
+                        aria-hidden="true"
+                      >
+                        <GripVertical className="size-4" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-medium text-stone-900">
+                          {COVER_PROVIDER_LABELS[provider.providerCode]}
                         </div>
-                      ) : null}
+                        {requiresCredentials ? (
+                          <div className="mt-1 truncate text-xs text-stone-500">
+                            {hasCredentials ? "Авторизация настроена" : "Авторизация не настроена"}
+                          </div>
+                        ) : null}
+                      </div>
                     </div>
-                    {requiresCredentials ? (
-                      <Tooltip label="Данные авторизации">
+
+                    <div className="flex flex-wrap gap-2 border-t border-stone-100 pt-3 sm:contents">
+                      {requiresCredentials ? (
+                        <Tooltip label="Данные авторизации">
+                          <button
+                            type="button"
+                            aria-label={`Данные авторизации ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
+                            className={cn(
+                              "inline-flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50",
+                              hasCredentials
+                                ? "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
+                                : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
+                            )}
+                            disabled={isProviderPending}
+                            onClick={() => setCredentialModalProvider(provider)}
+                          >
+                            <KeyRound className="size-4" />
+                          </button>
+                        </Tooltip>
+                      ) : null}
+                      <Tooltip label="Проверить доступность">
                         <button
                           type="button"
-                          aria-label={`Данные авторизации ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
-                          className={cn(
-                            "inline-flex size-9 items-center justify-center rounded-md border transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50",
-                            hasCredentials
-                              ? "border-stone-300 bg-white text-stone-700 hover:bg-stone-100"
-                              : "border-amber-200 bg-amber-50 text-amber-700 hover:bg-amber-100",
-                          )}
+                          aria-label={`Проверить доступность ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
+                          className="inline-flex size-9 items-center justify-center rounded-md border border-stone-200 bg-white text-stone-600 transition-colors hover:bg-stone-100 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20 disabled:pointer-events-none disabled:opacity-50"
                           disabled={isProviderPending}
-                          onClick={() => setCredentialModalProvider(provider)}
+                          onClick={() => setSmokeTestProvider(provider)}
                         >
-                          <KeyRound className="size-4" />
+                          <Stethoscope className="size-4" />
                         </button>
                       </Tooltip>
-                    ) : null}
-                    <Select
-                      aria-label={`Поиск названий: ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
-                      className="h-9 w-[9.5rem] text-xs"
-                      disabled={isProviderPending || !provider.enabled || !canEnable}
-                      value={provider.titleSearchMode}
-                      onChange={(event) =>
-                        updateProviderAndSave(settingKey, {
-                          titleSearchMode: event.currentTarget.value as CoverProviderSettingsValue["titleSearchMode"],
-                        })
-                      }
-                    >
-                      <option value="parallel">Названия: сразу</option>
-                      <option value="fallback">Названия: резерв</option>
-                      <option value="off">Названия: выкл.</option>
-                    </Select>
-                    <Tooltip
-                      label={
-                        !provider.coverSearchEnabled && !canEnable
-                          ? "Сначала авторизуйтесь"
-                          : provider.coverSearchEnabled
-                            ? "Выключить поиск обложек"
-                            : "Включить поиск обложек"
-                      }
-                    >
+                      <Select
+                        aria-label={`Поиск названий: ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
+                        className="order-first h-9 w-full text-xs sm:order-none sm:w-[9.5rem]"
+                        disabled={isProviderPending || !provider.enabled || !canEnable}
+                        value={provider.titleSearchMode}
+                        onChange={(event) =>
+                          updateProviderAndSave(settingKey, {
+                            titleSearchMode: event.currentTarget.value as CoverProviderSettingsValue["titleSearchMode"],
+                          })
+                        }
+                      >
+                        <option value="parallel">Названия: сразу</option>
+                        <option value="fallback">Названия: резерв</option>
+                        <option value="off">Названия: выкл.</option>
+                      </Select>
+                      <Tooltip
+                        label={
+                          !provider.coverSearchEnabled && !canEnable
+                            ? "Сначала авторизуйтесь"
+                            : provider.coverSearchEnabled
+                              ? "Выключить поиск обложек"
+                              : "Включить поиск обложек"
+                        }
+                      >
                       <button
                         type="button"
                         aria-label={`${provider.coverSearchEnabled ? "Выключить" : "Включить"} поиск обложек ${
@@ -216,8 +237,8 @@ export function ProvidersForm({
                           <ImageOff className="size-4" />
                         )}
                       </button>
-                    </Tooltip>
-                    <Tooltip label={proxyImagesEnabled ? "Загружать изображения напрямую" : "Загружать изображения через сервер"}>
+                      </Tooltip>
+                      <Tooltip label={proxyImagesEnabled ? "Загружать изображения напрямую" : "Загружать изображения через сервер"}>
                       <button
                         type="button"
                         aria-label={`${proxyImagesEnabled ? "Выключить" : "Включить"} загрузку изображений через сервер для ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
@@ -232,8 +253,8 @@ export function ProvidersForm({
                       >
                         <CloudDownload className="size-4" />
                       </button>
-                    </Tooltip>
-                    <div className="ml-1 border-l border-stone-200 pl-3">
+                      </Tooltip>
+                      <div className="ml-auto border-l border-stone-200 pl-3 sm:ml-1">
                       <Tooltip
                         label={
                           !provider.enabled && !canEnable
@@ -268,6 +289,7 @@ export function ProvidersForm({
                           )}
                         </button>
                       </Tooltip>
+                      </div>
                     </div>
                   </div>
                 );
@@ -294,6 +316,12 @@ export function ProvidersForm({
             });
             setCredentialModalProvider(null);
           }}
+        />
+      ) : null}
+      {smokeTestProvider ? (
+        <ProviderSmokeTestModal
+          provider={smokeTestProvider}
+          onClose={() => setSmokeTestProvider(null)}
         />
       ) : null}
     </div>
@@ -424,6 +452,115 @@ function buildProviderSettingsFormData(groups: ReturnType<typeof groupProviderSe
 
 function getMediaTypeName(mediaType: string, mediaTypes: readonly MediaTypeOption[]) {
   return mediaTypes.find((item) => item.code === mediaType)?.name ?? mediaType;
+}
+
+function ProviderSmokeTestModal({
+  onClose,
+  provider,
+}: {
+  onClose: () => void;
+  provider: CoverProviderSettingsValue;
+}) {
+  const titleId = useId();
+  const descriptionId = useId();
+  const [result, setResult] = useState<CoverProviderSmokeTestState | null>(null);
+  const [isPending, startTransition] = useTransition();
+
+  useEffect(() => {
+    startTransition(async () => {
+      setResult(await testCoverProviderAction(provider.providerCode, provider.mediaType));
+    });
+  }, [provider.mediaType, provider.providerCode]);
+
+  const status = result
+    ? result.ok
+      ? {
+          title: "Провайдер доступен",
+          description: result.candidateTitle
+            ? `Найден пример: ${result.candidateTitle}`
+            : "Запрос выполнен, но ничего не найдено.",
+          className: "border-emerald-200 bg-emerald-50 text-emerald-900",
+        }
+      : {
+          title: "Проверка не пройдена",
+          description: getSmokeTestErrorMessage(result.error),
+          className: "border-amber-200 bg-amber-50 text-amber-900",
+        }
+    : null;
+
+  return (
+    <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 px-4 py-6">
+      <button
+        type="button"
+        className="absolute inset-0 cursor-default"
+        aria-label="Закрыть окно проверки"
+        disabled={isPending}
+        onClick={onClose}
+      />
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        aria-describedby={descriptionId}
+        className="relative grid w-full max-w-md gap-5 rounded-lg border border-stone-200 bg-white p-5 text-stone-950 shadow-xl"
+      >
+        <div>
+          <h2 id={titleId} className="text-lg font-semibold tracking-tight">
+            Проверка · {COVER_PROVIDER_LABELS[provider.providerCode]}
+          </h2>
+          <p id={descriptionId} className="mt-2 text-sm leading-6 text-stone-600">
+            Выполняем тестовый поиск записи у провайдера.
+          </p>
+        </div>
+
+        {isPending ? (
+          <div className="flex items-center gap-3 rounded-md border border-stone-200 bg-stone-50 p-4 text-sm text-stone-700">
+            <LoaderCircle className="size-5 animate-spin" />
+            Проверяем доступность…
+          </div>
+        ) : status ? (
+          <div className={`grid gap-2 rounded-md border p-4 text-sm ${status.className}`}>
+            <div className="font-medium">{status.title}</div>
+            <p className="leading-6">{status.description}</p>
+            {result && !result.ok && result.httpStatus ? (
+              <div className="font-mono text-xs">HTTP {result.httpStatus}</div>
+            ) : null}
+            {result && !result.ok && result.providerMessage ? (
+              <div className="break-words rounded border border-current/15 bg-white/50 p-2 font-mono text-xs leading-5">
+                {result.providerMessage}
+              </div>
+            ) : null}
+            {result && result.latencyMs !== null ? (
+              <div className="text-xs opacity-75">Ответ за {formatLatency(result.latencyMs)}.</div>
+            ) : null}
+          </div>
+        ) : null}
+
+        <div className="flex justify-end">
+          <Button type="button" disabled={isPending} onClick={onClose}>
+            Закрыть
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function getSmokeTestErrorMessage(error: Extract<CoverProviderSmokeTestState, { ok: false }> ["error"]) {
+  const messages = {
+    "invalid-provider": "Этот провайдер не поддерживает выбранный тип записи.",
+    "missing-credentials": "Сначала сохраните данные авторизации провайдера.",
+    timeout: "Провайдер не ответил вовремя.",
+    "invalid-credentials": "Провайдер не принял сохранённые данные авторизации.",
+    "rate-limited": "Провайдер временно ограничил запросы. Попробуйте позже.",
+    unavailable: "Внешний провайдер временно недоступен. Попробуйте позже.",
+  } as const;
+
+  return messages[error];
+}
+
+function formatLatency(latencyMs: number) {
+  return latencyMs < 1_000 ? `${latencyMs} мс` : `${(latencyMs / 1_000).toFixed(1)} с`;
 }
 
 function ProviderCredentialsModal({
