@@ -1,10 +1,15 @@
 import Link from "next/link";
+import { Edit3, Eye } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { PaginationNav } from "@/components/pagination-nav";
+import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorReviews } from "@/db/queries/contribution-reviews";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
+import { parsePage } from "@/lib/common/pagination";
 import {
   CONTRIBUTION_STATUS_VALUE_LABELS,
   type ContributionStatus,
@@ -13,11 +18,14 @@ import { AuthorToasts, type AuthorToast } from "../author-toasts";
 
 type AuthorReviewsPageProps = {
   searchParams: Promise<{
+    page?: string;
     published?: string;
     saved?: string;
     submitted?: string;
   }>;
 };
+
+const AUTHOR_REVIEWS_PAGE_SIZE = 20;
 
 const REVIEW_STATUS_BADGE_VARIANTS: Record<
   ContributionStatus,
@@ -45,7 +53,12 @@ function formatDate(value: Date | null) {
 export default async function AuthorReviewsPage({ searchParams }: AuthorReviewsPageProps) {
   const [author, params] = await Promise.all([requireAuthor(), searchParams]);
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(author.id);
-  const reviews = await getAuthorReviews(author.id, enabledMediaTypeCodes);
+  const reviewsPage = await getAuthorReviews(
+    author.id,
+    enabledMediaTypeCodes,
+    parsePage(params.page),
+    AUTHOR_REVIEWS_PAGE_SIZE,
+  );
   const toast: AuthorToast | null =
     params.saved === "1"
       ? { id: "saved", tone: "success", text: "Черновик рецензии сохранен." }
@@ -72,40 +85,76 @@ export default async function AuthorReviewsPage({ searchParams }: AuthorReviewsP
         messages={toast ? [toast] : []}
       />
 
-      {reviews.length === 0 ? (
+      {reviewsPage.totalCount === 0 ? (
         <Card>
           <CardContent className="p-5 text-sm text-stone-500">
-            Рецензий пока нет. Открой запись в архиве и поделись мнением со страницы тайтла.
+            Рецензий пока нет. Открой запись в архиве и поделись мнением с её страницы.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-3">
-          {reviews.map((review) => (
-            <Link
-              key={review.id}
-              href={`/author/reviews/${review.id}/edit`}
-              className="rounded-lg border border-stone-200 bg-white p-4 transition-colors hover:bg-stone-50"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <Badge variant={REVIEW_STATUS_BADGE_VARIANTS[review.status]}>
-                  {CONTRIBUTION_STATUS_VALUE_LABELS[review.status]}
-                </Badge>
-                <span className="text-xs text-stone-500">
-                  Обновлено: {formatDate(review.updatedAt)}
-                </span>
-              </div>
-              <h3 className="mt-2 text-base font-semibold text-stone-950">
-                {review.reviewTitle}
-              </h3>
-              <p className="mt-1 text-sm text-stone-600">{review.mediaItemTitle}</p>
-              {review.adminNote ? (
-                <p className="mt-3 rounded-md bg-stone-100 px-3 py-2 text-sm text-stone-600">
-                  {review.adminNote}
-                </p>
-              ) : null}
-            </Link>
-          ))}
-        </div>
+        <>
+          <div className="grid gap-2">
+            {reviewsPage.items.map((review) => (
+              <article
+                key={review.id}
+                className="flex items-center gap-3 rounded-lg border border-stone-200 bg-white p-3"
+              >
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
+                    <h3 className="min-w-0 truncate text-sm font-semibold text-stone-950">
+                      {review.reviewTitle}
+                    </h3>
+                    <Badge variant={REVIEW_STATUS_BADGE_VARIANTS[review.status]}>
+                      {CONTRIBUTION_STATUS_VALUE_LABELS[review.status]}
+                    </Badge>
+                    <span className="text-xs text-stone-500">
+                      Обновлено: {formatDate(review.updatedAt)}
+                    </span>
+                  </div>
+                  <p className="mt-0.5 truncate text-xs text-stone-600">{review.mediaItemTitle}</p>
+                  {review.adminNote ? (
+                    <p className="mt-2 rounded-md bg-stone-100 px-2.5 py-1.5 text-xs text-stone-600">
+                      {review.adminNote}
+                    </p>
+                  ) : null}
+                </div>
+
+                <div className="flex shrink-0 items-center gap-1.5 self-center">
+                  <Tooltip label="Редактировать">
+                    <Link
+                      href={`/author/reviews/${review.id}/edit`}
+                      className={buttonVariants({ variant: "outline", size: "icon" })}
+                      aria-label={`Редактировать рецензию «${review.reviewTitle}»`}
+                    >
+                      <Edit3 />
+                    </Link>
+                  </Tooltip>
+                  {review.status === "published" ? (
+                    <Tooltip label="Показать">
+                      <Link
+                        href={`/media/${review.mediaItemCode}?review=${review.id}`}
+                        className={buttonVariants({ variant: "outline", size: "icon" })}
+                        aria-label={`Показать рецензию «${review.reviewTitle}»`}
+                      >
+                        <Eye />
+                      </Link>
+                    </Tooltip>
+                  ) : null}
+                </div>
+              </article>
+            ))}
+          </div>
+          <PaginationNav
+            basePath="/author/reviews"
+            itemLabel="рецензий"
+            page={reviewsPage.page}
+            pageSize={reviewsPage.pageSize}
+            searchParams={{}}
+            totalCount={reviewsPage.totalCount}
+            totalPages={reviewsPage.totalPages}
+            variant="archive"
+          />
+        </>
       )}
     </div>
   );

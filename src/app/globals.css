@@ -907,6 +907,7 @@ body {
     max-width: calc(100% - 4rem);
     margin-top: -2.5rem;
     margin-right: 2rem;
+    margin-bottom: 2rem;
     margin-left: 2rem;
     transform: translateY(32px) rotate(-0.2deg);
   }

@@ -43,6 +43,7 @@ export type MainPageMediaItem = {
   metadataFacts: Record<string, unknown> | null;
   ratingsCount: number;
   releaseYear: number | null;
+  reviewId?: number | null;
   title: string;
 };
 
@@ -159,7 +160,15 @@ export function createMainPageDataPromises(input: {
       )
       .limit(SECTION_SIZES.newItems);
   const reviewsPromise = db
-      .select(mediaItemSelection)
+      .select({
+        ...mediaItemSelection,
+        reviewId: sql<number>`(
+          array_agg(
+            ${contributions.id}
+            order by ${contributions.createdAt} desc, ${contributions.id} desc
+          )
+        )[1]::int`,
+      })
       .from(mediaItems)
       .innerJoin(
         contributionMediaItems,

@@ -22,7 +22,7 @@ describe("main page streaming", () => {
     assert.match(page, /Loader2[\s\S]*animate-spin/);
     assert.match(page, /role="status" aria-label="Загрузка"/);
     for (const key of ["top", "newItems", "reviews", "latestRatings", "wanted"]) {
-      assert.match(page, new RegExp(`Suspense[\\s\\S]*SectionItems promise=\\{data\\.${key}\\}`));
+      assert.match(page, new RegExp(`Suspense[\\s\\S]*SectionItems[^>]*promise=\\{data\\.${key}\\}`));
     }
     assert.match(page, /DossierContent[\s\S]*promise=\{dossierPromise\}/);
     assert.match(page, /AboutArchive promise=\{data\.about\}/);
@@ -50,5 +50,14 @@ describe("main page streaming", () => {
       /className="archive-control-surface mt-auto flex h-9 shrink-0[^"]*transition-\[border-color,background-color,width,padding\] hover:border-stone-700 hover:bg-stone-50">Открыть/,
     );
     assert.doesNotMatch(page, /mt-auto flex h-10[^>]*>Открыть/);
+  });
+
+  it("opens the latest review from the main-page review section", () => {
+    assert.match(
+      query,
+      /reviewId: sql<number>`\([\s\S]*array_agg\([\s\S]*contributions\.createdAt\} desc[\s\S]*contributions\.id\} desc[\s\S]*\)\[1\]::int`/,
+    );
+    assert.match(page, /linkToReview && item\.reviewId[\s\S]*\?review=\$\{item\.reviewId\}/);
+    assert.match(page, /<SectionItems linkToReview promise=\{data\.reviews\}/);
   });
 });

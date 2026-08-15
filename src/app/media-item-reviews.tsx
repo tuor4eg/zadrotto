@@ -1,10 +1,12 @@
 "use client";
 
-import { Pencil, Plus, X } from "lucide-react";
+import { Pencil, Plus, Share2, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useId, useState } from "react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useId, useRef, useState } from "react";
 
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { Avatar } from "@/components/ui/avatar";
 import { cn } from "@/lib/common/utils";
 
@@ -26,6 +28,10 @@ type MediaItemReviewsProps = {
   } | null;
   mediaItemId: number;
   reviews: MediaItemReview[];
+};
+
+type MediaItemReviewLayerProps = Pick<MediaItemReviewsProps, "currentAuthor" | "reviews"> & {
+  mediaItemTitle: string;
 };
 
 type SpineTooltipState = {
@@ -125,20 +131,97 @@ function formatDate(value: Date | string | null) {
   }).format(date);
 }
 
+function parseReviewId(value: string | null) {
+  if (!value || !/^\d+$/.test(value)) {
+    return null;
+  }
+
+  const reviewId = Number(value);
+
+  return Number.isSafeInteger(reviewId) && reviewId > 0 ? reviewId : null;
+}
+
 function ReviewBookModal({
   currentAuthor,
+  mediaItemTitle,
   onClose,
+  onLinkCopied,
   review,
 }: {
   currentAuthor: MediaItemReviewsProps["currentAuthor"];
+  mediaItemTitle: string;
   onClose: () => void;
+  onLinkCopied: () => void;
   review: MediaItemReview;
 }) {
   const titleId = useId();
   const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
   const canEditReview = currentAuthor?.code === review.authorCode;
+  const [shareStatus, setShareStatus] = useState<string | null>(null);
+
+  async function copyReviewUrl(url: string) {
+    if (navigator.clipboard?.writeText) {
+      try {
+        await navigator.clipboard.writeText(url);
+        return true;
+      } catch {
+        // Clipboard API can be unavailable on insecure origins or denied by permissions.
+      }
+    }
+
+    const textarea = document.createElement("textarea");
+    textarea.value = url;
+    textarea.readOnly = true;
+    textarea.setAttribute("aria-hidden", "true");
+    textarea.style.position = "fixed";
+    textarea.style.left = "-9999px";
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    try {
+      return document.execCommand("copy");
+    } finally {
+      document.body.removeChild(textarea);
+    }
+  }
+
+  async function shareReview() {
+    const url = new URL(window.location.href);
+    url.searchParams.set("review", String(review.id));
+    const shareData = {
+      text: `Рецензия на «${mediaItemTitle}»`,
+      title: review.title,
+      url: url.href,
+    };
+
+    if (navigator.share) {
+      try {
+        await navigator.share(shareData);
+        return;
+      } catch (error) {
+        if (
+          error !== null &&
+          typeof error === "object" &&
+          "name" in error &&
+          error.name === "AbortError"
+        ) {
+          return;
+        }
+      }
+    }
+
+    const copied = await copyReviewUrl(url.href);
+    setShareStatus(copied ? "Ссылка скопирована" : "Не удалось скопировать ссылку");
+
+    if (copied) {
+      onLinkCopied();
+    }
+  }
 
   useEffect(() => {
+    const previousBodyOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         onClose();
@@ -147,11 +230,14 @@ function ReviewBookModal({
 
     window.addEventListener("keydown", onKeyDown);
 
-    return () => window.removeEventListener("keydown", onKeyDown);
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      window.removeEventListener("keydown", onKeyDown);
+    };
   }, [onClose]);
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/55 px-3 py-5 sm:px-5">
+    <div className="fixed inset-0 z-50 grid place-items-center overscroll-contain bg-stone-950/55 px-3 py-5 sm:px-5">
       <button
         type="button"
         className="absolute inset-0 cursor-default"
@@ -165,6 +251,14 @@ function ReviewBookModal({
         className="relative flex max-h-[calc(100vh-2.5rem)] w-full max-w-5xl flex-col gap-2"
       >
         <div className="flex shrink-0 justify-end gap-2">
+          <button
+            type="button"
+            onClick={shareReview}
+            className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            aria-label="Поделиться рецензией"
+          >
+            <Share2 className="size-4" />
+          </button>
           {canEditReview ? (
             <Link
               href={`/author/reviews/${review.id}/edit`}
@@ -184,7 +278,9 @@ function ReviewBookModal({
           </button>
         </div>
 
-        <div className="grid max-h-[calc(100vh-5.75rem)] min-h-0 overflow-hidden rounded-md border border-stone-300/80 bg-[linear-gradient(90deg,rgba(120,113,108,0.12),transparent_48%,rgba(120,113,108,0.18)_50%,transparent_52%,rgba(120,113,108,0.12)),linear-gradient(135deg,#fffdf5,#f3ead6)] shadow-2xl shadow-stone-950/35 lg:h-[min(620px,calc(100vh-5.75rem))] lg:grid-cols-2 lg:gap-0">
+        <span className="sr-only" aria-live="polite">{shareStatus}</span>
+
+        <div className="grid h-[calc(100dvh-5.75rem)] max-h-[calc(100vh-5.75rem)] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-md border border-stone-300/80 bg-[linear-gradient(90deg,rgba(120,113,108,0.12),transparent_48%,rgba(120,113,108,0.18)_50%,transparent_52%,rgba(120,113,108,0.12)),linear-gradient(135deg,#fffdf5,#f3ead6)] shadow-2xl shadow-stone-950/35 lg:h-[min(620px,calc(100vh-5.75rem))] lg:grid-cols-2 lg:grid-rows-1 lg:gap-0">
           <section className="min-h-0 overflow-hidden border-stone-300/70 p-5 sm:p-7 lg:border-r lg:p-9">
             <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
               Рецензия
@@ -204,7 +300,7 @@ function ReviewBookModal({
             <div className="mt-8 hidden h-px bg-stone-300/80 lg:block" />
           </section>
 
-          <section className="archive-scrollbar min-h-0 overflow-y-auto border-t border-stone-300/70 p-5 sm:p-7 lg:h-full lg:border-t-0 lg:p-9">
+          <section className="archive-scrollbar min-h-0 touch-pan-y overflow-y-auto overscroll-contain border-t border-stone-300/70 p-5 sm:p-7 lg:h-full lg:border-t-0 lg:p-9">
             <p className="whitespace-pre-wrap text-[15px] leading-8 text-stone-800">
               {review.body}
             </p>
@@ -245,7 +341,9 @@ export function MediaItemReviews({
   mediaItemId,
   reviews,
 }: MediaItemReviewsProps) {
-  const [selectedReview, setSelectedReview] = useState<MediaItemReview | null>(null);
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [spineTooltip, setSpineTooltip] = useState<SpineTooltipState | null>(null);
   const hasCurrentAuthorReview = currentAuthor
     ? reviews.some((review) => review.authorCode === currentAuthor.code)
@@ -279,6 +377,12 @@ export function MediaItemReviews({
     });
   }
 
+  function openReview(review: MediaItemReview) {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.set("review", String(review.id));
+    router.push(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
+  }
+
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
@@ -310,7 +414,7 @@ export function MediaItemReviews({
                       showSpineTooltip(event, review.title, spineTitle.isTruncated)
                     }
                     onMouseLeave={() => setSpineTooltip(null)}
-                    onClick={() => setSelectedReview(review)}
+                    onClick={() => openReview(review)}
                     className={cn(
                       "relative flex h-48 shrink-0 cursor-pointer flex-col items-center overflow-hidden rounded-t-sm border px-1 py-2 text-left shadow-lg transition-[filter,transform] hover:-translate-y-1 hover:brightness-110 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 sm:h-56",
                       variant.className,
@@ -354,14 +458,73 @@ export function MediaItemReviews({
           {spineTooltip.title}
         </span>
       ) : null}
+    </div>
+  );
+}
 
+export function MediaItemReviewLayer({
+  currentAuthor,
+  mediaItemTitle,
+  reviews,
+}: MediaItemReviewLayerProps) {
+  const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const reviewParam = searchParams.get("review");
+  const handledInvalidReviewParams = useRef(new Set<string>());
+  const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([]);
+  const reviewId = parseReviewId(reviewParam);
+  const selectedReview = reviewId !== null
+    ? reviews.find((review) => review.id === reviewId) ?? null
+    : null;
+
+  useEffect(() => {
+    if (!reviewParam || selectedReview) {
+      return;
+    }
+
+    if (!handledInvalidReviewParams.current.has(reviewParam)) {
+      handledInvalidReviewParams.current.add(reviewParam);
+      setToastMessages([{
+        id: `review-not-found-${reviewParam}`,
+        text: "Рецензия не найдена",
+        tone: "error",
+      }]);
+    }
+
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("review");
+    const queryString = nextSearchParams.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }, [pathname, reviewParam, router, searchParams, selectedReview]);
+
+  function closeReview() {
+    const nextSearchParams = new URLSearchParams(searchParams.toString());
+    nextSearchParams.delete("review");
+    const queryString = nextSearchParams.toString();
+    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
+  }
+
+  function showLinkCopiedToast() {
+    setToastMessages([{
+      id: `review-link-copied-${Date.now()}`,
+      text: "Ссылка на рецензию скопирована",
+      tone: "success",
+    }]);
+  }
+
+  return (
+    <>
+      <ArchiveToasts messages={toastMessages} />
       {selectedReview ? (
         <ReviewBookModal
           currentAuthor={currentAuthor}
+          mediaItemTitle={mediaItemTitle}
+          onClose={closeReview}
+          onLinkCopied={showLinkCopiedToast}
           review={selectedReview}
-          onClose={() => setSelectedReview(null)}
         />
       ) : null}
-    </div>
+    </>
   );
 }

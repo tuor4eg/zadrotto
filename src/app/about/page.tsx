@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import Image from "next/image";
-import Link from "next/link";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -38,7 +37,7 @@ export default async function AboutPage() {
     : 0;
 
   return (
-    <main className="archive-page min-h-screen px-3 py-3 text-stone-950 sm:px-5 sm:py-5 lg:px-7 lg:py-7">
+    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
         <ArchiveSiteHeader
           brandHref="/"
@@ -49,18 +48,7 @@ export default async function AboutPage() {
         />
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
-          <nav
-            aria-label="Хлебные крошки"
-            className="font-mono text-xs uppercase tracking-[0.14em] text-stone-600"
-          >
-            <Link
-              className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-              href="/"
-            >
-              Главная
-            </Link>
-          </nav>
-          <h1 className="mt-4 font-serif text-4xl leading-none sm:text-5xl">О проекте</h1>
+          <h1 className="font-serif text-4xl leading-none sm:text-5xl">О проекте</h1>
           <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
             <p>
               «Журнал, которого не было» — это личный архив игр, фильмов, книг, комиксов,
@@ -98,7 +86,13 @@ export default async function AboutPage() {
               rel="noreferrer"
               target="_blank"
             >
-              <Image alt="TMDB" height={36} src="/tmdb-logo.svg" width={273} />
+              <Image
+                alt="TMDB"
+                className="h-auto max-w-full"
+                height={36}
+                src="/tmdb-logo.svg"
+                width={273}
+              />
             </a>
             <p className="mt-3 font-mono text-xs leading-5 text-stone-600">
               This product uses the TMDB API but is not endorsed or certified by TMDB.

@@ -161,18 +161,34 @@ function MainArchiveSearch() {
   );
 }
 
-function getMainTileDescriptors(items: MainPageMediaItem[]): ResponsiveTileDescriptor[] {
+function getMainTileDescriptors(
+  items: MainPageMediaItem[],
+  linkToReview = false,
+): ResponsiveTileDescriptor[] {
   return items.map((item) => ({
     currentAuthorScore: item.currentAuthorScore,
-    href: `/media/${item.code}`,
+    href: linkToReview && item.reviewId
+      ? `/media/${item.code}?review=${item.reviewId}`
+      : `/media/${item.code}`,
     item,
     key: item.id,
   }));
 }
 
-async function SectionItems({ promise }: { promise: Promise<MainPageMediaItem[]> }) {
+async function SectionItems({
+  linkToReview = false,
+  promise,
+}: {
+  linkToReview?: boolean;
+  promise: Promise<MainPageMediaItem[]>;
+}) {
   const items = await promise;
-  return <ResponsiveTileGrid items={getMainTileDescriptors(items)} variant="top" />;
+  return (
+    <ResponsiveTileGrid
+      items={getMainTileDescriptors(items, linkToReview)}
+      variant="top"
+    />
+  );
 }
 
 async function DossierContent({
@@ -356,7 +372,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
             <div className="grid gap-3 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
               <Section href="/archive?sort=created_at" icon={<Clock3 className="size-5" />} title="Новое в базе"><Suspense fallback={<MainSectionLoader />}><SectionItems promise={data.newItems} /></Suspense></Section>
               <Section href="/archive" icon={<FileText className="size-5" />} title="Последние рецензии">
-                <Suspense fallback={<MainSectionLoader />}><SectionItems promise={data.reviews} /></Suspense>
+                <Suspense fallback={<MainSectionLoader />}><SectionItems linkToReview promise={data.reviews} /></Suspense>
               </Section>
             </div>
             {currentAuthor ? (
@@ -458,9 +474,9 @@ export default async function MainPage({ searchParams }: MainPageProps) {
                   {label}
                 </Link>
               ) : (
-                <a aria-disabled="true" className="cursor-default" tabIndex={-1}>
+                <Link className="hover:text-stone-950" href="/feedback">
                   {label}
-                </a>
+                </Link>
               )}
             </span>
           ))}

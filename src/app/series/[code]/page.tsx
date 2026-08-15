@@ -232,7 +232,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
         messages={toastMessages}
       />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
-        <section className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible pt-8">
+        <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
           <div className="archive-franchise-sticker">
             <div className="flex min-w-0 items-start gap-3 font-mono text-xs">
               <p className="shrink-0 font-semibold uppercase leading-5 tracking-[0.18em] text-red-800">
@@ -330,12 +330,12 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
               <h2 id="franchise-branch-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-600">
                 Серии внутри
               </h2>
-              <ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1 text-sm leading-6 text-stone-800">
+              <ul className="mt-3 flex min-w-0 max-w-full flex-wrap gap-1.5">
                 {getFranchiseDescendants(franchiseBranch.children).map((child) => (
-                  <li key={child.id}>
+                  <li key={child.id} className="min-w-0 max-w-full">
                     <Link
                       href={`/series/${child.code}`}
-                      className="font-medium underline decoration-stone-400 underline-offset-4 transition-colors hover:decoration-stone-950"
+                      className="inline-block max-w-full rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors [overflow-wrap:anywhere] hover:bg-[var(--archive-bg-start)] hover:text-white"
                     >
                       {child.title}
                     </Link>

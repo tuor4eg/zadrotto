@@ -9,6 +9,7 @@ const homePageSource = readFileSync("src/app/page.tsx", "utf8");
 const aboutPageSource = readFileSync("src/app/about/page.tsx", "utf8");
 const rulesPageSource = readFileSync("src/app/rules/page.tsx", "utf8");
 const helpPageSource = readFileSync("src/app/help/page.tsx", "utf8");
+const feedbackPageSource = readFileSync("src/app/feedback/page.tsx", "utf8");
 const coverSourceAttributionSource = readFileSync(
   "src/components/archive/cover-source-attribution.tsx",
   "utf8",
@@ -24,6 +25,23 @@ const googleBooksProviderSource = readFileSync(
   "src/lib/covers/providers/google-books.ts",
   "utf8",
 );
+
+const informationalPageSources = [
+  aboutPageSource,
+  rulesPageSource,
+  helpPageSource,
+  feedbackPageSource,
+];
+
+describe("informational page shell contracts", () => {
+  it("aligns the header with the home page and relies on the brand link for navigation home", () => {
+    for (const pageSource of informationalPageSources) {
+      assert.match(pageSource, /px-3 pb-3 pt-3[^\"]*sm:px-5 sm:pb-5 lg:px-7 lg:pb-7/);
+      assert.doesNotMatch(pageSource, /aria-label="Хлебные крошки"/);
+      assert.doesNotMatch(pageSource, />\s*Главная\s*</);
+    }
+  });
+});
 
 describe("about page contracts", () => {
   it("links the footer and discloses registered providers and licenses", () => {
@@ -50,6 +68,10 @@ describe("about page contracts", () => {
       aboutPageSource.includes(
         "This product uses the TMDB API but is not endorsed or certified by TMDB.",
       ),
+    );
+    assert.match(
+      aboutPageSource,
+      /<Image[\s\S]*className="h-auto max-w-full"[\s\S]*src="\/tmdb-logo\.svg"/,
     );
     assert.match(aboutPageSource, /GitHub/);
     assert.match(aboutPageSource, /GNU GPLv3/);
@@ -110,5 +132,15 @@ describe("help page contracts", () => {
     assert.match(helpPageSource, /кабинет автора → «Предложения» → «Записи» → «Добавить»/);
     assert.match(helpPageSource, /href="\/archive"/);
     assert.match(helpPageSource, /href="\/rules"/);
+  });
+});
+
+describe("feedback page contracts", () => {
+  it("links the footer to the public Telegram contact", () => {
+    assert.match(homePageSource, /<Link[^>]*href="\/feedback"[^>]*>/);
+    assert.match(feedbackPageSource, /Обратная связь/);
+    assert.match(feedbackPageSource, /href="https:\/\/t\.me\/zadrotto"/);
+    assert.match(feedbackPageSource, /target="_blank"/);
+    assert.match(feedbackPageSource, /rel="noreferrer"/);
   });
 });

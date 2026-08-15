@@ -54,9 +54,37 @@ describe("public media reviews layout", () => {
     assert.match(reviews, /className="flex shrink-0 justify-end gap-2"/);
     assert.match(
       reviews,
-      /grid max-h-\[calc\(100vh-5\.75rem\)\][^\"]*rounded-md border border-stone-300\/80[^\"]*lg:h-\[min\(620px,calc\(100vh-5\.75rem\)\)\]/,
+      /grid h-\[calc\(100dvh-5\.75rem\)\][^\"]*grid-rows-\[auto_minmax\(0,1fr\)\][^\"]*rounded-md border border-stone-300\/80[^\"]*lg:h-\[min\(620px,calc\(100vh-5\.75rem\)\)\]/,
     );
     assert.doesNotMatch(reviews, /absolute right-(?:14|3) top-3/);
     assert.doesNotMatch(reviews, /<h2 id=\{titleId\} className="[^"]*pr-10/);
+  });
+
+  it("locks the background and contains mobile review scrolling", () => {
+    assert.match(reviews, /document\.body\.style\.overflow = "hidden"/);
+    assert.match(reviews, /document\.body\.style\.overflow = previousBodyOverflow/);
+    assert.match(reviews, /archive-scrollbar min-h-0 touch-pan-y overflow-y-auto overscroll-contain/);
+  });
+
+  it("deep-links published reviews and keeps one shared modal layer", () => {
+    assert.match(page, /<MediaItemReviewLayer[\s\S]*mediaItemTitle=\{item\.title\}/);
+    assert.match(reviews, /const reviewParam = searchParams\.get\("review"\)/);
+    assert.match(reviews, /nextSearchParams\.set\("review", String\(review\.id\)\)/);
+    assert.match(reviews, /router\.push\(`\$\{pathname\}\?\$\{nextSearchParams\.toString\(\)\}`/);
+    assert.match(reviews, /reviews\.find\(\(review\) => review\.id === reviewId\)/);
+    assert.match(reviews, /nextSearchParams\.delete\("review"\)/);
+    assert.match(reviews, /router\.replace\(queryString \? `\$\{pathname\}\?\$\{queryString\}` : pathname/);
+  });
+
+  it("handles missing reviews with one toast and supports native sharing with clipboard fallback", () => {
+    assert.match(reviews, /handledInvalidReviewParams/);
+    assert.match(reviews, /text: "Рецензия не найдена"/);
+    assert.match(reviews, /<ArchiveToasts messages=\{toastMessages\}/);
+    assert.match(reviews, /navigator\.share\(shareData\)/);
+    assert.match(reviews, /error\.name === "AbortError"/);
+    assert.match(reviews, /navigator\.clipboard\?\.writeText[\s\S]*navigator\.clipboard\.writeText\(url\)/);
+    assert.match(reviews, /onLinkCopied\(\)/);
+    assert.match(reviews, /text: "Ссылка на рецензию скопирована"[\s\S]*tone: "success"/);
+    assert.match(reviews, /aria-live="polite"/);
   });
 });

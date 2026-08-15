@@ -162,6 +162,13 @@ describe("author series media mutations", () => {
 });
 
 describe("author series media link client", () => {
+  it("reserves space for the translated series sticker", () => {
+    assert.match(
+      globalStylesSource,
+      /@media \(min-width: 640px\) \{[\s\S]*?\.archive-franchise-sticker \{[\s\S]*?margin-bottom: 2rem;[\s\S]*?transform: translateY\(32px\) rotate\(-0\.2deg\);[\s\S]*?\}/,
+    );
+  });
+
   it("stays inside the series sticker without changing its intrinsic width", () => {
     const stickerStart = pageSource.indexOf('<div className="archive-franchise-sticker">');
     const stickerEnd = pageSource.indexOf(

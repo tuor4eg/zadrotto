@@ -134,13 +134,23 @@ describe("public series catalog UI", () => {
   });
 
   it("shows the current series branch before its media items when it has descendants", () => {
+    assert.match(
+      seriesPageSource,
+      /archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0/,
+    );
+    assert.doesNotMatch(seriesPageSource, /archive-stack-left relative z-10 min-w-0/);
     assert.match(querySource, /export async function getPublishedFranchiseBranch\([\s\S]*enabledMediaTypeCodes/);
     assert.match(querySource, /getPublishedFranchiseTree\("", enabledMediaTypeCodes\)/);
     assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id, enabledMediaTypeCodes\)/);
     assert.match(seriesPageSource, /franchiseBranch && franchiseBranch\.children\.length > 0/);
     assert.match(seriesPageSource, /Серии внутри/);
     assert.match(seriesPageSource, /function getFranchiseDescendants\(nodes: FranchiseBranchNode\[\]\)/);
-    assert.match(seriesPageSource, /<ul className="mt-3 flex flex-wrap gap-x-3 gap-y-1/);
+    assert.match(seriesPageSource, /<ul className="mt-3 flex min-w-0 max-w-full flex-wrap gap-1\.5/);
+    assert.match(seriesPageSource, /<li key=\{child\.id\} className="min-w-0 max-w-full">/);
+    assert.match(
+      seriesPageSource,
+      /className="inline-block max-w-full rounded-full bg-\[var\(--archive-bg-end\)\][^\"]*\[overflow-wrap:anywhere\][^\"]*hover:bg-\[var\(--archive-bg-start\)\]/,
+    );
     assert.match(seriesPageSource, /getFranchiseDescendants\(franchiseBranch\.children\)\.map/);
     assert.match(seriesPageSource, /<Link[\s\S]*href=\{`\/series\/\$\{child\.code\}`\}[\s\S]*\{child\.title\}/);
 

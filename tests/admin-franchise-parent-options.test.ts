@@ -11,11 +11,11 @@ test("parent options keep the actual title separate from the display path", () =
   assert.match(select, /searchByTitleOnly/);
   assert.match(select, /\[option\.title, option\.originalTitle, option\.path, option\.code\]/);
   assert.match(select, /option\.path && option\.path !== option\.title/);
-  assert.doesNotMatch(form, /searchByTitleOnly/);
+  assert.match(form, /<SearchableFranchiseSelect[\s\S]*searchByTitleOnly/);
   assert.match(form, /selectedParent\.path/);
 });
 
-test("parent selection searches display fields but excludes the current subtree", () => {
+test("parent selection searches candidate titles only and excludes the current subtree", () => {
   const query = readFileSync("src/db/queries/franchises.ts", "utf8");
   const select = readFileSync("src/components/ui/searchable-franchise-select.tsx", "utf8");
   const parentOptionsStart = query.indexOf("export async function getAdminFranchiseParentOptions");

@@ -80,6 +80,7 @@ export function FranchiseForm({
           id="franchise-parent"
           name="parentId"
           options={parentOptions}
+          searchByTitleOnly
           value={parentId}
           onChange={setParentId}
         />

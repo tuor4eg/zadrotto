@@ -19,6 +19,7 @@ import {
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { runInDomainEventTransaction } from "@/db/transaction";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 
 export async function getSubmittedContributionReviewCountForAdmin() {
   const [result] = await db
@@ -58,8 +59,24 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
 export async function getAuthorReviews(
   authorId: number,
   enabledMediaTypeCodes: readonly string[],
+  requestedPage: number,
+  pageSize: number,
 ) {
-  return db
+  const filter = and(
+    eq(contributions.authorId, authorId),
+    eq(contributions.type, "review"),
+    getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+  );
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(filter);
+  const totalCount = countRow?.count ?? 0;
+  const totalPages = getTotalPages(totalCount, pageSize);
+  const page = clampPage(requestedPage, totalPages);
+  const items = await db
     .select({
       id: contributions.id,
       status: contributions.status,
@@ -75,12 +92,12 @@ export async function getAuthorReviews(
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
     .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
-    .where(and(
-      eq(contributions.authorId, authorId),
-      eq(contributions.type, "review"),
-      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
-    ))
-    .orderBy(desc(contributions.updatedAt), desc(contributions.id));
+    .where(filter)
+    .orderBy(desc(contributions.updatedAt), desc(contributions.id))
+    .limit(pageSize)
+    .offset(getOffset(page, pageSize));
+
+  return { items, page, pageSize, totalCount, totalPages };
 }
 
 export async function getAuthorReviewSummary(

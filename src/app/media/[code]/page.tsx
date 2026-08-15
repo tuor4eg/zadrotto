@@ -6,7 +6,7 @@ import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
-import { MediaItemReviews } from "@/app/media-item-reviews";
+import { MediaItemReviewLayer, MediaItemReviews } from "@/app/media-item-reviews";
 import { RecentlyViewedMarker } from "@/app/media/recently-viewed-marker";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
@@ -250,6 +250,13 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               size="compact"
             />
           }
+        />
+        <MediaItemReviewLayer
+          currentAuthor={
+            currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
+          }
+          mediaItemTitle={item.title}
+          reviews={reviews}
         />
       </div>
     </main>
