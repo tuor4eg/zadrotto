@@ -21,6 +21,9 @@ import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatAuthorsFact, getDateFactYear } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
+import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
+import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
+import type { ActiveQuizContext } from "@/lib/quizzes/model";
 
 type MediaCatalogPreviewProps = {
   canPublishFranchisesWithoutReview: boolean;
@@ -33,9 +36,11 @@ type MediaCatalogPreviewProps = {
   franchises: SearchableFranchiseOption[];
   item: CatalogMediaItem | null;
   mediaTypes: MediaTypeOption[];
+  activeQuiz: ActiveQuizContext | null;
 };
 
 export function MediaCatalogPreview({
+  activeQuiz,
   canPublishFranchisesWithoutReview,
   canSuggestFranchises,
   currentAdmin,
@@ -170,16 +175,21 @@ export function MediaCatalogPreview({
         </div>
 
         <div className="mt-3 grid gap-2">
-          <Link
-            href={`/media/${item.code}`}
-            className={cn(
-              buttonVariants({ variant: "outline", size: "icon" }),
-              "w-full px-3 hover:border-stone-700 hover:bg-stone-50 hover:text-stone-700",
-            )}
-          >
-            <FolderOpen />
-            Открыть досье
-          </Link>
+          <div className="flex gap-2">
+            <Link
+              href={`/media/${item.code}`}
+              className={cn(
+                buttonVariants({ variant: "outline", size: "icon" }),
+                "min-w-0 flex-1 px-3 hover:border-stone-700 hover:bg-stone-50 hover:text-stone-700",
+              )}
+            >
+              <FolderOpen />
+              Открыть досье
+            </Link>
+            {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
+              <QuizGuessButton titleId={item.id} variant="icon" />
+            ) : null}
+          </div>
           {currentAuthor && item.currentAuthorScore === null ? (
             <AuthorMediaStatusControls
               className="mt-0"

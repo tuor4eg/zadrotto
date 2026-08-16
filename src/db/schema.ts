@@ -972,6 +972,43 @@ export const mediaItems = pgTable(
   ],
 );
 
+export const quizzes = pgTable(
+  "quizzes",
+  {
+    id: serial("id").primaryKey(),
+    question: text("question"),
+    imageObjectKey: text("image_object_key"),
+    answerMediaItemId: integer("answer_media_item_id")
+      .notNull()
+      .references(() => mediaItems.id, { onDelete: "restrict" }),
+    startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
+    endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    enabled: boolean("enabled").default(true).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("quizzes_answer_media_item_id_idx").on(table.answerMediaItemId),
+    index("quizzes_active_idx").on(table.enabled, table.startsAt, table.endsAt),
+    check("quizzes_period_check", sql`${table.startsAt} < ${table.endsAt}`),
+    check(
+      "quizzes_content_check",
+      sql`nullif(btrim(${table.question}), '') is not null or ${table.imageObjectKey} is not null`,
+    ),
+  ],
+);
+
+export const quizMediaTypes = pgTable(
+  "quiz_media_types",
+  {
+    quizId: integer("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
+    mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  },
+  (table) => [
+    primaryKey({ columns: [table.quizId, table.mediaType], name: "quiz_media_types_pk" }),
+    index("quiz_media_types_media_type_idx").on(table.mediaType),
+  ],
+);
+
 export const mediaItemTitleAliases = pgTable(
   "media_item_title_aliases",
   {

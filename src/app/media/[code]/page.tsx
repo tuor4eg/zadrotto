@@ -29,6 +29,9 @@ import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
+import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
+import { getActiveQuiz } from "@/db/queries/quizzes";
+import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
 
 export const dynamic = "force-dynamic";
 
@@ -88,7 +91,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises] = await Promise.all([
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz] = await Promise.all([
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -101,6 +104,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     currentAuthor
       ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
       : Promise.resolve(false),
+    currentAuthor ? getActiveQuiz() : Promise.resolve(null),
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -208,11 +212,19 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
           }
           titleActions={
             currentAuthor && item.currentAuthorScore === null ? (
-              <AuthorMediaStatusControls
-                currentAuthorScore={item.currentAuthorScore}
-                currentAuthorStatus={item.currentAuthorStatus}
-                mediaItemCode={item.code}
-              />
+              <div className="flex flex-wrap gap-2">
+                <AuthorMediaStatusControls
+                  className="mt-0"
+                  currentAuthorScore={item.currentAuthorScore}
+                  currentAuthorStatus={item.currentAuthorStatus}
+                  mediaItemCode={item.code}
+                />
+                {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
+                  <QuizGuessButton titleId={item.id} variant="icon" />
+                ) : null}
+              </div>
+            ) : currentAuthor && activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
+              <QuizGuessButton titleId={item.id} variant="icon" />
             ) : null
           }
           ratingSlot={

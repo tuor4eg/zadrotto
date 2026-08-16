@@ -23,6 +23,7 @@ import {
   ShieldCheck,
   Tags,
   Trophy,
+  CircleHelp,
   Wrench,
   ListTodo,
   UserRound,
@@ -81,6 +82,7 @@ function getAdminNavGroups({
       label: "Материалы",
       items: [
         { href: "/admin/materials/reviews", icon: MessageSquareText, label: "Рецензии" },
+        { href: "/admin/quizzes", icon: CircleHelp, label: "Квизы" },
       ],
     },
     {

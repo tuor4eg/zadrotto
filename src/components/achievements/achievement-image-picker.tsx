@@ -13,10 +13,13 @@ const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 export function AchievementImagePicker({
   initialImageUrl,
   inputId,
+  variant = "achievement",
 }: {
   initialImageUrl: string | null;
   inputId: string;
+  variant?: "achievement" | "quiz";
 }) {
+  const pickerVariant = inputId === "quiz-image" ? "quiz" : variant;
   const inputRef = useRef<HTMLInputElement>(null);
   const [localPreviewUrl, setLocalPreviewUrl] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState(initialImageUrl);
@@ -61,7 +64,7 @@ export function AchievementImagePicker({
     />
 
     <div className="flex flex-wrap items-center gap-4">
-      <span className="relative grid size-28 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-300 bg-stone-100 shadow-sm">
+      <span className={`relative grid shrink-0 place-items-center overflow-hidden border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48 rounded-md" : "size-28 rounded-full"}`}>
         {previewUrl ? <Image alt="" fill sizes="112px" className="object-cover" src={previewUrl} /> : <Trophy className="size-10 text-stone-400" />}
       </span>
       <div className="grid min-w-0 gap-2">
@@ -92,7 +95,9 @@ export function AchievementImagePicker({
     </div>
     {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
     <p className="text-xs leading-5 text-stone-500">
-      JPG, PNG или WebP до 5 МБ. Центр будет обрезан до квадрата 512×512.
+      {pickerVariant === "quiz"
+        ? "JPG, PNG или WebP до 5 МБ. Пропорции изображения сохранятся."
+        : "JPG, PNG или WebP до 5 МБ. Центр будет обрезан до квадрата 512×512."}
     </p>
   </div>;
 }

@@ -21,6 +21,7 @@ import { ArchiveCatalogLayout } from "@/components/archive/archive-catalog-layou
 import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
+import type { ActiveQuizContext } from "@/lib/quizzes/model";
 import {
   sortMediaTypesByCount,
   type MediaType,
@@ -55,6 +56,7 @@ type MediaItemsCatalogProps = {
     name: string;
     code: string;
   } | null;
+  activeQuiz: ActiveQuizContext | null;
 };
 
 function updateFilterParam(
@@ -72,6 +74,7 @@ function updateFilterParam(
 }
 
 export function MediaItemsCatalog({
+  activeQuiz,
   authorRatingFilter,
   canPublishFranchisesWithoutReview,
   canSuggestFranchises,
@@ -207,6 +210,7 @@ export function MediaItemsCatalog({
           franchises={publishedFranchises}
           item={selectedItem}
           mediaTypes={mediaTypes}
+          activeQuiz={activeQuiz}
         />
       }
       previewKey={selectedItem?.id ?? null}
