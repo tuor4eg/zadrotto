@@ -7,15 +7,16 @@ import { FriendshipControls } from "@/app/users/friendship-controls";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { AdaptiveArchivePageSizeSync } from "@/components/archive/adaptive-archive-page-size-sync";
 import { AuthorStatistics } from "@/components/author/author-statistics";
-import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { RecentAchievementShowcase } from "@/components/achievements/recent-achievement-showcase";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { PaginationNav } from "@/components/pagination-nav";
 import { Alert } from "@/components/ui/alert";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { getPublicAuthorStatistics, getPublicRatingJournal, getPublicReviewJournal, getPublicUserProfile } from "@/db/queries/friends";
-import { getAccessibleMediaTypeCodes, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
+import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { ARCHIVE_CATALOG_GRID_CLASS_NAME, parseArchiveCatalogPageSize } from "@/lib/archive/tile-grid-capacity";
 import { parsePage } from "@/lib/common/pagination";
@@ -37,26 +38,31 @@ function formatDate(value: Date | string | null) {
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
   const id = parseId((await params).id);
   if (!id) return {};
-  const current = await getCurrentAuthor();
-  const profile = await getPublicUserProfile(id, current?.id);
+  const [current, admin] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()]);
+  const profile = await getPublicUserProfile(id, current?.id, Boolean(admin));
   return profile ? { title: profile.name } : {};
 }
 
 export default async function PublicUserPage({ params, searchParams }: PageProps) {
   const id = parseId((await params).id);
   if (!id) notFound();
-  const [current, query] = await Promise.all([getCurrentAuthor(), searchParams]);
-  const profile = await getPublicUserProfile(id, current?.id);
+  const [current, admin, query] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser(), searchParams]);
+  const isAdmin = Boolean(admin);
+  const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
-  const achievementItems = await getAchievementShowcase(profile.id);
   const view = query.view === "ratings" || query.view === "reviews"
     ? query.view
     : query.journal === "ratings" || query.journal === "reviews"
       ? query.journal
       : "statistics";
+  const achievementItems = view === "statistics" ? await getAchievementShowcase(profile.id) : [];
   const page = parsePage(query.page);
   const ratingsPageSize = parseArchiveCatalogPageSize(query.pageSize);
-  const accessibleMediaTypeCodes = profile.canViewJournal ? await getAccessibleMediaTypeCodes(current?.id) : [];
+  const accessibleMediaTypeCodes = profile.canViewJournal
+    ? isAdmin
+      ? (await getAllMediaTypeOptions()).map((item) => item.code)
+      : await getAccessibleMediaTypeCodes(current?.id)
+    : [];
   const journalPage = profile.canViewJournal && view !== "statistics"
     ? view === "reviews"
       ? await getPublicReviewJournal(profile.id, page, accessibleMediaTypeCodes)
@@ -99,16 +105,19 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
         <div className="flex flex-wrap items-center gap-4 p-5 sm:p-7">
           <Avatar name={profile.name} objectKey={profile.avatarObjectKey} className="size-20 text-2xl" />
           <div className="min-w-0 flex-1"><h1 className="break-words font-serif text-3xl sm:text-4xl">{profile.name}</h1></div>
-          {current ? <FriendshipControls returnTo={basePath} state={profile.relationState} targetId={profile.id} /> : <Link href="/author/login" className={buttonVariants({ variant: "outline" })}>Войти</Link>}
+          {current ? <FriendshipControls returnTo={basePath} state={profile.relationState} targetId={profile.id} /> : isAdmin ? null : <Link href="/author/login" className={buttonVariants({ variant: "outline" })}>Войти</Link>}
         </div>
-        {profile.canViewJournal ? <nav aria-label="Разделы профиля пользователя" className="flex flex-wrap gap-2 border-t border-stone-300/70 px-5 py-3 sm:px-7">
+        <nav aria-label="Разделы профиля пользователя" className="flex flex-wrap gap-2 border-t border-stone-300/70 px-5 py-3 sm:px-7">
           <Link href={basePath} className={buttonVariants({ variant: view === "statistics" ? "default" : "outline", size: "sm" })}>Статистика</Link>
-          <Link href={`${basePath}?view=ratings`} className={buttonVariants({ variant: view === "ratings" ? "default" : "outline", size: "sm" })}>Оценки</Link>
-          <Link href={`${basePath}?view=reviews`} className={buttonVariants({ variant: view === "reviews" ? "default" : "outline", size: "sm" })}>Рецензии</Link>
-        </nav> : null}
+          {profile.canViewJournal ? <>
+            <Link href={`${basePath}?view=ratings`} className={buttonVariants({ variant: view === "ratings" ? "default" : "outline", size: "sm" })}>Оценки</Link>
+            <Link href={`${basePath}?view=reviews`} className={buttonVariants({ variant: view === "reviews" ? "default" : "outline", size: "sm" })}>Рецензии</Link>
+          </> : null}
+          <Link href={`${basePath}/achievements`} className={buttonVariants({ variant: "outline", size: "sm" })}>Ачивки</Link>
+        </nav>
       </header>
 
-      <AchievementShowcase items={achievementItems} />
+      {view === "statistics" ? <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} /> : null}
 
       {profile.canViewJournal ? <section className="space-y-3">
           {view === "statistics" && statistics ? <AuthorStatistics
@@ -120,6 +129,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
             ratingsHref={`${basePath}?view=ratings`}
             reviewCount={statistics.reviewCount}
             reviewsHref={`${basePath}?view=reviews`}
+            contributionCount={statistics.contributionCount}
           /> : journalPage?.items.length ? view === "ratings" ? <div className="archive-paper archive-panel p-4 sm:p-5">
             <Suspense fallback={null}>
               <AdaptiveArchivePageSizeSync pageSize={journalPage.pageSize} />

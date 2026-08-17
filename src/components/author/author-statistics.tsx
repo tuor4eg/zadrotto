@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalendarCheck, ChartNoAxesColumn, FileText, Gauge, Info, Star } from "lucide-react";
+import { Archive, CalendarCheck, ChartNoAxesColumn, FileText, Gauge, Info, Star } from "lucide-react";
 
 import { AuthorMediaInterestsPanel } from "@/app/author/(protected)/author-media-interests-panel";
 import { ResponsiveTileGrid, type ResponsiveTileDescriptor } from "@/components/archive/responsive-tile-grid";
@@ -27,6 +27,7 @@ export function AuthorStatistics({
   ratingsHref,
   reviewCount,
   reviewsHref,
+  contributionCount,
 }: {
   interestsTitle?: string;
   latestRatingTiles: ResponsiveTileDescriptor[];
@@ -36,6 +37,7 @@ export function AuthorStatistics({
   ratingsHref: string;
   reviewCount: number;
   reviewsHref: string;
+  contributionCount: number;
 }) {
   const distributionByMediaType = new Map(ratingSummary.distribution.map((item) => [item.mediaType, item.ratingsCount]));
   const mediaTypesByRatingCount = sortMediaTypesByCount(mediaTypes, ratingSummary.distribution.map((item) => ({ count: item.ratingsCount, mediaType: item.mediaType })));
@@ -48,6 +50,7 @@ export function AuthorStatistics({
     { Icon: Gauge, label: "Средняя", value: formatScore(ratingSummary.averageScore) },
     { Icon: CalendarCheck, label: "Оценено в этом году", value: ratingSummary.currentYearRatingsCount },
     { Icon: FileText, label: "Рецензий", value: reviewCount },
+    { Icon: Archive, label: "Добавлено в архив", value: contributionCount },
   ];
 
   return <div className="author-dashboard flex flex-col gap-3">

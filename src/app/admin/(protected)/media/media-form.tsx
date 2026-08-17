@@ -508,7 +508,7 @@ export function AdminMediaForm({
                 const nextFields = getMediaTitleCandidateFormFields(
                   candidate,
                   { description, originalTitle, releaseYear, title },
-                  isEditing,
+                  false,
                 );
                 setTitle(nextFields.title);
                 setOriginalTitle(nextFields.originalTitle);
@@ -542,7 +542,7 @@ export function AdminMediaForm({
                     const canonicalFields = getMediaTitleMetadataFormFields(
                       result.metadata.fields,
                       nextFields,
-                      isEditing,
+                      false,
                     );
                     setTitle(canonicalFields.title);
                     setOriginalTitle(canonicalFields.originalTitle);

@@ -42,7 +42,7 @@ export function AchievementToastHost() {
       if (data.group) {
         setMessages([{
           id: `achievement-${data.group.awardGroupId}`,
-          link: { href: "/author", label: "Ачивки" },
+          link: { href: "/author/achievements", label: "Ачивки" },
           tone: "success",
           text: data.group.count === 1 && data.group.name
             ? `Получена ачивка «${data.group.name}».`

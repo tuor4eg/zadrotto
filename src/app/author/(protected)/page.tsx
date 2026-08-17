@@ -1,7 +1,8 @@
 import { AuthorStatistics } from "@/components/author/author-statistics";
-import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { RecentAchievementShowcase } from "@/components/achievements/recent-achievement-showcase";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getAuthorReviewSummary } from "@/db/queries/contribution-reviews";
+import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
@@ -11,9 +12,10 @@ export default async function AuthorPage() {
   const author = await requireAuthor();
   const mediaTypes = (await getEffectiveMediaTypeOptions(author.id)).filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
-  const [summary, reviewSummary, achievementItems] = await Promise.all([
+  const [summary, reviewSummary, contributionCount, achievementItems] = await Promise.all([
     getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
     getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
+    getAuthorPublishedMediaItemCount(author.id, enabledMediaTypeCodes),
     getAchievementShowcase(author.id),
   ]);
   const latestMediaItemIds = [...new Set([
@@ -32,6 +34,7 @@ export default async function AuthorPage() {
   });
 
   return <div className="author-dashboard flex flex-col gap-3">
+    <RecentAchievementShowcase allHref="/author/achievements" items={achievementItems} />
     <AuthorStatistics
       latestRatingTiles={latestRatingTiles}
       latestReviewTiles={latestReviewTiles}
@@ -40,7 +43,7 @@ export default async function AuthorPage() {
       ratingsHref="/archive?sort=my_rating_date&mine=rated"
       reviewCount={reviewSummary.reviewsCount}
       reviewsHref="/author/reviews"
+      contributionCount={contributionCount}
     />
-    <AchievementShowcase items={achievementItems} />
   </div>;
 }

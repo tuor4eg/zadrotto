@@ -2,10 +2,10 @@ import "server-only";
 
 import { randomUUID } from "node:crypto";
 
-import { and, asc, eq, gt, isNull } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
-import { authors } from "@/db/schema";
+import { achievements, authors } from "@/db/schema";
 import { runInTransaction } from "@/db/transaction";
 import { createJobRun } from "@/db/queries/jobs";
 import {
@@ -14,11 +14,10 @@ import {
   DEFAULT_JOB_RETRY_MAX_SECONDS,
   DEFAULT_JOB_TIMEOUT_SECONDS,
 } from "@/lib/jobs/model";
-import type { AchievementCode } from "./catalog";
 import { evaluateAchievements } from "./service";
 
 export type AchievementBackfillPayload = {
-  achievementCodes?: AchievementCode[];
+  achievementIds?: number[];
   afterAuthorId?: number;
   awardGroupId?: string;
   batchSize?: number;
@@ -27,6 +26,14 @@ export type AchievementBackfillPayload = {
 export async function backfillAchievements(input: AchievementBackfillPayload) {
   const batchSize = input.batchSize ?? 100;
   const awardGroupId = input.awardGroupId ?? randomUUID();
+  const achievementIds = input.achievementIds ? [...new Set(input.achievementIds)] : undefined;
+  if (achievementIds?.length) {
+    const existing = await db.select({ id: achievements.id }).from(achievements)
+      .where(inArray(achievements.id, achievementIds));
+    if (existing.length !== achievementIds.length) {
+      throw new Error("Backfill ссылается на несуществующую ачивку.");
+    }
+  }
   const authorRows = await db
     .select({ id: authors.id })
     .from(authors)
@@ -41,7 +48,7 @@ export async function backfillAchievements(input: AchievementBackfillPayload) {
 
   const awards = authorIds.length > 0
     ? await runInTransaction((tx) => evaluateAchievements(tx, {
-        achievementCodes: input.achievementCodes,
+        achievementIds,
         authorIds,
         awardGroupId,
       }))
@@ -52,7 +59,7 @@ export async function backfillAchievements(input: AchievementBackfillPayload) {
     await createJobRun({
       maxAttempts: DEFAULT_JOB_MAX_ATTEMPTS,
       payload: {
-        ...(input.achievementCodes ? { achievementCodes: input.achievementCodes } : {}),
+        ...(achievementIds ? { achievementIds } : {}),
         afterAuthorId: lastAuthorId,
         awardGroupId,
         batchSize,

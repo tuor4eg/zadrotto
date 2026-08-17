@@ -12,6 +12,7 @@ import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { runInDomainEventTransaction } from "@/db/transaction";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -1188,7 +1189,7 @@ export async function reviewSubmittedFranchise(input: {
   decision: Extract<"private" | "submitted" | "published" | "rejected", "published" | "rejected">;
   franchiseId: number;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [franchise] = await tx
       .update(franchises)
       .set({ publicationStatus: input.decision, updatedAt: new Date() })
@@ -1207,7 +1208,7 @@ export async function reviewSubmittedFranchise(input: {
       });
 
     if (franchise?.createdByAuthorId) {
-      await tx
+      const publishedLinks = await tx
         .update(mediaItemFranchises)
         .set({ publicationStatus: input.decision, updatedAt: new Date() })
         .where(
@@ -1216,7 +1217,19 @@ export async function reviewSubmittedFranchise(input: {
             eq(mediaItemFranchises.createdByAuthorId, franchise.createdByAuthorId),
             eq(mediaItemFranchises.publicationStatus, "submitted"),
           ),
-        );
+        )
+        .returning({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId });
+      if (input.decision === "published") {
+        for (const link of publishedLinks) {
+          await appendEvent({
+            actorAuthorId: null,
+            aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
+            aggregateType: "media-franchise",
+            payload: link,
+            type: "media-franchise.published",
+          });
+        }
+      }
     }
 
     return franchise ?? null;
@@ -1229,31 +1242,31 @@ export async function reviewSubmittedMediaItemFranchise(input: {
   franchiseId: number;
   mediaItemId: number;
 }) {
-  const [link] = await db
-    .update(mediaItemFranchises)
-    .set({ publicationStatus: input.decision, updatedAt: new Date() })
-    .where(
-      and(
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [link] = await tx
+      .update(mediaItemFranchises)
+      .set({ publicationStatus: input.decision, updatedAt: new Date() })
+      .where(and(
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
         eq(mediaItemFranchises.publicationStatus, "submitted"),
-        exists(
-          db
-            .select({ id: mediaItems.id })
-            .from(mediaItems)
-            .where(and(eq(mediaItems.id, input.mediaItemId), publishedMediaItemCondition)),
-        ),
-        exists(
-          db
-            .select({ id: franchises.id })
-            .from(franchises)
-            .where(and(eq(franchises.id, input.franchiseId), publishedFranchiseCondition)),
-        ),
-      ),
-    )
-    .returning({ mediaItemId: mediaItemFranchises.mediaItemId, franchiseId: mediaItemFranchises.franchiseId });
-
-  return link ?? null;
+        exists(tx.select({ id: mediaItems.id }).from(mediaItems)
+          .where(and(eq(mediaItems.id, input.mediaItemId), publishedMediaItemCondition))),
+        exists(tx.select({ id: franchises.id }).from(franchises)
+          .where(and(eq(franchises.id, input.franchiseId), publishedFranchiseCondition))),
+      ))
+      .returning({ mediaItemId: mediaItemFranchises.mediaItemId, franchiseId: mediaItemFranchises.franchiseId });
+    if (link && input.decision === "published") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
+        aggregateType: "media-franchise",
+        payload: link,
+        type: "media-franchise.published",
+      });
+    }
+    return link ?? null;
+  });
 }
 
 export async function reviewMediaItemFranchiseRemovalRequest(input: {
@@ -1290,7 +1303,7 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
   mediaItemId: number;
   publicationStatus: "published" | "submitted";
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const franchiseIds = [...new Set(input.franchiseIds)];
 
     if (franchiseIds.length === 0) {
@@ -1337,6 +1350,18 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
         createdByAuthorId: input.authorId,
         publicationStatus: input.publicationStatus,
       })));
+
+    if (input.publicationStatus === "published") {
+      for (const franchiseId of franchiseIds) {
+        await appendEvent({
+          actorAuthorId: input.authorId,
+          aggregateId: `${input.mediaItemId}:${franchiseId}`,
+          aggregateType: "media-franchise",
+          payload: { franchiseId, mediaItemId: input.mediaItemId },
+          type: "media-franchise.published",
+        });
+      }
+    }
 
     return franchiseIds.map((franchiseId) => availableFranchisesById.get(franchiseId)!);
   });
@@ -1432,7 +1457,7 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
   publicationStatus: "published" | "submitted";
   title: string;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [mediaItem] = await tx
       .select({ id: mediaItems.id })
       .from(mediaItems)
@@ -1462,6 +1487,16 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
       createdByAuthorId: input.authorId,
       publicationStatus: input.publicationStatus,
     });
+
+    if (input.publicationStatus === "published") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: `${input.mediaItemId}:${franchise.id}`,
+        aggregateType: "media-franchise",
+        payload: { franchiseId: franchise.id, mediaItemId: input.mediaItemId },
+        type: "media-franchise.published",
+      });
+    }
 
     return franchise;
   });
@@ -1582,7 +1617,7 @@ export async function updateFranchise(input: {
   description: string | null;
   parentId: number | null;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     await tx.execute(sql`select pg_advisory_xact_lock(58391038)`);
     const allFranchises = await tx.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
     const { maxFranchiseDepth } = await getArchiveSettings();
@@ -1600,6 +1635,7 @@ export async function updateFranchise(input: {
     for (const row of allFranchises) childIds.set(row.parentId ?? 0, [...(childIds.get(row.parentId ?? 0) ?? []), row.id]);
     const height = (id: number): number => 1 + Math.max(0, ...(childIds.get(id) ?? []).map(height));
     if (targetDepth + height(input.id) - 1 > maxFranchiseDepth) throw new Error("franchise-depth-limit");
+    const previousParentId = allFranchises.find((item) => item.id === input.id)?.parentId ?? null;
     const [franchise] = await tx
     .update(franchises)
     .set({
@@ -1632,6 +1668,19 @@ export async function updateFranchise(input: {
         and descendant_link.franchise_id = ancestor_links.descendant_id
         and ancestor_links.ancestor_id <> ancestor_links.descendant_id
     `);
+    if (previousParentId !== input.parentId) {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(franchise.id),
+        aggregateType: "franchise",
+        payload: {
+          franchiseId: franchise.id,
+          nextParentId: input.parentId,
+          previousParentId,
+        },
+        type: "franchise.parent.changed",
+      });
+    }
     return franchise;
   });
 }
@@ -1808,7 +1857,7 @@ export async function addMediaItemToFranchise(input: {
   franchiseId: number;
   mediaItemId: number;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [mediaItem, franchise] = await Promise.all([
       tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).limit(1),
       tx.select({ id: franchises.id }).from(franchises).where(eq(franchises.id, input.franchiseId)).limit(1),
@@ -1851,6 +1900,15 @@ export async function addMediaItemToFranchise(input: {
       .set({ updatedAt: new Date() })
       .where(eq(mediaItems.id, input.mediaItemId))
       .returning({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title });
+    if (updatedMediaItem && !inputIsRedundant && !existingFranchiseIds.has(input.franchiseId)) {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: `${input.mediaItemId}:${input.franchiseId}`,
+        aggregateType: "media-franchise",
+        payload: input,
+        type: "media-franchise.published",
+      });
+    }
     return updatedMediaItem ?? null;
   });
 }

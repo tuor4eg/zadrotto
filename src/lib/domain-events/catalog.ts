@@ -3,6 +3,8 @@ export const DOMAIN_EVENT_TYPES = [
   "review.published",
   "friend.accepted",
   "media.published",
+  "media-franchise.published",
+  "franchise.parent.changed",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
@@ -16,6 +18,12 @@ export type DomainEventPayloads = {
     requestedByAuthorId: number;
   };
   "media.published": { mediaItemId: number };
+  "media-franchise.published": { franchiseId: number; mediaItemId: number };
+  "franchise.parent.changed": {
+    franchiseId: number;
+    nextParentId: number | null;
+    previousParentId: number | null;
+  };
 };
 
 export type DomainEventInput<TType extends DomainEventType = DomainEventType> = {

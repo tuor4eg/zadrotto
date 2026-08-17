@@ -456,6 +456,20 @@
       "when": 1786900100000,
       "tag": "0064_quiz_participants",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1786900200000,
+      "tag": "0065_achievement_mechanics_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1786900300000,
+      "tag": "0066_achievement_levels_full_backfill",
+      "breakpoints": true
     }
   ]
 }

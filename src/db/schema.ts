@@ -846,6 +846,8 @@ export const achievements = pgTable(
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
     description: text("description").notNull(),
+    mechanic: text("mechanic").notNull(),
+    params: jsonb("params").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
     imageObjectKey: text("image_object_key"),
     enabled: boolean("enabled").default(true).notNull(),
     showWhenLocked: boolean("show_when_locked").default(true).notNull(),
@@ -856,6 +858,30 @@ export const achievements = pgTable(
     check("achievements_code_check", sql`btrim(${table.code}) <> ''`),
     check("achievements_name_check", sql`btrim(${table.name}) <> ''`),
     check("achievements_description_check", sql`btrim(${table.description}) <> ''`),
+    check("achievements_mechanic_check", sql`btrim(${table.mechanic}) <> ''`),
+  ],
+);
+
+export const achievementLevels = pgTable(
+  "achievement_levels",
+  {
+    id: serial("id").primaryKey(),
+    achievementId: integer("achievement_id").notNull().references(() => achievements.id, { onDelete: "cascade" }),
+    level: integer("level").notNull(),
+    threshold: integer("threshold").notNull(),
+    name: text("name"),
+    description: text("description"),
+    imageObjectKey: text("image_object_key"),
+    ...timestamps(),
+  },
+  (table) => [
+    unique("achievement_levels_achievement_level_unique").on(table.achievementId, table.level),
+    unique("achievement_levels_achievement_threshold_unique").on(table.achievementId, table.threshold),
+    index("achievement_levels_achievement_id_idx").on(table.achievementId),
+    check("achievement_levels_level_check", sql`${table.level} > 0`),
+    check("achievement_levels_threshold_check", sql`${table.threshold} > 0`),
+    check("achievement_levels_name_check", sql`${table.name} is null or btrim(${table.name}) <> ''`),
+    check("achievement_levels_description_check", sql`${table.description} is null or btrim(${table.description}) <> ''`),
   ],
 );
 
@@ -866,9 +892,9 @@ export const userAchievements = pgTable(
     authorId: integer("author_id")
       .notNull()
       .references(() => authors.id, { onDelete: "cascade" }),
-    achievementId: integer("achievement_id")
+    achievementLevelId: integer("achievement_level_id")
       .notNull()
-      .references(() => achievements.id, { onDelete: "restrict" }),
+      .references(() => achievementLevels.id, { onDelete: "restrict" }),
     sourceEventId: uuid("source_event_id").references(() => domainEvents.id, {
       onDelete: "set null",
     }),
@@ -877,9 +903,9 @@ export const userAchievements = pgTable(
     announcedAt: timestamp("announced_at", { withTimezone: true }),
   },
   (table) => [
-    unique("user_achievements_author_achievement_unique").on(
+    unique("user_achievements_author_achievement_level_unique").on(
       table.authorId,
-      table.achievementId,
+      table.achievementLevelId,
     ),
     index("user_achievements_author_awarded_at_idx").on(table.authorId, table.awardedAt),
     index("user_achievements_pending_announcement_idx")

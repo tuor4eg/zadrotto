@@ -1,5 +1,6 @@
 import { canViewMediaItemCover } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { fetchS3Object } from "@/lib/services/minio";
 
@@ -35,12 +36,13 @@ export async function GET(_request: Request, { params }: CoverRouteContext) {
     return new Response("Обложка не найдена.", { status: 404 });
   }
 
-  const currentAuthor = (await getCurrentAuthor()) ?? undefined;
+  const [currentAuthor, adminUser] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()]);
   const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(currentAuthor?.id);
   const canViewCover = await canViewMediaItemCover(
     objectKey,
     accessibleMediaTypeCodes,
-    currentAuthor,
+    currentAuthor ?? undefined,
+    { isAdmin: Boolean(adminUser) },
   );
 
   if (!canViewCover) {

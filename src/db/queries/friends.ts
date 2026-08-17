@@ -2,6 +2,7 @@ import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { containsNormalizedSearchSql } from "@/db/search";
+import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import {
   authorFriendships,
@@ -73,7 +74,11 @@ export async function getFriendshipViewState(
   return relation.requestedByAuthorId === currentAuthorId ? "outgoing" : "incoming";
 }
 
-export async function getPublicUserProfile(profileAuthorId: number, currentAuthorId?: number | null) {
+export async function getPublicUserProfile(
+  profileAuthorId: number,
+  currentAuthorId?: number | null,
+  isAdmin = false,
+) {
   const [author] = await db
     .select({
       avatarObjectKey: authors.avatarObjectKey,
@@ -86,8 +91,12 @@ export async function getPublicUserProfile(profileAuthorId: number, currentAutho
     .limit(1);
   if (!author) return null;
   const relationState = await getFriendshipViewState(currentAuthorId, profileAuthorId);
-  if (!author.isDiscoverable && relationState !== "self" && relationState !== "friends") return null;
-  return { ...author, relationState, canViewJournal: relationState === "self" || relationState === "friends" };
+  if (!author.isDiscoverable && relationState !== "self" && relationState !== "friends" && !isAdmin) return null;
+  return {
+    ...author,
+    relationState,
+    canViewJournal: relationState === "self" || relationState === "friends" || isAdmin,
+  };
 }
 
 export async function updateAuthorDiscoverability(authorId: number, isDiscoverable: boolean) {
@@ -315,7 +324,7 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     eq(mediaItems.publicationStatus, "published"),
     getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
   );
-  const [totalRows, distribution, releaseYearDistribution, scoreDistribution, latestRatings, reviewCountRows, latestReviews] = await Promise.all([
+  const [totalRows, distribution, releaseYearDistribution, scoreDistribution, latestRatings, reviewCountRows, latestReviews, contributionCount] = await Promise.all([
     db.select({
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -338,6 +347,7 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
       .from(contributions).innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
       .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId)).where(reviewFilter)
       .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id)).limit(5),
+    getAuthorPublishedMediaItemCount(authorId, accessibleMediaTypeCodes),
   ]);
   const totals = totalRows[0];
   return {
@@ -350,6 +360,7 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
       scoreDistribution,
     },
     reviewCount: reviewCountRows[0]?.reviewsCount ?? 0,
+    contributionCount,
     latestRatings,
     latestReviews,
   };

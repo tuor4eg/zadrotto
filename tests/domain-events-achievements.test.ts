@@ -3,18 +3,20 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
-  achievementRegistry,
-  getAchievementDefinitionsForEvent,
+  achievementMechanicRegistry,
+  getAchievementMechanic,
 } from "../src/lib/achievements/catalog";
 
 const schemaSource = readFileSync("src/db/schema.ts", "utf8");
 const migrationSource = readFileSync("drizzle/0060_domain_events_achievements.sql", "utf8");
+const mechanicsMigrationSource = readFileSync("drizzle/0065_achievement_mechanics_levels.sql", "utf8");
 const transactionSource = readFileSync("src/db/transaction.ts", "utf8");
 const dispatcherSource = readFileSync("src/lib/domain-events/dispatcher.ts", "utf8");
 const ratingSource = readFileSync("src/db/queries/ratings.ts", "utf8");
 const reviewSource = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
 const friendsSource = readFileSync("src/db/queries/friends.ts", "utf8");
 const mediaSource = readFileSync("src/db/queries/media-items.ts", "utf8");
+const franchiseSource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const achievementServiceSource = readFileSync("src/lib/achievements/service.ts", "utf8");
 const backfillSource = readFileSync("src/lib/achievements/backfill.ts", "utf8");
 const achievementQuerySource = readFileSync("src/db/queries/achievements.ts", "utf8");
@@ -62,31 +64,44 @@ describe("domain event foundation", () => {
     assert.match(reviewSource, /runInDomainEventTransaction[\s\S]*type: "review\.published"/);
     assert.match(friendsSource, /runInDomainEventTransaction[\s\S]*type: "friend\.accepted"/);
     assert.match(mediaSource, /runInDomainEventTransaction[\s\S]*type: "media\.published"/);
+    assert.match(franchiseSource, /runInDomainEventTransaction[\s\S]*type: "media-franchise\.published"/);
+    assert.match(franchiseSource, /type: "franchise\.parent\.changed"/);
     assert.match(ratingSource, /if \(!existingRating\)/);
   });
 });
 
 describe("achievement consumer", () => {
-  it("keeps five code-defined conditions and routes only relevant events", () => {
-    assert.equal(achievementRegistry.length, 5);
-    assert.deepEqual(
-      getAchievementDefinitionsForEvent("review.published").map(({ code }) => code),
-      ["first-published-review"],
-    );
-    assert.deepEqual(
-      getAchievementDefinitionsForEvent("rating.created").map(({ code }) => code),
-      ["first-rating", "ratings-10", "games-rated-10", "films-rated-10"],
-    );
+  it("registers reusable mechanics with independently declared parameters", () => {
+    assert.equal(achievementMechanicRegistry.length, 2);
+    const rating = getAchievementMechanic("rating.authored.count");
+    const review = getAchievementMechanic("review.authored.count");
+    assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
+    assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
+    assert.notEqual(rating?.params, review?.params);
+    assert.deepEqual(review?.eventTypes, [
+      "review.published", "media.published", "media-franchise.published", "franchise.parent.changed",
+    ]);
+    assert.deepEqual(rating?.parseParams({ mediaType: "film", seriesId: 42 }), {
+      mediaType: "film",
+      seriesId: 42,
+    });
+    assert.throws(() => rating?.parseParams({ mediaType: "film", unsupported: true }));
+    assert.throws(() => review?.parseParams({ seriesId: 0 }));
   });
 
   it("checks current published data and awards with a database uniqueness guard", () => {
-    assert.match(achievementServiceSource, /eq\(mediaItems\.publicationStatus, "published"\)/);
-    assert.match(achievementServiceSource, /eq\(contributions\.status, "published"\)/);
+    assert.match(readFileSync("src/lib/achievements/catalog.ts", "utf8"), /publicationStatus} = 'published'/);
     assert.match(achievementServiceSource, /eq\(achievements\.enabled, true\)/);
     assert.match(
       achievementServiceSource,
-      /onConflictDoNothing\(\{[\s\S]*userAchievements\.authorId[\s\S]*userAchievements\.achievementId/,
+      /onConflictDoNothing\(\{[\s\S]*userAchievements\.authorId[\s\S]*userAchievements\.achievementLevelId/,
     );
+    assert.match(mechanicsMigrationSource, /Legacy user achievement has no unambiguous achievement level/);
+    assert.match(mechanicsMigrationSource, /Achievement has no mechanic mapping/);
+    assert.match(mechanicsMigrationSource, /DROP COLUMN "achievement_id"/);
+    assert.match(mechanicsMigrationSource, /SET "achievement_level_id" = al\."id"[\s\S]*al\."achievement_id" = ua\."achievement_id"/);
+    assert.match(achievementServiceSource, /\.for\("share", \{ of: achievements \}\)/);
+    assert.match(achievementQuerySource, /input\.threshold <= previousLevel\.threshold/);
   });
 
   it("preserves one award group across backfill continuation jobs", () => {
@@ -104,14 +119,19 @@ describe("achievement consumer", () => {
 
   it("keeps secret achievements hidden only until they are awarded", () => {
     assert.match(schemaSource, /showWhenLocked: boolean\("show_when_locked"\)\.default\(true\)\.notNull\(\)/);
-    assert.match(achievementQuerySource, /isNotNull\(userAchievements\.id\)[\s\S]*eq\(achievements\.enabled, true\)[\s\S]*eq\(achievements\.showWhenLocked, true\)/);
+    assert.match(achievementQuerySource, /exists \([\s\S]*awarded_level\.achievement_id = \$\{achievements\.id\}[\s\S]*eq\(achievements\.enabled, true\)[\s\S]*eq\(achievements\.showWhenLocked, true\)/);
+  });
+
+  it("keeps current progress separate from the highest historical level", () => {
+    assert.match(achievementQuerySource, /currentValue: valueByAchievement\.get\(presentation\.achievementId\) \?\? 0/);
+    assert.doesNotMatch(achievementQuerySource, /Math\.max\([\s\S]*currentValue/);
   });
 
   it("normalizes images and safely replaces assigned objects", () => {
     assert.match(achievementImageSource, /achievements\/\$\{achievementId\}\/\$\{randomUUID\(\)\}\.webp/);
     assert.match(achievementImageSource, /resize\(OUTPUT_SIZE, OUTPUT_SIZE, \{ fit: "cover", position: "centre" \}\)/);
-    assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementPresentation[\s\S]*deleteAchievementImageBestEffort\(achievement\.imageObjectKey\)/);
-    assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteAchievementImageBestEffort\(uploadedObjectKey\)/);
+    assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementGeneral[\s\S]*deleteAchievementImageBestEffort\(achievement\.imageObjectKey\)/);
+    assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteAchievementImageBestEffort\(imageResult\.uploadedObjectKey\)/);
   });
 
   it("serves only assigned images through production and local paths", () => {

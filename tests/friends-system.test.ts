@@ -43,7 +43,8 @@ test("hidden users are excluded from search and protected on direct access", () 
   assert.match(queries, /containsNormalizedSearchSql\(authors\.name, normalizedQuery\)/);
   assert.match(queries, /eq\(authors\.isSystem, false\)/);
   assert.match(queries, /isNull\(authors\.blockedAt\)/);
-  assert.match(queries, /!author\.isDiscoverable && relationState !== "self" && relationState !== "friends"/);
+  assert.match(queries, /!author\.isDiscoverable && relationState !== "self" && relationState !== "friends" && !isAdmin/);
+  assert.match(queries, /canViewJournal: relationState === "self" \|\| relationState === "friends" \|\| isAdmin/);
   assert.match(profilePage, /if \(!profile\) notFound\(\)/);
 });
 
@@ -66,6 +67,10 @@ test("friends journal exposes only published records and reviews", () => {
   assert.match(profilePage, />Статистика<[^]*>Оценки<[^]*>Рецензии</);
   assert.match(profilePage, /<AuthorStatistics/);
   assert.doesNotMatch(authorStatistics, /adminNote|draft|submitted|rejected/);
+  assert.match(profilePage, /getCurrentAdminUser/);
+  assert.match(profilePage, /getPublicUserProfile\(id, current\?\.id, isAdmin\)/);
+  assert.match(profilePage, /isAdmin[\s\S]*getAllMediaTypeOptions\(\)/);
+  assert.match(profilePage, /current \? <FriendshipControls[\s\S]*isAdmin \? null : <Link href="\/author\/login"/);
 });
 
 test("friends UI contains all MVP lists, actions, setting, and pagination", () => {

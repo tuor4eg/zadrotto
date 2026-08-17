@@ -80,7 +80,7 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
     <div className="flex flex-col gap-5">
       <PageHeader
         title={author.name}
-        description={`Авторский профиль: ${author.code}`}
+        description={`Статистика автора: ${author.code}`}
         aside={
           <div className="flex flex-wrap gap-2">
             <Link

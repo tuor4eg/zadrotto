@@ -29,6 +29,7 @@ export type JobHandlerDefinition<TPayload> = {
   execute: (context: JobHandlerContext<TPayload>) => Promise<void>;
   label: string;
   parsePayload: (value: unknown) => TPayload;
+  schedulable?: boolean;
   type: string;
 };
 
@@ -40,5 +41,6 @@ export type AnyJobHandlerDefinition = {
   execute: (context: JobHandlerContext<never>) => Promise<void>;
   label: string;
   parsePayload: (value: unknown) => unknown;
+  schedulable?: boolean;
   type: string;
 };

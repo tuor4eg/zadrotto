@@ -270,6 +270,7 @@ describe("media type visibility query boundaries", () => {
 
     for (const [source, functionName] of [
       [mediaItemsQuery, "getAuthorMediaItems"],
+      [mediaItemsQuery, "getAuthorPublishedMediaItemCount"],
       [reviewsQuery, "getAuthorReviews"],
       [reviewsQuery, "getAuthorReviewSummary"],
       [reviewsQuery, "searchPublishedMediaItemsForReview"],
@@ -352,5 +353,6 @@ describe("media type visibility query boundaries", () => {
 
     assert.match(coverLookup, /eq\(mediaTypes\.isPubliclyAvailable, true\)/);
     assert.match(coverLookup, /\.innerJoin\(mediaTypes, eq\(mediaTypes\.code, mediaItems\.mediaType\)\)/);
+    assert.match(coverLookup, /if \(options\?\.isAdmin\)/);
   });
 });

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Edit3, Eye, Lock, Plus, Trash2, Unlock } from "lucide-react";
+import { ChartNoAxesColumn, Edit3, Eye, Lock, Plus, Trash2, Unlock } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -90,13 +90,24 @@ function AuthorActions({
 }) {
   return (
     <div className="flex flex-nowrap justify-end gap-1.5">
-      <Tooltip label="Смотреть">
+      {!author.isSystem && !author.blockedAt ? (
+        <Tooltip label="Смотреть">
+          <Link
+            href={`/users/${author.id}`}
+            className={buttonVariants({ variant: "outline", size: "icon" })}
+            aria-label={`Смотреть автора ${author.name}`}
+          >
+            <Eye />
+          </Link>
+        </Tooltip>
+      ) : null}
+      <Tooltip label="Статистика">
         <Link
           href={`/admin/authors/${author.id}`}
           className={buttonVariants({ variant: "outline", size: "icon" })}
-          aria-label={`Смотреть автора ${author.name}`}
+          aria-label={`Статистика автора ${author.name}`}
         >
-          <Eye />
+          <ChartNoAxesColumn />
         </Link>
       </Tooltip>
       <Tooltip label="Редактировать">
@@ -284,7 +295,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   <TH>Автор</TH>
                   <TH className="w-60">Профиль</TH>
                   <TH className="w-48">Создан</TH>
-                  <TH className="w-56 px-2 text-right">Действия</TH>
+                  <TH className="w-64 px-2 text-right">Действия</TH>
                 </tr>
               </THead>
               <TBody>

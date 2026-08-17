@@ -127,6 +127,20 @@ test("job history is retained per schedule and cleanup preserves active runs", a
   assert.match(migration, /'jobs-history-cleanup'[\s\S]*'30 3 \* \* \*'[\s\S]*true/);
 });
 
+test("achievement backfill is enqueue-only and cannot be created as a periodic schedule", async () => {
+  const [handlers, manage, schedules, manager] = await Promise.all([
+    readFile(new URL("../src/lib/jobs/handlers.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/lib/jobs/manage.ts", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/schedules/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-manager.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(handlers, /type: "achievements\.backfill"[\s\S]*schedulable: false/);
+  assert.match(manage, /if \(handler\.schedulable === false\) throw new Error/);
+  assert.match(schedules, /schedulable: schedulable !== false/);
+  assert.match(manager, /handlers\.filter\(\(item\) => item\.schedulable \|\| item\.type === job\?\.type\)/);
+  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.map\(\(item\) => <option key=\{item\.type\}/);
+});
+
 test("jobs admin separates schedules from paginated run history", async () => {
   const [layout, nav, schedules, journal, queries] = await Promise.all([
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/layout.tsx", import.meta.url), "utf8"),

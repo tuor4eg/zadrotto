@@ -15,7 +15,11 @@ export default async function JobSchedulesPage({
     getLatestJobRuns(),
     Promise.resolve(getRegisteredJobHandlers()),
   ]);
-  const handlers = handlerDefinitions.map(({ label, type }) => ({ label, type }));
+  const handlers = handlerDefinitions.map(({ label, schedulable, type }) => ({
+    label,
+    schedulable: schedulable !== false,
+    type,
+  }));
 
   return (
     <section className="space-y-6">

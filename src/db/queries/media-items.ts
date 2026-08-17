@@ -674,6 +674,24 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
   };
 }
 
+export async function getAuthorPublishedMediaItemCount(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
+  const [row] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(mediaItems)
+    .where(
+      and(
+        eq(mediaItems.createdByAuthorId, authorId),
+        publishedMediaItemCondition,
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ),
+    );
+
+  return row?.count ?? 0;
+}
+
 export async function getAuthorMediaItems(
   authorId: number,
   enabledMediaTypeCodes: readonly string[],
@@ -1549,7 +1567,22 @@ export async function canViewMediaItemCover(
   objectKey: string,
   accessibleMediaTypeCodes: readonly string[],
   currentAuthor?: { id: number; code: string },
+  options?: { isAdmin?: boolean },
 ) {
+  const coverKeyCondition = or(
+    eq(mediaItems.coverUrl, objectKey),
+    eq(mediaItems.coverThumbUrl, objectKey),
+  );
+
+  if (options?.isAdmin) {
+    const [adminItem] = await db
+      .select({ id: mediaItems.id })
+      .from(mediaItems)
+      .where(coverKeyCondition)
+      .limit(1);
+    return Boolean(adminItem);
+  }
+
   const authorOwnsCoverCondition = currentAuthor
     ? and(
         eq(mediaItems.createdByAuthorId, currentAuthor.id),
@@ -1580,7 +1613,7 @@ export async function canViewMediaItemCover(
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .where(
       and(
-        or(eq(mediaItems.coverUrl, objectKey), eq(mediaItems.coverThumbUrl, objectKey)),
+        coverKeyCondition,
         getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
         visibilityCondition,
       ),

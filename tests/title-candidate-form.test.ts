@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { getMediaTitleCandidateFormFields } from "../src/lib/media/title-candidate-form";
@@ -95,5 +96,23 @@ describe("getMediaTitleCandidateFormFields", () => {
         releaseYear: "",
       },
     );
+  });
+});
+
+describe("explicit provider title search applies candidate fields even when editing", () => {
+  it("does not preserve existing form fields after picking a candidate", () => {
+    const adminForm = readFileSync("src/app/admin/(protected)/media/media-form.tsx", "utf8");
+    const authorForm = readFileSync("src/app/author/(protected)/media/media-item-form.tsx", "utf8");
+
+    for (const source of [adminForm, authorForm]) {
+      assert.match(
+        source,
+        /getMediaTitleCandidateFormFields\(\s*candidate,[\s\S]*?false,\s*\)/,
+      );
+      assert.match(
+        source,
+        /getMediaTitleMetadataFormFields\(\s*result\.metadata\.fields,[\s\S]*?false,\s*\)/,
+      );
+    }
   });
 });

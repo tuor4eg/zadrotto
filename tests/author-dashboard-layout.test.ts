@@ -38,14 +38,14 @@ describe("author dashboard layout", () => {
     assert.doesNotMatch(analyticsSection[1], /(?:sm|md):grid-cols/);
   });
 
-  it("keeps the four existing metrics in one divided statistics list", () => {
-    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount/);
+  it("keeps the five existing metrics in one divided statistics list", () => {
+    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount[\s\S]*contributionCount/);
     assert.match(source, /divide-y divide-dashed divide-stone-400\/35/);
     assert.match(
       source,
       /statistics\.map[\s\S]*className="flex items-center justify-between gap-4 py-2"/,
     );
-    assert.match(source, /\{ Icon: Star[\s\S]*\{ Icon: Gauge[\s\S]*\{ Icon: CalendarCheck[\s\S]*\{ Icon: FileText/);
+    assert.match(source, /\{ Icon: Star[\s\S]*\{ Icon: Gauge[\s\S]*\{ Icon: CalendarCheck[\s\S]*\{ Icon: FileText[\s\S]*\{ Icon: Archive/);
     assert.match(source, /<Icon className="size-4 text-red-950\/65" \/>/);
   });
 

@@ -1,123 +1,115 @@
 import "server-only";
 
-import { and, eq, inArray, isNull, sql } from "drizzle-orm";
-
-import {
-  achievements,
-  authors,
-  contributions,
-  mediaItems,
-  ratings,
-  userAchievements,
-} from "@/db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
+import { achievementLevels, achievements, authors, userAchievements } from "@/db/schema";
 import type { DbTransaction } from "@/db/transaction";
 import type { DomainEventType } from "@/lib/domain-events/catalog";
-import {
-  getAchievementDefinitionsForEvent,
-  type AchievementCode,
-  type AchievementEvaluationContext,
-} from "./catalog";
+import { achievementMechanicRegistry } from "./catalog";
 
 type EvaluateAchievementsInput = {
-  achievementCodes?: readonly AchievementCode[];
+  achievementIds?: readonly number[];
   authorIds: readonly number[];
   awardGroupId: string;
   eventType?: DomainEventType;
   sourceEventId?: string | null;
 };
 
-export async function evaluateAchievements(
+export async function getAchievementProgressValues(
   tx: DbTransaction,
-  input: EvaluateAchievementsInput,
+  input: { achievementIds: readonly number[]; authorIds: readonly number[] },
 ) {
+  const achievementIds = [...new Set(input.achievementIds.filter((id) => Number.isSafeInteger(id) && id > 0))];
   const authorIds = [...new Set(input.authorIds.filter((id) => Number.isSafeInteger(id) && id > 0))];
-  if (authorIds.length === 0) return [];
-
-  const requestedCodes = input.achievementCodes ? new Set(input.achievementCodes) : null;
-  const definitions = getAchievementDefinitionsForEvent(input.eventType)
-    .filter((definition) => !requestedCodes || requestedCodes.has(definition.code));
-  if (definitions.length === 0) return [];
-
-  const definitionCodes = definitions.map((definition) => definition.code);
-  const [ratingRows, reviewRows, enabledAchievements, eligibleAuthors] = await Promise.all([
-    tx
-      .select({
-        authorId: ratings.authorId,
-        filmRatingsCount: sql<number>`count(*) filter (where ${mediaItems.mediaType} = 'film')::int`,
-        gameRatingsCount: sql<number>`count(*) filter (where ${mediaItems.mediaType} = 'game')::int`,
-        ratingsCount: sql<number>`count(*)::int`,
-      })
-      .from(ratings)
-      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
-      .where(and(
-        inArray(ratings.authorId, authorIds),
-        eq(mediaItems.publicationStatus, "published"),
-      ))
-      .groupBy(ratings.authorId),
-    tx
-      .select({ authorId: contributions.authorId })
-      .from(contributions)
-      .where(and(
-        inArray(contributions.authorId, authorIds),
-        eq(contributions.type, "review"),
-        eq(contributions.status, "published"),
-      ))
-      .groupBy(contributions.authorId),
-    tx
-      .select({ code: achievements.code, id: achievements.id })
-      .from(achievements)
-      .where(and(
-        eq(achievements.enabled, true),
-        inArray(achievements.code, definitionCodes),
-      )),
-    tx
-      .select({ id: authors.id })
-      .from(authors)
-      .where(and(
-        inArray(authors.id, authorIds),
-        eq(authors.isSystem, false),
-        isNull(authors.blockedAt),
-      )),
-  ]);
-  const ratingContextByAuthorId = new Map(ratingRows.map((row) => [row.authorId, row]));
-  const authorsWithPublishedReview = new Set(reviewRows.map((row) => row.authorId));
-  const achievementByCode = new Map(
-    enabledAchievements.map((achievement) => [achievement.code as AchievementCode, achievement]),
-  );
-  const eligibleAuthorIds = new Set(eligibleAuthors.map((author) => author.id));
-  const awards = authorIds.filter((authorId) => eligibleAuthorIds.has(authorId)).flatMap((authorId) => {
-    const ratingsContext = ratingContextByAuthorId.get(authorId);
-    const context: AchievementEvaluationContext = {
-      filmRatingsCount: ratingsContext?.filmRatingsCount ?? 0,
-      gameRatingsCount: ratingsContext?.gameRatingsCount ?? 0,
-      hasPublishedReview: authorsWithPublishedReview.has(authorId),
-      ratingsCount: ratingsContext?.ratingsCount ?? 0,
-    };
-
-    return definitions.flatMap((definition) => {
-      const achievement = achievementByCode.get(definition.code);
-
-      return achievement && definition.isSatisfied(context)
-        ? [{
-            achievementId: achievement.id,
-            authorId,
-            awardGroupId: input.awardGroupId,
-            sourceEventId: input.sourceEventId ?? null,
-          }]
-        : [];
+  if (achievementIds.length === 0 || authorIds.length === 0) return [];
+  const configurations = await tx.select({
+    achievementId: achievements.id,
+    mechanic: achievements.mechanic,
+    params: achievements.params,
+  }).from(achievements).where(inArray(achievements.id, achievementIds));
+  const progress = [];
+  const knownMechanics = new Set<string>(achievementMechanicRegistry.map((mechanic) => mechanic.code));
+  for (const configuration of configurations) {
+    if (!knownMechanics.has(configuration.mechanic)) {
+      console.error(`Неизвестная механика ачивки ${configuration.achievementId}: ${configuration.mechanic}.`);
+    }
+  }
+  for (const mechanic of achievementMechanicRegistry) {
+    const instances = configurations.filter((item) => item.mechanic === mechanic.code).flatMap((item) => {
+      try {
+        return [{ achievementId: item.achievementId, params: mechanic.parseParams(item.params) }];
+      } catch (error) {
+        console.error(`Некорректная конфигурация ачивки ${item.achievementId}.`, error);
+        return [];
+      }
     });
-  });
+    if (instances.length > 0) progress.push(...await mechanic.evaluateBatch({ tx, authorIds, instances }));
+  }
+  return progress;
+}
 
+export async function evaluateAchievements(tx: DbTransaction, input: EvaluateAchievementsInput) {
+  const authorIds = [...new Set(input.authorIds.filter((id) => Number.isSafeInteger(id) && id > 0))];
+  const achievementIds = input.achievementIds
+    ? [...new Set(input.achievementIds.filter((id) => Number.isSafeInteger(id) && id > 0))]
+    : undefined;
+  if (authorIds.length === 0 || achievementIds?.length === 0) return [];
+
+  const [configurations, eligibleAuthors] = await Promise.all([
+    tx.select({
+      achievementId: achievements.id,
+      levelId: achievementLevels.id,
+      mechanic: achievements.mechanic,
+      params: achievements.params,
+      threshold: achievementLevels.threshold,
+    }).from(achievements)
+      .innerJoin(achievementLevels, eq(achievementLevels.achievementId, achievements.id))
+      .where(and(eq(achievements.enabled, true), achievementIds ? inArray(achievements.id, achievementIds) : undefined))
+      .for("share", { of: achievements }),
+    tx.select({ id: authors.id }).from(authors).where(and(
+      inArray(authors.id, authorIds), eq(authors.isSystem, false), isNull(authors.blockedAt),
+    )),
+  ]);
+  const eligibleAuthorIds = eligibleAuthors.map((author) => author.id);
+  if (configurations.length === 0 || eligibleAuthorIds.length === 0) return [];
+
+  const progress = [];
+  const knownMechanics = new Set<string>(achievementMechanicRegistry.map((mechanic) => mechanic.code));
+  for (const configuration of configurations) {
+    if (!knownMechanics.has(configuration.mechanic)) {
+      console.error(`Неизвестная механика ачивки ${configuration.achievementId}: ${configuration.mechanic}.`);
+    }
+  }
+  for (const mechanic of achievementMechanicRegistry) {
+    if (input.eventType && !mechanic.eventTypes.includes(input.eventType)) continue;
+    const instances = new Map<number, unknown>();
+    for (const configuration of configurations) {
+      if (configuration.mechanic !== mechanic.code || instances.has(configuration.achievementId)) continue;
+      try {
+        instances.set(configuration.achievementId, mechanic.parseParams(configuration.params));
+      } catch (error) {
+        console.error(`Некорректная конфигурация ачивки ${configuration.achievementId}.`, error);
+      }
+    }
+    if (instances.size === 0) continue;
+    progress.push(...await mechanic.evaluateBatch({
+      tx, authorIds: eligibleAuthorIds,
+      instances: [...instances].map(([achievementId, params]) => ({ achievementId, params })),
+    }));
+  }
+
+  const valueByAchievementAuthor = new Map(progress.map((item) => [`${item.achievementId}:${item.authorId}`, item.value]));
+  const awards = configurations.flatMap((configuration) => eligibleAuthorIds.flatMap((authorId) => {
+    const value = valueByAchievementAuthor.get(`${configuration.achievementId}:${authorId}`) ?? 0;
+    return value >= configuration.threshold ? [{
+      achievementLevelId: configuration.levelId,
+      authorId,
+      awardGroupId: input.awardGroupId,
+      sourceEventId: input.sourceEventId ?? null,
+    }] : [];
+  }));
   if (awards.length === 0) return [];
 
-  return tx
-    .insert(userAchievements)
-    .values(awards)
-    .onConflictDoNothing({
-      target: [userAchievements.authorId, userAchievements.achievementId],
-    })
-    .returning({
-      achievementId: userAchievements.achievementId,
-      authorId: userAchievements.authorId,
-    });
+  return tx.insert(userAchievements).values(awards).onConflictDoNothing({
+    target: [userAchievements.authorId, userAchievements.achievementLevelId],
+  }).returning({ achievementLevelId: userAchievements.achievementLevelId, authorId: userAchievements.authorId });
 }

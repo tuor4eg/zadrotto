@@ -6,7 +6,6 @@ import { cleanupJobRunHistory } from "@/db/queries/jobs";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/achievements/backfill";
-import { ACHIEVEMENT_CODES, type AchievementCode } from "@/lib/achievements/catalog";
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
@@ -146,7 +145,7 @@ function parseAchievementBackfillPayload(value: unknown): AchievementBackfillPay
     throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
   }
   const source = value as Record<string, unknown>;
-  const allowedKeys = new Set(["achievementCodes", "afterAuthorId", "awardGroupId", "batchSize"]);
+  const allowedKeys = new Set(["achievementIds", "afterAuthorId", "awardGroupId", "batchSize"]);
   if (Object.keys(source).some((key) => !allowedKeys.has(key))) {
     throw new JobError("invalid-payload", "Задача получила неизвестные параметры.", {
       retryable: false,
@@ -155,10 +154,10 @@ function parseAchievementBackfillPayload(value: unknown): AchievementBackfillPay
   const batchSize = source.batchSize === undefined ? undefined : Number(source.batchSize);
   const afterAuthorId = source.afterAuthorId === undefined ? undefined : Number(source.afterAuthorId);
   const awardGroupId = source.awardGroupId === undefined ? undefined : String(source.awardGroupId);
-  const achievementCodes = source.achievementCodes === undefined
+  const achievementIds = source.achievementIds === undefined
     ? undefined
-    : Array.isArray(source.achievementCodes)
-      ? source.achievementCodes.map(String)
+    : Array.isArray(source.achievementIds)
+      ? source.achievementIds.map(Number)
       : null;
 
   if (batchSize !== undefined && (!Number.isSafeInteger(batchSize) || batchSize < 1 || batchSize > 500)) {
@@ -170,14 +169,14 @@ function parseAchievementBackfillPayload(value: unknown): AchievementBackfillPay
   if (awardGroupId !== undefined && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(awardGroupId)) {
     throw new JobError("invalid-payload", "Некорректная группа выдачи.", { retryable: false });
   }
-  if (achievementCodes === null || achievementCodes?.some(
-    (code) => !(ACHIEVEMENT_CODES as readonly string[]).includes(code),
+  if (achievementIds === null || achievementIds?.some(
+    (id) => !Number.isSafeInteger(id) || id < 1,
   )) {
-    throw new JobError("invalid-payload", "Неизвестный код ачивки.", { retryable: false });
+    throw new JobError("invalid-payload", "Некорректный ID ачивки.", { retryable: false });
   }
 
   return {
-    achievementCodes: achievementCodes as AchievementCode[] | undefined,
+    achievementIds,
     afterAuthorId,
     awardGroupId,
     batchSize,
@@ -189,6 +188,7 @@ const achievementBackfillHandler: JobHandlerDefinition<AchievementBackfillPayloa
   label: "Ретроактивная выдача ачивок",
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
+  schedulable: false,
   parsePayload: parseAchievementBackfillPayload,
   async execute({ payload }) {
     await backfillAchievements(payload);

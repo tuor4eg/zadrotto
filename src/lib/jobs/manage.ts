@@ -24,6 +24,7 @@ function normalize(input: PeriodicJobInput) {
   const code = input.code.trim();
   if (!code) throw new Error("Код задачи обязателен.");
   const handler = jobHandlerRegistry.get(input.type);
+  if (handler.schedulable === false) throw new Error("Этот обработчик нельзя ставить на расписание.");
   const cronExpression = validateJobCronExpression(input.cronExpression);
   const historyRetentionDays = input.historyRetentionDays ?? DEFAULT_JOB_HISTORY_RETENTION_DAYS;
   if (!Number.isInteger(historyRetentionDays) || historyRetentionDays < MIN_JOB_HISTORY_RETENTION_DAYS || historyRetentionDays > MAX_JOB_HISTORY_RETENTION_DAYS) {

@@ -16,6 +16,8 @@ describe("protected cover delivery", () => {
       coverRoute,
       /canViewMediaItemCover\([\s\S]*if \(!canViewCover\)[\s\S]*status: 404[\s\S]*"X-Accel-Redirect"/,
     );
+    assert.match(coverRoute, /Promise\.all\(\[getCurrentAuthor\(\), getCurrentAdminUser\(\)\]\)/);
+    assert.match(coverRoute, /isAdmin: Boolean\(adminUser\)/);
   });
 
   it("streams authorized covers directly from S3 during local development", () => {
