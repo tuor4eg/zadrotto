@@ -60,6 +60,7 @@ export function AchievementCard({ item }: { item: AchievementShowcaseItem }) {
               fill
               sizes="48px"
               src={item.imageUrl}
+              unoptimized
             />
           ) : isAwarded ? <Trophy className="size-4" /> : <LockKeyhole className="size-4" />}
         </span>

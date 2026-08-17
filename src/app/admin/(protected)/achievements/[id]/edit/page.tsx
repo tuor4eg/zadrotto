@@ -89,7 +89,9 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
                 params: mechanic.params.map(({ code, label, type }) => ({ code, label, type })),
               }))}
               mediaTypes={mediaTypes.map(({ code, name }) => ({ code, name }))}
-              series={series.map(({ id: seriesId, title }) => ({ id: seriesId, title }))}
+              series={series
+                .filter((item) => item.publicationStatus === "published")
+                .map(({ id: seriesId, originalTitle, title }) => ({ id: seriesId, originalTitle, title }))}
             />
             <div className="grid gap-3">
               <Label htmlFor="achievement-image">Базовое изображение</Label>

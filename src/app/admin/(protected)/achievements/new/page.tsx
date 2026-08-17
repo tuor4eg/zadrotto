@@ -38,7 +38,6 @@ export default async function NewAchievementPage({ searchParams }: Props) {
     <Card className="mt-5">
       <CardContent className="pt-5">
         <form action={createAchievementAction} className="grid gap-5">
-          <div className="grid gap-2"><Label htmlFor="achievement-code">Код</Label><Input id="achievement-code" name="code" pattern="[a-z0-9]+(?:-[a-z0-9]+)*" required /></div>
           <div className="grid gap-2"><Label htmlFor="achievement-name">Название</Label><Input id="achievement-name" name="name" required /></div>
           <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" required /></div>
           <AchievementConfigurationFields
@@ -50,7 +49,9 @@ export default async function NewAchievementPage({ searchParams }: Props) {
               params: mechanic.params.map(({ code, label, type }) => ({ code, label, type })),
             }))}
             mediaTypes={mediaTypes.map(({ code, name }) => ({ code, name }))}
-            series={series.map(({ id, title }) => ({ id, title }))}
+            series={series
+              .filter((item) => item.publicationStatus === "published")
+              .map(({ id, originalTitle, title }) => ({ id, originalTitle, title }))}
           />
           <div className="grid gap-2">
             <Label htmlFor="first-level-threshold">Порог первого уровня</Label>

@@ -353,6 +353,20 @@ export async function upsertAuthorReview(input: {
         });
       }
 
+      if (input.status === "submitted" && existing.status !== "submitted") {
+        await appendEvent({
+          actorAuthorId: input.authorId,
+          aggregateId: String(existing.id),
+          aggregateType: "review",
+          payload: {
+            authorId: input.authorId,
+            contributionId: existing.id,
+            mediaItemId: input.mediaItemId,
+          },
+          type: "review.submitted",
+        });
+      }
+
       return { ok: true as const, id: existing.id };
     }
 
@@ -390,6 +404,20 @@ export async function upsertAuthorReview(input: {
         aggregateType: "review",
         payload: { authorId: input.authorId, mediaItemId: input.mediaItemId },
         type: "review.published",
+      });
+    }
+
+    if (input.status === "submitted") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: String(created.id),
+        aggregateType: "review",
+        payload: {
+          authorId: input.authorId,
+          contributionId: created.id,
+          mediaItemId: input.mediaItemId,
+        },
+        type: "review.submitted",
       });
     }
 
@@ -474,6 +502,28 @@ export async function reviewContributionReview(input: {
         ? ["submitted", "hidden", "rejected"]
         : ["submitted"];
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [previous] = await tx
+      .select({
+        authorId: contributions.authorId,
+        id: contributions.id,
+        mediaItemId: contributions.primaryMediaItemId,
+        status: contributions.status,
+      })
+      .from(contributions)
+      .where(
+        and(
+          eq(contributions.id, input.contributionId),
+          eq(contributions.type, "review"),
+          inArray(contributions.status, allowedStatuses),
+        ),
+      )
+      .limit(1)
+      .for("update");
+
+    if (!previous) {
+      return null;
+    }
+
     const [review] = await tx
       .update(contributions)
       .set({
@@ -483,13 +533,7 @@ export async function reviewContributionReview(input: {
         adminNote: input.adminNote,
         updatedAt: now,
       })
-      .where(
-        and(
-          eq(contributions.id, input.contributionId),
-          eq(contributions.type, "review"),
-          inArray(contributions.status, allowedStatuses),
-        ),
-      )
+      .where(eq(contributions.id, previous.id))
       .returning({
         authorId: contributions.authorId,
         id: contributions.id,
@@ -508,6 +552,19 @@ export async function reviewContributionReview(input: {
         payload: { authorId: review.authorId, mediaItemId: review.mediaItemId },
         type: "review.published",
       });
+      if (previous.status === "submitted") {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: String(review.id),
+          aggregateType: "review",
+          payload: {
+            authorId: review.authorId,
+            contributionId: review.id,
+            mediaItemId: review.mediaItemId,
+          },
+          type: "review.approved",
+        });
+      }
     }
 
     const [mediaItem] = await tx

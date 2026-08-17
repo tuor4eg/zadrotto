@@ -1,5 +1,6 @@
 import type { DbTransaction } from "@/db/transaction";
 import { achievementDomainEventConsumer } from "@/lib/achievements/consumer";
+import { notificationDomainEventConsumer } from "@/lib/notifications/consumer";
 import type { DomainEventType, PersistedDomainEvent } from "./catalog";
 
 export type DomainEventConsumer<TType extends DomainEventType = DomainEventType> = {
@@ -36,4 +37,5 @@ export function createDomainEventConsumerRegistry(
 // Consumers are infrastructure plugins: adding one here does not change event producers.
 export const domainEventConsumerRegistry = createDomainEventConsumerRegistry([
   achievementDomainEventConsumer,
+  notificationDomainEventConsumer,
 ]);

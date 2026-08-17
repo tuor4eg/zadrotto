@@ -19,6 +19,7 @@ type CatalogStickyHeaderProps = {
   currentAdminUser: boolean;
   currentAuthor: boolean;
   incomingFriendRequestCount: number;
+  submittedRequestCount: number;
   activeQuiz: ActiveQuiz | null;
   isActiveQuizParticipant: boolean;
   mediaTypeFilter: MediaTypeFilter;
@@ -36,6 +37,7 @@ export function CatalogStickyHeader({
   currentAdminUser,
   currentAuthor,
   incomingFriendRequestCount,
+  submittedRequestCount,
   isActiveQuizParticipant,
   mediaTypeFilter,
   minReleaseYear,
@@ -122,6 +124,7 @@ export function CatalogStickyHeader({
         currentAdminUser={currentAdminUser}
         currentAuthor={currentAuthor}
         incomingFriendRequestCount={incomingFriendRequestCount}
+        submittedRequestCount={submittedRequestCount}
         quiz={activeQuiz ? { active: activeQuiz, isParticipating: isActiveQuizParticipant } : null}
         sticky
         variant="catalog"

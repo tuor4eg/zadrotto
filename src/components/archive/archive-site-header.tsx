@@ -20,6 +20,7 @@ type ArchiveSiteHeaderProps = {
   currentAdminUser: boolean;
   currentAuthor: boolean;
   incomingFriendRequestCount?: number;
+  submittedRequestCount?: number;
   quiz?: { active: ActiveQuiz; isParticipating: boolean } | null;
   sticky?: boolean;
   variant: "main" | "catalog";
@@ -32,6 +33,7 @@ export function ArchiveSiteHeader({
   currentAdminUser,
   currentAuthor,
   incomingFriendRequestCount = 0,
+  submittedRequestCount = 0,
   quiz = null,
   sticky = false,
   variant,
@@ -57,6 +59,7 @@ export function ArchiveSiteHeader({
       <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>
         Админка
       </span>
+      <NotificationBadge count={submittedRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
     </Link>
   ) : null;
   const authorAction = currentAuthor ? (

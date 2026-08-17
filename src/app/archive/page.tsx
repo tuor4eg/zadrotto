@@ -15,6 +15,7 @@ import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
@@ -66,9 +67,10 @@ export default async function Home({ searchParams }: HomeProps) {
     searchParams,
     getArchiveSettings(),
   ]);
-  const incomingFriendRequestCount = currentAuthor
-    ? await getIncomingFriendRequestCount(currentAuthor.id)
-    : 0;
+  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
+    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
+    currentAdminUser ? getSubmittedModerationRequestCountForAdmin() : 0,
+  ]);
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
   const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
   const isActiveQuizParticipant = activeQuiz && currentAuthor
@@ -208,6 +210,7 @@ export default async function Home({ searchParams }: HomeProps) {
           currentAdminUser={Boolean(currentAdminUser)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
+          submittedRequestCount={submittedRequestCount}
           isActiveQuizParticipant={isActiveQuizParticipant}
           mediaTypeFilter={mediaTypeFilter}
           minReleaseYear={releaseYearBounds.minReleaseYear}

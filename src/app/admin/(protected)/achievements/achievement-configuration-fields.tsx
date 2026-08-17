@@ -1,14 +1,53 @@
-"use client";
+"use client"
 
-import { useState } from "react";
+import { useState } from "react"
 
-import { Label, Select } from "@/components/ui/form";
+import { SearchableFranchiseSelect } from "@/components/ui/searchable-franchise-select"
+import { Label, Select } from "@/components/ui/form"
 
 type MechanicOption = {
-  code: string;
-  label: string;
-  params: { code: string; label: string; type: "mediaType" | "series" }[];
-};
+  code: string
+  label: string
+  params: { code: string; label: string; type: "mediaType" | "series" }[]
+}
+
+type SeriesOption = {
+  id: number
+  originalTitle: string | null
+  title: string
+}
+
+function SeriesFilterField({
+  id,
+  initialValue,
+  locked,
+  name,
+  series,
+}: {
+  id: string
+  initialValue: string
+  locked: boolean
+  name: string
+  series: SeriesOption[]
+}) {
+  const [value, setValue] = useState(initialValue)
+  const selected = series.find((item) => String(item.id) === (locked ? initialValue : value))
+
+  if (locked) {
+    return <p className="text-sm text-stone-700">{selected?.title ?? "Без фильтра"}</p>
+  }
+
+  return (
+    <SearchableFranchiseSelect
+      emptyLabel="Без фильтра"
+      id={id}
+      name={name}
+      options={series}
+      value={value}
+      onChange={setValue}
+    />
+  )
+}
 
 export function AchievementConfigurationFields({
   conditionLocked = false,
@@ -18,15 +57,15 @@ export function AchievementConfigurationFields({
   mediaTypes,
   series,
 }: {
-  conditionLocked?: boolean;
-  initialMechanic: string;
-  initialParams: Record<string, unknown>;
-  mechanics: MechanicOption[];
-  mediaTypes: { code: string; name: string }[];
-  series: { id: number; title: string }[];
+  conditionLocked?: boolean
+  initialMechanic: string
+  initialParams: Record<string, unknown>
+  mechanics: MechanicOption[]
+  mediaTypes: { code: string; name: string }[]
+  series: SeriesOption[]
 }) {
-  const [mechanicCode, setMechanicCode] = useState(initialMechanic);
-  const mechanic = mechanics.find((item) => item.code === mechanicCode) ?? mechanics[0];
+  const [mechanicCode, setMechanicCode] = useState(initialMechanic)
+  const mechanic = mechanics.find((item) => item.code === mechanicCode) ?? mechanics[0]
 
   return <>
     {conditionLocked ? <p className="text-sm text-stone-600">Механика и параметры заблокированы после первой выдачи.</p> : null}
@@ -48,17 +87,27 @@ export function AchievementConfigurationFields({
     </div>
     {mechanic?.params.map((parameter) => <div className="grid gap-2" key={parameter.code}>
       <Label htmlFor={`achievement-param-${parameter.code}`}>{parameter.label}</Label>
-      <Select
-        id={`achievement-param-${parameter.code}`}
-        name={parameter.code}
-        disabled={conditionLocked}
-        defaultValue={String(initialParams[parameter.code] ?? "")}
-      >
-        <option value="">Без фильтра</option>
-        {(parameter.type === "mediaType" ? mediaTypes : series).map((option) => parameter.type === "mediaType"
-          ? <option key={(option as { code: string }).code} value={(option as { code: string }).code}>{(option as { name: string }).name}</option>
-          : <option key={(option as { id: number }).id} value={(option as { id: number }).id}>{(option as { title: string }).title}</option>)}
-      </Select>
+      {parameter.type === "series" ? (
+        <SeriesFilterField
+          id={`achievement-param-${parameter.code}`}
+          initialValue={String(initialParams[parameter.code] ?? "")}
+          locked={conditionLocked}
+          name={parameter.code}
+          series={series}
+        />
+      ) : (
+        <Select
+          id={`achievement-param-${parameter.code}`}
+          name={parameter.code}
+          disabled={conditionLocked}
+          defaultValue={String(initialParams[parameter.code] ?? "")}
+        >
+          <option value="">Без фильтра</option>
+          {mediaTypes.map((option) => (
+            <option key={option.code} value={option.code}>{option.name}</option>
+          ))}
+        </Select>
+      )}
     </div>)}
-  </>;
+  </>
 }

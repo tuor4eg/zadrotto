@@ -4,6 +4,7 @@ x-common-runtime-environment: &common-runtime-environment
   SITE_URL: ${SITE_URL}
   EMAIL_OUTBOX_ENCRYPTION_KEY: ${EMAIL_OUTBOX_ENCRYPTION_KEY}
   EMAIL_PROVIDER_CREDENTIALS_KEY: ${EMAIL_PROVIDER_CREDENTIALS_KEY}
+  NOTIFICATION_TRANSPORT_CREDENTIALS_KEY: ${NOTIFICATION_TRANSPORT_CREDENTIALS_KEY}
 
 x-jobs-environment: &jobs-environment
   <<: *common-runtime-environment

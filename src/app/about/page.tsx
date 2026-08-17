@@ -5,6 +5,7 @@ import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 
 export const metadata: Metadata = {
   title: "О проекте — Журнал, которого не было",
@@ -32,9 +33,10 @@ export default async function AboutPage() {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
-  const incomingFriendRequestCount = currentAuthor
-    ? await getIncomingFriendRequestCount(currentAuthor.id)
-    : 0;
+  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
+    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
+    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
+  ]);
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -44,6 +46,7 @@ export default async function AboutPage() {
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
+          submittedRequestCount={submittedRequestCount}
           variant="main"
         />
 

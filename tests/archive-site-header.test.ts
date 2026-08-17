@@ -8,6 +8,8 @@ const sharedSource = readFileSync(
 );
 const catalogSource = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
 const mainSource = readFileSync("src/app/page.tsx", "utf8");
+const archiveSource = readFileSync("src/app/archive/page.tsx", "utf8");
+const queueSource = readFileSync("src/db/queries/admin-moderation-queue.ts", "utf8");
 const globalsSource = readFileSync("src/app/globals.css", "utf8");
 
 describe("archive site header", () => {
@@ -101,6 +103,34 @@ describe("archive site header", () => {
     assert.match(
       sharedSource,
       /className="size-11 shrink-0 object-contain lg:size-14"[\s\S]*text-\[clamp\(0\.6875rem,3\.75vw,1\.25rem\)\][^"]*lg:text-4xl[\s\S]*hidden[^"]*lg:block/,
+    );
+  });
+
+  it("badges the admin entry when there are submitted moderation requests", () => {
+    assert.match(
+      sharedSource,
+      /href="\/admin"[\s\S]*NotificationBadge count=\{submittedRequestCount\}/,
+    );
+    assert.match(
+      catalogSource,
+      /submittedRequestCount=\{submittedRequestCount\}/,
+    );
+    assert.match(mainSource, /getSubmittedModerationRequestCountForAdmin/);
+    assert.match(
+      mainSource,
+      /currentAdmin \? getSubmittedModerationRequestCountForAdmin\(\) : 0/,
+    );
+    assert.match(archiveSource, /getSubmittedModerationRequestCountForAdmin/);
+    assert.match(
+      archiveSource,
+      /currentAdminUser \? getSubmittedModerationRequestCountForAdmin\(\) : 0/,
+    );
+    assert.match(queueSource, /getSubmittedAuthorMediaItemsCountForAdmin\(\)/);
+    assert.match(queueSource, /getSubmittedFranchisesCountForAdmin\(\)/);
+    assert.match(queueSource, /getSubmittedContributionReviewCountForAdmin\(\)/);
+    assert.match(
+      queueSource,
+      /mediaItemsCount \+ franchisesCount \+ reviewsCount/,
     );
   });
 

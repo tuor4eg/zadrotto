@@ -1274,6 +1274,16 @@ export async function submitAuthorMediaItemForPublication(input: {
       });
     }
 
+    if (item?.publicationStatus === "submitted") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: String(item.id),
+        aggregateType: "media-item",
+        payload: { authorId: input.authorId, mediaItemId: item.id },
+        type: "media.submitted",
+      });
+    }
+
     return item ?? null;
   });
 }
@@ -1433,6 +1443,7 @@ export async function reviewSubmittedAuthorMediaItem(input: {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
+      createdByAuthorId: mediaItems.createdByAuthorId,
       publicationStatus: mediaItems.publicationStatus,
     });
 
@@ -1470,6 +1481,15 @@ export async function reviewSubmittedAuthorMediaItem(input: {
         payload: { mediaItemId: item.id },
         type: "media.published",
       });
+      if (item.createdByAuthorId) {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: String(item.id),
+          aggregateType: "media-item",
+          payload: { authorId: item.createdByAuthorId, mediaItemId: item.id },
+          type: "media.approved",
+        });
+      }
     }
   }
 

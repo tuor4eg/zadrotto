@@ -1,4 +1,5 @@
 export const ACHIEVEMENT_ERROR_MESSAGES: Record<string, string> = {
+  awarded: "Нельзя удалить ачивку, которую уже кто-то получил.",
   "image-invalid": "Нужен корректный JPG, PNG или WebP.",
   "image-too-large": "Изображение должно быть не больше 5 МБ.",
   "image-upload": "Не удалось загрузить изображение в хранилище.",

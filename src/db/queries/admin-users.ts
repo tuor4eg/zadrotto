@@ -2,6 +2,7 @@ import { asc, eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { adminUsers } from "@/db/schema";
+import type { DbTransaction } from "@/db/transaction";
 
 export async function getAdminUserByLogin(login: string) {
   const [adminUser] = await db
@@ -65,6 +66,11 @@ export async function getAdminUserOptions() {
     })
     .from(adminUsers)
     .orderBy(asc(adminUsers.login));
+}
+
+export async function listAdminUserIds(tx: DbTransaction) {
+  const rows = await tx.select({ id: adminUsers.id }).from(adminUsers)
+  return rows.map((row) => row.id)
 }
 
 export async function createAdminUser(login: string, passwordHash: string) {

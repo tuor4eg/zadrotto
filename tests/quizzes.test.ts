@@ -66,6 +66,6 @@ describe("quizzes", () => {
   it("loads protected quiz previews in the browser instead of the cookie-less image optimizer", () => {
     const picker = readFileSync("src/components/achievements/achievement-image-picker.tsx", "utf8");
 
-    assert.match(picker, /unoptimized=\{pickerVariant === "quiz"\}/);
+    assert.match(picker, /src=\{previewUrl\} unoptimized/);
   });
 });

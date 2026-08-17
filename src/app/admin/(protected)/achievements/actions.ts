@@ -6,8 +6,10 @@ import { redirect } from "next/navigation";
 import {
   createAchievementLevel,
   createAchievementWithFirstLevel,
+  deleteAchievementIfUnawarded,
   deleteAchievementLevel,
   getAdminAchievementById,
+  setAchievementEnabled,
   updateAchievementGeneral,
   updateAchievementLevel,
 } from "@/db/queries/achievements";
@@ -18,6 +20,7 @@ import {
 } from "@/lib/achievements/images";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAchievementMechanic } from "@/lib/achievements/catalog";
+import { generateEntityCode } from "@/lib/common/generated-code";
 import { createJobRun } from "@/db/queries/jobs";
 import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getAdminMediaTypeAccessOptions } from "@/db/queries/media-types";
@@ -184,12 +187,11 @@ export async function updateAchievementAction(formData: FormData) {
 
 export async function createAchievementAction(formData: FormData) {
   const admin = await requireAdminUser();
-  const code = String(formData.get("code") ?? "").trim();
-  if (!/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(code)) redirect("/admin/achievements/new?error=invalid");
   let configuration;
   try { configuration = await parseGeneralConfiguration(formData); } catch { redirect("/admin/achievements/new?error=invalid"); }
   const firstLevelThreshold = Number(formData.get("firstLevelThreshold"));
   if (!Number.isSafeInteger(firstLevelThreshold) || firstLevelThreshold < 1) redirect("/admin/achievements/new?error=invalid");
+  const code = generateEntityCode({ name: configuration.name, type: "achievement" })
   let achievement
   try {
     achievement = await createAchievementWithFirstLevel({
@@ -327,4 +329,62 @@ export async function deleteAchievementLevelAction(formData: FormData) {
   await deleteAchievementImageBestEffort(deleted.imageObjectKey)
   revalidateAchievementPaths()
   redirect(levelsPath(achievementId, "&updated=1"))
+}
+
+export async function toggleAchievementAction(formData: FormData) {
+  const admin = await requireAdminUser()
+  const id = Number(formData.get("achievementId"))
+  const enabled = formData.get("enabled") === "1"
+  if (!Number.isSafeInteger(id) || id <= 0) redirect("/admin/achievements?error=invalid")
+  let updated
+  try {
+    updated = await setAchievementEnabled(id, enabled)
+  } catch (error) {
+    console.error("Не удалось переключить ачивку.", error)
+    redirect("/admin/achievements?error=save")
+  }
+  if (!updated) redirect("/admin/achievements?error=missing")
+  if (updated.enabled) await enqueueAchievementBackfill(updated.id, admin.id)
+  await logActivity({
+    action: "achievement.toggled",
+    actorType: "admin",
+    adminUserId: admin.id,
+    entityType: "achievement",
+    entityId: updated.id,
+    entityLabel: updated.name,
+    message: updated.enabled ? "Ачивка включена." : "Ачивка выключена.",
+    metadata: { code: updated.code, enabled: updated.enabled },
+  })
+  revalidateAchievementPaths()
+  redirect(updated.enabled ? "/admin/achievements?enabled=1" : "/admin/achievements?disabled=1")
+}
+
+export async function deleteAchievementAction(formData: FormData) {
+  const admin = await requireAdminUser()
+  const id = Number(formData.get("achievementId"))
+  if (!Number.isSafeInteger(id) || id <= 0) redirect("/admin/achievements?error=invalid")
+  let deleted
+  try {
+    deleted = await deleteAchievementIfUnawarded(id)
+  } catch (error) {
+    console.error("Не удалось удалить ачивку.", error)
+    const message = error instanceof Error && error.message === "achievement-awarded" ? "awarded" : "save"
+    redirect(`/admin/achievements?error=${message}`)
+  }
+  if (!deleted) redirect("/admin/achievements?error=missing")
+  for (const objectKey of deleted.imageObjectKeys) {
+    await deleteAchievementImageBestEffort(objectKey)
+  }
+  await logActivity({
+    action: "achievement.deleted",
+    actorType: "admin",
+    adminUserId: admin.id,
+    entityType: "achievement",
+    entityId: deleted.id,
+    entityLabel: deleted.name,
+    message: "Ачивка удалена.",
+    metadata: { code: deleted.code },
+  })
+  revalidateAchievementPaths()
+  redirect("/admin/achievements?deleted=1")
 }

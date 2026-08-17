@@ -10,6 +10,7 @@ import {
 import { logoutAdmin } from "@/app/admin/actions";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { NotificationBell } from "@/components/notifications/notification-inbox";
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
 import { getSubmittedFranchisesCountForAdmin } from "@/db/queries/franchises";
@@ -71,6 +72,9 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               </form>
             }
           />
+          <div className="md:hidden">
+            <NotificationBell align="right" />
+          </div>
 
           <div className="hidden flex-wrap items-center gap-2 md:flex">
             <Link
@@ -96,6 +100,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               <Archive />
               Архив
             </Link>
+            <NotificationBell align="right" />
             <form action={logoutAdmin}>
               <button
                 type="submit"

@@ -7,6 +7,7 @@ import { Avatar } from "@/components/ui/avatar";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { NotificationBadge } from "@/components/ui/notification-badge";
+import { NotificationBell } from "@/components/notifications/notification-inbox";
 import { AuthorProposalsMenu } from "./author-proposals-menu";
 
 export const dynamic = "force-dynamic";
@@ -91,6 +92,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Друзья
               <NotificationBadge count={incomingFriendRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
             </Link>
+            <NotificationBell />
             <Link
               href="/author/settings/media-types"
               className={buttonVariants({ variant: "outline", size: "sm" })}

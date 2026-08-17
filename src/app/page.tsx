@@ -43,6 +43,7 @@ import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 import { getActiveQuiz, isQuizParticipant } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -261,9 +262,10 @@ export default async function MainPage({ searchParams }: MainPageProps) {
     getCurrentAdminUser(),
     searchParams,
   ]);
-  const incomingFriendRequestCount = currentAuthor
-    ? await getIncomingFriendRequestCount(currentAuthor.id)
-    : 0;
+  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
+    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
+    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
+  ]);
   const [effectiveMediaTypes, archiveSettings, authorMediaSuggestionData] = await Promise.all([
     getEffectiveMediaTypeOptions(currentAuthor?.id),
     getArchiveSettings(),
@@ -368,6 +370,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
+          submittedRequestCount={submittedRequestCount}
           quiz={activeQuiz ? { active: activeQuiz, isParticipating: isActiveQuizParticipant } : null}
           variant="main"
         />

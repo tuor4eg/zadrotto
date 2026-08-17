@@ -20,6 +20,7 @@ export type SearchableFranchiseOption = {
 };
 
 type SearchableFranchiseSelectProps = {
+  emptyLabel?: string;
   id: string;
   name: string;
   onChange: (value: string) => void;
@@ -42,6 +43,7 @@ function matchesSearch(option: SearchableFranchiseOption, searchValue: string, s
 }
 
 export function SearchableFranchiseSelect({
+  emptyLabel = "Без серии",
   id,
   name,
   onChange,
@@ -144,7 +146,7 @@ export function SearchableFranchiseSelect({
               clearSelection();
             }}
           >
-            <span className="min-w-0 flex-1 truncate">Без серии</span>
+            <span className="min-w-0 flex-1 truncate">{emptyLabel}</span>
             <Check className={cn("size-4 shrink-0", value === "" ? "opacity-100" : "opacity-0")} />
           </button>
 

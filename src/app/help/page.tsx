@@ -3,6 +3,7 @@ import Link from "next/link";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 
@@ -19,9 +20,10 @@ export default async function HelpPage() {
     getCurrentAuthor(),
     getCurrentAdminUser(),
   ]);
-  const incomingFriendRequestCount = currentAuthor
-    ? await getIncomingFriendRequestCount(currentAuthor.id)
-    : 0;
+  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
+    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
+    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
+  ]);
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -31,6 +33,7 @@ export default async function HelpPage() {
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
+          submittedRequestCount={submittedRequestCount}
           variant="main"
         />
 

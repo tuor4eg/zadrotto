@@ -25,6 +25,14 @@ const achievementAdminActionSource = readFileSync(
   "src/app/admin/(protected)/achievements/actions.ts",
   "utf8",
 );
+const achievementNewPageSource = readFileSync(
+  "src/app/admin/(protected)/achievements/new/page.tsx",
+  "utf8",
+);
+const achievementConfigurationSource = readFileSync(
+  "src/app/admin/(protected)/achievements/achievement-configuration-fields.tsx",
+  "utf8",
+);
 const achievementImageRouteSource = readFileSync(
   "src/app/achievement-images/[...objectKey]/route.ts",
   "utf8",
@@ -146,5 +154,70 @@ describe("achievement consumer", () => {
     assert.match(achievementImagePickerSource, /URL\.createObjectURL\(file\)/);
     assert.match(achievementImagePickerSource, /Удалить изображение/);
     assert.match(achievementImagePickerSource, /name="removeImage"/);
+  });
+
+  it("generates a unique achievement code instead of asking the admin for one", () => {
+    assert.doesNotMatch(achievementNewPageSource, /name="code"/);
+    assert.match(
+      achievementAdminActionSource,
+      /generateEntityCode\(\{ name: configuration\.name, type: "achievement" \}\)/,
+    );
+  });
+
+  it("lets the admin search published series instead of picking from a full select", () => {
+    assert.match(achievementConfigurationSource, /<SearchableFranchiseSelect/);
+    assert.match(achievementConfigurationSource, /emptyLabel="Без фильтра"/);
+    assert.match(achievementNewPageSource, /publicationStatus === "published"/);
+  });
+
+  it("renders achievement and level lists as mobile cards and desktop tables", () => {
+    const listSource = readFileSync("src/app/admin/(protected)/achievements/page.tsx", "utf8")
+    const levelsSource = readFileSync(
+      "src/app/admin/(protected)/achievements/achievement-levels-tab.tsx",
+      "utf8",
+    )
+    assert.match(listSource, /grid gap-3 sm:hidden/)
+    assert.match(listSource, /TableWrap className="hidden sm:block"/)
+    assert.match(levelsSource, /mt-4 grid gap-3 sm:hidden/)
+    assert.match(levelsSource, /TableWrap className="mt-4 hidden sm:block"/)
+  });
+
+  it("loads production achievement images in the browser instead of the image optimizer", () => {
+    const cardSource = readFileSync("src/components/achievements/achievement-card.tsx", "utf8")
+    const pickerSource = readFileSync(
+      "src/components/achievements/achievement-image-picker.tsx",
+      "utf8",
+    )
+    const listSource = readFileSync("src/app/admin/(protected)/achievements/page.tsx", "utf8")
+    const levelsSource = readFileSync(
+      "src/app/admin/(protected)/achievements/achievement-levels-tab.tsx",
+      "utf8",
+    )
+    assert.match(cardSource, /src=\{item\.imageUrl\}[\s\S]*unoptimized/)
+    assert.match(pickerSource, /src=\{previewUrl\} unoptimized/)
+    assert.match(listSource, /src=\{item\.imageUrl\} unoptimized/)
+    assert.match(levelsSource, /src=\{imageUrl\} unoptimized/)
+    assert.match(achievementImageRouteSource, /"X-Accel-Redirect"/)
+    assert.match(
+      readFileSync("deploy/nginx/zadrotto.conf", "utf8"),
+      /location \^~ \/_achievement-images\/ \{[\s\S]*?internal;[\s\S]*?proxy_pass/,
+    )
+  });
+
+  it("lets the admin disable an achievement and delete it only before anyone is awarded", () => {
+    const listSource = readFileSync("src/app/admin/(protected)/achievements/page.tsx", "utf8")
+    const querySource = readFileSync("src/db/queries/achievements.ts", "utf8")
+    const actionSource = readFileSync(
+      "src/app/admin/(protected)/achievements/actions.ts",
+      "utf8",
+    )
+    assert.match(querySource, /hasAwards: awardedIds\.has\(row\.id\)/)
+    assert.match(querySource, /throw new Error\("achievement-awarded"\)/)
+    assert.match(actionSource, /export async function toggleAchievementAction/)
+    assert.match(actionSource, /export async function deleteAchievementAction/)
+    assert.match(listSource, /toggleAchievementAction/)
+    assert.match(listSource, /deleteAchievementAction/)
+    assert.match(listSource, /disabled=\{hasAwards\}/)
+    assert.match(listSource, /Нельзя удалить: ачивку уже кто-то получил/)
   });
 });

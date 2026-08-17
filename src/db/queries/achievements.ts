@@ -67,9 +67,19 @@ export async function getAchievementShowcase(authorId: number) {
 }
 
 export async function getAdminAchievements() {
-  const rows = await db.select().from(achievements)
-    .orderBy(asc(achievements.displayOrder), asc(achievements.id));
-  return rows.map((row) => ({ ...row, imageUrl: resolveAchievementImageUrl(row.imageObjectKey) }));
+  const [rows, awarded] = await Promise.all([
+    db.select().from(achievements)
+      .orderBy(asc(achievements.displayOrder), asc(achievements.id)),
+    db.selectDistinct({ achievementId: achievementLevels.achievementId })
+      .from(userAchievements)
+      .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId)),
+  ])
+  const awardedIds = new Set(awarded.map((item) => item.achievementId))
+  return rows.map((row) => ({
+    ...row,
+    hasAwards: awardedIds.has(row.id),
+    imageUrl: resolveAchievementImageUrl(row.imageObjectKey),
+  }))
 }
 
 export async function getAdminAchievementById(id: number) {
@@ -261,6 +271,32 @@ export async function deleteAchievementLevel(input: { achievementId: number; lev
     }
     return target;
   });
+}
+
+export async function setAchievementEnabled(id: number, enabled: boolean) {
+  const [updated] = await db.update(achievements)
+    .set({ enabled, updatedAt: new Date() })
+    .where(eq(achievements.id, id))
+    .returning()
+  return updated ?? null
+}
+
+export async function deleteAchievementIfUnawarded(id: number) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx.select().from(achievements).where(eq(achievements.id, id)).limit(1).for("update")
+    if (!current) return null
+    const levels = await tx.select({
+      id: achievementLevels.id,
+      imageObjectKey: achievementLevels.imageObjectKey,
+    }).from(achievementLevels).where(eq(achievementLevels.achievementId, id)).for("update")
+    const awardedIds = await getAwardedLevelIds(tx, id)
+    if (awardedIds.size > 0) throw new Error("achievement-awarded")
+    await tx.delete(achievements).where(eq(achievements.id, id))
+    return {
+      ...current,
+      imageObjectKeys: [current.imageObjectKey, ...levels.map((level) => level.imageObjectKey)],
+    }
+  })
 }
 
 export async function isAssignedAchievementImageObjectKey(objectKey: string) {

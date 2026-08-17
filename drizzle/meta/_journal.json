@@ -470,6 +470,20 @@
       "when": 1786900300000,
       "tag": "0066_achievement_levels_full_backfill",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1786900400000,
+      "tag": "0067_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1786900500000,
+      "tag": "0068_notification_transport_settings",
+      "breakpoints": true
     }
   ]
 }

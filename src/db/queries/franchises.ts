@@ -1220,6 +1220,13 @@ export async function reviewSubmittedFranchise(input: {
         )
         .returning({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId });
       if (input.decision === "published") {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: String(franchise.id),
+          aggregateType: "franchise",
+          payload: { authorId: franchise.createdByAuthorId, franchiseId: franchise.id },
+          type: "franchise.approved",
+        });
         for (const link of publishedLinks) {
           await appendEvent({
             actorAuthorId: null,
@@ -1255,15 +1262,32 @@ export async function reviewSubmittedMediaItemFranchise(input: {
         exists(tx.select({ id: franchises.id }).from(franchises)
           .where(and(eq(franchises.id, input.franchiseId), publishedFranchiseCondition))),
       ))
-      .returning({ mediaItemId: mediaItemFranchises.mediaItemId, franchiseId: mediaItemFranchises.franchiseId });
+      .returning({
+        createdByAuthorId: mediaItemFranchises.createdByAuthorId,
+        franchiseId: mediaItemFranchises.franchiseId,
+        mediaItemId: mediaItemFranchises.mediaItemId,
+      });
     if (link && input.decision === "published") {
       await appendEvent({
         actorAuthorId: null,
         aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
         aggregateType: "media-franchise",
-        payload: link,
+        payload: { franchiseId: link.franchiseId, mediaItemId: link.mediaItemId },
         type: "media-franchise.published",
       });
+      if (link.createdByAuthorId) {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
+          aggregateType: "media-franchise",
+          payload: {
+            authorId: link.createdByAuthorId,
+            franchiseId: link.franchiseId,
+            mediaItemId: link.mediaItemId,
+          },
+          type: "media-franchise.approved",
+        });
+      }
     }
     return link ?? null;
   });
@@ -1274,8 +1298,20 @@ export async function reviewMediaItemFranchiseRemovalRequest(input: {
   franchiseId: number;
   mediaItemId: number;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     if (input.decision === "published") {
+      const [request] = await tx
+        .select({
+          requestedByAuthorId: mediaItemFranchiseRemovalRequests.requestedByAuthorId,
+        })
+        .from(mediaItemFranchiseRemovalRequests)
+        .where(and(
+          eq(mediaItemFranchiseRemovalRequests.mediaItemId, input.mediaItemId),
+          eq(mediaItemFranchiseRemovalRequests.franchiseId, input.franchiseId),
+        ))
+        .limit(1)
+        .for("update")
+      if (!request) return null
       const [link] = await tx.delete(mediaItemFranchises).where(and(
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
@@ -1287,6 +1323,19 @@ export async function reviewMediaItemFranchiseRemovalRequest(input: {
             eq(mediaItemFranchiseRemovalRequests.franchiseId, input.franchiseId),
           ))),
       )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
+      if (link) {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: `${input.mediaItemId}:${input.franchiseId}`,
+          aggregateType: "media-franchise",
+          payload: {
+            authorId: request.requestedByAuthorId,
+            franchiseId: input.franchiseId,
+            mediaItemId: input.mediaItemId,
+          },
+          type: "media-franchise.removal.approved",
+        })
+      }
       return link ?? null;
     }
     const [request] = await tx.delete(mediaItemFranchiseRemovalRequests).where(and(
@@ -1363,6 +1412,22 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
       }
     }
 
+    if (input.publicationStatus === "submitted") {
+      for (const franchiseId of franchiseIds) {
+        await appendEvent({
+          actorAuthorId: input.authorId,
+          aggregateId: `${input.mediaItemId}:${franchiseId}`,
+          aggregateType: "media-franchise",
+          payload: {
+            authorId: input.authorId,
+            franchiseId,
+            mediaItemId: input.mediaItemId,
+          },
+          type: "media-franchise.submitted",
+        });
+      }
+    }
+
     return franchiseIds.map((franchiseId) => availableFranchisesById.get(franchiseId)!);
   });
 }
@@ -1396,7 +1461,7 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
   franchiseId: number;
   mediaItemId: number;
 }) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [link] = await tx.select({
       createdByAuthorId: mediaItemFranchises.createdByAuthorId,
       franchiseId: franchises.id,
@@ -1435,11 +1500,27 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
           }
         : null;
     }
-    await tx.insert(mediaItemFranchiseRemovalRequests).values({
+    const [requested] = await tx.insert(mediaItemFranchiseRemovalRequests).values({
       mediaItemId: input.mediaItemId,
       franchiseId: input.franchiseId,
       requestedByAuthorId: input.authorId,
-    }).onConflictDoNothing();
+    }).onConflictDoNothing().returning({
+      franchiseId: mediaItemFranchiseRemovalRequests.franchiseId,
+      mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId,
+    });
+    if (requested) {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: `${requested.mediaItemId}:${requested.franchiseId}`,
+        aggregateType: "media-franchise",
+        payload: {
+          authorId: input.authorId,
+          franchiseId: requested.franchiseId,
+          mediaItemId: requested.mediaItemId,
+        },
+        type: "media-franchise.removal.requested",
+      })
+    }
     return {
       status: "requested" as const,
       franchise: { id: link.franchiseId, title: link.franchiseTitle },
@@ -1495,6 +1576,16 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
         aggregateType: "media-franchise",
         payload: { franchiseId: franchise.id, mediaItemId: input.mediaItemId },
         type: "media-franchise.published",
+      });
+    }
+
+    if (input.publicationStatus === "submitted") {
+      await appendEvent({
+        actorAuthorId: input.authorId,
+        aggregateId: String(franchise.id),
+        aggregateType: "franchise",
+        payload: { authorId: input.authorId, franchiseId: franchise.id },
+        type: "franchise.submitted",
       });
     }
 

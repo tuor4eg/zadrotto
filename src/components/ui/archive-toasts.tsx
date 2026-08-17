@@ -12,6 +12,7 @@ export type ArchiveToast = {
   link?: {
     href: string;
     label: string;
+    onClick?: () => void;
   };
   text: string;
   tone: "success" | "error";
@@ -119,6 +120,7 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
                   <Link
                     className="font-medium text-stone-950 underline decoration-stone-400 underline-offset-2 transition-colors hover:text-red-800"
                     href={message.link.href}
+                    onClick={message.link.onClick}
                   >
                     {message.link.label}
                   </Link>{" "}

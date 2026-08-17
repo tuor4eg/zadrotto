@@ -143,6 +143,75 @@ function LevelModal({
   );
 }
 
+function LevelRowActions({
+  achievementId,
+  canDelete,
+  level,
+  onEdit,
+}: {
+  achievementId: number
+  canDelete: boolean
+  level: AchievementLevelRow
+  onEdit: () => void
+}) {
+  return (
+    <div className="flex flex-nowrap justify-end gap-1.5">
+      <Tooltip label="Изменить">
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          aria-label={`Изменить уровень ${level.level}`}
+          onClick={onEdit}
+        >
+          <Edit3 />
+        </Button>
+      </Tooltip>
+      <Tooltip label={canDelete ? "Удалить" : level.isAwarded ? "Нельзя удалить выданный уровень" : "Нельзя удалить единственный уровень"}>
+        <ConfirmAction
+          action={deleteAchievementLevelAction}
+          fields={[
+            { name: "achievementId", value: achievementId },
+            { name: "levelId", value: level.id },
+          ]}
+          title="Удалить уровень?"
+          description={`Уровень ${level.level} будет удалён. Следующие невыданные уровни перенумеруются.`}
+          triggerLabel="Удалить"
+          triggerAriaLabel={`Удалить уровень ${level.level}`}
+          triggerIcon={<Trash2 />}
+          triggerSize="icon"
+          triggerVariant="outline"
+          confirmLabel="Удалить"
+          disabled={!canDelete}
+          className="shrink-0"
+        />
+      </Tooltip>
+    </div>
+  )
+}
+
+function LevelImage({
+  imageUrl,
+  placeholder = "text",
+}: {
+  imageUrl: string | null
+  placeholder?: "circle" | "text"
+}) {
+  if (imageUrl) {
+    return (
+      <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-300 bg-stone-100">
+        <Image alt="" className="object-cover" fill sizes="40px" src={imageUrl} unoptimized />
+      </span>
+    )
+  }
+
+  if (placeholder === "circle") {
+    return <span className="size-10 shrink-0 rounded-full border border-stone-300 bg-stone-100" />
+  }
+
+  return <span className="text-xs text-stone-500">Базовое</span>
+}
+
 export function AchievementLevelsTab({
   achievementId,
   achievementName,
@@ -182,7 +251,7 @@ export function AchievementLevelsTab({
   };
 
   return <>
-    <div className="flex items-center justify-between gap-3">
+    <div className="flex flex-wrap items-center justify-between gap-3">
       <p className="text-sm text-stone-600">Уровни выдаются по порогу. Номер уровня назначается автоматически.</p>
       <Button type="button" variant="outline" onClick={openCreate}>
         <Plus />
@@ -191,78 +260,75 @@ export function AchievementLevelsTab({
     </div>
 
     {levels.length > 0 ? (
-      <TableWrap className="mt-4">
-        <Table className="table-fixed">
-          <THead>
-            <tr>
-              <TH className="w-16">Уровень</TH>
-              <TH className="w-24">Порог</TH>
-              <TH>Название</TH>
-              <TH className="w-28">Изображение</TH>
-              <TH className="w-28 px-2 text-right">Действия</TH>
-            </tr>
-          </THead>
-          <TBody>
-            {levels.map((level) => {
-              const resolvedName = level.name?.trim() || achievementName;
-              const canDelete = !level.isAwarded && levels.length > 1;
-              return (
-                <TR key={level.id}>
-                  <TD>{level.level}</TD>
-                  <TD>{level.threshold}</TD>
-                  <TD className="min-w-0">
-                    <div className="truncate font-medium text-stone-950">{resolvedName}</div>
-                    {level.isAwarded ? <Badge className="mt-1" variant="outline">Выдан</Badge> : null}
-                  </TD>
-                  <TD>
-                    {level.imageUrl ? (
-                      <span className="relative grid size-10 place-items-center overflow-hidden rounded-full border border-stone-300 bg-stone-100">
-                        <Image alt="" className="object-cover" fill sizes="40px" src={level.imageUrl} />
-                      </span>
-                    ) : (
-                      <span className="text-xs text-stone-500">Базовое</span>
-                    )}
-                  </TD>
-                  <TD className="px-2">
-                    <div className="flex flex-nowrap justify-end gap-1.5">
-                      <Tooltip label="Изменить">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="icon"
-                          aria-label={`Изменить уровень ${level.level}`}
-                          onClick={() => openEdit(level)}
-                        >
-                          <Edit3 />
-                        </Button>
-                      </Tooltip>
-                      <Tooltip label={canDelete ? "Удалить" : level.isAwarded ? "Нельзя удалить выданный уровень" : "Нельзя удалить единственный уровень"}>
-                        <ConfirmAction
-                          action={deleteAchievementLevelAction}
-                          fields={[
-                            { name: "achievementId", value: achievementId },
-                            { name: "levelId", value: level.id },
-                          ]}
-                          title="Удалить уровень?"
-                          description={`Уровень ${level.level} будет удалён. Следующие невыданные уровни перенумеруются.`}
-                          triggerLabel="Удалить"
-                          triggerAriaLabel={`Удалить уровень ${level.level}`}
-                          triggerIcon={<Trash2 />}
-                          triggerSize="icon"
-                          triggerVariant="outline"
-                          confirmLabel="Удалить"
-                          disabled={!canDelete}
-                          className="shrink-0"
-                        />
-                      </Tooltip>
-                    </div>
-                  </TD>
-                </TR>
-              );
-            })}
-          </TBody>
-        </Table>
-      </TableWrap>
+      <>
+        <div className="mt-4 grid gap-3 sm:hidden">
+          {levels.map((level) => {
+            const resolvedName = level.name?.trim() || achievementName
+            const canDelete = !level.isAwarded && levels.length > 1
+            return (
+              <div key={level.id} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
+                <div className="flex items-start gap-3">
+                  <LevelImage imageUrl={level.imageUrl} placeholder="circle" />
+                  <div className="min-w-0">
+                    <div className="break-words font-medium text-stone-950">{resolvedName}</div>
+                    <div className="mt-1 text-xs text-stone-500">Уровень {level.level} · порог {level.threshold}</div>
+                    {level.isAwarded ? <Badge className="mt-2" variant="outline">Выдан</Badge> : null}
+                  </div>
+                </div>
+                <div className="mt-4 border-t border-stone-100 pt-3">
+                  <LevelRowActions
+                    achievementId={achievementId}
+                    canDelete={canDelete}
+                    level={level}
+                    onEdit={() => openEdit(level)}
+                  />
+                </div>
+              </div>
+            )
+          })}
+        </div>
+
+        <TableWrap className="mt-4 hidden sm:block">
+          <Table className="table-fixed">
+            <THead>
+              <tr>
+                <TH className="w-16">Уровень</TH>
+                <TH className="w-24">Порог</TH>
+                <TH>Название</TH>
+                <TH className="w-28">Изображение</TH>
+                <TH className="w-28 px-2 text-right">Действия</TH>
+              </tr>
+            </THead>
+            <TBody>
+              {levels.map((level) => {
+                const resolvedName = level.name?.trim() || achievementName
+                const canDelete = !level.isAwarded && levels.length > 1
+                return (
+                  <TR key={level.id}>
+                    <TD>{level.level}</TD>
+                    <TD>{level.threshold}</TD>
+                    <TD className="min-w-0">
+                      <div className="truncate font-medium text-stone-950">{resolvedName}</div>
+                      {level.isAwarded ? <Badge className="mt-1" variant="outline">Выдан</Badge> : null}
+                    </TD>
+                    <TD>
+                      <LevelImage imageUrl={level.imageUrl} />
+                    </TD>
+                    <TD className="px-2">
+                      <LevelRowActions
+                        achievementId={achievementId}
+                        canDelete={canDelete}
+                        level={level}
+                        onEdit={() => openEdit(level)}
+                      />
+                    </TD>
+                  </TR>
+                )
+              })}
+            </TBody>
+          </Table>
+        </TableWrap>
+      </>
     ) : (
       <p className="mt-4 text-sm text-stone-500">Уровни ещё не добавлены.</p>
     )}

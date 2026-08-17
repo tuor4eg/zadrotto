@@ -24,6 +24,7 @@ import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/m
 import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
+import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog";
 import { normalizedSearchIndexSql } from "@/db/search";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
@@ -839,6 +840,60 @@ export const domainEventConsumptions = pgTable(
   ],
 );
 
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: serial("id").primaryKey(),
+    recipientType: text("recipient_type").notNull(),
+    recipientId: integer("recipient_id").notNull(),
+    type: text("type").notNull(),
+    title: text("title").notNull(),
+    body: text("body").notNull(),
+    entityType: text("entity_type").notNull(),
+    entityId: text("entity_id").notNull(),
+    readAt: timestamp("read_at", { withTimezone: true }),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    index("notifications_recipient_created_at_idx").on(
+      table.recipientType,
+      table.recipientId,
+      table.createdAt,
+    ),
+    index("notifications_recipient_unread_idx")
+      .on(table.recipientType, table.recipientId)
+      .where(sql`${table.readAt} is null`),
+    check(
+      "notifications_recipient_type_check",
+      sql`${table.recipientType} in ('admin', 'author')`,
+    ),
+    check("notifications_type_check", sql`btrim(${table.type}) <> ''`),
+    check("notifications_title_check", sql`btrim(${table.title}) <> ''`),
+    check("notifications_body_check", sql`btrim(${table.body}) <> ''`),
+    check("notifications_entity_type_check", sql`btrim(${table.entityType}) <> ''`),
+    check("notifications_entity_id_check", sql`btrim(${table.entityId}) <> ''`),
+  ],
+);
+
+export const notificationTransportSettings = pgTable(
+  "notification_transport_settings",
+  {
+    code: text("code").primaryKey(),
+    enabled: boolean("enabled").default(false).notNull(),
+    encryptedPayload: text("encrypted_payload"),
+    keyHint: text("key_hint"),
+    chatIds: jsonb("chat_ids").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("notification_transport_settings_code_check", sql`${table.code} in (${sql`${TELEGRAM_TRANSPORT_CODE}`})`),
+    check("notification_transport_settings_code_trim_check", sql`btrim(${table.code}) <> ''`),
+  ],
+);
+
 export const achievements = pgTable(
   "achievements",
   {
@@ -1304,3 +1359,7 @@ export type ContributionReview = typeof contributionReviews.$inferSelect;
 export type NewContributionReview = typeof contributionReviews.$inferInsert;
 export type ContributionMediaItem = typeof contributionMediaItems.$inferSelect;
 export type NewContributionMediaItem = typeof contributionMediaItems.$inferInsert;
+export type Notification = typeof notifications.$inferSelect;
+export type NewNotification = typeof notifications.$inferInsert;
+export type NotificationTransportSettings = typeof notificationTransportSettings.$inferSelect;
+export type NewNotificationTransportSettings = typeof notificationTransportSettings.$inferInsert;
