@@ -449,6 +449,13 @@
       "when": 1786900000000,
       "tag": "0063_quizzes",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1786900100000,
+      "tag": "0064_quiz_participants",
+      "breakpoints": true
     }
   ]
 }

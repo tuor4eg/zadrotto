@@ -2,7 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input, Label } from "@/components/ui/form";
 import { PasswordField } from "@/components/auth/password-field";
@@ -17,7 +17,7 @@ import { RegistrationStartedAtInput } from "./registration-started-at-input";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ error?: string; registered?: string; sent?: string }> }) {
+export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ email?: string; error?: string; registered?: string; sent?: string }> }) {
   if (!isAuthorRegistrationEnabled()) notFound();
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   const isEmailDeliveryConfigured = bypassEmailVerification
@@ -41,7 +41,15 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
             <Alert>
               Регистрация завершена. Теперь можно <Link className="underline underline-offset-4" href="/author/login">войти</Link>.
             </Alert>
-          ) : query.sent === "1" ? <Alert>Письмо с подтверждением отправлено. Если его долго нет, проверьте папку Спам.</Alert> : (
+          ) : query.sent === "1" ? (
+            <div className="grid gap-4">
+              <Alert>
+                Письмо с подтверждением отправлено{query.email ? <> на <strong className="break-all">{query.email}</strong></> : null}.
+                Если его долго нет, проверьте папку Спам.
+              </Alert>
+              <Link className={buttonVariants()} href="/">На сайт</Link>
+            </div>
+          ) : (
             <form action={registerAuthorAction} className="grid gap-4">
               <RegistrationStartedAtInput />
               <input className="hidden" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />

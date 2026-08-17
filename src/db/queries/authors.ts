@@ -5,6 +5,7 @@ import {
   authorAccounts,
   authorAccessProfiles,
   authorAccessTokens,
+  authorEmails,
   authors,
   mediaItems,
   ratings,
@@ -117,6 +118,7 @@ export async function getAdminAuthorProfileById(id: number) {
       avatarObjectKey: authors.avatarObjectKey,
       isSystem: authors.isSystem,
       login: authorAccounts.login,
+      email: authorEmails.email,
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
@@ -143,6 +145,10 @@ export async function getAdminAuthorProfileById(id: number) {
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
     .leftJoin(authorAccounts, eq(authorAccounts.authorId, authors.id))
+    .leftJoin(
+      authorEmails,
+      and(eq(authorEmails.authorId, authors.id), eq(authorEmails.isPrimary, true)),
+    )
     .where(eq(authors.id, id))
     .limit(1);
 

@@ -1009,6 +1009,19 @@ export const quizMediaTypes = pgTable(
   ],
 );
 
+export const quizParticipants = pgTable(
+  "quiz_participants",
+  {
+    quizId: integer("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
+    authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.quizId, table.authorId], name: "quiz_participants_pk" }),
+    index("quiz_participants_author_id_idx").on(table.authorId),
+  ],
+);
+
 export const mediaItemTitleAliases = pgTable(
   "media_item_title_aliases",
   {

@@ -46,6 +46,7 @@ describe("archive site header", () => {
     assert.match(sharedSource, /archive-catalog-header archive-textured-block/);
     assert.match(sharedSource, /archive-catalog-brand-row/);
     assert.match(sharedSource, /archive-catalog-controls-row/);
+    assert.match(sharedSource, /quizAction && !compact/);
   });
 
   it("keeps one action set in the non-sticky mobile brand row", () => {
@@ -60,7 +61,7 @@ describe("archive site header", () => {
     );
     assert.match(
       sharedSource,
-      /archive-catalog-brand-row[\s\S]*\{catalogActions\}[\s\S]*archive-catalog-controls-row[^>]*>\{controls\}/,
+      /archive-catalog-brand-row[\s\S]*\{catalogActions\}[\s\S]*archive-catalog-controls-row[^>]*>[\s\S]*\{controls\}/,
     );
     assert.match(
       globalsSource,
@@ -94,6 +95,7 @@ describe("archive site header", () => {
       /<ActionsContainer aria-label="Основная навигация" className="contents lg:flex[^\"]*">[\s\S]*col-span-2 row-start-2[\s\S]*\{adminLink\}[\s\S]*\{authorAction\}/,
     );
     assert.match(mainSource, /className="relative w-full lg:w-\[298px\]"/);
+    assert.match(sharedSource, /col-span-2 row-start-2 min-w-0[^"]*lg:flex[^"]*lg:gap-2[\s\S]*min-w-0 w-full lg:flex-1/);
     assert.match(sharedSource, /: "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"/);
     assert.match(sharedSource, /: "sr-only lg:not-sr-only"/);
     assert.match(

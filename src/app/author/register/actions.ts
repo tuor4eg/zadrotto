@@ -2,7 +2,11 @@
 
 import { redirect } from "next/navigation";
 
-import { registerAuthorAccount } from "@/db/operations/author-auth";
+import {
+  registerAuthorAccount,
+  replacePendingAuthorRegistrationEmail,
+} from "@/db/operations/author-auth";
+import { getAuthorAccountByNormalizedLogin } from "@/db/queries/author-auth";
 import { isValidAuthorEmail, isValidAuthorLogin, normalizeAuthorEmail, normalizeAuthorLogin, validateAuthorPassword } from "@/lib/auth/author-account";
 import {
   isAuthorEmailDeliveryConfigured,
@@ -10,7 +14,7 @@ import {
   isAuthorRegistrationEnabled,
 } from "@/lib/auth/features";
 import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
 
 function read(formData: FormData, key: string) {
@@ -39,33 +43,57 @@ export async function registerAuthorAction(formData: FormData) {
     || password !== confirmation || !validateAuthorPassword(password).ok) {
     redirect("/author/register?error=invalid");
   }
+  const normalizedLogin = normalizeAuthorLogin(login);
+  const normalizedEmail = normalizeAuthorEmail(email);
+  let registeredAuthorId: number | null = null;
+  let correctedPendingEmail = false;
   try {
     const author = await registerAuthorAccount({
       name,
       login,
-      normalizedLogin: normalizeAuthorLogin(login),
+      normalizedLogin,
       passwordHash: await hashPassword(password),
       email,
-      normalizedEmail: normalizeAuthorEmail(email),
+      normalizedEmail,
     });
+    registeredAuthorId = author.id;
+  } catch {
+    try {
+      const account = await getAuthorAccountByNormalizedLogin(normalizedLogin);
+      const passwordMatches = await verifyPasswordOrDummy(password, account?.passwordHash);
+      if (account?.status === "pending_email" && passwordMatches) {
+        const corrected = await replacePendingAuthorRegistrationEmail({
+          authorId: account.authorId,
+          email,
+          normalizedEmail,
+        });
+        registeredAuthorId = corrected?.authorId ?? null;
+        correctedPendingEmail = Boolean(corrected);
+      }
+    } catch {
+      // The same response covers credential conflicts and infrastructure failures.
+    }
+  }
+  if (registeredAuthorId) {
     await logActivity({
       action: "author.registration.submitted",
       actorType: "author",
-      authorId: author.id,
+      authorId: registeredAuthorId,
       entityType: "author-account",
-      entityId: author.id,
-      message: bypassEmailVerification
+      entityId: registeredAuthorId,
+      message: correctedPendingEmail
+        ? "Автор исправил неподтверждённый email регистрации."
+        : bypassEmailVerification
         ? "Автор зарегистрирован без подтверждения email."
         : "Отправлена заявка на регистрацию автора.",
       metadata: {
         source: "public-registration",
         emailVerificationBypassed: bypassEmailVerification,
+        correctedPendingEmail,
       },
     });
-  } catch {
-    // The same response covers uniqueness and infrastructure failures.
   }
   redirect(bypassEmailVerification
     ? "/author/register?registered=1"
-    : "/author/register?sent=1");
+    : `/author/register?sent=1&email=${encodeURIComponent(email)}`);
 }

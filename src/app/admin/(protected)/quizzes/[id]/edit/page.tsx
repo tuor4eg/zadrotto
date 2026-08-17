@@ -24,8 +24,8 @@ export default async function EditQuizPage({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Редактирование квиза"
-        description={item.question ?? "Квиз с изображением"}
+        title="Редактирование викторины"
+        description={item.question ?? "Викторина с изображением"}
       />
       <QuizForm action={updateQuizAction} item={item} mediaTypes={mediaTypes} />
     </div>

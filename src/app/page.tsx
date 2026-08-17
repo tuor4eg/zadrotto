@@ -43,6 +43,7 @@ import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getActiveQuiz, isQuizParticipant } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
@@ -285,6 +286,10 @@ export default async function MainPage({ searchParams }: MainPageProps) {
         }))
       : Promise.resolve(null),
   ]);
+  const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
+  const isActiveQuizParticipant = activeQuiz && currentAuthor
+    ? await isQuizParticipant(activeQuiz.id, currentAuthor.id)
+    : false;
   const mediaTypes = effectiveMediaTypes.filter((item) => item.isEnabled);
   const suggestionMediaTypes = authorMediaSuggestionData
     ? sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)
@@ -363,6 +368,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
+          quiz={activeQuiz ? { active: activeQuiz, isParticipating: isActiveQuizParticipant } : null}
           variant="main"
         />
 

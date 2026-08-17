@@ -150,6 +150,16 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
               <dd className="mt-1 font-medium text-stone-950">{author.login ?? "—"}</dd>
             </div>
             <div>
+              <dt className="text-stone-500">Email</dt>
+              <dd className="mt-1 font-medium text-stone-950">
+                {author.email ? (
+                  <a className="break-all hover:underline" href={`mailto:${author.email}`}>
+                    {author.email}
+                  </a>
+                ) : "—"}
+              </dd>
+            </div>
+            <div>
               <dt className="text-stone-500">Зарегистрирован</dt>
               <dd className="mt-1 font-medium text-stone-950">
                 {formatDateTime(author.createdAt)}

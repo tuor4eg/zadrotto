@@ -1,6 +1,6 @@
 import { and, asc, eq, gt, inArray, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { mediaItems, mediaTypes, quizMediaTypes, quizzes } from "@/db/schema";
+import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } from "@/db/schema";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
@@ -45,8 +45,34 @@ export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
   if (!quiz) return null; const types = await mediaTypesForQuizIds([quiz.id]);
   return { id: quiz.id, question: quiz.question, imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), mediaTypes: types.get(quiz.id) ?? [], startsAt: quiz.startsAt.toISOString(), endsAt: quiz.endsAt.toISOString() };
 }
-export async function checkQuizGuess(titleId: number, now?: Date) {
+export async function isQuizParticipant(quizId: number, authorId: number) {
+  const [participant] = await db
+    .select({ authorId: quizParticipants.authorId })
+    .from(quizParticipants)
+    .where(and(
+      eq(quizParticipants.quizId, quizId),
+      eq(quizParticipants.authorId, authorId),
+    ))
+    .limit(1);
+  return Boolean(participant);
+}
+export async function getParticipatingActiveQuiz(authorId: number, now?: Date) {
+  const active = await getActiveQuiz(now);
+  if (!active || !(await isQuizParticipant(active.id, authorId))) return null;
+  return active;
+}
+export async function joinActiveQuiz(authorId: number, now?: Date) {
+  const active = await getActiveQuiz(now);
+  if (!active) return null;
+  await db.insert(quizParticipants).values({
+    quizId: active.id,
+    authorId,
+  }).onConflictDoNothing();
+  return active;
+}
+export async function checkQuizGuess(titleId: number, authorId: number, now?: Date) {
   const active = await getActiveQuiz(now); if (!active) return { kind: "missing" as const };
+  if (!(await isQuizParticipant(active.id, authorId))) return { kind: "not-participant" as const };
   const [title] = await db.select({ mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.id, titleId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true))).limit(1);
   if (!title) return { kind: "title-missing" as const }; if (!isQuizMediaTypeAllowed(active.mediaTypes, title.mediaType)) return { kind: "invalid-type" as const };
   const [answer] = await db.select({ answerMediaItemId: quizzes.answerMediaItemId }).from(quizzes).where(eq(quizzes.id, active.id)).limit(1);

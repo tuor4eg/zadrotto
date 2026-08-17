@@ -10,7 +10,7 @@ export default async function NewQuizPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Новый квиз"
+        title="Новая викторина"
         description="Создайте вопрос и укажите правильную запись."
       />
       <QuizForm action={createQuizAction} mediaTypes={mediaTypes} />

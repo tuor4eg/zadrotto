@@ -5,11 +5,13 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useState } from "react";
 import { createPortal } from "react-dom";
-import { Shield, UserCircle } from "lucide-react";
+import { CircleHelp, Shield, UserCircle } from "lucide-react";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { NotificationBadge } from "@/components/ui/notification-badge";
+import { QuizModal } from "@/components/quizzes/quiz-modal";
+import type { ActiveQuiz } from "@/lib/quizzes/model";
 
 type ArchiveSiteHeaderProps = {
   brandHref: string;
@@ -18,6 +20,7 @@ type ArchiveSiteHeaderProps = {
   currentAdminUser: boolean;
   currentAuthor: boolean;
   incomingFriendRequestCount?: number;
+  quiz?: { active: ActiveQuiz; isParticipating: boolean } | null;
   sticky?: boolean;
   variant: "main" | "catalog";
 };
@@ -29,11 +32,13 @@ export function ArchiveSiteHeader({
   currentAdminUser,
   currentAuthor,
   incomingFriendRequestCount = 0,
+  quiz = null,
   sticky = false,
   variant,
 }: ArchiveSiteHeaderProps) {
   const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const isCatalog = variant === "catalog";
   const ActionsContainer = isCatalog ? "div" : "nav";
   const SiteHeaderContainer = isCatalog ? "div" : "header";
@@ -75,8 +80,15 @@ export function ArchiveSiteHeader({
       </span>
     </button>
   );
+  const quizAction = quiz ? (
+    <button type="button" aria-label="Открыть викторину" className={actionClassName} onClick={() => setIsQuizOpen(true)}>
+      <CircleHelp className="size-4" />
+      <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>Викторина</span>
+    </button>
+  ) : null;
   const catalogActions = (
     <div className="archive-catalog-header-actions flex shrink-0 items-center gap-2">
+      {quizAction ? <div className="lg:hidden">{quizAction}</div> : null}
       {adminLink && compact ? (
         <ArchiveTooltip className="min-w-0" label="Админка" side="bottom">
           {adminLink}
@@ -144,11 +156,15 @@ export function ArchiveSiteHeader({
         </Link>}
 
         {isCatalog ? (
-          <div className="archive-catalog-controls-row">{controls}</div>
+          <div className="archive-catalog-controls-row">
+            {quizAction && !compact ? <div className="hidden lg:block">{quizAction}</div> : null}
+            {controls}
+          </div>
         ) : (
           <ActionsContainer aria-label="Основная навигация" className="contents lg:flex lg:shrink-0 lg:gap-2">
-            {controls ? <div className="col-span-2 row-start-2 lg:col-auto lg:row-auto">{controls}</div> : null}
+            {controls ? <div className="col-span-2 row-start-2 min-w-0 lg:col-auto lg:row-auto lg:flex lg:gap-2">{quizAction ? <div className="hidden lg:block">{quizAction}</div> : null}<div className="min-w-0 w-full lg:flex-1">{controls}</div></div> : null}
             <div className="col-start-2 row-start-1 flex shrink-0 gap-2 lg:col-auto lg:row-auto">
+              {quizAction ? <div className="lg:hidden">{quizAction}</div> : null}
               {adminLink}
               {authorAction}
             </div>
@@ -167,6 +183,9 @@ export function ArchiveSiteHeader({
             />,
             document.body,
           )
+        : null}
+      {quiz && isQuizOpen
+        ? <QuizModal isParticipating={quiz.isParticipating} onClose={() => setIsQuizOpen(false)} quiz={quiz.active} />
         : null}
     </>
   );

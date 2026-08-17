@@ -30,7 +30,7 @@ import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
-import { getActiveQuiz } from "@/db/queries/quizzes";
+import { getParticipatingActiveQuiz } from "@/db/queries/quizzes";
 import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
 
 export const dynamic = "force-dynamic";
@@ -104,7 +104,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
     currentAuthor
       ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
       : Promise.resolve(false),
-    currentAuthor ? getActiveQuiz() : Promise.resolve(null),
+    currentAuthor ? getParticipatingActiveQuiz(currentAuthor.id) : Promise.resolve(null),
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">

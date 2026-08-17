@@ -200,6 +200,47 @@ export async function registerAuthorAccount(input: {
   });
 }
 
+export async function replacePendingAuthorRegistrationEmail(input: {
+  authorId: number;
+  email: string;
+  normalizedEmail: string;
+}) {
+  return db.transaction(async (tx) => {
+    const [pendingEmail] = await tx
+      .select({ id: authorEmails.id })
+      .from(authorEmails)
+      .innerJoin(authorAccounts, eq(authorAccounts.authorId, authorEmails.authorId))
+      .where(and(
+        eq(authorEmails.authorId, input.authorId),
+        eq(authorEmails.isPrimary, true),
+        isNull(authorEmails.verifiedAt),
+        eq(authorAccounts.status, "pending_email"),
+      ))
+      .limit(1)
+      .for("update");
+    if (!pendingEmail) return null;
+
+    const now = new Date();
+    await tx.update(authorAuthChallenges).set({ consumedAt: now }).where(and(
+      eq(authorAuthChallenges.authorId, input.authorId),
+      eq(authorAuthChallenges.purpose, "verify_email"),
+      isNull(authorAuthChallenges.consumedAt),
+    ));
+    await tx.update(authorEmails).set({
+      email: input.email,
+      normalizedEmail: input.normalizedEmail,
+      updatedAt: now,
+    }).where(eq(authorEmails.id, pendingEmail.id));
+    await insertVerificationChallenge(tx, {
+      authorId: input.authorId,
+      emailId: pendingEmail.id,
+      recipient: input.email,
+    });
+
+    return { authorId: input.authorId };
+  });
+}
+
 export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Date()) {
   return db.transaction(async (tx) => {
     const [challenge] = await tx

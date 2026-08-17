@@ -80,7 +80,17 @@ describe("author auth persistence contracts", () => {
     assert.match(profileActions, /current\.session\.authMethod !== "access_token"/);
     assert.doesNotMatch(profileActions, /isFreshAccessTokenSession|15 \* 60/);
     assert.match(profileActions, /getAuthorAccountByAuthorId\(current\.author\.id\)/);
-    assert.match(registrationActions, /\/author\/register\?sent=1/);
+    assert.match(registrationActions, /\/author\/register\?sent=1&email=\$\{encodeURIComponent\(email\)\}/);
+    assert.match(registrationActions, /getAuthorAccountByNormalizedLogin\(normalizedLogin\)/);
+    assert.match(registrationActions, /verifyPasswordOrDummy\(password, account\?\.passwordHash\)/);
+    assert.match(registrationActions, /account\?\.status === "pending_email" && passwordMatches/);
+    assert.match(registrationActions, /replacePendingAuthorRegistrationEmail/);
+    const correction = functionSource(operations, "replacePendingAuthorRegistrationEmail", "verifyAuthorEmailChallenge");
+    assert.match(correction, /eq\(authorAccounts\.status, "pending_email"\)/);
+    assert.match(correction, /eq\(authorEmails\.isPrimary, true\)/);
+    assert.match(correction, /set\(\{ consumedAt: now \}\)[\s\S]*eq\(authorAuthChallenges\.purpose, "verify_email"\)/);
+    assert.match(correction, /insertVerificationChallenge/);
+    assert.match(registrationPage, /Письмо с подтверждением отправлено[\s\S]*query\.email[\s\S]*На сайт/);
     assert.match(registrationPage, /export const dynamic = "force-dynamic"/);
     assert.match(registrationPage, /if \(!isAuthorRegistrationEnabled\(\)\) notFound\(\)/);
     assert.match(registrationPage, /Регистрация временно недоступна: отправка писем ещё не настроена/);

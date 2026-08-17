@@ -14,4 +14,12 @@ describe("admin author profile", () => {
     );
     assert.match(page, /Логин[\s\S]*author\.login \?\? "—"/);
   });
+  it("loads and displays the nullable primary email", () => {
+    assert.match(query, /email: authorEmails\.email/);
+    assert.match(
+      query,
+      /\.leftJoin\([\s\S]*authorEmails[\s\S]*eq\(authorEmails\.authorId, authors\.id\)[\s\S]*eq\(authorEmails\.isPrimary, true\)/,
+    );
+    assert.match(page, /Email[\s\S]*mailto:\$\{author\.email\}[\s\S]*author\.email[\s\S]*: "—"/);
+  });
 });

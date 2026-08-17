@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
+import type { ActiveQuiz } from "@/lib/quizzes/model";
 import type {
   AuthorRatingFilter,
   CatalogSort,
@@ -18,6 +19,8 @@ type CatalogStickyHeaderProps = {
   currentAdminUser: boolean;
   currentAuthor: boolean;
   incomingFriendRequestCount: number;
+  activeQuiz: ActiveQuiz | null;
+  isActiveQuizParticipant: boolean;
   mediaTypeFilter: MediaTypeFilter;
   minReleaseYear: number | null;
   searchQuery: string;
@@ -28,10 +31,12 @@ type CatalogStickyHeaderProps = {
 };
 
 export function CatalogStickyHeader({
+  activeQuiz,
   authorRatingFilter,
   currentAdminUser,
   currentAuthor,
   incomingFriendRequestCount,
+  isActiveQuizParticipant,
   mediaTypeFilter,
   minReleaseYear,
   searchQuery,
@@ -98,27 +103,28 @@ export function CatalogStickyHeader({
 
   return (
     <ArchiveSiteHeader
-      brandHref="/"
-      compact={isCompact}
-      controls={
-        <CatalogHeaderControls
-          authorRatingFilter={authorRatingFilter}
-          compact={isCompact}
-          currentAuthor={currentAuthor}
-          mediaTypeFilter={mediaTypeFilter}
-          minReleaseYear={minReleaseYear}
-          searchQuery={searchQuery}
-          sort={sort}
-          sortDirection={sortDirection}
-          yearFilter={yearFilter}
-          yearMode={yearMode}
-        />
-      }
-      currentAdminUser={currentAdminUser}
-      currentAuthor={currentAuthor}
-      incomingFriendRequestCount={incomingFriendRequestCount}
-      sticky
-      variant="catalog"
+        brandHref="/"
+        compact={isCompact}
+        controls={
+          <CatalogHeaderControls
+            authorRatingFilter={authorRatingFilter}
+            compact={isCompact}
+            currentAuthor={currentAuthor}
+            mediaTypeFilter={mediaTypeFilter}
+            minReleaseYear={minReleaseYear}
+            searchQuery={searchQuery}
+            sort={sort}
+            sortDirection={sortDirection}
+            yearFilter={yearFilter}
+            yearMode={yearMode}
+          />
+        }
+        currentAdminUser={currentAdminUser}
+        currentAuthor={currentAuthor}
+        incomingFriendRequestCount={incomingFriendRequestCount}
+        quiz={activeQuiz ? { active: activeQuiz, isParticipating: isActiveQuizParticipant } : null}
+        sticky
+        variant="catalog"
     />
   );
 }
