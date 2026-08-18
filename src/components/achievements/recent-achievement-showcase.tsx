@@ -1,46 +1,24 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { Trophy } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import Link from "next/link"
+import { Trophy } from "lucide-react"
 
 import {
   AchievementCard,
   selectRecentAwardedAchievements,
   type AchievementShowcaseItem,
-} from "./achievement-card";
+} from "./achievement-card"
 
-const CARD_MIN_WIDTH = 196
-const CARD_GAP = 8
+const RECENT_ACHIEVEMENT_LIMIT = 5
 
 export function RecentAchievementShowcase({
   allHref,
   items,
 }: {
-  allHref: string;
-  items: AchievementShowcaseItem[];
+  allHref: string
+  items: AchievementShowcaseItem[]
 }) {
-  const recent = selectRecentAwardedAchievements(items)
-  const rowRef = useRef<HTMLDivElement>(null)
-  const [visibleCount, setVisibleCount] = useState(5)
-
-  useEffect(() => {
-    const node = rowRef.current
-    if (!node) return
-
-    function updateVisibleCount() {
-      const width = node!.clientWidth
-      if (width <= 0) return
-      setVisibleCount(Math.max(1, Math.floor((width + CARD_GAP) / (CARD_MIN_WIDTH + CARD_GAP))))
-    }
-
-    updateVisibleCount()
-    const observer = new ResizeObserver(updateVisibleCount)
-    observer.observe(node)
-    return () => observer.disconnect()
-  }, [recent.length])
-
-  const visibleItems = recent.slice(0, visibleCount)
+  const recent = selectRecentAwardedAchievements(items).slice(0, RECENT_ACHIEVEMENT_LIMIT)
 
   return (
     <section className="archive-paper archive-panel p-4 sm:p-5" aria-labelledby="recent-achievements-title">
@@ -56,13 +34,8 @@ export function RecentAchievementShowcase({
       {recent.length === 0 ? (
         <p className="text-sm text-stone-600">Пока нет полученных ачивок.</p>
       ) : (
-        <div ref={rowRef} className="min-w-0">
-          <div
-            className="grid overflow-hidden"
-            style={{ gap: CARD_GAP, gridTemplateColumns: `repeat(${visibleItems.length}, minmax(0, 1fr))` }}
-          >
-            {visibleItems.map((item) => <AchievementCard key={item.code} item={item} />)}
-          </div>
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+          {recent.map((item) => <AchievementCard key={item.code} browseAwardedLevels fillWidth item={item} />)}
         </div>
       )}
     </section>

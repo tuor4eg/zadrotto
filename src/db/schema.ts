@@ -992,6 +992,25 @@ export const userAchievements = pgTable(
   ],
 );
 
+export const achievementSettings = pgTable(
+  "achievement_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    lockedImageObjectKey: text("locked_image_object_key"),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("achievement_settings_singleton_id_check", sql`${table.id} = 1`),
+    check(
+      "achievement_settings_locked_image_object_key_check",
+      sql`${table.lockedImageObjectKey} is null or btrim(${table.lockedImageObjectKey}) <> ''`,
+    ),
+  ],
+);
+
 export const mediaCarriers = pgTable(
   "media_carriers",
   {
@@ -1351,6 +1370,7 @@ export type AuthorRegistrationSettings = typeof authorRegistrationSettings.$infe
 export type CoverSettings = typeof coverSettings.$inferSelect;
 export type NewCoverSettings = typeof coverSettings.$inferInsert;
 export type ArchiveSettings = typeof archiveSettings.$inferSelect;
+export type AchievementSettings = typeof achievementSettings.$inferSelect;
 export type ProviderSettings = typeof providerSettings.$inferSelect;
 export type NewProviderSettings = typeof providerSettings.$inferInsert;
 export type ProviderCredentials = typeof providerCredentials.$inferSelect;

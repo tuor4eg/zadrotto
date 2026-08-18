@@ -1,7 +1,7 @@
 "use client";
 
 import Image from "next/image";
-import { ImagePlus, Trash2, Trophy } from "lucide-react";
+import { ImagePlus, LockKeyhole, Trash2, Trophy } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -17,7 +17,7 @@ export function AchievementImagePicker({
 }: {
   initialImageUrl: string | null;
   inputId: string;
-  variant?: "achievement" | "quiz";
+  variant?: "achievement" | "locked" | "quiz";
 }) {
   const pickerVariant = inputId === "quiz-image" ? "quiz" : variant;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -65,7 +65,7 @@ export function AchievementImagePicker({
 
     <div className="flex flex-wrap items-center gap-4">
       <span className={`relative grid shrink-0 place-items-center overflow-hidden border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48 rounded-md" : "size-28 rounded-full"}`}>
-        {previewUrl ? <Image alt="" fill sizes="112px" className="object-cover" src={previewUrl} unoptimized /> : <Trophy className="size-10 text-stone-400" />}
+        {previewUrl ? <Image alt="" fill sizes="112px" className="object-cover" src={previewUrl} unoptimized /> : pickerVariant === "locked" ? <LockKeyhole className="size-10 text-stone-400" /> : <Trophy className="size-10 text-stone-400" />}
       </span>
       <div className="grid min-w-0 gap-2">
         <div className="flex flex-wrap gap-2">

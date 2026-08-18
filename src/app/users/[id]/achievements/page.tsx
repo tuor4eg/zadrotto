@@ -55,7 +55,9 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
             <Link href={`${basePath}/achievements`} className={buttonVariants({ size: "sm" })}>Ачивки</Link>
           </nav>
         </header>
-        <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
+        <div className="archive-paper archive-panel p-4 sm:p-5">
+          <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
+        </div>
       </div>
     </main>
   )

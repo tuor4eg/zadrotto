@@ -133,6 +133,7 @@ describe("achievement consumer", () => {
 
   it("keeps current progress separate from the highest historical level", () => {
     assert.match(achievementQuerySource, /currentValue: valueByAchievement\.get\(presentation\.achievementId\) \?\? 0/);
+    assert.match(achievementQuerySource, /awardedLevels/);
     assert.doesNotMatch(achievementQuerySource, /Math\.max\([\s\S]*currentValue/);
   });
 
@@ -144,6 +145,7 @@ describe("achievement consumer", () => {
   });
 
   it("serves only assigned images through production and local paths", () => {
+    assert.match(achievementQuerySource, /achievementSettings\.lockedImageObjectKey/);
     assert.match(achievementImageRouteSource, /isAssignedAchievementImageObjectKey\(objectKey\)/);
     assert.match(achievementImageRouteSource, /process\.env\.NODE_ENV !== "development"[\s\S]*"X-Accel-Redirect"/);
     assert.match(achievementImageRouteSource, /fetchS3Object\(\{ objectKey \}\)/);
@@ -183,6 +185,32 @@ describe("achievement consumer", () => {
     assert.match(levelsSource, /TableWrap className="mt-4 hidden sm:block"/)
   });
 
+  it("renders a 2-by-1 split achievement card and shows five recent awards in the same grid", () => {
+    const cardSource = readFileSync("src/components/achievements/achievement-card.tsx", "utf8")
+    const recentSource = readFileSync(
+      "src/components/achievements/recent-achievement-showcase.tsx",
+      "utf8",
+    )
+    const showcaseSource = readFileSync("src/components/achievements/achievement-showcase.tsx", "utf8")
+    assert.match(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX = ACHIEVEMENT_CARD_HEIGHT_PX \* 2/)
+    assert.match(cardSource, /grid h-full w-full shrink-0 basis-full grid-cols-2/)
+    assert.match(cardSource, /translateX\(-\$\{viewIndex \* 100\}%\)/)
+    assert.match(cardSource, /transition-transform duration-300 ease-out/)
+    assert.match(cardSource, /formatLevel\(/)
+    assert.match(cardSource, /formatReceivedAt\(/)
+    assert.match(cardSource, /browseAwardedLevels/)
+    assert.match(cardSource, /onMouseLeave=\{canBrowse \? \(\) => \{/)
+    assert.match(cardSource, /SWIPE_THRESHOLD_PX = 40/)
+    assert.match(cardSource, /onPointerDown=\{canBrowse \? \(event\) => \{/)
+    assert.match(cardSource, /if \(dx < 0\) setViewIndex\(\(index\) => Math\.min\(currentIndex, index \+ 1\)\)/)
+    assert.match(recentSource, /RECENT_ACHIEVEMENT_LIMIT = 5/)
+    assert.match(recentSource, /browseAwardedLevels fillWidth item=\{item\}/)
+    assert.match(recentSource, /grid gap-2 sm:grid-cols-2 xl:grid-cols-5/)
+    assert.match(showcaseSource, /browseAwardedLevels fillWidth item=\{item\}/)
+    assert.match(showcaseSource, /grid gap-2 sm:grid-cols-2 xl:grid-cols-5/)
+    assert.doesNotMatch(showcaseSource, /auto-fill/)
+  })
+
   it("loads production achievement images in the browser instead of the image optimizer", () => {
     const cardSource = readFileSync("src/components/achievements/achievement-card.tsx", "utf8")
     const pickerSource = readFileSync(
@@ -194,7 +222,7 @@ describe("achievement consumer", () => {
       "src/app/admin/(protected)/achievements/achievement-levels-tab.tsx",
       "utf8",
     )
-    assert.match(cardSource, /src=\{item\.imageUrl\}[\s\S]*unoptimized/)
+    assert.match(cardSource, /src=\{slide\.imageUrl\}[\s\S]*unoptimized/)
     assert.match(pickerSource, /src=\{previewUrl\} unoptimized/)
     assert.match(listSource, /src=\{item\.imageUrl\} unoptimized/)
     assert.match(levelsSource, /src=\{imageUrl\} unoptimized/)

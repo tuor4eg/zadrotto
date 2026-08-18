@@ -22,10 +22,10 @@ export function ErrorFallback({ error, scope }: ErrorFallbackProps) {
             {scope}
           </p>
           <h1 className="mt-2 text-2xl font-semibold leading-tight text-zinc-950">
-            {getRuntimeErrorTitle()}
+            {getRuntimeErrorTitle(error)}
           </h1>
           <p className="mt-3 text-sm leading-6 text-zinc-600">
-            {getRuntimeErrorMessage()}
+            {getRuntimeErrorMessage(error)}
           </p>
         </div>
       </section>

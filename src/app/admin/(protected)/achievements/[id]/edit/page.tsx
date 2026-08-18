@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
+import { ImageUploadForm } from "@/components/forms/image-upload-form";
 import { buttonVariants, Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Textarea } from "@/components/ui/form";
@@ -75,7 +76,7 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
     {tab === "general" ? (
       <Card className="mt-5">
         <CardContent className="pt-5">
-          <form action={updateAchievementAction} className="grid gap-5">
+          <ImageUploadForm action={updateAchievementAction} className="grid gap-5">
             <input type="hidden" name="achievementId" value={item.id} />
             <div className="grid gap-2"><Label htmlFor="achievement-name">Название</Label><Input id="achievement-name" name="name" defaultValue={item.name} required /></div>
             <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" defaultValue={item.description} required /></div>
@@ -101,7 +102,7 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" defaultChecked={item.enabled} />Выдавать ачивку</label>
             <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="showWhenLocked" value="1" defaultChecked={item.showWhenLocked} />Показывать ачивку до получения</label>
             <Button type="submit">Сохранить</Button>
-          </form>
+          </ImageUploadForm>
         </CardContent>
       </Card>
     ) : (

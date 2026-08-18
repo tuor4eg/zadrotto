@@ -2,12 +2,14 @@ import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
-import { achievementLevels, achievements, userAchievements } from "@/db/schema";
+import { getAchievementSettings } from "@/db/queries/achievement-settings";
+import { achievementLevels, achievementSettings, achievements, userAchievements } from "@/db/schema";
 import { resolveAchievementImageUrl } from "@/lib/achievements/images";
 import { getAchievementProgressValues } from "@/lib/achievements/service";
 
 export async function getAchievementShowcase(authorId: number) {
-  const rows = await db
+  const [rows, settings] = await Promise.all([
+    db
     .select({
       awardedAt: userAchievements.awardedAt,
       achievementId: achievements.id,
@@ -38,7 +40,9 @@ export async function getAchievementShowcase(authorId: number) {
       )`,
       and(eq(achievements.enabled, true), eq(achievements.showWhenLocked, true)),
     ))
-    .orderBy(asc(achievements.displayOrder), asc(achievements.id), asc(achievementLevels.level));
+    .orderBy(asc(achievements.displayOrder), asc(achievements.id), asc(achievementLevels.level)),
+    getAchievementSettings(),
+  ]);
 
   const byAchievement = new Map<number, typeof rows>();
   for (const row of rows) byAchievement.set(row.achievementId, [...(byAchievement.get(row.achievementId) ?? []), row]);
@@ -51,18 +55,30 @@ export async function getAchievementShowcase(authorId: number) {
     const awarded = levels.filter((item) => item.awardedAt !== null).at(-1) ?? null;
     const presentation = awarded ?? levels[0]!;
     const nextLevel = levels.find((item) => item.awardedAt === null) ?? null;
+    const awardedLevels = levels.flatMap((item) => {
+      if (item.awardedAt === null) return []
+      return [{
+        awardedAt: item.awardedAt,
+        description: item.levelDescription ?? item.description,
+        imageUrl: resolveAchievementImageUrl(item.levelImageObjectKey ?? item.imageObjectKey),
+        level: item.level,
+        name: item.levelName ?? item.name,
+      }]
+    })
+    const ownImageUrl = resolveAchievementImageUrl(presentation.levelImageObjectKey ?? presentation.imageObjectKey)
     return {
       awardedAt: awarded?.awardedAt ?? null,
+      awardedLevels,
       code: presentation.code,
       currentValue: valueByAchievement.get(presentation.achievementId) ?? 0,
       description: presentation.levelDescription ?? presentation.description,
       highestAwardedLevel: awarded?.level ?? null,
-      imageUrl: resolveAchievementImageUrl(presentation.levelImageObjectKey ?? presentation.imageObjectKey),
+      imageUrl: awarded ? ownImageUrl : settings.lockedImageUrl,
       levelCount: levels.length,
       name: presentation.levelName ?? presentation.name,
       nextLevel: nextLevel?.level ?? null,
       nextThreshold: nextLevel?.threshold ?? null,
-    };
+    }
   });
 }
 
@@ -300,13 +316,15 @@ export async function deleteAchievementIfUnawarded(id: number) {
 }
 
 export async function isAssignedAchievementImageObjectKey(objectKey: string) {
-  const [achievement, level] = await Promise.all([
+  const [achievement, level, settings] = await Promise.all([
     db.select({ id: achievements.id }).from(achievements)
       .where(eq(achievements.imageObjectKey, objectKey)).limit(1),
     db.select({ id: achievementLevels.id }).from(achievementLevels)
       .where(eq(achievementLevels.imageObjectKey, objectKey)).limit(1),
+    db.select({ id: achievementSettings.id }).from(achievementSettings)
+      .where(eq(achievementSettings.lockedImageObjectKey, objectKey)).limit(1),
   ]);
-  return Boolean(achievement[0] || level[0]);
+  return Boolean(achievement[0] || level[0] || settings[0]);
 }
 
 export async function claimPendingAchievementAnnouncement(authorId: number) {

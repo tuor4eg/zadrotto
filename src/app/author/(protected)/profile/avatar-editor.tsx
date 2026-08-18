@@ -6,6 +6,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar } from "@/components/ui/avatar";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/form";
+import { ImageUploadForm } from "@/components/forms/image-upload-form";
 
 import { removeAuthorAvatarAction, updateAuthorAvatarAction } from "./actions";
 
@@ -85,7 +86,7 @@ export function AvatarEditor({
 
   return (
     <section className="rounded-md border p-4">
-      <form action={updateAuthorAvatarAction}>
+      <ImageUploadForm action={updateAuthorAvatarAction}>
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Avatar name={authorName} objectKey={avatarObjectKey} className="size-16 text-xl" />
@@ -207,7 +208,7 @@ export function AvatarEditor({
         <input type="hidden" name="cropY" value={croppedArea?.y ?? ""} />
         <input type="hidden" name="cropWidth" value={croppedArea?.width ?? ""} />
         <input type="hidden" name="cropHeight" value={croppedArea?.height ?? ""} />
-      </form>
+      </ImageUploadForm>
 
       {avatarObjectKey ? (
         <form action={removeAuthorAvatarAction} className="mt-3">

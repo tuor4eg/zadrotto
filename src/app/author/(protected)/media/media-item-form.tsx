@@ -25,6 +25,7 @@ import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
 import { cn } from "@/lib/common/utils";
+import { runServerActionWithImageUploadGuard } from "@/components/forms/image-upload-form";
 import type { MediaTitleCandidate, MediaTitleMetadata, SignedMediaTitleCandidate } from "@/lib/covers/types";
 import {
   COVER_REQUEST_ERROR_MESSAGES,
@@ -218,9 +219,13 @@ export function MediaItemForm({
         authorCreationRequestIdRef.current ??= crypto.randomUUID();
         formData.set("authorCreationRequestId", authorCreationRequestIdRef.current);
       }
-      const result = await action(formData);
-
-      return { error: result?.error ?? null };
+      return runServerActionWithImageUploadGuard(
+        async () => {
+          const result = await action(formData)
+          return { error: result?.error ?? null }
+        },
+        (message) => ({ error: message }),
+      )
     },
     { error: null },
   );

@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/media-title-alias-fields";
 import { SearchableFranchiseMultiSelect } from "@/components/ui/searchable-franchise-multi-select";
 import { Tooltip } from "@/components/ui/tooltip";
+import { ImageUploadForm } from "@/components/forms/image-upload-form";
 import { MediaItemDuplicateCheck } from "@/components/media-item-duplicate-check";
 import type { getAuthorOptions } from "@/db/queries/authors";
 import type { getAdminFranchiseOptions } from "@/db/queries/franchises";
@@ -389,7 +390,7 @@ export function AdminMediaForm({
   }
 
   return (
-    <form action={action} className="grid gap-5" noValidate>
+    <ImageUploadForm action={action} className="grid gap-5" noValidate>
       <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
 
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}
@@ -786,7 +787,7 @@ export function AdminMediaForm({
           {submitLabel}
         </Button>
       </div>
-    </form>
+    </ImageUploadForm>
   );
 }
 

@@ -498,6 +498,13 @@
       "when": 1786900700000,
       "tag": "0070_media_metadata_refresh",
       "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1786900800000,
+      "tag": "0071_achievement_settings",
+      "breakpoints": true
     }
   ]
 }

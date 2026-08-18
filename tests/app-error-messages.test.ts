@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -49,5 +50,20 @@ describe("app error messages", () => {
   it("uses a generic 503 runtime fallback", () => {
     assert.equal(getRuntimeErrorTitle(), "503");
     assert.equal(getRuntimeErrorMessage(), "Сервис временно недоступен.");
+  });
+
+  it("maps oversized image uploads to a 413 message instead of a silent 503", () => {
+    const bodyExceeded = new Error("Body exceeded 1 MB limit.");
+    const nginxStyle = new Error("An unexpected response was received from the server.");
+    assert.equal(getRuntimeErrorTitle(bodyExceeded), "413");
+    assert.equal(getRuntimeErrorTitle(nginxStyle), "413");
+    assert.match(getRuntimeErrorMessage(bodyExceeded) ?? "", /5 МБ/);
+    assert.match(getRuntimeErrorMessage(nginxStyle) ?? "", /5 МБ/);
+    assert.equal(getRuntimeErrorTitle({ status: 413, message: "Request Entity Too Large" }), "413");
+    const fallback = readFileSync("src/app/error-fallback.tsx", "utf8");
+    const form = readFileSync("src/components/forms/image-upload-form.tsx", "utf8");
+    assert.match(fallback, /getRuntimeErrorTitle\(error\)/);
+    assert.match(form, /getImageUploadRejectedMessage/);
+    assert.match(form, /unstable_rethrow/);
   });
 });

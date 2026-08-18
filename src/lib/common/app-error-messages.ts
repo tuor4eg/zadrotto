@@ -26,7 +26,7 @@ export type AdminFormErrorCode = keyof typeof ADMIN_FORM_ERROR_MESSAGES;
 
 function getErrorField(
   error: unknown,
-  field: "code" | "message" | "cause" | "constraint_name",
+  field: "code" | "message" | "cause" | "constraint_name" | "status" | "statusCode",
 ) {
   if (typeof error !== "object" || error === null || !(field in error)) {
     return null;
@@ -76,10 +76,40 @@ export function getAdminFormErrorMessage(code?: string) {
     : null;
 }
 
-export function getRuntimeErrorTitle() {
+export function isPayloadTooLargeError(error: unknown): boolean {
+  const status = getErrorField(error, "status") ?? getErrorField(error, "statusCode");
+  if (status === 413 || status === "413") return true;
+
+  const message = getErrorField(error, "message");
+  return (
+    typeof message === "string"
+    && /413|body exceeded|entity too large|payload too large/i.test(message)
+  );
+}
+
+export function isUnexpectedServerActionResponse(error: unknown): boolean {
+  const message = getErrorField(error, "message");
+  return typeof message === "string" && /unexpected response was received from the server/i.test(message);
+}
+
+export const IMAGE_UPLOAD_TOO_LARGE_MESSAGE =
+  "Сервер отклонил файл: слишком большой. Выбери изображение меньше 5 МБ.";
+
+export function getImageUploadRejectedMessage(error: unknown) {
+  if (isPayloadTooLargeError(error) || isUnexpectedServerActionResponse(error)) {
+    return IMAGE_UPLOAD_TOO_LARGE_MESSAGE;
+  }
+  return null;
+}
+
+export function getRuntimeErrorTitle(error?: unknown) {
+  if (isPayloadTooLargeError(error) || isUnexpectedServerActionResponse(error)) return "413";
   return "503";
 }
 
-export function getRuntimeErrorMessage() {
+export function getRuntimeErrorMessage(error?: unknown) {
+  if (isPayloadTooLargeError(error) || isUnexpectedServerActionResponse(error)) {
+    return IMAGE_UPLOAD_TOO_LARGE_MESSAGE;
+  }
   return "Сервис временно недоступен.";
 }

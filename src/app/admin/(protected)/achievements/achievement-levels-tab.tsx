@@ -6,6 +6,7 @@ import { useEffect, useId, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
+import { ImageUploadForm } from "@/components/forms/image-upload-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
@@ -89,7 +90,7 @@ function LevelModal({
           </Button>
         </div>
 
-        <form action={action} className="mt-5 grid gap-4">
+        <ImageUploadForm action={action} className="mt-5 grid gap-4">
           <input type="hidden" name="achievementId" value={achievementId} />
           {isEdit ? <input type="hidden" name="levelId" value={formState.id} /> : null}
           <div className="grid gap-2">
@@ -136,7 +137,7 @@ function LevelModal({
             <Button type="button" variant="outline" onClick={onClose}>Отмена</Button>
             <Button type="submit">{isEdit ? "Сохранить" : "Добавить уровень"}</Button>
           </div>
-        </form>
+        </ImageUploadForm>
       </div>
     </div>,
     document.body,

@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
 import { QuizAnswerPicker } from "@/components/quizzes/quiz-answer-picker";
+import { runServerActionWithImageUploadGuard } from "@/components/forms/image-upload-form";
 import { Button } from "@/components/ui/button";
 import type { MediaTypeOption } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
@@ -37,7 +38,12 @@ type QuizFormProps = {
 const inputClass = "h-10 rounded-md border border-stone-300 px-3";
 
 export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
-  const [state, formAction, actionPending] = useActionState(action, {
+  const [state, formAction, actionPending] = useActionState(async (current: QuizFormState, formData: FormData) => {
+    return runServerActionWithImageUploadGuard(
+      () => action(current, formData),
+      (message) => ({ error: message, submissionId: Date.now() }),
+    )
+  }, {
     error: null,
     submissionId: 0,
   });
