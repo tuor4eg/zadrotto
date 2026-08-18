@@ -78,8 +78,33 @@ export async function checkQuizGuess(titleId: number, authorId: number, now?: Da
   const [answer] = await db.select({ answerMediaItemId: quizzes.answerMediaItemId }).from(quizzes).where(eq(quizzes.id, active.id)).limit(1);
   return { kind: "result" as const, correct: answer?.answerMediaItemId === titleId };
 }
-export async function searchQuizAnswerTitles(query: string) {
-  const condition = query.trim() ? or(containsNormalizedSearchSql(mediaItems.title, query), containsNormalizedSearchSql(mediaItems.originalTitle, query)) : undefined;
-  return db.select({ id: mediaItems.id, title: mediaItems.title, originalTitle: mediaItems.originalTitle, releaseYear: mediaItems.releaseYear, mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true), condition)).orderBy(asc(mediaItems.title)).limit(20);
+export async function searchQuizAnswerTitles(query: string, mediaTypeFilter: readonly string[] = []) {
+  const condition = query.trim()
+    ? or(
+        containsNormalizedSearchSql(mediaItems.title, query),
+        containsNormalizedSearchSql(mediaItems.originalTitle, query),
+      )
+    : undefined
+  const typeCondition = mediaTypeFilter.length > 0
+    ? inArray(mediaItems.mediaType, [...mediaTypeFilter])
+    : undefined
+  return db
+    .select({
+      id: mediaItems.id,
+      title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      releaseYear: mediaItems.releaseYear,
+      mediaType: mediaItems.mediaType,
+    })
+    .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .where(and(
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      eq(mediaTypes.isPubliclyAvailable, true),
+      condition,
+      typeCondition,
+    ))
+    .orderBy(asc(mediaItems.title))
+    .limit(20)
 }
 export async function isAssignedQuizImageObjectKey(key: string) { const [row] = await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.imageObjectKey, key)).limit(1); return Boolean(row); }

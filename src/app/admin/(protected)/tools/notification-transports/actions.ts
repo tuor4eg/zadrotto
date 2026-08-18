@@ -8,11 +8,13 @@ import {
   getTelegramTransportConfig,
   saveTelegramTransportSettings,
 } from "@/db/queries/notification-transports"
+import { saveNotificationTransportRoutes } from "@/db/queries/notification-transport-routes"
 import { logActivity, prepareActivityLog } from "@/lib/activity-logs/server"
 import { requireAdminUser } from "@/lib/auth/admin-auth"
 import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog"
 import { sendTelegramTestMessages } from "@/lib/notifications/transports/telegram-api"
 import { parseTelegramTransportForm } from "@/lib/notifications/transports/telegram"
+import { parseExternalNotificationRouteForm } from "@/lib/notifications/routes"
 
 export type TelegramTransportTestState = {
   ok: boolean
@@ -20,7 +22,8 @@ export type TelegramTransportTestState = {
   results: { chatId: string; ok: boolean; error: string | null }[]
 }
 
-const TRANSPORTS_PATH = "/admin/tools/notification-transports"
+const TRANSPORT_PATH = "/admin/tools/notification-transports/transport"
+const ROUTING_PATH = "/admin/tools/notification-transports/routing"
 
 function read(formData: FormData, key: string) {
   const value = formData.get(key)
@@ -48,7 +51,7 @@ export async function saveTelegramTransportAction(formData: FormData) {
       message: "Настройки Telegram-транспорта не прошли проверку.",
       metadata: { code: TELEGRAM_TRANSPORT_CODE, reason: "invalid-config" },
     })
-    redirect(`${TRANSPORTS_PATH}?error=invalid`)
+    redirect(`${TRANSPORT_PATH}?error=invalid`)
   }
 
   const activityLogs: [CreateActivityLogInput, ...CreateActivityLogInput[]] = [
@@ -103,7 +106,7 @@ export async function saveTelegramTransportAction(formData: FormData) {
     })
   }
 
-  redirect(saved ? `${TRANSPORTS_PATH}?saved=1` : `${TRANSPORTS_PATH}?error=encryption`)
+  redirect(saved ? `${TRANSPORT_PATH}?saved=1` : `${TRANSPORT_PATH}?error=encryption`)
 }
 
 export async function testTelegramTransportAction(): Promise<TelegramTransportTestState> {
@@ -167,4 +170,25 @@ export async function testTelegramTransportAction(): Promise<TelegramTransportTe
   })
 
   return { ok, error: ok ? null : "send-failed", results }
+}
+
+export async function saveNotificationTransportRoutesAction(formData: FormData) {
+  const admin = await requireAdminUser()
+  const routes = parseExternalNotificationRouteForm(formData)
+  await saveNotificationTransportRoutes({
+    adminId: admin.id,
+    routes,
+    activityLog: await prepareActivityLog({
+      action: "notification-transport.routes.updated",
+      actorType: "admin",
+      adminUserId: admin.id,
+      entityType: "notification-transport",
+      entityLabel: "Маршрутизация",
+      message: "Маршрутизация внешних уведомлений сохранена.",
+      metadata: {
+        submissionCreatedTelegram: routes.submission_created.includes(TELEGRAM_TRANSPORT_CODE),
+      },
+    }),
+  })
+  redirect(`${ROUTING_PATH}?saved=1`)
 }

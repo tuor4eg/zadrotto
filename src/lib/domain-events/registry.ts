@@ -4,6 +4,7 @@ import { notificationDomainEventConsumer } from "@/lib/notifications/consumer";
 import type { DomainEventType, PersistedDomainEvent } from "./catalog";
 
 export type DomainEventConsumer<TType extends DomainEventType = DomainEventType> = {
+  afterCommit?: (event: PersistedDomainEvent<TType>) => Promise<void>;
   eventTypes: readonly TType[];
   handle: (tx: DbTransaction, event: PersistedDomainEvent<TType>) => Promise<void>;
   key: string;

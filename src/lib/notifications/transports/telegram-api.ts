@@ -1,3 +1,5 @@
+import type { TelegramTransportConfig } from "@/lib/notifications/transports/telegram"
+
 const TELEGRAM_API_TIMEOUT_MS = 10_000
 const TELEGRAM_TEST_MESSAGE = "Тестовое сообщение из админки zadrotto."
 
@@ -68,9 +70,10 @@ export async function sendTelegramMessage(input: {
   }
 }
 
-export async function sendTelegramTestMessages(input: {
+export async function sendTelegramMessages(input: {
   botToken: string
   chatIds: string[]
+  text: string
 }): Promise<TelegramTestRecipientResult[]> {
   const results: TelegramTestRecipientResult[] = []
 
@@ -78,7 +81,7 @@ export async function sendTelegramTestMessages(input: {
     const result = await sendTelegramMessage({
       botToken: input.botToken,
       chatId,
-      text: TELEGRAM_TEST_MESSAGE,
+      text: input.text,
     })
     results.push(result.ok
       ? { chatId, ok: true, error: null }
@@ -86,4 +89,32 @@ export async function sendTelegramTestMessages(input: {
   }
 
   return results
+}
+
+export async function sendTelegramTestMessages(input: {
+  botToken: string
+  chatIds: string[]
+}) {
+  return sendTelegramMessages({
+    ...input,
+    text: TELEGRAM_TEST_MESSAGE,
+  })
+}
+
+export class TelegramTransport {
+  constructor(private readonly config: TelegramTransportConfig) {}
+
+  isReady() {
+    return Boolean(this.config.enabled && this.config.botToken && this.config.chatIds.length > 0)
+  }
+
+  async send(text: string) {
+    if (!this.isReady() || !this.config.botToken) return []
+
+    return sendTelegramMessages({
+      botToken: this.config.botToken,
+      chatIds: this.config.chatIds,
+      text,
+    })
+  }
 }

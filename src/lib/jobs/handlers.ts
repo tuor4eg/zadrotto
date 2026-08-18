@@ -7,6 +7,8 @@ import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/achievements/backfill";
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
+import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
+import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
 
@@ -125,6 +127,94 @@ function parseDomainEventDispatchPayload(value: unknown): DomainEventDispatchPay
   return { eventId, limit };
 }
 
+function parseOptionalSafeInt(
+  value: unknown,
+  message: string,
+  min: number,
+  max: number,
+) {
+  if (value === undefined) return undefined;
+  const parsed = Number(value);
+  if (!Number.isSafeInteger(parsed) || parsed < min || parsed > max) {
+    throw new JobError("invalid-payload", message, { retryable: false });
+  }
+  return parsed;
+}
+
+function parseMetadataJobPayloadBase(value: unknown, extraKeys: readonly string[]) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+  }
+
+  const source = value as Record<string, unknown>;
+  const allowedKeys = new Set(["limit", "mediaItemId", "quotaReserve", ...extraKeys]);
+  if (Object.keys(source).some((key) => !allowedKeys.has(key))) {
+    throw new JobError("invalid-payload", "Задача получила неизвестные параметры.", {
+      retryable: false,
+    });
+  }
+
+  const limit = parseOptionalSafeInt(source.limit, "Лимит должен быть от 1 до 200.", 1, 200);
+  const mediaItemId = parseOptionalSafeInt(source.mediaItemId, "Некорректный ID записи.", 1, Number.MAX_SAFE_INTEGER);
+  const quotaReserve = parseOptionalSafeInt(
+    source.quotaReserve,
+    "Резерв квоты должен быть от 0 до 10000.",
+    0,
+    10000,
+  );
+
+  return { limit, mediaItemId, quotaReserve, source };
+}
+
+function parseMetadataBackfillPayload(value: unknown): MetadataBackfillPayload {
+  const { limit, mediaItemId, quotaReserve } = parseMetadataJobPayloadBase(value, []);
+  return { limit, mediaItemId, quotaReserve };
+}
+
+const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
+  type: "media.metadata-backfill",
+  label: "Заполнение метаданных записей",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseMetadataBackfillPayload,
+  async execute({ attempt, payload, runId }) {
+    const result = await backfillMediaMetadata({ attempt, runId, ...payload });
+
+    if (result.retryableFailed > 0) {
+      throw new JobError(
+        "metadata-backfill-failed",
+        `Не удалось заполнить метаданные: ${result.failed}.`,
+        { retryable: true },
+      );
+    }
+  },
+};
+
+function parseMetadataRefreshPayload(value: unknown): MetadataRefreshPayload {
+  const { limit, mediaItemId, quotaReserve, source } = parseMetadataJobPayloadBase(value, ["staleDays"]);
+  const staleDays = parseOptionalSafeInt(source.staleDays, "Порог устаревания должен быть от 1 до 3650 дней.", 1, 3650);
+  return { limit, mediaItemId, quotaReserve, staleDays };
+}
+
+const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
+  type: "media.metadata-refresh",
+  label: "Обновление метаданных сериалов и аниме",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseMetadataRefreshPayload,
+  async execute({ attempt, payload, runId }) {
+    const result = await refreshStaleMediaMetadata({ attempt, runId, ...payload });
+
+    if (result.retryableFailed > 0) {
+      throw new JobError(
+        "metadata-refresh-failed",
+        `Не удалось обновить метаданные: ${result.failed}.`,
+        { retryable: true },
+      );
+    }
+  },
+};
+
 const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayload> = {
   type: "domain-events.dispatch",
   label: "Доставка доменных событий",
@@ -200,6 +290,8 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   authCleanupHandler,
   jobHistoryCleanupHandler,
   coverThumbnailBackfillHandler,
+  metadataBackfillHandler,
+  metadataRefreshHandler,
   domainEventDispatchHandler,
   achievementBackfillHandler,
 ]);

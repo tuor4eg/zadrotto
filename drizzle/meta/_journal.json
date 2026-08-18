@@ -484,6 +484,20 @@
       "when": 1786900500000,
       "tag": "0068_notification_transport_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1786900600000,
+      "tag": "0069_notification_transport_routes",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1786900700000,
+      "tag": "0070_media_metadata_refresh",
+      "breakpoints": true
     }
   ]
 }

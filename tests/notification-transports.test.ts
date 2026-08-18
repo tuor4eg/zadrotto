@@ -2,7 +2,7 @@ import assert from "node:assert/strict"
 import { readFileSync } from "node:fs"
 import { describe, it } from "node:test"
 
-import { sendTelegramMessage } from "@/lib/notifications/transports/telegram-api"
+import { sendTelegramMessage, sendTelegramMessages, TelegramTransport } from "@/lib/notifications/transports/telegram-api"
 import {
   normalizeTelegramChatIds,
   parseTelegramTransportForm,
@@ -17,7 +17,12 @@ const crypto = readFileSync("src/lib/notifications/transports/credential-crypto.
 const query = readFileSync("src/db/queries/notification-transports.ts", "utf8")
 const actions = readFileSync("src/app/admin/(protected)/tools/notification-transports/actions.ts", "utf8")
 const page = readFileSync("src/app/admin/(protected)/tools/notification-transports/page.tsx", "utf8")
+const routingPage = readFileSync("src/app/admin/(protected)/tools/notification-transports/routing/page.tsx", "utf8")
+const transportPage = readFileSync("src/app/admin/(protected)/tools/notification-transports/transport/page.tsx", "utf8")
+const layout = readFileSync("src/app/admin/(protected)/tools/notification-transports/layout.tsx", "utf8")
+const toolsNav = readFileSync("src/app/admin/(protected)/tools/notification-transports/notification-tools-nav.tsx", "utf8")
 const form = readFileSync("src/app/admin/(protected)/tools/notification-transports/telegram-transport-form.tsx", "utf8")
+const routesForm = readFileSync("src/app/admin/(protected)/tools/notification-transports/notification-transport-routes-form.tsx", "utf8")
 const nav = readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8")
 const activity = readFileSync("src/lib/activity-logs/model.ts", "utf8")
 const env = readFileSync(".env.example", "utf8")
@@ -114,7 +119,7 @@ describe("Telegram transport settings", () => {
     assert.match(form, /type="password"/)
     assert.match(form, /placeholder=\{state\.botTokenHint/)
     assert.doesNotMatch(form, /defaultValue=\{state\.|value=\{state\.botToken/)
-    assert.doesNotMatch(page, /botToken[^H]|decryptNotificationTransportCredentials/)
+    assert.doesNotMatch(transportPage, /botToken[^H]|decryptNotificationTransportCredentials/)
     assert.match(query, /getTelegramTransportAdminState[\s\S]*hasBotToken: Boolean\(row\?\.encryptedPayload\)/)
     assert.doesNotMatch(
       query.slice(
@@ -139,7 +144,7 @@ describe("Telegram transport settings", () => {
     assert.match(activity, /"notification-transport\.disabled"/)
     assert.match(activity, /"notification-transport\.tested"/)
     assert.match(nav, /\/admin\/tools\/notification-transports/)
-    assert.match(nav, /Транспорт/)
+    assert.match(nav, /Уведомления/)
     assert.doesNotMatch(query, /fetch\(|api\.telegram|sendMessage/)
     assert.doesNotMatch(actions, /fetch\(|api\.telegram\.org/)
     assert.match(actions, /testTelegramTransportAction[\s\S]*requireAdminUser\(\)/)
@@ -151,7 +156,34 @@ describe("Telegram transport settings", () => {
     assert.match(telegramApi, /api\.telegram\.org\/bot\$\{input\.botToken\}\/sendMessage/)
     assert.match(telegramApi, /TELEGRAM_API_TIMEOUT_MS = 10_000/)
     assert.match(telegramApi, /setTimeout\(\(\) => controller\.abort\(\), TELEGRAM_API_TIMEOUT_MS\)/)
-    assert.match(telegramApi, /replaceAll\(botToken, "\[redacted\]"\)/)
+    assert.match(telegramApi, /export class TelegramTransport/)
+    assert.match(telegramApi, /async send\(text: string\)/)
+    assert.match(telegramApi, /sendTelegramTestMessages[\s\S]*return sendTelegramMessages/)
+    assert.doesNotMatch(telegramApi, /media\.submitted|title_submission/)
+    assert.doesNotMatch(telegramApi, /submitted|notification type|заявк/i)
+  })
+
+  it("saves notification transport routing without touching telegram credentials", () => {
+    assert.match(page, /redirect\("\/admin\/tools\/notification-transports\/routing"\)/)
+    assert.match(layout, /title="Уведомления"/)
+    assert.match(toolsNav, /Маршрутизация/)
+    assert.match(toolsNav, /Транспорт/)
+    assert.match(toolsNav, /\/admin\/tools\/notification-transports\/routing/)
+    assert.match(toolsNav, /\/admin\/tools\/notification-transports\/transport/)
+    assert.match(routingPage, /Маршрутизация сохранена/)
+    assert.match(transportPage, /Настройки транспорта сохранены/)
+    assert.match(routesForm, /saveNotificationTransportRoutesAction/)
+    assert.match(routesForm, /submission_created_telegram|\$\{route\.code\}_telegram/)
+    assert.match(routesForm, />\s*Telegram\s*</)
+    assert.match(routesForm, /In-app уведомление создаётся всегда/)
+    assert.match(actions, /saveNotificationTransportRoutesAction[\s\S]*requireAdminUser\(\)/)
+    assert.match(actions, /parseExternalNotificationRouteForm/)
+    assert.match(actions, /ROUTING_PATH = "\/admin\/tools\/notification-transports\/routing"/)
+    assert.match(actions, /TRANSPORT_PATH = "\/admin\/tools\/notification-transports\/transport"/)
+    assert.match(actions, /redirect\(`\$\{ROUTING_PATH\}\?saved=1`\)/)
+    assert.match(actions, /submissionCreatedTelegram/)
+    assert.doesNotMatch(actions.slice(actions.indexOf("saveNotificationTransportRoutesAction")), /botToken/)
+    assert.match(activity, /"notification-transport\.routes\.updated"/)
   })
 
   it("sends a Telegram test message and keeps the token out of errors", async () => {
@@ -185,6 +217,37 @@ describe("Telegram transport settings", () => {
         await sendTelegramMessage({ botToken: token, chatId: "100", text: "ping" }),
         { ok: false, httpStatus: null, error: "Telegram не ответил вовремя." },
       )
+    } finally {
+      globalThis.fetch = previousFetch
+    }
+  })
+
+  it("sends a prepared text through TelegramTransport without changing credentials", async () => {
+    const previousFetch = globalThis.fetch
+    const token = "123456:SECRET-TOKEN"
+    const chatIds: string[] = []
+    try {
+      globalThis.fetch = async (_url, init) => {
+        chatIds.push(JSON.parse(String(init?.body)).chat_id)
+        assert.equal(JSON.parse(String(init?.body)).text, "Новая заявка на запись")
+        return Response.json({ ok: true, result: { message_id: 1 } })
+      }
+
+      const disabled = new TelegramTransport({ enabled: false, botToken: token, chatIds: ["100"] })
+      assert.equal(disabled.isReady(), false)
+      assert.deepEqual(await disabled.send("Новая заявка на запись"), [])
+      assert.deepEqual(chatIds, [])
+
+      const results = await sendTelegramMessages({
+        botToken: token,
+        chatIds: ["100", "200"],
+        text: "Новая заявка на запись",
+      })
+      assert.deepEqual(results, [
+        { chatId: "100", ok: true, error: null },
+        { chatId: "200", ok: true, error: null },
+      ])
+      assert.deepEqual(chatIds, ["100", "200"])
     } finally {
       globalThis.fetch = previousFetch
     }

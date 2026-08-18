@@ -1,10 +1,19 @@
-import { and, desc, eq, inArray, isNull, sql } from "drizzle-orm"
+import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { contributions, franchises, mediaItems, notifications } from "@/db/schema"
+import {
+  contributions,
+  franchises,
+  mediaItemFranchiseRemovalRequests,
+  mediaItemFranchises,
+  mediaItems,
+  notifications,
+} from "@/db/schema"
 import type { DbTransaction } from "@/db/transaction"
 import {
+  getAdminSubmissionStatusLabel,
   getNotificationHref,
+  isAdminSubmissionNotificationType,
   isNotificationType,
   parseMediaFranchiseEntityId,
   parsePositiveInt,
@@ -13,6 +22,53 @@ import {
 } from "@/lib/notifications/catalog"
 
 const DEFAULT_NOTIFICATION_LIST_LIMIT = 20
+
+const notificationEntityIdIntSql = sql`case
+  when ${notifications.entityId} ~ '^[0-9]+$' then ${notifications.entityId}::int
+  else 0
+end`
+
+const notificationMediaFranchiseMediaIdSql = sql`case
+  when ${notifications.entityId} ~ '^[0-9]+:[0-9]+$' then split_part(${notifications.entityId}, ':', 1)::int
+  else 0
+end`
+
+const notificationMediaFranchiseFranchiseIdSql = sql`case
+  when ${notifications.entityId} ~ '^[0-9]+:[0-9]+$' then split_part(${notifications.entityId}, ':', 2)::int
+  else 0
+end`
+
+export const adminSubmissionStillOpenSql = sql`(
+  case ${notifications.type}
+    when 'media.submitted' then exists (
+      select 1 from ${mediaItems}
+      where ${mediaItems.id} = ${notificationEntityIdIntSql}
+        and ${mediaItems.publicationStatus} = 'submitted'
+    )
+    when 'franchise.submitted' then exists (
+      select 1 from ${franchises}
+      where ${franchises.id} = ${notificationEntityIdIntSql}
+        and ${franchises.publicationStatus} = 'submitted'
+    )
+    when 'media-franchise.submitted' then exists (
+      select 1 from ${mediaItemFranchises}
+      where ${mediaItemFranchises.mediaItemId} = ${notificationMediaFranchiseMediaIdSql}
+        and ${mediaItemFranchises.franchiseId} = ${notificationMediaFranchiseFranchiseIdSql}
+        and ${mediaItemFranchises.publicationStatus} = 'submitted'
+    )
+    when 'media-franchise.removal.requested' then exists (
+      select 1 from ${mediaItemFranchiseRemovalRequests}
+      where ${mediaItemFranchiseRemovalRequests.mediaItemId} = ${notificationMediaFranchiseMediaIdSql}
+        and ${mediaItemFranchiseRemovalRequests.franchiseId} = ${notificationMediaFranchiseFranchiseIdSql}
+    )
+    when 'review.submitted' then exists (
+      select 1 from ${contributions}
+      where ${contributions.id} = ${notificationEntityIdIntSql}
+        and ${contributions.status} = 'submitted'
+    )
+    else true
+  end
+)`
 
 export type NotificationInsert = {
   body: string
@@ -30,8 +86,27 @@ export type NotificationListItem = {
   href: string | null
   id: number
   readAt: Date | null
+  statusLabel: string | null
   title: string
   type: NotificationType
+}
+
+type MediaFranchisePair = {
+  franchiseId: number
+  mediaItemId: number
+}
+
+function pairKey(pair: MediaFranchisePair) {
+  return `${pair.mediaItemId}:${pair.franchiseId}`
+}
+
+function pairCondition(table: typeof mediaItemFranchises | typeof mediaItemFranchiseRemovalRequests, pair: MediaFranchisePair) {
+  return and(eq(table.mediaItemId, pair.mediaItemId), eq(table.franchiseId, pair.franchiseId))
+}
+
+function anyPair(table: typeof mediaItemFranchises | typeof mediaItemFranchiseRemovalRequests, pairs: MediaFranchisePair[]) {
+  const conditions = pairs.map((pair) => pairCondition(table, pair))
+  return conditions.length === 1 ? conditions[0] : or(...conditions)
 }
 
 export async function insertNotifications(tx: DbTransaction, rows: NotificationInsert[]) {
@@ -68,40 +143,62 @@ export async function listRecipientNotifications(input: {
   const mediaItemIds = new Set<number>()
   const franchiseIds = new Set<number>()
   const reviewIds = new Set<number>()
+  const mediaFranchisePairs: MediaFranchisePair[] = []
+  const removalPairs: MediaFranchisePair[] = []
+  const seenMediaFranchiseKeys = new Set<string>()
+  const seenRemovalKeys = new Set<string>()
 
   for (const row of rows) {
     if (!isNotificationType(row.type)) continue
-    if (row.type === "franchise.approved") {
+    if (row.type === "media.submitted" || row.type === "media.approved") {
+      const mediaItemId = parsePositiveInt(row.entityId)
+      if (mediaItemId) mediaItemIds.add(mediaItemId)
+      continue
+    }
+    if (row.type === "franchise.submitted" || row.type === "franchise.approved") {
       const franchiseId = parsePositiveInt(row.entityId)
       if (franchiseId) franchiseIds.add(franchiseId)
       continue
     }
-    if (row.type === "review.approved") {
+    if (row.type === "review.submitted" || row.type === "review.approved") {
       const contributionId = parsePositiveInt(row.entityId)
       if (contributionId) reviewIds.add(contributionId)
       continue
     }
     const mediaFranchise = parseMediaFranchiseEntityId(row.entityId)
-    if (mediaFranchise && (row.type === "media-franchise.approved" || row.type === "media-franchise.removal.approved")) {
-      mediaItemIds.add(mediaFranchise.mediaItemId)
+    if (!mediaFranchise) continue
+    mediaItemIds.add(mediaFranchise.mediaItemId)
+    if (row.type === "media-franchise.removal.requested") {
+      const key = pairKey(mediaFranchise)
+      if (seenRemovalKeys.has(key)) continue
+      seenRemovalKeys.add(key)
+      removalPairs.push(mediaFranchise)
       continue
     }
-    if (row.type === "media.approved") {
-      const mediaItemId = parsePositiveInt(row.entityId)
-      if (mediaItemId) mediaItemIds.add(mediaItemId)
-    }
+    const key = pairKey(mediaFranchise)
+    if (seenMediaFranchiseKeys.has(key)) continue
+    seenMediaFranchiseKeys.add(key)
+    mediaFranchisePairs.push(mediaFranchise)
   }
 
-  const [mediaItemRows, franchiseRows, reviewRows] = await Promise.all([
+  const [mediaItemRows, franchiseRows, reviewRows, mediaFranchiseRows, removalRows] = await Promise.all([
     mediaItemIds.size > 0
       ? db
-          .select({ code: mediaItems.code, id: mediaItems.id })
+          .select({
+            code: mediaItems.code,
+            id: mediaItems.id,
+            publicationStatus: mediaItems.publicationStatus,
+          })
           .from(mediaItems)
           .where(inArray(mediaItems.id, [...mediaItemIds]))
       : Promise.resolve([]),
     franchiseIds.size > 0
       ? db
-          .select({ code: franchises.code, id: franchises.id })
+          .select({
+            code: franchises.code,
+            id: franchises.id,
+            publicationStatus: franchises.publicationStatus,
+          })
           .from(franchises)
           .where(inArray(franchises.id, [...franchiseIds]))
       : Promise.resolve([]),
@@ -110,28 +207,52 @@ export async function listRecipientNotifications(input: {
           .select({
             code: mediaItems.code,
             contributionId: contributions.id,
+            status: contributions.status,
           })
           .from(contributions)
           .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
           .where(inArray(contributions.id, [...reviewIds]))
       : Promise.resolve([]),
+    mediaFranchisePairs.length > 0
+      ? db
+          .select({
+            franchiseId: mediaItemFranchises.franchiseId,
+            mediaItemId: mediaItemFranchises.mediaItemId,
+            publicationStatus: mediaItemFranchises.publicationStatus,
+          })
+          .from(mediaItemFranchises)
+          .where(anyPair(mediaItemFranchises, mediaFranchisePairs))
+      : Promise.resolve([]),
+    removalPairs.length > 0
+      ? db
+          .select({
+            franchiseId: mediaItemFranchiseRemovalRequests.franchiseId,
+            mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId,
+          })
+          .from(mediaItemFranchiseRemovalRequests)
+          .where(anyPair(mediaItemFranchiseRemovalRequests, removalPairs))
+      : Promise.resolve([]),
   ])
 
-  const mediaItemCodeById = new Map(mediaItemRows.map((row) => [row.id, row.code]))
-  const franchiseCodeById = new Map(franchiseRows.map((row) => [row.id, row.code]))
-  const reviewCodeByContributionId = new Map(reviewRows.map((row) => [row.contributionId, row.code]))
+  const mediaItemById = new Map(mediaItemRows.map((row) => [row.id, row]))
+  const franchiseById = new Map(franchiseRows.map((row) => [row.id, row]))
+  const reviewByContributionId = new Map(reviewRows.map((row) => [row.contributionId, row]))
+  const mediaFranchiseStatusByKey = new Map(
+    mediaFranchiseRows.map((row) => [pairKey(row), row.publicationStatus]),
+  )
+  const openRemovalKeys = new Set(removalRows.map((row) => pairKey(row)))
 
   const items: NotificationListItem[] = []
   for (const row of rows) {
     if (!isNotificationType(row.type)) continue
     const mediaFranchise = parseMediaFranchiseEntityId(row.entityId)
     const entityId = parsePositiveInt(row.entityId)
-    const mediaItemCode = row.type === "review.approved"
-      ? reviewCodeByContributionId.get(entityId ?? 0) ?? null
+    const mediaItemCode = row.type === "review.approved" || row.type === "review.submitted"
+      ? reviewByContributionId.get(entityId ?? 0)?.code ?? null
       : mediaFranchise
-        ? mediaItemCodeById.get(mediaFranchise.mediaItemId) ?? null
-        : mediaItemCodeById.get(entityId ?? 0) ?? null
-    const franchiseCode = franchiseCodeById.get(entityId ?? 0) ?? null
+        ? mediaItemById.get(mediaFranchise.mediaItemId)?.code ?? null
+        : mediaItemById.get(entityId ?? 0)?.code ?? null
+    const franchiseCode = franchiseById.get(entityId ?? 0)?.code ?? null
     items.push({
       body: row.body,
       createdAt: row.createdAt,
@@ -143,12 +264,67 @@ export async function listRecipientNotifications(input: {
       }),
       id: row.id,
       readAt: row.readAt,
+      statusLabel: resolveNotificationStatusLabel({
+        entityId: row.entityId,
+        franchiseById,
+        mediaFranchiseStatusByKey,
+        mediaItemById,
+        openRemovalKeys,
+        reviewByContributionId,
+        type: row.type,
+      }),
       title: row.title,
       type: row.type,
     })
   }
 
   return items
+}
+
+function resolveNotificationStatusLabel(input: {
+  entityId: string
+  franchiseById: Map<number, { publicationStatus: string }>
+  mediaFranchiseStatusByKey: Map<string, string>
+  mediaItemById: Map<number, { publicationStatus: string }>
+  openRemovalKeys: Set<string>
+  reviewByContributionId: Map<number, { status: string }>
+  type: NotificationType
+}) {
+  if (!isAdminSubmissionNotificationType(input.type)) return null
+
+  if (input.type === "media.submitted") {
+    const mediaItemId = parsePositiveInt(input.entityId)
+    return getAdminSubmissionStatusLabel(
+      mediaItemId ? input.mediaItemById.get(mediaItemId)?.publicationStatus : null,
+    )
+  }
+
+  if (input.type === "franchise.submitted") {
+    const franchiseId = parsePositiveInt(input.entityId)
+    return getAdminSubmissionStatusLabel(
+      franchiseId ? input.franchiseById.get(franchiseId)?.publicationStatus : null,
+    )
+  }
+
+  if (input.type === "review.submitted") {
+    const contributionId = parsePositiveInt(input.entityId)
+    return getAdminSubmissionStatusLabel(
+      contributionId ? input.reviewByContributionId.get(contributionId)?.status : null,
+    )
+  }
+
+  const mediaFranchise = parseMediaFranchiseEntityId(input.entityId)
+  if (!mediaFranchise) return getAdminSubmissionStatusLabel(null)
+
+  if (input.type === "media-franchise.removal.requested") {
+    return getAdminSubmissionStatusLabel(
+      input.openRemovalKeys.has(pairKey(mediaFranchise)) ? "submitted" : null,
+    )
+  }
+
+  return getAdminSubmissionStatusLabel(
+    input.mediaFranchiseStatusByKey.get(pairKey(mediaFranchise)) ?? null,
+  )
 }
 
 export async function getUnreadNotificationCount(input: {
@@ -165,6 +341,7 @@ export async function getUnreadNotificationCount(input: {
         eq(notifications.recipientType, input.recipientType),
         eq(notifications.recipientId, input.recipientId),
         isNull(notifications.readAt),
+        ...(input.recipientType === "admin" ? [adminSubmissionStillOpenSql] : []),
       ),
     )
 
@@ -190,4 +367,40 @@ export async function markNotificationRead(input: {
     .returning({ id: notifications.id })
 
   return row ?? null
+}
+
+export async function deleteNotification(input: {
+  notificationId: number
+  recipientId: number
+  recipientType: NotificationRecipientType
+}) {
+  const [row] = await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.id, input.notificationId),
+        eq(notifications.recipientType, input.recipientType),
+        eq(notifications.recipientId, input.recipientId),
+      ),
+    )
+    .returning({ id: notifications.id })
+
+  return row ?? null
+}
+
+export async function deleteAllRecipientNotifications(input: {
+  recipientId: number
+  recipientType: NotificationRecipientType
+}) {
+  const rows = await db
+    .delete(notifications)
+    .where(
+      and(
+        eq(notifications.recipientType, input.recipientType),
+        eq(notifications.recipientId, input.recipientId),
+      ),
+    )
+    .returning({ id: notifications.id })
+
+  return rows.length
 }

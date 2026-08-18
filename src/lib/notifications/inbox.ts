@@ -1,4 +1,6 @@
 import {
+  deleteAllRecipientNotifications,
+  deleteNotification,
   getUnreadNotificationCount,
   listRecipientNotifications,
   markNotificationRead,
@@ -14,6 +16,7 @@ export type NotificationInboxPayload = {
     href: string | null
     id: number
     readAt: string | null
+    statusLabel: string | null
     title: string
     type: string
   }>
@@ -27,6 +30,7 @@ function serializeNotificationItem(item: NotificationListItem) {
     href: item.href,
     id: item.id,
     readAt: item.readAt?.toISOString() ?? null,
+    statusLabel: item.statusLabel,
     title: item.title,
     type: item.type,
   }
@@ -58,4 +62,19 @@ export async function markRecipientNotificationRead(input: {
   recipientType: NotificationRecipientType
 }) {
   return markNotificationRead(input)
+}
+
+export async function deleteRecipientNotification(input: {
+  notificationId: number
+  recipientId: number
+  recipientType: NotificationRecipientType
+}) {
+  return deleteNotification(input)
+}
+
+export async function deleteAllInboxNotifications(input: {
+  recipientId: number
+  recipientType: NotificationRecipientType
+}) {
+  return deleteAllRecipientNotifications(input)
 }

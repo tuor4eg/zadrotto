@@ -4,10 +4,11 @@ import Link from "next/link";
 import { ActivityLogTime } from "../../activity/activity-log-time";
 import { cancelJobRunAction, retryJobRunAction } from "../actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Select } from "@/components/ui/form";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { getAdminJobRuns, getAdminJobs } from "@/db/queries/jobs";
+import { buildJobJournalHref } from "./href";
+import { JobJournalFilters } from "./job-journal-filters";
 
 const STATUS_LABELS: Record<string, string> = {
   cancelled: "Отменён",
@@ -22,6 +23,13 @@ function parsePositiveInteger(value: string | undefined, fallback: number) {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 }
 
+function parseJobFilter(value: string | undefined, jobs: Array<{ id: number }>) {
+  if (!value || value === "all") return undefined;
+  if (value === "adhoc") return "adhoc" as const;
+  const parsed = parsePositiveInteger(value, 0);
+  return jobs.some((job) => job.id === parsed) ? parsed : undefined;
+}
+
 export default async function JobJournalPage({
   searchParams,
 }: {
@@ -29,20 +37,12 @@ export default async function JobJournalPage({
 }) {
   const query = await searchParams;
   const jobs = await getAdminJobs();
-  const requestedJobId = query.job === "adhoc" || jobs.length === 0
-    ? "adhoc"
-    : parsePositiveInteger(query.job, jobs[0].id);
-  const selectedJob = requestedJobId === "adhoc"
-    ? null
-    : jobs.find((job) => job.id === requestedJobId) ?? jobs[0] ?? null;
-  const jobId = requestedJobId === "adhoc" ? "adhoc" : selectedJob?.id;
+  const jobId = parseJobFilter(query.job, jobs);
+  const jobFilter = jobId === undefined ? "all" : String(jobId);
   const pageSize = [25, 50, 100].includes(Number(query.pageSize)) ? Number(query.pageSize) : 25;
   const page = parsePositiveInteger(query.page, 1);
-  const result = jobId
-    ? await getAdminJobRuns({ jobId, page, pageSize })
-    : { items: [], page: 1, pageSize, totalCount: 0, totalPages: 1 };
-  const historyValue = jobId === "adhoc" ? "adhoc" : String(jobId ?? "");
-  const href = (targetPage: number) => `/admin/tools/jobs/journal?job=${historyValue}&page=${targetPage}&pageSize=${pageSize}`;
+  const result = await getAdminJobRuns({ jobId, page, pageSize });
+  const href = (targetPage: number) => buildJobJournalHref({ job: jobFilter, page: targetPage, pageSize });
   const currentHref = href(result.page);
 
   return (
@@ -50,25 +50,10 @@ export default async function JobJournalPage({
       <div>
         <h2 className="font-serif text-2xl">Журнал запусков</h2>
         <p className="text-sm text-stone-600">
-          Выберите расписание или разовые запуски. Завершённая история очищается по сроку задачи.
+          По умолчанию видны все запуски. Можно сузить список до расписания или разовых запусков.
         </p>
       </div>
-      <form className="flex flex-wrap items-end gap-3">
-        <label className="grid gap-2 text-sm font-medium text-stone-700">
-          История
-          <Select name="job" defaultValue={historyValue}>
-            {jobs.map((job) => <option key={job.id} value={job.id}>{job.code}</option>)}
-            <option value="adhoc">Разовые запуски</option>
-          </Select>
-        </label>
-        <label className="grid gap-2 text-sm font-medium text-stone-700">
-          На странице
-          <Select name="pageSize" defaultValue={String(pageSize)}>
-            {[25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
-          </Select>
-        </label>
-        <Button type="submit" variant="outline">Показать</Button>
-      </form>
+      <JobJournalFilters jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />
       <p className="text-sm text-stone-500">Всего запусков: {result.totalCount}</p>
       <TableWrap className="overflow-x-auto">
         <Table>

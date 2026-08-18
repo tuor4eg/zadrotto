@@ -68,7 +68,7 @@ function getComicVineExternalIdFromUrl(value: string | null | undefined) {
   return value?.match(/comicvine\.gamespot\.com\/[^/]+\/4050-(\d+)/i)?.[1] ?? null;
 }
 
-function normalizeMetadataExternalId(
+export function normalizeMetadataExternalId(
   provider: MediaProviderCode,
   externalId: string | null | undefined,
   pageUrl?: string | null,

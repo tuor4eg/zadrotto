@@ -309,18 +309,18 @@ export async function getLatestJobRuns() {
 }
 
 export async function getAdminJobRuns(input: {
-  jobId: number | "adhoc";
+  jobId?: number | "adhoc";
   page: number;
   pageSize: number;
   status?: JobRunStatus | null;
   type?: string | null;
 }) {
   const conditions = [
-    input.jobId === "adhoc" ? isNull(jobRuns.jobId) : eq(jobRuns.jobId, input.jobId),
+    ...(input.jobId === "adhoc" ? [isNull(jobRuns.jobId)] : input.jobId ? [eq(jobRuns.jobId, input.jobId)] : []),
     ...(input.status ? [eq(jobRuns.status, input.status)] : []),
     ...(input.type ? [eq(jobRuns.type, input.type)] : []),
   ];
-  const where = and(...conditions);
+  const where = conditions.length > 0 ? and(...conditions) : undefined;
   const pageSize = [25, 50, 100].includes(input.pageSize) ? input.pageSize : 25;
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(jobRuns).where(where);
   const totalPages = Math.max(1, Math.ceil(count / pageSize));

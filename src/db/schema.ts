@@ -25,6 +25,7 @@ import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/autho
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
 import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog";
+import { EXTERNAL_NOTIFICATION_ROUTE_CODES } from "@/lib/notifications/routes";
 import { normalizedSearchIndexSql } from "@/db/search";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
@@ -894,6 +895,28 @@ export const notificationTransportSettings = pgTable(
   ],
 );
 
+export const notificationTransportRoutes = pgTable(
+  "notification_transport_routes",
+  {
+    code: text("code").primaryKey(),
+    transportCodes: jsonb("transport_codes").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check(
+      "notification_transport_routes_code_check",
+      sql`${table.code} in (${sql.join(
+        EXTERNAL_NOTIFICATION_ROUTE_CODES.map((value) => sql`${value}`),
+        sql`, `,
+      )})`,
+    ),
+    check("notification_transport_routes_code_trim_check", sql`btrim(${table.code}) <> ''`),
+  ],
+);
+
 export const achievements = pgTable(
   "achievements",
   {
@@ -1020,6 +1043,7 @@ export const mediaItems = pgTable(
     coverUrl: text("cover_url"),
     coverThumbUrl: text("cover_thumb_url"),
     coverThumbAttemptedAt: timestamp("cover_thumb_attempted_at", { withTimezone: true }),
+    metadataAttemptedAt: timestamp("metadata_attempted_at", { withTimezone: true }),
     coverSourceProvider: text("cover_source_provider"),
     coverSourceExternalId: text("cover_source_external_id"),
     coverSourcePageUrl: text("cover_source_page_url"),
@@ -1045,6 +1069,7 @@ export const mediaItems = pgTable(
     index("media_items_code_search_idx").using("gin", normalizedSearchIndexSql(table.code)),
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
     index("media_items_cover_thumb_attempted_at_idx").on(table.coverThumbAttemptedAt),
+    index("media_items_metadata_attempted_at_idx").on(table.metadataAttemptedAt),
     uniqueIndex("media_items_author_creation_request_id_unique_idx").on(
       table.createdByAuthorId,
       table.authorCreationRequestId,
@@ -1363,3 +1388,5 @@ export type Notification = typeof notifications.$inferSelect;
 export type NewNotification = typeof notifications.$inferInsert;
 export type NotificationTransportSettings = typeof notificationTransportSettings.$inferSelect;
 export type NewNotificationTransportSettings = typeof notificationTransportSettings.$inferInsert;
+export type NotificationTransportRoute = typeof notificationTransportRoutes.$inferSelect;
+export type NewNotificationTransportRoute = typeof notificationTransportRoutes.$inferInsert;

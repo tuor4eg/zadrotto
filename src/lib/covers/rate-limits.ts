@@ -136,19 +136,48 @@ export function createProviderCoverSearchRateLimiter(
         subject: providerCode,
         window: "day",
         limit: limitsByProviderCode.get(providerCode) ?? null,
-      });
+      })
 
       if (!result.ok) {
-        blockedError = "rate-limit-unavailable";
-        return "rate-limit-unavailable" as const;
+        blockedError = "rate-limit-unavailable"
+        return "rate-limit-unavailable" as const
       }
 
       if (!result.allowed) {
-        blockedError ??= "provider-daily-limit";
-        return "provider-daily-limit" as const;
+        blockedError ??= "provider-daily-limit"
+        return "provider-daily-limit" as const
       }
 
-      return true;
+      return true
     },
-  };
+  }
+}
+
+export function wrapProviderSearchWithReserve(
+  canSearchProvider: (providerCode: CoverProviderCode) => Promise<
+    true | "provider-daily-limit" | "rate-limit-unavailable"
+  >,
+  rateLimits: readonly CoverProviderRateLimitValue[],
+  quotaReserve: number,
+  getUsage: typeof getFixedWindowRateLimitUsage = getFixedWindowRateLimitUsage,
+) {
+  const limitsByProviderCode = new Map(
+    rateLimits.map((limit) => [limit.providerCode, limit.searchesPerDay]),
+  )
+
+  return async (providerCode: CoverProviderCode) => {
+    const dailyLimit = limitsByProviderCode.get(providerCode)
+    if (dailyLimit != null && quotaReserve > 0) {
+      const usage = await getUsage({
+        keyPrefix: "cover-search:provider",
+        subject: providerCode,
+        window: "day",
+        limit: dailyLimit,
+      })
+      if (!usage.ok) return "rate-limit-unavailable" as const
+      if (dailyLimit - usage.used <= quotaReserve) return "provider-daily-limit" as const
+    }
+
+    return canSearchProvider(providerCode)
+  }
 }

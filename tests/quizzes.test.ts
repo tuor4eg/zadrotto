@@ -16,6 +16,21 @@ describe("quizzes", () => {
     assert.equal(isQuizMediaTypeAllowed(["book"], "book"), true);
     assert.equal(isQuizMediaTypeAllowed(["book"], "film"), false);
   });
+  it("searches quiz answers by selected media types and shows Russian type names", () => {
+    const picker = readFileSync("src/components/quizzes/quiz-answer-picker.tsx", "utf8");
+    const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");
+    const route = readFileSync("src/app/api/admin/quizzes/title-search/route.ts", "utf8");
+    const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
+
+    assert.match(picker, /mediaTypeName\(item\.mediaType\)/);
+    assert.match(picker, /Ничего не найдено/);
+    assert.match(picker, /params\.append\("mediaType", mediaType\)/);
+    assert.match(picker, /isQuizMediaTypeAllowed\(allowedMediaTypes, selected\.mediaType\)/);
+    assert.match(picker, /setQuery\(""\)/);
+    assert.match(form, /allowedMediaTypes=\{selectedMediaTypes\}/);
+    assert.match(route, /searchParams\.getAll\("mediaType"\)/);
+    assert.match(query, /inArray\(mediaItems\.mediaType, \[\.\.\.mediaTypeFilter\]\)/);
+  });
   it("keeps answer id out of public DTO", () => {
     const source = readFileSync("src/db/queries/quizzes.ts", "utf8");
     const section = source.slice(source.indexOf("export async function getActiveQuiz"), source.indexOf("export async function checkQuizGuess"));

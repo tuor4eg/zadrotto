@@ -13,7 +13,7 @@ import {
 } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Bell } from "lucide-react"
+import { Bell, Trash2 } from "lucide-react"
 
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts"
 import { buttonVariants } from "@/components/ui/button"
@@ -25,6 +25,9 @@ const POLL_INTERVAL_MS = 30_000
 type NotificationInboxItem = NotificationInboxPayload["items"][number]
 
 type NotificationInboxValue = {
+  canDelete: boolean
+  deleteAll: () => Promise<void>
+  deleteOne: (id: number) => Promise<void>
   items: NotificationInboxItem[]
   markRead: (id: number) => Promise<void>
   unreadCount: number
@@ -128,6 +131,37 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
     }
   }, [markRead])
 
+  const deleteOne = useCallback(async (id: number) => {
+    const apiBase = getNotificationsApiBase(audienceRef.current)
+    setItems((current) => current.filter((item) => item.id !== id))
+    try {
+      await fetch(`${apiBase}/${id}`, {
+        cache: "no-store",
+        credentials: "same-origin",
+        method: "DELETE",
+      })
+    } catch {
+      // The inbox refresh below restores the current server list.
+    }
+    await checkNotifications()
+  }, [checkNotifications])
+
+  const deleteAll = useCallback(async () => {
+    const apiBase = getNotificationsApiBase(audienceRef.current)
+    setItems([])
+    setUnreadCount(0)
+    try {
+      await fetch(apiBase, {
+        cache: "no-store",
+        credentials: "same-origin",
+        method: "DELETE",
+      })
+    } catch {
+      // The inbox refresh below restores the current server list.
+    }
+    await checkNotifications()
+  }, [checkNotifications])
+
   useEffect(() => {
     if (audienceRef.current !== isAdminRoute) {
       audienceRef.current = isAdminRoute
@@ -159,8 +193,15 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
   }, [checkNotifications, isAdminRoute])
 
   const value = useMemo<NotificationInboxValue>(
-    () => ({ items, markRead, unreadCount }),
-    [items, markRead, unreadCount],
+    () => ({
+      canDelete: isAdminRoute,
+      deleteAll,
+      deleteOne,
+      items,
+      markRead,
+      unreadCount,
+    }),
+    [deleteAll, deleteOne, isAdminRoute, items, markRead, unreadCount],
   )
 
   return (
@@ -176,11 +217,15 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
 export function NotificationBell({ align = "left" }: { align?: "left" | "right" }) {
   const inbox = useContext(NotificationInboxContext)
   const [isOpen, setIsOpen] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    if (!isOpen) return
+    if (!isOpen) {
+      setConfirmClear(false)
+      return
+    }
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
@@ -230,34 +275,72 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
           {inbox.items.length === 0 ? (
             <p className="px-3 py-2 text-sm text-stone-600">Уведомлений нет.</p>
           ) : (
-            inbox.items.map((item) => (
-              item.href ? (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  onClick={() => {
-                    setIsOpen(false)
-                    if (!item.readAt) void inbox.markRead(item.id)
-                  }}
-                  className={`block rounded-sm px-3 py-2 text-sm transition-colors hover:bg-stone-200/60 hover:text-stone-950 ${
-                    item.readAt ? "text-stone-600" : "font-medium text-stone-950"
-                  }`}
-                >
+            <>
+              {inbox.canDelete ? (
+                <div className="flex justify-end border-b border-stone-200 px-2 py-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!confirmClear) {
+                        setConfirmClear(true)
+                        return
+                      }
+                      setConfirmClear(false)
+                      void inbox.deleteAll()
+                    }}
+                    className="rounded-sm px-2 py-1 text-xs text-stone-500 transition-colors hover:bg-stone-200/60 hover:text-red-700"
+                  >
+                    {confirmClear ? "Точно удалить все?" : "Удалить все"}
+                  </button>
+                </div>
+              ) : null}
+              {inbox.items.map((item) => {
+              const isMuted = Boolean(item.readAt || item.statusLabel)
+              const content = (
+                <>
                   <span className="block">{item.title}</span>
                   <span className="mt-0.5 block truncate text-stone-600">{item.body}</span>
-                </Link>
-              ) : (
-                <div
-                  key={item.id}
-                  className={`rounded-sm px-3 py-2 text-sm ${
-                    item.readAt ? "text-stone-600" : "font-medium text-stone-950"
-                  }`}
-                >
-                  <span className="block">{item.title}</span>
-                  <span className="mt-0.5 block truncate text-stone-600">{item.body}</span>
+                  {item.statusLabel ? (
+                    <span className="mt-0.5 block text-xs text-stone-500">{item.statusLabel}</span>
+                  ) : null}
+                </>
+              )
+              const className = `min-w-0 flex-1 rounded-sm px-3 py-2 text-sm ${
+                isMuted ? "text-stone-600" : "font-medium text-stone-950"
+              }`
+
+              return (
+                <div key={item.id} className="flex items-start gap-0.5">
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      onClick={() => {
+                        setIsOpen(false)
+                        if (!item.readAt) void inbox.markRead(item.id)
+                      }}
+                      className={`block transition-colors hover:bg-stone-200/60 hover:text-stone-950 ${className}`}
+                    >
+                      {content}
+                    </Link>
+                  ) : (
+                    <div className={className}>
+                      {content}
+                    </div>
+                  )}
+                  {inbox.canDelete ? (
+                    <button
+                      type="button"
+                      aria-label={`Удалить уведомление «${item.title}»`}
+                      onClick={() => void inbox.deleteOne(item.id)}
+                      className="mt-1 mr-1 shrink-0 rounded-sm p-1 text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-red-700"
+                    >
+                      <Trash2 className="size-3.5" />
+                    </button>
+                  ) : null}
                 </div>
               )
-            ))
+            })}
+            </>
           )}
         </div>
       ) : null}

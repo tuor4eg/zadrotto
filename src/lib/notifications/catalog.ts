@@ -68,6 +68,18 @@ export function getNotificationRecipientType(type: NotificationType): Notificati
   return type.endsWith(".approved") ? "author" : "admin"
 }
 
+export function isAdminSubmissionNotificationType(type: NotificationType) {
+  return getNotificationRecipientType(type) === "admin"
+}
+
+export function getAdminSubmissionStatusLabel(status: string | null | undefined) {
+  if (status === "submitted") return null
+  if (status === "published") return "Уже опубликована"
+  if (status === "rejected") return "Уже отклонена"
+  if (status === "private" || status === "draft" || status === "hidden") return "Снята с модерации"
+  return "Уже обработана"
+}
+
 export function getMediaFranchiseEntityId(mediaItemId: number, franchiseId: number) {
   return `${mediaItemId}:${franchiseId}`
 }

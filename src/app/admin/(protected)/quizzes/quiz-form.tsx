@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useState, useTransition } from "react";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
 import { QuizAnswerPicker } from "@/components/quizzes/quiz-answer-picker";
@@ -42,6 +42,7 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
     submissionId: 0,
   });
   const [transitionPending, startTransition] = useTransition();
+  const [selectedMediaTypes, setSelectedMediaTypes] = useState(item?.mediaTypes ?? []);
   const isPending = actionPending || transitionPending;
   const toastMessages = state.error
     ? [{ id: `quiz-save-${state.submissionId}`, tone: "error" as const, text: state.error }]
@@ -82,6 +83,8 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
       <div className="grid gap-2">
         <span className="text-sm font-medium">Правильная запись</span>
         <QuizAnswerPicker
+          allowedMediaTypes={selectedMediaTypes}
+          mediaTypes={mediaTypes}
           initial={item ? {
             id: item.answerMediaItemId,
             title: item.answerTitle,
@@ -104,7 +107,15 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
                 type="checkbox"
                 name="mediaTypes"
                 value={type.code}
-                defaultChecked={item?.mediaTypes.includes(type.code)}
+                checked={selectedMediaTypes.includes(type.code)}
+                onChange={(event) => {
+                  const checked = event.currentTarget.checked
+                  setSelectedMediaTypes((current) =>
+                    checked
+                      ? [...current, type.code]
+                      : current.filter((code) => code !== type.code),
+                  )
+                }}
               />
               {type.name}
             </label>

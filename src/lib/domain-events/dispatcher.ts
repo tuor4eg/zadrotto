@@ -21,14 +21,26 @@ export async function dispatchDomainEvent(eventId: string) {
 
   const typedEvent = event as PersistedDomainEvent;
   for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
-    await db.transaction(async (tx) => {
-      const [claimed] = await tx.insert(domainEventConsumptions).values({
+    const claimed = await db.transaction(async (tx) => {
+      const [claimedRow] = await tx.insert(domainEventConsumptions).values({
         consumerKey: consumer.key,
         eventId,
       }).onConflictDoNothing().returning({ eventId: domainEventConsumptions.eventId });
-      if (!claimed) return;
+      if (!claimedRow) return false;
       await consumer.handle(tx, typedEvent);
+      return true;
     });
+
+    if (!claimed || !consumer.afterCommit) continue;
+    try {
+      await consumer.afterCommit(typedEvent);
+    } catch (error) {
+      console.error("Failed to run domain event consumer afterCommit", {
+        consumerKey: consumer.key,
+        error,
+        eventId,
+      });
+    }
   }
 
   await db.update(domainEventOutbox).set({

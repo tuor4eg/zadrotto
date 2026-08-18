@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
+import { buildJobJournalHref } from "../src/app/admin/(protected)/tools/jobs/journal/href";
 import { getNextJobRunAt, validateJobCronExpression } from "../src/lib/jobs/cron";
 import { calculateJobRetryDelaySeconds } from "../src/lib/jobs/model";
 import { createJobHandlerRegistry } from "../src/lib/jobs/registry";
@@ -142,11 +143,12 @@ test("achievement backfill is enqueue-only and cannot be created as a periodic s
 });
 
 test("jobs admin separates schedules from paginated run history", async () => {
-  const [layout, nav, schedules, journal, queries] = await Promise.all([
+  const [layout, nav, schedules, journal, filters, queries] = await Promise.all([
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/layout.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-tools-nav.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/schedules/page.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/journal/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/journal/job-journal-filters.tsx", import.meta.url), "utf8"),
     readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8"),
   ]);
   assert.match(layout, /lg:grid-cols-\[220px_minmax\(0,1fr\)\]/);
@@ -155,6 +157,44 @@ test("jobs admin separates schedules from paginated run history", async () => {
   assert.match(schedules, /getLatestJobRuns/);
   assert.match(journal, /pageSize/);
   assert.match(journal, /Страница \{result\.page\} из \{result\.totalPages\}/);
+  assert.match(journal, /parseJobFilter\(query\.job, jobs\)/);
+  assert.match(journal, /jobId === undefined \? "all"/);
+  assert.doesNotMatch(journal, /Показать/);
+  assert.match(filters, /option value="all">Все запуски/);
+  assert.match(filters, /onChange=\{\(event\) => replaceFilters\(\{ job: event\.currentTarget\.value \}\)\}/);
   assert.match(queries, /selectDistinctOn\(\[jobRuns\.jobId\]/);
   assert.match(queries, /offset\(\(page - 1\) \* pageSize\)/);
+  assert.match(queries, /jobId\?: number \| "adhoc"/);
+  assert.match(queries, /input\.jobId === "adhoc" \? \[isNull\(jobRuns\.jobId\)\] : input\.jobId \? \[eq\(jobRuns\.jobId, input\.jobId\)\] : \[\]/);
 });
+
+test("job journal href omits the default all-runs filter", () => {
+  assert.equal(buildJobJournalHref({ job: "all", page: 1, pageSize: 25 }), "/admin/tools/jobs/journal");
+  assert.equal(buildJobJournalHref({ job: "adhoc", page: 2, pageSize: 50 }), "/admin/tools/jobs/journal?job=adhoc&page=2&pageSize=50");
+  assert.equal(buildJobJournalHref({ job: "12", page: 1, pageSize: 25 }), "/admin/tools/jobs/journal?job=12");
+});
+
+test("metadata jobs seed two enabled schedules with split cron and payloads", async () => {
+  const [handlers, migration, manager] = await Promise.all([
+    readFile(new URL("../src/lib/jobs/handlers.ts", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle/0070_media_metadata_refresh.sql", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-manager.tsx", import.meta.url), "utf8"),
+  ]);
+
+  assert.match(handlers, /type: "media\.metadata-backfill"/);
+  assert.match(handlers, /type: "media\.metadata-refresh"/);
+  assert.match(handlers, /backfillMediaMetadata\(\{ attempt, runId, \.\.\.payload \}\)/);
+  assert.match(handlers, /refreshStaleMediaMetadata\(\{ attempt, runId, \.\.\.payload \}\)/);
+  assert.match(handlers, /result\.retryableFailed > 0/);
+  assert.match(
+    migration,
+    /'media-metadata-backfill',[\s\S]*'media\.metadata-backfill',[\s\S]*'\{"limit":25,"quotaReserve":100\}'::jsonb,[\s\S]*'0 4 \* \* \*',[\s\S]*true/,
+  );
+  assert.match(
+    migration,
+    /'media-metadata-refresh',[\s\S]*'media\.metadata-refresh',[\s\S]*'\{"limit":20,"staleDays":90,"quotaReserve":100\}'::jsonb,[\s\S]*'0 5 \* \* 0',[\s\S]*true/,
+  );
+  assert.match(migration, /ON CONFLICT \("code"\) DO NOTHING/);
+  assert.match(manager, /name="payload" value="\{\}"/);
+});
+
