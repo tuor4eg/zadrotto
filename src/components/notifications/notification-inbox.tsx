@@ -221,21 +221,23 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
   const rootRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
+  function closeInbox() {
+    setIsOpen(false)
+    setConfirmClear(false)
+  }
+
   useEffect(() => {
-    if (!isOpen) {
-      setConfirmClear(false)
-      return
-    }
+    if (!isOpen) return
 
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
-        setIsOpen(false)
+        closeInbox()
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
-        setIsOpen(false)
+        closeInbox()
         triggerRef.current?.focus()
       }
     }
@@ -257,7 +259,13 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
         type="button"
         aria-expanded={isOpen}
         aria-label="Уведомления"
-        onClick={() => setIsOpen((current) => !current)}
+        onClick={() => {
+          if (isOpen) {
+            closeInbox()
+            return
+          }
+          setIsOpen(true)
+        }}
         className={`${buttonVariants({ variant: "outline", size: "sm" })} relative`}
       >
         <Bell className="size-4" />
@@ -315,7 +323,7 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
                     <Link
                       href={item.href}
                       onClick={() => {
-                        setIsOpen(false)
+                        closeInbox()
                         if (!item.readAt) void inbox.markRead(item.id)
                       }}
                       className={`block transition-colors hover:bg-stone-200/60 hover:text-stone-950 ${className}`}

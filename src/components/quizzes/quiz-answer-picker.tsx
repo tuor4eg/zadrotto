@@ -25,31 +25,30 @@ export function QuizAnswerPicker({
   const [query, setQuery] = useState(initial?.title ?? "")
   const [items, setItems] = useState<Item[]>(initial ? [initial] : [])
   const [selected, setSelected] = useState(initial ?? null)
-  const [status, setStatus] = useState<"idle" | "loading" | "done">("idle")
+  const [resultQuery, setResultQuery] = useState("")
+  const [resultTypes, setResultTypes] = useState("")
+  const allowedKey = [...allowedMediaTypes].sort().join(",")
+
+  if (selected && !isQuizMediaTypeAllowed(allowedMediaTypes, selected.mediaType)) {
+    setSelected(null)
+    setQuery("")
+    setItems([])
+    setResultQuery("")
+    setResultTypes("")
+  }
 
   function mediaTypeName(mediaType: string) {
     return mediaTypes.find((type) => type.code === mediaType)?.name ?? mediaType
   }
 
   useEffect(() => {
-    if (!selected) return
-    if (isQuizMediaTypeAllowed(allowedMediaTypes, selected.mediaType)) return
-    setSelected(null)
-    setQuery("")
-    setItems([])
-    setStatus("idle")
-  }, [allowedMediaTypes, selected])
-
-  useEffect(() => {
     const normalizedQuery = query.trim()
 
     if (normalizedQuery.length < 2 || normalizedQuery === selected?.title) {
-      setStatus("idle")
       return
     }
 
     const controller = new AbortController()
-    setStatus("loading")
     const timer = window.setTimeout(() => {
       const params = new URLSearchParams({ q: normalizedQuery })
       for (const mediaType of allowedMediaTypes) {
@@ -63,7 +62,8 @@ export function QuizAnswerPicker({
           const payload = await response.json() as { items?: Item[] }
           if (controller.signal.aborted) return
           setItems(payload.items ?? [])
-          setStatus("done")
+          setResultQuery(normalizedQuery)
+          setResultTypes(allowedKey)
         })
         .catch((error: unknown) => {
           if (controller.signal.aborted || (error instanceof DOMException && error.name === "AbortError")) {
@@ -71,7 +71,8 @@ export function QuizAnswerPicker({
           }
           console.error("Не удалось найти записи для квиза.", error)
           setItems([])
-          setStatus("done")
+          setResultQuery(normalizedQuery)
+          setResultTypes(allowedKey)
         })
     }, 250)
 
@@ -79,7 +80,11 @@ export function QuizAnswerPicker({
       window.clearTimeout(timer)
       controller.abort()
     }
-  }, [allowedMediaTypes, query, selected])
+  }, [allowedKey, allowedMediaTypes, query, selected])
+
+  const normalizedQuery = query.trim()
+  const isSearchOpen = normalizedQuery.length >= 2 && !selected
+  const resultsAreCurrent = resultQuery === normalizedQuery && resultTypes === allowedKey
 
   return (
     <div className="grid gap-2">
@@ -93,9 +98,9 @@ export function QuizAnswerPicker({
         }}
         placeholder="Начните вводить название записи"
       />
-      {query.trim().length >= 2 && !selected ? (
+      {isSearchOpen ? (
         <div className="max-h-52 overflow-auto rounded-md border bg-white p-1">
-          {status === "loading" && items.length === 0 ? (
+          {!resultsAreCurrent ? (
             <p className="px-3 py-2 text-sm text-stone-500">Ищем…</p>
           ) : items.length === 0 ? (
             <p className="px-3 py-2 text-sm text-stone-500">Ничего не найдено</p>
