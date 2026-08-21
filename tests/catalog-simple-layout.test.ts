@@ -175,6 +175,8 @@ describe("simple catalog layout", () => {
     assert.match(previewSource, /mt-auto flex justify-end pt-4/);
     assert.match(previewSource, /<MediaItemFranchiseLinks/);
     assert.match(previewSource, /<MediaItemFranchiseSuggestionDialog/);
+    assert.match(previewSource, /<span className="break-words">\{metaItem\}<\/span>/);
+    assert.doesNotMatch(previewSource, /min-w-0 truncate/);
   });
 
   it("uses a plain local filter popup", () => {

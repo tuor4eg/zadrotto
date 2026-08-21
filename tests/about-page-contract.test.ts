@@ -71,10 +71,14 @@ describe("about page contracts", () => {
     );
     assert.match(
       aboutPageSource,
-      /<Image[\s\S]*className="h-auto max-w-full"[\s\S]*src="\/tmdb-logo\.svg"/,
+      /<Image[\s\S]*className="h-9 w-auto max-w-full"[\s\S]*src="\/tmdb-logo\.svg"/,
     );
     assert.match(aboutPageSource, /GitHub/);
     assert.match(aboutPageSource, /GNU GPLv3/);
+    assert.match(
+      aboutPageSource,
+      /sm:grid-cols-\[minmax\(0,1fr\)_auto\][\s\S]*src="\/deadz\.png"[\s\S]*unoptimized/,
+    );
   });
 
   it("links public RAWG and Comic Vine cover attributions to their source pages", () => {

@@ -2,13 +2,16 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { cn } from "@/lib/common/utils";
+import { useToastSettings } from "@/components/ui/toast-settings-provider";
 
 export type ArchiveToast = {
   id: string;
+  imageUrl?: string | null;
   link?: {
     href: string;
     label: string;
@@ -23,19 +26,21 @@ type ArchiveToastsProps = {
   messages: ArchiveToast[];
 };
 
-const TOAST_DURATION_MS = 5200;
-
 export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { adminDurationSeconds, siteDurationSeconds } = useToastSettings();
+  const durationSeconds = pathname === "/admin" || pathname.startsWith("/admin/")
+    ? adminDurationSeconds
+    : siteDurationSeconds;
   const [visibleMessages, setVisibleMessages] = useState(messages);
   const messageSignature = useMemo(
     () =>
       messages
         .map(
           (message) =>
-            `${message.id}:${message.link?.href ?? ""}:${message.link?.label ?? ""}:${message.text}`,
+            `${message.id}:${message.link?.href ?? ""}:${message.link?.label ?? ""}:${message.text}:${message.imageUrl ?? ""}`,
         )
         .join("|"),
     [messages],
@@ -79,10 +84,10 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
 
     const timeoutId = window.setTimeout(() => {
       setVisibleMessages([]);
-    }, TOAST_DURATION_MS);
+    }, durationSeconds * 1000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [visibleMessages.length]);
+  }, [durationSeconds, visibleMessages.length]);
 
   if (visibleMessages.length === 0) {
     return null;
@@ -104,16 +109,29 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
                 : "border-red-800/35 text-stone-950",
             )}
           >
-            <span
-              className={cn(
-                "mt-0.5 grid size-7 place-items-center rounded-full border bg-white/70",
-                isSuccess
-                  ? "border-emerald-700/30 text-emerald-800"
-                  : "border-red-800/30 text-red-800",
-              )}
-            >
-              <Icon className="size-4" />
-            </span>
+            {message.imageUrl ? (
+              <span className="relative mt-0.5 size-10 overflow-hidden rounded-sm border border-stone-300/80 bg-white/70">
+                <Image
+                  alt=""
+                  className="object-cover"
+                  fill
+                  sizes="40px"
+                  src={message.imageUrl}
+                  unoptimized
+                />
+              </span>
+            ) : (
+              <span
+                className={cn(
+                  "mt-0.5 grid size-7 place-items-center rounded-full border bg-white/70",
+                  isSuccess
+                    ? "border-emerald-700/30 text-emerald-800"
+                    : "border-red-800/30 text-red-800",
+                )}
+              >
+                <Icon className="size-4" />
+              </span>
+            )}
             <p className="min-w-0 pt-1 leading-5 text-stone-800">
               {message.link ? (
                 <>

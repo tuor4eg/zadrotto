@@ -17,6 +17,7 @@ const reviewSource = readFileSync("src/db/queries/contribution-reviews.ts", "utf
 const friendsSource = readFileSync("src/db/queries/friends.ts", "utf8");
 const mediaSource = readFileSync("src/db/queries/media-items.ts", "utf8");
 const franchiseSource = readFileSync("src/db/queries/franchises.ts", "utf8");
+const achievementConsumerSource = readFileSync("src/lib/achievements/consumer.ts", "utf8");
 const achievementServiceSource = readFileSync("src/lib/achievements/service.ts", "utf8");
 const backfillSource = readFileSync("src/lib/achievements/backfill.ts", "utf8");
 const achievementQuerySource = readFileSync("src/db/queries/achievements.ts", "utf8");
@@ -45,6 +46,7 @@ const toastHostSource = readFileSync(
   "src/components/achievements/achievement-toast-host.tsx",
   "utf8",
 );
+const archiveToastsSource = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");
 
 describe("domain event foundation", () => {
   it("stores immutable facts, a transactional outbox, and idempotent consumptions", () => {
@@ -81,25 +83,38 @@ describe("domain event foundation", () => {
 
 describe("achievement consumer", () => {
   it("registers reusable mechanics with independently declared parameters", () => {
-    assert.equal(achievementMechanicRegistry.length, 2);
+    assert.equal(achievementMechanicRegistry.length, 3);
     const rating = getAchievementMechanic("rating.authored.count");
     const review = getAchievementMechanic("review.authored.count");
+    const media = getAchievementMechanic("media.authored.count");
     assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
+    assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.notEqual(rating?.params, review?.params);
+    assert.notEqual(review?.params, media?.params);
     assert.deepEqual(review?.eventTypes, [
       "review.published", "media.published", "media-franchise.published", "franchise.parent.changed",
+    ]);
+    assert.deepEqual(media?.eventTypes, [
+      "media.published", "media-franchise.published", "franchise.parent.changed",
     ]);
     assert.deepEqual(rating?.parseParams({ mediaType: "film", seriesId: 42 }), {
       mediaType: "film",
       seriesId: 42,
     });
+    assert.deepEqual(media?.parseParams({ mediaType: "game" }), { mediaType: "game" });
     assert.throws(() => rating?.parseParams({ mediaType: "film", unsupported: true }));
     assert.throws(() => review?.parseParams({ seriesId: 0 }));
+    assert.throws(() => media?.parseParams({ seriesId: 0 }));
   });
 
   it("checks current published data and awards with a database uniqueness guard", () => {
     assert.match(readFileSync("src/lib/achievements/catalog.ts", "utf8"), /publicationStatus} = 'published'/);
+    assert.match(achievementConsumerSource, /mediaItems\.createdByAuthorId/);
+    assert.match(
+      achievementConsumerSource,
+      /select \$\{mediaItems\.createdByAuthorId\} as author_id from \$\{mediaItems\}/,
+    );
     assert.match(achievementServiceSource, /eq\(achievements\.enabled, true\)/);
     assert.match(
       achievementServiceSource,
@@ -124,6 +139,14 @@ describe("achievement consumer", () => {
     assert.match(toastHostSource, /document\.visibilityState !== "visible"/);
     assert.match(toastHostSource, /pathname === "\/admin" \|\| pathname\.startsWith\("\/admin\/"\)/);
     assert.match(toastHostSource, /if \(isAdminRoute\) return;/);
+    assert.match(toastHostSource, /group\.achievements\.map\(\(achievement\) =>/);
+    assert.match(toastHostSource, /imageUrl: achievement\.imageUrl/);
+    assert.match(toastHostSource, /Получена ачивка «\$\{achievement\.name\}»/);
+    assert.match(
+      achievementQuerySource,
+      /achievements: claimedAchievements\.map\(\(achievement\) =>[\s\S]*resolveAchievementImageUrl\(achievement\.levelImageObjectKey\)/,
+    );
+    assert.match(archiveToastsSource, /src=\{message\.imageUrl\}[\s\S]*unoptimized/);
   });
 
   it("keeps secret achievements hidden only until they are awarded", () => {
@@ -140,7 +163,7 @@ describe("achievement consumer", () => {
   it("normalizes images and safely replaces assigned objects", () => {
     assert.match(achievementImageSource, /achievements\/\$\{achievementId\}\/\$\{randomUUID\(\)\}\.webp/);
     assert.match(achievementImageSource, /resize\(OUTPUT_SIZE, OUTPUT_SIZE, \{ fit: "cover", position: "centre" \}\)/);
-    assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementGeneral[\s\S]*deleteAchievementImageBestEffort\(achievement\.imageObjectKey\)/);
+    assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementLevel[\s\S]*deleteAchievementImageBestEffort\(currentLevel\.imageObjectKey\)/);
     assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteAchievementImageBestEffort\(imageResult\.uploadedObjectKey\)/);
   });
 
@@ -164,6 +187,51 @@ describe("achievement consumer", () => {
     assert.match(
       achievementAdminActionSource,
       /generateEntityCode\(\{ name: configuration\.name, type: "achievement" \}\)/,
+    );
+  });
+
+  it("keeps the catalog name on the achievement and images only on levels", () => {
+    const presentationMigration = readFileSync("drizzle/0072_achievement_presentation_levels.sql", "utf8")
+    const editPageSource = readFileSync("src/app/admin/(protected)/achievements/[id]/edit/page.tsx", "utf8")
+    const levelsSource = readFileSync(
+      "src/app/admin/(protected)/achievements/achievement-levels-tab.tsx",
+      "utf8",
+    )
+    const achievementsTableSource = schemaSource.slice(
+      schemaSource.indexOf("export const achievements = pgTable"),
+      schemaSource.indexOf("export const achievementLevels = pgTable"),
+    )
+    assert.match(presentationMigration, /ALTER COLUMN "description" DROP NOT NULL/)
+    assert.match(presentationMigration, /DROP COLUMN "image_object_key"/)
+    assert.match(achievementsTableSource, /name: text\("name"\)\.notNull\(\)/)
+    assert.match(achievementsTableSource, /description: text\("description"\),/)
+    assert.doesNotMatch(achievementsTableSource, /imageObjectKey/)
+    assert.match(
+      schemaSource,
+      /check\("achievements_description_check", sql`\$\{table\.description\} is null or btrim\(\$\{table\.description\}\) <> ''`\)/,
+    )
+    assert.match(achievementAdminActionSource, /if \(!name\) throw new Error\("invalid"\)/)
+    assert.match(achievementAdminActionSource, /description: description \|\| null/)
+    assert.match(
+      achievementAdminActionSource,
+      /generateEntityCode\(\{ name: configuration\.name, type: "achievement" \}\)/,
+    )
+    assert.doesNotMatch(achievementNewPageSource, /name="description"[^>]*required/)
+    assert.doesNotMatch(editPageSource, /Базовое изображение/)
+    assert.doesNotMatch(editPageSource, /AchievementImagePicker/)
+    assert.match(levelsSource, /AchievementImagePicker/)
+    assert.match(achievementQuerySource, /name: presentation\.levelName \?\? presentation\.name/)
+    assert.match(achievementQuerySource, /description: presentation\.levelDescription \?\? presentation\.description/)
+    assert.match(achievementQuerySource, /resolveAchievementImageUrl\(presentation\.levelImageObjectKey\)/)
+    assert.doesNotMatch(achievementQuerySource, /achievements\.imageObjectKey/)
+  })
+
+  it("creates achievements disabled until the admin opts in", () => {
+    assert.match(achievementNewPageSource, /name="enabled" value="1"/);
+    assert.doesNotMatch(achievementNewPageSource, /name="enabled"[^>]*defaultChecked/);
+    assert.match(
+      achievementAdminActionSource,
+      /if \(achievement\.enabled\) await enqueueAchievementBackfill/,
     );
   });
 
@@ -226,6 +294,7 @@ describe("achievement consumer", () => {
     assert.match(pickerSource, /src=\{previewUrl\} unoptimized/)
     assert.match(listSource, /src=\{item\.imageUrl\} unoptimized/)
     assert.match(levelsSource, /src=\{imageUrl\} unoptimized/)
+    assert.match(archiveToastsSource, /src=\{message\.imageUrl\}[\s\S]*unoptimized/)
     assert.match(achievementImageRouteSource, /"X-Accel-Redirect"/)
     assert.match(
       readFileSync("deploy/nginx/zadrotto.conf", "utf8"),
@@ -241,6 +310,11 @@ describe("achievement consumer", () => {
       "utf8",
     )
     assert.match(querySource, /hasAwards: awardedIds\.has\(row\.id\)/)
+    assert.match(
+      querySource,
+      /firstLevelImageByAchievement\.get\(row\.id\) \?\? highestLevelImageByAchievement\.get\(row\.id\) \?\? null/,
+    )
+    assert.match(querySource, /orderBy\(asc\(achievementLevels\.achievementId\), desc\(achievementLevels\.level\)\)/)
     assert.match(querySource, /throw new Error\("achievement-awarded"\)/)
     assert.match(actionSource, /export async function toggleAchievementAction/)
     assert.match(actionSource, /export async function deleteAchievementAction/)

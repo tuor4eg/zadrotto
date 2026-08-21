@@ -11,8 +11,11 @@ type PendingAchievementResponse = {
   authenticated: boolean;
   group?: {
     awardGroupId: string;
-    count: number;
-    name: string | null;
+    achievements: Array<{
+      id: number;
+      imageUrl: string | null;
+      name: string;
+    }>;
   } | null;
 };
 
@@ -40,14 +43,14 @@ export function AchievementToastHost() {
       authenticatedRef.current = data.authenticated;
 
       if (data.group) {
-        setMessages([{
-          id: `achievement-${data.group.awardGroupId}`,
+        const group = data.group;
+        setMessages(group.achievements.map((achievement) => ({
+          id: `achievement-${group.awardGroupId}-${achievement.id}`,
+          imageUrl: achievement.imageUrl,
           link: { href: "/author/achievements", label: "Ачивки" },
           tone: "success",
-          text: data.group.count === 1 && data.group.name
-            ? `Получена ачивка «${data.group.name}».`
-            : `Получены новые ачивки: ${data.group.count}.`,
-        }]);
+          text: `Получена ачивка «${achievement.name}».`,
+        })));
       }
     } catch {
       // Следующая проверка восстановит доставку; сама ачивка хранится в профиле.

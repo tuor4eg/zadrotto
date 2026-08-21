@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Archive, ShieldCheck, Trophy, Users } from "lucide-react";
+import { Archive, Bell, ShieldCheck, Trophy, Users } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -26,6 +26,11 @@ const SETTINGS_NAV_ITEMS = [
     href: "/admin/settings/achievements",
     label: "Ачивки",
     icon: Trophy,
+  },
+  {
+    href: "/admin/settings/notifications",
+    label: "Уведомления",
+    icon: Bell,
   },
 ] as const;
 

@@ -210,7 +210,7 @@ function LevelImage({
     return <span className="size-10 shrink-0 rounded-full border border-stone-300 bg-stone-100" />
   }
 
-  return <span className="text-xs text-stone-500">Базовое</span>
+  return <span className="text-xs text-stone-500">Нет</span>
 }
 
 export function AchievementLevelsTab({

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
@@ -15,7 +15,6 @@ export async function getAchievementShowcase(authorId: number) {
       achievementId: achievements.id,
       code: achievements.code,
       description: achievements.description,
-      imageObjectKey: achievements.imageObjectKey,
       level: achievementLevels.level,
       levelDescription: achievementLevels.description,
       levelImageObjectKey: achievementLevels.imageObjectKey,
@@ -60,12 +59,12 @@ export async function getAchievementShowcase(authorId: number) {
       return [{
         awardedAt: item.awardedAt,
         description: item.levelDescription ?? item.description,
-        imageUrl: resolveAchievementImageUrl(item.levelImageObjectKey ?? item.imageObjectKey),
+        imageUrl: resolveAchievementImageUrl(item.levelImageObjectKey),
         level: item.level,
         name: item.levelName ?? item.name,
       }]
     })
-    const ownImageUrl = resolveAchievementImageUrl(presentation.levelImageObjectKey ?? presentation.imageObjectKey)
+    const ownImageUrl = resolveAchievementImageUrl(presentation.levelImageObjectKey)
     return {
       awardedAt: awarded?.awardedAt ?? null,
       awardedLevels,
@@ -83,18 +82,36 @@ export async function getAchievementShowcase(authorId: number) {
 }
 
 export async function getAdminAchievements() {
-  const [rows, awarded] = await Promise.all([
+  const [rows, awarded, levelImages] = await Promise.all([
     db.select().from(achievements)
       .orderBy(asc(achievements.displayOrder), asc(achievements.id)),
     db.selectDistinct({ achievementId: achievementLevels.achievementId })
       .from(userAchievements)
       .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId)),
+    db.select({
+      achievementId: achievementLevels.achievementId,
+      imageObjectKey: achievementLevels.imageObjectKey,
+      level: achievementLevels.level,
+    }).from(achievementLevels)
+      .where(isNotNull(achievementLevels.imageObjectKey))
+      .orderBy(asc(achievementLevels.achievementId), desc(achievementLevels.level)),
   ])
   const awardedIds = new Set(awarded.map((item) => item.achievementId))
+  const firstLevelImageByAchievement = new Map<number, string>()
+  const highestLevelImageByAchievement = new Map<number, string>()
+  for (const level of levelImages) {
+    if (!level.imageObjectKey) continue
+    if (level.level === 1) firstLevelImageByAchievement.set(level.achievementId, level.imageObjectKey)
+    if (!highestLevelImageByAchievement.has(level.achievementId)) {
+      highestLevelImageByAchievement.set(level.achievementId, level.imageObjectKey)
+    }
+  }
   return rows.map((row) => ({
     ...row,
     hasAwards: awardedIds.has(row.id),
-    imageUrl: resolveAchievementImageUrl(row.imageObjectKey),
+    imageUrl: resolveAchievementImageUrl(
+      firstLevelImageByAchievement.get(row.id) ?? highestLevelImageByAchievement.get(row.id) ?? null,
+    ),
   }))
 }
 
@@ -113,7 +130,6 @@ export async function getAdminAchievementById(id: number) {
   return achievement ? {
     ...achievement,
     hasAwards: awardedIds.size > 0,
-    imageUrl: resolveAchievementImageUrl(achievement.imageObjectKey),
     levels: levels.map((level) => ({
       ...level,
       imageUrl: resolveAchievementImageUrl(level.imageObjectKey),
@@ -124,7 +140,7 @@ export async function getAdminAchievementById(id: number) {
 
 export async function createAchievementWithFirstLevel(input: {
   code: string;
-  description: string;
+  description: string | null;
   enabled: boolean;
   firstLevelThreshold: number;
   mechanic: string;
@@ -155,13 +171,12 @@ export async function createAchievementWithFirstLevel(input: {
 }
 
 export async function updateAchievementGeneral(input: {
-  description: string;
+  description: string | null;
   enabled: boolean;
   id: number;
   mechanic: string;
   name: string;
   params: Record<string, unknown>;
-  imageObjectKey: string | null;
   showWhenLocked: boolean;
 }) {
   return db.transaction(async (tx) => {
@@ -179,7 +194,6 @@ export async function updateAchievementGeneral(input: {
       description: input.description,
       enabled: input.enabled,
       mechanic: input.mechanic,
-      imageObjectKey: input.imageObjectKey,
       name: input.name,
       params: input.params,
       showWhenLocked: input.showWhenLocked,
@@ -310,21 +324,19 @@ export async function deleteAchievementIfUnawarded(id: number) {
     await tx.delete(achievements).where(eq(achievements.id, id))
     return {
       ...current,
-      imageObjectKeys: [current.imageObjectKey, ...levels.map((level) => level.imageObjectKey)],
+      imageObjectKeys: levels.map((level) => level.imageObjectKey),
     }
   })
 }
 
 export async function isAssignedAchievementImageObjectKey(objectKey: string) {
-  const [achievement, level, settings] = await Promise.all([
-    db.select({ id: achievements.id }).from(achievements)
-      .where(eq(achievements.imageObjectKey, objectKey)).limit(1),
+  const [level, settings] = await Promise.all([
     db.select({ id: achievementLevels.id }).from(achievementLevels)
       .where(eq(achievementLevels.imageObjectKey, objectKey)).limit(1),
     db.select({ id: achievementSettings.id }).from(achievementSettings)
       .where(eq(achievementSettings.lockedImageObjectKey, objectKey)).limit(1),
   ]);
-  return Boolean(achievement[0] || level[0] || settings[0]);
+  return Boolean(level[0] || settings[0]);
 }
 
 export async function claimPendingAchievementAnnouncement(authorId: number) {
@@ -355,7 +367,12 @@ export async function claimPendingAchievementAnnouncement(authorId: number) {
     if (claimed.length === 0) return null;
 
     const claimedAchievements = await tx
-      .select({ levelName: achievementLevels.name, name: achievements.name })
+      .select({
+        levelId: achievementLevels.id,
+        levelImageObjectKey: achievementLevels.imageObjectKey,
+        levelName: achievementLevels.name,
+        name: achievements.name,
+      })
       .from(achievementLevels)
       .innerJoin(achievements, eq(achievements.id, achievementLevels.achievementId))
       .where(inArray(achievementLevels.id, claimed.map((item) => item.achievementLevelId)))
@@ -363,10 +380,11 @@ export async function claimPendingAchievementAnnouncement(authorId: number) {
 
     return {
       awardGroupId: pending.awardGroupId,
-      count: claimedAchievements.length,
-      name: claimedAchievements.length === 1
-        ? claimedAchievements[0]?.levelName ?? claimedAchievements[0]?.name ?? null
-        : null,
+      achievements: claimedAchievements.map((achievement) => ({
+        id: achievement.levelId,
+        imageUrl: resolveAchievementImageUrl(achievement.levelImageObjectKey),
+        name: achievement.levelName ?? achievement.name,
+      })),
     };
   });
 }

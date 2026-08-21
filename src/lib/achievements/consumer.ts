@@ -2,7 +2,7 @@ import "server-only";
 
 import { sql } from "drizzle-orm";
 
-import { contributions, franchises, mediaItemFranchises, ratings } from "@/db/schema";
+import { contributions, franchises, mediaItemFranchises, mediaItems, ratings } from "@/db/schema";
 import type { DomainEventConsumer } from "@/lib/domain-events/registry";
 import { evaluateAchievements } from "./service";
 
@@ -39,6 +39,10 @@ export const achievementDomainEventConsumer: DomainEventConsumer = {
           select ${contributions.authorId} as author_id from ${contributions}
             where ${contributions.primaryMediaItemId} in (${mediaIds})
               and ${contributions.type} = 'review' and ${contributions.status} = 'published'
+          union
+          select ${mediaItems.createdByAuthorId} as author_id from ${mediaItems}
+            where ${mediaItems.id} in (${mediaIds})
+              and ${mediaItems.createdByAuthorId} is not null
         ) affected
       `);
       authorIds = Array.from(rows as Iterable<Record<string, unknown>>).map((row) => Number(row.authorId));

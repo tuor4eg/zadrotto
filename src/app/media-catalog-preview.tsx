@@ -1,5 +1,6 @@
 "use client";
 
+import { Fragment } from "react";
 import Link from "next/link";
 import { FolderOpen } from "lucide-react";
 
@@ -97,8 +98,8 @@ export function MediaCatalogPreview({
   ) : null;
 
   return (
-    <div className="flex flex-1 p-3 sm:p-4">
-      <div className="flex flex-1 flex-col p-3 sm:p-4">
+    <div className="flex min-w-0 flex-1 p-3 sm:p-4">
+      <div className="flex min-w-0 flex-1 flex-col p-3 sm:p-4">
         <div
           className={
             hasCarrierFrame
@@ -165,12 +166,12 @@ export function MediaCatalogPreview({
           </div>
         ) : null}
 
-        <div className={`mt-3 flex flex-wrap gap-x-2 gap-y-1 ${labelFontClassName} text-xs leading-5 text-stone-800`}>
+        <div className={`mt-3 min-w-0 ${labelFontClassName} text-xs leading-5 text-stone-800`}>
           {metaItems.map((metaItem, index) => (
-            <span key={`${metaItem}-${index}`} className="inline-flex min-w-0 items-center gap-2">
-              {index > 0 ? <span aria-hidden="true">•</span> : null}
-              <span className="min-w-0 truncate">{metaItem}</span>
-            </span>
+            <Fragment key={`${metaItem}-${index}`}>
+              {index > 0 ? <span className="mx-1.5">•</span> : null}
+              <span className="break-words">{metaItem}</span>
+            </Fragment>
           ))}
         </div>
 

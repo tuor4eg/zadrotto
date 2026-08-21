@@ -11,7 +11,7 @@ const SWIPE_THRESHOLD_PX = 40
 
 export type AchievementAwardedLevel = {
   awardedAt: Date | string
-  description: string
+  description: string | null
   imageUrl: string | null
   level: number
   name: string
@@ -22,7 +22,7 @@ export type AchievementShowcaseItem = {
   awardedLevels: AchievementAwardedLevel[]
   code: string
   currentValue: number
-  description: string
+  description: string | null
   highestAwardedLevel: number | null
   imageUrl: string | null
   levelCount: number
@@ -33,7 +33,7 @@ export type AchievementShowcaseItem = {
 
 type AchievementCardSlide = {
   awardedAt: Date | string | null
-  description: string
+  description: string | null
   imageUrl: string | null
   level: number | null
   name: string

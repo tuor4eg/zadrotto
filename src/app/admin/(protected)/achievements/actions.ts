@@ -67,10 +67,10 @@ async function parseGeneralConfiguration(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim();
   const description = String(formData.get("description") ?? "").trim();
   const mechanicCode = String(formData.get("mechanic") ?? "");
-  if (!name || !description) throw new Error("invalid");
+  if (!name) throw new Error("invalid");
   const { mechanic, params } = await parseMechanicParams(formData, mechanicCode);
   return {
-    description,
+    description: description || null,
     enabled: formData.get("enabled") === "1",
     mechanic: mechanic.code,
     name,
@@ -136,33 +136,19 @@ export async function updateAchievementAction(formData: FormData) {
   let configuration;
   try { configuration = await parseGeneralConfiguration(formData); } catch { redirect(editPath(id, "?error=invalid")); }
 
-  const imageResult = await resolveLevelImageObjectKey({
-    achievementId: id,
-    currentObjectKey: achievement.imageObjectKey,
-    formData,
-  });
-  if (imageResult.error) redirect(editPath(id, `?error=${imageResult.error}`));
-
   let updated;
   try {
     updated = await updateAchievementGeneral({
       ...configuration,
       id,
-      imageObjectKey: imageResult.objectKey,
     });
   } catch (error) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey);
     console.error("Не удалось сохранить ачивку.", error);
     redirect(editPath(id, "?error=save"));
   }
 
   if (!updated) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey);
     redirect("/admin/achievements?error=missing");
-  }
-
-  if (achievement.imageObjectKey !== imageResult.objectKey) {
-    await deleteAchievementImageBestEffort(achievement.imageObjectKey);
   }
 
   await logActivity({
@@ -176,7 +162,6 @@ export async function updateAchievementAction(formData: FormData) {
     metadata: {
       code: achievement.code,
       enabled: updated.enabled,
-      hasImage: Boolean(updated.imageObjectKey),
       showWhenLocked: updated.showWhenLocked,
     },
   });

@@ -39,7 +39,7 @@ export default async function NewAchievementPage({ searchParams }: Props) {
       <CardContent className="pt-5">
         <form action={createAchievementAction} className="grid gap-5">
           <div className="grid gap-2"><Label htmlFor="achievement-name">Название</Label><Input id="achievement-name" name="name" required /></div>
-          <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" required /></div>
+          <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" /></div>
           <AchievementConfigurationFields
             initialMechanic={initialMechanic.code}
             initialParams={{}}
@@ -58,7 +58,7 @@ export default async function NewAchievementPage({ searchParams }: Props) {
             <Input id="first-level-threshold" name="firstLevelThreshold" type="number" min={1} defaultValue={1} required />
             <p className="text-xs text-stone-500">Первый уровень создаётся автоматически с номером 1.</p>
           </div>
-          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" defaultChecked />Выдавать ачивку</label>
+          <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="enabled" value="1" />Выдавать ачивку</label>
           <label className="flex items-center gap-2 text-sm"><input type="checkbox" name="showWhenLocked" value="1" defaultChecked />Показывать ачивку до получения</label>
           <Button type="submit">Создать</Button>
         </form>

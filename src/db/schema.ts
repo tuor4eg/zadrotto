@@ -923,10 +923,9 @@ export const achievements = pgTable(
     id: serial("id").primaryKey(),
     code: text("code").notNull().unique(),
     name: text("name").notNull(),
-    description: text("description").notNull(),
+    description: text("description"),
     mechanic: text("mechanic").notNull(),
     params: jsonb("params").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
-    imageObjectKey: text("image_object_key"),
     enabled: boolean("enabled").default(true).notNull(),
     showWhenLocked: boolean("show_when_locked").default(true).notNull(),
     displayOrder: integer("display_order").default(0).notNull(),
@@ -935,7 +934,7 @@ export const achievements = pgTable(
   (table) => [
     check("achievements_code_check", sql`btrim(${table.code}) <> ''`),
     check("achievements_name_check", sql`btrim(${table.name}) <> ''`),
-    check("achievements_description_check", sql`btrim(${table.description}) <> ''`),
+    check("achievements_description_check", sql`${table.description} is null or btrim(${table.description}) <> ''`),
     check("achievements_mechanic_check", sql`btrim(${table.mechanic}) <> ''`),
   ],
 );
@@ -1008,6 +1007,24 @@ export const achievementSettings = pgTable(
       "achievement_settings_locked_image_object_key_check",
       sql`${table.lockedImageObjectKey} is null or btrim(${table.lockedImageObjectKey}) <> ''`,
     ),
+  ],
+);
+
+export const toastSettings = pgTable(
+  "toast_settings",
+  {
+    id: integer("id").primaryKey().default(1),
+    siteDurationSeconds: integer("site_duration_seconds").default(5).notNull(),
+    adminDurationSeconds: integer("admin_duration_seconds").default(5).notNull(),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    check("toast_settings_singleton_id_check", sql`${table.id} = 1`),
+    check("toast_settings_site_duration_check", sql`${table.siteDurationSeconds} between 1 and 60`),
+    check("toast_settings_admin_duration_check", sql`${table.adminDurationSeconds} between 1 and 60`),
   ],
 );
 
@@ -1371,6 +1388,7 @@ export type CoverSettings = typeof coverSettings.$inferSelect;
 export type NewCoverSettings = typeof coverSettings.$inferInsert;
 export type ArchiveSettings = typeof archiveSettings.$inferSelect;
 export type AchievementSettings = typeof achievementSettings.$inferSelect;
+export type ToastSettings = typeof toastSettings.$inferSelect;
 export type ProviderSettings = typeof providerSettings.$inferSelect;
 export type NewProviderSettings = typeof providerSettings.$inferInsert;
 export type ProviderCredentials = typeof providerCredentials.$inferSelect;
