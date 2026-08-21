@@ -83,13 +83,17 @@ describe("domain event foundation", () => {
 
 describe("achievement consumer", () => {
   it("registers reusable mechanics with independently declared parameters", () => {
-    assert.equal(achievementMechanicRegistry.length, 3);
+    assert.equal(achievementMechanicRegistry.length, 5);
     const rating = getAchievementMechanic("rating.authored.count");
     const review = getAchievementMechanic("review.authored.count");
     const media = getAchievementMechanic("media.authored.count");
+    const quizCorrect = getAchievementMechanic("quiz.correct.count");
+    const quizWin = getAchievementMechanic("quiz.win.count");
     assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
+    assert.deepEqual(quizCorrect?.params, []);
+    assert.deepEqual(quizWin?.params, []);
     assert.notEqual(rating?.params, review?.params);
     assert.notEqual(review?.params, media?.params);
     assert.deepEqual(review?.eventTypes, [
@@ -106,6 +110,23 @@ describe("achievement consumer", () => {
     assert.throws(() => rating?.parseParams({ mediaType: "film", unsupported: true }));
     assert.throws(() => review?.parseParams({ seriesId: 0 }));
     assert.throws(() => media?.parseParams({ seriesId: 0 }));
+    assert.deepEqual(quizCorrect?.parseParams({}), {});
+    assert.deepEqual(quizWin?.parseParams({}), {});
+    assert.throws(() => quizCorrect?.parseParams({ mediaType: "film" }));
+    assert.throws(() => quizWin?.parseParams(null));
+    assert.deepEqual(quizCorrect?.eventTypes, ["quiz.completed"]);
+    assert.deepEqual(quizWin?.eventTypes, ["quiz.completed"]);
+  });
+
+  it("evaluates quiz mechanics set-wise and routes completion to its author", () => {
+    const catalogSource = readFileSync("src/lib/achievements/catalog.ts", "utf8");
+    assert.match(catalogSource, /from \$\{quizParticipants\}[\s\S]*authorId} in \(\$\{sql\.join\(input\.authorIds/);
+    assert.match(catalogSource, /quizParticipants\.outcome} = 'correct'/);
+    assert.match(catalogSource, /quizParticipants\.isWinner} = true/);
+    assert.match(catalogSource, /group by \$\{quizParticipants\.authorId\}/);
+    assert.doesNotMatch(catalogSource, /for \(const authorId of input\.authorIds\)/);
+    assert.match(achievementConsumerSource, /"quiz\.completed"/);
+    assert.match(achievementConsumerSource, /event\.type === "quiz\.completed"[\s\S]*authorId/);
   });
 
   it("checks current published data and awards with a database uniqueness guard", () => {

@@ -80,9 +80,9 @@ describe("author dashboard media tiles", () => {
     assert.match(gridSource, /if \(items\.length === 0\)[\s\S]*Здесь пока пусто/);
     assert.match(
       mainPageSource,
-      /function getMainTileDescriptors[\s\S]*currentAuthorScore: item\.currentAuthorScore[\s\S]*href: `\/media\/\$\{item\.code\}`[\s\S]*item,[\s\S]*key: item\.id/,
+      /function getMainTileDescriptors[\s\S]*currentAuthorScore: item\.currentAuthorScore[\s\S]*href: linkToReview && item\.reviewId[\s\S]*`\/media\/\$\{item\.code\}\?review=\$\{item\.reviewId\}`[\s\S]*: `\/media\/\$\{item\.code\}`[\s\S]*item,[\s\S]*key: item\.id/,
     );
-    assert.match(mainPageSource, /getMainTileDescriptors\(items\)/);
+    assert.match(mainPageSource, /getMainTileDescriptors\(items, linkToReview\)/);
     assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant="top"/);
     assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant="top"/);
     assert.doesNotMatch(mainPageSource, /initialColumnCount=/);

@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -89,17 +90,29 @@ export default async function RulesPage() {
         />
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
-          <h1 className="font-serif text-4xl leading-none sm:text-5xl">Правила архива</h1>
-          <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
-            <p>
-              Добро пожаловать в «Журнал, которого не было». Здесь мы собираем игры, фильмы,
-              книги, комиксы и другие культурные находки, о которых хочется помнить чуть дольше,
-              чем до следующего понедельника.
-            </p>
-            <p>
-              Правил немного. В основном они сводятся к простой мысли: пополняйте архив с
-              интересом, спорьте с уважением и не превращайте картотеку в поле боя.
-            </p>
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
+            <div>
+              <h1 className="font-serif text-4xl leading-none sm:text-5xl">Правила архива</h1>
+              <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
+                <p>
+                  Добро пожаловать в «Журнал, которого не было». Здесь мы собираем игры, фильмы,
+                  книги, комиксы и другие культурные находки, о которых хочется помнить чуть дольше,
+                  чем до следующего понедельника.
+                </p>
+                <p>
+                  Правил немного. В основном они сводятся к простой мысли: пополняйте архив с
+                  интересом, спорьте с уважением и не превращайте картотеку в поле боя.
+                </p>
+              </div>
+            </div>
+            <Image
+              alt=""
+              className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
+              height={525}
+              src="/deadz_rulez.png"
+              unoptimized
+              width={420}
+            />
           </div>
         </article>
 

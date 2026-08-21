@@ -12,6 +12,7 @@ import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { QuizModal } from "@/components/quizzes/quiz-modal";
 import type { ActiveQuiz } from "@/lib/quizzes/model";
+import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 type ArchiveSiteHeaderProps = {
   brandHref: string;
@@ -45,13 +46,15 @@ export function ArchiveSiteHeader({
   const ActionsContainer = isCatalog ? "div" : "nav";
   const SiteHeaderContainer = isCatalog ? "div" : "header";
   const authorLinkLabel = currentAuthor ? "Профиль" : "Войти";
-  const actionClassName = `archive-control-surface relative inline-flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 font-mono text-xs uppercase tracking-[0.12em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50 ${
+  const actionLayoutClassName = `relative inline-flex h-9 shrink-0 items-center justify-center rounded-md border font-mono text-xs uppercase tracking-[0.12em] shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] ${
     isCatalog
       ? compact
         ? "w-9 px-0"
         : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
       : "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"
   }`;
+  const actionClassName = `archive-control-surface ${actionLayoutClassName} border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50`;
+  const quizActionClassName = `${actionLayoutClassName} ${AUTHOR_RATING_TONE_CLASS_NAMES.good} hover:border-emerald-950/40 hover:bg-emerald-800`;
 
   const adminLink = currentAdminUser ? (
     <Link href="/admin" aria-label="Админка" className={actionClassName}>
@@ -84,9 +87,9 @@ export function ArchiveSiteHeader({
     </button>
   );
   const quizAction = quiz ? (
-    <button type="button" aria-label="Открыть викторину" className={actionClassName} onClick={() => setIsQuizOpen(true)}>
+    <button type="button" aria-label="Сыграем" className={quizActionClassName} onClick={() => setIsQuizOpen(true)}>
+      <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>Сыграем</span>
       <CircleHelp className="size-4" />
-      <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>Викторина</span>
     </button>
   ) : null;
   const catalogActions = (
@@ -160,12 +163,12 @@ export function ArchiveSiteHeader({
 
         {isCatalog ? (
           <div className="archive-catalog-controls-row">
-            {quizAction && !compact ? <div className="hidden lg:block">{quizAction}</div> : null}
+            {quizAction && !compact ? <div className="hidden lg:mr-2 lg:block">{quizAction}</div> : null}
             {controls}
           </div>
         ) : (
           <ActionsContainer aria-label="Основная навигация" className="contents lg:flex lg:shrink-0 lg:gap-2">
-            {controls ? <div className="col-span-2 row-start-2 min-w-0 lg:col-auto lg:row-auto lg:flex lg:gap-2">{quizAction ? <div className="hidden lg:block">{quizAction}</div> : null}<div className="min-w-0 w-full lg:flex-1">{controls}</div></div> : null}
+            {controls ? <div className="col-span-2 row-start-2 min-w-0 lg:col-auto lg:row-auto lg:flex lg:gap-2">{quizAction ? <div className="hidden lg:mr-2 lg:block">{quizAction}</div> : null}<div className="min-w-0 w-full lg:flex-1">{controls}</div></div> : null}
             <div className="col-start-2 row-start-1 flex shrink-0 gap-2 lg:col-auto lg:row-auto">
               {quizAction ? <div className="lg:hidden">{quizAction}</div> : null}
               {adminLink}

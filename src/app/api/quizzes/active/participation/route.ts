@@ -7,10 +7,10 @@ export async function POST() {
     return Response.json({ error: "Требуется авторизация." }, { status: 401 });
   }
 
-  const quiz = await joinActiveQuiz(author.id);
-  if (!quiz) {
+  const participant = await joinActiveQuiz(author.id);
+  if (!participant) {
     return Response.json({ error: "Активная викторина не найдена." }, { status: 404 });
   }
 
-  return Response.json({ quizId: quiz.id });
+  return Response.json({ participant });
 }

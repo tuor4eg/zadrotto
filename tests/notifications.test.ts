@@ -32,6 +32,7 @@ const reviewSource = readFileSync("src/db/queries/contribution-reviews.ts", "utf
 const inboxHostSource = readFileSync("src/components/notifications/notification-inbox.tsx", "utf8")
 const inboxSource = readFileSync("src/lib/notifications/inbox.ts", "utf8")
 const authorApiSource = readFileSync("src/app/api/notifications/route.ts", "utf8")
+const authorDeleteApiSource = readFileSync("src/app/api/notifications/[id]/route.ts", "utf8")
 const adminApiSource = readFileSync("src/app/api/admin/notifications/route.ts", "utf8")
 const adminDeleteApiSource = readFileSync("src/app/api/admin/notifications/[id]/route.ts", "utf8")
 const authorReadApiSource = readFileSync("src/app/api/notifications/[id]/read/route.ts", "utf8")
@@ -357,8 +358,8 @@ describe("admin submission inbox status", () => {
   })
 })
 
-describe("admin notification deletion", () => {
-  it("deletes one or all inbox rows for the current admin only", () => {
+describe("notification deletion", () => {
+  it("deletes one or all inbox rows for the current recipient only", () => {
     assert.match(notificationQuerySource, /export async function deleteNotification/)
     assert.match(notificationQuerySource, /export async function deleteAllRecipientNotifications/)
     assert.match(
@@ -376,17 +377,20 @@ describe("admin notification deletion", () => {
     assert.match(adminDeleteApiSource, /export async function DELETE/)
     assert.match(adminDeleteApiSource, /deleteRecipientNotification/)
     assert.match(adminDeleteApiSource, /recipientType: "admin"/)
-    assert.doesNotMatch(authorApiSource, /export async function DELETE/)
+    assert.match(authorApiSource, /export async function DELETE/)
+    assert.match(authorApiSource, /deleteAllInboxNotifications/)
+    assert.match(authorApiSource, /recipientType: "author"/)
+    assert.match(authorDeleteApiSource, /export async function DELETE/)
+    assert.match(authorDeleteApiSource, /deleteRecipientNotification/)
+    assert.match(authorDeleteApiSource, /recipientType: "author"/)
   })
 
-  it("lets the admin remove one notification or clear the inbox", () => {
-    assert.match(inboxHostSource, /canDelete: isAdminRoute/)
+  it("lets admins and authors remove notifications from a bounded scrollable inbox", () => {
     assert.match(inboxHostSource, /method: "DELETE"/)
     assert.match(inboxHostSource, /Удалить все/)
     assert.match(inboxHostSource, /Точно удалить все\?/)
     assert.match(inboxHostSource, /inbox\.deleteOne\(item\.id\)/)
-    assert.doesNotMatch(authorApiSource, /deleteRecipientNotification/)
+    assert.match(inboxHostSource, /max-h-\[min\(28rem,calc\(100vh-8rem\)\)\] overflow-y-auto overscroll-contain/)
   })
 })
-
 

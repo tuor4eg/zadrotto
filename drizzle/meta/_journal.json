@@ -519,6 +519,20 @@
       "when": 1786901000000,
       "tag": "0073_toast_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1786901100000,
+      "tag": "0074_quiz_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1786901200000,
+      "tag": "0075_quiz_winners",
+      "breakpoints": true
     }
   ]
 }

@@ -1125,6 +1125,7 @@ export const quizzes = pgTable(
       .references(() => mediaItems.id, { onDelete: "restrict" }),
     startsAt: timestamp("starts_at", { withTimezone: true }).notNull(),
     endsAt: timestamp("ends_at", { withTimezone: true }).notNull(),
+    attemptLimit: integer("attempt_limit").default(3).notNull(),
     enabled: boolean("enabled").default(true).notNull(),
     ...timestamps(),
   },
@@ -1132,6 +1133,7 @@ export const quizzes = pgTable(
     index("quizzes_answer_media_item_id_idx").on(table.answerMediaItemId),
     index("quizzes_active_idx").on(table.enabled, table.startsAt, table.endsAt),
     check("quizzes_period_check", sql`${table.startsAt} < ${table.endsAt}`),
+    check("quizzes_attempt_limit_check", sql`${table.attemptLimit} between 1 and 10`),
     check(
       "quizzes_content_check",
       sql`nullif(btrim(${table.question}), '') is not null or ${table.imageObjectKey} is not null`,
@@ -1157,10 +1159,20 @@ export const quizParticipants = pgTable(
     quizId: integer("quiz_id").notNull().references(() => quizzes.id, { onDelete: "cascade" }),
     authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "cascade" }),
     joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+    attemptsRemaining: integer("attempts_remaining").notNull(),
+    outcome: text("outcome"),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    isWinner: boolean("is_winner").default(false).notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.quizId, table.authorId], name: "quiz_participants_pk" }),
     index("quiz_participants_author_id_idx").on(table.authorId),
+    check("quiz_participants_attempts_remaining_check", sql`${table.attemptsRemaining} >= 0`),
+    check("quiz_participants_outcome_check", sql`${table.outcome} is null or ${table.outcome} in ('correct', 'exhausted')`),
+    check("quiz_participants_completion_check", sql`(${table.outcome} is null and ${table.completedAt} is null) or (${table.outcome} is not null and ${table.completedAt} is not null)`),
+    check("quiz_participants_attempt_state_check", sql`(${table.outcome} is null and ${table.attemptsRemaining} > 0) or ${table.outcome} = 'correct' or (${table.outcome} = 'exhausted' and ${table.attemptsRemaining} = 0)`),
+    check("quiz_participants_winner_check", sql`${table.isWinner} = false or ${table.outcome} = 'correct'`),
+    uniqueIndex("quiz_participants_one_winner_idx").on(table.quizId).where(sql`${table.isWinner} = true`),
   ],
 );
 

@@ -24,6 +24,17 @@ describe("archive site header", () => {
     assert.equal((sharedSource.match(/<AuthorLoginModal/g) ?? []).length, 1);
   });
 
+  it("presents the quiz action as a high-rating call to play", () => {
+    assert.match(sharedSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
+    assert.match(sharedSource, /const actionClassName = `archive-control-surface \$\{actionLayoutClassName\}/);
+    assert.match(sharedSource, /const quizActionClassName = `\$\{actionLayoutClassName\} \$\{AUTHOR_RATING_TONE_CLASS_NAMES\.good\}/);
+    assert.match(
+      sharedSource,
+      /aria-label="Сыграем"[\s\S]*<span[^>]*>Сыграем<\/span>[\s\S]*<CircleHelp/,
+    );
+    assert.equal((sharedSource.match(/hidden lg:mr-2 lg:block/g) ?? []).length, 2);
+  });
+
   it("is used by both archive entry points with the correct brand links", () => {
     assert.match(
       catalogSource,

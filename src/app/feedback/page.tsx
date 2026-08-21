@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
@@ -34,20 +35,32 @@ export default async function FeedbackPage() {
         />
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
-          <h1 className="font-serif text-4xl leading-none sm:text-5xl">Обратная связь</h1>
-          <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
-            <p>
-              Если вы нашли ошибку, хотите предложить улучшение или просто обсудить архив,
-              напишите в Telegram.
-            </p>
-            <a
-              className="inline-flex rounded-full bg-[var(--archive-bg-end)] px-4 py-2 font-mono text-sm font-medium text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white"
-              href="https://t.me/zadrotto"
-              rel="noreferrer"
-              target="_blank"
-            >
-              Telegram · @zadrotto
-            </a>
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
+            <div>
+              <h1 className="font-serif text-4xl leading-none sm:text-5xl">Обратная связь</h1>
+              <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
+                <p>
+                  Если вы нашли ошибку, хотите предложить улучшение или просто обсудить архив,
+                  напишите в Telegram.
+                </p>
+                <a
+                  className="inline-flex rounded-full bg-[var(--archive-bg-end)] px-4 py-2 font-mono text-sm font-medium text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white"
+                  href="https://t.me/zadrotto"
+                  rel="noreferrer"
+                  target="_blank"
+                >
+                  Telegram · @zadrotto
+                </a>
+              </div>
+            </div>
+            <Image
+              alt=""
+              className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
+              height={425}
+              src="/deadz_contact.png"
+              unoptimized
+              width={420}
+            />
           </div>
         </article>
       </div>

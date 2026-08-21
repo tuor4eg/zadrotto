@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import Link from "next/link";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
@@ -38,12 +39,24 @@ export default async function HelpPage() {
         />
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
-          <h1 className="font-serif text-4xl leading-none sm:text-5xl">Помощь</h1>
-          <p className="mt-6 text-base leading-7 text-stone-700">
-            Архив устроен довольно просто, но некоторые кнопки умеют прятаться с достоинством
-            опытного шпиона. Ниже — короткие ответы о том, где искать записи, как делиться
-            впечатлениями и куда исчезает предложение после публикации.
-          </p>
+          <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
+            <div>
+              <h1 className="font-serif text-4xl leading-none sm:text-5xl">Помощь</h1>
+              <p className="mt-6 text-base leading-7 text-stone-700">
+                Архив устроен довольно просто, но некоторые кнопки умеют прятаться с достоинством
+                опытного шпиона. Ниже — короткие ответы о том, где искать записи, как делиться
+                впечатлениями и куда исчезает предложение после публикации.
+              </p>
+            </div>
+            <Image
+              alt=""
+              className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
+              height={560}
+              src="/deadz_faq.png"
+              unoptimized
+              width={420}
+            />
+          </div>
         </article>
 
         <section className="archive-paper archive-panel p-5 sm:p-6">

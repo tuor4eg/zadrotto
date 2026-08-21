@@ -25,7 +25,6 @@ const POLL_INTERVAL_MS = 30_000
 type NotificationInboxItem = NotificationInboxPayload["items"][number]
 
 type NotificationInboxValue = {
-  canDelete: boolean
   deleteAll: () => Promise<void>
   deleteOne: (id: number) => Promise<void>
   items: NotificationInboxItem[]
@@ -194,14 +193,13 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
 
   const value = useMemo<NotificationInboxValue>(
     () => ({
-      canDelete: isAdminRoute,
       deleteAll,
       deleteOne,
       items,
       markRead,
       unreadCount,
     }),
-    [deleteAll, deleteOne, isAdminRoute, items, markRead, unreadCount],
+    [deleteAll, deleteOne, items, markRead, unreadCount],
   )
 
   return (
@@ -284,25 +282,24 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
             <p className="px-3 py-2 text-sm text-stone-600">Уведомлений нет.</p>
           ) : (
             <>
-              {inbox.canDelete ? (
-                <div className="flex justify-end border-b border-stone-200 px-2 py-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!confirmClear) {
-                        setConfirmClear(true)
-                        return
-                      }
-                      setConfirmClear(false)
-                      void inbox.deleteAll()
-                    }}
-                    className="rounded-sm px-2 py-1 text-xs text-stone-500 transition-colors hover:bg-stone-200/60 hover:text-red-700"
-                  >
-                    {confirmClear ? "Точно удалить все?" : "Удалить все"}
-                  </button>
-                </div>
-              ) : null}
-              {inbox.items.map((item) => {
+              <div className="flex justify-end border-b border-stone-200 px-2 py-1">
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (!confirmClear) {
+                      setConfirmClear(true)
+                      return
+                    }
+                    setConfirmClear(false)
+                    void inbox.deleteAll()
+                  }}
+                  className="rounded-sm px-2 py-1 text-xs text-stone-500 transition-colors hover:bg-stone-200/60 hover:text-red-700"
+                >
+                  {confirmClear ? "Точно удалить все?" : "Удалить все"}
+                </button>
+              </div>
+              <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto overscroll-contain">
+                {inbox.items.map((item) => {
               const isMuted = Boolean(item.readAt || item.statusLabel)
               const content = (
                 <>
@@ -335,19 +332,18 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
                       {content}
                     </div>
                   )}
-                  {inbox.canDelete ? (
-                    <button
-                      type="button"
-                      aria-label={`Удалить уведомление «${item.title}»`}
-                      onClick={() => void inbox.deleteOne(item.id)}
-                      className="mt-1 mr-1 shrink-0 rounded-sm p-1 text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-red-700"
-                    >
-                      <Trash2 className="size-3.5" />
-                    </button>
-                  ) : null}
+                  <button
+                    type="button"
+                    aria-label={`Удалить уведомление «${item.title}»`}
+                    onClick={() => void inbox.deleteOne(item.id)}
+                    className="mt-1 mr-1 shrink-0 rounded-sm p-1 text-stone-400 transition-colors hover:bg-stone-200/60 hover:text-red-700"
+                  >
+                    <Trash2 className="size-3.5" />
+                  </button>
                 </div>
               )
-            })}
+              })}
+              </div>
             </>
           )}
         </div>

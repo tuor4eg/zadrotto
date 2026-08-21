@@ -35,7 +35,7 @@ import { MediaItemsCatalog } from "@/app/media-items-catalog";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { sortMediaTypesByCount } from "@/lib/media/types";
-import { getActiveQuiz, isQuizParticipant } from "@/db/queries/quizzes";
+import { getActiveQuiz, getActiveQuizParticipantState } from "@/db/queries/quizzes";
 
 const CATALOG_PAGE_SIZE_OPTIONS = [24, 48, 72, 96] as const;
 const DEFAULT_CATALOG_PAGE_SIZE = 48;
@@ -73,9 +73,15 @@ export default async function Home({ searchParams }: HomeProps) {
   ]);
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
   const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
-  const isActiveQuizParticipant = activeQuiz && currentAuthor
-    ? await isQuizParticipant(activeQuiz.id, currentAuthor.id)
-    : false;
+  const activeQuizParticipant = activeQuiz && currentAuthor
+    ? await getActiveQuizParticipantState(currentAuthor.id)
+    : null;
+  const isActiveQuizParticipant = Boolean(
+    activeQuiz && activeQuizParticipant?.quizId === activeQuiz.id,
+  );
+  const canGuessActiveQuiz = Boolean(
+    isActiveQuizParticipant && activeQuizParticipant && !activeQuizParticipant.completed,
+  );
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
@@ -222,7 +228,7 @@ export default async function Home({ searchParams }: HomeProps) {
         />
 
         <MediaItemsCatalog
-          activeQuiz={activeQuiz && isActiveQuizParticipant ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
+          activeQuiz={activeQuiz && canGuessActiveQuiz ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
           authorRatingFilter={authorRatingFilter}
           currentAdmin={Boolean(currentAdminUser)}
           defaultPageSize={DEFAULT_CATALOG_PAGE_SIZE}

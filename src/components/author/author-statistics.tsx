@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Archive, CalendarCheck, ChartNoAxesColumn, FileText, Gauge, Info, Star } from "lucide-react";
 
 import { AuthorMediaInterestsPanel } from "@/app/author/(protected)/author-media-interests-panel";
+import { AuthorStatisticList } from "@/components/author/author-statistic-list";
 import { ResponsiveTileGrid, type ResponsiveTileDescriptor } from "@/components/archive/responsive-tile-grid";
 import { Card, CardContent } from "@/components/ui/card";
 import type { MediaTypeOption } from "@/lib/media/types";
@@ -28,6 +29,7 @@ export function AuthorStatistics({
   reviewCount,
   reviewsHref,
   contributionCount,
+  quizWinnerCount,
 }: {
   interestsTitle?: string;
   latestRatingTiles: ResponsiveTileDescriptor[];
@@ -38,6 +40,7 @@ export function AuthorStatistics({
   reviewCount: number;
   reviewsHref: string;
   contributionCount: number;
+  quizWinnerCount?: number;
 }) {
   const distributionByMediaType = new Map(ratingSummary.distribution.map((item) => [item.mediaType, item.ratingsCount]));
   const mediaTypesByRatingCount = sortMediaTypesByCount(mediaTypes, ratingSummary.distribution.map((item) => ({ count: item.ratingsCount, mediaType: item.mediaType })));
@@ -51,6 +54,9 @@ export function AuthorStatistics({
     { Icon: CalendarCheck, label: "Оценено в этом году", value: ratingSummary.currentYearRatingsCount },
     { Icon: FileText, label: "Рецензий", value: reviewCount },
     { Icon: Archive, label: "Добавлено в архив", value: contributionCount },
+    ...(quizWinnerCount === undefined
+      ? []
+      : [{ Icon: Star, label: "Побед в викторинах", value: quizWinnerCount }]),
   ];
 
   return <div className="author-dashboard flex flex-col gap-3">
@@ -72,7 +78,7 @@ export function AuthorStatistics({
       </CardContent></Card>
       <Card className="archive-paper archive-panel h-full"><CardContent className="p-4 sm:px-5 sm:pt-5">
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><Info className="size-5 shrink-0 text-red-950/70" />Статистика</h2></div>
-        <div className="divide-y divide-dashed divide-stone-400/35">{statistics.map(({ Icon, label, value }) => <div key={label} className="flex items-center justify-between gap-4 py-2"><span className="flex items-center gap-2 font-serif text-lg"><Icon className="size-4 text-red-950/65" />{label}</span><strong className="shrink-0 font-mono text-sm font-normal tabular-nums text-stone-600">{value}</strong></div>)}</div>
+        <AuthorStatisticList items={statistics} />
       </CardContent></Card>
     </section>
     <section className="grid gap-3 lg:grid-cols-2">

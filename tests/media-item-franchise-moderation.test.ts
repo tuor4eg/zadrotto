@@ -34,7 +34,7 @@ describe("public franchise links", () => {
     const mediaQueries = readFileSync("src/db/queries/media-items.ts", "utf8");
     const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 
-    assert.match(mediaQueries, /franchiseLinkStatuses: franchiseLinkStatusesSql\(mediaItems\.id\)/);
+    assert.match(mediaQueries, /franchiseLinkStatuses: franchiseLinkStatusesSql\(\)/);
     assert.match(mediaPage, /mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/);
   });
 
@@ -97,7 +97,7 @@ describe("public franchise links", () => {
 
     assert.match(
       mediaQueries,
-      /franchiseLinkStatuses: input\.currentAuthorId\s*\?\s*franchiseLinkStatusesSql\(mediaItems\.id\)\s*:\s*sql<MediaItemFranchiseLinkStatus\[]>\s*`'\[]'::jsonb`/,
+      /franchiseLinkStatuses: input\.currentAuthorId\s*\?\s*franchiseLinkStatusesSql\(\)\s*:\s*sql<MediaItemFranchiseLinkStatus\[]>\s*`'\[]'::jsonb`/,
     );
   });
 });

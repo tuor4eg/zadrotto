@@ -4,6 +4,10 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
+import {
+  useExternalInterface,
+  type QuizParticipantHudState,
+} from "@/components/external-interface/external-interface-layer";
 
 export function QuizParticipationButton({
   isParticipating,
@@ -13,6 +17,7 @@ export function QuizParticipationButton({
   onOpenArchive?: () => void;
 }) {
   const router = useRouter();
+  const { setQuizParticipant } = useExternalInterface();
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,6 +37,7 @@ export function QuizParticipationButton({
         setError(data.error ?? "Не удалось присоединиться к викторине.");
         return;
       }
+      setQuizParticipant((data as { participant?: QuizParticipantHudState }).participant ?? null);
       if (onOpenArchive) onOpenArchive();
       else router.push("/archive");
       router.refresh();
@@ -43,7 +49,7 @@ export function QuizParticipationButton({
   }
 
   return (
-    <div className="grid justify-items-start gap-2">
+    <div className="grid justify-items-center gap-2 text-center">
       <Button className="archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 transition-colors hover:border-stone-700 hover:bg-stone-50 hover:text-stone-950" type="button" variant="outline" disabled={pending} onClick={openArchive}>
         {pending
           ? "Присоединяем…"

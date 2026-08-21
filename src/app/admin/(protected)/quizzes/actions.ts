@@ -23,6 +23,7 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
   const startsAt = new Date(String(form.get("startsAt") ?? ""));
   const endsAt = new Date(String(form.get("endsAt") ?? ""));
   const mediaTypes = [...new Set(form.getAll("mediaTypes").map(String).filter(Boolean))];
+  const attemptLimit = Number(form.get("attemptLimit") ?? 3);
 
   if (!question && !imageObjectKey) throw new Error("content");
   if (!Number.isSafeInteger(answerMediaItemId) || answerMediaItemId <= 0) {
@@ -32,6 +33,9 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
     throw new Error("dates");
   }
   if (startsAt >= endsAt) throw new Error("period");
+  if (!Number.isSafeInteger(attemptLimit) || attemptLimit < 1 || attemptLimit > 10) {
+    throw new Error("attempt-limit");
+  }
 
   return {
     question,
@@ -40,13 +44,14 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
     mediaTypes,
     startsAt,
     endsAt,
+    attemptLimit,
     enabled: form.get("enabled") === "1",
   };
 }
 
 function getQuizSaveError(error: unknown) {
   if (error instanceof Error) {
-    if (["content", "answer", "dates", "period"].includes(error.message)) {
+    if (["content", "answer", "dates", "period", "attempt-limit", "attempt-limit-locked"].includes(error.message)) {
       return error.message;
     }
     if (error.message === "invalid-answer") return "answer-type";
@@ -60,6 +65,8 @@ export type QuizFormState = { error: string | null; submissionId: number };
 
 const QUIZ_ERROR_MESSAGES: Record<string, string> = {
   answer: "Выберите правильную запись из результатов поиска.",
+  "attempt-limit": "Количество попыток должно быть целым числом от 1 до 10.",
+  "attempt-limit-locked": "Количество попыток нельзя изменить после присоединения первого участника.",
   "answer-type": "Тип правильной записи должен входить в допустимые типы викторины.",
   content: "Добавьте текст вопроса или изображение.",
   dates: "Укажите корректные дату и время начала и окончания.",

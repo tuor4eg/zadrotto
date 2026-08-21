@@ -26,6 +26,8 @@ type Quiz = {
   mediaTypes: string[];
   startsAt: Date;
   endsAt: Date;
+  attemptLimit: number;
+  hasParticipants: boolean;
   enabled: boolean;
 };
 
@@ -152,6 +154,25 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
             required
           />
         </div>
+      </div>
+
+      <div className="grid max-w-xs gap-2">
+        <label htmlFor="attemptLimit" className="text-sm font-medium">Количество попыток</label>
+        <input
+          className={inputClass}
+          id="attemptLimit"
+          name="attemptLimit"
+          type="number"
+          min={1}
+          max={10}
+          step={1}
+          defaultValue={item?.attemptLimit ?? 3}
+          disabled={item?.hasParticipants ?? false}
+          required
+        />
+        {item?.hasParticipants ? (
+          <><input type="hidden" name="attemptLimit" value={item.attemptLimit} /><p className="text-xs text-stone-500">Лимит нельзя изменить после присоединения участника.</p></>
+        ) : null}
       </div>
 
       <label className="flex items-center gap-2 text-sm">

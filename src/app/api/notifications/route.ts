@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 
 import { getCurrentAuthor } from "@/lib/auth/author-auth"
 import {
+  deleteAllInboxNotifications,
   getNotificationInbox,
   unauthenticatedNotificationInbox,
 } from "@/lib/notifications/inbox"
@@ -18,4 +19,18 @@ export async function GET() {
       recipientType: "author",
     }),
   )
+}
+
+export async function DELETE() {
+  const author = await getCurrentAuthor()
+  if (!author) {
+    return NextResponse.json({ ok: false }, { status: 401 })
+  }
+
+  await deleteAllInboxNotifications({
+    recipientId: author.id,
+    recipientType: "author",
+  })
+
+  return NextResponse.json({ ok: true })
 }

@@ -67,6 +67,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Статистика
             </Link>
             <Link
+              href="/author/quizzes"
+              className={buttonVariants({ variant: "outline", size: "sm" })}
+            >
+              Викторины
+            </Link>
+            <Link
               href="/author/achievements"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >

@@ -70,9 +70,9 @@ export function QuizModal({
         tabIndex={-1}
         className="archive-paper archive-panel relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-8"
       >
-        <div className="mb-5 flex items-start justify-between gap-4">
+        <div className="mb-5 text-center">
           <h2 id="active-quiz-title" className="font-serif text-3xl">Викторина</h2>
-          <button type="button" className="archive-control-surface grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 transition-colors hover:border-stone-700 hover:bg-stone-50" aria-label="Закрыть викторину" onClick={onClose}>
+          <button type="button" className="absolute right-5 top-5 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-8 sm:top-8" aria-label="Закрыть викторину" onClick={onClose}>
             <X className="size-4" />
           </button>
         </div>

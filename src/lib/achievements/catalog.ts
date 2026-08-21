@@ -1,6 +1,6 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-import { contributions, franchises, mediaItemFranchises, mediaItems, ratings } from "@/db/schema";
+import { contributions, franchises, mediaItemFranchises, mediaItems, quizParticipants, ratings } from "@/db/schema";
 import type { DbTransaction } from "@/db/transaction";
 import type { DomainEventType } from "@/lib/domain-events/catalog";
 
@@ -8,9 +8,12 @@ export const ACHIEVEMENT_MECHANIC_CODES = [
   "rating.authored.count",
   "review.authored.count",
   "media.authored.count",
+  "quiz.correct.count",
+  "quiz.win.count",
 ] as const;
 export type AchievementMechanicCode = (typeof ACHIEVEMENT_MECHANIC_CODES)[number];
 export type CountMechanicParams = { mediaType?: string; seriesId?: number };
+export type EmptyMechanicParams = Record<string, never>;
 
 export type MechanicParameterDefinition = {
   code: string;
@@ -45,6 +48,13 @@ function parseCountParams(value: unknown): CountMechanicParams {
     ...(source.mediaType === undefined ? {} : { mediaType: String(source.mediaType).trim() }),
     ...(source.seriesId === undefined ? {} : { seriesId: Number(source.seriesId) }),
   };
+}
+
+function parseEmptyParams(value: unknown): EmptyMechanicParams {
+  if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 0) {
+    throw new Error("Механика не принимает параметры.");
+  }
+  return {};
 }
 
 function groupCountInstances(instances: readonly AchievementMechanicInstance<CountMechanicParams>[]) {
@@ -130,6 +140,28 @@ async function evaluateCreatedMediaCount(input: {
   return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
 }
 
+async function evaluateQuizCount(input: {
+  tx: DbTransaction;
+  authorIds: readonly number[];
+  instances: readonly AchievementMechanicInstance<EmptyMechanicParams>[];
+  source: "correct" | "win";
+}) {
+  if (input.authorIds.length === 0 || input.instances.length === 0) return [];
+  const result = await input.tx.execute(sql`select ${quizParticipants.authorId}::int as "authorId",
+      count(*)::int as "value"
+    from ${quizParticipants}
+    where ${quizParticipants.authorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})
+      and ${input.source === "correct" ? sql`${quizParticipants.outcome} = 'correct'` : sql`${quizParticipants.isWinner} = true`}
+    group by ${quizParticipants.authorId}`);
+  return Array.from(result as Iterable<Record<string, unknown>>).flatMap((row) =>
+    input.instances.map((instance) => ({
+      achievementId: instance.achievementId,
+      authorId: Number(row.authorId),
+      value: Number(row.value),
+    })),
+  );
+}
+
 export const achievementMechanicRegistry: readonly AchievementMechanicDefinition[] = [
   {
     code: "rating.authored.count", label: "Количество поставленных оценок",
@@ -170,6 +202,28 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
     evaluateBatch: (input) => evaluateCreatedMediaCount({
       ...input,
       instances: input.instances as readonly AchievementMechanicInstance<CountMechanicParams>[],
+    }),
+  },
+  {
+    code: "quiz.correct.count", label: "Количество правильных ответов в викторинах",
+    eventTypes: ["quiz.completed"],
+    params: [],
+    parseParams: parseEmptyParams,
+    evaluateBatch: (input) => evaluateQuizCount({
+      ...input,
+      instances: input.instances as readonly AchievementMechanicInstance<EmptyMechanicParams>[],
+      source: "correct",
+    }),
+  },
+  {
+    code: "quiz.win.count", label: "Количество побед в викторинах",
+    eventTypes: ["quiz.completed"],
+    params: [],
+    parseParams: parseEmptyParams,
+    evaluateBatch: (input) => evaluateQuizCount({
+      ...input,
+      instances: input.instances as readonly AchievementMechanicInstance<EmptyMechanicParams>[],
+      source: "win",
     }),
   },
 ];

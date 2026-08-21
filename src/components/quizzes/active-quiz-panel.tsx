@@ -1,7 +1,10 @@
+"use client";
+
 import Image from "next/image";
+import { useEffect, useState } from "react";
 
 import { QuizParticipationButton } from "@/components/quizzes/quiz-participation-button";
-import type { ActiveQuiz } from "@/lib/quizzes/model";
+import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
 export function ActiveQuizPanel({
   isParticipating,
@@ -12,8 +15,15 @@ export function ActiveQuizPanel({
   onOpenArchive?: () => void;
   quiz: ActiveQuiz;
 }) {
+  const [now, setNow] = useState(() => new Date());
+
+  useEffect(() => {
+    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    return () => window.clearInterval(interval);
+  }, []);
+
   return (
-    <>
+    <div className="relative flex flex-col items-center gap-5 pb-8 text-center">
       {quiz.question ? <p className="text-lg">{quiz.question}</p> : null}
       {quiz.imageUrl ? (
         <Image
@@ -22,16 +32,13 @@ export function ActiveQuizPanel({
           width={1600}
           height={1200}
           unoptimized
-          className="max-h-[600px] w-full rounded-md object-contain"
+          className="mx-auto max-h-[600px] w-full rounded-md object-contain"
         />
       ) : null}
-      <p className="text-sm text-stone-600">
-        До {new Intl.DateTimeFormat("ru-RU", {
-          dateStyle: "medium",
-          timeStyle: "short",
-        }).format(new Date(quiz.endsAt))}
-      </p>
       <QuizParticipationButton isParticipating={isParticipating} onOpenArchive={onOpenArchive} />
-    </>
+      <p className="absolute bottom-0 right-0 text-right text-xs text-stone-600">
+        {formatQuizTimeRemaining(quiz.endsAt, now)}
+      </p>
+    </div>
   );
 }

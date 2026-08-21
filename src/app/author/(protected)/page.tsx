@@ -6,17 +6,19 @@ import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
+import { getAuthorQuizStatistics } from "@/db/queries/quizzes";
 import { requireAuthor } from "@/lib/auth/author-auth";
 
 export default async function AuthorPage() {
   const author = await requireAuthor();
   const mediaTypes = (await getEffectiveMediaTypeOptions(author.id)).filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
-  const [summary, reviewSummary, contributionCount, achievementItems] = await Promise.all([
+  const [summary, reviewSummary, contributionCount, achievementItems, quizStatistics] = await Promise.all([
     getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
     getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
     getAuthorPublishedMediaItemCount(author.id, enabledMediaTypeCodes),
     getAchievementShowcase(author.id),
+    getAuthorQuizStatistics(author.id),
   ]);
   const latestMediaItemIds = [...new Set([
     ...summary.latestRatings.map((rating) => rating.mediaItemId),
@@ -44,6 +46,7 @@ export default async function AuthorPage() {
       reviewCount={reviewSummary.reviewsCount}
       reviewsHref="/author/reviews"
       contributionCount={contributionCount}
+      quizWinnerCount={quizStatistics.winnerCount}
     />
   </div>;
 }

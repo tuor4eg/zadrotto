@@ -5,6 +5,19 @@ import { describe, it } from "node:test";
 import { RATING_SCORE_VALUES, formatScore } from "../src/lib/ratings/score";
 
 const source = readFileSync("src/components/author/author-statistics.tsx", "utf8");
+const statisticListSource = readFileSync(
+  "src/components/author/author-statistic-list.tsx",
+  "utf8",
+);
+const quizStatisticsSource = readFileSync(
+  "src/components/author/author-quiz-statistics.tsx",
+  "utf8",
+);
+const authorPageSource = readFileSync("src/app/author/(protected)/page.tsx", "utf8");
+const authorQuizzesPageSource = readFileSync(
+  "src/app/author/(protected)/quizzes/page.tsx",
+  "utf8",
+);
 const interestsPanelSource = readFileSync(
   "src/app/author/(protected)/author-media-interests-panel.tsx",
   "utf8",
@@ -38,15 +51,28 @@ describe("author dashboard layout", () => {
     assert.doesNotMatch(analyticsSection[1], /(?:sm|md):grid-cols/);
   });
 
-  it("keeps the five existing metrics in one divided statistics list", () => {
-    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount[\s\S]*contributionCount/);
-    assert.match(source, /divide-y divide-dashed divide-stone-400\/35/);
+  it("keeps the existing metrics and quiz wins in one divided statistics list", () => {
+    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount[\s\S]*contributionCount[\s\S]*quizWinnerCount/);
+    assert.match(source, /<AuthorStatisticList items=\{statistics\} \/>/);
+    assert.match(statisticListSource, /divide-y divide-dashed divide-stone-400\/35/);
     assert.match(
-      source,
-      /statistics\.map[\s\S]*className="flex items-center justify-between gap-4 py-2"/,
+      statisticListSource,
+      /items\.map[\s\S]*className="flex items-center justify-between gap-4 py-2"/,
     );
     assert.match(source, /\{ Icon: Star[\s\S]*\{ Icon: Gauge[\s\S]*\{ Icon: CalendarCheck[\s\S]*\{ Icon: FileText[\s\S]*\{ Icon: Archive/);
-    assert.match(source, /<Icon className="size-4 text-red-950\/65" \/>/);
+    assert.match(statisticListSource, /<Icon className="size-4 text-red-950\/65" \/>/);
+  });
+
+  it("keeps only quiz wins on the dashboard and moves full statistics to their own page", () => {
+    assert.match(authorPageSource, /getAuthorQuizStatistics\(author\.id\)/);
+    assert.match(authorPageSource, /quizWinnerCount=\{quizStatistics\.winnerCount\}/);
+    assert.doesNotMatch(authorPageSource, /<AuthorQuizStatistics/);
+    assert.match(authorQuizzesPageSource, /getAuthorQuizStatistics\(author\.id\)/);
+    assert.match(authorQuizzesPageSource, /<AuthorQuizStatistics statistics=\{statistics\} \/>/);
+    assert.match(quizStatisticsSource, /<AuthorStatisticList items=\{items\} \/>/);
+    for (const label of ["Сыграно", "Правильных ответов", "Точность", "С первой попытки", "Текущая серия", "Лучшая серия", "Побед"]) {
+      assert.match(quizStatisticsSource, new RegExp(label));
+    }
   });
 
   it("renders score distribution as one compact ten-column vertical chart", () => {

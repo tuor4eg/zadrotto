@@ -6,6 +6,10 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
+import {
+  useExternalInterface,
+  type QuizParticipantHudState,
+} from "@/components/external-interface/external-interface-layer";
 
 export function QuizGuessButton({
   titleId,
@@ -16,6 +20,7 @@ export function QuizGuessButton({
 }) {
   const [pending, setPending] = useState(false);
   const [feedback, setFeedback] = useState<ArchiveToast | null>(null);
+  const { setQuizParticipant } = useExternalInterface();
 
   async function guess() {
     setPending(true);
@@ -27,8 +32,15 @@ export function QuizGuessButton({
         body: JSON.stringify({ titleId }),
       });
       const data = await response.json();
+      if (data.participant !== undefined) {
+        setQuizParticipant(data.participant as QuizParticipantHudState | null);
+      }
       const text = response.ok
-        ? data.correct ? "Верно" : "Неверно"
+        ? data.correct
+          ? "Верно"
+          : data.participant?.outcome === "exhausted"
+            ? "Неверно. Попытки закончились."
+            : "Неверно"
         : data.error ?? "Не удалось проверить догадку.";
       setFeedback({
         id: `quiz-guess-${Date.now()}`,

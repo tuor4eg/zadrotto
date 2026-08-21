@@ -5,6 +5,7 @@ import { RouteTransitionProgress } from "@/components/ui/route-transition-progre
 import { AchievementToastHost } from "@/components/achievements/achievement-toast-host";
 import { NotificationInboxProvider } from "@/components/notifications/notification-inbox";
 import { ToastSettingsProvider } from "@/components/ui/toast-settings-provider";
+import { ExternalInterfaceLayer } from "@/components/external-interface/external-interface-layer";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -29,13 +30,15 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col">
         <ToastSettingsProvider>
           <NotificationInboxProvider>
-            {children}
-            <Suspense fallback={null}>
-              <AchievementToastHost />
-            </Suspense>
-            <Suspense fallback={null}>
-              <RouteTransitionProgress />
-            </Suspense>
+            <ExternalInterfaceLayer>
+              {children}
+              <Suspense fallback={null}>
+                <AchievementToastHost />
+              </Suspense>
+              <Suspense fallback={null}>
+                <RouteTransitionProgress />
+              </Suspense>
+            </ExternalInterfaceLayer>
           </NotificationInboxProvider>
         </ToastSettingsProvider>
       </body>

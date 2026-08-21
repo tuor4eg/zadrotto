@@ -41,6 +41,15 @@ describe("informational page shell contracts", () => {
       assert.doesNotMatch(pageSource, />\s*Главная\s*</);
     }
   });
+
+  it("aligns the lead illustration with the page title", () => {
+    for (const pageSource of informationalPageSources) {
+      assert.match(
+        pageSource,
+        /<article[^>]*>[\s\S]*<div className="grid[^\"]*sm:grid-cols-\[minmax\(0,1fr\)_auto\][^\"]*">[\s\S]*<h1[\s\S]*<Image/,
+      );
+    }
+  });
 });
 
 describe("about page contracts", () => {
@@ -122,6 +131,8 @@ describe("rules page contracts", () => {
   it("links the footer and explains automatic and manual record data", () => {
     assert.match(homePageSource, /<Link[^>]*href="\/rules"[^>]*>/);
     assert.match(rulesPageSource, /Правила архива/);
+    assert.match(rulesPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(rulesPageSource, /src="\/deadz_rulez\.png"/);
     assert.match(rulesPageSource, /архив получает из публичных баз данных/);
     assert.match(rulesPageSource, /запись можно заполнить вручную/);
     assert.match(rulesPageSource, /Рецензии проходят проверку перед публикацией/);
@@ -131,6 +142,8 @@ describe("rules page contracts", () => {
 describe("help page contracts", () => {
   it("links the footer and explains the primary and alternative suggestion flows", () => {
     assert.match(homePageSource, /<Link[^>]*href="\/help"[^>]*>/);
+    assert.match(helpPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(helpPageSource, /src="\/deadz_faq\.png"/);
     assert.match(helpPageSource, /Как добавить то, чего ещё нет в архиве\?/);
     assert.match(helpPageSource, /кнопку «\+» в левом нижнем углу/);
     assert.match(helpPageSource, /кабинет автора → «Предложения» → «Записи» → «Добавить»/);
@@ -143,6 +156,8 @@ describe("feedback page contracts", () => {
   it("links the footer to the public Telegram contact", () => {
     assert.match(homePageSource, /<Link[^>]*href="\/feedback"[^>]*>/);
     assert.match(feedbackPageSource, /Обратная связь/);
+    assert.match(feedbackPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
+    assert.match(feedbackPageSource, /src="\/deadz_contact\.png"/);
     assert.match(feedbackPageSource, /href="https:\/\/t\.me\/zadrotto"/);
     assert.match(feedbackPageSource, /target="_blank"/);
     assert.match(feedbackPageSource, /rel="noreferrer"/);

@@ -4,6 +4,7 @@ export const DOMAIN_EVENT_TYPES = [
   "review.submitted",
   "review.approved",
   "friend.accepted",
+  "quiz.completed",
   "media.published",
   "media.submitted",
   "media.approved",
@@ -28,6 +29,11 @@ export type DomainEventPayloads = {
     acceptedByAuthorId: number;
     friendshipId: number;
     requestedByAuthorId: number;
+  };
+  "quiz.completed": {
+    authorId: number;
+    outcome: "correct" | "exhausted";
+    quizId: number;
   };
   "media.published": { mediaItemId: number };
   "media.submitted": { authorId: number; mediaItemId: number };
