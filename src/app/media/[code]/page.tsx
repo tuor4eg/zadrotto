@@ -220,11 +220,11 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
                   mediaItemCode={item.code}
                 />
                 {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
-                  <QuizGuessButton titleId={item.id} variant="icon" />
+                  <QuizGuessButton titleId={item.id} />
                 ) : null}
               </div>
             ) : currentAuthor && activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
-              <QuizGuessButton titleId={item.id} variant="icon" />
+              <QuizGuessButton titleId={item.id} />
             ) : null
           }
           ratingSlot={

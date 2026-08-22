@@ -187,9 +187,6 @@ export function MediaCatalogPreview({
               <FolderOpen />
               Открыть досье
             </Link>
-            {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
-              <QuizGuessButton titleId={item.id} variant="icon" />
-            ) : null}
           </div>
           {currentAuthor && item.currentAuthorScore === null ? (
             <AuthorMediaStatusControls
@@ -199,6 +196,9 @@ export function MediaCatalogPreview({
               mediaItemCode={item.code}
               variant="preview"
             />
+          ) : null}
+          {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
+            <QuizGuessButton titleId={item.id} variant="preview" />
           ) : null}
         </div>
 

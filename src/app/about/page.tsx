@@ -72,7 +72,7 @@ export default async function AboutPage() {
               alt=""
               className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
               height={462}
-              src="/deadz.png"
+              src="/mascot/deadz.png"
               unoptimized
               width={294}
             />

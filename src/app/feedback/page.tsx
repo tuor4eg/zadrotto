@@ -57,7 +57,7 @@ export default async function FeedbackPage() {
               alt=""
               className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
               height={425}
-              src="/deadz_contact.png"
+              src="/mascot/deadz_contact.png"
               unoptimized
               width={420}
             />

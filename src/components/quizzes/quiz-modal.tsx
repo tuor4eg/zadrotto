@@ -1,7 +1,7 @@
 "use client";
 
-import { X } from "lucide-react";
-import { useEffect, useRef } from "react";
+import { ArrowLeft, CircleHelp, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
@@ -16,6 +16,7 @@ export function QuizModal({
   onClose: () => void;
   quiz: ActiveQuiz;
 }) {
+  const [isRulesOpen, setIsRulesOpen] = useState(false);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -70,14 +71,46 @@ export function QuizModal({
         tabIndex={-1}
         className="archive-paper archive-panel relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-8"
       >
-        <div className="mb-5 text-center">
-          <h2 id="active-quiz-title" className="font-serif text-3xl">Викторина</h2>
-          <button type="button" className="absolute right-5 top-5 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-8 sm:top-8" aria-label="Закрыть викторину" onClick={onClose}>
-            <X className="size-4" />
-          </button>
+        <button
+          type="button"
+          className="left-2 top-2 z-10 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:left-3 sm:top-3"
+          style={{ position: "absolute" }}
+          aria-label={isRulesOpen ? "Назад к викторине" : "Открыть правила викторины"}
+          onClick={() => setIsRulesOpen((current) => !current)}
+        >
+          {isRulesOpen ? (
+            <ArrowLeft className="size-4" />
+          ) : (
+            <CircleHelp className="size-4" />
+          )}
+        </button>
+        <button
+          type="button"
+          className="right-2 top-2 z-10 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-3 sm:top-3"
+          style={{ position: "absolute" }}
+          aria-label="Закрыть викторину"
+          onClick={onClose}
+        >
+          <X className="size-4" />
+        </button>
+        <div className="mb-5 px-24 text-center sm:px-32">
+          <h2 id="active-quiz-title" className="font-serif text-3xl">
+            {isRulesOpen ? "Правила викторины" : "Викторина"}
+          </h2>
         </div>
         <div className="grid gap-5">
-          <ActiveQuizPanel isParticipating={isParticipating} onOpenArchive={onClose} quiz={quiz} />
+          {isRulesOpen ? (
+            <div className="mx-auto max-w-xl text-center text-sm leading-6 text-stone-700">
+              <ol className="list-decimal space-y-3 pl-5 text-left">
+                <li>Присоединитесь к викторине и перейдите в архив.</li>
+                <li>По вопросу и изображению найдите запись, которая кажется правильным ответом.</li>
+                <li>Нажмите на записи кнопку проверки догадки. Неверный ответ отнимает одну попытку.</li>
+                <li>Правильный ответ завершает игру. Победителем становится первый ответивший верно.</li>
+              </ol>
+            </div>
+          ) : (
+            <ActiveQuizPanel isParticipating={isParticipating} onOpenArchive={onClose} quiz={quiz} />
+          )}
         </div>
       </div>
     </div>,

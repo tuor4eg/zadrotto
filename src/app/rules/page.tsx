@@ -109,7 +109,7 @@ export default async function RulesPage() {
               alt=""
               className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
               height={525}
-              src="/deadz_rulez.png"
+              src="/mascot/deadz_rulez.png"
               unoptimized
               width={420}
             />

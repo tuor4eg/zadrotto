@@ -17,6 +17,7 @@ import type { QuizParticipantState } from "@/lib/quizzes/model";
 export type QuizParticipantHudState = QuizParticipantState;
 
 type ExternalInterfaceValue = {
+  quizParticipant: QuizParticipantHudState | null;
   setQuizParticipant: (participant: QuizParticipantHudState | null) => void;
 };
 
@@ -68,7 +69,10 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     return () => window.removeEventListener("focus", onFocus);
   }, [isAdminRoute, refreshQuizParticipant]);
 
-  const value = useMemo(() => ({ setQuizParticipant }), [setQuizParticipant]);
+  const value = useMemo(
+    () => ({ quizParticipant, setQuizParticipant }),
+    [quizParticipant, setQuizParticipant],
+  );
   const visibleParticipant = quizParticipant && !quizParticipant.completed
     ? quizParticipant
     : null;

@@ -52,7 +52,8 @@ export default async function HelpPage() {
               alt=""
               className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
               height={560}
-              src="/deadz_faq.png"
+              src="/mascot/deadz_faq.png"
+              style={{ transform: "scaleX(-1)" }}
               unoptimized
               width={420}
             />

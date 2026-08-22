@@ -119,6 +119,12 @@ describe("quizzes", () => {
     assert.match(sharedHeader, /archive-catalog-header-actions[\s\S]*lg:hidden[\s\S]*quizAction/);
     assert.match(sharedHeader, /<QuizModal/);
     assert.match(modal, /<ActiveQuizPanel/);
+    assert.match(modal, /isRulesOpen[\s\S]*Правила викторины/);
+    assert.match(modal, /Открыть правила викторины/);
+    assert.match(modal, /aria-label=\{isRulesOpen \? "Назад к викторине"[\s\S]*<ArrowLeft/);
+    assert.match(modal, /left-2 top-2 z-10[\s\S]*sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
+    assert.match(modal, /right-2 top-2 z-10[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
+    assert.match(modal, /Неверный ответ отнимает одну попытку/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -158,18 +164,37 @@ describe("quizzes", () => {
     const layer = readFileSync("src/components/external-interface/external-interface-layer.tsx", "utf8");
     const participationButton = readFileSync("src/components/quizzes/quiz-participation-button.tsx", "utf8");
     const guessButton = readFileSync("src/components/quizzes/quiz-guess-button.tsx", "utf8");
+    const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
     assert.match(layer, /\/api\/quizzes\/active\/status/);
     assert.match(layer, /isAdminRoute/);
     assert.match(layer, /quizParticipant && !quizParticipant\.completed/);
+    assert.match(layer, /\(\) => \(\{ quizParticipant, setQuizParticipant \}\)/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);
     assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(guessButton, /setQuizParticipant/);
+    assert.match(guessButton, /data\.correct \|\| data\.participant\?\.outcome === "exhausted"/);
+    assert.match(guessButton, /<QuizGuessResultModal result=\{result\}/);
+    assert.match(guessButton, /quizParticipant\?\.completed === true/);
+    assert.match(guessButton, /isQuizCompleted \? null/);
+    assert.match(guessButton, /role="dialog"/);
+    assert.match(guessButton, /Верно!/);
     assert.match(guessButton, /Попытки закончились/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_fail\.png"/);
+    assert.match(guessButton, /data\.participant\?\.isWinner \? "winner" : "correct"/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_win\.png"/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_correct\.png"/);
+    assert.match(guessButton, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
+    assert.doesNotMatch(guessButton, /ArchiveTooltip/);
+    assert.match(guessButton, /variant === "preview" \? "w-full"/);
+    assert.match(preview, /<AuthorMediaStatusControls[\s\S]*<QuizGuessButton titleId=\{item\.id\} variant="preview"/);
+    assert.match(guessButton, /setTimeout\([\s\S]*3_000/);
+    assert.match(guessButton, /disabled=\{pending \|\| cooldown\}/);
+    assert.match(guessButton, /text: response\.ok \? "Неверно"/);
   });
   it("proxies production quiz images through the protected nginx location", () => {
     const route = readFileSync("src/app/quiz-images/[...objectKey]/route.ts", "utf8");
