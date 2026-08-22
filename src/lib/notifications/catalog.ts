@@ -13,6 +13,7 @@ export const NOTIFICATION_TYPES = [
   "media-franchise.removal.approved",
   "review.submitted",
   "review.approved",
+  "bug-report.created",
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
@@ -22,6 +23,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   "franchise",
   "media-franchise",
   "review",
+  "bug-report",
 ] as const
 
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number]
@@ -37,6 +39,7 @@ const NOTIFICATION_TITLES: Record<NotificationType, string> = {
   "media-franchise.removal.approved": "Заявка на удаление связи одобрена",
   "review.submitted": "Новая заявка на рецензию",
   "review.approved": "Рецензия одобрена",
+  "bug-report.created": "Новый багрепорт",
 }
 
 const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEntityType> = {
@@ -50,6 +53,7 @@ const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEnt
   "media-franchise.removal.approved": "media-franchise",
   "review.submitted": "review",
   "review.approved": "review",
+  "bug-report.created": "bug-report",
 }
 
 export function isNotificationType(value: string): value is NotificationType {
@@ -69,7 +73,7 @@ export function getNotificationRecipientType(type: NotificationType): Notificati
 }
 
 export function isAdminSubmissionNotificationType(type: NotificationType) {
-  return getNotificationRecipientType(type) === "admin"
+  return getNotificationRecipientType(type) === "admin" && type !== "bug-report.created"
 }
 
 export function getAdminSubmissionStatusLabel(status: string | null | undefined) {
@@ -121,5 +125,7 @@ export function getNotificationHref(input: {
       return `/admin/reviews/${input.entityId}`
     case "review.approved":
       return input.mediaItemCode ? `/media/${input.mediaItemCode}` : null
+    case "bug-report.created":
+      return `/admin/bug-reports/${input.entityId}`
   }
 }

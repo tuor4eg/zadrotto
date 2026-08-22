@@ -7,10 +7,13 @@ export async function POST() {
     return Response.json({ error: "Требуется авторизация." }, { status: 401 });
   }
 
-  const participant = await joinActiveQuiz(author.id);
-  if (!participant) {
+  const result = await joinActiveQuiz(author.id);
+  if (result.kind === "missing") {
     return Response.json({ error: "Активная викторина не найдена." }, { status: 404 });
   }
+  if (result.kind === "ineligible") {
+    return Response.json({ error: "Сначала включи все разделы этой викторины в интересах." }, { status: 409 });
+  }
 
-  return Response.json({ participant });
+  return Response.json({ participant: result.participant });
 }

@@ -20,6 +20,7 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
     "media-franchise.removal.approved",
     "review.submitted",
     "review.approved",
+    "bug-report.created",
   ],
   async handle(tx, event) {
     const draft = await resolveNotificationDraft(tx, event)

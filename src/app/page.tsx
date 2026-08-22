@@ -293,6 +293,11 @@ export default async function MainPage({ searchParams }: MainPageProps) {
     ? await isQuizParticipant(activeQuiz.id, currentAuthor.id)
     : false;
   const mediaTypes = effectiveMediaTypes.filter((item) => item.isEnabled);
+  const unavailableQuizMediaTypeNames = activeQuiz
+    ? effectiveMediaTypes
+        .filter((item) => !item.isEnabled && activeQuiz.mediaTypes.includes(item.code))
+        .map((item) => item.name)
+    : [];
   const suggestionMediaTypes = authorMediaSuggestionData
     ? sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)
     : mediaTypes;
@@ -371,7 +376,11 @@ export default async function MainPage({ searchParams }: MainPageProps) {
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
           submittedRequestCount={submittedRequestCount}
-          quiz={activeQuiz ? { active: activeQuiz, isParticipating: isActiveQuizParticipant } : null}
+          quiz={activeQuiz ? {
+            active: activeQuiz,
+            isParticipating: isActiveQuizParticipant,
+            unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
+          } : null}
           variant="main"
         />
 

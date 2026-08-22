@@ -16,6 +16,8 @@ export const DOMAIN_EVENT_TYPES = [
   "franchise.parent.changed",
   "franchise.submitted",
   "franchise.approved",
+  "bug-report.created",
+  "bug-report.confirmed",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
@@ -50,6 +52,8 @@ export type DomainEventPayloads = {
   };
   "franchise.submitted": { authorId: number; franchiseId: number };
   "franchise.approved": { authorId: number; franchiseId: number };
+  "bug-report.created": { authorId: number; bugReportId: number };
+  "bug-report.confirmed": { authorId: number; bugReportId: number };
 };
 
 export type DomainEventInput<TType extends DomainEventType = DomainEventType> = {

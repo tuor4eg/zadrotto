@@ -52,6 +52,7 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
   });
   const [transitionPending, startTransition] = useTransition();
   const [selectedMediaTypes, setSelectedMediaTypes] = useState(item?.mediaTypes ?? []);
+  const allMediaTypesSelected = mediaTypes.length > 0 && selectedMediaTypes.length === mediaTypes.length;
   const isPending = actionPending || transitionPending;
   const toastMessages = state.error
     ? [{ id: `quiz-save-${state.submissionId}`, tone: "error" as const, text: state.error }]
@@ -119,9 +120,19 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
       <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">Допустимые типы</legend>
         <p className="text-xs text-stone-500">
-          Если ничего не выбрано, подходят записи любого типа.
+          Выберите хотя бы один тип записей, среди которых можно искать ответ.
         </p>
         <div className="grid gap-2 sm:grid-cols-2">
+          <label className="flex items-center gap-2 text-sm font-medium sm:col-span-2">
+            <input
+              type="checkbox"
+              checked={allMediaTypesSelected}
+              onChange={(event) => {
+                setSelectedMediaTypes(event.currentTarget.checked ? mediaTypes.map((type) => type.code) : []);
+              }}
+            />
+            Все
+          </label>
           {mediaTypes.map((type) => (
             <label key={type.code} className="flex items-center gap-2 text-sm">
               <input
@@ -201,7 +212,7 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
       <p className="text-xs text-stone-500">
         Нужно заполнить вопрос или добавить изображение.
       </p>
-      <Button type="submit" disabled={isPending}>
+      <Button type="submit" disabled={isPending || selectedMediaTypes.length === 0}>
         {isPending ? "Сохраняем…" : "Сохранить"}
       </Button>
     </form>

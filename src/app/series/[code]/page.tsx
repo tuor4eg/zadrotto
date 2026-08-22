@@ -11,6 +11,7 @@ import { MediaItemTile } from "@/app/media-item-tile";
 import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { ArchiveNote } from "@/components/archive/archive-note";
+import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
   getFranchiseByCode,
@@ -222,6 +223,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      <BugReportEntityContextRegistration context={{ entityId: String(franchise.id), entityType: "franchise" }} />
       <ArchiveToasts
         clearParams={[
           "suggested",

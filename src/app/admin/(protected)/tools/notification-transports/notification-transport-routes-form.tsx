@@ -4,9 +4,9 @@ import { EXTERNAL_NOTIFICATION_ROUTES } from "@/lib/notifications/routes"
 import { saveNotificationTransportRoutesAction } from "./actions"
 
 export function NotificationTransportRoutesForm({
-  telegramEnabled,
+  telegramEnabledByRoute,
 }: {
-  telegramEnabled: boolean
+  telegramEnabledByRoute: Record<(typeof EXTERNAL_NOTIFICATION_ROUTES)[number]["code"], boolean>
 }) {
   return (
     <form action={saveNotificationTransportRoutesAction} className="grid gap-4 rounded-md border bg-white p-5">
@@ -21,7 +21,7 @@ export function NotificationTransportRoutesForm({
               type="checkbox"
               name={`${route.code}_telegram`}
               value="1"
-              defaultChecked={telegramEnabled}
+              defaultChecked={telegramEnabledByRoute[route.code]}
             />
             Telegram
           </label>

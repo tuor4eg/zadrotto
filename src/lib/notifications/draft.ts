@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm"
 import {
   contributionReviews,
   contributions,
+  bugReports,
   franchises,
   mediaItems,
 } from "@/db/schema"
@@ -57,6 +58,15 @@ async function getReviewTitle(tx: DbTransaction, contributionId: number) {
   return review?.title ?? null
 }
 
+async function getBugReportBody(tx: DbTransaction, bugReportId: number) {
+  const [report] = await tx
+    .select({ description: bugReports.description })
+    .from(bugReports)
+    .where(eq(bugReports.id, bugReportId))
+    .limit(1)
+  return report?.description ?? null
+}
+
 export async function resolveNotificationDraft(tx: DbTransaction, event: PersistedDomainEvent) {
   if (!isNotificationType(event.type)) return null
   const type: NotificationType = event.type
@@ -84,6 +94,11 @@ export async function resolveNotificationDraft(tx: DbTransaction, event: Persist
     const payload = event.payload as { authorId: number; franchiseId: number; mediaItemId: number }
     body = await getMediaFranchiseBody(tx, payload.mediaItemId, payload.franchiseId)
     entityId = getMediaFranchiseEntityId(payload.mediaItemId, payload.franchiseId)
+    authorId = payload.authorId
+  } else if (event.type === "bug-report.created") {
+    const payload = event.payload as { authorId: number; bugReportId: number }
+    body = await getBugReportBody(tx, payload.bugReportId)
+    entityId = String(payload.bugReportId)
     authorId = payload.authorId
   } else {
     const payload = event.payload as { authorId: number; contributionId: number; mediaItemId: number }

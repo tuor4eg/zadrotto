@@ -32,6 +32,7 @@ import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
 import { getParticipatingActiveQuiz } from "@/db/queries/quizzes";
 import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
+import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 
 export const dynamic = "force-dynamic";
 
@@ -108,6 +109,7 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
   ]);
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      <BugReportEntityContextRegistration context={{ entityId: String(item.id), entityType: "media-item" }} />
       {currentAuthor ? <RecentlyViewedMarker code={item.code} /> : null}
       <div className="mx-auto w-full max-w-6xl">
         <MediaItemDetails

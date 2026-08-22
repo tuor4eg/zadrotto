@@ -34,6 +34,9 @@ export async function getNotificationTransportRouteState() {
     submission_created: {
       telegram: (transportCodesByRoute.get("submission_created") ?? []).includes("telegram"),
     },
+    bug_report_created: {
+      telegram: (transportCodesByRoute.get("bug_report_created") ?? []).includes("telegram"),
+    },
   }
 }
 

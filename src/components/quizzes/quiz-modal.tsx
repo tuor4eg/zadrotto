@@ -5,14 +5,17 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
+import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import type { ActiveQuiz } from "@/lib/quizzes/model";
 
 export function QuizModal({
   isParticipating,
+  unavailableMediaTypeNames,
   onClose,
   quiz,
 }: {
   isParticipating: boolean;
+  unavailableMediaTypeNames: string[];
   onClose: () => void;
   quiz: ActiveQuiz;
 }) {
@@ -64,6 +67,7 @@ export function QuizModal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
+      <BugReportEntityContextRegistration context={{ entityId: String(quiz.id), entityType: "quiz" }} />
       <div
         ref={dialogRef}
         role="dialog"
@@ -118,7 +122,12 @@ export function QuizModal({
               </ol>
             </div>
           ) : (
-            <ActiveQuizPanel isParticipating={isParticipating} onOpenArchive={onClose} quiz={quiz} />
+            <ActiveQuizPanel
+              isParticipating={isParticipating}
+              onOpenArchive={onClose}
+              quiz={quiz}
+              unavailableMediaTypeNames={unavailableMediaTypeNames}
+            />
           )}
         </div>
       </div>

@@ -20,6 +20,13 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { FIRST_EXPERIENCED_PRECISIONS } from "@/lib/authors/media-experiences";
+import {
+  BUG_REPORT_ENTITY_TYPES,
+  BUG_REPORT_STATUSES,
+  type BugReportClientContext,
+  type BugReportEntityType,
+  type BugReportStatus,
+} from "@/lib/bug-reports/model";
 import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/model";
 import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
@@ -475,6 +482,69 @@ export const adminActivityLogs = pgTable(
     check(
       "admin_activity_logs_severity_check",
       sql`${table.severity} in ('info', 'warning', 'critical')`,
+    ),
+  ],
+);
+
+export const bugReports = pgTable(
+  "bug_reports",
+  {
+    id: serial("id").primaryKey(),
+    authorId: integer("author_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    url: text("url").notNull(),
+    entityType: text("entity_type").$type<BugReportEntityType>(),
+    entityId: text("entity_id"),
+    status: text("status").$type<BugReportStatus>().default("new").notNull(),
+    clientContext: jsonb("client_context").$type<BugReportClientContext | null>(),
+    confirmedAt: timestamp("confirmed_at", { withTimezone: true }),
+    resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+    resolvedByAdminId: integer("resolved_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("bug_reports_status_created_at_idx").on(table.status, table.createdAt),
+    index("bug_reports_author_confirmed_at_idx")
+      .on(table.authorId, table.confirmedAt)
+      .where(sql`${table.confirmedAt} is not null`),
+    check(
+      "bug_reports_description_check",
+      sql`char_length(btrim(${table.description})) between 1 and 2000`,
+    ),
+    check(
+      "bug_reports_url_check",
+      sql`char_length(${table.url}) between 1 and 2048 and left(${table.url}, 1) = '/' and left(${table.url}, 2) <> '//'`,
+    ),
+    check(
+      "bug_reports_entity_pair_check",
+      sql`(${table.entityType} is null) = (${table.entityId} is null)`,
+    ),
+    check(
+      "bug_reports_entity_type_check",
+      sql`${table.entityType} is null or ${table.entityType} in (${sql.join(
+        BUG_REPORT_ENTITY_TYPES.map((value) => sql`${value}`),
+        sql`, `,
+      )})`,
+    ),
+    check(
+      "bug_reports_entity_id_check",
+      sql`${table.entityId} is null or btrim(${table.entityId}) <> ''`,
+    ),
+    check(
+      "bug_reports_status_check",
+      sql`${table.status} in (${sql.join(BUG_REPORT_STATUSES.map((value) => sql`${value}`), sql`, `)})`,
+    ),
+    check(
+      "bug_reports_confirmed_at_check",
+      sql`(${table.status} in ('confirmed', 'fixed')) = (${table.confirmedAt} is not null)`,
+    ),
+    check(
+      "bug_reports_resolution_check",
+      sql`((${table.status} in ('fixed', 'rejected')) = (${table.resolvedAt} is not null)) and (${table.status} in ('fixed', 'rejected') or ${table.resolvedByAdminId} is null)`,
     ),
   ],
 );

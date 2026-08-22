@@ -6,6 +6,7 @@ import {
   Archive,
   Activity,
   BrainCircuit,
+  Bug,
   ChevronDown,
   FileClock,
   FileText,
@@ -60,10 +61,12 @@ function getAdminNavGroups({
   submittedMediaItemsCount = 0,
   submittedFranchisesCount = 0,
   submittedReviewsCount = 0,
+  openBugReportsCount = 0,
 }: {
   submittedMediaItemsCount?: number;
   submittedFranchisesCount?: number;
   submittedReviewsCount?: number;
+  openBugReportsCount?: number;
 } = {}): AdminNavGroup[] {
   return [
     {
@@ -99,7 +102,7 @@ function getAdminNavGroups({
     },
     {
       key: "requests",
-      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount,
+      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount,
       icon: FileClock,
       label: "Заявки",
       items: [
@@ -120,6 +123,12 @@ function getAdminNavGroups({
           icon: MessageSquareText,
           label: "Рецензии",
           count: submittedReviewsCount,
+        },
+        {
+          href: "/admin/bug-reports",
+          icon: Bug,
+          label: "Багрепорты",
+          count: openBugReportsCount,
         },
       ],
     },
@@ -227,19 +236,21 @@ export function AdminMobileNavMenu({
   submittedMediaItemsCount,
   submittedFranchisesCount,
   submittedReviewsCount,
+  openBugReportsCount,
 }: {
   logoutSlot: React.ReactNode;
   submittedMediaItemsCount: number;
   submittedFranchisesCount: number;
   submittedReviewsCount: number;
+  openBugReportsCount: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     content: true,
-    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount > 0,
+    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount > 0,
   });
   const rootRef = useRef<HTMLDivElement>(null);
-  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount });
+  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount });
 
   useEffect(() => {
     if (!isOpen) {
@@ -386,12 +397,14 @@ export function AdminRequestsMenu({
   submittedMediaItemsCount,
   submittedFranchisesCount,
   submittedReviewsCount,
+  openBugReportsCount,
 }: {
   submittedMediaItemsCount: number;
   submittedFranchisesCount: number;
   submittedReviewsCount: number;
+  openBugReportsCount: number;
 }) {
-  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount })
+  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount })
     .find((item) => item.key === "requests");
 
   return (

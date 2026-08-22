@@ -22,7 +22,7 @@ type ArchiveSiteHeaderProps = {
   currentAuthor: boolean;
   incomingFriendRequestCount?: number;
   submittedRequestCount?: number;
-  quiz?: { active: ActiveQuiz; isParticipating: boolean } | null;
+  quiz?: { active: ActiveQuiz; isParticipating: boolean; unavailableMediaTypeNames: string[] } | null;
   sticky?: boolean;
   variant: "main" | "catalog";
 };
@@ -191,7 +191,12 @@ export function ArchiveSiteHeader({
           )
         : null}
       {quiz && isQuizOpen
-        ? <QuizModal isParticipating={quiz.isParticipating} onClose={() => setIsQuizOpen(false)} quiz={quiz.active} />
+        ? <QuizModal
+            isParticipating={quiz.isParticipating}
+            onClose={() => setIsQuizOpen(false)}
+            quiz={quiz.active}
+            unavailableMediaTypeNames={quiz.unavailableMediaTypeNames}
+          />
         : null}
     </>
   );

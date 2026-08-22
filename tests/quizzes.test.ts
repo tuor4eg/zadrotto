@@ -144,7 +144,13 @@ describe("quizzes", () => {
     assert.match(query, /participant\.attemptsRemaining - 1/);
     assert.match(query, /attemptsRemaining === 0 \? "exhausted"/);
     assert.match(query, /correct \? "correct"/);
-    assert.match(participationRoute, /Response\.json\(\{ participant \}\)/);
+    assert.match(participationRoute, /Response\.json\(\{ participant: result\.participant \}\)/);
+    assert.match(participationRoute, /result\.kind === "ineligible"[\s\S]*status: 409/);
+    assert.match(query, /allowedTypes\.some\(\(\{ mediaType \}\) => !enabledMediaTypeCodes\.has\(mediaType\)\)/);
+    assert.match(actions, /mediaTypes\.length === 0[\s\S]*media-types/);
+    assert.match(query, /input\.mediaTypes\.length === 0/);
+    assert.match(form, />\s*Все\s*</);
+    assert.match(form, /disabled=\{isPending \|\| selectedMediaTypes\.length === 0\}/);
     assert.match(statusRoute, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(guessRoute, /correct: result\.correct[\s\S]*participant: result\.participant/);
     assert.match(guessRoute, /result\.kind === "completed"[\s\S]*status: 409/);
@@ -176,10 +182,10 @@ describe("quizzes", () => {
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
-    assert.match(layer, /\/api\/quizzes\/active\/status/);
+    assert.match(layer, /\/api\/user-hud/);
     assert.match(layer, /isAdminRoute/);
     assert.match(layer, /quizParticipant && !quizParticipant\.completed/);
-    assert.match(layer, /\(\) => \(\{ quizParticipant, setQuizParticipant \}\)/);
+    assert.match(layer, /\(\) => \(\{ quizParticipant, registerBugReportEntityContext, setQuizParticipant \}\)/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);

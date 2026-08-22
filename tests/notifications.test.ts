@@ -273,8 +273,14 @@ describe("notification catalog", () => {
     )
     const enabled = new FormData()
     enabled.set("submission_created_telegram", "1")
-    assert.deepEqual(parseExternalNotificationRouteForm(enabled), { submission_created: ["telegram"] })
-    assert.deepEqual(parseExternalNotificationRouteForm(new FormData()), { submission_created: [] })
+    assert.deepEqual(parseExternalNotificationRouteForm(enabled), {
+      bug_report_created: [],
+      submission_created: ["telegram"],
+    })
+    assert.deepEqual(parseExternalNotificationRouteForm(new FormData()), {
+      bug_report_created: [],
+      submission_created: [],
+    })
     assert.match(routesSource, /label: "Новая заявка"/)
     assert.match(routesSource, /связь с серией/)
     assert.doesNotMatch(routesSource, /тайтл/i)
@@ -393,4 +399,3 @@ describe("notification deletion", () => {
     assert.match(inboxHostSource, /max-h-\[min\(28rem,calc\(100vh-8rem\)\)\] overflow-y-auto overscroll-contain/)
   })
 })
-

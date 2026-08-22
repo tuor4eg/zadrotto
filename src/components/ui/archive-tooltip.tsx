@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { useState, type CSSProperties } from "react";
 
 type ArchiveTooltipProps = {
+  align?: "center" | "end";
   children: React.ReactNode;
   className?: string;
   label: string;
@@ -14,6 +15,7 @@ type ArchiveTooltipProps = {
 };
 
 export function ArchiveTooltip({
+  align = "center",
   children,
   className,
   label,
@@ -34,7 +36,7 @@ export function ArchiveTooltip({
         : side === "left"
           ? { left: rect.left - 9, top: rect.top + rect.height / 2 }
           : side === "bottom"
-            ? { left: rect.left + rect.width / 2, top: rect.bottom + 7 }
+            ? { left: align === "end" ? rect.right : rect.left + rect.width / 2, top: rect.bottom + 7 }
             : { left: rect.left + rect.width / 2, top: rect.top - 7 },
     );
   }
@@ -63,14 +65,18 @@ export function ArchiveTooltip({
           ? "right-full top-1/2 -translate-x-[0.55rem] -translate-y-1/2"
           : null,
         portal && side === "top" ? "-translate-x-1/2 -translate-y-[calc(100%+0.45rem)]" : null,
-        portal && side === "bottom" ? "-translate-x-1/2 translate-y-[0.45rem]" : null,
+        portal && side === "bottom" && align === "center" ? "-translate-x-1/2 translate-y-[0.45rem]" : null,
+        portal && side === "bottom" && align === "end" ? "-translate-x-full translate-y-[0.45rem]" : null,
         portal && side === "right" ? "-translate-y-1/2" : null,
         portal && side === "left" ? "-translate-x-full -translate-y-1/2" : null,
         side === "top"
           ? "before:left-1/2 before:top-full before:-translate-x-1/2 before:-translate-y-1/2 before:border-b before:border-r before:bg-[rgb(var(--archive-paper-end))]"
           : null,
-        side === "bottom"
+        side === "bottom" && align === "center"
           ? "before:bottom-full before:left-1/2 before:-translate-x-1/2 before:translate-y-1/2 before:border-l before:border-t before:bg-[rgb(var(--archive-paper-start))]"
+          : null,
+        side === "bottom" && align === "end"
+          ? "before:bottom-full before:right-4 before:translate-y-1/2 before:border-l before:border-t before:bg-[rgb(var(--archive-paper-start))]"
           : null,
         side === "right"
           ? "before:right-full before:top-1/2 before:-translate-y-1/2 before:translate-x-1/2 before:border-b before:border-l before:bg-[rgb(var(--archive-paper-start))]"

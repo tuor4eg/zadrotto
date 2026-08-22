@@ -187,6 +187,7 @@ export async function saveNotificationTransportRoutesAction(formData: FormData) 
       message: "Маршрутизация внешних уведомлений сохранена.",
       metadata: {
         submissionCreatedTelegram: routes.submission_created.includes(TELEGRAM_TRANSPORT_CODE),
+        bugReportCreatedTelegram: routes.bug_report_created.includes(TELEGRAM_TRANSPORT_CODE),
       },
     }),
   })

@@ -5,6 +5,7 @@ import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } fro
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
+import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
 export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
@@ -33,7 +34,7 @@ export async function getAdminQuizById(id: number) {
   return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
 }
 async function assertInput(executor: Pick<typeof db, "select">, input: QuizWriteInput) {
-  if ((!input.question?.trim() && !input.imageObjectKey) || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
+  if ((!input.question?.trim() && !input.imageObjectKey) || input.mediaTypes.length === 0 || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
   const [answer] = await executor.select({ mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.id, input.answerMediaItemId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true))).limit(1);
   if (!answer || !isQuizMediaTypeAllowed(input.mediaTypes, answer.mediaType)) throw new Error("invalid-answer");
 }
@@ -71,15 +72,23 @@ export async function getParticipatingActiveQuiz(authorId: number, now?: Date) {
   return active;
 }
 export async function joinActiveQuiz(authorId: number, now?: Date) {
+  const enabledMediaTypeCodes = new Set(await getEnabledMediaTypeCodes(authorId));
   const joined = await db.transaction(async (tx) => {
     const currentTime = now ?? sql`now()`;
     const [active] = await tx.select({ id: quizzes.id, attemptLimit: quizzes.attemptLimit }).from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1).for("update");
-    if (!active) return false;
+    if (!active) return "missing" as const;
+    const allowedTypes = await tx
+      .select({ mediaType: quizMediaTypes.mediaType })
+      .from(quizMediaTypes)
+      .where(eq(quizMediaTypes.quizId, active.id));
+    if (allowedTypes.length === 0 || allowedTypes.some(({ mediaType }) => !enabledMediaTypeCodes.has(mediaType))) {
+      return "ineligible" as const;
+    }
     await tx.insert(quizParticipants).values({ quizId: active.id, authorId, attemptsRemaining: active.attemptLimit }).onConflictDoNothing();
-    return true;
+    return "joined" as const;
   });
-  if (!joined) return null;
-  return getActiveQuizParticipantState(authorId, now);
+  if (joined !== "joined") return { kind: joined };
+  return { kind: "joined" as const, participant: await getActiveQuizParticipantState(authorId, now) };
 }
 
 function mapParticipantState(row: { quizId: number; attemptLimit: number; attemptsRemaining: number; outcome: string | null; isWinner: boolean }): QuizParticipantState {

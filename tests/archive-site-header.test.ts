@@ -127,6 +127,7 @@ describe("archive site header", () => {
       /submittedRequestCount=\{submittedRequestCount\}/,
     );
     assert.match(mainSource, /getSubmittedModerationRequestCountForAdmin/);
+    assert.match(queueSource, /getOpenBugReportCount/);
     assert.match(
       mainSource,
       /currentAdmin \? getSubmittedModerationRequestCountForAdmin\(\) : 0/,

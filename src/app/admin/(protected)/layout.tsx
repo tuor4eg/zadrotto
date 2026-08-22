@@ -14,6 +14,7 @@ import { NotificationBell } from "@/components/notifications/notification-inbox"
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
 import { getSubmittedFranchisesCountForAdmin } from "@/db/queries/franchises";
+import { getOpenBugReportCount } from "@/db/queries/bug-reports";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
   AdminAuthorsMenu,
@@ -32,11 +33,12 @@ type AdminLayoutProps = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount] = await Promise.all([
+  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount] = await Promise.all([
     requireAdminUser(),
     getSubmittedAuthorMediaItemsCountForAdmin(),
     getSubmittedFranchisesCountForAdmin(),
     getSubmittedContributionReviewCountForAdmin(),
+    getOpenBugReportCount(),
   ]);
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#f3f0ea_45%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -60,6 +62,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             submittedMediaItemsCount={submittedMediaItemsCount}
             submittedFranchisesCount={submittedFranchisesCount}
             submittedReviewsCount={submittedReviewsCount}
+            openBugReportsCount={openBugReportsCount}
             logoutSlot={
               <form action={logoutAdmin}>
                 <button
@@ -91,6 +94,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               submittedMediaItemsCount={submittedMediaItemsCount}
               submittedFranchisesCount={submittedFranchisesCount}
               submittedReviewsCount={submittedReviewsCount}
+              openBugReportsCount={openBugReportsCount}
             />
             <AdminToolsMenu />
             <Link

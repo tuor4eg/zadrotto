@@ -83,6 +83,11 @@ export default async function Home({ searchParams }: HomeProps) {
     isActiveQuizParticipant && activeQuizParticipant && !activeQuizParticipant.completed,
   );
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
+  const unavailableQuizMediaTypeNames = activeQuiz
+    ? effectiveMediaTypes
+        .filter((item) => !item.isEnabled && activeQuiz.mediaTypes.includes(item.code))
+        .map((item) => item.name)
+    : [];
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
@@ -218,6 +223,7 @@ export default async function Home({ searchParams }: HomeProps) {
           incomingFriendRequestCount={incomingFriendRequestCount}
           submittedRequestCount={submittedRequestCount}
           isActiveQuizParticipant={isActiveQuizParticipant}
+          unavailableQuizMediaTypeNames={unavailableQuizMediaTypeNames}
           mediaTypeFilter={mediaTypeFilter}
           minReleaseYear={releaseYearBounds.minReleaseYear}
           searchQuery={searchQuery}

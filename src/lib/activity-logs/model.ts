@@ -26,6 +26,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   "review",
   "job",
   "job-run",
+  "bug-report",
 ] as const;
 
 export const ACTIVITY_ACTIONS = [
@@ -123,6 +124,12 @@ export const ACTIVITY_ACTIONS = [
   "job-run.manual-requested",
   "job-run.retry-requested",
   "job-run.cancelled",
+  "bug-report.created",
+  "bug-report.new",
+  "bug-report.reviewing",
+  "bug-report.confirmed",
+  "bug-report.fixed",
+  "bug-report.rejected",
 ] as const;
 
 export type ActivityActorType = (typeof ACTIVITY_ACTOR_TYPES)[number];
@@ -172,6 +179,7 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   review: "Рецензия",
   job: "Фоновая задача",
   "job-run": "Запуск фоновой задачи",
+  "bug-report": "Багрепорт",
 } satisfies Record<ActivityEntityType, string>;
 
 export const ACTIVITY_ACTION_LABELS = {
@@ -269,6 +277,12 @@ export const ACTIVITY_ACTION_LABELS = {
   "job-run.manual-requested": "Ручной запуск фоновой задачи запрошен",
   "job-run.retry-requested": "Повтор фоновой задачи запрошен",
   "job-run.cancelled": "Запуск фоновой задачи отменён",
+  "bug-report.created": "Багрепорт создан",
+  "bug-report.new": "Багрепорт возвращён в новые",
+  "bug-report.reviewing": "Багрепорт взят в работу",
+  "bug-report.confirmed": "Баг подтверждён",
+  "bug-report.fixed": "Баг исправлен",
+  "bug-report.rejected": "Багрепорт отклонён",
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([

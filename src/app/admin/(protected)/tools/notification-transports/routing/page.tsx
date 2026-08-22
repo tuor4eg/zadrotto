@@ -22,7 +22,12 @@ export default async function NotificationRoutingPage({ searchParams }: Props) {
           Какие события дублировать во внешние транспорты. Telegram использует сохранённых получателей транспорта.
         </p>
       </div>
-      <NotificationTransportRoutesForm telegramEnabled={routes.submission_created.telegram} />
+      <NotificationTransportRoutesForm
+        telegramEnabledByRoute={{
+          bug_report_created: routes.bug_report_created.telegram,
+          submission_created: routes.submission_created.telegram,
+        }}
+      />
     </section>
   )
 }
