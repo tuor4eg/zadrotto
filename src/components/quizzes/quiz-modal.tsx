@@ -17,6 +17,7 @@ export function QuizModal({
   quiz: ActiveQuiz;
 }) {
   const [isRulesOpen, setIsRulesOpen] = useState(false);
+  const [quizDialogHeight, setQuizDialogHeight] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
@@ -70,13 +71,21 @@ export function QuizModal({
         aria-labelledby="active-quiz-title"
         tabIndex={-1}
         className="archive-paper archive-panel relative my-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-8"
+        style={isRulesOpen && quizDialogHeight !== null
+          ? { minHeight: `${quizDialogHeight}px` }
+          : undefined}
       >
         <button
           type="button"
           className="left-2 top-2 z-10 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:left-3 sm:top-3"
           style={{ position: "absolute" }}
           aria-label={isRulesOpen ? "Назад к викторине" : "Открыть правила викторины"}
-          onClick={() => setIsRulesOpen((current) => !current)}
+          onClick={() => {
+            if (!isRulesOpen) {
+              setQuizDialogHeight(dialogRef.current?.getBoundingClientRect().height ?? null);
+            }
+            setIsRulesOpen((current) => !current);
+          }}
         >
           {isRulesOpen ? (
             <ArrowLeft className="size-4" />

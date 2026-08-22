@@ -1119,6 +1119,7 @@ export const quizzes = pgTable(
   {
     id: serial("id").primaryKey(),
     question: text("question"),
+    comment: text("comment"),
     imageObjectKey: text("image_object_key"),
     answerMediaItemId: integer("answer_media_item_id")
       .notNull()
@@ -1134,6 +1135,7 @@ export const quizzes = pgTable(
     index("quizzes_active_idx").on(table.enabled, table.startsAt, table.endsAt),
     check("quizzes_period_check", sql`${table.startsAt} < ${table.endsAt}`),
     check("quizzes_attempt_limit_check", sql`${table.attemptLimit} between 1 and 10`),
+    check("quizzes_comment_length_check", sql`${table.comment} is null or char_length(${table.comment}) <= 2000`),
     check(
       "quizzes_content_check",
       sql`nullif(btrim(${table.question}), '') is not null or ${table.imageObjectKey} is not null`,

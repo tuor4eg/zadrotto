@@ -19,6 +19,7 @@ import {
 
 function parseQuizForm(form: FormData, imageObjectKey: string | null) {
   const question = String(form.get("question") ?? "").trim() || null;
+  const comment = String(form.get("comment") ?? "").trim() || null;
   const answerMediaItemId = Number(form.get("answerMediaItemId"));
   const startsAt = new Date(String(form.get("startsAt") ?? ""));
   const endsAt = new Date(String(form.get("endsAt") ?? ""));
@@ -26,6 +27,7 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
   const attemptLimit = Number(form.get("attemptLimit") ?? 3);
 
   if (!question && !imageObjectKey) throw new Error("content");
+  if ((comment?.length ?? 0) > 2000) throw new Error("comment-length");
   if (!Number.isSafeInteger(answerMediaItemId) || answerMediaItemId <= 0) {
     throw new Error("answer");
   }
@@ -39,6 +41,7 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
 
   return {
     question,
+    comment,
     imageObjectKey,
     answerMediaItemId,
     mediaTypes,
@@ -67,6 +70,7 @@ const QUIZ_ERROR_MESSAGES: Record<string, string> = {
   answer: "Выберите правильную запись из результатов поиска.",
   "attempt-limit": "Количество попыток должно быть целым числом от 1 до 10.",
   "attempt-limit-locked": "Количество попыток нельзя изменить после присоединения первого участника.",
+  "comment-length": "Комментарий должен быть не длиннее 2000 символов.",
   "answer-type": "Тип правильной записи должен входить в допустимые типы викторины.",
   content: "Добавьте текст вопроса или изображение.",
   dates: "Укажите корректные дату и время начала и окончания.",

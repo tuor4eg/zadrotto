@@ -533,6 +533,13 @@
       "when": 1786901200000,
       "tag": "0075_quiz_winners",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1786901300000,
+      "tag": "0076_quiz_comment",
+      "breakpoints": true
     }
   ]
 }

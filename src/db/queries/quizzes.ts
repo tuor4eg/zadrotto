@@ -7,7 +7,7 @@ import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
 import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
-export type QuizWriteInput = { question: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
+export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
 
 async function mediaTypesForQuizIds(ids: number[]) {
   if (!ids.length) return new Map<number, string[]>();
@@ -33,15 +33,15 @@ export async function getAdminQuizById(id: number) {
   return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
 }
 async function assertInput(executor: Pick<typeof db, "select">, input: QuizWriteInput) {
-  if ((!input.question?.trim() && !input.imageObjectKey) || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
+  if ((!input.question?.trim() && !input.imageObjectKey) || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
   const [answer] = await executor.select({ mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.id, input.answerMediaItemId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true))).limit(1);
   if (!answer || !isQuizMediaTypeAllowed(input.mediaTypes, answer.mediaType)) throw new Error("invalid-answer");
 }
 export async function createQuiz(input: QuizWriteInput) {
-  return db.transaction(async (tx) => { await assertInput(tx, input); const [row] = await tx.insert(quizzes).values({ question: input.question, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled }).returning(); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: row!.id, mediaType }))); return row!; });
+  return db.transaction(async (tx) => { await assertInput(tx, input); const [row] = await tx.insert(quizzes).values({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled }).returning(); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: row!.id, mediaType }))); return row!; });
 }
 export async function updateQuiz(id: number, input: QuizWriteInput) {
-  return db.transaction(async (tx) => { await assertInput(tx, input); const [current] = await tx.select({ attemptLimit: quizzes.attemptLimit }).from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update"); if (!current) return null; if (current.attemptLimit !== input.attemptLimit) { const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1); if (participant) throw new Error("attempt-limit-locked"); } const [row] = await tx.update(quizzes).set({ question: input.question, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); await tx.delete(quizMediaTypes).where(eq(quizMediaTypes.quizId, id)); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: id, mediaType }))); return row!; });
+  return db.transaction(async (tx) => { await assertInput(tx, input); const [current] = await tx.select({ attemptLimit: quizzes.attemptLimit }).from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update"); if (!current) return null; if (current.attemptLimit !== input.attemptLimit) { const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1); if (participant) throw new Error("attempt-limit-locked"); } const [row] = await tx.update(quizzes).set({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); await tx.delete(quizMediaTypes).where(eq(quizMediaTypes.quizId, id)); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: id, mediaType }))); return row!; });
 }
 export async function deleteQuiz(id: number) { const [row] = await db.delete(quizzes).where(eq(quizzes.id, id)).returning(); return row ?? null; }
 export async function setQuizEnabled(id: number, enabled: boolean) { const [row] = await db.update(quizzes).set({ enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); return row ?? null; }
@@ -119,7 +119,7 @@ export async function checkQuizGuess(titleId: number, authorId: number, now?: Da
         type: "quiz.completed",
       });
     }
-    return { kind: "result" as const, correct, participant: mapParticipantState({ ...updated!, attemptLimit: quiz.attemptLimit }) };
+    return { kind: "result" as const, correct, comment: correct ? quiz.comment : null, participant: mapParticipantState({ ...updated!, attemptLimit: quiz.attemptLimit }) };
   });
 }
 export async function searchQuizAnswerTitles(query: string, mediaTypeFilter: readonly string[] = []) {

@@ -124,6 +124,8 @@ describe("quizzes", () => {
     assert.match(modal, /aria-label=\{isRulesOpen \? "Назад к викторине"[\s\S]*<ArrowLeft/);
     assert.match(modal, /left-2 top-2 z-10[\s\S]*sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
     assert.match(modal, /right-2 top-2 z-10[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
+    assert.match(modal, /getBoundingClientRect\(\)\.height/);
+    assert.match(modal, /minHeight: `\$\{quizDialogHeight\}px`/);
     assert.match(modal, /Неверный ответ отнимает одну попытку/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
@@ -132,6 +134,8 @@ describe("quizzes", () => {
     const participationRoute = readFileSync("src/app/api/quizzes/active/participation/route.ts", "utf8");
     const statusRoute = readFileSync("src/app/api/quizzes/active/status/route.ts", "utf8");
     const guessRoute = readFileSync("src/app/quiz/guess/route.ts", "utf8");
+    const commentMigration = readFileSync("drizzle/0076_quiz_comment.sql", "utf8");
+    const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");
 
     assert.match(actions, /attemptLimit < 1 \|\| attemptLimit > 10/);
     assert.match(query, /attempt-limit-locked/);
@@ -142,8 +146,13 @@ describe("quizzes", () => {
     assert.match(query, /correct \? "correct"/);
     assert.match(participationRoute, /Response\.json\(\{ participant \}\)/);
     assert.match(statusRoute, /getActiveQuizParticipantState\(author\.id\)/);
-    assert.match(guessRoute, /correct: result\.correct, participant: result\.participant/);
+    assert.match(guessRoute, /correct: result\.correct[\s\S]*participant: result\.participant/);
     assert.match(guessRoute, /result\.kind === "completed"[\s\S]*status: 409/);
+    assert.match(commentMigration, /ADD COLUMN "comment" text/);
+    assert.match(commentMigration, /char_length\("comment"\) <= 2000/);
+    assert.match(form, /name="comment"[\s\S]*maxLength=\{2000\}/);
+    assert.match(query, /comment: correct \? quiz\.comment : null/);
+    assert.match(guessRoute, /comment: result\.correct \? result\.comment : null/);
   });
   it("assigns one winner under the quiz lock and loads completed author statistics", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -178,7 +187,7 @@ describe("quizzes", () => {
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(guessButton, /setQuizParticipant/);
     assert.match(guessButton, /data\.correct \|\| data\.participant\?\.outcome === "exhausted"/);
-    assert.match(guessButton, /<QuizGuessResultModal result=\{result\}/);
+    assert.match(guessButton, /<QuizGuessResultModal[\s\S]*result=\{result\}/);
     assert.match(guessButton, /quizParticipant\?\.completed === true/);
     assert.match(guessButton, /isQuizCompleted \? null/);
     assert.match(guessButton, /role="dialog"/);
@@ -194,6 +203,8 @@ describe("quizzes", () => {
     assert.match(preview, /<AuthorMediaStatusControls[\s\S]*<QuizGuessButton titleId=\{item\.id\} variant="preview"/);
     assert.match(guessButton, /setTimeout\([\s\S]*3_000/);
     assert.match(guessButton, /disabled=\{pending \|\| cooldown\}/);
+    assert.match(guessButton, /isCorrect && comment/);
+    assert.match(guessButton, /whitespace-pre-line/);
     assert.match(guessButton, /text: response\.ok \? "Неверно"/);
   });
   it("proxies production quiz images through the protected nginx location", () => {

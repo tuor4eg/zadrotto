@@ -13,5 +13,5 @@ export async function POST(request: Request) {
   if (result.kind === "title-missing") return Response.json({ error: "Запись не найдена." }, { status: 404 });
   if (result.kind === "invalid-type") return Response.json({ error: "Этот тип записи не участвует в викторине." }, { status: 400 });
   if (result.kind === "completed") return Response.json({ error: "Участие в викторине уже завершено.", participant: result.participant }, { status: 409 });
-  return Response.json({ correct: result.correct, participant: result.participant });
+  return Response.json({ correct: result.correct, comment: result.correct ? result.comment : null, participant: result.participant });
 }

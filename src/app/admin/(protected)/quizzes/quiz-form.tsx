@@ -19,6 +19,7 @@ function localDate(value?: Date | null) {
 type Quiz = {
   id: number;
   question: string | null;
+  comment: string | null;
   imageUrl: string | null;
   answerMediaItemId: number;
   answerTitle: string;
@@ -77,6 +78,18 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
           name="question"
           defaultValue={item?.question ?? ""}
         />
+      </div>
+
+      <div className="grid gap-2">
+        <label htmlFor="comment" className="text-sm font-medium">Комментарий после правильного ответа</label>
+        <textarea
+          className="min-h-24 rounded-md border border-stone-300 p-3"
+          id="comment"
+          name="comment"
+          maxLength={2000}
+          defaultValue={item?.comment ?? ""}
+        />
+        <p className="text-xs text-stone-500">Необязательно. Будет показан после правильного ответа.</p>
       </div>
 
       <div className="grid gap-2">

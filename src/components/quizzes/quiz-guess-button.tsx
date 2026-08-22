@@ -16,9 +16,11 @@ import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 type QuizGuessResult = "correct" | "exhausted" | "winner";
 
 function QuizGuessResultModal({
+  comment,
   onClose,
   result,
 }: {
+  comment: string | null;
   onClose: () => void;
   result: QuizGuessResult;
 }) {
@@ -110,6 +112,9 @@ function QuizGuessResultModal({
             ? "Попадание! Не первым, зато архив всё равно одобрительно хмыкнул."
             : "Все попытки ушли в архив. Правильный ответ, увы, остался там же."}
         </p>
+        {isCorrect && comment ? (
+          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-stone-600">{comment}</p>
+        ) : null}
       </div>
     </div>,
     document.body,
@@ -127,6 +132,7 @@ export function QuizGuessButton({
   const [cooldown, setCooldown] = useState(false);
   const [feedback, setFeedback] = useState<ArchiveToast | null>(null);
   const [result, setResult] = useState<QuizGuessResult | null>(null);
+  const [resultComment, setResultComment] = useState<string | null>(null);
   const cooldownTimeoutRef = useRef<number | null>(null);
   const { quizParticipant, setQuizParticipant } = useExternalInterface();
 
@@ -144,6 +150,7 @@ export function QuizGuessButton({
       cooldownTimeoutRef.current = null;
     }, 3_000);
     setFeedback(null);
+    setResultComment(null);
     try {
       const response = await fetch("/quiz/guess", {
         method: "POST",
@@ -155,6 +162,7 @@ export function QuizGuessButton({
         setQuizParticipant(data.participant as QuizParticipantHudState | null);
       }
       if (response.ok && (data.correct || data.participant?.outcome === "exhausted")) {
+        setResultComment(data.correct && typeof data.comment === "string" ? data.comment : null);
         setResult(data.correct
           ? data.participant?.isWinner ? "winner" : "correct"
           : "exhausted");
@@ -195,7 +203,13 @@ export function QuizGuessButton({
   return (
     <>
       <ArchiveToasts messages={feedback ? [feedback] : []} />
-      {result ? <QuizGuessResultModal result={result} onClose={() => setResult(null)} /> : null}
+      {result ? (
+        <QuizGuessResultModal
+          comment={resultComment}
+          result={result}
+          onClose={() => setResult(null)}
+        />
+      ) : null}
       {isQuizCompleted ? null : (
         <div className={variant === "preview" ? "w-full" : "flex items-center"}>
           {button}
