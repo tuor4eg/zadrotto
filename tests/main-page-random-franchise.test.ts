@@ -18,9 +18,12 @@ function getRandomPreviewQuerySource() {
 describe("main page random franchise preview", () => {
   const previewQuery = getRandomPreviewQuerySource();
 
-  it("qualifies a random series from distinct direct, published and enabled records", () => {
+  it("qualifies a random series from distinct published records in its full branch", () => {
     assert.match(previewQuery, /enabledMediaTypeCodes: readonly string\[\]/);
-    assert.match(previewQuery, /publishedFranchiseCondition/);
+    assert.match(
+      previewQuery,
+      /root\.publication_status = \$\{PUBLISHED_PUBLICATION_STATUS\}/,
+    );
     assert.match(
       previewQuery,
       /eq\(mediaItemFranchises\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/,
@@ -32,9 +35,22 @@ describe("main page random franchise preview", () => {
     );
     assert.match(
       previewQuery,
-      /having\(sql`count\(distinct \$\{mediaItemFranchises\.mediaItemId\}\) >= 5`\)/,
+      /having count\(distinct \$\{mediaItemFranchises\.mediaItemId\}\) >= 5/,
     );
-    assert.match(previewQuery, /orderBy\(sql`random\(\)`\)/);
+    assert.match(
+      previewQuery,
+      /with recursive published_franchise_branches/,
+    );
+    assert.match(previewQuery, /child\.parent_id = branch\.descendant_id/);
+    assert.match(
+      previewQuery,
+      /mediaItemFranchises\.franchiseId\} = branch\.descendant_id/,
+    );
+    assert.doesNotMatch(
+      previewQuery.slice(0, previewQuery.indexOf("if (!franchise)")),
+      /publishedFranchiseBranchIdsSql/,
+    );
+    assert.match(previewQuery, /order by random\(\)/);
 
     const qualificationEnd = previewQuery.indexOf("if (!franchise)");
     assert.doesNotMatch(previewQuery.slice(0, qualificationEnd), /ratings/);
@@ -43,10 +59,7 @@ describe("main page random franchise preview", () => {
   it("returns at most twelve fully shaped cards with resolved covers", () => {
     const cardsQuery = previewQuery.slice(previewQuery.indexOf("const rows = await db"));
 
-    assert.match(
-      cardsQuery,
-      /eq\(mediaItemFranchises\.franchiseId, franchise\.id\)/,
-    );
+    assert.match(cardsQuery, /publishedFranchiseBranchIdsSql\(franchise\.id\)/);
     assert.match(
       cardsQuery,
       /eq\(mediaItemFranchises\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/,

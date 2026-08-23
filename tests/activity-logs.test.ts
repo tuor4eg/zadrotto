@@ -237,7 +237,7 @@ describe("franchise media activity context", () => {
     assert.match(querySource, /select\(\{ id: franchises\.id, title: franchises\.title \}\)/);
     assert.match(
       querySource,
-      /return franchiseIds\.map\(\(franchiseId\) => availableFranchisesById\.get\(franchiseId\)!\)/,
+      /return retainedFranchiseIds\.map\(\(franchiseId\) => availableFranchisesById\.get\(franchiseId\)!\)/,
     );
     assert.match(actionSource, /affectedFranchises = links;/);
     assert.match(

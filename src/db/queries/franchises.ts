@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQLWrapper } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -12,7 +12,7 @@ import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
-import { runInDomainEventTransaction } from "@/db/transaction";
+import { runInDomainEventTransaction, type DbTransaction } from "@/db/transaction";
 
 const publishedMediaItemCondition = eq(
   mediaItems.publicationStatus,
@@ -22,6 +22,71 @@ const publishedFranchiseCondition = eq(
   franchises.publicationStatus,
   PUBLISHED_PUBLICATION_STATUS,
 );
+
+function publishedFranchiseBranchIdsSql(franchiseId: number | SQLWrapper) {
+  return sql`
+    with recursive descendants as (
+      select ${franchiseId}::integer as id
+      union all
+      select child.id
+      from ${franchises} child
+      inner join descendants parent on child.parent_id = parent.id
+      where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+    )
+    select id from descendants
+  `;
+}
+
+const MEDIA_ITEM_FRANCHISE_ADVISORY_LOCK_NAMESPACE = 58_391_039;
+
+async function lockMediaItemFranchiseMutations(tx: DbTransaction, mediaItemIds: number[]) {
+  const uniqueMediaItemIds = [...new Set(mediaItemIds)].sort((left, right) => left - right);
+
+  if (uniqueMediaItemIds.length === 0) return;
+
+  await tx.execute(sql`
+    select pg_advisory_xact_lock(
+      ${MEDIA_ITEM_FRANCHISE_ADVISORY_LOCK_NAMESPACE},
+      locked_media_item.id
+    )
+    from unnest(${uniqueMediaItemIds}::integer[]) as locked_media_item(id)
+    order by locked_media_item.id
+  `);
+}
+
+async function deleteRedundantPublishedMediaItemFranchiseLinks(
+  tx: DbTransaction,
+  mediaItemIds: number[],
+) {
+  const uniqueMediaItemIds = [...new Set(mediaItemIds)];
+
+  if (uniqueMediaItemIds.length === 0) {
+    return [];
+  }
+
+  return tx.execute<{ franchise_id: number; media_item_id: number }>(sql`
+    with recursive ancestor_links as (
+      select id as ancestor_id, parent_id, id as descendant_id
+      from ${franchises}
+      union all
+      select parent.id, parent.parent_id, ancestor_links.descendant_id
+      from ${franchises} parent
+      inner join ancestor_links on parent.id = ancestor_links.parent_id
+    )
+    delete from ${mediaItemFranchises} direct_link
+    using ${mediaItemFranchises} descendant_link, ancestor_links
+    where direct_link.media_item_id in ${uniqueMediaItemIds}
+      and direct_link.media_item_id = descendant_link.media_item_id
+      and direct_link.franchise_id = ancestor_links.ancestor_id
+      and descendant_link.franchise_id = ancestor_links.descendant_id
+      and ancestor_links.ancestor_id <> ancestor_links.descendant_id
+      and direct_link.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+      and descendant_link.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+    returning
+      direct_link.franchise_id,
+      direct_link.media_item_id
+  `);
+}
 
 const mediaItemTitleAliasesSql = (mediaItemId = mediaItems.id) => sql<string[]>`coalesce((
   select jsonb_agg(${mediaItemTitleAliases.value} order by ${mediaItemTitleAliases.id})
@@ -286,28 +351,34 @@ export async function getRandomPublishedFranchisePreview(input: {
     return null;
   }
 
-  const [franchise] = await db
-    .select({
-      id: franchises.id,
-      code: franchises.code,
-      title: franchises.title,
-    })
-    .from(franchises)
-    .innerJoin(
-      mediaItemFranchises,
-      eq(mediaItemFranchises.franchiseId, franchises.id),
+  const [franchise] = await db.execute<{ id: number; code: string; title: string }>(sql`
+    with recursive published_franchise_branches as (
+      select root.id as root_id, root.id as descendant_id
+      from ${franchises} root
+      where root.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+
+      union all
+
+      select branch.root_id, child.id
+      from published_franchise_branches branch
+      inner join ${franchises} child on child.parent_id = branch.descendant_id
+      where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
     )
-    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
-    .where(and(
-      publishedFranchiseCondition,
-      eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-      publishedMediaItemCondition,
-      getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
-    ))
-    .groupBy(franchises.id)
-    .having(sql`count(distinct ${mediaItemFranchises.mediaItemId}) >= 5`)
-    .orderBy(sql`random()`)
-    .limit(1);
+    select root.id, root.code, root.title
+    from published_franchise_branches branch
+    inner join ${franchises} root on root.id = branch.root_id
+    inner join ${mediaItemFranchises}
+      on ${mediaItemFranchises.franchiseId} = branch.descendant_id
+    inner join ${mediaItems}
+      on ${mediaItems.id} = ${mediaItemFranchises.mediaItemId}
+    where ${mediaItemFranchises.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
+      and ${mediaItems.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
+      and ${getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes)}
+    group by root.id
+    having count(distinct ${mediaItemFranchises.mediaItemId}) >= 5
+    order by random()
+    limit 1
+  `);
 
   if (!franchise) {
     return null;
@@ -337,7 +408,7 @@ export async function getRandomPublishedFranchisePreview(input: {
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(and(
-      eq(mediaItemFranchises.franchiseId, franchise.id),
+      sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchise.id)})`,
       eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
@@ -1190,6 +1261,20 @@ export async function reviewSubmittedFranchise(input: {
   franchiseId: number;
 }) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const submittedLinks = await tx
+      .select({ mediaItemId: mediaItemFranchises.mediaItemId })
+      .from(mediaItemFranchises)
+      .where(
+        and(
+          eq(mediaItemFranchises.franchiseId, input.franchiseId),
+          eq(mediaItemFranchises.publicationStatus, "submitted"),
+        ),
+      );
+    await lockMediaItemFranchiseMutations(
+      tx,
+      submittedLinks.map((link) => link.mediaItemId),
+    );
+
     const [franchise] = await tx
       .update(franchises)
       .set({ publicationStatus: input.decision, updatedAt: new Date() })
@@ -1220,6 +1305,13 @@ export async function reviewSubmittedFranchise(input: {
         )
         .returning({ franchiseId: mediaItemFranchises.franchiseId, mediaItemId: mediaItemFranchises.mediaItemId });
       if (input.decision === "published") {
+        const removedLinks = await deleteRedundantPublishedMediaItemFranchiseLinks(
+          tx,
+          publishedLinks.map((link) => link.mediaItemId),
+        );
+        const removedLinkKeys = new Set(
+          removedLinks.map((link) => `${link.media_item_id}:${link.franchise_id}`),
+        );
         await appendEvent({
           actorAuthorId: null,
           aggregateId: String(franchise.id),
@@ -1228,6 +1320,7 @@ export async function reviewSubmittedFranchise(input: {
           type: "franchise.approved",
         });
         for (const link of publishedLinks) {
+          if (removedLinkKeys.has(`${link.mediaItemId}:${link.franchiseId}`)) continue;
           await appendEvent({
             actorAuthorId: null,
             aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
@@ -1250,6 +1343,7 @@ export async function reviewSubmittedMediaItemFranchise(input: {
   mediaItemId: number;
 }) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockMediaItemFranchiseMutations(tx, [input.mediaItemId]);
     const [link] = await tx
       .update(mediaItemFranchises)
       .set({ publicationStatus: input.decision, updatedAt: new Date() })
@@ -1268,25 +1362,36 @@ export async function reviewSubmittedMediaItemFranchise(input: {
         mediaItemId: mediaItemFranchises.mediaItemId,
       });
     if (link && input.decision === "published") {
-      await appendEvent({
-        actorAuthorId: null,
-        aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
-        aggregateType: "media-franchise",
-        payload: { franchiseId: link.franchiseId, mediaItemId: link.mediaItemId },
-        type: "media-franchise.published",
-      });
-      if (link.createdByAuthorId) {
+      const removedLinks = await deleteRedundantPublishedMediaItemFranchiseLinks(
+        tx,
+        [link.mediaItemId],
+      );
+      const linkWasRemoved = removedLinks.some(
+        (removed) =>
+          removed.media_item_id === link.mediaItemId &&
+          removed.franchise_id === link.franchiseId,
+      );
+      if (!linkWasRemoved) {
         await appendEvent({
           actorAuthorId: null,
           aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
           aggregateType: "media-franchise",
-          payload: {
-            authorId: link.createdByAuthorId,
-            franchiseId: link.franchiseId,
-            mediaItemId: link.mediaItemId,
-          },
-          type: "media-franchise.approved",
+          payload: { franchiseId: link.franchiseId, mediaItemId: link.mediaItemId },
+          type: "media-franchise.published",
         });
+        if (link.createdByAuthorId) {
+          await appendEvent({
+            actorAuthorId: null,
+            aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
+            aggregateType: "media-franchise",
+            payload: {
+              authorId: link.createdByAuthorId,
+              franchiseId: link.franchiseId,
+              mediaItemId: link.mediaItemId,
+            },
+            type: "media-franchise.approved",
+          });
+        }
       }
     }
     return link ?? null;
@@ -1359,6 +1464,8 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
       return null;
     }
 
+    await lockMediaItemFranchiseMutations(tx, [input.mediaItemId]);
+
     const [mediaItem] = await tx
       .select({ id: mediaItems.id })
       .from(mediaItems)
@@ -1400,8 +1507,21 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
         publicationStatus: input.publicationStatus,
       })));
 
+    let retainedFranchiseIds = franchiseIds;
     if (input.publicationStatus === "published") {
-      for (const franchiseId of franchiseIds) {
+      const removedLinks = await deleteRedundantPublishedMediaItemFranchiseLinks(
+        tx,
+        [input.mediaItemId],
+      );
+      const removedFranchiseIds = new Set(
+        removedLinks
+          .filter((link) => link.media_item_id === input.mediaItemId)
+          .map((link) => link.franchise_id),
+      );
+      retainedFranchiseIds = franchiseIds.filter(
+        (franchiseId) => !removedFranchiseIds.has(franchiseId),
+      );
+      for (const franchiseId of retainedFranchiseIds) {
         await appendEvent({
           actorAuthorId: input.authorId,
           aggregateId: `${input.mediaItemId}:${franchiseId}`,
@@ -1428,7 +1548,7 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
       }
     }
 
-    return franchiseIds.map((franchiseId) => availableFranchisesById.get(franchiseId)!);
+    return retainedFranchiseIds.map((franchiseId) => availableFranchisesById.get(franchiseId)!);
   });
 }
 
@@ -1539,6 +1659,7 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
   title: string;
 }) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockMediaItemFranchiseMutations(tx, [input.mediaItemId]);
     const [mediaItem] = await tx
       .select({ id: mediaItems.id })
       .from(mediaItems)
@@ -1570,6 +1691,7 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
     });
 
     if (input.publicationStatus === "published") {
+      await deleteRedundantPublishedMediaItemFranchiseLinks(tx, [input.mediaItemId]);
       await appendEvent({
         actorAuthorId: input.authorId,
         aggregateId: `${input.mediaItemId}:${franchise.id}`,
@@ -1834,16 +1956,7 @@ export async function getMediaItemsByFranchiseId(
     .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
     .where(
       and(
-        sql`${mediaItemFranchises.franchiseId} in (
-          with recursive descendants as (
-            select ${franchises.id} from ${franchises} where ${franchises.id} = ${franchiseId}
-            union all
-            select child.id from "franchises" child
-            inner join descendants on child.parent_id = descendants.id
-            where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-          )
-          select id from descendants
-        )`,
+        sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchiseId)})`,
         eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         publishedFranchiseCondition,
         publishedMediaItemCondition,

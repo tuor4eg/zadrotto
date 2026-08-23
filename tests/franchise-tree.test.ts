@@ -61,6 +61,66 @@ describe("franchise tree mutations", () => {
     assert.match(mediaItemsQuerySource, /with recursive ancestors as \(/);
     assert.match(mediaItemsQuerySource, /return uniqueFranchiseIds\.filter\(\(id\) => !ancestorIds\.has\(id\)\)/);
   });
+
+  it("removes published ancestor links after additive series mutations", () => {
+    assert.match(franchisesQuerySource, /async function deleteRedundantPublishedMediaItemFranchiseLinks/);
+    assert.match(franchisesQuerySource, /direct_link\.publication_status = \$\{PUBLISHED_PUBLICATION_STATUS\}/);
+    assert.match(franchisesQuerySource, /descendant_link\.publication_status = \$\{PUBLISHED_PUBLICATION_STATUS\}/);
+    assert.match(franchisesQuerySource, /returning[\s\S]*direct_link\.franchise_id,[\s\S]*direct_link\.media_item_id/);
+
+    const createLinksSource = getFunctionSource(
+      franchisesQuerySource,
+      "createAuthorMediaItemFranchiseLinks",
+      "removeAuthorMediaItemFranchiseLink",
+    );
+    assert.match(createLinksSource, /if \(input\.publicationStatus === "published"\) \{[\s\S]*deleteRedundantPublishedMediaItemFranchiseLinks/);
+    assert.match(createLinksSource, /retainedFranchiseIds = franchiseIds\.filter/);
+    assert.match(createLinksSource, /for \(const franchiseId of retainedFranchiseIds\) \{[\s\S]*type: "media-franchise\.published"/);
+
+    const createFranchiseSource = getFunctionSource(
+      franchisesQuerySource,
+      "createAuthorFranchiseWithMediaItemLink",
+      "getAuthorFranchiseSubmissions",
+    );
+    assert.match(createFranchiseSource, /if \(input\.publicationStatus === "published"\) \{[\s\S]*deleteRedundantPublishedMediaItemFranchiseLinks/);
+  });
+
+  it("normalizes approved links before emitting publication events", () => {
+    const reviewFranchiseSource = getFunctionSource(
+      franchisesQuerySource,
+      "reviewSubmittedFranchise",
+      "reviewSubmittedMediaItemFranchise",
+    );
+    assert.match(reviewFranchiseSource, /deleteRedundantPublishedMediaItemFranchiseLinks/);
+    assert.match(reviewFranchiseSource, /if \(removedLinkKeys\.has\([\s\S]*\)\) continue/);
+
+    const reviewLinkSource = getFunctionSource(
+      franchisesQuerySource,
+      "reviewSubmittedMediaItemFranchise",
+      "reviewMediaItemFranchiseRemovalRequest",
+    );
+    assert.match(reviewLinkSource, /const linkWasRemoved = removedLinks\.some/);
+    assert.match(reviewLinkSource, /if \(!linkWasRemoved\) \{[\s\S]*type: "media-franchise\.published"/);
+    assert.match(reviewLinkSource, /if \(!linkWasRemoved\) \{[\s\S]*type: "media-franchise\.approved"/);
+  });
+
+  it("serializes additive and approval mutations for the same record", () => {
+    assert.match(franchisesQuerySource, /async function lockMediaItemFranchiseMutations/);
+    assert.match(franchisesQuerySource, /pg_advisory_xact_lock/);
+    assert.match(franchisesQuerySource, /uniqueMediaItemIds[\s\S]*sort\(\(left, right\) => left - right\)/);
+
+    for (const functionName of [
+      "reviewSubmittedFranchise",
+      "reviewSubmittedMediaItemFranchise",
+      "createAuthorMediaItemFranchiseLinks",
+      "createAuthorFranchiseWithMediaItemLink",
+    ]) {
+      const start = franchisesQuerySource.indexOf(`export async function ${functionName}`);
+      const next = franchisesQuerySource.indexOf("export async function ", start + 1);
+      const source = franchisesQuerySource.slice(start, next === -1 ? undefined : next);
+      assert.match(source, /lockMediaItemFranchiseMutations/);
+    }
+  });
 });
 
 describe("franchise tree display and traversal", () => {
@@ -104,9 +164,11 @@ describe("franchise tree display and traversal", () => {
   });
 
   it("includes descendant series on a parent series page and deduplicates records", () => {
-    assert.match(subtreeQuerySource, /with recursive descendants as \(/);
-    assert.match(subtreeQuerySource, /select child\.id from "franchises" child/);
-    assert.match(subtreeQuerySource, /inner join descendants on child\.parent_id = descendants\.id/);
+    assert.match(franchisesQuerySource, /function publishedFranchiseBranchIdsSql/);
+    assert.match(franchisesQuerySource, /with recursive descendants as \(/);
+    assert.match(franchisesQuerySource, /select child\.id/);
+    assert.match(franchisesQuerySource, /inner join descendants parent on child\.parent_id = parent\.id/);
+    assert.match(subtreeQuerySource, /publishedFranchiseBranchIdsSql\(franchiseId\)/);
     assert.match(subtreeQuerySource, /mediaItemFranchises\.franchiseId\} in \(/);
     assert.match(subtreeQuerySource, /\.groupBy\([\s\S]*mediaItems\.id/);
   });
