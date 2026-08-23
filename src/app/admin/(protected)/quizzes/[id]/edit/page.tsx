@@ -1,5 +1,8 @@
+import { ArrowLeft } from "lucide-react";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
+import { buttonVariants } from "@/components/ui/button";
 import { getAdminQuizById } from "@/db/queries/quizzes";
 import { getAllMediaTypeOptions } from "@/db/queries/media-types";
 
@@ -26,6 +29,12 @@ export default async function EditQuizPage({
       <PageHeader
         title="Редактирование викторины"
         description={item.question ?? "Викторина с изображением"}
+        aside={(
+          <Link className={buttonVariants({ variant: "outline" })} href="/admin/quizzes">
+            <ArrowLeft />
+            Назад
+          </Link>
+        )}
       />
       <QuizForm action={updateQuizAction} item={item} mediaTypes={mediaTypes} />
     </div>

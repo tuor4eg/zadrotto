@@ -27,8 +27,10 @@ export function ActiveQuizPanel({
   }, []);
 
   return (
-    <div className="relative flex flex-col items-center gap-5 pb-8 text-center">
-      {quiz.question ? <p className="text-lg">{quiz.question}</p> : null}
+    <div className="relative flex h-full flex-col items-center gap-5 pb-3 text-center">
+      {quiz.question ? (
+        <p className="whitespace-pre-wrap text-lg">{quiz.question}</p>
+      ) : null}
       {quiz.imageUrl ? (
         <Image
           src={quiz.imageUrl}
@@ -39,27 +41,29 @@ export function ActiveQuizPanel({
           className="mx-auto max-h-[600px] w-full rounded-md object-contain"
         />
       ) : null}
-      {unavailableMediaTypeNames.length > 0 ? (
-        <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
-          <p>
-            Эта викторина касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.
-            Включи их в интересах, чтобы участвовать на равных, или спокойно пропусти этот раунд.
-          </p>
-          <div className="flex flex-wrap justify-center gap-2">
-            <Link href="/author/settings/media-types" className={buttonVariants({ size: "sm" })}>
-              Настроить интересы
-            </Link>
-            {onOpenArchive ? (
-              <Button type="button" size="sm" variant="outline" onClick={onOpenArchive}>
-                Пропустить в этот раз
-              </Button>
-            ) : null}
+      <div className="mt-auto">
+        {unavailableMediaTypeNames.length > 0 ? (
+          <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
+            <p>
+              Эта викторина касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.
+              Включи их в интересах, чтобы участвовать на равных, или спокойно пропусти этот раунд.
+            </p>
+            <div className="flex flex-wrap justify-center gap-2">
+              <Link href="/author/settings/media-types" className={buttonVariants({ size: "sm" })}>
+                Настроить интересы
+              </Link>
+              {onOpenArchive ? (
+                <Button type="button" size="sm" variant="outline" onClick={onOpenArchive}>
+                  Пропустить в этот раз
+                </Button>
+              ) : null}
+            </div>
           </div>
-        </div>
-      ) : (
-        <QuizParticipationButton isParticipating={isParticipating} onOpenArchive={onOpenArchive} />
-      )}
-      <p className="absolute bottom-0 right-0 text-right text-xs text-stone-600">
+        ) : (
+          <QuizParticipationButton isParticipating={isParticipating} onOpenArchive={onOpenArchive} />
+        )}
+      </div>
+      <p className="absolute -bottom-3 -right-3 text-right text-xs text-stone-600 sm:-bottom-6 sm:-right-6">
         {formatQuizTimeRemaining(quiz.endsAt, now)}
       </p>
     </div>

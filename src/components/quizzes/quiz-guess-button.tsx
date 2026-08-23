@@ -113,7 +113,7 @@ function QuizGuessResultModal({
             : "Все попытки ушли в архив. Правильный ответ, увы, остался там же."}
         </p>
         {isCorrect && comment ? (
-          <p className="mt-3 whitespace-pre-line text-sm leading-6 text-stone-600">{comment}</p>
+          <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">{comment}</p>
         ) : null}
       </div>
     </div>,

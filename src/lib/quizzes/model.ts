@@ -49,8 +49,14 @@ export function formatQuizTimeRemaining(endsAt: string | Date, now = new Date())
   const days = Math.floor(totalMinutes / (24 * 60));
   const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
   const minutes = totalMinutes % 60;
+  const parts = [
+    `${days} ${pluralizeRu(days, ["день", "дня", "дней"])}`,
+    `${hours} ${pluralizeRu(hours, ["час", "часа", "часов"])}`,
+    `${minutes} ${pluralizeRu(minutes, ["минута", "минуты", "минут"])}`,
+  ];
+  const firstNonZeroPart = [days, hours, minutes].findIndex((value) => value > 0);
 
-  return `Осталось ${days} ${pluralizeRu(days, ["день", "дня", "дней"])} ${hours} ${pluralizeRu(hours, ["час", "часа", "часов"])} ${minutes} ${pluralizeRu(minutes, ["минута", "минуты", "минут"])}`;
+  return `Осталось ${parts.slice(firstNonZeroPart === -1 ? -1 : firstNonZeroPart).join(" ")}`;
 }
 
 export function calculateAuthorQuizStatistics(rows: readonly {

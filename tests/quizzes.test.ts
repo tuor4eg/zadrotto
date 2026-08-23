@@ -19,7 +19,19 @@ describe("quizzes", () => {
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T10:00:01.000Z"), now),
-      "Осталось 0 дней 0 часов 1 минута",
+      "Осталось 1 минута",
+    );
+    assert.equal(
+      formatQuizTimeRemaining(new Date("2026-08-22T15:00:00.000Z"), now),
+      "Осталось 5 часов 0 минут",
+    );
+    assert.equal(
+      formatQuizTimeRemaining(new Date("2026-08-23T10:05:00.000Z"), now),
+      "Осталось 1 день 0 часов 5 минут",
+    );
+    assert.equal(
+      formatQuizTimeRemaining(now, now),
+      "Осталось 0 минут",
     );
   });
   it("treats an empty media type selection as any type", () => {
@@ -119,14 +131,21 @@ describe("quizzes", () => {
     assert.match(sharedHeader, /archive-catalog-header-actions[\s\S]*lg:hidden[\s\S]*quizAction/);
     assert.match(sharedHeader, /<QuizModal/);
     assert.match(modal, /<ActiveQuizPanel/);
-    assert.match(modal, /isRulesOpen[\s\S]*Правила викторины/);
+    const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
+    assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
+    assert.match(modal, /isRulesOpen[\s\S]*Как играть/);
     assert.match(modal, /Открыть правила викторины/);
     assert.match(modal, /aria-label=\{isRulesOpen \? "Назад к викторине"[\s\S]*<ArrowLeft/);
     assert.match(modal, /left-2 top-2 z-10[\s\S]*sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
     assert.match(modal, /right-2 top-2 z-10[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
-    assert.match(modal, /getBoundingClientRect\(\)\.height/);
-    assert.match(modal, /minHeight: `\$\{quizDialogHeight\}px`/);
-    assert.match(modal, /Неверный ответ отнимает одну попытку/);
+    assert.match(modal, /getBoundingClientRect\(\)\.top/);
+    assert.match(modal, /paddingTop: `\$\{dialogTop\}px`/);
+    assert.match(modal, /dialogTop === null \? "items-center" : "items-start"/);
+    assert.match(modal, /dialogTop === null \? "my-auto" : "my-0"/);
+    assert.match(modal, /Раз в день в 12:00 \(MSK\)/);
+    assert.match(modal, /disabled[\s\S]*Продолжить поиск в архиве/);
+    assert.match(modal, /disabled[\s\S]*Проверить догадку[\s\S]*<CircleHelp/);
+    assert.match(modal, /Array\.from\(\{ length: 3 \}/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -136,6 +155,8 @@ describe("quizzes", () => {
     const guessRoute = readFileSync("src/app/quiz/guess/route.ts", "utf8");
     const commentMigration = readFileSync("drizzle/0076_quiz_comment.sql", "utf8");
     const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");
+    const newPage = readFileSync("src/app/admin/(protected)/quizzes/new/page.tsx", "utf8");
+    const editPage = readFileSync("src/app/admin/(protected)/quizzes/[id]/edit/page.tsx", "utf8");
 
     assert.match(actions, /attemptLimit < 1 \|\| attemptLimit > 10/);
     assert.match(query, /attempt-limit-locked/);
@@ -157,6 +178,8 @@ describe("quizzes", () => {
     assert.match(commentMigration, /ADD COLUMN "comment" text/);
     assert.match(commentMigration, /char_length\("comment"\) <= 2000/);
     assert.match(form, /name="comment"[\s\S]*maxLength=\{2000\}/);
+    assert.match(newPage, /href="\/admin\/quizzes"[\s\S]*<ArrowLeft \/>[\s\S]*Назад/);
+    assert.match(editPage, /href="\/admin\/quizzes"[\s\S]*<ArrowLeft \/>[\s\S]*Назад/);
     assert.match(query, /comment: correct \? quiz\.comment : null/);
     assert.match(guessRoute, /comment: result\.correct \? result\.comment : null/);
   });
@@ -210,7 +233,7 @@ describe("quizzes", () => {
     assert.match(guessButton, /setTimeout\([\s\S]*3_000/);
     assert.match(guessButton, /disabled=\{pending \|\| cooldown\}/);
     assert.match(guessButton, /isCorrect && comment/);
-    assert.match(guessButton, /whitespace-pre-line/);
+    assert.match(guessButton, /whitespace-pre-wrap/);
     assert.match(guessButton, /text: response\.ok \? "Неверно"/);
   });
   it("proxies production quiz images through the protected nginx location", () => {
