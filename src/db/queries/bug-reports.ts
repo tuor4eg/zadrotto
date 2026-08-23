@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { adminActivityLogs, adminUsers, authors, bugReports } from "@/db/schema";
@@ -21,6 +21,14 @@ export type CreateBugReportInput = {
   url: string;
 };
 
+export type AdminBugReportInitialStatus = "new" | "confirmed";
+
+export class AdminBugReportCreationError extends Error {
+  constructor(public readonly code: "invalid-author") {
+    super(code);
+  }
+}
+
 export async function createBugReport(input: CreateBugReportInput) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [report] = await tx
@@ -36,6 +44,85 @@ export async function createBugReport(input: CreateBugReportInput) {
       payload: { authorId: input.authorId, bugReportId: report.id },
       type: "bug-report.created",
     });
+    return report;
+  });
+}
+
+export async function getManualBugReportAuthorOptions() {
+  return db
+    .select({ id: authors.id, code: authors.code, name: authors.name })
+    .from(authors)
+    .where(and(eq(authors.isSystem, false), isNull(authors.blockedAt)))
+    .orderBy(asc(authors.name), asc(authors.code));
+}
+
+export async function createAdminBugReport(input: {
+  activityLog: CreateActivityLogInput;
+  authorId: number;
+  description: string;
+  initialStatus: AdminBugReportInitialStatus;
+  url: string;
+}) {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [author] = await tx
+      .select({ id: authors.id })
+      .from(authors)
+      .where(and(
+        eq(authors.id, input.authorId),
+        eq(authors.isSystem, false),
+        isNull(authors.blockedAt),
+      ))
+      .limit(1);
+    if (!author) throw new AdminBugReportCreationError("invalid-author");
+
+    const now = new Date();
+    const [report] = await tx
+      .insert(bugReports)
+      .values({
+        authorId: input.authorId,
+        clientContext: null,
+        confirmedAt: input.initialStatus === "confirmed" ? now : null,
+        description: input.description,
+        entityId: null,
+        entityType: null,
+        status: input.initialStatus,
+        url: input.url,
+        updatedAt: now,
+      })
+      .returning({ id: bugReports.id });
+    if (!report) throw new Error("Bug report was not created");
+
+    await tx.insert(adminActivityLogs).values({
+      ...input.activityLog,
+      action: "bug-report.created",
+      entityId: report.id,
+      entityLabel: `Багрепорт #${report.id}`,
+      entityType: "bug-report",
+      message: "Багрепорт создан администратором от имени пользователя.",
+      metadata: {
+        initialStatus: input.initialStatus,
+        ownerAuthorId: input.authorId,
+      },
+    });
+
+    const payload = { authorId: input.authorId, bugReportId: report.id };
+    await appendEvent({
+      actorAuthorId: null,
+      aggregateId: String(report.id),
+      aggregateType: "bug-report",
+      payload,
+      type: "bug-report.created",
+    });
+    if (input.initialStatus === "confirmed") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(report.id),
+        aggregateType: "bug-report",
+        payload,
+        type: "bug-report.confirmed",
+      });
+    }
+
     return report;
   });
 }

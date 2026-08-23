@@ -1,6 +1,6 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-import { contributions, franchises, mediaItemFranchises, mediaItems, quizParticipants, ratings } from "@/db/schema";
+import { bugReports, contributions, franchises, mediaItemFranchises, mediaItems, quizParticipants, ratings } from "@/db/schema";
 import type { DbTransaction } from "@/db/transaction";
 import type { DomainEventType } from "@/lib/domain-events/catalog";
 
@@ -10,6 +10,7 @@ export const ACHIEVEMENT_MECHANIC_CODES = [
   "media.authored.count",
   "quiz.correct.count",
   "quiz.win.count",
+  "bug-report.confirmed.count",
 ] as const;
 export type AchievementMechanicCode = (typeof ACHIEVEMENT_MECHANIC_CODES)[number];
 export type CountMechanicParams = { mediaType?: string; seriesId?: number };
@@ -162,6 +163,27 @@ async function evaluateQuizCount(input: {
   );
 }
 
+async function evaluateConfirmedBugReportCount(input: {
+  tx: DbTransaction;
+  authorIds: readonly number[];
+  instances: readonly AchievementMechanicInstance<EmptyMechanicParams>[];
+}) {
+  if (input.authorIds.length === 0 || input.instances.length === 0) return [];
+  const result = await input.tx.execute(sql`select ${bugReports.authorId}::int as "authorId",
+      count(*)::int as "value"
+    from ${bugReports}
+    where ${bugReports.authorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})
+      and ${bugReports.confirmedAt} is not null
+    group by ${bugReports.authorId}`);
+  return Array.from(result as Iterable<Record<string, unknown>>).flatMap((row) =>
+    input.instances.map((instance) => ({
+      achievementId: instance.achievementId,
+      authorId: Number(row.authorId),
+      value: Number(row.value),
+    })),
+  );
+}
+
 export const achievementMechanicRegistry: readonly AchievementMechanicDefinition[] = [
   {
     code: "rating.authored.count", label: "Количество поставленных оценок",
@@ -224,6 +246,16 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
       ...input,
       instances: input.instances as readonly AchievementMechanicInstance<EmptyMechanicParams>[],
       source: "win",
+    }),
+  },
+  {
+    code: "bug-report.confirmed.count", label: "Количество подтверждённых багрепортов",
+    eventTypes: ["bug-report.confirmed"],
+    params: [],
+    parseParams: parseEmptyParams,
+    evaluateBatch: (input) => evaluateConfirmedBugReportCount({
+      ...input,
+      instances: input.instances as readonly AchievementMechanicInstance<EmptyMechanicParams>[],
     }),
   },
 ];

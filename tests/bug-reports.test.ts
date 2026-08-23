@@ -8,6 +8,7 @@ import {
   canTransitionBugReportStatus,
   isBugReportEntityType,
   isBugReportStatus,
+  normalizeBugReportRelativeUrl,
 } from "../src/lib/bug-reports/model";
 import {
   getExternalNotificationRoute,
@@ -37,6 +38,7 @@ const seriesPage = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const quizModal = readFileSync("src/components/quizzes/quiz-modal.tsx", "utf8");
 const adminList = readFileSync("src/app/admin/(protected)/bug-reports/page.tsx", "utf8");
 const adminDetail = readFileSync("src/app/admin/(protected)/bug-reports/[id]/page.tsx", "utf8");
+const adminNew = readFileSync("src/app/admin/(protected)/bug-reports/new/page.tsx", "utf8");
 const adminAction = readFileSync("src/app/admin/(protected)/bug-reports/actions.ts", "utf8");
 const adminLayout = readFileSync("src/app/admin/(protected)/layout.tsx", "utf8");
 const adminNav = readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8");
@@ -142,6 +144,32 @@ describe("bug report administration", () => {
     assert.match(adminNav, /href: "\/admin\/bug-reports"/);
     assert.match(adminNav, /openBugReportsCount/);
   });
+
+  it("lets admins create reports for active users with an explicit initial status", () => {
+    assert.equal(normalizeBugReportRelativeUrl(""), "/");
+    assert.equal(normalizeBugReportRelativeUrl(" /media/example?tab=reviews "), "/media/example?tab=reviews");
+    assert.equal(normalizeBugReportRelativeUrl("https://example.com"), null);
+    assert.equal(normalizeBugReportRelativeUrl("//example.com"), null);
+    assert.equal(normalizeBugReportRelativeUrl("/\\example.com"), null);
+    assert.match(adminList, /href="\/admin\/bug-reports\/new"/);
+    assert.match(adminNew, /name="authorId"[\s\S]*required/);
+    assert.match(adminNew, /name="description"[\s\S]*BUG_REPORT_DESCRIPTION_MAX_LENGTH/);
+    assert.match(adminNew, /name="url"/);
+    assert.match(adminNew, /name="initialStatus" defaultValue="confirmed"[\s\S]*value="confirmed"[\s\S]*value="new"/);
+    assert.match(query, /getManualBugReportAuthorOptions[\s\S]*eq\(authors\.isSystem, false\)[\s\S]*isNull\(authors\.blockedAt\)/);
+    assert.match(adminAction, /requireAdminUser\(\)[\s\S]*initialStatus !== "new" && initialStatus !== "confirmed"/);
+    assert.match(adminAction, /normalizeBugReportRelativeUrl/);
+  });
+
+  it("atomically creates manual reports, activity history, and confirmation events", () => {
+    assert.match(query, /createAdminBugReport[\s\S]*runInDomainEventTransaction/);
+    assert.match(query, /eq\(authors\.id, input\.authorId\)[\s\S]*eq\(authors\.isSystem, false\)[\s\S]*isNull\(authors\.blockedAt\)/);
+    assert.match(query, /confirmedAt: input\.initialStatus === "confirmed" \? now : null/);
+    assert.match(query, /insert\(adminActivityLogs\)[\s\S]*action: "bug-report\.created"/);
+    assert.match(query, /actorAuthorId: null[\s\S]*type: "bug-report\.created"/);
+    assert.match(query, /if \(input\.initialStatus === "confirmed"\)[\s\S]*actorAuthorId: null[\s\S]*type: "bug-report\.confirmed"/);
+    assert.match(adminDetail, /wasCreatedByAdmin[\s\S]*!wasCreatedByAdmin/);
+  });
 });
 
 describe("bug report notifications", () => {
@@ -171,6 +199,12 @@ describe("bug report notifications", () => {
     assert.match(dispatcher, /insert\(domainEventConsumptions\)[\s\S]*onConflictDoNothing\(\)[\s\S]*if \(!claimedRow\) return false/);
     assert.match(dispatcher, /await consumer\.handle\(tx, typedEvent\)/);
     assert.match(dispatcher, /if \(!claimed \|\| !consumer\.afterCommit\) continue/);
+  });
+
+  it("does not notify admins about a manually created bug report", () => {
+    assert.match(notificationConsumer, /event\.type === "bug-report\.created" && event\.actorAuthorId === null/);
+    assert.match(notificationConsumer, /async handle\(tx, event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
+    assert.match(notificationConsumer, /async afterCommit\(event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
   });
 });
 

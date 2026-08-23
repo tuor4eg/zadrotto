@@ -1,4 +1,4 @@
-import { Eye } from "lucide-react";
+import { Eye, Plus } from "lucide-react";
 import Link from "next/link";
 
 import { PaginationNav } from "@/components/pagination-nav";
@@ -53,7 +53,16 @@ export default async function AdminBugReportsPage({
 
   return (
     <div className="flex flex-col gap-5">
-      <PageHeader title="Багрепорты" description="Сообщения авторов об ошибках на сайте." />
+      <PageHeader
+        title="Багрепорты"
+        description="Сообщения авторов об ошибках на сайте."
+        aside={(
+          <Link href="/admin/bug-reports/new" className={buttonVariants()}>
+            <Plus />
+            Добавить багрепорт
+          </Link>
+        )}
+      />
 
       <form className="flex flex-wrap items-end gap-3" method="get">
         <label className="grid gap-1 text-sm">

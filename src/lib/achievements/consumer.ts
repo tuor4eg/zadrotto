@@ -15,10 +15,16 @@ export const achievementDomainEventConsumer: DomainEventConsumer = {
     "media-franchise.published",
     "franchise.parent.changed",
     "quiz.completed",
+    "bug-report.confirmed",
   ],
   async handle(tx, event) {
     let authorIds: number[];
-    if (event.type === "rating.created" || event.type === "review.published" || event.type === "quiz.completed") {
+    if (
+      event.type === "rating.created"
+      || event.type === "review.published"
+      || event.type === "quiz.completed"
+      || event.type === "bug-report.confirmed"
+    ) {
       authorIds = [(event.payload as { authorId: number }).authorId];
     } else {
       const mediaIds = event.type === "franchise.parent.changed"

@@ -39,7 +39,7 @@ function getEntityHref(entityType: string | null, entityId: string | null) {
 
 export default async function AdminBugReportPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ error?: string; updated?: string }>;
+  searchParams: Promise<{ created?: string; error?: string; updated?: string }>;
 }) {
   const [{ id: idValue }, query] = await Promise.all([params, searchParams]);
   const id = Number(idValue);
@@ -52,14 +52,16 @@ export default async function AdminBugReportPage({ params, searchParams }: {
 
   const status = report.status as BugReportStatus;
   const entityHref = getEntityHref(report.entityType, report.entityId);
+  const wasCreatedByAdmin = activityLogs.some((entry) => entry.action === "bug-report.created");
   const toastMessages = [
+    ...(query.created === "1" ? [{ id: "created", tone: "success" as const, text: "Багрепорт создан." }] : []),
     ...(query.updated === "1" ? [{ id: "updated", tone: "success" as const, text: "Статус багрепорта изменён." }] : []),
     ...(query.error ? [{ id: "error", tone: "error" as const, text: query.error === "stale-status" ? "Статус уже изменился. Обнови страницу." : "Не удалось изменить статус." }] : []),
   ] satisfies AdminToast[];
 
   return (
     <div className="flex flex-col gap-5">
-      <AdminToasts clearParams={["error", "updated"]} messages={toastMessages} />
+      <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
       <div className="flex flex-wrap items-center gap-2">
         <Link href="/admin/bug-reports" className={buttonVariants({ size: "sm", variant: "outline" })}><ArrowLeft />К списку</Link>
         {TRANSITIONS.filter((transition) => canTransitionBugReportStatus(status, transition.status)).map((transition) => {
@@ -116,11 +118,13 @@ export default async function AdminBugReportPage({ params, searchParams }: {
                 <p className="mt-1 text-xs text-stone-500">{formatDate(entry.createdAt)} · {entry.adminLogin ?? "Удалённый админ"}</p>
               </li>
             ))}
-            <li className="relative">
-              <span className="absolute -left-[1.56rem] top-1 size-2 rounded-full bg-stone-300" aria-hidden="true" />
-              <p className="text-sm font-medium">Багрепорт создан.</p>
-              <p className="mt-1 text-xs text-stone-500">{formatDate(report.createdAt)} · {report.authorName}</p>
-            </li>
+            {!wasCreatedByAdmin ? (
+              <li className="relative">
+                <span className="absolute -left-[1.56rem] top-1 size-2 rounded-full bg-stone-300" aria-hidden="true" />
+                <p className="text-sm font-medium">Багрепорт создан.</p>
+                <p className="mt-1 text-xs text-stone-500">{formatDate(report.createdAt)} · {report.authorName}</p>
+              </li>
+            ) : null}
           </ol>
         ) : (
           <ol className="mt-4 border-l border-stone-200 pl-5">

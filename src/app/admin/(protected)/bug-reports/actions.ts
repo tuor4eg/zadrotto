@@ -4,12 +4,62 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import {
+  AdminBugReportCreationError,
   BugReportTransitionError,
+  createAdminBugReport,
   transitionBugReportStatus,
 } from "@/db/queries/bug-reports";
 import { prepareActivityLog } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
-import { isBugReportStatus } from "@/lib/bug-reports/model";
+import {
+  BUG_REPORT_DESCRIPTION_MAX_LENGTH,
+  isBugReportStatus,
+  normalizeBugReportRelativeUrl,
+} from "@/lib/bug-reports/model";
+
+export async function createAdminBugReportAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const authorId = Number(formData.get("authorId"));
+  const description = String(formData.get("description") ?? "").trim();
+  const initialStatus = String(formData.get("initialStatus") ?? "");
+  const url = normalizeBugReportRelativeUrl(String(formData.get("url") ?? ""));
+
+  if (
+    !Number.isInteger(authorId)
+    || authorId <= 0
+    || !description
+    || description.length > BUG_REPORT_DESCRIPTION_MAX_LENGTH
+    || (initialStatus !== "new" && initialStatus !== "confirmed")
+    || !url
+  ) {
+    redirect("/admin/bug-reports/new?error=invalid");
+  }
+
+  let report: { id: number };
+  try {
+    const activityLog = await prepareActivityLog({
+      action: "bug-report.created",
+      actorType: "admin",
+      adminUserId: admin.id,
+      entityType: "bug-report",
+    });
+    report = await createAdminBugReport({
+      activityLog,
+      authorId,
+      description,
+      initialStatus,
+      url,
+    });
+  } catch (error) {
+    const code = error instanceof AdminBugReportCreationError ? error.code : "save";
+    console.error("Не удалось создать багрепорт вручную.", error);
+    redirect(`/admin/bug-reports/new?error=${encodeURIComponent(code)}`);
+  }
+
+  revalidatePath("/admin/bug-reports");
+  revalidatePath("/admin", "layout");
+  redirect(`/admin/bug-reports/${report.id}?created=1`);
+}
 
 export async function transitionBugReportAction(formData: FormData) {
   const admin = await requireAdminUser();

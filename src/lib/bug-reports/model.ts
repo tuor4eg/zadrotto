@@ -33,6 +33,22 @@ export function isBugReportEntityType(value: string): value is BugReportEntityTy
   return (BUG_REPORT_ENTITY_TYPES as readonly string[]).includes(value);
 }
 
+export function normalizeBugReportRelativeUrl(value: string) {
+  const normalized = value.trim() || "/";
+  if (!normalized.startsWith("/") || normalized.startsWith("//")) {
+    return null;
+  }
+  try {
+    const baseUrl = "https://bug-report.invalid";
+    const parsed = new URL(normalized, baseUrl);
+    if (parsed.origin !== baseUrl) return null;
+    const relative = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return relative.length <= BUG_REPORT_URL_MAX_LENGTH ? relative : null;
+  } catch {
+    return null;
+  }
+}
+
 const ALLOWED_STATUS_TRANSITIONS: Record<BugReportStatus, readonly BugReportStatus[]> = {
   new: ["reviewing", "confirmed", "rejected"],
   reviewing: ["confirmed", "rejected"],

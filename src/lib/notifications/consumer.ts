@@ -7,6 +7,10 @@ import { resolveNotificationDraft } from "@/lib/notifications/draft"
 import { dispatchExternalNotificationTransports } from "@/lib/notifications/external"
 import { getNotificationRecipientType } from "@/lib/notifications/catalog"
 
+function isManualBugReportCreated(event: Parameters<DomainEventConsumer["handle"]>[1]) {
+  return event.type === "bug-report.created" && event.actorAuthorId === null
+}
+
 export const notificationDomainEventConsumer: DomainEventConsumer = {
   key: "notifications.create",
   eventTypes: [
@@ -23,6 +27,7 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
     "bug-report.created",
   ],
   async handle(tx, event) {
+    if (isManualBugReportCreated(event)) return
     const draft = await resolveNotificationDraft(tx, event)
     if (!draft) return
 
@@ -49,6 +54,7 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
     )
   },
   async afterCommit(event) {
+    if (isManualBugReportCreated(event)) return
     await dispatchExternalNotificationTransports(event)
   },
 }

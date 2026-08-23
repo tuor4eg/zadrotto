@@ -83,17 +83,19 @@ describe("domain event foundation", () => {
 
 describe("achievement consumer", () => {
   it("registers reusable mechanics with independently declared parameters", () => {
-    assert.equal(achievementMechanicRegistry.length, 5);
+    assert.equal(achievementMechanicRegistry.length, 6);
     const rating = getAchievementMechanic("rating.authored.count");
     const review = getAchievementMechanic("review.authored.count");
     const media = getAchievementMechanic("media.authored.count");
     const quizCorrect = getAchievementMechanic("quiz.correct.count");
     const quizWin = getAchievementMechanic("quiz.win.count");
+    const confirmedBugReports = getAchievementMechanic("bug-report.confirmed.count");
     assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(quizCorrect?.params, []);
     assert.deepEqual(quizWin?.params, []);
+    assert.deepEqual(confirmedBugReports?.params, []);
     assert.notEqual(rating?.params, review?.params);
     assert.notEqual(review?.params, media?.params);
     assert.deepEqual(review?.eventTypes, [
@@ -112,10 +114,23 @@ describe("achievement consumer", () => {
     assert.throws(() => media?.parseParams({ seriesId: 0 }));
     assert.deepEqual(quizCorrect?.parseParams({}), {});
     assert.deepEqual(quizWin?.parseParams({}), {});
+    assert.deepEqual(confirmedBugReports?.parseParams({}), {});
     assert.throws(() => quizCorrect?.parseParams({ mediaType: "film" }));
     assert.throws(() => quizWin?.parseParams(null));
+    assert.throws(() => confirmedBugReports?.parseParams({ unsupported: true }));
     assert.deepEqual(quizCorrect?.eventTypes, ["quiz.completed"]);
     assert.deepEqual(quizWin?.eventTypes, ["quiz.completed"]);
+    assert.deepEqual(confirmedBugReports?.eventTypes, ["bug-report.confirmed"]);
+  });
+
+  it("counts confirmed bug reports set-wise and routes confirmation to its author", () => {
+    const catalogSource = readFileSync("src/lib/achievements/catalog.ts", "utf8");
+    assert.match(catalogSource, /from \$\{bugReports\}[\s\S]*bugReports\.authorId} in \(\$\{sql\.join\(input\.authorIds/);
+    assert.match(catalogSource, /bugReports\.confirmedAt} is not null/);
+    assert.match(catalogSource, /group by \$\{bugReports\.authorId}/);
+    assert.doesNotMatch(catalogSource, /for \(const authorId of input\.authorIds\)/);
+    assert.match(achievementConsumerSource, /"bug-report\.confirmed"/);
+    assert.match(achievementConsumerSource, /event\.type === "bug-report\.confirmed"[\s\S]*authorId/);
   });
 
   it("evaluates quiz mechanics set-wise and routes completion to its author", () => {
