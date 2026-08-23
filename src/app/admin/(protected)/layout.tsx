@@ -46,13 +46,15 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-5">
         <header className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 pl-12 md:pl-0">
-            <Image
-              src="/site-logo.png"
-              alt=""
-              width={48}
-              height={48}
-              className="size-12 shrink-0 object-contain"
-            />
+            <Link href="/" aria-label="Перейти на сайт" className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-900/20">
+              <Image
+                src="/site-logo.png"
+                alt=""
+                width={48}
+                height={48}
+                className="size-12 object-contain"
+              />
+            </Link>
             <h1 className="text-3xl font-semibold tracking-tight text-stone-950">
               Панель управления
             </h1>

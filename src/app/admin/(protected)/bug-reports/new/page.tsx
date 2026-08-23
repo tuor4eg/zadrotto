@@ -4,11 +4,11 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
-import { getManualBugReportAuthorOptions } from "@/db/queries/bug-reports";
 import { BUG_REPORT_DESCRIPTION_MAX_LENGTH, BUG_REPORT_URL_MAX_LENGTH } from "@/lib/bug-reports/model";
 import { AdminToasts, type AdminToast } from "../../admin-toasts";
 import { PageHeader } from "../../admin-ui";
 import { createAdminBugReportAction } from "../actions";
+import { ManualBugReportAuthorPicker } from "./author-picker";
 
 const ERROR_MESSAGES: Record<string, string> = {
   invalid: "Проверь пользователя, описание, страницу и начальный статус.",
@@ -21,10 +21,7 @@ export default async function NewAdminBugReportPage({
 }: {
   searchParams: Promise<{ error?: string }>;
 }) {
-  const [{ error }, authors] = await Promise.all([
-    searchParams,
-    getManualBugReportAuthorOptions(),
-  ]);
+  const { error } = await searchParams;
   const toastMessages = error
     ? [{ id: "error", tone: "error" as const, text: ERROR_MESSAGES[error] ?? ERROR_MESSAGES.save }]
     : [] satisfies AdminToast[];
@@ -49,17 +46,7 @@ export default async function NewAdminBugReportPage({
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="bug-report-author">Пользователь</Label>
-              <Select id="bug-report-author" name="authorId" required defaultValue="">
-                <option value="">Выбери пользователя</option>
-                {authors.map((author) => (
-                  <option key={author.id} value={author.id}>
-                    {author.name} · {author.code}
-                  </option>
-                ))}
-              </Select>
-              {authors.length === 0 ? (
-                <p className="text-sm text-stone-500">Нет активных пользователей, которым можно назначить багрепорт.</p>
-              ) : null}
+              <ManualBugReportAuthorPicker id="bug-report-author" name="authorId" />
             </div>
 
             <div className="flex flex-col gap-2">
@@ -92,7 +79,7 @@ export default async function NewAdminBugReportPage({
             </div>
 
             <div>
-              <Button type="submit" disabled={authors.length === 0}>
+              <Button type="submit">
                 <Save />
                 Создать багрепорт
               </Button>

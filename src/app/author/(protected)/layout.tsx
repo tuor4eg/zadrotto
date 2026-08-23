@@ -8,6 +8,7 @@ import { requireAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { NotificationBell } from "@/components/notifications/notification-inbox";
+import { AuthorMobileNavMenu } from "./author-mobile-nav-menu";
 import { AuthorProposalsMenu } from "./author-proposals-menu";
 
 export const dynamic = "force-dynamic";
@@ -56,9 +57,26 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
             </Link>
           </div>
 
+          <div className="flex items-center justify-end gap-2 border-t border-stone-300/70 px-3 py-2 md:hidden">
+            <NotificationBell align="right" />
+            <AuthorMobileNavMenu
+              incomingFriendRequestCount={incomingFriendRequestCount}
+              logoutSlot={(
+                <form action={logoutAuthor}>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center rounded-md px-3 py-2.5 text-left text-sm font-medium text-stone-700 transition-colors hover:bg-stone-200/60 hover:text-stone-950"
+                  >
+                    Выйти
+                  </button>
+                </form>
+              )}
+            />
+          </div>
+
           <nav
             aria-label="Навигация кабинета автора"
-            className="flex flex-wrap items-center gap-2 border-t border-stone-300/70 px-3 py-3 lg:px-7"
+            className="hidden flex-wrap items-center gap-2 border-t border-stone-300/70 px-3 py-3 md:flex lg:px-7"
           >
             <Link
               href="/author"

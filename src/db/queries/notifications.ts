@@ -3,6 +3,7 @@ import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 import { db } from "@/db"
 import {
   contributions,
+  bugReports,
   franchises,
   mediaItemFranchiseRemovalRequests,
   mediaItemFranchises,
@@ -65,6 +66,11 @@ export const adminSubmissionStillOpenSql = sql`(
       select 1 from ${contributions}
       where ${contributions.id} = ${notificationEntityIdIntSql}
         and ${contributions.status} = 'submitted'
+    )
+    when 'bug-report.created' then exists (
+      select 1 from ${bugReports}
+      where ${bugReports.id} = ${notificationEntityIdIntSql}
+        and ${bugReports.status} in ('new', 'reviewing')
     )
     else true
   end

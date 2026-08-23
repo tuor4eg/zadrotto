@@ -29,6 +29,7 @@ const domainCatalog = readFileSync("src/lib/domain-events/catalog.ts", "utf8");
 const dispatcher = readFileSync("src/lib/domain-events/dispatcher.ts", "utf8");
 const notificationConsumer = readFileSync("src/lib/notifications/consumer.ts", "utf8");
 const notificationDraft = readFileSync("src/lib/notifications/draft.ts", "utf8");
+const notificationQuery = readFileSync("src/db/queries/notifications.ts", "utf8");
 const hud = readFileSync("src/components/external-interface/external-interface-layer.tsx", "utf8");
 const hudApi = readFileSync("src/app/api/user-hud/route.ts", "utf8");
 const modal = readFileSync("src/components/bug-reports/bug-report-modal.tsx", "utf8");
@@ -39,6 +40,7 @@ const quizModal = readFileSync("src/components/quizzes/quiz-modal.tsx", "utf8");
 const adminList = readFileSync("src/app/admin/(protected)/bug-reports/page.tsx", "utf8");
 const adminDetail = readFileSync("src/app/admin/(protected)/bug-reports/[id]/page.tsx", "utf8");
 const adminNew = readFileSync("src/app/admin/(protected)/bug-reports/new/page.tsx", "utf8");
+const adminAuthorPicker = readFileSync("src/app/admin/(protected)/bug-reports/new/author-picker.tsx", "utf8");
 const adminAction = readFileSync("src/app/admin/(protected)/bug-reports/actions.ts", "utf8");
 const adminLayout = readFileSync("src/app/admin/(protected)/layout.tsx", "utf8");
 const adminNav = readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8");
@@ -141,8 +143,10 @@ describe("bug report administration", () => {
     assert.match(adminDetail, /whitespace-pre-wrap/);
     assert.match(adminDetail, /report\.clientContext/);
     assert.match(adminLayout, /getOpenBugReportCount\(\)/);
+    assert.match(adminLayout, /<Link href="\/" aria-label="Перейти на сайт"[\s\S]*src="\/site-logo\.png"/);
     assert.match(adminNav, /href: "\/admin\/bug-reports"/);
     assert.match(adminNav, /openBugReportsCount/);
+    assert.match(query, /countOpenBugReports[\s\S]*status} in \('new', 'reviewing'\)/);
   });
 
   it("lets admins create reports for active users with an explicit initial status", () => {
@@ -152,13 +156,28 @@ describe("bug report administration", () => {
     assert.equal(normalizeBugReportRelativeUrl("//example.com"), null);
     assert.equal(normalizeBugReportRelativeUrl("/\\example.com"), null);
     assert.match(adminList, /href="\/admin\/bug-reports\/new"/);
-    assert.match(adminNew, /name="authorId"[\s\S]*required/);
+    assert.match(adminNew, /ManualBugReportAuthorPicker id="bug-report-author" name="authorId"/);
     assert.match(adminNew, /name="description"[\s\S]*BUG_REPORT_DESCRIPTION_MAX_LENGTH/);
     assert.match(adminNew, /name="url"/);
     assert.match(adminNew, /name="initialStatus" defaultValue="confirmed"[\s\S]*value="confirmed"[\s\S]*value="new"/);
-    assert.match(query, /getManualBugReportAuthorOptions[\s\S]*eq\(authors\.isSystem, false\)[\s\S]*isNull\(authors\.blockedAt\)/);
+    assert.match(query, /searchManualBugReportAuthors[\s\S]*eq\(authors\.isSystem, false\)[\s\S]*isNull\(authors\.blockedAt\)/);
     assert.match(adminAction, /requireAdminUser\(\)[\s\S]*initialStatus !== "new" && initialStatus !== "confirmed"/);
     assert.match(adminAction, /normalizeBugReportRelativeUrl/);
+  });
+
+  it("searches eligible report owners by name, login, and primary email", () => {
+    assert.match(adminAction, /searchManualBugReportAuthorsAction[\s\S]*requireAdminUser\(\)[\s\S]*searchManualBugReportAuthors/);
+    assert.match(query, /normalizeSearchText\(query\)/);
+    assert.match(query, /containsNormalizedSearchSql\(authors\.name, normalizedNameQuery\)/);
+    assert.match(query, /authorAccounts\.normalizedLogin} like/);
+    assert.match(query, /authorEmails\.normalizedEmail} like/);
+    assert.match(query, /eq\(authorEmails\.isPrimary, true\)/);
+    assert.match(query, /\.limit\(20\)/);
+    assert.match(adminAuthorPicker, /placeholder="Имя, логин или почта"/);
+    assert.match(adminAuthorPicker, /query\.trim\(\)\.length < 2/);
+    assert.match(adminAuthorPicker, /window\.setTimeout[\s\S]*250/);
+    assert.match(adminAuthorPicker, /type="hidden" name=\{name\} value=\{selected\?\.id \?\? ""\}/);
+    assert.doesNotMatch(adminNew, /getManualBugReportAuthorOptions/);
   });
 
   it("atomically creates manual reports, activity history, and confirmation events", () => {
@@ -205,6 +224,11 @@ describe("bug report notifications", () => {
     assert.match(notificationConsumer, /event\.type === "bug-report\.created" && event\.actorAuthorId === null/);
     assert.match(notificationConsumer, /async handle\(tx, event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
     assert.match(notificationConsumer, /async afterCommit\(event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
+  });
+
+  it("drops processed bug reports from admin queue and notification badges", () => {
+    assert.match(notificationQuery, /when 'bug-report\.created' then exists \([\s\S]*from \$\{bugReports\}[\s\S]*status} in \('new', 'reviewing'\)/);
+    assert.match(notificationQuery, /getUnreadNotificationCount[\s\S]*adminSubmissionStillOpenSql/);
   });
 });
 

@@ -1,7 +1,8 @@
-import { and, asc, desc, eq, isNull, sql } from "drizzle-orm";
+import { and, asc, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { adminActivityLogs, adminUsers, authors, bugReports } from "@/db/schema";
+import { containsNormalizedSearchSql } from "@/db/search";
+import { adminActivityLogs, adminUsers, authorAccounts, authorEmails, authors, bugReports } from "@/db/schema";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import {
   canTransitionBugReportStatus,
@@ -11,6 +12,8 @@ import {
 } from "@/lib/bug-reports/model";
 import type { CreateActivityLogInput } from "@/db/queries/activity-logs";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+import { normalizeAuthorEmail, normalizeAuthorLogin } from "@/lib/auth/author-account";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 export type CreateBugReportInput = {
   authorId: number;
@@ -48,12 +51,36 @@ export async function createBugReport(input: CreateBugReportInput) {
   });
 }
 
-export async function getManualBugReportAuthorOptions() {
+export async function searchManualBugReportAuthors(query: string) {
+  const normalizedNameQuery = normalizeSearchText(query);
+  if (normalizedNameQuery.length < 2) return [];
+  const normalizedLoginQuery = normalizeAuthorLogin(query);
+  const normalizedEmailQuery = normalizeAuthorEmail(query);
+
   return db
-    .select({ id: authors.id, code: authors.code, name: authors.name })
+    .select({
+      id: authors.id,
+      email: authorEmails.email,
+      login: authorAccounts.login,
+      name: authors.name,
+    })
     .from(authors)
-    .where(and(eq(authors.isSystem, false), isNull(authors.blockedAt)))
-    .orderBy(asc(authors.name), asc(authors.code));
+    .leftJoin(authorAccounts, eq(authorAccounts.authorId, authors.id))
+    .leftJoin(authorEmails, and(
+      eq(authorEmails.authorId, authors.id),
+      eq(authorEmails.isPrimary, true),
+    ))
+    .where(and(
+      eq(authors.isSystem, false),
+      isNull(authors.blockedAt),
+      or(
+        containsNormalizedSearchSql(authors.name, normalizedNameQuery),
+        sql`${authorAccounts.normalizedLogin} like ${`%${normalizedLoginQuery}%`}`,
+        sql`${authorEmails.normalizedEmail} like ${`%${normalizedEmailQuery}%`}`,
+      ),
+    ))
+    .orderBy(asc(authors.name), asc(authors.id))
+    .limit(20);
 }
 
 export async function createAdminBugReport(input: {
@@ -188,7 +215,7 @@ export async function countOpenBugReports() {
   const [row] = await db
     .select({ count: sql<number>`count(*)::int` })
     .from(bugReports)
-    .where(sql`${bugReports.status} not in ('fixed', 'rejected')`);
+    .where(sql`${bugReports.status} in ('new', 'reviewing')`);
   return row?.count ?? 0;
 }
 

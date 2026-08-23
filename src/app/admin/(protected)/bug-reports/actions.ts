@@ -7,6 +7,7 @@ import {
   AdminBugReportCreationError,
   BugReportTransitionError,
   createAdminBugReport,
+  searchManualBugReportAuthors,
   transitionBugReportStatus,
 } from "@/db/queries/bug-reports";
 import { prepareActivityLog } from "@/lib/activity-logs/server";
@@ -16,6 +17,11 @@ import {
   isBugReportStatus,
   normalizeBugReportRelativeUrl,
 } from "@/lib/bug-reports/model";
+
+export async function searchManualBugReportAuthorsAction(query: string) {
+  await requireAdminUser();
+  return searchManualBugReportAuthors(query);
+}
 
 export async function createAdminBugReportAction(formData: FormData) {
   const admin = await requireAdminUser();

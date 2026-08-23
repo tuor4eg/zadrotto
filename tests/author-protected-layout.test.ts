@@ -11,6 +11,10 @@ const proposalsMenuSource = readFileSync(
   "src/app/author/(protected)/author-proposals-menu.tsx",
   "utf8",
 );
+const mobileMenuSource = readFileSync(
+  "src/app/author/(protected)/author-mobile-nav-menu.tsx",
+  "utf8",
+);
 
 function countMatches(source: string, pattern: RegExp) {
   return source.match(pattern)?.length ?? 0;
@@ -50,10 +54,27 @@ describe("protected author layout", () => {
     );
     assert.doesNotMatch(header, /Журнал, которого не было|База хранит факты/);
     assert.match(header, /<nav\s+aria-label="Навигация кабинета автора"/);
+    assert.match(header, /className="hidden flex-wrap[^"]*md:flex/);
+    assert.match(header, /<AuthorMobileNavMenu[\s\S]*incomingFriendRequestCount=\{incomingFriendRequestCount\}/);
+    assert.match(header, /className="flex items-center justify-end[^"]*md:hidden"/);
     assert.match(header, /style=\{\{ overflow: "visible" \}\}/);
     assert.match(header, /href="\/author"[\s\S]*?>\s*Статистика\s*<\/Link>[\s\S]*?href="\/author\/quizzes"[\s\S]*?>\s*Викторины\s*<\/Link>[\s\S]*?href="\/author\/achievements"[\s\S]*?>\s*Ачивки\s*<\/Link>[\s\S]*?<AuthorProposalsMenu \/>/);
     assert.match(header, /href="\/author\/profile"/);
     assert.match(header, /action=\{logoutAuthor\}/);
+  });
+
+  it("uses a hamburger menu for the complete mobile navigation", () => {
+    assert.match(mobileMenuSource, /aria-label=\{isOpen \? "Закрыть меню кабинета" : "Открыть меню кабинета"\}/);
+    assert.match(mobileMenuSource, /isOpen \? <X \/> : <Menu \/>/);
+    assert.match(mobileMenuSource, /size: "icon"/);
+    assert.doesNotMatch(mobileMenuSource, />\s*Меню\s*</);
+    assert.match(mobileMenuSource, /id="author-mobile-nav-panel"/);
+    assert.match(mobileMenuSource, /aria-expanded=\{isProposalsOpen\}/);
+    assert.match(mobileMenuSource, /aria-controls="author-mobile-proposals-panel"/);
+    assert.match(mobileMenuSource, /isProposalsOpen \? \([\s\S]*href="\/author\/media"[\s\S]*Записи[\s\S]*href="\/author\/series"[\s\S]*Серии/);
+    assert.match(mobileMenuSource, /href="\/author\/friends"[\s\S]*NotificationBadge/);
+    assert.match(mobileMenuSource, /event\.key === "Escape"[\s\S]*triggerRef\.current\?\.focus\(\)/);
+    assert.match(mobileMenuSource, /document\.addEventListener\("pointerdown"/);
   });
 
   it("uses a proposals disclosure without duplicating its links in the layout", () => {
