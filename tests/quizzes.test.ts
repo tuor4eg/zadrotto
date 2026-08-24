@@ -81,7 +81,7 @@ describe("quizzes", () => {
   });
   it("keeps answer id out of public DTO", () => {
     const source = readFileSync("src/db/queries/quizzes.ts", "utf8");
-    const section = source.slice(source.indexOf("export async function getActiveQuiz"), source.indexOf("export async function checkQuizGuess"));
+    const section = source.slice(source.indexOf("export async function getActiveQuiz"), source.indexOf("export async function getPreviousQuizHistory"));
     assert.doesNotMatch(section, /answerMediaItemId/);
   });
   it("has migration constraints and indexes", () => {
@@ -129,23 +129,34 @@ describe("quizzes", () => {
     assert.match(mainPage, /quiz=\{activeQuiz/);
     assert.match(sharedHeader, /archive-catalog-controls-row[\s\S]*hidden[^\"]*lg:block[\s\S]*quizAction/);
     assert.match(sharedHeader, /archive-catalog-header-actions[\s\S]*lg:hidden[\s\S]*quizAction/);
+    assert.match(sharedHeader, /quiz && !quiz\.isCompleted && !isCurrentQuizCompleted/);
+    assert.match(sharedHeader, /const \{ quizParticipant \} = useExternalInterface\(\)/);
+    assert.match(mainPage, /getActiveQuizParticipantState\(currentAuthor\.id\)/);
     assert.match(sharedHeader, /<QuizModal/);
     assert.match(modal, /<ActiveQuizPanel/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
-    assert.match(modal, /isRulesOpen[\s\S]*Как играть/);
+    assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /Открыть правила викторины/);
-    assert.match(modal, /aria-label=\{isRulesOpen \? "Назад к викторине"[\s\S]*<ArrowLeft/);
-    assert.match(modal, /left-2 top-2 z-10[\s\S]*sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
+    assert.match(modal, /aria-label="Открыть предыдущий вопрос"[\s\S]*<History/);
+    assert.match(modal, /view === "history" \? "Предыдущий вопрос"/);
+    assert.match(modal, /aria-label="Назад к викторине"[\s\S]*<ArrowLeft/);
+    assert.match(modal, /left-2 top-2 z-10 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
     assert.match(modal, /right-2 top-2 z-10[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
     assert.match(modal, /getBoundingClientRect\(\)\.top/);
     assert.match(modal, /paddingTop: `\$\{dialogTop\}px`/);
     assert.match(modal, /dialogTop === null \? "items-center" : "items-start"/);
     assert.match(modal, /dialogTop === null \? "my-auto" : "my-0"/);
     assert.match(modal, /Раз в день в 12:00 \(MSK\)/);
-    assert.match(modal, /disabled[\s\S]*Продолжить поиск в архиве/);
+    assert.match(modal, /disabled[\s\S]*Искать ответ в архиве/);
     assert.match(modal, /disabled[\s\S]*Проверить догадку[\s\S]*<CircleHelp/);
     assert.match(modal, /Array\.from\(\{ length: 3 \}/);
+    assert.match(modal, /view === "history"[\s\S]*Правильный ответ/);
+    assert.match(modal, /<MediaItemTile href=\{`\/media\/\$\{history\.answer\.code\}`\} item=\{history\.answer\} \/>/);
+    assert.match(modal, /Предыдущих вопросов пока нет/);
+    assert.match(query, /getPreviousQuizHistory[\s\S]*lte\(quizzes\.endsAt, currentTime\)/);
+    assert.match(query, /orderBy\(desc\(quizzes\.endsAt\), desc\(quizzes\.id\)\)/);
+    assert.match(mainPage, /getPreviousQuizHistory\(\)/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -225,6 +236,8 @@ describe("quizzes", () => {
     assert.match(guessButton, /src="\/mascot\/deadz_quiz_fail\.png"/);
     assert.match(guessButton, /data\.participant\?\.isWinner \? "winner" : "correct"/);
     assert.match(guessButton, /src="\/mascot\/deadz_quiz_win\.png"/);
+    assert.match(guessButton, /!isWinner \? \([\s\S]*?<X className="size-4"/);
+    assert.match(guessButton, /isWinner \? \([\s\S]*?Ура!/);
     assert.match(guessButton, /src="\/mascot\/deadz_quiz_correct\.png"/);
     assert.match(guessButton, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.doesNotMatch(guessButton, /ArchiveTooltip/);

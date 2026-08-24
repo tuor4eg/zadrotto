@@ -273,6 +273,9 @@ export function AchievementLevelsTab({
                   <div className="min-w-0">
                     <div className="break-words font-medium text-stone-950">{resolvedName}</div>
                     <div className="mt-1 text-xs text-stone-500">Уровень {level.level} · порог {level.threshold}</div>
+                    {level.description ? (
+                      <p className="mt-2 break-words text-sm text-stone-600">{level.description}</p>
+                    ) : null}
                     {level.isAwarded ? <Badge className="mt-2" variant="outline">Выдан</Badge> : null}
                   </div>
                 </div>
@@ -295,7 +298,8 @@ export function AchievementLevelsTab({
               <tr>
                 <TH className="w-16">Уровень</TH>
                 <TH className="w-24">Порог</TH>
-                <TH>Название</TH>
+                <TH className="w-48">Название</TH>
+                <TH>Описание</TH>
                 <TH className="w-28">Изображение</TH>
                 <TH className="w-28 px-2 text-right">Действия</TH>
               </tr>
@@ -311,6 +315,9 @@ export function AchievementLevelsTab({
                     <TD className="min-w-0">
                       <div className="truncate font-medium text-stone-950">{resolvedName}</div>
                       {level.isAwarded ? <Badge className="mt-1" variant="outline">Выдан</Badge> : null}
+                    </TD>
+                    <TD className="min-w-0 text-stone-600">
+                      <p className="truncate">{level.description ?? "—"}</p>
                     </TD>
                     <TD>
                       <LevelImage imageUrl={level.imageUrl} />

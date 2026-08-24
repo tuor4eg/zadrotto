@@ -287,6 +287,8 @@ describe("achievement consumer", () => {
     assert.match(listSource, /TableWrap className="hidden sm:block"/)
     assert.match(levelsSource, /mt-4 grid gap-3 sm:hidden/)
     assert.match(levelsSource, /TableWrap className="mt-4 hidden sm:block"/)
+    assert.match(levelsSource, /<TH>Описание<\/TH>/)
+    assert.match(levelsSource, /\{level\.description \? \(/)
   });
 
   it("renders a 2-by-1 split achievement card and shows five recent awards in the same grid", () => {
@@ -303,7 +305,7 @@ describe("achievement consumer", () => {
     assert.match(cardSource, /formatLevel\(/)
     assert.match(cardSource, /formatReceivedAt\(/)
     assert.match(cardSource, /browseAwardedLevels/)
-    assert.match(cardSource, /onMouseLeave=\{canBrowse \? \(\) => \{/)
+    assert.doesNotMatch(cardSource, /onMouseLeave=/)
     assert.match(cardSource, /SWIPE_THRESHOLD_PX = 40/)
     assert.match(cardSource, /onPointerDown=\{canBrowse \? \(event\) => \{/)
     assert.match(cardSource, /if \(dx < 0\) setViewIndex\(\(index\) => Math\.min\(currentIndex, index \+ 1\)\)/)

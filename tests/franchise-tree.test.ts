@@ -107,6 +107,8 @@ describe("franchise tree mutations", () => {
   it("serializes additive and approval mutations for the same record", () => {
     assert.match(franchisesQuerySource, /async function lockMediaItemFranchiseMutations/);
     assert.match(franchisesQuerySource, /pg_advisory_xact_lock/);
+    assert.match(franchisesQuerySource, /values \$\{sql\.join\(uniqueMediaItemIds\.map\(\(id\) => sql`\(\$\{id\}::integer\)`\), sql`, `\)\}/);
+    assert.doesNotMatch(franchisesQuerySource, /unnest\(\$\{uniqueMediaItemIds\}::integer\[\]\)/);
     assert.match(franchisesQuerySource, /uniqueMediaItemIds[\s\S]*sort\(\(left, right\) => left - right\)/);
 
     for (const functionName of [

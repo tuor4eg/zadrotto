@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
-import type { ActiveQuiz } from "@/lib/quizzes/model";
+import type { ActiveQuiz, QuizHistoryEntry } from "@/lib/quizzes/model";
 import type {
   AuthorRatingFilter,
   CatalogSort,
@@ -21,7 +21,9 @@ type CatalogStickyHeaderProps = {
   incomingFriendRequestCount: number;
   submittedRequestCount: number;
   activeQuiz: ActiveQuiz | null;
+  previousQuiz: QuizHistoryEntry | null;
   unavailableQuizMediaTypeNames: string[];
+  isActiveQuizCompleted: boolean;
   isActiveQuizParticipant: boolean;
   mediaTypeFilter: MediaTypeFilter;
   minReleaseYear: number | null;
@@ -34,12 +36,14 @@ type CatalogStickyHeaderProps = {
 
 export function CatalogStickyHeader({
   activeQuiz,
+  previousQuiz,
   unavailableQuizMediaTypeNames,
   authorRatingFilter,
   currentAdminUser,
   currentAuthor,
   incomingFriendRequestCount,
   submittedRequestCount,
+  isActiveQuizCompleted,
   isActiveQuizParticipant,
   mediaTypeFilter,
   minReleaseYear,
@@ -129,6 +133,8 @@ export function CatalogStickyHeader({
         submittedRequestCount={submittedRequestCount}
         quiz={activeQuiz ? {
           active: activeQuiz,
+          history: previousQuiz,
+          isCompleted: isActiveQuizCompleted,
           isParticipating: isActiveQuizParticipant,
           unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
         } : null}

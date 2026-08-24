@@ -35,7 +35,7 @@ import { MediaItemsCatalog } from "@/app/media-items-catalog";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { sortMediaTypesByCount } from "@/lib/media/types";
-import { getActiveQuiz, getActiveQuizParticipantState } from "@/db/queries/quizzes";
+import { getActiveQuiz, getActiveQuizParticipantState, getPreviousQuizHistory } from "@/db/queries/quizzes";
 
 const CATALOG_PAGE_SIZE_OPTIONS = [24, 48, 72, 96] as const;
 const DEFAULT_CATALOG_PAGE_SIZE = 48;
@@ -72,7 +72,9 @@ export default async function Home({ searchParams }: HomeProps) {
     currentAdminUser ? getSubmittedModerationRequestCountForAdmin() : 0,
   ]);
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
-  const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
+  const [activeQuiz, previousQuiz] = currentAuthor
+    ? await Promise.all([getActiveQuiz(), getPreviousQuizHistory()])
+    : [null, null];
   const activeQuizParticipant = activeQuiz && currentAuthor
     ? await getActiveQuizParticipantState(currentAuthor.id)
     : null;
@@ -217,11 +219,13 @@ export default async function Home({ searchParams }: HomeProps) {
       <div className="archive-catalog-shell mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <CatalogStickyHeader
           activeQuiz={activeQuiz}
+          previousQuiz={previousQuiz}
           authorRatingFilter={authorRatingFilter}
           currentAdminUser={Boolean(currentAdminUser)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}
           submittedRequestCount={submittedRequestCount}
+          isActiveQuizCompleted={activeQuizParticipant?.completed === true}
           isActiveQuizParticipant={isActiveQuizParticipant}
           unavailableQuizMediaTypeNames={unavailableQuizMediaTypeNames}
           mediaTypeFilter={mediaTypeFilter}

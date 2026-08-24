@@ -8,10 +8,11 @@ import { createPortal } from "react-dom";
 import { CircleHelp, Shield, UserCircle } from "lucide-react";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
+import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { QuizModal } from "@/components/quizzes/quiz-modal";
-import type { ActiveQuiz } from "@/lib/quizzes/model";
+import type { ActiveQuiz, QuizHistoryEntry } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 type ArchiveSiteHeaderProps = {
@@ -22,7 +23,7 @@ type ArchiveSiteHeaderProps = {
   currentAuthor: boolean;
   incomingFriendRequestCount?: number;
   submittedRequestCount?: number;
-  quiz?: { active: ActiveQuiz; isParticipating: boolean; unavailableMediaTypeNames: string[] } | null;
+  quiz?: { active: ActiveQuiz; history: QuizHistoryEntry | null; isCompleted: boolean; isParticipating: boolean; unavailableMediaTypeNames: string[] } | null;
   sticky?: boolean;
   variant: "main" | "catalog";
 };
@@ -40,6 +41,7 @@ export function ArchiveSiteHeader({
   variant,
 }: ArchiveSiteHeaderProps) {
   const router = useRouter();
+  const { quizParticipant } = useExternalInterface();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isQuizOpen, setIsQuizOpen] = useState(false);
   const isCatalog = variant === "catalog";
@@ -86,7 +88,10 @@ export function ArchiveSiteHeader({
       </span>
     </button>
   );
-  const quizAction = quiz ? (
+  const isCurrentQuizCompleted = Boolean(
+    quizParticipant && quizParticipant.quizId === quiz?.active.id && quizParticipant.completed,
+  );
+  const quizAction = quiz && !quiz.isCompleted && !isCurrentQuizCompleted ? (
     <button type="button" aria-label="Сыграем" className={quizActionClassName} onClick={() => setIsQuizOpen(true)}>
       <span className={isCatalog ? (compact ? "sr-only" : "sr-only lg:not-sr-only") : "sr-only lg:not-sr-only"}>Сыграем</span>
       <CircleHelp className="size-4" />
@@ -192,6 +197,7 @@ export function ArchiveSiteHeader({
         : null}
       {quiz && isQuizOpen
         ? <QuizModal
+            history={quiz.history}
             isParticipating={quiz.isParticipating}
             onClose={() => setIsQuizOpen(false)}
             quiz={quiz.active}

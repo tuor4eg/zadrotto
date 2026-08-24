@@ -1,12 +1,13 @@
-import { and, asc, eq, gt, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
-import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } from "@/db/schema";
+import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes, ratings } from "@/db/schema";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
+import { resolveCoverUrl } from "@/lib/services/minio";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
-import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
+import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizHistoryEntry, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
 export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
 
@@ -51,6 +52,54 @@ export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
   const [quiz] = await db.select().from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
   if (!quiz) return null; const types = await mediaTypesForQuizIds([quiz.id]);
   return { id: quiz.id, question: quiz.question, imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), mediaTypes: types.get(quiz.id) ?? [], startsAt: quiz.startsAt.toISOString(), endsAt: quiz.endsAt.toISOString(), attemptLimit: quiz.attemptLimit };
+}
+export async function getPreviousQuizHistory(now?: Date): Promise<QuizHistoryEntry | null> {
+  const currentTime = now ?? sql`now()`;
+  const [row] = await db
+    .select({
+      answerAverageScore: sql<number | null>`avg(${ratings.score})::float`,
+      answerCode: mediaItems.code,
+      answerCoverThumbUrl: mediaItems.coverThumbUrl,
+      answerCoverUrl: mediaItems.coverUrl,
+      answerId: mediaItems.id,
+      answerMediaType: mediaItems.mediaType,
+      answerRatingsCount: sql<number>`count(${ratings.id})::int`,
+      answerReleaseYear: mediaItems.releaseYear,
+      answerTitle: mediaItems.title,
+      imageObjectKey: quizzes.imageObjectKey,
+      question: quizzes.question,
+    })
+    .from(quizzes)
+    .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .where(and(
+      eq(quizzes.enabled, true),
+      lte(quizzes.endsAt, currentTime),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      eq(mediaTypes.isPubliclyAvailable, true),
+    ))
+    .groupBy(quizzes.id, mediaItems.id)
+    .orderBy(desc(quizzes.endsAt), desc(quizzes.id))
+    .limit(1);
+
+  if (!row) return null;
+
+  return {
+    answer: {
+      averageScore: row.answerAverageScore,
+      code: row.answerCode,
+      coverThumbUrl: resolveCoverUrl(row.answerCoverThumbUrl),
+      coverUrl: resolveCoverUrl(row.answerCoverUrl),
+      id: row.answerId,
+      mediaType: row.answerMediaType,
+      ratingsCount: row.answerRatingsCount,
+      releaseYear: row.answerReleaseYear,
+      title: row.answerTitle,
+    },
+    imageUrl: resolveQuizImageUrl(row.imageObjectKey),
+    question: row.question,
+  };
 }
 export async function isQuizParticipant(quizId: number, authorId: number) {
   const [participant] = await db

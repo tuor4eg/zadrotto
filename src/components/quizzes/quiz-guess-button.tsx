@@ -65,15 +65,17 @@ function QuizGuessResultModal({
         tabIndex={-1}
         className="archive-paper archive-panel relative w-full max-w-md p-6 text-center shadow-2xl sm:p-8"
       >
-        <button
-          type="button"
-          className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-          style={{ position: "absolute" }}
-          aria-label="Закрыть результат викторины"
-          onClick={onClose}
-        >
-          <X className="size-4" />
-        </button>
+        {!isWinner ? (
+          <button
+            type="button"
+            className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
+            style={{ position: "absolute" }}
+            aria-label="Закрыть результат викторины"
+            onClick={onClose}
+          >
+            <X className="size-4" />
+          </button>
+        ) : null}
         {isWinner ? (
           <Image
             alt=""
@@ -114,6 +116,11 @@ function QuizGuessResultModal({
         </p>
         {isCorrect && comment ? (
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">{comment}</p>
+        ) : null}
+        {isWinner ? (
+          <Button type="button" className="mx-auto mt-6" onClick={onClose}>
+            Ура!
+          </Button>
         ) : null}
       </div>
     </div>,

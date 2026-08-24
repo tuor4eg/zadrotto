@@ -49,7 +49,9 @@ async function lockMediaItemFranchiseMutations(tx: DbTransaction, mediaItemIds: 
       ${MEDIA_ITEM_FRANCHISE_ADVISORY_LOCK_NAMESPACE},
       locked_media_item.id
     )
-    from unnest(${uniqueMediaItemIds}::integer[]) as locked_media_item(id)
+    from (
+      values ${sql.join(uniqueMediaItemIds.map((id) => sql`(${id}::integer)`), sql`, `)}
+    ) as locked_media_item(id)
     order by locked_media_item.id
   `);
 }

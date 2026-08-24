@@ -11,6 +11,21 @@ export type ActiveQuiz = {
   attemptLimit: number;
 };
 export type ActiveQuizContext = Pick<ActiveQuiz, "id" | "mediaTypes">;
+export type QuizHistoryEntry = {
+  answer: {
+    averageScore: number | null;
+    code: string;
+    coverThumbUrl: string | null;
+    coverUrl: string | null;
+    id: number;
+    mediaType: MediaType;
+    ratingsCount: number;
+    releaseYear: number | null;
+    title: string;
+  };
+  imageUrl: string | null;
+  question: string | null;
+};
 
 export type QuizParticipantOutcome = "correct" | "exhausted";
 export type QuizParticipantState = {

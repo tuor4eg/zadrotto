@@ -215,9 +215,6 @@ export function AchievementCard({
           ? "border-amber-700/35 bg-amber-50/55"
           : "border-stone-300/80 bg-stone-100/45 text-stone-500"
       } ${fillWidth ? "w-full" : "shrink-0"} ${canBrowse ? "touch-pan-y" : ""}`}
-      onMouseLeave={canBrowse ? () => {
-        if (window.matchMedia("(hover: hover)").matches) setViewIndex(currentIndex)
-      } : undefined}
       onPointerDown={canBrowse ? (event) => {
         if (event.pointerType === "mouse") return
         event.currentTarget.setPointerCapture(event.pointerId)

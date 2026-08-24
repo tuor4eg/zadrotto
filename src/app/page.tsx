@@ -44,7 +44,7 @@ import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
-import { getActiveQuiz, isQuizParticipant } from "@/db/queries/quizzes";
+import { getActiveQuiz, getActiveQuizParticipantState, getPreviousQuizHistory } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
@@ -288,10 +288,13 @@ export default async function MainPage({ searchParams }: MainPageProps) {
         }))
       : Promise.resolve(null),
   ]);
-  const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
-  const isActiveQuizParticipant = activeQuiz && currentAuthor
-    ? await isQuizParticipant(activeQuiz.id, currentAuthor.id)
-    : false;
+  const [activeQuiz, previousQuiz] = currentAuthor
+    ? await Promise.all([getActiveQuiz(), getPreviousQuizHistory()])
+    : [null, null];
+  const activeQuizParticipant = activeQuiz && currentAuthor
+    ? await getActiveQuizParticipantState(currentAuthor.id)
+    : null;
+  const isActiveQuizParticipant = activeQuizParticipant?.quizId === activeQuiz?.id;
   const mediaTypes = effectiveMediaTypes.filter((item) => item.isEnabled);
   const unavailableQuizMediaTypeNames = activeQuiz
     ? effectiveMediaTypes
@@ -378,6 +381,8 @@ export default async function MainPage({ searchParams }: MainPageProps) {
           submittedRequestCount={submittedRequestCount}
           quiz={activeQuiz ? {
             active: activeQuiz,
+            history: previousQuiz,
+            isCompleted: activeQuizParticipant?.completed === true,
             isParticipating: isActiveQuizParticipant,
             unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
           } : null}
