@@ -6,15 +6,11 @@ import { AchievementImagePicker } from "@/components/achievements/achievement-im
 import { QuizAnswerPicker } from "@/components/quizzes/quiz-answer-picker";
 import { runServerActionWithImageUploadGuard } from "@/components/forms/image-upload-form";
 import { Button } from "@/components/ui/button";
+import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { MediaTypeOption } from "@/lib/media/types";
+import { formatMoscowDateTimeLocal } from "@/lib/quizzes/admin-time";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import type { QuizFormState } from "./actions";
-
-function localDate(value?: Date | null) {
-  if (!value) return "";
-  const shifted = new Date(value.getTime() - value.getTimezoneOffset() * 60_000);
-  return shifted.toISOString().slice(0, 16);
-}
 
 type Quiz = {
   id: number;
@@ -28,19 +24,22 @@ type Quiz = {
   startsAt: Date;
   endsAt: Date;
   attemptLimit: number;
+  hasAnswers: boolean;
   hasParticipants: boolean;
   enabled: boolean;
 };
 
 type QuizFormProps = {
   action: (state: QuizFormState, formData: FormData) => Promise<QuizFormState>;
+  defaultEndsAt?: Date;
+  defaultStartsAt?: Date;
   item?: Quiz | null;
   mediaTypes: MediaTypeOption[];
 };
 
 const inputClass = "h-10 rounded-md border border-stone-300 px-3";
 
-export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
+export function QuizForm({ action, defaultEndsAt, defaultStartsAt, item, mediaTypes }: QuizFormProps) {
   const [state, formAction, actionPending] = useActionState(async (current: QuizFormState, formData: FormData) => {
     return runServerActionWithImageUploadGuard(
       () => action(current, formData),
@@ -104,17 +103,26 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
 
       <div className="grid gap-2">
         <span className="text-sm font-medium">Правильная запись</span>
-        <QuizAnswerPicker
-          allowedMediaTypes={selectedMediaTypes}
-          mediaTypes={mediaTypes}
-          initial={item ? {
-            id: item.answerMediaItemId,
-            title: item.answerTitle,
-            originalTitle: null,
-            releaseYear: null,
-            mediaType: item.answerMediaType,
-          } : null}
-        />
+        {item?.hasAnswers ? (
+          <>
+            <input type="hidden" name="answerMediaItemId" value={item.answerMediaItemId} />
+            <p className="rounded-md border border-stone-200 bg-stone-100 px-3 py-2 text-sm text-stone-700">
+              {item.answerTitle} · {mediaTypes.find((type) => type.code === item.answerMediaType)?.name ?? item.answerMediaType}
+            </p>
+          </>
+        ) : (
+          <QuizAnswerPicker
+            allowedMediaTypes={selectedMediaTypes}
+            mediaTypes={mediaTypes}
+            initial={item ? {
+              id: item.answerMediaItemId,
+              title: item.answerTitle,
+              originalTitle: null,
+              releaseYear: null,
+              mediaType: item.answerMediaType,
+            } : null}
+          />
+        )}
       </div>
 
       <fieldset className="grid gap-2">
@@ -127,6 +135,7 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
             <input
               type="checkbox"
               checked={allMediaTypesSelected}
+              disabled={item?.hasAnswers ?? false}
               onChange={(event) => {
                 setSelectedMediaTypes(event.currentTarget.checked ? mediaTypes.map((type) => type.code) : []);
               }}
@@ -140,6 +149,7 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
                 name="mediaTypes"
                 value={type.code}
                 checked={selectedMediaTypes.includes(type.code)}
+                disabled={item?.hasAnswers ?? false}
                 onChange={(event) => {
                   const checked = event.currentTarget.checked
                   setSelectedMediaTypes((current) =>
@@ -153,31 +163,27 @@ export function QuizForm({ action, item, mediaTypes }: QuizFormProps) {
             </label>
           ))}
         </div>
+        {item?.hasAnswers ? (
+          <>
+            {selectedMediaTypes.map((mediaType) => <input key={mediaType} type="hidden" name="mediaTypes" value={mediaType} />)}
+            <p className="text-xs text-stone-500">Правильная запись и допустимые типы заблокированы после первого ответа участника.</p>
+          </>
+        ) : null}
       </fieldset>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="grid gap-2">
-          <label htmlFor="startsAt" className="text-sm font-medium">Начало</label>
-          <input
-            className={inputClass}
-            id="startsAt"
-            name="startsAt"
-            type="datetime-local"
-            defaultValue={localDate(item?.startsAt)}
-            required
-          />
-        </div>
-        <div className="grid gap-2">
-          <label htmlFor="endsAt" className="text-sm font-medium">Окончание</label>
-          <input
-            className={inputClass}
-            id="endsAt"
-            name="endsAt"
-            type="datetime-local"
-            defaultValue={localDate(item?.endsAt)}
-            required
-          />
-        </div>
+        <DateTimePicker
+          defaultValue={formatMoscowDateTimeLocal(item?.startsAt ?? defaultStartsAt)}
+          label="Начало"
+          name="startsAt"
+          timeZoneLabel="МСК"
+        />
+        <DateTimePicker
+          defaultValue={formatMoscowDateTimeLocal(item?.endsAt ?? defaultEndsAt)}
+          label="Окончание"
+          name="endsAt"
+          timeZoneLabel="МСК"
+        />
       </div>
 
       <div className="grid max-w-xs gap-2">

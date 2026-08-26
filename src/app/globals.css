@@ -592,6 +592,45 @@ body {
   letter-spacing: 0.015em;
 }
 
+.archive-review-sheet {
+  background: linear-gradient(135deg, #fffdf5, #eee3cd);
+  box-shadow:
+    0 18px 34px rgb(var(--archive-shadow) / 28%),
+    inset 0 0 0 1px rgb(255 255 255 / 62%);
+}
+
+.archive-review-paper {
+  position: relative;
+  background-color: #f7efdc;
+  background-image:
+    radial-gradient(circle at 17px 14px, rgb(120 113 108 / 28%) 0 3px, transparent 3.5px),
+    linear-gradient(180deg, transparent 27px, rgb(147 197 253 / 23%) 28px),
+    linear-gradient(135deg, #fffdf5, #f1e8d5);
+  background-position: 0 0, 0 0, 0 0;
+  background-repeat: repeat-y, repeat, no-repeat;
+  background-size: 100% 28px, 100% 28px, 100% 100%;
+  box-shadow:
+    0 5px 12px rgb(var(--archive-shadow) / 16%),
+    inset 0 0 0 1px rgb(255 255 255 / 62%);
+}
+
+.archive-review-paper::before {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  bottom: 0;
+  left: 2.15rem;
+  width: 1px;
+  content: "";
+  background: rgb(185 28 28 / 20%);
+}
+
+@media (min-width: 640px) {
+  .archive-review-paper::before {
+    left: 2.9rem;
+  }
+}
+
 .media-carrier-font-nes {
   font-family: "Press Start 2P", "Courier New", monospace;
 }

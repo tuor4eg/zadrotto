@@ -12,6 +12,7 @@ import {
 } from "@/db/queries/quizzes";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { parseMoscowDateTimeLocal } from "@/lib/quizzes/admin-time";
 import {
   deleteQuizImageBestEffort,
   uploadQuizImage,
@@ -21,8 +22,8 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
   const question = String(form.get("question") ?? "").trim() || null;
   const comment = String(form.get("comment") ?? "").trim() || null;
   const answerMediaItemId = Number(form.get("answerMediaItemId"));
-  const startsAt = new Date(String(form.get("startsAt") ?? ""));
-  const endsAt = new Date(String(form.get("endsAt") ?? ""));
+  const startsAt = parseMoscowDateTimeLocal(form.get("startsAt"));
+  const endsAt = parseMoscowDateTimeLocal(form.get("endsAt"));
   const mediaTypes = [...new Set(form.getAll("mediaTypes").map(String).filter(Boolean))];
   const attemptLimit = Number(form.get("attemptLimit") ?? 3);
 
@@ -55,7 +56,7 @@ function parseQuizForm(form: FormData, imageObjectKey: string | null) {
 
 function getQuizSaveError(error: unknown) {
   if (error instanceof Error) {
-    if (["content", "answer", "dates", "period", "attempt-limit", "attempt-limit-locked", "media-types"].includes(error.message)) {
+    if (["content", "answer", "answer-configuration-locked", "dates", "period", "attempt-limit", "attempt-limit-locked", "media-types"].includes(error.message)) {
       return error.message;
     }
     if (error.message === "invalid-answer") return "answer-type";
@@ -69,6 +70,7 @@ export type QuizFormState = { error: string | null; submissionId: number };
 
 const QUIZ_ERROR_MESSAGES: Record<string, string> = {
   answer: "Выберите правильную запись из результатов поиска.",
+  "answer-configuration-locked": "Правильную запись и допустимые типы нельзя изменить после первого ответа участника.",
   "attempt-limit": "Количество попыток должно быть целым числом от 1 до 10.",
   "attempt-limit-locked": "Количество попыток нельзя изменить после присоединения первого участника.",
   "comment-length": "Комментарий должен быть не длиннее 2000 символов.",

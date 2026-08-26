@@ -449,11 +449,6 @@ function ArchiveMediaItemDetails({
                   pageUrl={item.coverSourcePageUrl}
                 />
               </div>
-              {adjacentShelfSlot ? (
-                <div className="mt-6 hidden lg:block">
-                  {adjacentShelfSlot}
-                </div>
-              ) : null}
             </div>
           </div>
 
@@ -575,17 +570,17 @@ function ArchiveMediaItemDetails({
                 <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
               </div>
 
-              {adjacentShelfSlot ? (
-                <div className="mt-6 lg:hidden">
-                  {adjacentShelfSlot}
-                </div>
-              ) : null}
-
               <div className="mt-6 flex flex-col gap-3">
                 {noteSlot}
               </div>
             </div>
           </div>
+
+          {adjacentShelfSlot ? (
+            <div className="min-w-0 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
+              {adjacentShelfSlot}
+            </div>
+          ) : null}
 
           {relatedFranchiseSections.length > 0 ? (
             <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">

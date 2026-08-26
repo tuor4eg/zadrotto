@@ -10,6 +10,7 @@ import {
   contributions,
   mediaItemTitleAliases,
   mediaItems,
+  ratings,
 } from "@/db/schema";
 import {
   isAuthorEditableContributionStatus,
@@ -34,9 +35,11 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
   return db
     .select({
       id: contributions.id,
+      authorId: authors.id,
       authorName: authors.name,
       authorCode: authors.code,
       authorAvatarObjectKey: authors.avatarObjectKey,
+      authorScore: ratings.score,
       title: contributionReviews.title,
       body: contributionReviews.body,
       publishedAt: contributions.reviewedAt,
@@ -46,6 +49,13 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
     .innerJoin(contributions, eq(contributions.id, contributionMediaItems.contributionId))
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
     .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .leftJoin(
+      ratings,
+      and(
+        eq(ratings.authorId, contributions.authorId),
+        eq(ratings.mediaItemId, contributionMediaItems.mediaItemId),
+      ),
+    )
     .where(
       and(
         eq(contributionMediaItems.mediaItemId, mediaItemId),

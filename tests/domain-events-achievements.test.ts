@@ -93,7 +93,7 @@ describe("achievement consumer", () => {
     assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
     assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
-    assert.deepEqual(quizCorrect?.params, []);
+    assert.deepEqual(quizCorrect?.params.map(({ code }) => code), ["mediaType"]);
     assert.deepEqual(quizWin?.params, []);
     assert.deepEqual(confirmedBugReports?.params, []);
     assert.notEqual(rating?.params, review?.params);
@@ -113,9 +113,10 @@ describe("achievement consumer", () => {
     assert.throws(() => review?.parseParams({ seriesId: 0 }));
     assert.throws(() => media?.parseParams({ seriesId: 0 }));
     assert.deepEqual(quizCorrect?.parseParams({}), {});
+    assert.deepEqual(quizCorrect?.parseParams({ mediaType: "film" }), { mediaType: "film" });
     assert.deepEqual(quizWin?.parseParams({}), {});
     assert.deepEqual(confirmedBugReports?.parseParams({}), {});
-    assert.throws(() => quizCorrect?.parseParams({ mediaType: "film" }));
+    assert.throws(() => quizCorrect?.parseParams({ seriesId: 42 }));
     assert.throws(() => quizWin?.parseParams(null));
     assert.throws(() => confirmedBugReports?.parseParams({ unsupported: true }));
     assert.deepEqual(quizCorrect?.eventTypes, ["quiz.completed"]);
@@ -138,6 +139,8 @@ describe("achievement consumer", () => {
     assert.match(catalogSource, /from \$\{quizParticipants\}[\s\S]*authorId} in \(\$\{sql\.join\(input\.authorIds/);
     assert.match(catalogSource, /quizParticipants\.outcome} = 'correct'/);
     assert.match(catalogSource, /quizParticipants\.isWinner} = true/);
+    assert.match(catalogSource, /inner join \$\{mediaItems\} on \$\{mediaItems\.id\} = \$\{quizzes\.answerMediaItemId\}/);
+    assert.match(catalogSource, /mediaItems\.mediaType} = \$\{instance\.mediaType}/);
     assert.match(catalogSource, /group by \$\{quizParticipants\.authorId\}/);
     assert.doesNotMatch(catalogSource, /for \(const authorId of input\.authorIds\)/);
     assert.match(achievementConsumerSource, /"quiz\.completed"/);

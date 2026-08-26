@@ -2,8 +2,46 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { calculateAuthorQuizStatistics, formatQuizTimeRemaining, getQuizState, isQuizMediaTypeAllowed } from "../src/lib/quizzes/model";
+import { formatMoscowDateTimeLocal, getDefaultQuizPeriod, parseMoscowDateTimeLocal } from "../src/lib/quizzes/admin-time";
 
 describe("quizzes", () => {
+  it("converts admin quiz dates between Moscow time and UTC", () => {
+    assert.equal(
+      parseMoscowDateTimeLocal("2026-08-24T12:00").toISOString(),
+      "2026-08-24T09:00:00.000Z",
+    );
+    assert.equal(
+      formatMoscowDateTimeLocal(new Date("2026-08-24T09:00:00.000Z")),
+      "2026-08-24T12:00",
+    );
+    assert.equal(Number.isNaN(parseMoscowDateTimeLocal("24.08.2026 12:00").getTime()), true);
+  });
+  it("defaults a new quiz to consecutive Moscow noons", () => {
+    assert.deepEqual(getDefaultQuizPeriod(new Date("2026-08-24T08:59:59.000Z")), {
+      startsAt: new Date("2026-08-24T09:00:00.000Z"),
+      endsAt: new Date("2026-08-25T09:00:00.000Z"),
+    });
+    assert.deepEqual(getDefaultQuizPeriod(new Date("2026-08-24T09:00:00.000Z")), {
+      startsAt: new Date("2026-08-25T09:00:00.000Z"),
+      endsAt: new Date("2026-08-26T09:00:00.000Z"),
+    });
+    assert.deepEqual(getDefaultQuizPeriod(new Date("2026-08-31T20:00:00.000Z")), {
+      startsAt: new Date("2026-09-01T09:00:00.000Z"),
+      endsAt: new Date("2026-09-02T09:00:00.000Z"),
+    });
+  });
+  it("uses the shared date and time picker in the admin quiz form", () => {
+    const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");
+    const picker = readFileSync("src/components/ui/date-time-picker.tsx", "utf8");
+
+    assert.match(form, /<DateTimePicker[\s\S]*name="startsAt"[\s\S]*name="endsAt"/);
+    assert.match(picker, /placeholder="ГГГГ\/ММ\/ДД"/);
+    assert.match(picker, /pattern="\[0-9\]\{4\}\/\[0-9\]\{2\}\/\[0-9\]\{2\}"/);
+    assert.match(picker, /nativeDateInputRef\.current\?\.showPicker\(\)/);
+    assert.match(picker, /nativeTimeInputRef\.current\?\.showPicker\(\)/);
+    assert.match(picker, /hover:bg-stone-100 hover:text-stone-950/g);
+    assert.match(picker, /name=\{name\} type="hidden" value=\{value\}/);
+  });
   it("computes state with an exclusive end boundary", () => {
     const now = new Date("2026-08-16T12:00:00Z");
     assert.equal(getQuizState({ enabled: false, startsAt: now, endsAt: new Date(now.getTime() + 1) }, now), "disabled");
@@ -171,6 +209,11 @@ describe("quizzes", () => {
 
     assert.match(actions, /attemptLimit < 1 \|\| attemptLimit > 10/);
     assert.match(query, /attempt-limit-locked/);
+    assert.match(query, /answer-configuration-locked/);
+    assert.match(query, /isNotNull\(quizParticipants\.outcome\)[\s\S]*lt\(quizParticipants\.attemptsRemaining, current\.attemptLimit\)/);
+    assert.match(form, /item\?\.hasAnswers[\s\S]*name="answerMediaItemId"/);
+    assert.match(form, /Правильная запись и допустимые типы заблокированы после первого ответа участника/);
+    assert.match(actions, /answer-configuration-locked/);
     assert.match(query, /attemptsRemaining: active\.attemptLimit/);
     assert.match(query, /\.for\("update"\)/);
     assert.match(query, /participant\.attemptsRemaining - 1/);

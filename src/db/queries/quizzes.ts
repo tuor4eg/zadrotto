@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes, ratings } from "@/db/schema";
@@ -23,16 +23,24 @@ async function participantQuizIds(ids: number[]) {
   const rows = await db.selectDistinct({ quizId: quizParticipants.quizId }).from(quizParticipants).where(inArray(quizParticipants.quizId, ids));
   return new Set(rows.map((row) => row.quizId));
 }
+async function answeredQuizIds(ids: number[]) {
+  if (!ids.length) return new Set<number>();
+  const rows = await db.selectDistinct({ quizId: quizParticipants.quizId }).from(quizParticipants).innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId)).where(and(
+    inArray(quizParticipants.quizId, ids),
+    or(isNotNull(quizParticipants.outcome), lt(quizParticipants.attemptsRemaining, quizzes.attemptLimit)),
+  ));
+  return new Set(rows.map((row) => row.quizId));
+}
 export async function getAdminQuizzes() {
   const rows = await db.select({ quiz: quizzes, answerTitle: mediaItems.title, answerMediaType: mediaItems.mediaType }).from(quizzes).innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId)).orderBy(asc(quizzes.startsAt));
-  const ids = rows.map(({ quiz }) => quiz.id); const [types, participantIds] = await Promise.all([mediaTypesForQuizIds(ids), participantQuizIds(ids)]);
-  return rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasParticipants: participantIds.has(quiz.id), imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz) }));
+  const ids = rows.map(({ quiz }) => quiz.id); const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds(ids), participantQuizIds(ids), answeredQuizIds(ids)]);
+  return rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasAnswers: answeredIds.has(quiz.id), hasParticipants: participantIds.has(quiz.id), imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz) }));
 }
 export async function getAdminQuizById(id: number) {
   const [row] = await db.select({ quiz: quizzes, answerTitle: mediaItems.title, answerMediaType: mediaItems.mediaType }).from(quizzes).innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId)).where(eq(quizzes.id, id)).limit(1);
   if (!row) return null;
-  const [types, participantIds] = await Promise.all([mediaTypesForQuizIds([id]), participantQuizIds([id])]);
-  return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
+  const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds([id]), participantQuizIds([id]), answeredQuizIds([id])]);
+  return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasAnswers: answeredIds.has(id), hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
 }
 async function assertInput(executor: Pick<typeof db, "select">, input: QuizWriteInput) {
   if ((!input.question?.trim() && !input.imageObjectKey) || input.mediaTypes.length === 0 || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
@@ -43,7 +51,30 @@ export async function createQuiz(input: QuizWriteInput) {
   return db.transaction(async (tx) => { await assertInput(tx, input); const [row] = await tx.insert(quizzes).values({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled }).returning(); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: row!.id, mediaType }))); return row!; });
 }
 export async function updateQuiz(id: number, input: QuizWriteInput) {
-  return db.transaction(async (tx) => { await assertInput(tx, input); const [current] = await tx.select({ attemptLimit: quizzes.attemptLimit }).from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update"); if (!current) return null; if (current.attemptLimit !== input.attemptLimit) { const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1); if (participant) throw new Error("attempt-limit-locked"); } const [row] = await tx.update(quizzes).set({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); await tx.delete(quizMediaTypes).where(eq(quizMediaTypes.quizId, id)); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: id, mediaType }))); return row!; });
+  return db.transaction(async (tx) => {
+    await assertInput(tx, input);
+    const [current] = await tx.select({ answerMediaItemId: quizzes.answerMediaItemId, attemptLimit: quizzes.attemptLimit }).from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update");
+    if (!current) return null;
+    const currentMediaTypes = await tx.select({ mediaType: quizMediaTypes.mediaType }).from(quizMediaTypes).where(eq(quizMediaTypes.quizId, id));
+    const mediaTypesChanged = currentMediaTypes.length !== input.mediaTypes.length
+      || currentMediaTypes.some(({ mediaType }) => !input.mediaTypes.includes(mediaType));
+    const answerConfigurationChanged = current.answerMediaItemId !== input.answerMediaItemId || mediaTypesChanged;
+    if (current.attemptLimit !== input.attemptLimit) {
+      const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1);
+      if (participant) throw new Error("attempt-limit-locked");
+    }
+    if (answerConfigurationChanged) {
+      const [answer] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(and(
+        eq(quizParticipants.quizId, id),
+        or(isNotNull(quizParticipants.outcome), lt(quizParticipants.attemptsRemaining, current.attemptLimit)),
+      )).limit(1);
+      if (answer) throw new Error("answer-configuration-locked");
+    }
+    const [row] = await tx.update(quizzes).set({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning();
+    await tx.delete(quizMediaTypes).where(eq(quizMediaTypes.quizId, id));
+    if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: id, mediaType })));
+    return row!;
+  });
 }
 export async function deleteQuiz(id: number) { const [row] = await db.delete(quizzes).where(eq(quizzes.id, id)).returning(); return row ?? null; }
 export async function setQuizEnabled(id: number, enabled: boolean) { const [row] = await db.update(quizzes).set({ enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); return row ?? null; }
