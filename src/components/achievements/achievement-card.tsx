@@ -2,7 +2,7 @@
 
 import Image from "next/image"
 import { ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
 export const ACHIEVEMENT_CARD_HEIGHT_PX = 148
 export const ACHIEVEMENT_CARD_WIDTH_PX = ACHIEVEMENT_CARD_HEIGHT_PX * 2
@@ -74,6 +74,44 @@ function hasVisibleProgress(threshold: number | null): threshold is number {
   return threshold !== null && threshold > 1
 }
 
+function ClampedAchievementText({
+  as,
+  className,
+  text,
+}: {
+  as: "h3" | "p"
+  className: string
+  text: string | null
+}) {
+  const elementRef = useRef<HTMLHeadingElement & HTMLParagraphElement>(null)
+  const [isTruncated, setIsTruncated] = useState(false)
+  const Element = as
+
+  useEffect(() => {
+    const element = elementRef.current
+    if (!element) return
+
+    const updateTruncation = () => {
+      setIsTruncated(
+        element.scrollHeight > element.clientHeight + 1
+        || element.scrollWidth > element.clientWidth + 1,
+      )
+    }
+
+    updateTruncation()
+    void document.fonts?.ready.then(updateTruncation)
+    const resizeObserver = new ResizeObserver(updateTruncation)
+    resizeObserver.observe(element)
+    return () => resizeObserver.disconnect()
+  }, [text])
+
+  return (
+    <Element className={className} ref={elementRef} title={isTruncated ? text ?? undefined : undefined}>
+      {text}
+    </Element>
+  )
+}
+
 function getCardSlides(item: AchievementShowcaseItem, canBrowse: boolean): AchievementCardSlide[] {
   if (canBrowse) {
     return item.awardedLevels.map((level, index) => ({
@@ -143,10 +181,16 @@ function AchievementCardPanel({
         </div>
       </div>
       <div className="flex min-h-0 min-w-0 flex-col py-2.5 pr-2.5">
-        <h3 className="line-clamp-2 text-sm font-bold leading-4 text-stone-950">
-          {level ? `${slide.name} (${level})` : slide.name}
-        </h3>
-        <p className="mt-1 line-clamp-3 min-h-0 flex-1 text-xs leading-4">{slide.description}</p>
+        <ClampedAchievementText
+          as="h3"
+          className="line-clamp-2 text-sm font-bold leading-4 text-stone-950"
+          text={level ? `${slide.name} (${level})` : slide.name}
+        />
+        <ClampedAchievementText
+          as="p"
+          className="mt-1 line-clamp-3 min-h-0 flex-1 text-xs leading-4"
+          text={slide.description}
+        />
         <div className="mt-auto grid gap-1 pt-1">
           {receivedAt ? (
             <p className="font-mono text-[10px] uppercase tracking-wider">

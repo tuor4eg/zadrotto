@@ -242,7 +242,7 @@ function ReviewBookModal({
               <button
                 type="button"
                 onClick={shareReview}
-                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
                 aria-label="Поделиться рецензией"
               >
                 <Share2 className="size-4" />
@@ -250,7 +250,7 @@ function ReviewBookModal({
               {canEditReview ? (
                 <Link
                   href={`/author/reviews/${review.id}/edit`}
-                  className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+                  className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
                   aria-label="Редактировать рецензию"
                 >
                   <Pencil className="size-4" />
@@ -259,7 +259,7 @@ function ReviewBookModal({
               <button
                 type="button"
                 onClick={onClose}
-                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 shadow-sm transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
                 aria-label="Закрыть рецензию"
               >
                 <X className="size-4" />
@@ -289,7 +289,7 @@ function ReviewBookModal({
 
           <div className="flex min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-5">
             <section className="archive-review-paper relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden border border-stone-300/70">
-              <div className="archive-scrollbar min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-10 py-6 sm:px-14 sm:py-8">
+              <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-10 py-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-14 sm:py-8">
                 <p className="archive-typewriter-text whitespace-pre-wrap text-[14px] leading-7 text-stone-800 sm:text-[15px] sm:leading-8">
                   {review.body}
                 </p>
@@ -315,12 +315,10 @@ function ReviewActionStack({
   currentAuthor,
   hiddenReviewsCount,
   mediaItemId,
-  showCreateAction,
 }: {
   currentAuthor: MediaItemReviewsProps["currentAuthor"];
   hiddenReviewsCount: number;
   mediaItemId: number;
-  showCreateAction: boolean;
 }) {
   const href = currentAuthor ? `/author/reviews/new?mediaItemId=${mediaItemId}` : "/author/login";
   const ariaLabel = currentAuthor
@@ -328,26 +326,24 @@ function ReviewActionStack({
     : "Войти как автор, чтобы поделиться мнением";
 
   return (
-    <div className="relative aspect-square w-[116px] shrink-0 sm:w-[164px]">
+    <div className="relative aspect-square min-w-0">
       <div className="absolute inset-x-1 bottom-0 top-3 rotate-[4deg] border border-stone-300/80 bg-[#f5f0e5] shadow-md" />
       <div className="absolute inset-x-0 bottom-1 top-1 -rotate-[2deg] border border-stone-300/80 bg-[#faf6ec] shadow-md" />
       <div className="absolute inset-0 flex flex-col items-center justify-center border border-stone-300/90 bg-white px-3 text-center shadow-[0_8px_16px_rgba(68,64,60,0.2)]">
         <span className="pointer-events-none absolute inset-[7px] border border-stone-200/80 bg-[#eee6d7] shadow-[inset_0_0_12px_rgba(120,113,108,0.08)]" aria-hidden="true" />
-        {showCreateAction ? (
-          <Link
-            href={href}
-            className="group absolute left-1/2 top-1/2 z-10 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-stone-700 transition-[color,transform] hover:scale-110 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950 sm:size-16"
-            aria-label={ariaLabel}
-          >
-            <Plus className="size-10 stroke-[1.5] sm:size-12" aria-hidden="true" />
-            <span className="sr-only">Создать новую рецензию</span>
-          </Link>
-        ) : null}
+        <Link
+          href={href}
+          className="group absolute left-1/2 top-1/2 z-10 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-stone-700 transition-[color,transform] hover:scale-110 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950 sm:size-16"
+          aria-label={ariaLabel}
+        >
+          <Plus className="size-10 stroke-[1.5] sm:size-12" aria-hidden="true" />
+          <span className="sr-only">Создать новую рецензию</span>
+        </Link>
         {hiddenReviewsCount > 0 ? (
           <button
             type="button"
             disabled
-            className={`absolute inset-x-3 z-10 flex cursor-default items-center justify-center gap-2 font-mono text-[9px] font-semibold leading-4 text-stone-700 sm:text-[10px] ${showCreateAction ? "bottom-3" : "top-1/2 -translate-y-1/2 flex-col"}`}
+            className="absolute inset-x-3 bottom-3 z-10 flex cursor-default items-center justify-center gap-2 font-mono text-[9px] font-semibold leading-4 text-stone-700 sm:text-[10px]"
             aria-label={`Ещё ${hiddenReviewsCount} мнений — переход пока недоступен`}
           >
             <span>Ещё {hiddenReviewsCount} мнений</span>
@@ -367,45 +363,6 @@ export function MediaItemReviews({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const shelfRef = useRef<HTMLDivElement>(null);
-  const [shelfLayout, setShelfLayout] = useState<{
-    showActionStack: boolean;
-    visibleReviewCount: number;
-  } | null>(null);
-  const hasCurrentAuthorReview = currentAuthor
-    ? reviews.some((review) => review.authorCode === currentAuthor.code)
-    : false;
-  const canShowReviewAction = !currentAuthor || !hasCurrentAuthorReview;
-
-  useEffect(() => {
-    const shelf = shelfRef.current;
-
-    if (!shelf) {
-      return;
-    }
-
-    const updateVisibleReviewCount = () => {
-      const actionWidth = window.innerWidth >= 640 ? 164 : 116;
-      const reviewWidth = window.innerWidth >= 640 ? 164 : 148;
-      const gap = 12;
-      const fullWidthCapacity = Math.max(1, Math.floor((shelf.clientWidth + gap) / (reviewWidth + gap)));
-      const showActionStack = canShowReviewAction || reviews.length > fullWidthCapacity;
-      const availableWidth = showActionStack
-        ? Math.max(0, shelf.clientWidth - actionWidth - gap)
-        : shelf.clientWidth;
-
-      setShelfLayout({
-        showActionStack,
-        visibleReviewCount: Math.max(1, Math.floor((availableWidth + gap) / (reviewWidth + gap))),
-      });
-    };
-
-    updateVisibleReviewCount();
-    const resizeObserver = new ResizeObserver(updateVisibleReviewCount);
-    resizeObserver.observe(shelf);
-
-    return () => resizeObserver.disconnect();
-  }, [canShowReviewAction, reviews.length]);
 
   if (!currentAuthor && reviews.length === 0) {
     return null;
@@ -423,51 +380,41 @@ export function MediaItemReviews({
         Мнения
       </h2>
 
-      <div
-        ref={shelfRef}
-        className="mt-4 flex min-h-[172px] min-w-0 items-start gap-3 overflow-hidden px-1 py-3 sm:min-h-[188px]"
-      >
-        {shelfLayout ? (
-          <>
-          {reviews.slice(0, shelfLayout.visibleReviewCount).map((review, index) => {
-                const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
+      <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 px-1 py-3">
+        {reviews.slice(0, 3).map((review, index) => {
+          const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
 
-                return (
-                  <button
-                    key={review.id}
-                    type="button"
-                    onClick={() => openReview(review)}
-                    className={`archive-typewriter-text relative flex aspect-square w-[148px] shrink-0 cursor-pointer flex-col border border-stone-300/80 bg-white px-4 pb-2.5 pt-4 text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 sm:w-[164px] sm:px-[18px] sm:pb-2.5 sm:pt-4 ${index % 3 === 1 ? "rotate-[0.8deg]" : index % 3 === 2 ? "-rotate-[0.6deg]" : ""}`}
-                    aria-label={`Открыть рецензию «${review.title}», автор ${review.authorName}`}
-                  >
-                    <span className="pointer-events-none absolute inset-[7px] border border-stone-200/80 bg-[#eee6d7] shadow-[inset_0_0_12px_rgba(120,113,108,0.08)]" aria-hidden="true" />
-                    <span className="absolute left-1/2 top-0 z-20 h-6 w-16 -translate-x-1/2 -translate-y-1/3 rotate-[-2deg] bg-amber-100/65 shadow-sm" aria-hidden="true" />
-                    <ReviewQuotePreview body={review.body} />
-                    <div className="relative z-10 mt-1 shrink-0">
-                      <div className="mb-1 line-clamp-2 text-[11px] font-semibold leading-4 text-stone-950 sm:text-xs">
-                        {review.title}
-                      </div>
-                      <div className="flex items-end justify-between gap-2 text-[11px] leading-4 text-stone-600 sm:text-xs">
-                        <span className="min-w-0 truncate">{review.authorName}</span>
-                        <span className="shrink-0">{publishedAt ?? "Рецензия"}</span>
-                      </div>
-                      <div className="mt-0 flex items-center justify-center gap-[3px] border-t border-stone-200 pt-0.5 font-serif text-[10px] leading-none tracking-[0.08em] text-stone-950 sm:text-xs" aria-hidden="true">
-                        ★★★★★
-                      </div>
-                    </div>
-                  </button>
-                );
-              })}
-          {shelfLayout.showActionStack ? (
-            <ReviewActionStack
-              currentAuthor={currentAuthor}
-              hiddenReviewsCount={Math.max(0, reviews.length - shelfLayout.visibleReviewCount)}
-              mediaItemId={mediaItemId}
-              showCreateAction={canShowReviewAction}
-            />
-          ) : null}
-          </>
-        ) : null}
+          return (
+            <button
+              key={review.id}
+              type="button"
+              onClick={() => openReview(review)}
+              className={`archive-typewriter-text relative flex aspect-square min-w-0 cursor-pointer flex-col border border-stone-300/80 bg-white px-4 pb-2.5 pt-4 text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 sm:px-[18px] sm:pb-2.5 sm:pt-4 ${index % 3 === 1 ? "rotate-[0.8deg]" : index % 3 === 2 ? "-rotate-[0.6deg]" : ""}`}
+              aria-label={`Открыть рецензию «${review.title}», автор ${review.authorName}`}
+            >
+              <span className="pointer-events-none absolute inset-[7px] border border-stone-200/80 bg-[#eee6d7] shadow-[inset_0_0_12px_rgba(120,113,108,0.08)]" aria-hidden="true" />
+              <span className="absolute left-1/2 top-0 z-20 h-6 w-16 -translate-x-1/2 -translate-y-1/3 rotate-[-2deg] bg-amber-100/65 shadow-sm" aria-hidden="true" />
+              <ReviewQuotePreview body={review.body} />
+              <div className="relative z-10 mt-1 shrink-0">
+                <div className="mb-1 line-clamp-2 text-[11px] font-semibold leading-4 text-stone-950 sm:text-xs">
+                  {review.title}
+                </div>
+                <div className="flex items-end justify-between gap-2 text-[11px] leading-4 text-stone-600 sm:text-xs">
+                  <span className="min-w-0 truncate">{review.authorName}</span>
+                  <span className="shrink-0">{publishedAt ?? "Рецензия"}</span>
+                </div>
+                <div className="mt-0 flex items-center justify-center gap-[3px] border-t border-stone-200 pt-0.5 font-serif text-[10px] leading-none tracking-[0.08em] text-stone-950 sm:text-xs" aria-hidden="true">
+                  ★★★★★
+                </div>
+              </div>
+            </button>
+          );
+        })}
+        <ReviewActionStack
+          currentAuthor={currentAuthor}
+          hiddenReviewsCount={Math.max(0, reviews.length - 3)}
+          mediaItemId={mediaItemId}
+        />
       </div>
     </section>
   );

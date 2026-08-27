@@ -1,12 +1,14 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
-import { mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes, ratings } from "@/db/schema";
+import { authors, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes, ratings } from "@/db/schema";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+import { ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE, calculateUsedQuizAttempts, getAdminQuizParticipantStatus } from "@/lib/quizzes/admin-analytics";
 import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizHistoryEntry, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
 export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
@@ -41,6 +43,135 @@ export async function getAdminQuizById(id: number) {
   if (!row) return null;
   const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds([id]), participantQuizIds([id]), answeredQuizIds([id])]);
   return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasAnswers: answeredIds.has(id), hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
+}
+
+export async function getAdminQuizContext(quizId: number) {
+  const [row] = await db
+    .select({
+      answerCode: mediaItems.code,
+      answerTitle: mediaItems.title,
+      attemptLimit: quizzes.attemptLimit,
+      enabled: quizzes.enabled,
+      endsAt: quizzes.endsAt,
+      id: quizzes.id,
+      imageObjectKey: quizzes.imageObjectKey,
+      question: quizzes.question,
+      startsAt: quizzes.startsAt,
+    })
+    .from(quizzes)
+    .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
+    .where(eq(quizzes.id, quizId))
+    .limit(1);
+
+  if (!row) return null;
+
+  const { imageObjectKey, ...context } = row;
+  return {
+    ...context,
+    imageUrl: resolveQuizImageUrl(imageObjectKey),
+    state: getQuizState(row),
+  };
+}
+
+export async function getAdminQuizAggregates(quizId: number) {
+  const [row] = await db
+    .select({
+      averageCorrectAnswerSeconds: sql<number | null>`(
+        avg(extract(epoch from (${quizParticipants.completedAt} - ${quizParticipants.joinedAt})))
+        filter (where ${quizParticipants.outcome} = 'correct')
+      )::float`,
+      correctCount: sql<number>`count(*) filter (where ${quizParticipants.outcome} = 'correct')::int`,
+      exhaustedCount: sql<number>`count(*) filter (where ${quizParticipants.outcome} = 'exhausted')::int`,
+      inProgressCount: sql<number>`count(*) filter (where ${quizParticipants.outcome} is null)::int`,
+      totalCount: sql<number>`count(*)::int`,
+    })
+    .from(quizParticipants)
+    .where(eq(quizParticipants.quizId, quizId));
+
+  return row ?? {
+    averageCorrectAnswerSeconds: null,
+    correctCount: 0,
+    exhaustedCount: 0,
+    inProgressCount: 0,
+    totalCount: 0,
+  };
+}
+
+export async function getAdminQuizWinner(quizId: number) {
+  const [row] = await db
+    .select({
+      authorAvatarObjectKey: authors.avatarObjectKey,
+      authorId: authors.id,
+      authorName: authors.name,
+      completedAt: quizParticipants.completedAt,
+      secondsSinceJoined: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizParticipants.joinedAt}))::float`,
+    })
+    .from(quizParticipants)
+    .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
+    .where(and(
+      eq(quizParticipants.quizId, quizId),
+      eq(quizParticipants.isWinner, true),
+    ))
+    .limit(1);
+
+  return row ?? null;
+}
+
+export async function getAdminQuizParticipantPage(input: {
+  quizId: number;
+  requestedPage: number;
+  totalCount: number;
+}) {
+  const totalPages = getTotalPages(input.totalCount, ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE);
+  const page = clampPage(input.requestedPage, totalPages);
+  const rows = await db
+    .select({
+      authorAvatarObjectKey: authors.avatarObjectKey,
+      authorId: authors.id,
+      authorName: authors.name,
+      attemptLimit: quizzes.attemptLimit,
+      attemptsRemaining: quizParticipants.attemptsRemaining,
+      completedAt: quizParticipants.completedAt,
+      isWinner: quizParticipants.isWinner,
+      joinedAt: quizParticipants.joinedAt,
+      outcome: quizParticipants.outcome,
+      secondsSinceJoined: sql<number | null>`extract(epoch from (${quizParticipants.completedAt} - ${quizParticipants.joinedAt}))::float`,
+      secondsSinceQuizStart: sql<number | null>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float`,
+    })
+    .from(quizParticipants)
+    .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
+    .innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId))
+    .where(eq(quizParticipants.quizId, input.quizId))
+    .orderBy(
+      sql`case
+        when ${quizParticipants.isWinner} then 0
+        when ${quizParticipants.outcome} = 'correct' then 1
+        when ${quizParticipants.outcome} = 'exhausted' then 2
+        else 3
+      end`,
+      asc(quizParticipants.completedAt),
+      asc(quizParticipants.joinedAt),
+      asc(quizParticipants.authorId),
+    )
+    .limit(ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE)
+    .offset(getOffset(page, ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE));
+
+  return {
+    items: rows.map((row) => {
+      const outcome = row.outcome as QuizParticipantOutcome | null;
+      const participantState = { ...row, outcome };
+
+      return {
+        ...participantState,
+        status: getAdminQuizParticipantStatus(participantState),
+        usedAttempts: calculateUsedQuizAttempts(participantState),
+      };
+    }),
+    page,
+    pageSize: ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE,
+    totalCount: input.totalCount,
+    totalPages,
+  };
 }
 async function assertInput(executor: Pick<typeof db, "select">, input: QuizWriteInput) {
   if ((!input.question?.trim() && !input.imageObjectKey) || input.mediaTypes.length === 0 || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");

@@ -1,11 +1,13 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import Link from "next/link";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
 import { QuizAnswerPicker } from "@/components/quizzes/quiz-answer-picker";
 import { runServerActionWithImageUploadGuard } from "@/components/forms/image-upload-form";
 import { Button } from "@/components/ui/button";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import { DateTimePicker } from "@/components/ui/date-time-picker";
 import type { MediaTypeOption } from "@/lib/media/types";
 import { formatMoscowDateTimeLocal } from "@/lib/quizzes/admin-time";
@@ -35,11 +37,19 @@ type QuizFormProps = {
   defaultStartsAt?: Date;
   item?: Quiz | null;
   mediaTypes: MediaTypeOption[];
+  questionTemplates?: Array<{ id: number; name: string; question: string }>;
 };
 
 const inputClass = "h-10 rounded-md border border-stone-300 px-3";
 
-export function QuizForm({ action, defaultEndsAt, defaultStartsAt, item, mediaTypes }: QuizFormProps) {
+export function QuizForm({
+  action,
+  defaultEndsAt,
+  defaultStartsAt,
+  item,
+  mediaTypes,
+  questionTemplates = [],
+}: QuizFormProps) {
   const [state, formAction, actionPending] = useActionState(async (current: QuizFormState, formData: FormData) => {
     return runServerActionWithImageUploadGuard(
       () => action(current, formData),
@@ -50,6 +60,11 @@ export function QuizForm({ action, defaultEndsAt, defaultStartsAt, item, mediaTy
     submissionId: 0,
   });
   const [transitionPending, startTransition] = useTransition();
+  const [question, setQuestion] = useState(item?.question ?? "");
+  const [pendingQuestionTemplate, setPendingQuestionTemplate] = useState<
+    NonNullable<QuizFormProps["questionTemplates"]>[number] | null
+  >(null);
+  const [selectedTemplateId, setSelectedTemplateId] = useState("");
   const [selectedMediaTypes, setSelectedMediaTypes] = useState(item?.mediaTypes ?? []);
   const allMediaTypesSelected = mediaTypes.length > 0 && selectedMediaTypes.length === mediaTypes.length;
   const isPending = actionPending || transitionPending;
@@ -71,12 +86,58 @@ export function QuizForm({ action, defaultEndsAt, defaultStartsAt, item, mediaTy
       {item ? <input type="hidden" name="quizId" value={item.id} /> : null}
 
       <div className="grid gap-2">
+          <label htmlFor="questionTemplate" className="text-sm font-medium">Шаблон вопроса</label>
+          <select
+            className={inputClass}
+            disabled={questionTemplates.length === 0}
+            id="questionTemplate"
+            onChange={(event) => {
+              const nextTemplateId = event.currentTarget.value;
+              const template = questionTemplates.find(({ id }) => String(id) === nextTemplateId);
+              if (!template) {
+                setSelectedTemplateId("");
+                return;
+              }
+
+              if (question.trim() && question !== template.question) {
+                setPendingQuestionTemplate(template);
+                setSelectedTemplateId("");
+                return;
+              }
+
+              setQuestion(template.question);
+              setSelectedTemplateId(nextTemplateId);
+            }}
+            value={selectedTemplateId}
+          >
+            <option value="">Без шаблона</option>
+            {questionTemplates.map((template) => (
+              <option key={template.id} value={template.id}>{template.name}</option>
+            ))}
+          </select>
+          {questionTemplates.length === 0 ? (
+            <p className="text-xs text-stone-500">
+              Шаблонов пока нет.{" "}
+              <Link className="underline underline-offset-2" href="/admin/settings/quizzes">
+                Настроить шаблоны
+              </Link>
+            </p>
+          ) : (
+            <p className="text-xs text-stone-500">Шаблон только подставляет текст — вопрос можно изменить перед сохранением.</p>
+          )}
+      </div>
+
+      <div className="grid gap-2">
         <label htmlFor="question" className="text-sm font-medium">Вопрос</label>
         <textarea
           className="min-h-24 rounded-md border border-stone-300 p-3"
           id="question"
           name="question"
-          defaultValue={item?.question ?? ""}
+          onChange={(event) => {
+            setQuestion(event.currentTarget.value);
+            setSelectedTemplateId("");
+          }}
+          value={question}
         />
       </div>
 
@@ -218,6 +279,24 @@ export function QuizForm({ action, defaultEndsAt, defaultStartsAt, item, mediaTy
       <p className="text-xs text-stone-500">
         Нужно заполнить вопрос или добавить изображение.
       </p>
+      {pendingQuestionTemplate ? (
+        <ConfirmDialog
+          description="Текущий текст вопроса будет заменён текстом выбранного шаблона."
+          onClose={() => setPendingQuestionTemplate(null)}
+          title="Заменить вопрос?"
+        >
+          <Button
+            onClick={() => {
+              setQuestion(pendingQuestionTemplate.question);
+              setSelectedTemplateId(String(pendingQuestionTemplate.id));
+              setPendingQuestionTemplate(null);
+            }}
+            type="button"
+          >
+            Заменить
+          </Button>
+        </ConfirmDialog>
+      ) : null}
       <Button type="submit" disabled={isPending || selectedMediaTypes.length === 0}>
         {isPending ? "Сохраняем…" : "Сохранить"}
       </Button>

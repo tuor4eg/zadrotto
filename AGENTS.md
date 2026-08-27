@@ -38,6 +38,8 @@ directly without project agents.
 - Keep changes focused and preserve unrelated work.
 - This is an early MVP: prefer simple, reversible decisions and avoid speculative abstractions or
   dependencies.
+- Design wide admin data tables responsively from the start: keep the table for desktop, but render
+  the same rows as readable cards on mobile instead of relying on horizontal scrolling.
 - Integrations, AI, Telegram, and visual experiments must not become foundations of the domain.
 - Respond in Russian unless asked otherwise.
 - In user-facing text call `MediaItem` «запись». Do not use «тайтл» in labels, messages,

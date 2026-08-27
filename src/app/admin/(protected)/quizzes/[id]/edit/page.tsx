@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { buttonVariants } from "@/components/ui/button";
 import { getAdminQuizById } from "@/db/queries/quizzes";
 import { getAllMediaTypeOptions } from "@/db/queries/media-types";
+import { getQuizQuestionTemplates } from "@/db/queries/quiz-question-templates";
 
 import { PageHeader } from "../../../admin-ui";
 import { updateQuizAction } from "../../actions";
@@ -17,9 +18,10 @@ export default async function EditQuizPage({
 }) {
   const { id: idValue } = await params;
   const id = Number(idValue);
-  const [item, mediaTypes] = await Promise.all([
+  const [item, mediaTypes, questionTemplates] = await Promise.all([
     getAdminQuizById(id),
     getAllMediaTypeOptions(),
+    getQuizQuestionTemplates(),
   ]);
 
   if (!item) notFound();
@@ -36,7 +38,12 @@ export default async function EditQuizPage({
           </Link>
         )}
       />
-      <QuizForm action={updateQuizAction} item={item} mediaTypes={mediaTypes} />
+      <QuizForm
+        action={updateQuizAction}
+        item={item}
+        mediaTypes={mediaTypes}
+        questionTemplates={questionTemplates}
+      />
     </div>
   );
 }

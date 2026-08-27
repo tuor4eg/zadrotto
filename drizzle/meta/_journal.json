@@ -547,6 +547,13 @@
       "when": 1786901400000,
       "tag": "0077_bug_reports",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1787716800000,
+      "tag": "0078_quiz_question_templates",
+      "breakpoints": true
     }
   ]
 }

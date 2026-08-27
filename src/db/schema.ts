@@ -1213,6 +1213,21 @@ export const quizzes = pgTable(
   ],
 );
 
+export const quizQuestionTemplates = pgTable(
+  "quiz_question_templates",
+  {
+    id: serial("id").primaryKey(),
+    name: text("name").notNull(),
+    question: text("question").notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    unique("quiz_question_templates_name_unique").on(table.name),
+    check("quiz_question_templates_name_check", sql`btrim(${table.name}) <> ''`),
+    check("quiz_question_templates_question_check", sql`btrim(${table.question}) <> ''`),
+  ],
+);
+
 export const quizMediaTypes = pgTable(
   "quiz_media_types",
   {
@@ -1512,3 +1527,5 @@ export type NotificationTransportSettings = typeof notificationTransportSettings
 export type NewNotificationTransportSettings = typeof notificationTransportSettings.$inferInsert;
 export type NotificationTransportRoute = typeof notificationTransportRoutes.$inferSelect;
 export type NewNotificationTransportRoute = typeof notificationTransportRoutes.$inferInsert;
+export type QuizQuestionTemplate = typeof quizQuestionTemplates.$inferSelect;
+export type NewQuizQuestionTemplate = typeof quizQuestionTemplates.$inferInsert;

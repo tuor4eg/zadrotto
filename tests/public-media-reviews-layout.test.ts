@@ -21,26 +21,25 @@ describe("public media reviews layout", () => {
     assert.match(page, /adjacentShelfSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
   });
 
-  it("renders the review shelf as a full-width row below the main record details", () => {
+  it("renders the review shelf below the cover block", () => {
     const archiveDetails = details.indexOf("function ArchiveMediaItemDetails");
-    const archiveNote = details.indexOf("<ArchiveNote", archiveDetails);
-    const reviewShelf = details.indexOf("{adjacentShelfSlot ?", archiveNote);
+    const cover = details.indexOf("<ArchiveCover", archiveDetails);
+    const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
+    const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
     const relatedSections = details.indexOf("{relatedFranchiseSections.length > 0 ?", reviewShelf);
 
-    assert.ok(archiveNote >= 0);
-    assert.ok(reviewShelf > archiveNote);
+    assert.ok(reviewShelf > cover);
+    assert.ok(archiveNote > reviewShelf);
     assert.ok(relatedSections > reviewShelf);
-    assert.match(details.slice(reviewShelf, relatedSections), /lg:col-span-2/);
+    assert.match(details.slice(reviewShelf, archiveNote), /max-w-\[420px\]/);
     assert.equal(details.indexOf("{adjacentShelfSlot ?", reviewShelf + 1), -1);
   });
 
-  it("fits polaroid review cards to the shelf and reserves an inert action stack", () => {
-    assert.match(reviews, /new ResizeObserver\(updateVisibleReviewCount\)/);
-    assert.match(reviews, /useState<\{[\s\S]*showActionStack: boolean;[\s\S]*visibleReviewCount: number;[\s\S]*\} \| null>\(null\)/);
-    assert.match(reviews, /className="mt-4 flex min-h-\[172px\][^\"]*sm:min-h-\[188px\]"/);
-    assert.match(reviews, /\{shelfLayout \? \([\s\S]*reviews\.slice\(0, shelfLayout\.visibleReviewCount\)[\s\S]*<ReviewActionStack/);
+  it("renders at most three polaroid reviews and one action card in a two-by-two grid", () => {
+    assert.doesNotMatch(reviews, /shelfLayout|visibleReviewCount|updateVisibleReviewCount/);
+    assert.match(reviews, /className="mt-4 grid min-w-0 grid-cols-2 gap-3 px-1 py-3"/);
     assert.doesNotMatch(reviews, /rgba\(214,199,165,0\.32\)/);
-    assert.match(reviews, /reviews\.slice\(0, shelfLayout\.visibleReviewCount\)\.map/);
+    assert.match(reviews, /reviews\.slice\(0, 3\)\.map/);
     assert.match(reviews, /aspect-square[^\"]*bg-white[\s\S]*<ReviewQuotePreview body=\{review\.body\}/);
     assert.match(reviews, /absolute inset-\[7px\][^\"]*bg-\[#eee6d7\]/);
     assert.match(reviews, /archive-typewriter-text relative flex aspect-square/);
@@ -55,8 +54,7 @@ describe("public media reviews layout", () => {
     assert.match(reviews, /Создать новую/);
     assert.match(reviews, /left-1\/2 top-1\/2[^\"]*-translate-x-1\/2[^\"]*-translate-y-1\/2[^\"]*sm:size-16/);
     assert.match(reviews, /Plus className="size-10[^\"]*sm:size-12"/);
-    assert.match(reviews, /showActionStack = canShowReviewAction \|\| reviews\.length > fullWidthCapacity/);
-    assert.match(reviews, /shelfLayout\.showActionStack \? \([\s\S]*showCreateAction=\{canShowReviewAction\}/);
+    assert.match(reviews, /hiddenReviewsCount=\{Math\.max\(0, reviews\.length - 3\)\}/);
     assert.match(reviews, /Ещё \{hiddenReviewsCount\} мнений/);
     assert.match(reviews, /<button[\s\S]*type="button"[\s\S]*disabled[\s\S]*переход пока недоступен/);
     assert.match(reviews, /absolute inset-0[^\"]*bg-white[\s\S]*absolute inset-\[7px\][^\"]*bg-\[#eee6d7\]/);
@@ -91,7 +89,8 @@ describe("public media reviews layout", () => {
   it("locks the background and contains mobile review scrolling", () => {
     assert.match(reviews, /document\.body\.style\.overflow = "hidden"/);
     assert.match(reviews, /document\.body\.style\.overflow = previousBodyOverflow/);
-    assert.match(reviews, /archive-scrollbar min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain/);
+    assert.match(reviews, /touch-pan-y overflow-y-auto overscroll-contain[^"]*\[scrollbar-width:none\][^"]*\[&::-webkit-scrollbar\]:hidden/);
+    assert.doesNotMatch(reviews, /size-9[^"]*shadow-sm/);
   });
 
   it("deep-links published reviews and keeps one shared modal layer", () => {

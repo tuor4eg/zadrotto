@@ -450,6 +450,11 @@ function ArchiveMediaItemDetails({
                 />
               </div>
             </div>
+            {adjacentShelfSlot ? (
+              <div className="mx-auto mt-7 w-full max-w-[420px]">
+                {adjacentShelfSlot}
+              </div>
+            ) : null}
           </div>
 
           <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:-mt-2">
@@ -575,12 +580,6 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
           </div>
-
-          {adjacentShelfSlot ? (
-            <div className="min-w-0 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
-              {adjacentShelfSlot}
-            </div>
-          ) : null}
 
           {relatedFranchiseSections.length > 0 ? (
             <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
