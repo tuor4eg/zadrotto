@@ -64,8 +64,8 @@ describe("daily dossier UTC cache helpers", () => {
     assert.match(source, /eq\(mediaTypes\.isPubliclyAvailable, true\)/);
     assert.match(source, /eq\(mediaTypes\.isAvailableToGuests, true\)/);
     assert.match(source, /eq\(mediaTypes\.enabledByDefault, true\)/);
-    assert.match(source, /\.leftJoin\(ratings, eq\(ratings\.mediaItemId, mediaItems\.id\)\)/);
-    assert.match(source, /minAverageScore > 0[\s\S]*averageScoreSql\} >= \$\{minAverageScore \* 10\}[\s\S]*: undefined/);
+    assert.match(source, /\.leftJoin\(mediaItemRatingStats, eq\(mediaItemRatingStats\.mediaItemId, mediaItems\.id\)\)/);
+    assert.match(source, /minAverageScore > 0[\s\S]*scoreSum}[\s\S]*ratingsCount}[\s\S]*minAverageScore \* 10[\s\S]*: undefined/);
   });
 
   it("parses the configured whole-score threshold", () => {

@@ -45,6 +45,7 @@ describe("author media status persistence contracts", () => {
     assert.match(statusQueries, /if \(rating\)[\s\S]*throw new AuthorMediaStatusConflictError/);
     assert.match(statusQueries, /current\?\.status === input\.status[\s\S]*\.delete\(authorMediaStatuses\)/);
     assert.match(statusQueries, /onConflictDoUpdate\([\s\S]*status: input\.status/);
+    assert.match(statusQueries, /setAuthorMediaStatus[\s\S]*onConflictDoUpdate/);
 
     const lockIndex = ratingQueries.indexOf("lockAuthorMediaState(tx, input)");
     const statusDeleteIndex = ratingQueries.indexOf(".delete(authorMediaStatuses)");

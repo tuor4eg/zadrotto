@@ -9,7 +9,7 @@ import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 
 export const metadata: Metadata = {
-  title: "Помощь — Журнал, которого не было",
+  title: 'Помощь — Журнал "Задротто"',
   description: "Короткие ответы о поиске, оценках и пополнении культурного архива.",
 };
 

@@ -72,8 +72,8 @@ describe("top archive settings", () => {
     assert.match(form, /Значение 0 отключает ограничение и допускает записи без оценок/);
     assert.match(page, /getArchiveSettings\(\)[\s\S]*topArchiveMinAverageScore: archiveSettings\.topArchiveMinAverageScore/);
     assert.match(query, /topArchiveMinAverageScore \* 10/);
-    assert.match(query, /ratingsCountSql[\s\S]*topArchiveMinRatingsCount/);
-    assert.match(query, /averageScoreSql\} desc nulls last[\s\S]*ratingsCountSql\} desc[\s\S]*lower\(\$\{mediaItems\.title\}\) asc[\s\S]*mediaItems\.id\} asc/);
+    assert.match(query, /mediaItemRatingStats\.ratingsCount}[\s\S]*topArchiveMinRatingsCount/);
+    assert.match(query, /mediaItemAverageScoreSql} desc nulls last[\s\S]*mediaItemRatingsCountSql} desc[\s\S]*lower\(\$\{mediaItems\.title\}\) asc[\s\S]*mediaItems\.id\} asc/);
     assert.match(query, /getRotatedMediaTypeCodes[\s\S]*roundRobinMediaTypeItems/);
   });
 });

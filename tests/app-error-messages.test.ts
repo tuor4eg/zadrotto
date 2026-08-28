@@ -24,6 +24,18 @@ describe("app error messages", () => {
       "author_accounts_normalized_login_unique",
     );
     assert.equal(getUniqueViolationConstraint({ code: "23503" }), null);
+    const wrappedViolation = {
+      message: "Failed query: insert into author_emails",
+      cause: {
+        code: "23505",
+        constraint_name: "author_emails_normalized_email_unique",
+      },
+    };
+    assert.equal(isUniqueViolation(wrappedViolation), true);
+    assert.equal(
+      getUniqueViolationConstraint(wrappedViolation),
+      "author_emails_normalized_email_unique",
+    );
   });
 
   it("recognizes unavailable database errors by code, message, and cause", () => {

@@ -61,8 +61,10 @@ describe("author dashboard media tiles", () => {
   it("keeps tile shaping and cover resolution in one reusable data helper", () => {
     assert.match(helperSource, /if \(uniqueMediaItemIds\.length === 0\)\s*\{\s*return \[\]/);
     assert.match(helperSource, /inArray\(mediaItems\.id, uniqueMediaItemIds\)/);
-    assert.match(helperSource, /avg\(\$\{ratings\.score\}\)::float/);
-    assert.match(helperSource, /count\(distinct \$\{ratings\.id\}\)::int/);
+    assert.match(helperSource, /averageScore: mediaItemAverageScoreSql/);
+    assert.match(helperSource, /ratingsCount: mediaItemRatingsCountSql/);
+    assert.match(helperSource, /leftJoin\(mediaItemRatingStats/);
+    assert.doesNotMatch(helperSource, /avg\(\$\{ratings\.score\}\)|count\(distinct \$\{ratings\.id\}\)/);
     assert.match(helperSource, /currentAuthorScore:[\s\S]*ratings\.authorId/);
     assert.match(helperSource, /coverThumbUrl: resolveCoverUrl\(item\.coverThumbUrl\)/);
     assert.match(helperSource, /coverUrl: resolveCoverUrl\(item\.coverUrl\)/);

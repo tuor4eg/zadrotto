@@ -2,77 +2,59 @@
 
 import { useActionState, useState } from "react";
 
+import { AuthorToasts } from "@/app/author/(protected)/author-toasts";
 import { PasswordField, PasswordInput } from "@/components/auth/password-field";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import {
+  AUTHOR_LOGIN_MAX_LENGTH,
   AUTHOR_PASSWORD_MAX_LENGTH,
   AUTHOR_PASSWORD_MIN_LENGTH,
 } from "@/lib/auth/author-account";
 import {
-  onboardExistingAuthorAction,
-  type AuthorOnboardingState,
+  registerAuthorAction,
+  type AuthorRegistrationState,
 } from "./actions";
-import { AuthorToasts } from "../author-toasts";
+import { RegistrationStartedAtInput } from "./registration-started-at-input";
 
 const ERROR_MESSAGES: Record<
-  NonNullable<AuthorOnboardingState>["error"],
+  NonNullable<AuthorRegistrationState>["error"],
   string
 > = {
-  "credentials-taken": "Этот логин и email уже используются другим аккаунтом.",
   "email-taken": "Этот email уже используется другим аккаунтом.",
   "login-taken": "Этот логин уже занят.",
-  invalid: "Проверь логин, email и пароль.",
-  unavailable: "Не удалось сохранить данные. Попробуй позже.",
+  invalid: "Проверь имя, логин, email и пароль.",
+  unavailable: "Регистрация временно недоступна. Попробуй позже.",
 };
 
-export function AuthorOnboardingForm({
-  bypassEmailVerification,
-}: {
-  bypassEmailVerification: boolean;
-}) {
-  const [state, formAction, isPending] = useActionState(
-    onboardExistingAuthorAction,
-    null,
-  );
+export function AuthorRegistrationForm() {
+  const [state, formAction, isPending] = useActionState(registerAuthorAction, null);
+  const [name, setName] = useState("");
   const [login, setLogin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
 
   return (
-    <form action={formAction} className="grid gap-4 rounded-md border p-5">
+    <form action={formAction} className="grid gap-4">
       <AuthorToasts
         messages={state?.error
-          ? [{
-              id: state.error,
-              tone: "error",
-              text: ERROR_MESSAGES[state.error],
-            }]
+          ? [{ id: state.error, tone: "error", text: ERROR_MESSAGES[state.error] }]
           : []}
       />
+      <RegistrationStartedAtInput />
+      <input className="hidden" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
+      <div className="grid gap-2">
+        <Label htmlFor="name">Имя</Label>
+        <Input id="name" name="name" value={name} onChange={(event) => setName(event.currentTarget.value)} required />
+      </div>
       <div className="grid gap-2">
         <Label htmlFor="login">Логин</Label>
-        <Input
-          id="login"
-          name="login"
-          autoComplete="username"
-          value={login}
-          onChange={(event) => setLogin(event.currentTarget.value)}
-          required
-        />
+        <Input id="login" name="login" maxLength={AUTHOR_LOGIN_MAX_LENGTH} value={login} onChange={(event) => setLogin(event.currentTarget.value)} required />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          name="email"
-          type="email"
-          autoComplete="email"
-          value={email}
-          onChange={(event) => setEmail(event.currentTarget.value)}
-          required
-        />
+        <Input id="email" name="email" type="email" value={email} onChange={(event) => setEmail(event.currentTarget.value)} required />
       </div>
       <div className="grid gap-2">
         <Label htmlFor="password">Пароль</Label>
@@ -101,11 +83,7 @@ export function AuthorOnboardingForm({
         />
       </div>
       <Button type="submit" disabled={isPending}>
-        {isPending
-          ? "Сохраняем…"
-          : bypassEmailVerification
-            ? "Сохранить"
-            : "Сохранить и подтвердить email"}
+        {isPending ? "Регистрируем…" : "Регистрация"}
       </Button>
     </form>
   );

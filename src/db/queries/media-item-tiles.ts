@@ -2,8 +2,13 @@ import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
+  mediaItemAverageScoreSql,
+  mediaItemRatingsCountSql,
+} from "@/db/queries/media-item-rating-stats";
+import {
   mediaCarriers,
   mediaItemMetadata,
+  mediaItemRatingStats,
   mediaItems,
   ratings,
 } from "@/db/schema";
@@ -36,27 +41,32 @@ export async function getMediaItemTilesByIds(
 
   const rows = await db
     .select({
-      averageScore: sql<number | null>`avg(${ratings.score})::float`,
+      averageScore: mediaItemAverageScoreSql,
       code: mediaItems.code,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
       currentAuthorScore: currentAuthorId
-        ? sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${currentAuthorId})::int`
+        ? sql<number | null>`(
+            select ${ratings.score}
+            from ${ratings}
+            where ${ratings.mediaItemId} = ${mediaItems.id}
+              and ${ratings.authorId} = ${currentAuthorId}
+            limit 1
+          )`
         : sql<number | null>`null`,
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
       metadataFacts: mediaItemMetadata.facts,
-      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
+      ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
     })
     .from(mediaItems)
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(inArray(mediaItems.id, uniqueMediaItemIds))
-    .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts);
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
+    .where(inArray(mediaItems.id, uniqueMediaItemIds));
 
   return rows.map((item) => ({
     ...item,

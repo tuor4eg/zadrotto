@@ -52,7 +52,7 @@ describe("archive route split", () => {
       /<form action="\/archive" method="get" role="search" aria-label="Поиск по архиву">/,
     );
     assert.match(mainPage, /<input[\s\S]*name="q"[\s\S]*type="search"/);
-    assert.match(mainPage, /<ArchiveSiteHeader[\s\S]*controls=\{<MainArchiveSearch \/>\}/);
+    assert.match(mainPage, /<ArchiveSiteHeader[\s\S]*controls=\{[\s\S]*<MainArchiveSearch \/>[\s\S]*<ArchiveExplorationLauncher/);
     assert.doesNotMatch(mainPage, /onChange=|useDebouncedSearchDraft/);
   });
 

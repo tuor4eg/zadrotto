@@ -16,18 +16,26 @@ import {
 import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit";
 import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
+import { getUniqueViolationConstraint } from "@/lib/common/app-error-messages";
 
 function read(formData: FormData, key: string) {
   const value = formData.get(key);
   return typeof value === "string" ? value.trim() : "";
 }
 
-export async function registerAuthorAction(formData: FormData) {
+export type AuthorRegistrationState = {
+  error: "email-taken" | "invalid" | "login-taken" | "unavailable";
+} | null;
+
+export async function registerAuthorAction(
+  _previousState: AuthorRegistrationState,
+  formData: FormData,
+): Promise<AuthorRegistrationState> {
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
-  if (
-    !isAuthorRegistrationEnabled()
-    || (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured()))
-  ) redirect("/author/login");
+  if (!isAuthorRegistrationEnabled()) redirect("/author/login");
+  if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
+    return { error: "unavailable" };
+  }
   const name = read(formData, "name");
   const login = read(formData, "login");
   const email = read(formData, "email");
@@ -37,11 +45,11 @@ export async function registerAuthorAction(formData: FormData) {
   const formStartedAt = Number(read(formData, "formStartedAt"));
   const fillTime = Date.now() - formStartedAt;
   const rateLimit = await checkAuthorAuthMutationRateLimit("author-register", normalizeAuthorEmail(email));
-  if (!rateLimit.ok) redirect("/author/register?error=unavailable");
+  if (!rateLimit.ok) return { error: "unavailable" };
   if (honeypot || !Number.isFinite(formStartedAt) || fillTime < 1500 || fillTime > 60 * 60 * 1000
     || !name || !isValidAuthorLogin(login) || !isValidAuthorEmail(email)
     || password !== confirmation || !validateAuthorPassword(password).ok) {
-    redirect("/author/register?error=invalid");
+    return { error: "invalid" };
   }
   const normalizedLogin = normalizeAuthorLogin(login);
   const normalizedEmail = normalizeAuthorEmail(email);
@@ -57,21 +65,36 @@ export async function registerAuthorAction(formData: FormData) {
       normalizedEmail,
     });
     registeredAuthorId = author.id;
-  } catch {
-    try {
-      const account = await getAuthorAccountByNormalizedLogin(normalizedLogin);
-      const passwordMatches = await verifyPasswordOrDummy(password, account?.passwordHash);
-      if (account?.status === "pending_email" && passwordMatches) {
-        const corrected = await replacePendingAuthorRegistrationEmail({
-          authorId: account.authorId,
-          email,
-          normalizedEmail,
-        });
-        registeredAuthorId = corrected?.authorId ?? null;
-        correctedPendingEmail = Boolean(corrected);
+  } catch (error) {
+    const constraint = getUniqueViolationConstraint(error);
+
+    if (constraint === "author_accounts_normalized_login_unique") {
+      try {
+        const account = await getAuthorAccountByNormalizedLogin(normalizedLogin);
+        const passwordMatches = await verifyPasswordOrDummy(password, account?.passwordHash);
+        if (account?.status === "pending_email" && passwordMatches) {
+          const corrected = await replacePendingAuthorRegistrationEmail({
+            authorId: account.authorId,
+            email,
+            normalizedEmail,
+          });
+          registeredAuthorId = corrected?.authorId ?? null;
+          correctedPendingEmail = Boolean(corrected);
+        }
+      } catch (correctionError) {
+        if (getUniqueViolationConstraint(correctionError) === "author_emails_normalized_email_unique") {
+          return { error: "email-taken" };
+        }
+        console.error("Failed to correct pending author registration email", correctionError);
+        return { error: "unavailable" };
       }
-    } catch {
-      // The same response covers credential conflicts and infrastructure failures.
+
+      if (!registeredAuthorId) return { error: "login-taken" };
+    } else if (constraint === "author_emails_normalized_email_unique") {
+      return { error: "email-taken" };
+    } else {
+      console.error("Failed to register author account", error);
+      return { error: "unavailable" };
     }
   }
   if (registeredAuthorId) {

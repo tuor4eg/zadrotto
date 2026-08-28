@@ -81,7 +81,10 @@ describe("main page random franchise preview", () => {
     ]) {
       assert.match(previewQuery, new RegExp(`${field}:`));
     }
-    assert.match(previewQuery, /count\(distinct \$\{ratings\.id\}\)::int/);
+    assert.match(previewQuery, /averageScore: mediaItemAverageScoreSql/);
+    assert.match(previewQuery, /ratingsCount: mediaItemRatingsCountSql/);
+    assert.match(previewQuery, /leftJoin\(mediaItemRatingStats/);
+    assert.doesNotMatch(previewQuery, /avg\(\$\{ratings\.score\}\)|count\(distinct \$\{ratings\.id\}\)/);
     assert.match(previewQuery, /\.limit\(12\)/);
     assert.match(previewQuery, /coverThumbUrl: resolveCoverUrl\(item\.coverThumbUrl\)/);
     assert.match(previewQuery, /coverUrl: resolveCoverUrl\(item\.coverUrl\)/);

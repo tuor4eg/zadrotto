@@ -9,6 +9,10 @@ import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/ach
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
+import {
+  reconcileMediaItemRatingStatsBatch,
+  type RatingStatsReconciliationPayload,
+} from "@/db/queries/media-item-rating-stats";
 import { createJobHandlerRegistry } from "./registry";
 import { JobError, type JobHandlerDefinition } from "./types";
 
@@ -215,6 +219,45 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   },
 };
 
+function parseRatingStatsReconciliationPayload(
+  value: unknown,
+): RatingStatsReconciliationPayload {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+  }
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).some((key) => key !== "afterMediaItemId" && key !== "batchSize")) {
+    throw new JobError("invalid-payload", "Задача получила неизвестные параметры.", {
+      retryable: false,
+    });
+  }
+  const afterMediaItemId = parseOptionalSafeInt(
+    source.afterMediaItemId,
+    "Некорректный курсор записи.",
+    1,
+    Number.MAX_SAFE_INTEGER,
+  );
+  const batchSize = parseOptionalSafeInt(
+    source.batchSize,
+    "Размер батча должен быть от 1 до 500.",
+    1,
+    500,
+  );
+  return { afterMediaItemId, batchSize };
+}
+
+const ratingStatsReconciliationHandler: JobHandlerDefinition<RatingStatsReconciliationPayload> = {
+  type: "media.rating-stats-reconcile",
+  label: "Сверка статистики оценок записей",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseRatingStatsReconciliationPayload,
+  async execute({ payload }) {
+    const result = await reconcileMediaItemRatingStatsBatch(payload);
+    console.info("rating stats reconciliation completed", result);
+  },
+};
+
 const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayload> = {
   type: "domain-events.dispatch",
   label: "Доставка доменных событий",
@@ -292,6 +335,7 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   coverThumbnailBackfillHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,
+  ratingStatsReconciliationHandler,
   domainEventDispatchHandler,
   achievementBackfillHandler,
 ]);

@@ -2,8 +2,9 @@ import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, ty
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
+import { mediaItemAverageScoreSql, mediaItemRatingsCountSql } from "@/db/queries/media-item-rating-stats";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
-import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemRatingStats, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
@@ -386,21 +387,18 @@ export async function getRandomPublishedFranchisePreview(input: {
     return null;
   }
 
-  const averageScoreSql = sql<number | null>`avg(${ratings.score})::float`;
   const rows = await db
     .select({
-      averageScore: averageScoreSql,
+      averageScore: mediaItemAverageScoreSql,
       code: mediaItems.code,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
-      currentAuthorScore: input.currentAuthorId
-        ? sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${input.currentAuthorId})::int`
-        : sql<number | null>`null`,
+      currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
       metadataFacts: mediaItemMetadata.facts,
-      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
+      ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
     })
@@ -408,14 +406,20 @@ export async function getRandomPublishedFranchisePreview(input: {
     .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(and(
       sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchise.id)})`,
       eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
     ))
-    .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts)
+    .groupBy(
+      mediaItems.id,
+      mediaCarriers.code,
+      mediaItemMetadata.facts,
+      mediaItemRatingStats.ratingsCount,
+      mediaItemRatingStats.scoreSum,
+    )
     .orderBy(
       sql`${mediaItems.releaseYear} desc nulls last`,
       asc(mediaItems.title),
@@ -1945,8 +1949,8 @@ export async function getMediaItemsByFranchiseId(
       releaseYear: mediaItems.releaseYear,
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
-      averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      ratingsCount: sql<number>`count(${ratings.id})::int`,
+      averageScore: mediaItemAverageScoreSql,
+      ratingsCount: mediaItemRatingsCountSql,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
       currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
       hasDirectFranchiseLink: sql<boolean>`bool_or(${mediaItemFranchises.franchiseId} = ${franchiseId})`,
@@ -1955,7 +1959,7 @@ export async function getMediaItemsByFranchiseId(
     .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
     .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(
       and(
         sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchiseId)})`,
@@ -1977,6 +1981,8 @@ export async function getMediaItemsByFranchiseId(
       mediaItems.releaseYear,
       mediaItems.coverUrl,
       mediaItems.coverThumbUrl,
+      mediaItemRatingStats.ratingsCount,
+      mediaItemRatingStats.scoreSum,
     )
     .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
 

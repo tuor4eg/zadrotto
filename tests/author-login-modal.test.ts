@@ -16,11 +16,17 @@ const headerSource = readFileSync(
 const ratingDialogSource = readFileSync("src/app/media-item-rating-dialog.tsx", "utf8");
 
 describe("author login modal contracts", () => {
-  it("keeps inline errors aligned with the login form messages", () => {
+  it("shows login errors as toasts and preserves entered credentials", () => {
     for (const error of ["invalid", "rate-limit", "rate-limit-unavailable"]) {
       assert.match(actionsSource, new RegExp(`error: [^\\n]*"${error}"`));
       assert.match(formSource, new RegExp(`(?:^|\\n)\\s*"?${error}"?:`));
     }
+    assert.match(formSource, /<ArchiveToasts/);
+    assert.doesNotMatch(formSource, /<Alert/);
+    assert.match(formSource, /value=\{identity\}/);
+    assert.match(formSource, /value=\{password\}/);
+    assert.match(formSource, /setIdentity\(event\.currentTarget\.value\)/);
+    assert.match(formSource, /setPassword\(event\.currentTarget\.value\)/);
   });
 
   it("keeps the standalone login action redirects", () => {

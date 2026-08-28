@@ -8,7 +8,7 @@ import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 
 export const metadata: Metadata = {
-  title: "О проекте — Журнал, которого не было",
+  title: 'О проекте — Журнал "Задротто"',
   description: "О культурном архиве, его источниках данных, лицензии и использовании ИИ.",
 };
 
@@ -56,7 +56,7 @@ export default async function AboutPage() {
               <h1 className="font-serif text-4xl leading-none sm:text-5xl">О проекте</h1>
               <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
                 <p>
-                  «Журнал, которого не было» — это личный архив игр, фильмов, книг, комиксов,
+                  Журнал «Задротто» — это личный архив игр, фильмов, книг, комиксов,
                   сериалов и других культурных находок. Здесь записи собираются не ради полноты
                   каталога, а чтобы не потерять впечатления, связи и случайные маршруты между ними.
                   Сейчас проект больше похож на живую картотеку: в ней есть факты, оценки, заметки,

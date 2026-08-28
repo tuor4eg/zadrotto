@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 type ImageViewerProps = {
   alt: string;
   children: React.ReactNode;
+  overlayZIndex?: number;
   src: string;
   title?: string;
   triggerClassName?: string;
@@ -15,6 +16,7 @@ type ImageViewerProps = {
 export function ImageViewer({
   alt,
   children,
+  overlayZIndex,
   src,
   title,
   triggerClassName,
@@ -60,6 +62,7 @@ export function ImageViewer({
               aria-modal="true"
               aria-labelledby={title ? titleId : undefined}
               className="fixed inset-0 z-[100] grid place-items-center bg-stone-950/88 p-4 backdrop-blur-sm"
+              style={overlayZIndex === undefined ? undefined : { zIndex: overlayZIndex }}
               onClick={() => setIsOpen(false)}
             >
               {title ? (

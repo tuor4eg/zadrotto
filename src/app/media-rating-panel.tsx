@@ -19,6 +19,7 @@ import {
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
+  AUTHOR_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
   AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES,
   AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
@@ -168,11 +169,13 @@ type ModernTvGuideRatingContentProps = {
 type ArchiveRatingPanelProps = {
   compact?: boolean;
   displayFontClassName: string;
+  inverted?: boolean;
   label: string;
   labelFontClassName: string;
   ratingPanelVariant?: MediaCarrierRatingPanelVariant;
   ratingsCount: number;
   score: number | null;
+  showStarsWhenCompact?: boolean;
 };
 
 const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.png";
@@ -1966,11 +1969,13 @@ export function RobloxRatingContent({
 export function ArchiveRatingPanel({
   compact = false,
   displayFontClassName,
+  inverted = false,
   label,
   labelFontClassName,
   ratingPanelVariant,
   ratingsCount,
   score,
+  showStarsWhenCompact = false,
 }: ArchiveRatingPanelProps) {
   if (ratingPanelVariant === "anime-manga") {
     return (
@@ -2175,25 +2180,49 @@ export function ArchiveRatingPanel({
   return (
     <div
       className={`h-full rounded-md border text-center ${
-        compact ? "p-2" : "p-4"
-      } ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]}`}
+        compact && showStarsWhenCompact
+          ? "flex flex-col justify-evenly p-2"
+          : compact
+            ? "p-2"
+            : "p-4"
+      } ${
+        inverted
+          ? AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+          : AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
+      }`}
     >
-      <div className={`${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
+      <div
+        className={`${labelFontClassName} text-[10px] uppercase ${
+          compact && showStarsWhenCompact ? "leading-3" : "leading-5"
+        } opacity-70`}
+      >
         {label}
       </div>
       <div
         className={`${
-          compact ? "mt-1 text-3xl" : "mt-2 text-4xl sm:text-5xl"
+          compact && showStarsWhenCompact
+            ? "text-2xl leading-none"
+            : compact
+              ? "mt-1 text-3xl"
+              : "mt-2 text-4xl sm:text-5xl"
         } ${displayFontClassName} tabular-nums`}
       >
         {formatScore(score)}
       </div>
-      {!compact ? (
-        <div className="mt-2 flex justify-center">
+      {!compact || showStarsWhenCompact ? (
+        <div
+          className={`${
+            compact ? "h-4 scale-75" : "mt-2"
+          } flex justify-center`}
+        >
           <RatingStars score={score} />
         </div>
       ) : null}
-      <div className={`${compact ? "mt-1" : "mt-2"} ${labelFontClassName} text-[10px] uppercase leading-5 opacity-70`}>
+      <div
+        className={`${
+          compact && showStarsWhenCompact ? "leading-3" : compact ? "mt-1 leading-5" : "mt-2 leading-5"
+        } ${labelFontClassName} text-[10px] uppercase opacity-70`}
+      >
         {formatRatingsCount(ratingsCount)}
       </div>
     </div>

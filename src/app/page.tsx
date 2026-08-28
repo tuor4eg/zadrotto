@@ -27,6 +27,7 @@ import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggest
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
+import { ArchiveExplorationLauncher } from "@/components/archive/archive-exploration-launcher";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
   ResponsiveTileGrid,
@@ -374,7 +375,16 @@ export default async function MainPage({ searchParams }: MainPageProps) {
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <ArchiveSiteHeader
           brandHref="/"
-          controls={<MainArchiveSearch />}
+          controls={
+            <div className="flex min-w-0 items-center gap-2">
+              <div className="min-w-0 flex-1"><MainArchiveSearch /></div>
+              <ArchiveExplorationLauncher
+                autoInvite
+                currentAuthor={Boolean(currentAuthor)}
+                className="archive-control-surface inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md border border-stone-300/80 px-0 font-mono text-xs uppercase tracking-wider text-stone-700 hover:border-stone-700 hover:bg-stone-50 lg:w-auto lg:px-3"
+              />
+            </div>
+          }
           currentAdminUser={Boolean(currentAdmin)}
           currentAuthor={Boolean(currentAuthor)}
           incomingFriendRequestCount={incomingFriendRequestCount}

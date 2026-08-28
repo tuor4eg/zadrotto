@@ -12,7 +12,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: getSiteOrigin(),
-  title: "Журнал, которого не было",
+  title: 'Журнал "Задротто"',
   description: "Архив культурных записей и оценок.",
 };
 

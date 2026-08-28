@@ -138,10 +138,10 @@ export function ArchiveSiteHeader({
               />
               <div className="min-w-0 lg:translate-y-1.5">
                 <h1 className="truncate font-serif text-[clamp(0.6875rem,3.75vw,1.25rem)] leading-tight text-stone-950 lg:text-4xl">
-                  Журнал, которого не было
+                  Журнал &quot;Задротто&quot;
                 </h1>
                 <p className="mt-1 hidden font-mono text-[10px] uppercase tracking-[0.18em] text-stone-600 lg:block">
-                  База хранит факты, журнал достает из них память
+                  Твой журнал. Твой архив. Твоя база.
                 </p>
               </div>
             </Link>
@@ -158,10 +158,10 @@ export function ArchiveSiteHeader({
           />
           <div className="min-w-0 lg:translate-y-1.5">
             <h1 className="truncate font-serif text-[clamp(0.6875rem,3.75vw,1.25rem)] leading-tight text-stone-950 lg:text-4xl">
-              Журнал, которого не было
+              Журнал &quot;Задротто&quot;
             </h1>
             <p className="mt-1 hidden font-mono text-[10px] uppercase tracking-[0.18em] text-stone-600 lg:block">
-              База хранит факты, журнал достает из них память
+              Твой журнал. Твой архив. Твоя база.
             </p>
           </div>
         </Link>}

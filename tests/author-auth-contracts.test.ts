@@ -8,6 +8,7 @@ const loginActions = readFileSync("src/app/author/login/actions.ts", "utf8");
 const loginForm = readFileSync("src/app/author/login/author-login-form.tsx", "utf8");
 const registrationActions = readFileSync("src/app/author/register/actions.ts", "utf8");
 const registrationPage = readFileSync("src/app/author/register/page.tsx", "utf8");
+const registrationForm = readFileSync("src/app/author/register/author-registration-form.tsx", "utf8");
 const authFeatures = readFileSync("src/lib/auth/features.ts", "utf8");
 const profilePage = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
 const profileLayout = readFileSync("src/app/author/(protected)/profile/layout.tsx", "utf8");
@@ -85,6 +86,19 @@ describe("author auth persistence contracts", () => {
     assert.match(registrationActions, /verifyPasswordOrDummy\(password, account\?\.passwordHash\)/);
     assert.match(registrationActions, /account\?\.status === "pending_email" && passwordMatches/);
     assert.match(registrationActions, /replacePendingAuthorRegistrationEmail/);
+    assert.match(registrationActions, /getUniqueViolationConstraint\(error\)/);
+    assert.match(registrationActions, /author_accounts_normalized_login_unique[\s\S]*error: "login-taken"/);
+    assert.match(registrationActions, /author_emails_normalized_email_unique[\s\S]*error: "email-taken"/);
+    assert.match(registrationActions, /console\.error\("Failed to register author account", error\)[\s\S]*error: "unavailable"/);
+    assert.match(registrationForm, /Этот логин уже занят/);
+    assert.match(registrationForm, /Этот email уже используется другим аккаунтом/);
+    assert.match(registrationForm, /Регистрация временно недоступна\. Попробуй позже/);
+    assert.match(registrationForm, /useActionState\(registerAuthorAction, null\)/);
+    assert.match(registrationForm, /<AuthorToasts/);
+    assert.doesNotMatch(registrationForm, /<Alert/);
+    for (const field of ["name", "login", "email", "password", "passwordConfirmation"]) {
+      assert.match(registrationForm, new RegExp(`value=\\{${field}\\}`));
+    }
     const correction = functionSource(operations, "replacePendingAuthorRegistrationEmail", "verifyAuthorEmailChallenge");
     assert.match(correction, /eq\(authorAccounts\.status, "pending_email"\)/);
     assert.match(correction, /eq\(authorEmails\.isPrimary, true\)/);
@@ -101,13 +115,13 @@ describe("author auth persistence contracts", () => {
   });
 
   it("uses the informative password strength field only for new passwords", () => {
-    for (const page of [registrationPage, resetPasswordPage, profilePage]) {
+    for (const page of [registrationForm, resetPasswordPage, profilePage]) {
       assert.match(page, /<PasswordField[\s\S]*name="password"/);
       assert.match(page, /autoComplete="new-password"/);
       assert.match(page, /minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}/);
       assert.match(page, /maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     }
-    assert.match(registrationPage, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
+    assert.match(registrationForm, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     assert.match(onboardingForm, /name="passwordConfirmation"[\s\S]*minLength=\{AUTHOR_PASSWORD_MIN_LENGTH\}[\s\S]*maxLength=\{AUTHOR_PASSWORD_MAX_LENGTH\}/);
     assert.match(passwordField, /Минимум \$\{AUTHOR_PASSWORD_MIN_LENGTH\} символов/);
     assert.match(passwordField, /Сложность пароля:/);
@@ -117,9 +131,15 @@ describe("author auth persistence contracts", () => {
     assert.match(passwordField, /weak: "bg-red-500"/);
     assert.match(passwordField, /strong: "bg-emerald-600"/);
     assert.match(passwordField, /Omit<[\s\S]*"type"/);
+    assert.match(passwordField, /export function PasswordInput/);
+    assert.match(passwordField, /isPasswordVisible \? "text" : "password"/);
+    assert.match(passwordField, /Скрыть пароль/);
+    assert.match(passwordField, /Показать пароль/);
+    assert.match(passwordField, /aria-pressed=\{isPasswordVisible\}/);
+    assert.match(registrationForm, /<PasswordInput[\s\S]*name="passwordConfirmation"/);
 
     assert.doesNotMatch(loginForm, /PasswordField|AUTHOR_PASSWORD_MIN_LENGTH|AUTHOR_PASSWORD_MAX_LENGTH/);
-    assert.match(loginForm, /name="password"[\s\S]*autoComplete="current-password"/);
+    assert.match(loginForm, /<PasswordInput[\s\S]*name="password"[\s\S]*autoComplete="current-password"/);
     assert.doesNotMatch(loginForm, /name="password"[\s\S]*minLength=/);
 
     assert.match(profilePage, /<Label htmlFor="newPassword">Новый пароль<\/Label><PasswordField id="newPassword" name="password"/);
@@ -208,8 +228,8 @@ describe("author auth persistence contracts", () => {
   });
 
   it("sets the registration timing field on the client and validates the honeypot", () => {
-    assert.match(registrationPage, /<RegistrationStartedAtInput \/>/);
-    assert.match(registrationPage, /name="website"/);
+    assert.match(registrationForm, /<RegistrationStartedAtInput \/>/);
+    assert.match(registrationForm, /name="website"/);
     assert.match(registrationTimestamp, /"use client"/);
     assert.match(registrationTimestamp, /useEffect\(\(\) => \{/);
     assert.match(registrationTimestamp, /String\(Date\.now\(\)\)/);

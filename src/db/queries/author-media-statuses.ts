@@ -87,3 +87,27 @@ export async function toggleAuthorMediaStatus(input: {
     return input.status;
   });
 }
+
+export async function setAuthorMediaStatus(input: {
+  authorId: number;
+  mediaItemId: number;
+  status: AuthorMediaStatus;
+}) {
+  return db.transaction(async (tx) => {
+    await lockAuthorMediaState(tx, input);
+    const [rating] = await tx
+      .select({ id: ratings.id })
+      .from(ratings)
+      .where(and(eq(ratings.authorId, input.authorId), eq(ratings.mediaItemId, input.mediaItemId)))
+      .limit(1);
+    if (rating) throw new AuthorMediaStatusConflictError();
+
+    const now = new Date();
+    await tx.insert(authorMediaStatuses).values({ ...input, createdAt: now, updatedAt: now })
+      .onConflictDoUpdate({
+        target: [authorMediaStatuses.authorId, authorMediaStatuses.mediaItemId],
+        set: { status: input.status, updatedAt: now },
+      });
+    return input.status;
+  });
+}

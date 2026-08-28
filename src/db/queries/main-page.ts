@@ -1,6 +1,10 @@
-import { and, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gte, inArray, lt, sql, type SQL } from "drizzle-orm";
 
 import { db } from "@/db";
+import {
+  mediaItemAverageScoreSql,
+  mediaItemRatingsCountSql,
+} from "@/db/queries/media-item-rating-stats";
 import {
   authorMediaStatuses,
   contributionMediaItems,
@@ -8,6 +12,7 @@ import {
   contributions,
   mediaCarriers,
   mediaItemMetadata,
+  mediaItemRatingStats,
   mediaItems,
   mediaTypes,
   ratings,
@@ -90,44 +95,43 @@ export function createMainPageDataPromises(input: {
     eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     inArray(mediaItems.mediaType, [...enabledMediaTypeCodes]),
   );
-  const averageScoreSql = sql<number | null>`avg(${ratings.score})::float`;
-  const ratingsCountSql = sql<number>`count(distinct ${ratings.id})::int`;
+  const currentAuthorScoreSql = currentAuthorId
+    ? sql<number | null>`(
+        select ${ratings.score} from ${ratings}
+        where ${ratings.mediaItemId} = ${mediaItems.id}
+          and ${ratings.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<number | null>`null`;
   const mediaItemSelection = {
-    averageScore: averageScoreSql,
+    averageScore: mediaItemAverageScoreSql,
     code: mediaItems.code,
     coverThumbUrl: mediaItems.coverThumbUrl,
     coverUrl: mediaItems.coverUrl,
-    currentAuthorScore: currentAuthorId
-      ? sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${currentAuthorId})::int`
-      : sql<number | null>`null`,
+    currentAuthorScore: currentAuthorScoreSql,
     id: mediaItems.id,
     mediaCarrierCode: mediaCarriers.code,
     mediaType: mediaItems.mediaType,
     metadataFacts: mediaItemMetadata.facts,
-    ratingsCount: ratingsCountSql,
+    ratingsCount: mediaItemRatingsCountSql,
     releaseYear: mediaItems.releaseYear,
     title: mediaItems.title,
   };
 
-  const createMediaItemsQuery = (extraCondition?: ReturnType<typeof eq>) => db
+  const createMediaItemsQuery = (extraCondition?: SQL) => db
     .select(mediaItemSelection)
     .from(mediaItems)
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
-    .where(and(accessCondition, extraCondition))
-    .groupBy(
-      mediaItems.id,
-      mediaCarriers.code,
-      mediaItemMetadata.facts,
-    );
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
+    .where(and(accessCondition, extraCondition));
 
   const topEligibilityCondition = and(
     topArchiveMinAverageScore > 0
-      ? sql`${averageScoreSql} >= ${topArchiveMinAverageScore * 10}`
+      ? sql`${mediaItemRatingStats.scoreSum} >= ${mediaItemRatingStats.ratingsCount} * ${topArchiveMinAverageScore * 10}`
       : undefined,
     topArchiveMinRatingsCount > 0
-      ? sql`${ratingsCountSql} >= ${topArchiveMinRatingsCount}`
+      ? sql`${mediaItemRatingStats.ratingsCount} >= ${topArchiveMinRatingsCount}`
       : undefined,
   );
   const rotatedMediaTypeCodes = getRotatedMediaTypeCodes(
@@ -136,11 +140,10 @@ export function createMainPageDataPromises(input: {
   );
   const topRowsPromise = Promise.all(
     rotatedMediaTypeCodes.map((mediaTypeCode) =>
-      createMediaItemsQuery(eq(mediaItems.mediaType, mediaTypeCode))
-        .having(topEligibilityCondition)
+      createMediaItemsQuery(and(eq(mediaItems.mediaType, mediaTypeCode), topEligibilityCondition))
         .orderBy(
-          sql`${averageScoreSql} desc nulls last`,
-          sql`${ratingsCountSql} desc`,
+          sql`${mediaItemAverageScoreSql} desc nulls last`,
+          sql`${mediaItemRatingsCountSql} desc`,
           sql`lower(${mediaItems.title}) asc`,
           sql`${mediaItems.id} asc`,
         )
@@ -184,23 +187,31 @@ export function createMainPageDataPromises(input: {
       )
       .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
       .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-      .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+      .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
       .where(and(
         accessCondition,
         eq(contributions.type, "review"),
         eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
       ))
-      .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts)
+      .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts, mediaItemRatingStats.mediaItemId)
       .orderBy(
         sql`max(${contributions.createdAt}) desc`,
         sql`${mediaItems.id} desc`,
       )
       .limit(SECTION_SIZES.reviews);
   const latestRatingsPromise = currentAuthorId
-      ? createMediaItemsQuery()
-          .having(sql`count(${ratings.id}) filter (where ${ratings.authorId} = ${currentAuthorId}) > 0`)
+      ? createMediaItemsQuery(sql`exists (
+            select 1 from ${ratings}
+            where ${ratings.mediaItemId} = ${mediaItems.id}
+              and ${ratings.authorId} = ${currentAuthorId}
+          )`)
           .orderBy(
-            sql`max(${ratings.updatedAt}) filter (where ${ratings.authorId} = ${currentAuthorId}) desc`,
+            sql`(
+              select ${ratings.updatedAt} from ${ratings}
+              where ${ratings.mediaItemId} = ${mediaItems.id}
+                and ${ratings.authorId} = ${currentAuthorId}
+              limit 1
+            ) desc`,
             sql`${mediaItems.id} desc`,
           )
           .limit(SECTION_SIZES.latestRatings)
@@ -219,14 +230,8 @@ export function createMainPageDataPromises(input: {
           )
           .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
           .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-          .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+          .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
           .where(accessCondition)
-          .groupBy(
-            mediaItems.id,
-            mediaCarriers.code,
-            mediaItemMetadata.facts,
-            authorMediaStatuses.createdAt,
-          )
           .orderBy(
             sql`${authorMediaStatuses.createdAt} desc`,
             sql`${mediaItems.id} desc`,
@@ -259,6 +264,8 @@ export function createMainPageDataPromises(input: {
 }
 
 function createDailyDossierQuery(input: {
+  afterMediaItemId?: number;
+  beforeMediaItemId?: number;
   currentAuthorId?: number;
   mediaItemId?: number;
   minAverageScore: number;
@@ -269,22 +276,25 @@ function createDailyDossierQuery(input: {
     throw new Error("Invalid daily dossier minimum average score");
   }
 
-  const averageScoreSql = sql<number | null>`avg(${ratings.score})::float`;
-
   return db
     .select({
-      averageScore: averageScoreSql,
+      averageScore: mediaItemAverageScoreSql,
       code: mediaItems.code,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
       currentAuthorScore: input.currentAuthorId
-        ? sql<number | null>`max(${ratings.score}) filter (where ${ratings.authorId} = ${input.currentAuthorId})::int`
+        ? sql<number | null>`(
+            select ${ratings.score} from ${ratings}
+            where ${ratings.mediaItemId} = ${mediaItems.id}
+              and ${ratings.authorId} = ${input.currentAuthorId}
+            limit 1
+          )`
         : sql<number | null>`null`,
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
       metadataFacts: mediaItemMetadata.facts,
-      ratingsCount: sql<number>`count(distinct ${ratings.id})::int`,
+      ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
     })
@@ -292,17 +302,16 @@ function createDailyDossierQuery(input: {
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(and(
       globalDailyDossierCondition,
       input.mediaItemId ? eq(mediaItems.id, input.mediaItemId) : undefined,
-    ))
-    .groupBy(mediaItems.id, mediaCarriers.code, mediaItemMetadata.facts)
-    .having(
+      input.afterMediaItemId ? gte(mediaItems.id, input.afterMediaItemId) : undefined,
+      input.beforeMediaItemId ? lt(mediaItems.id, input.beforeMediaItemId) : undefined,
       minAverageScore > 0
-        ? sql`${averageScoreSql} >= ${minAverageScore * 10}`
+        ? sql`${mediaItemRatingStats.scoreSum} >= ${mediaItemRatingStats.ratingsCount} * ${minAverageScore * 10}`
         : undefined,
-    );
+    ));
 }
 
 function resolveDailyDossierItem(item: MainPageMediaItem | undefined) {
@@ -319,9 +328,15 @@ export async function getRandomDailyDossierCandidate(input: {
   currentAuthorId?: number;
   minAverageScore: number;
 }) {
-  const [item] = await createDailyDossierQuery(input)
-    .orderBy(sql`random()`)
+  const [{ maxId }] = await db.select({ maxId: sql<number | null>`max(${mediaItems.id})::int` }).from(mediaItems);
+  if (!maxId) return null;
+  const pivot = Math.floor(Math.random() * maxId) + 1;
+  const [afterPivot] = await createDailyDossierQuery({ ...input, afterMediaItemId: pivot })
+    .orderBy(asc(mediaItems.id))
     .limit(1);
+  const item = afterPivot ?? (await createDailyDossierQuery({ ...input, beforeMediaItemId: pivot })
+    .orderBy(asc(mediaItems.id))
+    .limit(1))[0];
 
   return resolveDailyDossierItem(item);
 }

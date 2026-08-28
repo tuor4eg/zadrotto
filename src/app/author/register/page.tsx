@@ -2,22 +2,18 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
-import { Button, buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input, Label } from "@/components/ui/form";
-import { PasswordField } from "@/components/auth/password-field";
-import { AUTHOR_LOGIN_MAX_LENGTH, AUTHOR_PASSWORD_MAX_LENGTH, AUTHOR_PASSWORD_MIN_LENGTH } from "@/lib/auth/author-account";
 import {
   isAuthorEmailDeliveryConfigured,
   isAuthorEmailVerificationBypassed,
   isAuthorRegistrationEnabled,
 } from "@/lib/auth/features";
-import { registerAuthorAction } from "./actions";
-import { RegistrationStartedAtInput } from "./registration-started-at-input";
+import { AuthorRegistrationForm } from "./author-registration-form";
 
 export const dynamic = "force-dynamic";
 
-export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ email?: string; error?: string; registered?: string; sent?: string }> }) {
+export default async function AuthorRegisterPage({ searchParams }: { searchParams: Promise<{ email?: string; registered?: string; sent?: string }> }) {
   if (!isAuthorRegistrationEnabled()) notFound();
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   const isEmailDeliveryConfigured = bypassEmailVerification
@@ -50,17 +46,7 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
               <Link className={buttonVariants()} href="/">На сайт</Link>
             </div>
           ) : (
-            <form action={registerAuthorAction} className="grid gap-4">
-              <RegistrationStartedAtInput />
-              <input className="hidden" name="website" tabIndex={-1} autoComplete="off" aria-hidden="true" />
-              {query.error ? <Alert variant="destructive">Проверь заполненные поля.</Alert> : null}
-              <div className="grid gap-2"><Label htmlFor="name">Имя</Label><Input id="name" name="name" required /></div>
-              <div className="grid gap-2"><Label htmlFor="login">Логин</Label><Input id="login" name="login" maxLength={AUTHOR_LOGIN_MAX_LENGTH} required /></div>
-              <div className="grid gap-2"><Label htmlFor="email">Email</Label><Input id="email" name="email" type="email" required /></div>
-              <div className="grid gap-2"><Label htmlFor="password">Пароль</Label><PasswordField id="password" name="password" autoComplete="new-password" minLength={AUTHOR_PASSWORD_MIN_LENGTH} maxLength={AUTHOR_PASSWORD_MAX_LENGTH} required /></div>
-              <div className="grid gap-2"><Label htmlFor="passwordConfirmation">Повтори пароль</Label><Input id="passwordConfirmation" name="passwordConfirmation" type="password" autoComplete="new-password" minLength={AUTHOR_PASSWORD_MIN_LENGTH} maxLength={AUTHOR_PASSWORD_MAX_LENGTH} required /></div>
-              <Button type="submit">Регистрация</Button>
-            </form>
+            <AuthorRegistrationForm />
           )}
         </CardContent>
       </Card>

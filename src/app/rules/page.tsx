@@ -8,7 +8,7 @@ import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 
 export const metadata: Metadata = {
-  title: "Правила — Журнал, которого не было",
+  title: 'Правила — Журнал "Задротто"',
   description: "Правила культурного архива для читателей и авторов.",
 };
 
@@ -95,7 +95,7 @@ export default async function RulesPage() {
               <h1 className="font-serif text-4xl leading-none sm:text-5xl">Правила архива</h1>
               <div className="mt-6 space-y-4 text-base leading-7 text-stone-700">
                 <p>
-                  Добро пожаловать в «Журнал, которого не было». Здесь мы собираем игры, фильмы,
+                  Добро пожаловать в журнал «Задротто». Здесь мы собираем игры, фильмы,
                   книги, комиксы и другие культурные находки, о которых хочется помнить чуть дольше,
                   чем до следующего понедельника.
                 </p>

@@ -35,13 +35,24 @@ function getErrorField(
   return (error as Record<typeof field, unknown>)[field];
 }
 
+function findUniqueViolation(error: unknown, visited = new Set<unknown>()): unknown {
+  if (typeof error !== "object" || error === null || visited.has(error)) return null;
+  visited.add(error);
+
+  if (getErrorField(error, "code") === "23505") return error;
+
+  const cause = getErrorField(error, "cause");
+  return cause ? findUniqueViolation(cause, visited) : null;
+}
+
 export function isUniqueViolation(error: unknown) {
-  return getErrorField(error, "code") === "23505";
+  return Boolean(findUniqueViolation(error));
 }
 
 export function getUniqueViolationConstraint(error: unknown) {
-  if (!isUniqueViolation(error)) return null;
-  const constraint = getErrorField(error, "constraint_name");
+  const violation = findUniqueViolation(error);
+  if (!violation) return null;
+  const constraint = getErrorField(violation, "constraint_name");
   return typeof constraint === "string" ? constraint : null;
 }
 

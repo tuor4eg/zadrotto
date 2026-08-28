@@ -10,11 +10,11 @@ describe("main page latest ratings", () => {
     assert.match(query, /latestRatings: 12/);
     assert.match(
       query,
-      /currentAuthorId[\s\S]*count\(\$\{ratings\.id\}\) filter \(where \$\{ratings\.authorId\} = \$\{currentAuthorId\}\) > 0/,
+      /currentAuthorId[\s\S]*exists \([\s\S]*ratings\.authorId} = \$\{currentAuthorId\}/,
     );
     assert.match(
       query,
-      /max\(\$\{ratings\.updatedAt\}\) filter \(where \$\{ratings\.authorId\} = \$\{currentAuthorId\}\) desc[\s\S]*mediaItems\.id\} desc/,
+      /select \$\{ratings\.updatedAt\}[\s\S]*ratings\.authorId} = \$\{currentAuthorId\}[\s\S]*mediaItems\.id\} desc/,
     );
     assert.match(query, /\.limit\(SECTION_SIZES\.latestRatings\)/);
     assert.match(query, /: Promise\.resolve\(\[\]\)/);
@@ -26,7 +26,7 @@ describe("main page latest ratings", () => {
     assert.match(page, /href="\/archive\?sort=my_rating_date&mine=rated"[\s\S]*title="Мои последние оценки"/);
     assert.match(page, /SectionItems promise=\{data\.latestRatings\}/);
     assert.match(page, /Когда вы начнете оценивать и добавлять записи в желаемое/);
-    assert.doesNotMatch(page, /history|Недавно просмотренное|getRecentlyViewed/);
+    assert.doesNotMatch(page, /\/history|Недавно просмотренное|getRecentlyViewed/);
     assert.equal(existsSync("src/app/history/page.tsx"), false);
     assert.equal(existsSync("src/app/history/viewed-at.tsx"), false);
     assert.equal(existsSync("tests/history-page.test.ts"), false);

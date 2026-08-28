@@ -419,6 +419,25 @@ export const authorMediaTypeSettings = pgTable(
   ],
 );
 
+export const authorArchiveExplorationSettings = pgTable(
+  "author_archive_exploration_settings",
+  {
+    authorId: integer("author_id")
+      .primaryKey()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    autoShowEnabled: boolean("auto_show_enabled").default(true).notNull(),
+    lastAutoShownAt: timestamp("last_auto_shown_at", { withTimezone: true }),
+    onboardingStep: integer("onboarding_step").default(10).notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    check(
+      "author_archive_exploration_settings_onboarding_step_check",
+      sql`${table.onboardingStep} between 10 and 100`,
+    ),
+  ],
+);
+
 export const authorAccessProfileMediaTypes = pgTable(
   "author_access_profile_media_types",
   {
@@ -1370,6 +1389,31 @@ export const ratings = pgTable(
     check(
       "ratings_score_whole_1_to_10_check",
       sql`${table.score} >= 10 and ${table.score} <= 100 and ${table.score} % 10 = 0`,
+    ),
+  ],
+);
+
+export const mediaItemRatingStats = pgTable(
+  "media_item_rating_stats",
+  {
+    mediaItemId: integer("media_item_id")
+      .primaryKey()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    ratingsCount: integer("ratings_count").notNull(),
+    scoreSum: integer("score_sum").notNull(),
+  },
+  (table) => [
+    index("media_item_rating_stats_ratings_count_idx").on(table.ratingsCount),
+    index("media_item_rating_stats_average_score_idx").on(
+      sql`((${table.scoreSum})::double precision / ${table.ratingsCount})`,
+    ),
+    index("media_item_rating_stats_quality_media_item_idx")
+      .on(table.mediaItemId)
+      .where(sql`${table.scoreSum} >= ${table.ratingsCount} * 70`),
+    check("media_item_rating_stats_count_check", sql`${table.ratingsCount} >= 1`),
+    check(
+      "media_item_rating_stats_sum_check",
+      sql`${table.scoreSum} between ${table.ratingsCount} * 10 and ${table.ratingsCount} * 100`,
     ),
   ],
 );

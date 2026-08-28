@@ -1,7 +1,8 @@
 import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
-import { authors, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes, ratings } from "@/db/schema";
+import { authors, mediaItemRatingStats, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } from "@/db/schema";
+import { mediaItemAverageScoreSql, mediaItemRatingsCountSql } from "@/db/queries/media-item-rating-stats";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
@@ -219,13 +220,13 @@ export async function getPreviousQuizHistory(now?: Date): Promise<QuizHistoryEnt
   const currentTime = now ?? sql`now()`;
   const [row] = await db
     .select({
-      answerAverageScore: sql<number | null>`avg(${ratings.score})::float`,
+      answerAverageScore: mediaItemAverageScoreSql,
       answerCode: mediaItems.code,
       answerCoverThumbUrl: mediaItems.coverThumbUrl,
       answerCoverUrl: mediaItems.coverUrl,
       answerId: mediaItems.id,
       answerMediaType: mediaItems.mediaType,
-      answerRatingsCount: sql<number>`count(${ratings.id})::int`,
+      answerRatingsCount: mediaItemRatingsCountSql,
       answerReleaseYear: mediaItems.releaseYear,
       answerTitle: mediaItems.title,
       imageObjectKey: quizzes.imageObjectKey,
@@ -234,14 +235,13 @@ export async function getPreviousQuizHistory(now?: Date): Promise<QuizHistoryEnt
     .from(quizzes)
     .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
-    .leftJoin(ratings, eq(ratings.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(and(
       eq(quizzes.enabled, true),
       lte(quizzes.endsAt, currentTime),
       eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       eq(mediaTypes.isPubliclyAvailable, true),
     ))
-    .groupBy(quizzes.id, mediaItems.id)
     .orderBy(desc(quizzes.endsAt), desc(quizzes.id))
     .limit(1);
 

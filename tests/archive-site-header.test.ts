@@ -15,8 +15,8 @@ const globalsSource = readFileSync("src/app/globals.css", "utf8");
 describe("archive site header", () => {
   it("owns the shared brand, actions, and login modal", () => {
     assert.match(sharedSource, /src="\/site-logo\.png"/);
-    assert.match(sharedSource, /Журнал, которого не было/);
-    assert.match(sharedSource, /База хранит факты, журнал достает из них память/);
+    assert.match(sharedSource, /Журнал &quot;Задротто&quot;/);
+    assert.match(sharedSource, /Твой журнал\. Твой архив\. Твоя база\./);
     assert.match(sharedSource, /href="\/admin"/);
     assert.match(sharedSource, /href="\/author"/);
     assert.match(sharedSource, /<AuthorLoginModal/);

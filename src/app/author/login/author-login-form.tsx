@@ -1,10 +1,11 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { Alert } from "@/components/ui/alert";
+import { PasswordInput } from "@/components/auth/password-field";
+import { ArchiveToasts } from "@/components/ui/archive-toasts";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import {
@@ -30,6 +31,8 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
     loginAuthorWithPasswordInline,
     null,
   );
+  const [identity, setIdentity] = useState("");
+  const [password, setPassword] = useState("");
   const state = passwordState;
 
   useEffect(() => {
@@ -44,14 +47,34 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
 
   return (
     <div className="flex flex-col gap-5">
+      <ArchiveToasts
+        messages={error
+          ? [{ id: `author-login-${error}`, tone: "error", text: ERROR_MESSAGES[error] }]
+          : []}
+      />
       <form action={passwordFormAction} className="flex flex-col gap-4" noValidate>
         <div className="flex flex-col gap-2">
           <Label htmlFor="author-login-identity">Логин или email</Label>
-          <Input id="author-login-identity" name="identity" autoComplete="username" required autoFocus />
+          <Input
+            id="author-login-identity"
+            name="identity"
+            autoComplete="username"
+            value={identity}
+            onChange={(event) => setIdentity(event.currentTarget.value)}
+            required
+            autoFocus
+          />
         </div>
         <div className="flex flex-col gap-2">
           <Label htmlFor="author-login-password">Пароль</Label>
-          <Input id="author-login-password" name="password" type="password" autoComplete="current-password" required />
+          <PasswordInput
+            id="author-login-password"
+            name="password"
+            autoComplete="current-password"
+            value={password}
+            onChange={(event) => setPassword(event.currentTarget.value)}
+            required
+          />
         </div>
         <Button type="submit" disabled={isPasswordPending}>
           {isPasswordPending ? "Входим…" : "Войти"}
@@ -72,7 +95,6 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
         </div>
       </form>
 
-      {error ? <Alert variant="destructive">{ERROR_MESSAGES[error]}</Alert> : null}
     </div>
   );
 }

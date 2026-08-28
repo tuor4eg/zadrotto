@@ -1,6 +1,7 @@
 "use client";
 
 import { useId, useState } from "react";
+import { Eye, EyeOff } from "lucide-react";
 
 import { Input } from "@/components/ui/form";
 import { AUTHOR_PASSWORD_MAX_LENGTH, AUTHOR_PASSWORD_MIN_LENGTH } from "@/lib/auth/author-account";
@@ -19,6 +20,31 @@ export type PasswordFieldProps = Omit<
   "type"
 >;
 
+export function PasswordInput({ className, ...props }: PasswordFieldProps) {
+  const [isPasswordVisible, setIsPasswordVisible] = useState(false);
+
+  return (
+    <div className="relative">
+      <Input
+        {...props}
+        className={cn("pr-11", className)}
+        type={isPasswordVisible ? "text" : "password"}
+      />
+      <button
+        type="button"
+        className="absolute inset-y-0 right-0 grid w-11 place-items-center rounded-r-md text-stone-500 transition-colors hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-stone-900/20"
+        aria-label={isPasswordVisible ? "Скрыть пароль" : "Показать пароль"}
+        aria-pressed={isPasswordVisible}
+        onClick={() => setIsPasswordVisible((currentValue) => !currentValue)}
+      >
+        {isPasswordVisible
+          ? <EyeOff className="size-4" aria-hidden="true" />
+          : <Eye className="size-4" aria-hidden="true" />}
+      </button>
+    </div>
+  );
+}
+
 export function PasswordField(props: PasswordFieldProps) {
   const [internalPassword, setInternalPassword] = useState(
     typeof props.defaultValue === "string" ? props.defaultValue : "",
@@ -30,9 +56,8 @@ export function PasswordField(props: PasswordFieldProps) {
 
   return (
     <div className="grid gap-2">
-      <Input
+      <PasswordInput
         {...props}
-        type="password"
         minLength={props.minLength ?? AUTHOR_PASSWORD_MIN_LENGTH}
         maxLength={props.maxLength ?? AUTHOR_PASSWORD_MAX_LENGTH}
         aria-describedby={describedBy}
