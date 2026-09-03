@@ -57,6 +57,10 @@ export function getAdminMediaErrorMessage(error?: string) {
     return "Опубликованную запись сначала нужно снять с публикации.";
   }
 
+  if (error === "collection-reference") {
+    return "Запись используется в подборке. Сначала удалите её из всех подборок.";
+  }
+
   if (error === "cover-type") {
     return "Обложка должна быть JPG, PNG или WebP.";
   }

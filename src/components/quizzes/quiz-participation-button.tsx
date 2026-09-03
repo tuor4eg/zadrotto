@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useCallback, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -9,7 +9,7 @@ import {
   type QuizParticipantHudState,
 } from "@/components/external-interface/external-interface-layer";
 
-export function QuizParticipationButton({
+export function useQuizParticipation({
   isParticipating,
   onOpenArchive,
 }: {
@@ -21,7 +21,9 @@ export function QuizParticipationButton({
   const [pending, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  async function openArchive() {
+  const openArchive = useCallback(async () => {
+    if (pending) return;
+
     if (isParticipating) {
       if (onOpenArchive) onOpenArchive();
       else router.push("/archive");
@@ -46,16 +48,37 @@ export function QuizParticipationButton({
     } finally {
       setPending(false);
     }
-  }
+  }, [isParticipating, onOpenArchive, pending, router, setQuizParticipant]);
+
+  return { error, openArchive, pending };
+}
+
+export function QuizParticipationButton({
+  className,
+  idleLabel = "Искать ответ в архиве",
+  isParticipating,
+  onOpenArchive,
+  participatingLabel = "Продолжить поиск в архиве",
+}: {
+  className?: string;
+  idleLabel?: string;
+  isParticipating: boolean;
+  onOpenArchive?: () => void;
+  participatingLabel?: string;
+}) {
+  const { error, openArchive, pending } = useQuizParticipation({
+    isParticipating,
+    onOpenArchive,
+  });
 
   return (
     <div className="grid justify-items-center gap-2 text-center">
-      <Button className="archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 transition-colors hover:border-stone-700 hover:bg-stone-50 hover:text-stone-950" type="button" variant="outline" disabled={pending} onClick={openArchive}>
+      <Button className={className ?? "archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 transition-colors hover:border-stone-700 hover:bg-stone-50 hover:text-stone-950"} type="button" variant="outline" disabled={pending} onClick={() => void openArchive()}>
         {pending
           ? "Присоединяем…"
           : isParticipating
-            ? "Продолжить поиск в архиве"
-            : "Искать ответ в архиве"}
+            ? participatingLabel
+            : idleLabel}
       </Button>
       {error ? <p className="text-sm text-red-700" role="alert">{error}</p> : null}
     </div>

@@ -298,6 +298,7 @@ export async function getPublicReviewJournal(authorId: number, requestedPage: nu
   const totalPages = getTotalPages(totalCount, FRIENDS_PAGE_SIZE);
   const page = clampPage(requestedPage, totalPages);
   const items = await db.select({
+    id: contributions.id,
     code: mediaItems.code,
     mediaTitle: mediaItems.title,
     reviewTitle: contributionReviews.title,

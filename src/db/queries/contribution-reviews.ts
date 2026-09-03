@@ -8,6 +8,8 @@ import {
   contributionMediaItems,
   contributionReviews,
   contributions,
+  mediaCarriers,
+  mediaItemMetadata,
   mediaItemTitleAliases,
   mediaItems,
   ratings,
@@ -19,6 +21,7 @@ import {
 } from "@/lib/contributions/model";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { resolveCoverUrl } from "@/lib/services/minio";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 
@@ -64,6 +67,120 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       ),
     )
     .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id));
+}
+
+export async function getPublishedReviewById(
+  reviewId: number,
+  accessibleMediaTypeCodes: readonly string[],
+) {
+  if (accessibleMediaTypeCodes.length === 0) return null;
+
+  const [review] = await db
+    .select({
+      id: contributions.id,
+      authorId: authors.id,
+      authorName: authors.name,
+      authorCode: authors.code,
+      authorAvatarObjectKey: authors.avatarObjectKey,
+      authorScore: ratings.score,
+      title: contributionReviews.title,
+      body: contributionReviews.body,
+      publishedAt: contributions.reviewedAt,
+      updatedAt: contributions.updatedAt,
+      mediaItemId: mediaItems.id,
+      mediaItemCode: mediaItems.code,
+      mediaItemTitle: mediaItems.title,
+      mediaItemMediaType: mediaItems.mediaType,
+      mediaItemReleaseYear: mediaItems.releaseYear,
+      mediaItemCarrierCode: mediaCarriers.code,
+      mediaItemMetadataFacts: mediaItemMetadata.facts,
+    })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
+    .where(and(
+      eq(contributions.id, reviewId),
+      eq(contributions.type, "review"),
+      eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      inArray(mediaItems.mediaType, [...accessibleMediaTypeCodes]),
+    ))
+    .limit(1);
+
+  return review ?? null;
+}
+
+export async function getPublishedReviewNavigation(mediaItemId: number, reviewId: number) {
+  const reviews = await db
+    .select({ id: contributions.id })
+    .from(contributionMediaItems)
+    .innerJoin(contributions, eq(contributions.id, contributionMediaItems.contributionId))
+    .where(and(
+      eq(contributionMediaItems.mediaItemId, mediaItemId),
+      eq(contributions.type, "review"),
+      eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+    ))
+    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id));
+  const currentIndex = reviews.findIndex((review) => review.id === reviewId);
+
+  return {
+    previousReviewId: currentIndex > 0 ? reviews[currentIndex - 1].id : null,
+    nextReviewId:
+      currentIndex >= 0 && currentIndex < reviews.length - 1
+        ? reviews[currentIndex + 1].id
+        : null,
+  };
+}
+
+export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: readonly string[]) {
+  if (accessibleMediaTypeCodes.length === 0) {
+    return null;
+  }
+
+  const [review] = await db
+    .select({
+      authorName: authors.name,
+      body: contributionReviews.body,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverUrl: mediaItems.coverUrl,
+      id: contributions.id,
+      mediaItemCode: mediaItems.code,
+      mediaItemTitle: mediaItems.title,
+      mediaType: mediaItems.mediaType,
+      releaseYear: mediaItems.releaseYear,
+    })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(and(
+      eq(contributions.type, "review"),
+      eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      inArray(mediaItems.mediaType, [...accessibleMediaTypeCodes]),
+    ))
+    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .limit(1);
+
+  if (!review) {
+    return null;
+  }
+
+  const normalizedBody = review.body.replace(/\s+/g, " ").trim();
+
+  return {
+    ...review,
+    excerpt: normalizedBody,
+    coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
+    coverUrl: resolveCoverUrl(review.coverUrl),
+  };
 }
 
 export async function getAuthorReviews(

@@ -27,6 +27,7 @@ import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggest
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
+import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
 import { ArchiveExplorationLauncher } from "@/components/archive/archive-exploration-launcher";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
@@ -171,7 +172,7 @@ function getMainTileDescriptors(
   return items.map((item) => ({
     currentAuthorScore: item.currentAuthorScore,
     href: linkToReview && item.reviewId
-      ? `/media/${item.code}?review=${item.reviewId}`
+      ? `/reviews/${item.reviewId}`
       : `/media/${item.code}`,
     item,
     key: item.id,
@@ -480,40 +481,7 @@ export default async function MainPage({ searchParams }: MainPageProps) {
           <RandomFranchiseSection promise={randomFranchisePromise} />
         </Suspense>
 
-        <footer className="archive-paper archive-panel flex flex-wrap items-center justify-center gap-y-2 px-4 py-3 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600 sm:px-5">
-          {[
-            String(new Date().getFullYear()),
-            "О проекте",
-            "Правила",
-            "Помощь",
-            "Обратная связь",
-          ].map((label, index) => (
-            <span
-              key={label}
-              className={index === 0 ? "px-3 first:pl-0" : "border-l border-stone-400/40 px-3"}
-            >
-              {index === 0 ? (
-                label
-              ) : index === 1 ? (
-                <Link className="hover:text-stone-950" href="/about">
-                  {label}
-                </Link>
-              ) : index === 2 ? (
-                <Link className="hover:text-stone-950" href="/rules">
-                  {label}
-                </Link>
-              ) : index === 3 ? (
-                <Link className="hover:text-stone-950" href="/help">
-                  {label}
-                </Link>
-              ) : (
-                <Link className="hover:text-stone-950" href="/feedback">
-                  {label}
-                </Link>
-              )}
-            </span>
-          ))}
-        </footer>
+        <ArchiveSiteFooter />
       </div>
       {currentAuthor && authorMediaSuggestionData ? (
         <ArchiveAuthorMediaSuggestion

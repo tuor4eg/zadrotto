@@ -14,7 +14,7 @@ describe("author reviews list", () => {
     assert.match(pageSource, /<Tooltip label="Редактировать">[\s\S]*?<Edit3 \/>/);
     assert.match(
       pageSource,
-      /review\.status === "published"[\s\S]*?<Tooltip label="Показать">[\s\S]*?href=\{`\/media\/\$\{review\.mediaItemCode\}\?review=\$\{review\.id\}`\}[\s\S]*?<Eye \/>/,
+      /review\.status === "published"[\s\S]*?<Tooltip label="Показать">[\s\S]*?href=\{`\/reviews\/\$\{review\.id\}`\}[\s\S]*?<Eye \/>/,
     );
     assert.doesNotMatch(
       pageSource,

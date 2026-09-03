@@ -257,6 +257,7 @@ describe("quizzes", () => {
     const participationButton = readFileSync("src/components/quizzes/quiz-participation-button.tsx", "utf8");
     const guessButton = readFileSync("src/components/quizzes/quiz-guess-button.tsx", "utf8");
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
+    const archiveRiddle = readFileSync("src/app/test/archive-riddle.tsx", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
     assert.match(layer, /\/api\/user-hud/);
@@ -268,6 +269,12 @@ describe("quizzes", () => {
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);
     assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
     assert.match(participationButton, /setQuizParticipant/);
+    assert.match(participationButton, /export function useQuizParticipation/);
+    assert.match(archiveRiddle, /useQuizParticipation\(\{ isParticipating \}\)/);
+    assert.match(archiveRiddle, /onClick=\{canOpenQuiz && !pending \? \(\) => void openArchive\(\)/);
+    assert.match(archiveRiddle, /onKeyDown=\{handleCardKeyDown\}/);
+    assert.match(archiveRiddle, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+    assert.doesNotMatch(archiveRiddle, /<QuizParticipationButton/);
     assert.match(guessButton, /setQuizParticipant/);
     assert.match(guessButton, /data\.correct \|\| data\.participant\?\.outcome === "exhausted"/);
     assert.match(guessButton, /<QuizGuessResultModal[\s\S]*result=\{result\}/);

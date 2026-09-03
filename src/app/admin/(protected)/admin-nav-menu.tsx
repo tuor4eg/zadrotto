@@ -13,6 +13,7 @@ import {
   House,
   KeyRound,
   Layers3,
+  LibraryBig,
   Mail,
   Menu,
   Bell,
@@ -86,6 +87,7 @@ function getAdminNavGroups({
       label: "Материалы",
       items: [
         { href: "/admin/materials/reviews", icon: MessageSquareText, label: "Рецензии" },
+        { href: "/admin/collections", icon: LibraryBig, label: "Подборки" },
         { href: "/admin/quizzes", icon: CircleHelp, label: "Викторины" },
       ],
     },

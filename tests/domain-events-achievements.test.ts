@@ -180,12 +180,16 @@ describe("achievement consumer", () => {
     assert.match(toastHostSource, /if \(isAdminRoute\) return;/);
     assert.match(toastHostSource, /group\.achievements\.map\(\(achievement\) =>/);
     assert.match(toastHostSource, /imageUrl: achievement\.imageUrl/);
+    assert.match(toastHostSource, /fullToast: true/);
+    assert.match(toastHostSource, /href: "\/author\/achievements"/);
     assert.match(toastHostSource, /Получена ачивка «\$\{achievement\.name\}»/);
     assert.match(
       achievementQuerySource,
       /achievements: claimedAchievements\.map\(\(achievement\) =>[\s\S]*resolveAchievementImageUrl\(achievement\.levelImageObjectKey\)/,
     );
     assert.match(archiveToastsSource, /src=\{message\.imageUrl\}[\s\S]*unoptimized/);
+    assert.match(archiveToastsSource, /hasFullToastLink[\s\S]*className="absolute inset-0/);
+    assert.match(archiveToastsSource, /className="relative z-10 grid size-7[\s\S]*aria-label="Закрыть сообщение"/);
   });
 
   it("keeps secret achievements hidden only until they are awarded", () => {
@@ -292,6 +296,22 @@ describe("achievement consumer", () => {
     assert.match(levelsSource, /TableWrap className="mt-4 hidden sm:block"/)
     assert.match(levelsSource, /<TH>Описание<\/TH>/)
     assert.match(levelsSource, /\{level\.description \? \(/)
+  });
+
+  it("filters and paginates the admin achievement catalog in the database", () => {
+    const listSource = readFileSync("src/app/admin/(protected)/achievements/page.tsx", "utf8")
+    const filtersSource = readFileSync("src/app/admin/(protected)/achievements/achievement-filters-form.tsx", "utf8")
+    const querySource = readFileSync("src/db/queries/achievements.ts", "utf8")
+    assert.match(filtersSource, /useDebouncedSearchDraft/)
+    assert.match(filtersSource, /replaceFilters\(\{ status:/)
+    assert.match(filtersSource, /replaceFilters\(\{ visibility:/)
+    assert.doesNotMatch(filtersSource, /Применить/)
+    assert.match(listSource, /<PaginationNav/)
+    assert.match(querySource, /containsNormalizedSearchSql\(achievements\.name/)
+    assert.match(querySource, /eq\(achievements\.enabled, true\)/)
+    assert.match(querySource, /eq\(achievements\.showWhenLocked, false\)/)
+    assert.match(querySource, /limit\(ADMIN_ACHIEVEMENTS_PAGE_SIZE\)/)
+    assert.match(querySource, /inArray\(achievementLevels\.achievementId, achievementIds\)/)
   });
 
   it("renders a 2-by-1 split achievement card and shows five recent awards in the same grid", () => {

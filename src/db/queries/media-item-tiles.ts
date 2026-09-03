@@ -10,6 +10,7 @@ import {
   mediaItemMetadata,
   mediaItemRatingStats,
   mediaItems,
+  mediaTypes,
   ratings,
 } from "@/db/schema";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -23,7 +24,9 @@ export type MediaItemTileData = {
   id: number;
   mediaCarrierCode: string | null;
   mediaType: string;
+  mediaTypeName: string;
   metadataFacts: Record<string, unknown> | null;
+  originalTitle: string | null;
   ratingsCount: number;
   releaseYear: number | null;
   title: string;
@@ -57,12 +60,15 @@ export async function getMediaItemTilesByIds(
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
+      mediaTypeName: mediaTypes.name,
       metadataFacts: mediaItemMetadata.facts,
+      originalTitle: mediaItems.originalTitle,
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
     })
     .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))

@@ -94,7 +94,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   }) ?? [];
   const latestReviewTiles = statistics?.latestReviews.flatMap((review) => {
     const item = statisticsMediaItemsById.get(review.mediaItemId);
-    return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/media/${item.code}`, item, key: `review-${review.id}`, ratingDisplay: "author-only" as const }] : [];
+    return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/reviews/${review.id}`, item, key: `review-${review.id}`, ratingDisplay: "author-only" as const }] : [];
   }) ?? [];
 
   return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
@@ -145,8 +145,8 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
               <PaginationNav basePath={basePath} itemLabel="оценок" page={journalPage.page} pageSize={journalPage.pageSize} searchParams={{ pageSize: String(journalPage.pageSize), view }} totalCount={journalPage.totalCount} totalPages={journalPage.totalPages} variant="archive" />
             </div>
           </div> : <div className="divide-y divide-stone-200 rounded-md border border-stone-200 bg-white/60">
-            {journalPage.items.map((item) => "reviewTitle" in item ? <article key={`${item.code}-${item.reviewTitle}`} className="space-y-1 p-4">
-              <Link href={`/media/${item.code}`} className="font-medium underline decoration-stone-300 underline-offset-4 hover:text-red-950">{item.reviewTitle}</Link>
+            {journalPage.items.map((item) => "reviewTitle" in item ? <article key={item.id} className="space-y-1 p-4">
+              <Link href={`/reviews/${item.id}`} className="font-medium underline decoration-stone-300 underline-offset-4 hover:text-red-950">{item.reviewTitle}</Link>
               <p className="text-sm text-stone-600">{item.mediaTitle} · {formatDate(item.publishedAt ?? item.updatedAt)}</p>
             </article> : null)}
           </div> : <p className="rounded-md border border-dashed border-stone-300 p-6 text-center text-stone-600">Здесь пока ничего нет.</p>}

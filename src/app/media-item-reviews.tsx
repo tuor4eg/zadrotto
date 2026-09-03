@@ -1,15 +1,12 @@
 "use client";
 
-import { ArrowRight, Pencil, Plus, Share2, X } from "lucide-react";
+import { ArrowRight, Plus, Star } from "lucide-react";
 import Link from "next/link";
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useId, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
-import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
-import { Avatar } from "@/components/ui/avatar";
 import { formatScore } from "@/lib/ratings/score";
 
-type MediaItemReview = {
+export type MediaItemReview = {
   id: number;
   authorId: number;
   authorName: string;
@@ -31,10 +28,6 @@ type MediaItemReviewsProps = {
   reviews: MediaItemReview[];
 };
 
-type MediaItemReviewLayerProps = Pick<MediaItemReviewsProps, "currentAuthor" | "reviews"> & {
-  mediaItemTitle: string;
-};
-
 function formatDate(value: Date | string | null) {
   if (!value) {
     return null;
@@ -54,14 +47,31 @@ function formatDate(value: Date | string | null) {
   }).format(date);
 }
 
-function parseReviewId(value: string | null) {
-  if (!value || !/^\d+$/.test(value)) {
-    return null;
-  }
+export function ReviewAuthorStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+  const starRating = (score ?? 0) / 20;
+  const iconClassName = compact ? "size-3" : "size-6 sm:size-7";
+  const starClassName = compact ? "size-3" : "size-6 sm:size-7";
 
-  const reviewId = Number(value);
+  return (
+    <div
+      aria-label={score === null ? "Оценка автора не указана" : `Оценка автора: ${formatScore(score)} из 10`}
+      className="flex items-center justify-center gap-0.5 text-stone-950"
+      role="img"
+    >
+      {Array.from({ length: 5 }, (_, index) => {
+        const fillPercent = Math.max(0, Math.min(100, (starRating - index) * 100));
 
-  return Number.isSafeInteger(reviewId) && reviewId > 0 ? reviewId : null;
+        return (
+          <span key={index} className={`relative ${starClassName}`}>
+            <Star className={`absolute inset-0 text-stone-400/70 ${iconClassName}`} />
+            <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+              <Star className={`fill-current ${iconClassName}`} />
+            </span>
+          </span>
+        );
+      })}
+    </div>
+  );
 }
 
 function ReviewQuotePreview({ body }: { body: string }) {
@@ -125,192 +135,6 @@ function ReviewQuotePreview({ body }: { body: string }) {
   );
 }
 
-function ReviewBookModal({
-  currentAuthor,
-  mediaItemTitle,
-  onClose,
-  onLinkCopied,
-  review,
-}: {
-  currentAuthor: MediaItemReviewsProps["currentAuthor"];
-  mediaItemTitle: string;
-  onClose: () => void;
-  onLinkCopied: () => void;
-  review: MediaItemReview;
-}) {
-  const titleId = useId();
-  const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
-  const canEditReview = currentAuthor?.code === review.authorCode;
-  const [shareStatus, setShareStatus] = useState<string | null>(null);
-
-  async function copyReviewUrl(url: string) {
-    if (navigator.clipboard?.writeText) {
-      try {
-        await navigator.clipboard.writeText(url);
-        return true;
-      } catch {
-        // Clipboard API can be unavailable on insecure origins or denied by permissions.
-      }
-    }
-
-    const textarea = document.createElement("textarea");
-    textarea.value = url;
-    textarea.readOnly = true;
-    textarea.setAttribute("aria-hidden", "true");
-    textarea.style.position = "fixed";
-    textarea.style.left = "-9999px";
-    document.body.appendChild(textarea);
-    textarea.select();
-
-    try {
-      return document.execCommand("copy");
-    } finally {
-      document.body.removeChild(textarea);
-    }
-  }
-
-  async function shareReview() {
-    const url = new URL(window.location.href);
-    url.searchParams.set("review", String(review.id));
-    const shareData = {
-      text: `Рецензия на «${mediaItemTitle}»`,
-      title: review.title,
-      url: url.href,
-    };
-
-    if (navigator.share) {
-      try {
-        await navigator.share(shareData);
-        return;
-      } catch (error) {
-        if (
-          error !== null &&
-          typeof error === "object" &&
-          "name" in error &&
-          error.name === "AbortError"
-        ) {
-          return;
-        }
-      }
-    }
-
-    const copied = await copyReviewUrl(url.href);
-    setShareStatus(copied ? "Ссылка скопирована" : "Не удалось скопировать ссылку");
-
-    if (copied) {
-      onLinkCopied();
-    }
-  }
-
-  useEffect(() => {
-    const previousBodyOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    };
-
-    window.addEventListener("keydown", onKeyDown);
-
-    return () => {
-      document.body.style.overflow = previousBodyOverflow;
-      window.removeEventListener("keydown", onKeyDown);
-    };
-  }, [onClose]);
-
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-center overscroll-contain bg-stone-950/55 px-3 py-5 sm:px-5">
-      <button
-        type="button"
-        className="absolute inset-0 cursor-default"
-        aria-label="Закрыть рецензию"
-        onClick={onClose}
-      />
-      <div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="relative flex max-h-[calc(100vh-2.5rem)] w-full max-w-3xl flex-col"
-      >
-        <span className="sr-only" aria-live="polite">{shareStatus}</span>
-
-        <article className="archive-review-sheet grid h-[calc(100dvh-2.5rem)] max-h-[calc(100vh-2.5rem)] min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-stone-300/80 shadow-2xl shadow-stone-950/35 sm:h-[min(760px,calc(100vh-2.5rem))]">
-          <header className="relative z-10 px-6 pb-5 pt-7 sm:px-10 sm:pb-6 sm:pt-9">
-            <div className="absolute right-4 top-4 flex shrink-0 justify-end gap-2 sm:right-5 sm:top-5">
-              <button
-                type="button"
-                onClick={shareReview}
-                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-                aria-label="Поделиться рецензией"
-              >
-                <Share2 className="size-4" />
-              </button>
-              {canEditReview ? (
-                <Link
-                  href={`/author/reviews/${review.id}/edit`}
-                  className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-                  aria-label="Редактировать рецензию"
-                >
-                  <Pencil className="size-4" />
-                </Link>
-              ) : null}
-              <button
-                type="button"
-                onClick={onClose}
-                className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-                aria-label="Закрыть рецензию"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-            <h2 id={titleId} className="archive-typewriter-text min-h-9 pr-32 text-2xl font-semibold leading-tight text-stone-950 sm:text-3xl">
-              {review.title}
-            </h2>
-            <div className="archive-typewriter-text mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-600 sm:text-sm">
-              <Link
-                href={`/users/${review.authorId}`}
-                className="group flex items-center gap-2 rounded-sm hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-              >
-                <Avatar
-                  name={review.authorName}
-                  objectKey={review.authorAvatarObjectKey}
-                  className="size-8 shrink-0 font-sans text-[10px]"
-                />
-                <span className="underline decoration-stone-400/60 underline-offset-2 transition-colors group-hover:decoration-stone-950">
-                  {review.authorName}
-                </span>
-              </Link>
-              {publishedAt ? <span>{publishedAt}</span> : null}
-            </div>
-            <div className="mt-3 font-serif text-2xl leading-none tracking-[0.14em] text-stone-950 sm:text-3xl" aria-hidden="true">★★★★★</div>
-          </header>
-
-          <div className="flex min-h-0 flex-col gap-3 p-3 sm:gap-4 sm:p-5">
-            <section className="archive-review-paper relative z-10 flex min-h-0 flex-1 flex-col overflow-hidden border border-stone-300/70">
-              <div className="min-h-0 flex-1 touch-pan-y overflow-y-auto overscroll-contain px-10 py-6 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:px-14 sm:py-8">
-                <p className="archive-typewriter-text whitespace-pre-wrap text-[14px] leading-7 text-stone-800 sm:text-[15px] sm:leading-8">
-                  {review.body}
-                </p>
-              </div>
-            </section>
-            {review.authorScore !== null ? (
-              <div className="relative ml-auto w-48 shrink-0 rotate-[0.8deg] border border-stone-400/20 bg-[#ead8b5] px-4 pb-3 pt-4 text-stone-800 shadow-[0_5px_10px_rgba(68,64,60,0.2)]">
-                <span className="absolute left-1/2 top-0 h-5 w-16 -translate-x-1/2 -translate-y-1/2 rotate-[-2deg] border border-stone-400/10 bg-[#dfcda8]/90 shadow-sm" aria-hidden="true" />
-                <div className="archive-typewriter-text text-sm font-semibold">Оценка автора</div>
-                <div className="archive-typewriter-text mt-1 text-right text-xl font-semibold leading-none">
-                  {formatScore(review.authorScore)} / 10
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </article>
-      </div>
-    </div>
-  );
-}
-
 function ReviewActionStack({
   currentAuthor,
   hiddenReviewsCount,
@@ -360,18 +184,8 @@ export function MediaItemReviews({
   mediaItemId,
   reviews,
 }: MediaItemReviewsProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-
   if (!currentAuthor && reviews.length === 0) {
     return null;
-  }
-
-  function openReview(review: MediaItemReview) {
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.set("review", String(review.id));
-    router.push(`${pathname}?${nextSearchParams.toString()}`, { scroll: false });
   }
 
   return (
@@ -385,10 +199,9 @@ export function MediaItemReviews({
           const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
 
           return (
-            <button
+            <Link
               key={review.id}
-              type="button"
-              onClick={() => openReview(review)}
+              href={`/reviews/${review.id}`}
               className={`archive-typewriter-text relative flex aspect-square min-w-0 cursor-pointer flex-col border border-stone-300/80 bg-white px-4 pb-2.5 pt-4 text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 sm:px-[18px] sm:pb-2.5 sm:pt-4 ${index % 3 === 1 ? "rotate-[0.8deg]" : index % 3 === 2 ? "-rotate-[0.6deg]" : ""}`}
               aria-label={`Открыть рецензию «${review.title}», автор ${review.authorName}`}
             >
@@ -403,11 +216,11 @@ export function MediaItemReviews({
                   <span className="min-w-0 truncate">{review.authorName}</span>
                   <span className="shrink-0">{publishedAt ?? "Рецензия"}</span>
                 </div>
-                <div className="mt-0 flex items-center justify-center gap-[3px] border-t border-stone-200 pt-0.5 font-serif text-[10px] leading-none tracking-[0.08em] text-stone-950 sm:text-xs" aria-hidden="true">
-                  ★★★★★
+                <div className="mt-0 border-t border-stone-200 pt-0.5">
+                  <ReviewAuthorStars compact score={review.authorScore} />
                 </div>
               </div>
-            </button>
+            </Link>
           );
         })}
         <ReviewActionStack
@@ -417,72 +230,5 @@ export function MediaItemReviews({
         />
       </div>
     </section>
-  );
-}
-
-export function MediaItemReviewLayer({
-  currentAuthor,
-  mediaItemTitle,
-  reviews,
-}: MediaItemReviewLayerProps) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const reviewParam = searchParams.get("review");
-  const handledInvalidReviewParams = useRef(new Set<string>());
-  const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([]);
-  const reviewId = parseReviewId(reviewParam);
-  const selectedReview = reviewId !== null
-    ? reviews.find((review) => review.id === reviewId) ?? null
-    : null;
-
-  useEffect(() => {
-    if (!reviewParam || selectedReview) {
-      return;
-    }
-
-    if (!handledInvalidReviewParams.current.has(reviewParam)) {
-      handledInvalidReviewParams.current.add(reviewParam);
-      setToastMessages([{
-        id: `review-not-found-${reviewParam}`,
-        text: "Рецензия не найдена",
-        tone: "error",
-      }]);
-    }
-
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.delete("review");
-    const queryString = nextSearchParams.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }, [pathname, reviewParam, router, searchParams, selectedReview]);
-
-  function closeReview() {
-    const nextSearchParams = new URLSearchParams(searchParams.toString());
-    nextSearchParams.delete("review");
-    const queryString = nextSearchParams.toString();
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
-  }
-
-  function showLinkCopiedToast() {
-    setToastMessages([{
-      id: `review-link-copied-${Date.now()}`,
-      text: "Ссылка на рецензию скопирована",
-      tone: "success",
-    }]);
-  }
-
-  return (
-    <>
-      <ArchiveToasts messages={toastMessages} />
-      {selectedReview ? (
-        <ReviewBookModal
-          currentAuthor={currentAuthor}
-          mediaItemTitle={mediaItemTitle}
-          onClose={closeReview}
-          onLinkCopied={showLinkCopiedToast}
-          review={selectedReview}
-        />
-      ) : null}
-    </>
   );
 }

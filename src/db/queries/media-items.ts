@@ -36,6 +36,7 @@ import {
   authors,
   contributionMediaItems,
   contributions,
+  editorialDocumentBlocks,
   franchises,
   mediaItemFranchiseRemovalRequests,
   mediaItemFranchises,
@@ -1464,6 +1465,16 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       .where(eq(mediaItems.id, input.mediaItemId))
       .limit(1)
       .for("update");
+    if (input.nextStatus === "private") {
+      const [reference] = await tx.select({ mediaItemId: editorialDocumentBlocks.mediaItemId })
+        .from(editorialDocumentBlocks)
+        .where(and(
+          eq(editorialDocumentBlocks.mediaItemId, input.mediaItemId),
+          eq(editorialDocumentBlocks.blockType, "media"),
+        ))
+        .limit(1);
+      if (reference) throw new Error("collection-reference");
+    }
     const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.nextStatus,
@@ -1518,11 +1529,21 @@ export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId
           ne(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         ),
       )
-      .limit(1);
+      .limit(1)
+      .for("update");
 
     if (!item) {
       return null;
     }
+
+    const [reference] = await tx.select({ mediaItemId: editorialDocumentBlocks.mediaItemId })
+      .from(editorialDocumentBlocks)
+      .where(and(
+        eq(editorialDocumentBlocks.mediaItemId, mediaItemId),
+        eq(editorialDocumentBlocks.blockType, "media"),
+      ))
+      .limit(1);
+    if (reference) throw new Error("collection-reference");
 
     await tx
       .delete(contributionMediaItems)

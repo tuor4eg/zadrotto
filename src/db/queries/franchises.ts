@@ -615,6 +615,8 @@ export type FranchiseBranchNode = {
   id: number;
   code: string;
   title: string;
+  originalTitle: string | null;
+  mediaItemsCount: number;
   children: FranchiseBranchNode[];
 };
 
@@ -875,35 +877,45 @@ export async function getAdminFranchiseTree(searchQuery: string) {
     return { items: [], totalCount };
   }
 
-  const [rows, [{ totalCount }]] = await Promise.all([db
-    .select({
-      id: franchises.id,
-      parentId: franchises.parentId,
-      code: franchises.code,
-      title: franchises.title,
-      originalTitle: franchises.originalTitle,
-      mediaItemsCount: sql<number>`count(${mediaItemFranchises.mediaItemId})::int`,
-      publicationStatus: franchises.publicationStatus,
-    })
-    .from(franchises)
-    .leftJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
-    .where(visibleIds ? inArray(franchises.id, visibleIds) : undefined)
-    .groupBy(
-      franchises.id,
-      franchises.parentId,
-      franchises.code,
-      franchises.title,
-      franchises.originalTitle,
-      franchises.publicationStatus,
-    )
-    .orderBy(asc(franchises.title), asc(franchises.code)), db
-    .select({ totalCount: sql<number>`count(*)::int` })
-    .from(franchises)]);
+  const [rows, links, [{ totalCount }]] = await Promise.all([
+    db
+      .select({
+        id: franchises.id,
+        parentId: franchises.parentId,
+        code: franchises.code,
+        title: franchises.title,
+        originalTitle: franchises.originalTitle,
+        publicationStatus: franchises.publicationStatus,
+      })
+      .from(franchises)
+      .where(visibleIds ? inArray(franchises.id, visibleIds) : undefined)
+      .orderBy(asc(franchises.title), asc(franchises.code)),
+    db
+      .select({
+        franchiseId: mediaItemFranchises.franchiseId,
+        mediaItemId: mediaItemFranchises.mediaItemId,
+      })
+      .from(mediaItemFranchises)
+      .where(visibleIds ? inArray(mediaItemFranchises.franchiseId, visibleIds) : undefined),
+    db
+      .select({ totalCount: sql<number>`count(*)::int` })
+      .from(franchises),
+  ]);
 
   const nodesById = new Map<number, AdminFranchiseTreeNode>();
 
   for (const row of rows) {
-    nodesById.set(row.id, { ...row, children: [] });
+    nodesById.set(row.id, { ...row, mediaItemsCount: 0, children: [] });
+  }
+
+  const mediaItemIdsByFranchise = new Map<number, Set<number>>();
+
+  for (const link of links) {
+    if (!nodesById.has(link.franchiseId)) continue;
+
+    const mediaItemIds = mediaItemIdsByFranchise.get(link.franchiseId) ?? new Set<number>();
+    mediaItemIds.add(link.mediaItemId);
+    mediaItemIdsByFranchise.set(link.franchiseId, mediaItemIds);
   }
 
   const roots: AdminFranchiseTreeNode[] = [];
@@ -917,6 +929,21 @@ export async function getAdminFranchiseTree(searchQuery: string) {
       roots.push(node);
     }
   }
+
+  function countBranchMediaItems(node: AdminFranchiseTreeNode): Set<number> {
+    const mediaItemIds = new Set(mediaItemIdsByFranchise.get(node.id));
+
+    for (const child of node.children) {
+      for (const mediaItemId of countBranchMediaItems(child)) {
+        mediaItemIds.add(mediaItemId);
+      }
+    }
+
+    node.mediaItemsCount = mediaItemIds.size;
+    return mediaItemIds;
+  }
+
+  roots.forEach(countBranchMediaItems);
 
   return { items: roots, totalCount };
 }

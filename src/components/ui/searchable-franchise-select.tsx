@@ -24,7 +24,7 @@ type SearchableFranchiseSelectProps = {
   id: string;
   name: string;
   onChange: (value: string) => void;
-  options: SearchableFranchiseOption[];
+  options: readonly SearchableFranchiseOption[];
   searchByTitleOnly?: boolean;
   value: string;
 };

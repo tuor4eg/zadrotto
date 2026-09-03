@@ -4,114 +4,64 @@ import { describe, it } from "node:test";
 
 const details = readFileSync("src/app/media-item-details.tsx", "utf8");
 const reviews = readFileSync("src/app/media-item-reviews.tsx", "utf8");
-const page = readFileSync("src/app/media/[code]/page.tsx", "utf8");
+const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
+const reviewArticle = readFileSync("src/app/review-article.tsx", "utf8");
+const reviewPage = readFileSync("src/app/reviews/[id]/page.tsx", "utf8");
 const globals = readFileSync("src/app/globals.css", "utf8");
 const reviewQuery = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
 
 describe("public media reviews layout", () => {
-  it("hides related-series sections without other records", () => {
-    assert.match(
-      details,
-      /resolvedRelatedFranchiseSections[\s\S]*\.filter\(\(section\) => section\.items\.length > 0\)/,
-    );
-  });
-
-  it("hides an empty review shelf from guests", () => {
+  it("hides an empty review shelf from guests and keeps it below the cover", () => {
     assert.match(reviews, /if \(!currentAuthor && reviews\.length === 0\) \{\s*return null/);
-    assert.match(page, /adjacentShelfSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
-  });
-
-  it("renders the review shelf below the cover block", () => {
-    const archiveDetails = details.indexOf("function ArchiveMediaItemDetails");
-    const cover = details.indexOf("<ArchiveCover", archiveDetails);
+    assert.match(mediaPage, /adjacentShelfSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
+    const cover = details.indexOf("<ArchiveCover");
     const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
     const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
-    const relatedSections = details.indexOf("{relatedFranchiseSections.length > 0 ?", reviewShelf);
-
-    assert.ok(reviewShelf > cover);
-    assert.ok(archiveNote > reviewShelf);
-    assert.ok(relatedSections > reviewShelf);
-    assert.match(details.slice(reviewShelf, archiveNote), /max-w-\[420px\]/);
-    assert.equal(details.indexOf("{adjacentShelfSlot ?", reviewShelf + 1), -1);
+    assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
   });
 
-  it("renders at most three polaroid reviews and one action card in a two-by-two grid", () => {
-    assert.doesNotMatch(reviews, /shelfLayout|visibleReviewCount|updateVisibleReviewCount/);
-    assert.match(reviews, /className="mt-4 grid min-w-0 grid-cols-2 gap-3 px-1 py-3"/);
-    assert.doesNotMatch(reviews, /rgba\(214,199,165,0\.32\)/);
+  it("renders three review previews and one action card", () => {
     assert.match(reviews, /reviews\.slice\(0, 3\)\.map/);
-    assert.match(reviews, /aspect-square[^\"]*bg-white[\s\S]*<ReviewQuotePreview body=\{review\.body\}/);
-    assert.match(reviews, /absolute inset-\[7px\][^\"]*bg-\[#eee6d7\]/);
-    assert.match(reviews, /archive-typewriter-text relative flex aspect-square/);
-    assert.match(reviews, /function ReviewQuotePreview[\s\S]*content\.scrollHeight <= container\.clientHeight \+ 1/);
-    assert.match(reviews, /min-h-0 flex-1 overflow-hidden text-\[10px\][^\"]*sm:text-\[11px\]/);
-    assert.match(reviews, /normalizedBody\.slice\(0, middle\)\.trimEnd\(\)[\s\S]*…»`/);
-    assert.doesNotMatch(reviews, /absolute bottom-0 right-0[^\"]*…»/);
-    assert.doesNotMatch(reviews, /line-clamp-3/);
-    assert.match(reviews, /pb-2\.5 pt-4[\s\S]*sm:pb-2\.5 sm:pt-4[\s\S]*mb-1 line-clamp-2[\s\S]*mt-0 flex items-center justify-center/);
-    assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} \/>[\s\S]*relative z-10 mt-1 shrink-0[\s\S]*\{review\.title\}/);
-    assert.match(reviews, /aria-hidden="true"[\s\S]*★★★★★/);
-    assert.match(reviews, /Создать новую/);
-    assert.match(reviews, /left-1\/2 top-1\/2[^\"]*-translate-x-1\/2[^\"]*-translate-y-1\/2[^\"]*sm:size-16/);
-    assert.match(reviews, /Plus className="size-10[^\"]*sm:size-12"/);
+    assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} \/>/);
+    assert.match(reviews, /<ReviewAuthorStars compact score=\{review\.authorScore\} \/>/);
     assert.match(reviews, /hiddenReviewsCount=\{Math\.max\(0, reviews\.length - 3\)\}/);
     assert.match(reviews, /Ещё \{hiddenReviewsCount\} мнений/);
-    assert.match(reviews, /<button[\s\S]*type="button"[\s\S]*disabled[\s\S]*переход пока недоступен/);
-    assert.match(reviews, /absolute inset-0[^\"]*bg-white[\s\S]*absolute inset-\[7px\][^\"]*bg-\[#eee6d7\]/);
   });
 
-  it("keeps review modal actions above the paper without overlaying its heading", () => {
-    assert.match(
-      reviews,
-      /role="dialog"[\s\S]*className="relative flex max-h-\[calc\(100vh-2\.5rem\)\] w-full max-w-3xl flex-col"/,
-    );
-    assert.match(reviews, /className="absolute right-4 top-4 flex shrink-0 justify-end gap-2/);
-    assert.match(
-      reviews,
-      /archive-review-sheet grid h-\[calc\(100dvh-2\.5rem\)\][^\"]*grid-rows-\[auto_minmax\(0,1fr\)\][^\"]*rounded-lg[^\"]*sm:h-\[min\(760px,calc\(100vh-2\.5rem\)\)\]/,
-    );
-    assert.match(reviews, /absolute right-4 top-4 flex shrink-0 justify-end gap-2[\s\S]*archive-typewriter-text min-h-9/);
-    assert.match(reviews, /\{review\.authorName\}[\s\S]*mt-3 font-serif text-2xl[^\"]*sm:text-3xl[^>]*>★★★★★/);
-    assert.match(reviews, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar[\s\S]*objectKey=\{review\.authorAvatarObjectKey\}[\s\S]*\{review\.authorName\}/);
-    assert.match(reviewQuery, /authorId: authors\.id/);
-    assert.match(reviewQuery, /authorScore: ratings\.score[\s\S]*\.leftJoin\([\s\S]*ratings\.authorId[\s\S]*ratings\.mediaItemId/);
-    assert.match(reviews, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)[\s\S]*\/ 10/);
-    assert.doesNotMatch(reviews, />\s*Рецензия\s*</);
-    assert.doesNotMatch(reviews, /<header className="[^"]*border-b/);
-    assert.doesNotMatch(reviews, /underline[^\"]*">\{publishedAt/);
-    assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;[\s\S]*background-repeat: repeat-y, repeat, no-repeat;/);
-    assert.match(reviews, /flex min-h-0 flex-col gap-3 p-3[\s\S]*archive-review-paper[^\"]*flex-1/);
-    assert.match(reviews, /<\/section>\s*\{review\.authorScore !== null[\s\S]*text-sm font-semibold">Оценка автора[\s\S]*text-right text-xl/);
-    assert.doesNotMatch(reviews, /absolute right-(?:14|3) top-3/);
-    assert.doesNotMatch(reviews, /<h2 id=\{titleId\} className="[^"]*pr-10/);
+  it("opens reviews as normal links to a dedicated page", () => {
+    assert.match(reviews, /<Link[\s\S]*href=\{`\/reviews\/\$\{review\.id\}`\}/);
+    assert.doesNotMatch(reviews, /useRouter|useSearchParams|role="dialog"/);
+    assert.doesNotMatch(mediaPage, /MediaItemReviewLayer/);
+    assert.match(mediaPage, /legacyReviewId[\s\S]*redirect\(`\/reviews\/\$\{legacyReviewId\}`\)/);
+    assert.match(reviewPage, /<ReviewArticle[\s\S]*mediaItemMeta=\{getMediaItemSummaryParts/);
   });
 
-  it("locks the background and contains mobile review scrolling", () => {
-    assert.match(reviews, /document\.body\.style\.overflow = "hidden"/);
-    assert.match(reviews, /document\.body\.style\.overflow = previousBodyOverflow/);
-    assert.match(reviews, /touch-pan-y overflow-y-auto overscroll-contain[^"]*\[scrollbar-width:none\][^"]*\[&::-webkit-scrollbar\]:hidden/);
-    assert.doesNotMatch(reviews, /size-9[^"]*shadow-sm/);
+  it("renders full document-sized review content and actions", () => {
+    assert.match(reviewArticle, /archive-paper archive-panel archive-stack archive-stack-left[^"]*min-h-\[calc\(100dvh-2rem\)\]/);
+    assert.match(reviewArticle, />Досье<[\s\S]*aria-label="Хлебные крошки"/);
+    assert.match(reviewArticle, /<MediaCarrierDisplayTitle title=\{review\.mediaItemTitle\}/);
+    assert.match(reviewArticle, /mediaItemMeta\.map/);
+    assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
+    assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
+    assert.doesNotMatch(reviewArticle, /border-t border-stone-400\/30/);
+    assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);
+    assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
+    assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);
+    assert.match(reviewArticle, /navigator\.share\(shareData\)/);
+    assert.match(reviewArticle, /navigator\.clipboard\?\.writeText/);
   });
 
-  it("deep-links published reviews and keeps one shared modal layer", () => {
-    assert.match(page, /<MediaItemReviewLayer[\s\S]*mediaItemTitle=\{item\.title\}/);
-    assert.match(reviews, /const reviewParam = searchParams\.get\("review"\)/);
-    assert.match(reviews, /nextSearchParams\.set\("review", String\(review\.id\)\)/);
-    assert.match(reviews, /router\.push\(`\$\{pathname\}\?\$\{nextSearchParams\.toString\(\)\}`/);
-    assert.match(reviews, /reviews\.find\(\(review\) => review\.id === reviewId\)/);
-    assert.match(reviews, /nextSearchParams\.delete\("review"\)/);
-    assert.match(reviews, /router\.replace\(queryString \? `\$\{pathname\}\?\$\{queryString\}` : pathname/);
+  it("loads only published reviews attached to visible records", () => {
+    assert.match(reviewQuery, /getPublishedReviewById[\s\S]*contributions\.status, PUBLISHED_CONTRIBUTION_STATUS[\s\S]*mediaItems\.publicationStatus, PUBLISHED_PUBLICATION_STATUS[\s\S]*inArray\(mediaItems\.mediaType/);
+    assert.match(reviewQuery, /authorScore: ratings\.score[\s\S]*\.leftJoin\([\s\S]*ratings\.authorId/);
+    assert.match(reviewPage, /if \(!review\) notFound\(\)/);
+    assert.match(reviewArticle, /href=\{`\/media\/\$\{review\.mediaItemCode\}`\}/);
   });
 
-  it("handles missing reviews with one toast and supports native sharing with clipboard fallback", () => {
-    assert.match(reviews, /handledInvalidReviewParams/);
-    assert.match(reviews, /text: "Рецензия не найдена"/);
-    assert.match(reviews, /<ArchiveToasts messages=\{toastMessages\}/);
-    assert.match(reviews, /navigator\.share\(shareData\)/);
-    assert.match(reviews, /error\.name === "AbortError"/);
-    assert.match(reviews, /navigator\.clipboard\?\.writeText[\s\S]*navigator\.clipboard\.writeText\(url\)/);
-    assert.match(reviews, /onLinkCopied\(\)/);
-    assert.match(reviews, /text: "Ссылка на рецензию скопирована"[\s\S]*tone: "success"/);
-    assert.match(reviews, /aria-live="polite"/);
+  it("links adjacent reviews without controls beyond the first and last review", () => {
+    assert.match(reviewQuery, /getPublishedReviewNavigation[\s\S]*findIndex[\s\S]*previousReviewId: currentIndex > 0[\s\S]*nextReviewId:/);
+    assert.match(reviewArticle, /previousReviewId \?[\s\S]*Предыдущая рецензия/);
+    assert.match(reviewArticle, /nextReviewId \?[\s\S]*Следующая рецензия/);
+    assert.match(reviewPage, /nextReviewId=\{reviewNavigation\.nextReviewId\}[\s\S]*previousReviewId=\{reviewNavigation\.previousReviewId\}/);
   });
 });

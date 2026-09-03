@@ -43,6 +43,8 @@ export const firstExperiencedPrecisionEnum = pgEnum(
   "first_experienced_precision",
   FIRST_EXPERIENCED_PRECISIONS,
 );
+export const editorialDocumentKindEnum = pgEnum("editorial_document_kind", ["collection", "article"]);
+export const editorialDocumentBlockTypeEnum = pgEnum("editorial_document_block_type", ["media", "heading", "text"]);
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -467,6 +469,53 @@ export const adminUsers = pgTable("admin_users", {
   ...timestamps(),
   lastLoginAt: timestamp("last_login_at", { withTimezone: true }),
 });
+
+export const editorialDocuments = pgTable("editorial_documents", {
+  id: serial("id").primaryKey(),
+  kind: editorialDocumentKindEnum("kind").notNull(),
+  ...timestamps(),
+});
+
+export const editorialCollections = pgTable(
+  "editorial_collections",
+  {
+    id: serial("id").primaryKey(),
+    documentId: integer("document_id")
+      .notNull()
+      .unique()
+      .references(() => editorialDocuments.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    slug: text("slug").notNull().unique(),
+    description: text("description"),
+    coverObjectKey: text("cover_object_key"),
+    publicationStatus: publicationStatusEnum("publication_status")
+      .default("private")
+      .notNull(),
+    createdByAdminId: integer("created_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
+      onDelete: "set null",
+    }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("editorial_collections_publication_updated_idx").on(
+      table.publicationStatus,
+      table.updatedAt,
+    ),
+    check("editorial_collections_title_check", sql`btrim(${table.title}) <> ''`),
+    check("editorial_collections_slug_check", sql`btrim(${table.slug}) <> ''`),
+    check(
+      "editorial_collections_description_length_check",
+      sql`${table.description} is null or char_length(${table.description}) <= 10000`,
+    ),
+    check(
+      "editorial_collections_publication_status_check",
+      sql`${table.publicationStatus} in ('private', 'published')`,
+    ),
+  ],
+);
 
 export const adminActivityLogs = pgTable(
   "admin_activity_logs",
@@ -1203,6 +1252,42 @@ export const mediaItems = pgTable(
   ],
 );
 
+export const editorialDocumentBlocks = pgTable(
+  "editorial_document_blocks",
+  {
+    id: serial("id").primaryKey(),
+    documentId: integer("document_id")
+      .notNull()
+      .references(() => editorialDocuments.id, { onDelete: "cascade" }),
+    position: integer("position").notNull(),
+    blockType: editorialDocumentBlockTypeEnum("block_type").notNull(),
+    mediaItemId: integer("media_item_id")
+      .references(() => mediaItems.id, { onDelete: "restrict" }),
+    content: text("content"),
+    ...timestamps(),
+  },
+  (table) => [
+    unique("editorial_document_blocks_position_unique").on(
+      table.documentId,
+      table.position,
+    ),
+    index("editorial_document_blocks_document_position_idx").on(table.documentId, table.position),
+    index("editorial_document_blocks_media_item_id_idx").on(table.mediaItemId),
+    uniqueIndex("editorial_document_blocks_document_media_unique")
+      .on(table.documentId, table.mediaItemId)
+      .where(sql`${table.blockType} = 'media'`),
+    check("editorial_document_blocks_position_check", sql`${table.position} >= 0`),
+    check(
+      "editorial_document_blocks_shape_check",
+      sql`(
+        (${table.blockType} = 'media' and ${table.mediaItemId} is not null and (${table.content} is null or char_length(${table.content}) <= 1000))
+        or (${table.blockType} = 'heading' and ${table.mediaItemId} is null and ${table.content} is not null and char_length(btrim(${table.content})) between 1 and 200)
+        or (${table.blockType} = 'text' and ${table.mediaItemId} is null and ${table.content} is not null and char_length(btrim(${table.content})) between 1 and 5000)
+      )`,
+    ),
+  ],
+);
+
 export const quizzes = pgTable(
   "quizzes",
   {
@@ -1341,7 +1426,10 @@ export const mediaItemFranchises = pgTable(
       columns: [table.mediaItemId, table.franchiseId],
       name: "media_item_franchises_pk",
     }),
-    index("media_item_franchises_franchise_id_idx").on(table.franchiseId),
+    index("media_item_franchises_franchise_media_item_idx").on(
+      table.franchiseId,
+      table.mediaItemId,
+    ),
     index("media_item_franchises_publication_status_idx").on(table.publicationStatus),
   ],
 );

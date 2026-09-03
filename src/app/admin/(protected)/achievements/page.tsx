@@ -5,15 +5,34 @@ import { Edit3, Plus, Power, PowerOff, Trash2, Trophy } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { ConfirmAction } from "@/components/ui/confirm-action"
+import { PaginationNav } from "@/components/pagination-nav"
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table"
 import { Tooltip } from "@/components/ui/tooltip"
-import { getAdminAchievements } from "@/db/queries/achievements"
+import {
+  getAdminAchievements,
+  type AdminAchievementStatusFilter,
+  type AdminAchievementVisibilityFilter,
+} from "@/db/queries/achievements"
 import { AdminToasts, type AdminToast } from "../admin-toasts"
 import { EmptyState, PageHeader } from "../admin-ui"
 import { deleteAchievementAction, toggleAchievementAction } from "./actions"
+import { AchievementFiltersForm } from "./achievement-filters-form"
 import { getAchievementErrorMessage } from "./messages"
 
-type Props = { searchParams: Promise<{ deleted?: string; disabled?: string; enabled?: string; error?: string }> }
+type Props = { searchParams: Promise<{ deleted?: string; disabled?: string; enabled?: string; error?: string; page?: string; q?: string; status?: string; visibility?: string }> }
+
+function parsePage(value?: string) {
+  const page = Number(value)
+  return Number.isSafeInteger(page) && page > 0 ? page : 1
+}
+
+function parseStatus(value?: string): AdminAchievementStatusFilter {
+  return value === "enabled" || value === "disabled" ? value : "all"
+}
+
+function parseVisibility(value?: string): AdminAchievementVisibilityFilter {
+  return value === "regular" || value === "secret" ? value : "all"
+}
 
 function AchievementListActions({
   enabled,
@@ -75,7 +94,17 @@ function AchievementListActions({
 
 export default async function AdminAchievementsPage({ searchParams }: Props) {
   const query = await searchParams
-  const items = await getAdminAchievements()
+  const searchQuery = query.q?.trim() ?? ""
+  const status = parseStatus(query.status)
+  const visibility = parseVisibility(query.visibility)
+  const result = await getAdminAchievements({
+    page: parsePage(query.page),
+    searchQuery,
+    status,
+    visibility,
+  })
+  const items = result.items
+  const hasActiveFilters = Boolean(searchQuery || status !== "all" || visibility !== "all")
   const successMessage = query.deleted === "1"
     ? "Ачивка удалена."
     : query.enabled === "1"
@@ -92,7 +121,8 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
   return <div className="flex flex-col gap-5">
     <AdminToasts clearParams={["deleted", "disabled", "enabled", "error"]} messages={toastMessages} />
     <PageHeader title="Ачивки" description="Механики, параметры и уровни каталога." aside={<Link className={buttonVariants()} href="/admin/achievements/new"><Plus />Добавить</Link>} />
-    {items.length === 0 ? <EmptyState>Ачивки пока не добавлены миграциями.</EmptyState> : (
+    {result.totalCount > 0 || hasActiveFilters ? <AchievementFiltersForm searchQuery={searchQuery} status={status} visibility={visibility} /> : null}
+    {result.totalCount === 0 && !hasActiveFilters ? <EmptyState>Ачивки пока не добавлены миграциями.</EmptyState> : items.length === 0 ? <EmptyState>По заданным фильтрам ачивок нет.</EmptyState> : (
       <>
         <div className="grid gap-3 sm:hidden">
           {items.map((item) => (
@@ -156,6 +186,7 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
             </TBody>
           </Table>
         </TableWrap>
+        <PaginationNav basePath="/admin/achievements" itemLabel="ачивок" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, status: status === "all" ? undefined : status, visibility: visibility === "all" ? undefined : visibility }} totalCount={result.totalCount} totalPages={result.totalPages} />
       </>
     )}
   </div>

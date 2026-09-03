@@ -582,6 +582,20 @@
       "when": 1787896800000,
       "tag": "0082_archive_exploration_onboarding_step",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1788307200000,
+      "tag": "0083_editorial_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1788386400000,
+      "tag": "0084_editorial_documents",
+      "breakpoints": true
     }
   ]
 }

@@ -47,7 +47,11 @@ export function AchievementToastHost() {
         setMessages(group.achievements.map((achievement) => ({
           id: `achievement-${group.awardGroupId}-${achievement.id}`,
           imageUrl: achievement.imageUrl,
-          link: { href: "/author/achievements", label: "Ачивки" },
+          link: {
+            fullToast: true,
+            href: "/author/achievements",
+            label: `Открыть ачивку «${achievement.name}»`,
+          },
           tone: "success",
           text: `Получена ачивка «${achievement.name}».`,
         })));

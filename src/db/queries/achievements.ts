@@ -3,9 +3,12 @@ import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
 import { getAchievementSettings } from "@/db/queries/achievement-settings";
+import { containsNormalizedSearchSql } from "@/db/search";
 import { achievementLevels, achievementSettings, achievements, userAchievements } from "@/db/schema";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { resolveAchievementImageUrl } from "@/lib/achievements/images";
 import { getAchievementProgressValues } from "@/lib/achievements/service";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 export async function getAchievementShowcase(authorId: number) {
   const [rows, settings] = await Promise.all([
@@ -81,21 +84,81 @@ export async function getAchievementShowcase(authorId: number) {
   });
 }
 
-export async function getAdminAchievements() {
-  const [rows, awarded, levelImages] = await Promise.all([
-    db.select().from(achievements)
-      .orderBy(asc(achievements.displayOrder), asc(achievements.id)),
+export async function getLatestAwardedAchievement(authorId: number) {
+  const [achievement] = await db
+    .select({
+      awardedAt: userAchievements.awardedAt,
+      imageObjectKey: achievementLevels.imageObjectKey,
+      name: sql<string>`coalesce(${achievementLevels.name}, ${achievements.name})`,
+    })
+    .from(userAchievements)
+    .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId))
+    .innerJoin(achievements, eq(achievements.id, achievementLevels.achievementId))
+    .where(eq(userAchievements.authorId, authorId))
+    .orderBy(desc(userAchievements.awardedAt), desc(userAchievements.id))
+    .limit(1);
+
+  return achievement
+    ? {
+        awardedAt: achievement.awardedAt,
+        imageUrl: resolveAchievementImageUrl(achievement.imageObjectKey),
+        name: achievement.name,
+      }
+    : null;
+}
+
+export type AdminAchievementStatusFilter = "all" | "enabled" | "disabled";
+export type AdminAchievementVisibilityFilter = "all" | "regular" | "secret";
+
+export const ADMIN_ACHIEVEMENTS_PAGE_SIZE = 24;
+
+export async function getAdminAchievements(input: {
+  page?: number;
+  searchQuery?: string;
+  status?: AdminAchievementStatusFilter;
+  visibility?: AdminAchievementVisibilityFilter;
+} = {}) {
+  const searchQuery = normalizeSearchText(input.searchQuery ?? "");
+  const status = input.status ?? "all";
+  const visibility = input.visibility ?? "all";
+  const filters = [
+    searchQuery ? or(
+      containsNormalizedSearchSql(achievements.name, searchQuery),
+      containsNormalizedSearchSql(achievements.description, searchQuery),
+      containsNormalizedSearchSql(achievements.code, searchQuery),
+      containsNormalizedSearchSql(achievements.mechanic, searchQuery),
+    ) : undefined,
+    status === "enabled" ? eq(achievements.enabled, true) : status === "disabled" ? eq(achievements.enabled, false) : undefined,
+    visibility === "regular" ? eq(achievements.showWhenLocked, true) : visibility === "secret" ? eq(achievements.showWhenLocked, false) : undefined,
+  ].filter((condition) => condition !== undefined);
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalCount }] = await db.select({ totalCount: sql<number>`count(*)::int` })
+    .from(achievements)
+    .where(where);
+  const totalPages = getTotalPages(totalCount, ADMIN_ACHIEVEMENTS_PAGE_SIZE);
+  const page = clampPage(input.page ?? 1, totalPages);
+  const rows = await db.select().from(achievements)
+    .where(where)
+    .orderBy(asc(achievements.displayOrder), asc(achievements.id))
+    .limit(ADMIN_ACHIEVEMENTS_PAGE_SIZE)
+    .offset(getOffset(page, ADMIN_ACHIEVEMENTS_PAGE_SIZE));
+  const achievementIds = rows.map((row) => row.id);
+  const [awarded, levelImages] = achievementIds.length ? await Promise.all([
     db.selectDistinct({ achievementId: achievementLevels.achievementId })
       .from(userAchievements)
-      .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId)),
+      .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId))
+      .where(inArray(achievementLevels.achievementId, achievementIds)),
     db.select({
       achievementId: achievementLevels.achievementId,
       imageObjectKey: achievementLevels.imageObjectKey,
       level: achievementLevels.level,
     }).from(achievementLevels)
-      .where(isNotNull(achievementLevels.imageObjectKey))
+      .where(and(
+        inArray(achievementLevels.achievementId, achievementIds),
+        isNotNull(achievementLevels.imageObjectKey),
+      ))
       .orderBy(asc(achievementLevels.achievementId), desc(achievementLevels.level)),
-  ])
+  ]) : [[], []]
   const awardedIds = new Set(awarded.map((item) => item.achievementId))
   const firstLevelImageByAchievement = new Map<number, string>()
   const highestLevelImageByAchievement = new Map<number, string>()
@@ -106,13 +169,19 @@ export async function getAdminAchievements() {
       highestLevelImageByAchievement.set(level.achievementId, level.imageObjectKey)
     }
   }
-  return rows.map((row) => ({
-    ...row,
-    hasAwards: awardedIds.has(row.id),
-    imageUrl: resolveAchievementImageUrl(
-      firstLevelImageByAchievement.get(row.id) ?? highestLevelImageByAchievement.get(row.id) ?? null,
-    ),
-  }))
+  return {
+    items: rows.map((row) => ({
+      ...row,
+      hasAwards: awardedIds.has(row.id),
+      imageUrl: resolveAchievementImageUrl(
+        firstLevelImageByAchievement.get(row.id) ?? highestLevelImageByAchievement.get(row.id) ?? null,
+      ),
+    })),
+    page,
+    pageSize: ADMIN_ACHIEVEMENTS_PAGE_SIZE,
+    totalCount,
+    totalPages,
+  }
 }
 
 export async function getAdminAchievementById(id: number) {

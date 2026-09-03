@@ -12,7 +12,10 @@ const mediaItemFranchiseLinksSource = readFileSync(
   "utf8",
 );
 const adminSeriesPageSource = readFileSync("src/app/admin/(protected)/series/page.tsx", "utf8");
-const publicSeriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const publicSeriesHeaderSource = readFileSync(
+  "src/app/series/[code]/series-page-header.tsx",
+  "utf8",
+);
 
 function getFunctionSource(source: string, name: string, nextName: string) {
   const start = source.indexOf(`export async function ${name}`);
@@ -149,10 +152,10 @@ describe("franchise tree display and traversal", () => {
     assert.match(franchiseByCodeSource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
     assert.match(franchiseByCodeSource, /eq\(franchises\.id, parentId\)/);
     assert.match(franchiseByCodeSource, /parents\.unshift\(\{ id: parent\.id, code: parent\.code, title: parent\.title \}\)/);
-    assert.match(publicSeriesPageSource, /const parentBreadcrumbs = franchise\.parents\.filter\(/);
-    assert.match(publicSeriesPageSource, /parent\.id !== franchise\.id/);
-    assert.match(publicSeriesPageSource, /parent\.code !== franchise\.code/);
-    assert.match(publicSeriesPageSource, /\{parentBreadcrumbs\.map\(\(parent\) => \(/);
+    assert.match(publicSeriesHeaderSource, /const parentBreadcrumbs = getParentBreadcrumbs\(franchise\)/);
+    assert.match(publicSeriesHeaderSource, /parent\.id !== franchise\.id/);
+    assert.match(publicSeriesHeaderSource, /parent\.code !== franchise\.code/);
+    assert.match(publicSeriesHeaderSource, /\{parentBreadcrumbs\.map\(\(parent\) => \(/);
   });
 
   it("shows every published series in a record's inherited path as its own link", () => {
@@ -218,6 +221,14 @@ describe("franchise tree display and traversal", () => {
     assert.match(adminListQuerySource, /items: tree\.items\.slice\(offset, offset \+ input\.pageSize\)/);
     assert.match(adminListQuerySource, /paginationTotalCount,[\s\S]*totalCount: tree\.totalCount/);
     assert.doesNotMatch(adminListQuerySource, /\.limit\(|\.offset\(/);
+  });
+
+  it("counts unique media items from the whole branch in the admin series list", () => {
+    assert.match(adminTreeQuerySource, /mediaItemIdsByFranchise = new Map<number, Set<number>>/);
+    assert.match(adminTreeQuerySource, /function countBranchMediaItems\(node: AdminFranchiseTreeNode\): Set<number>/);
+    assert.match(adminTreeQuerySource, /for \(const child of node\.children\)/);
+    assert.match(adminTreeQuerySource, /node\.mediaItemsCount = mediaItemIds\.size/);
+    assert.match(adminTreeQuerySource, /roots\.forEach\(countBranchMediaItems\)/);
   });
 
   it("also refuses to delete a node that gained children after the admin page was rendered", () => {

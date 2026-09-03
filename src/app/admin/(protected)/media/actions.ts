@@ -515,7 +515,7 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
     deletedItem = await deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId.value);
   } catch (error) {
     console.error(error);
-    redirect(`/admin/media?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/media?error=${error instanceof Error && error.message === "collection-reference" ? "collection-reference" : getAdminFormErrorCode(error)}`);
   }
 
   if (!deletedItem) {
@@ -568,7 +568,7 @@ export async function updateAdminMediaItemPublicationStatusAction(formData: Form
     });
   } catch (error) {
     console.error(error);
-    redirect(`/admin/media/${mediaItemId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=${error instanceof Error && error.message === "collection-reference" ? "collection-reference" : getAdminFormErrorCode(error)}`);
   }
 
   if (!item) {

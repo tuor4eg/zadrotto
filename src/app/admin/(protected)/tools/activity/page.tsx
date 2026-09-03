@@ -100,6 +100,8 @@ function getActivityEntityAdminHref(input: {
       return "/admin/tools/providers";
     case "cover-settings":
       return "/admin/tools/providers/limits";
+    case "collection":
+      return input.entityId ? `/admin/collections/${input.entityId}/edit` : "/admin/collections";
     case "franchise":
       return input.entityId ? `/admin/series/${input.entityId}/edit` : null;
     case "media-item":

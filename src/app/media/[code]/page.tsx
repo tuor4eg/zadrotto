@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
 import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
-import { MediaItemReviewLayer, MediaItemReviews } from "@/app/media-item-reviews";
+import { MediaItemReviews } from "@/app/media-item-reviews";
 import { RecentlyViewedMarker } from "@/app/media/recently-viewed-marker";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
@@ -40,6 +40,7 @@ type MediaItemPageProps = {
   params: Promise<{
     code: string;
   }>;
+  searchParams: Promise<{ review?: string }>;
 };
 
 export async function generateMetadata({ params }: MediaItemPageProps): Promise<Metadata> {
@@ -73,8 +74,12 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
   };
 }
 
-export default async function MediaItemPage({ params }: MediaItemPageProps) {
+export default async function MediaItemPage({ params, searchParams }: MediaItemPageProps) {
   const { code } = await params;
+  const legacyReviewId = (await searchParams).review;
+  if (legacyReviewId && /^\d+$/.test(legacyReviewId)) {
+    redirect(`/reviews/${legacyReviewId}`);
+  }
   const [currentAuthor, currentAdminUser] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
@@ -264,13 +269,6 @@ export default async function MediaItemPage({ params }: MediaItemPageProps) {
               size="compact"
             />
           }
-        />
-        <MediaItemReviewLayer
-          currentAuthor={
-            currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
-          }
-          mediaItemTitle={item.title}
-          reviews={reviews}
         />
       </div>
     </main>

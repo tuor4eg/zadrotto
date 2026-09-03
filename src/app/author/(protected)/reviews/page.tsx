@@ -132,7 +132,7 @@ export default async function AuthorReviewsPage({ searchParams }: AuthorReviewsP
                   {review.status === "published" ? (
                     <Tooltip label="Показать">
                       <Link
-                        href={`/media/${review.mediaItemCode}?review=${review.id}`}
+                        href={`/reviews/${review.id}`}
                         className={buttonVariants({ variant: "outline", size: "icon" })}
                         aria-label={`Показать рецензию «${review.reviewTitle}»`}
                       >

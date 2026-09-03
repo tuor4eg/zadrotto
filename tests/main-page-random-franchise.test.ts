@@ -108,7 +108,7 @@ describe("main page random franchise preview", () => {
     assert.match(pageSource, /Серия появится, когда в архиве будет хотя бы пять связанных записей\./);
 
     const previewSection = pageSource.indexOf("<RandomFranchiseSection");
-    const footer = pageSource.indexOf("<footer", previewSection);
+    const footer = pageSource.indexOf("<ArchiveSiteFooter", previewSection);
     assert.ok(previewSection > -1 && footer > previewSection);
   });
 });

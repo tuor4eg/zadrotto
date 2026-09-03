@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ChevronDown } from "lucide-react";
-import { Fragment } from "react";
 
 import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { MediaItemStatusTile } from "@/app/media-item-status-tile";
-import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
@@ -18,7 +16,6 @@ import {
   getFranchiseOptions,
   getMediaItemsByFranchiseId,
   getPublishedFranchiseBranch,
-  type FranchiseBranchNode,
 } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
@@ -30,8 +27,11 @@ import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel, sortMediaTypesByCount, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import { formatMediaItemsCount } from "@/app/series/series-format";
 import { SeriesMediaLinkSearch } from "./series-media-link-search";
 import { SeriesMediaUnlinkTile } from "./series-media-unlink-tile";
+import { getChildSeriesPreview, shouldShowAllChildSeries } from "./child-series";
+import { SeriesPageHeader } from "./series-page-header";
 
 export const dynamic = "force-dynamic";
 
@@ -57,13 +57,6 @@ type FranchiseMediaSection = {
   mediaType: MediaType;
 };
 
-function formatMediaItemsCount(count: number) {
-  const plural = new Intl.PluralRules("ru-RU").select(count);
-  const label = plural === "one" ? "запись" : plural === "few" ? "записи" : "записей";
-
-  return `${count} ${label}`;
-}
-
 function getFranchiseMediaSections(
   items: FranchiseMediaItem[],
   mediaTypes: MediaTypeOption[],
@@ -87,10 +80,6 @@ function getFranchiseMediaSections(
       };
     })
     .filter((section) => section.count > 0);
-}
-
-function getFranchiseDescendants(nodes: FranchiseBranchNode[]): FranchiseBranchNode[] {
-  return nodes.flatMap((node) => [node, ...getFranchiseDescendants(node.children)]);
 }
 
 export async function generateMetadata({ params }: FranchisePageProps): Promise<Metadata> {
@@ -137,13 +126,6 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
     notFound();
   }
 
-  const parentBreadcrumbs = franchise.parents.filter(
-    (parent, index, parents) =>
-      parent.id !== franchise.id &&
-      parent.code !== franchise.code &&
-      parents.findIndex((candidate) => candidate.id === parent.id || candidate.code === parent.code) === index,
-  );
-
   const [currentAuthor, currentAdminUser, archiveSettings] = await Promise.all([
     getCurrentAuthor(),
     getCurrentAdminUser(),
@@ -177,6 +159,9 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       : Promise.resolve(null),
   ]);
   const sections = getFranchiseMediaSections(items, mediaTypes);
+  const childSeries = franchiseBranch?.children ?? [];
+  const childSeriesPreview = getChildSeriesPreview(childSeries);
+  const showAllChildSeries = shouldShowAllChildSeries(childSeries.length);
   const suggestionErrorMessage = getAuthorMediaFormErrorMessage(query.suggestionError);
   const suggestedItemId = Number(query.suggestedItemId);
   const suggestedItemHref =
@@ -235,91 +220,15 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       />
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
-          <div className="archive-franchise-sticker">
-            <div className="flex min-w-0 items-start gap-3 font-mono text-xs">
-              <p className="shrink-0 font-semibold uppercase leading-5 tracking-[0.18em] text-red-800">
-                Серия
-              </p>
-              <nav
-                aria-label="Хлебные крошки"
-                className="min-w-0 flex-1 leading-5 text-stone-600"
-              >
-                <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                  <li className="shrink-0">
-                    <Link
-                      className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                      href="/"
-                    >
-                      Главная
-                    </Link>
-                  </li>
-                  <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-                  <li className="shrink-0">
-                    <Link
-                      className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                      href="/archive"
-                    >
-                      Архив
-                    </Link>
-                  </li>
-                  <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-                  <li className="shrink-0">
-                    <Link
-                      className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                      href="/series"
-                    >
-                      Все серии
-                    </Link>
-                  </li>
-                  {parentBreadcrumbs.map((parent) => (
-                    <Fragment key={parent.id}>
-                      <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-                      <li className="min-w-0">
-                        <Link
-                          className="break-words underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                          href={`/series/${parent.code}`}
-                        >
-                          {parent.title}
-                        </Link>
-                      </li>
-                    </Fragment>
-                  ))}
-                  <li aria-hidden="true" className="shrink-0 text-stone-400">
-                    /
-                  </li>
-                  <li className="min-w-0 break-words text-stone-800" aria-current="page">
-                    {franchise.title}
-                  </li>
-                </ol>
-              </nav>
-              {currentAdminUser ? (
-                <AdminEntityEditLink
-                  ariaLabel={`Редактировать серию ${franchise.title}`}
-                  href={`/admin/series/${franchise.id}/edit`}
-                  tooltipLabel="Редактировать серию"
-                  tooltipSide="bottom"
-                />
-              ) : null}
-            </div>
-            <div className="mt-3 flex flex-col gap-x-6 gap-y-3 lg:flex-row lg:items-baseline">
-              <div className="min-w-0">
-                <h1 className="break-words font-serif text-5xl leading-none text-stone-950 sm:text-6xl">
-                  {franchise.title}
-                </h1>
-                {franchise.originalTitle && franchise.originalTitle !== franchise.title ? (
-                  <p className="mt-2 break-words font-mono text-sm uppercase tracking-[0.16em] text-stone-600">
-                    {franchise.originalTitle}
-                  </p>
-                ) : null}
-              </div>
-              <p className="shrink-0 font-mono text-xs uppercase tracking-[0.18em] text-stone-500 lg:text-right">
-                {formatMediaItemsCount(items.length)}
-              </p>
-            </div>
+          <SeriesPageHeader
+            adminCanEdit={Boolean(currentAdminUser)}
+            franchise={franchise}
+            mediaItemsCount={items.length}
+          >
             {currentAuthor ? (
               <SeriesMediaLinkSearch franchiseCode={franchise.code} mediaTypes={mediaTypes} />
             ) : null}
-          </div>
+          </SeriesPageHeader>
 
           {franchise.description?.trim() ? (
             <div className="p-6 sm:p-8">
@@ -327,13 +236,13 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
             </div>
           ) : null}
 
-          {franchiseBranch && franchiseBranch.children.length > 0 ? (
+          {childSeries.length > 0 ? (
             <section className="border-t border-stone-300/80 px-6 py-6 sm:px-8" aria-labelledby="franchise-branch-heading">
               <h2 id="franchise-branch-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-600">
                 Серии внутри
               </h2>
               <ul className="mt-3 flex min-w-0 max-w-full flex-wrap gap-1.5">
-                {getFranchiseDescendants(franchiseBranch.children).map((child) => (
+                {childSeriesPreview.map((child) => (
                   <li key={child.id} className="min-w-0 max-w-full">
                     <Link
                       href={`/series/${child.code}`}
@@ -343,6 +252,16 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                     </Link>
                   </li>
                 ))}
+                {!showAllChildSeries ? (
+                  <li className="min-w-0 max-w-full">
+                    <Link
+                      href={`/series/${franchise.code}/children`}
+                      className="inline-block max-w-full px-2.5 py-1 font-mono text-xs font-semibold uppercase leading-5 tracking-[0.08em] text-red-900 underline decoration-red-900/40 underline-offset-4 transition-colors hover:text-stone-950"
+                    >
+                      Все {childSeries.length} серий →
+                    </Link>
+                  </li>
+                ) : null}
               </ul>
             </section>
           ) : null}

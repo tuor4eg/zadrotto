@@ -26,6 +26,7 @@ import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
+import { getMediaItemCollectionReferences } from "@/db/queries/editorial-collections";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
@@ -60,9 +61,11 @@ function getStatusBadgeVariant(status: keyof typeof PUBLICATION_STATUS_VALUE_LAB
 function PublicationStatusButton({
   mediaItemId,
   published,
+  disabled = false,
 }: {
   mediaItemId: number;
   published: boolean;
+  disabled?: boolean;
 }) {
   return (
     <form action={updateAdminMediaItemPublicationStatusAction}>
@@ -72,6 +75,7 @@ function PublicationStatusButton({
         type="submit"
         variant={published ? "destructive" : "positive"}
         className="w-full"
+        disabled={disabled}
       >
         {published ? <EyeOff /> : <RotateCcw />}
         {published ? "Снять с публикации" : "Вернуть на публикацию"}
@@ -134,9 +138,10 @@ export default async function EditAdminMediaPage({
     notFound();
   }
 
-  const [item, metadata] = await Promise.all([
+  const [item, metadata, collectionReferences] = await Promise.all([
     getAdminMediaItemForEdit(mediaItemId),
     getMediaItemMetadata(mediaItemId),
+    getMediaItemCollectionReferences(mediaItemId),
   ]);
 
   if (!item) {
@@ -241,18 +246,27 @@ export default async function EditAdminMediaPage({
                   </Button>
                 )}
 
-                <PublicationStatusButton mediaItemId={item.id} published={isPublished} />
+                {collectionReferences.length > 0 ? (
+                  <Alert variant="warning">
+                    Запись используется в подборках: {collectionReferences.map((collection, index) => (
+                      <span key={collection.id}>{index ? ", " : ""}<Link className="underline" href={`/admin/collections/${collection.id}/edit`}>{collection.title}</Link></span>
+                    ))}.
+                  </Alert>
+                ) : null}
+                <PublicationStatusButton mediaItemId={item.id} published={isPublished} disabled={isPublished && collectionReferences.length > 0} />
                 <Tooltip
                   className="w-full"
                   label={
-                    isPublished
+                    collectionReferences.length > 0
+                      ? "Сначала удалите запись из всех подборок"
+                      : isPublished
                       ? "Сначала снимите запись с публикации"
                       : "Удалить вместе со связанными материалами"
                   }
                 >
                   <ConfirmAction
                     action={deleteAdminMediaItemAction}
-                    disabled={isPublished}
+                    disabled={isPublished || collectionReferences.length > 0}
                     confirmLabel="Удалить"
                     description={`Запись «${item.title}» будет удалена вместе со связанными оценками, рецензиями и пользовательскими отметками. Это действие нельзя отменить.`}
                     fields={[{ name: "mediaItemId", value: item.id }]}

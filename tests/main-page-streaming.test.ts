@@ -57,7 +57,7 @@ describe("main page streaming", () => {
       query,
       /reviewId: sql<number>`\([\s\S]*array_agg\([\s\S]*contributions\.createdAt\} desc[\s\S]*contributions\.id\} desc[\s\S]*\)\[1\]::int`/,
     );
-    assert.match(page, /linkToReview && item\.reviewId[\s\S]*\?review=\$\{item\.reviewId\}/);
+    assert.match(page, /linkToReview && item\.reviewId[\s\S]*`\/reviews\/\$\{item\.reviewId\}`/);
     assert.match(page, /<SectionItems linkToReview promise=\{data\.reviews\}/);
   });
 });

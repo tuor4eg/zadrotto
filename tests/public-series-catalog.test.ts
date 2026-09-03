@@ -6,6 +6,7 @@ const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const catalogPageSource = readFileSync("src/app/series/page.tsx", "utf8");
 const searchSource = readFileSync("src/app/series/series-search.tsx", "utf8");
 const seriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const seriesHeaderSource = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
 const paginationSource = readFileSync("src/components/pagination-nav.tsx", "utf8");
 
 function getFunctionSource(name: string, nextName: string) {
@@ -120,20 +121,20 @@ describe("public series catalog UI", () => {
 
   it("links the series detail breadcrumb through the full catalog", () => {
     assert.match(
-      seriesPageSource,
+      seriesHeaderSource,
       /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив[\s\S]*href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
     );
     assert.match(catalogPageSource, /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив/);
     assert.match(querySource, /const visitedParentIds = new Set\(\[franchise\.id\]\)/);
     assert.match(querySource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
-    assert.match(seriesPageSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);
-    assert.match(seriesPageSource, /href=\{`\/series\/\$\{parent\.code\}`\}/);
-    assert.match(seriesPageSource, /Все серии[\s\S]*parentBreadcrumbs\.map[\s\S]*aria-current="page"/);
-    assert.match(seriesPageSource, /<ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">/);
-    assert.doesNotMatch(seriesPageSource, /flex-1 truncate text-stone-800/);
+    assert.match(seriesHeaderSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);
+    assert.match(seriesHeaderSource, /href=\{`\/series\/\$\{parent\.code\}`\}/);
+    assert.match(seriesHeaderSource, /Все серии[\s\S]*parentBreadcrumbs\.map[\s\S]*aria-current/);
+    assert.match(seriesHeaderSource, /<ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">/);
+    assert.doesNotMatch(seriesHeaderSource, /flex-1 truncate text-stone-800/);
   });
 
-  it("shows the current series branch before its media items when it has descendants", () => {
+  it("shows a bounded preview of immediate child series before its media items", () => {
     assert.match(
       seriesPageSource,
       /archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0/,
@@ -142,19 +143,23 @@ describe("public series catalog UI", () => {
     assert.match(querySource, /export async function getPublishedFranchiseBranch\([\s\S]*enabledMediaTypeCodes/);
     assert.match(querySource, /getPublishedFranchiseTree\("", enabledMediaTypeCodes\)/);
     assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id, enabledMediaTypeCodes\)/);
-    assert.match(seriesPageSource, /franchiseBranch && franchiseBranch\.children\.length > 0/);
+    assert.match(seriesPageSource, /childSeries\.length > 0/);
     assert.match(seriesPageSource, /Серии внутри/);
-    assert.match(seriesPageSource, /function getFranchiseDescendants\(nodes: FranchiseBranchNode\[\]\)/);
     assert.match(seriesPageSource, /<ul className="mt-3 flex min-w-0 max-w-full flex-wrap gap-1\.5/);
     assert.match(seriesPageSource, /<li key=\{child\.id\} className="min-w-0 max-w-full">/);
     assert.match(
       seriesPageSource,
       /className="inline-block max-w-full rounded-full bg-\[var\(--archive-bg-end\)\][^\"]*\[overflow-wrap:anywhere\][^\"]*hover:bg-\[var\(--archive-bg-start\)\]/,
     );
-    assert.match(seriesPageSource, /getFranchiseDescendants\(franchiseBranch\.children\)\.map/);
+    assert.match(seriesPageSource, /const childSeries = franchiseBranch\?\.children \?\? \[\]/);
+    assert.match(seriesPageSource, /getChildSeriesPreview\(childSeries\)/);
+    assert.match(seriesPageSource, /childSeriesPreview\.map/);
+    assert.match(seriesPageSource, /Все \{childSeries\.length\} серий →/);
+    assert.match(seriesPageSource, /href=\{`\/series\/\$\{franchise\.code\}\/children`\}/);
+    assert.doesNotMatch(seriesPageSource, /getFranchiseDescendants/);
     assert.match(seriesPageSource, /<Link[\s\S]*href=\{`\/series\/\$\{child\.code\}`\}[\s\S]*\{child\.title\}/);
 
-    const branchSection = seriesPageSource.indexOf("franchiseBranch && franchiseBranch.children.length > 0");
+    const branchSection = seriesPageSource.indexOf("childSeries.length > 0");
     const mediaItems = seriesPageSource.indexOf("{items.length === 0 ?");
 
     assert.notEqual(branchSection, -1);
