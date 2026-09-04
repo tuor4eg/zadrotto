@@ -13,6 +13,10 @@ import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import {
+  compareSeriesAlphabetGroups,
+  getSeriesAlphabetGroup,
+} from "@/lib/series/series-alphabet";
 import { runInDomainEventTransaction, type DbTransaction } from "@/db/transaction";
 
 const publishedMediaItemCondition = eq(
@@ -575,6 +579,7 @@ export async function searchPublishedMediaItemsForFranchise(input: {
 
 export async function getPublishedFranchisesPage(input: {
   enabledMediaTypeCodes: readonly string[];
+  letter?: string;
   page: number;
   pageSize: number;
   searchQuery: string;
@@ -583,20 +588,44 @@ export async function getPublishedFranchisesPage(input: {
     input.searchQuery,
     input.enabledMediaTypeCodes,
   );
+  const collectAlphabetGroups = (nodes: FranchiseTreeNode[]): string[] =>
+    nodes.flatMap((series) => [
+      getSeriesAlphabetGroup(series.title),
+      ...collectAlphabetGroups(series.children),
+    ]);
+  const availableLetters = Array.from(
+    new Set(collectAlphabetGroups(tree)),
+  ).sort(compareSeriesAlphabetGroups);
+  const requestedLetter = input.searchQuery ? undefined : input.letter;
+  const selectedLetter = requestedLetter && availableLetters.includes(requestedLetter)
+    ? requestedLetter
+    : undefined;
+  const filterTreeByLetter = (
+    nodes: FranchiseTreeNode[],
+    letter: string,
+  ): FranchiseTreeNode[] => nodes.flatMap((series) => {
+    if (getSeriesAlphabetGroup(series.title) === letter) return [series];
+
+    const children = filterTreeByLetter(series.children, letter);
+    return children.length > 0 ? [{ ...series, children }] : [];
+  });
+  const filteredTree = selectedLetter ? filterTreeByLetter(tree, selectedLetter) : tree;
   const countNodes = (nodes: FranchiseTreeNode[]): number =>
     nodes.reduce((count, node) => count + 1 + countNodes(node.children), 0);
-  const paginationTotalCount = tree.length;
+  const paginationTotalCount = filteredTree.length;
   const totalPages = getTotalPages(paginationTotalCount, input.pageSize);
   const page = clampPage(input.page, totalPages);
   const offset = getOffset(page, input.pageSize);
-  const items = tree.slice(offset, offset + input.pageSize);
+  const items = filteredTree.slice(offset, offset + input.pageSize);
 
   return {
     items,
     page,
     pageSize: input.pageSize,
     paginationTotalCount,
-    totalCount: countNodes(tree),
+    availableLetters,
+    selectedLetter,
+    totalCount: countNodes(filteredTree),
     totalPages,
   };
 }

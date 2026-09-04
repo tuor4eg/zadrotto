@@ -7,9 +7,9 @@ const queries = readFileSync("src/db/queries/editorial-collections.ts", "utf8");
 const mediaQueries = readFileSync("src/db/queries/media-items.ts", "utf8");
 const publicPage = readFileSync("src/app/collections/[slug]/page.tsx", "utf8");
 const publicCatalog = readFileSync("src/app/collections/page.tsx", "utf8");
-const testHomePage = readFileSync("src/app/test/page.tsx", "utf8");
+const homePage = readFileSync("src/app/page.tsx", "utf8");
 const archiveFeedQuery = readFileSync("src/db/queries/archive-feed.ts", "utf8");
-const archiveFeedView = readFileSync("src/app/test/archive-feed.tsx", "utf8");
+const archiveFeedView = readFileSync("src/app/main/archive-feed.tsx", "utf8");
 const editor = readFileSync("src/app/admin/(protected)/collections/collection-form.tsx", "utf8");
 const documentEditor = readFileSync("src/components/admin/editorial-document-editor.tsx", "utf8");
 const renderer = readFileSync("src/components/archive/editorial-document-renderer.tsx", "utf8");
@@ -69,12 +69,20 @@ describe("collection surfaces", () => {
     assert.match(renderer, /mediaNumber \+= 1/);
   });
 
-  it("shows published collections as wide image cards on the test home page", () => {
-    assert.match(testHomePage, /getPublishedEditorialCollections/);
-    assert.match(testHomePage, /EditorialCollectionsStrip/);
-    assert.match(testHomePage, /aspect-video/);
-    assert.match(testHomePage, /bg-gradient-to-t from-black\/90/);
-    assert.match(testHomePage, /collection\.itemsCount.*записей/);
+  it("shows published collections as wide image cards on the home page", () => {
+    assert.match(homePage, /getPublishedEditorialCollections/);
+    assert.match(homePage, /EditorialCollectionsStrip/);
+    assert.match(homePage, /aspect-video/);
+    assert.match(homePage, /bg-gradient-to-t from-black\/90/);
+    assert.match(homePage, /collection\.itemsCount.*записей/);
+  });
+
+  it("uses the same image-card presentation in the collections catalog", () => {
+    assert.match(publicCatalog, /max-w-\[1480px\]/);
+    assert.match(publicCatalog, /group relative aspect-video overflow-hidden rounded-lg/);
+    assert.match(publicCatalog, /bg-gradient-to-t from-black\/90/);
+    assert.match(publicCatalog, /item\.itemsCount.*записей/);
+    assert.doesNotMatch(publicCatalog, /item\.description/);
   });
 
   it("includes newly published collections in the test archive feed", () => {

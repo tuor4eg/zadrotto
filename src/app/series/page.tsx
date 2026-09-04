@@ -1,14 +1,12 @@
 import Link from "next/link";
 
 import { PaginationNav } from "@/components/pagination-nav";
-import {
-  getPublishedFranchisesPage,
-  type FranchiseTreeNode,
-} from "@/db/queries/franchises";
+import { getPublishedFranchisesPage } from "@/db/queries/franchises";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { SeriesSearch } from "./series-search";
+import { SeriesCatalog } from "./series-catalog";
 
 export const dynamic = "force-dynamic";
 
@@ -20,44 +18,9 @@ type SeriesPageProps = {
     page?: string;
     pageSize?: string;
     q?: string;
+    letter?: string;
   }>;
 };
-
-function formatMediaItemsCount(count: number) {
-  const plural = new Intl.PluralRules("ru-RU").select(count);
-  const label = plural === "one" ? "запись" : plural === "few" ? "записи" : "записей";
-
-  return `${count} ${label}`;
-}
-
-function SeriesTree({ nodes, depth = 0 }: { nodes: FranchiseTreeNode[]; depth?: number }) {
-  return nodes.map((series) => (
-    <div key={series.id} className={depth > 0 ? "border-l border-stone-300/80" : ""}>
-      <Link
-        className="group flex items-center justify-between gap-5 px-4 py-2.5 transition-colors hover:bg-stone-50/70 sm:px-5"
-        href={`/series/${series.code}`}
-        style={depth > 0 ? { paddingLeft: `${1 + depth * 1.25}rem` } : undefined}
-      >
-        <div className="min-w-0">
-          <h2 className="break-words font-serif text-lg leading-tight text-stone-950 group-hover:underline group-hover:decoration-stone-400 group-hover:underline-offset-4">
-            {series.title}
-          </h2>
-          {series.originalTitle && series.originalTitle !== series.title ? (
-            <p className="mt-0.5 break-words font-mono text-[0.65rem] uppercase tracking-[0.08em] text-stone-500">
-              {series.originalTitle}
-            </p>
-          ) : null}
-        </div>
-        <p className="shrink-0 font-mono text-[0.65rem] uppercase tracking-[0.1em] text-stone-600">
-          {formatMediaItemsCount(series.mediaItemsCount)}
-        </p>
-      </Link>
-      {series.children.length > 0 ? (
-        <SeriesTree nodes={series.children} depth={depth + 1} />
-      ) : null}
-    </div>
-  ));
-}
 
 export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   const [params, currentAuthor] = await Promise.all([searchParams, getCurrentAuthor()]);
@@ -70,6 +33,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const seriesPage = await getPublishedFranchisesPage({
     enabledMediaTypeCodes,
+    letter: params.letter,
     page: parsePage(params.page),
     pageSize,
     searchQuery,
@@ -77,12 +41,23 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   const paginationSearchParams = {
     pageSize: pageSize !== DEFAULT_SERIES_PAGE_SIZE ? String(pageSize) : undefined,
     q: searchQuery || undefined,
+    letter: seriesPage.selectedLetter,
+  };
+  const getLetterHref = (letter?: string) => {
+    const nextParams = new URLSearchParams();
+
+    if (pageSize !== DEFAULT_SERIES_PAGE_SIZE) nextParams.set("pageSize", String(pageSize));
+    if (letter) nextParams.set("letter", letter);
+
+    const queryString = nextParams.toString();
+    return queryString ? `/series?${queryString}` : "/series";
   };
 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-3">
-        <header className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-6">
+      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
+        <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden">
+        <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <nav
             aria-label="Хлебные крошки"
             className="font-mono text-xs uppercase tracking-[0.14em] text-stone-600"
@@ -111,10 +86,31 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
             Все серии
           </h1>
           <SeriesSearch searchQuery={searchQuery} />
+          {!searchQuery && seriesPage.availableLetters.length > 0 ? (
+            <nav aria-label="Алфавит серий" className="mt-4 flex flex-wrap gap-1.5">
+              <Link
+                aria-current={!seriesPage.selectedLetter ? "page" : undefined}
+                className={`rounded border px-3 py-1.5 font-mono text-xs transition-colors ${!seriesPage.selectedLetter ? "border-stone-950 bg-stone-900 text-stone-50" : "border-stone-300/80 bg-stone-50/60 text-stone-700 hover:border-stone-600"}`}
+                href={getLetterHref()}
+              >
+                Все
+              </Link>
+              {seriesPage.availableLetters.map((letter) => (
+                <Link
+                  aria-current={seriesPage.selectedLetter === letter ? "page" : undefined}
+                  className={`min-w-9 rounded border px-2.5 py-1.5 text-center font-mono text-xs transition-colors ${seriesPage.selectedLetter === letter ? "border-stone-950 bg-stone-900 text-stone-50" : "border-stone-300/80 bg-stone-50/60 text-stone-700 hover:border-stone-600"}`}
+                  href={getLetterHref(letter)}
+                  key={letter}
+                >
+                  {letter}
+                </Link>
+              ))}
+            </nav>
+          ) : null}
         </header>
 
         {seriesPage.items.length === 0 ? (
-          <div className="archive-paper archive-panel flex flex-wrap items-center justify-between gap-3 p-6 text-sm text-stone-600">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-300/60 p-6 text-sm text-stone-600">
             <span>
               {searchQuery ? "По вашему запросу серии не найдены." : "Пока в архиве нет серий."}
             </span>
@@ -128,23 +124,27 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
             ) : null}
           </div>
         ) : (
-          <section aria-label="Серии" className="archive-paper archive-panel divide-y divide-stone-300/80">
-            <SeriesTree nodes={seriesPage.items} />
-          </section>
+          <SeriesCatalog
+            items={seriesPage.items}
+            isSearchActive={Boolean(searchQuery)}
+            selectedLetter={seriesPage.selectedLetter}
+          />
         )}
-
-        <PaginationNav
-          basePath="/series"
-          itemLabel="серий"
-          page={seriesPage.page}
-          pageSize={seriesPage.pageSize}
-          pageSizeOptions={SERIES_PAGE_SIZE_OPTIONS}
-          searchParams={paginationSearchParams}
-          showPageJump
-          totalCount={seriesPage.paginationTotalCount}
-          totalPages={seriesPage.totalPages}
-          variant="archive"
-        />
+          <div className="border-t border-stone-400/45 bg-amber-50/20 px-3 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
+            <PaginationNav
+              basePath="/series"
+              itemLabel="серий"
+              page={seriesPage.page}
+              pageSize={seriesPage.pageSize}
+              pageSizeOptions={SERIES_PAGE_SIZE_OPTIONS}
+              searchParams={paginationSearchParams}
+              showPageJump
+              totalCount={seriesPage.paginationTotalCount}
+              totalPages={seriesPage.totalPages}
+              variant="archive"
+            />
+          </div>
+        </div>
       </div>
     </main>
   );

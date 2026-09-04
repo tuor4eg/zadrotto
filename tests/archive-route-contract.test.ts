@@ -4,6 +4,7 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 const mainPage = readFileSync("src/app/page.tsx", "utf8");
+const mainHeader = readFileSync("src/app/main/main-header.tsx", "utf8");
 const archivePage = readFileSync("src/app/archive/page.tsx", "utf8");
 const catalogHeader = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
 const catalogControls = readFileSync("src/app/catalog-header-controls.tsx", "utf8");
@@ -11,6 +12,7 @@ const catalogItems = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 const seriesCatalogPage = readFileSync("src/app/series/page.tsx", "utf8");
 const seriesPage = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const seriesPageHeader = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
 
 const catalogRevalidationFiles = [
   "src/app/media/franchise-actions.ts",
@@ -32,12 +34,11 @@ const layoutRevalidationFiles = [
 ];
 
 describe("archive route split", () => {
-  it("serves the journal at root, the catalog at /archive, and no /main route", () => {
-    assert.match(mainPage, /from "@\/components\/archive\/responsive-tile-grid"/);
-    assert.match(mainPage, /from "\.\/main\/main-login-button"/);
-    assert.match(mainPage, /href="\/archive\?sort=average_score"/);
-    assert.match(mainPage, /href="\/archive"[\s\S]*title="Последние рецензии"/);
-    assert.doesNotMatch(mainPage, /href="\/\?/);
+  it("serves the new journal at root, the catalog at /archive, and removes temporary routes", () => {
+    assert.match(mainPage, /from "\.\/main\/main-header"/);
+    assert.match(mainPage, /export const dynamic = "force-dynamic"/);
+    assert.match(mainHeader, /<Link href="\/" aria-label="Главная"/);
+    assert.equal(existsSync(path.join("src", "app", "test", "page.tsx")), false);
     assert.equal(existsSync(path.join("src", "app", "main", "page.tsx")), false);
 
     assert.match(archivePage, /from "@\/app\/media-items-catalog"/);
@@ -46,20 +47,38 @@ describe("archive route split", () => {
     assert.doesNotMatch(catalogHeader, /\/main/);
   });
 
+  it("keeps the public series spread slightly narrower than the archive catalog", () => {
+    assert.match(archivePage, /max-w-\[1480px\]/);
+    assert.match(seriesCatalogPage, /max-w-\[1280px\]/);
+  });
+
   it("submits the main-page search to the archive only on form submission", () => {
     assert.match(
-      mainPage,
-      /<form action="\/archive" method="get" role="search" aria-label="Поиск по архиву">/,
+      mainHeader,
+      /<form action="\/archive" method="get" role="search" aria-label="Поиск по архиву"/,
     );
-    assert.match(mainPage, /<input[\s\S]*name="q"[\s\S]*type="search"/);
-    assert.match(mainPage, /<ArchiveSiteHeader[\s\S]*controls=\{[\s\S]*<MainArchiveSearch \/>[\s\S]*<ArchiveExplorationLauncher/);
-    assert.doesNotMatch(mainPage, /onChange=|useDebouncedSearchDraft/);
+    assert.match(mainHeader, /<input[\s\S]*name="q"[\s\S]*type="search"/);
+    assert.doesNotMatch(mainHeader, /onChange=|useDebouncedSearchDraft/);
+  });
+
+  it("opens guest authorization in a modal and reserves notifications for authors", () => {
+    assert.match(mainHeader, /author \? \([\s\S]*<NotificationBell align="right" round/);
+    assert.match(
+      mainHeader,
+      /<NotificationBell align="right" round \/>[\s\S]*currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*href="\/author"/,
+    );
+    assert.match(mainHeader, /<UserRound[^>]*aria-hidden="true"/);
+    assert.match(mainHeader, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
+    assert.match(mainHeader, /createPortal\([\s\S]*<AuthorLoginModal/);
+    assert.match(mainHeader, /onSuccess=\{\(\) => \{[\s\S]*router\.refresh\(\)/);
+    assert.doesNotMatch(mainHeader, /href=\{author \? "\/author" : "\/author\/login"\}/);
   });
 
   it("links public archive breadcrumbs and media types to the catalog", () => {
-    assert.match(mediaPage, /href="\/archive"[\s\S]*Архив/);
-    assert.match(seriesCatalogPage, /href="\/archive"[\s\S]*Архив/);
-    assert.match(seriesPage, /href="\/archive"[\s\S]*Архив/);
+    assert.match(mediaPage, /href="\/archive"/);
+    assert.match(seriesCatalogPage, /href="\/archive"/);
+    assert.match(seriesPage, /SeriesPageHeader/);
+    assert.match(seriesPageHeader, /href="\/archive"/);
     assert.match(
       mediaPage,
       /href=\{`\/archive\?type=\$\{encodeURIComponent\(item\.mediaType\)\}`\}/,

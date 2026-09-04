@@ -20,10 +20,10 @@ function formatFeedDate(date: Date) {
 
 export function ArchiveFeed({ items }: { items: ArchiveFeedItem[] }) {
   return (
-    <section className="archive-paper archive-panel p-4 sm:p-5" aria-labelledby="test-archive-feed-title">
+    <section className="archive-paper archive-panel p-4 sm:p-5" aria-labelledby="main-archive-feed-title">
       <div className="flex items-center gap-2">
         <Clock3 aria-hidden="true" className="size-5 text-red-950/70" />
-        <h2 id="test-archive-feed-title" className="font-serif text-2xl leading-none text-stone-950">
+        <h2 id="main-archive-feed-title" className="font-serif text-2xl leading-none text-stone-950">
           Новое в архиве
         </h2>
       </div>

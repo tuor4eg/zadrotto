@@ -169,7 +169,7 @@ describe("quizzes", () => {
     assert.match(sharedHeader, /archive-catalog-header-actions[\s\S]*lg:hidden[\s\S]*quizAction/);
     assert.match(sharedHeader, /quiz && !quiz\.isCompleted && !isCurrentQuizCompleted/);
     assert.match(sharedHeader, /const \{ quizParticipant \} = useExternalInterface\(\)/);
-    assert.match(mainPage, /getActiveQuizParticipantState\(currentAuthor\.id\)/);
+    assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(sharedHeader, /<QuizModal/);
     assert.match(modal, /<ActiveQuizPanel/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
@@ -194,7 +194,6 @@ describe("quizzes", () => {
     assert.match(modal, /Предыдущих вопросов пока нет/);
     assert.match(query, /getPreviousQuizHistory[\s\S]*lte\(quizzes\.endsAt, currentTime\)/);
     assert.match(query, /orderBy\(desc\(quizzes\.endsAt\), desc\(quizzes\.id\)\)/);
-    assert.match(mainPage, /getPreviousQuizHistory\(\)/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -257,7 +256,7 @@ describe("quizzes", () => {
     const participationButton = readFileSync("src/components/quizzes/quiz-participation-button.tsx", "utf8");
     const guessButton = readFileSync("src/components/quizzes/quiz-guess-button.tsx", "utf8");
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
-    const archiveRiddle = readFileSync("src/app/test/archive-riddle.tsx", "utf8");
+    const archiveRiddle = readFileSync("src/app/main/archive-riddle.tsx", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
     assert.match(layer, /\/api\/user-hud/);

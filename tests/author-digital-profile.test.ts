@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const querySource = readFileSync("src/db/queries/author-digital-profile.ts", "utf8");
-const testPageSource = readFileSync("src/app/test/page.tsx", "utf8");
+const homePageSource = readFileSync("src/app/page.tsx", "utf8");
 const messageSource = readFileSync("src/lib/main-page/author-research-message.ts", "utf8");
 
 test("builds the author digital profile from visible published records in full series branches", () => {
@@ -36,14 +36,14 @@ test("exposes explicit nullable summaries and zero counts and loads the DTO on t
   assert.match(querySource, /unexploredType: DigitalProfileMediaTypeSummary \| null/);
   assert.match(querySource, /activeSeries: DigitalProfileSeriesSummary \| null/);
   assert.match(querySource, /if \(enabledMediaTypeCodes\.length === 0\) return EMPTY_AUTHOR_DIGITAL_PROFILE/);
-  assert.match(testPageSource, /getAuthorDigitalProfile\(author\.id, enabledMediaTypeCodes\)/);
+  assert.match(homePageSource, /getAuthorDigitalProfile\(author\.id, enabledMediaTypeCodes\)/);
 });
 
 test("renders a generated research message in the signed-in home hero", () => {
-  assert.match(testPageSource, /getAuthorResearchMessage\(\{/);
-  assert.match(testPageSource, /\{researchMessage\?\.title\}/);
-  assert.match(testPageSource, /\{researchMessage\?\.body\}/);
-  assert.match(testPageSource, /href=\{researchMessage\?\.cta\.href \?\? "\/archive"\}/);
-  assert.doesNotMatch(testPageSource, /hasDigitalProfileCopy|activeSeriesIsStrongest/);
+  assert.match(homePageSource, /getAuthorResearchMessage\(\{/);
+  assert.match(homePageSource, /\{researchMessage\?\.title\}/);
+  assert.match(homePageSource, /\{researchMessage\?\.body\}/);
+  assert.match(homePageSource, /href=\{researchMessage\?\.cta\.href \?\? "\/archive"\}/);
+  assert.doesNotMatch(homePageSource, /hasDigitalProfileCopy|activeSeriesIsStrongest/);
   assert.match(messageSource, /MATURE_AUTHOR_RESEARCH_RATINGS_COUNT = 25/);
 });

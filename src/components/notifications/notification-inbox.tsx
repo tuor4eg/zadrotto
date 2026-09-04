@@ -18,6 +18,7 @@ import { Bell, Trash2 } from "lucide-react"
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts"
 import { buttonVariants } from "@/components/ui/button"
 import { NotificationBadge } from "@/components/ui/notification-badge"
+import { cn } from "@/lib/common/utils"
 import type { NotificationInboxPayload } from "@/lib/notifications/inbox"
 
 const POLL_INTERVAL_MS = 30_000
@@ -212,7 +213,13 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
   )
 }
 
-export function NotificationBell({ align = "left" }: { align?: "left" | "right" }) {
+export function NotificationBell({
+  align = "left",
+  round = false,
+}: {
+  align?: "left" | "right"
+  round?: boolean
+}) {
   const inbox = useContext(NotificationInboxContext)
   const [isOpen, setIsOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
@@ -264,7 +271,11 @@ export function NotificationBell({ align = "left" }: { align?: "left" | "right" 
           }
           setIsOpen(true)
         }}
-        className={`${buttonVariants({ variant: "outline", size: "sm" })} relative`}
+        className={cn(
+          buttonVariants({ variant: "outline", size: "sm" }),
+          "relative",
+          round && "size-8 rounded-full p-0 hover:bg-stone-200",
+        )}
       >
         <Bell className="size-4" />
         <NotificationBadge

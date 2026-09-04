@@ -44,7 +44,7 @@ export function ArchiveRiddle({
   return (
     <section
       className={`archive-paper archive-panel relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0 ${canOpenQuiz ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950" : ""}`}
-      aria-labelledby="test-archive-riddle"
+      aria-labelledby="main-archive-riddle"
       aria-disabled={canOpenQuiz ? undefined : true}
       onClick={canOpenQuiz && !pending ? () => void openArchive() : undefined}
       onKeyDown={handleCardKeyDown}
@@ -53,7 +53,7 @@ export function ArchiveRiddle({
     >
       <div className="flex h-8 shrink-0 items-start gap-2">
           <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
-          <h2 id="test-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
+          <h2 id="main-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
             Загадка архива
           </h2>
           {quiz ? (

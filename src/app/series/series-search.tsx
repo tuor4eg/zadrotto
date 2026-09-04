@@ -20,6 +20,7 @@ export function SeriesSearch({ searchQuery }: SeriesSearchProps) {
       const normalizedQuery = query.trim();
 
       nextSearchParams.delete("page");
+      nextSearchParams.delete("letter");
 
       if (normalizedQuery) {
         nextSearchParams.set("q", normalizedQuery);

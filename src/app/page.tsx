@@ -1,502 +1,517 @@
-import Image from "next/image";
 import Link from "next/link";
-import { connection } from "next/server";
-import { Suspense } from "react";
-import {
-  Archive,
-  BookOpen,
-  Bookmark,
-  Clapperboard,
-  Clock3,
-  FileText,
-  Gamepad2,
-  Info,
-  Loader2,
-  PanelsTopLeft,
-  Search,
-  Shapes,
-  Shuffle,
-  Sparkles,
-  Star,
-  Tv,
-  type LucideIcon,
-} from "lucide-react";
+import { Layers3, MessageSquareQuote, Sparkles, Star, Trophy } from "lucide-react";
 
-import { ArchiveCover } from "@/app/media-item-tile";
-import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
-import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
-import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
-import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
-import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
-import { ArchiveExplorationLauncher } from "@/components/archive/archive-exploration-launcher";
-import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
-import {
-  ResponsiveTileGrid,
-  type ResponsiveTileDescriptor,
-} from "@/components/archive/responsive-tile-grid";
-import {
-  createMainPageDataPromises,
-  type MainPageMediaItem,
-} from "@/db/queries/main-page";
-import { getArchiveSettings } from "@/db/queries/archive-settings";
-import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
-import { getFranchiseOptions, getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
-import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
-import { getPublishedMediaTypeCounts } from "@/db/queries/media-items";
-import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
-import { getIncomingFriendRequestCount } from "@/db/queries/friends";
+import { getLatestAwardedAchievement } from "@/db/queries/achievements";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
-import { getActiveQuiz, getActiveQuizParticipantState, getPreviousQuizHistory } from "@/db/queries/quizzes";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
-import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
-import { getDailyDossier } from "@/lib/main-page/daily-dossier";
-import { sortMediaTypesByCount } from "@/lib/media/types";
-import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
+import { getAuthorDigitalProfile } from "@/db/queries/author-digital-profile";
+import type { MainPageMediaItem } from "@/db/queries/main-page";
 import {
-  AVERAGE_RATING_TEXT_TONE_CLASS_NAMES,
-  getRatingTone,
-} from "@/lib/ratings/tone";
-import { MainLoginButton } from "./main/main-login-button";
+  getAuthorReviewSummary,
+  getLatestPublishedReviewCard,
+} from "@/db/queries/contribution-reviews";
+import { getLatestArchiveFeed } from "@/db/queries/archive-feed";
+import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
+import { getPublishedEditorialCollections } from "@/db/queries/editorial-collections";
+import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
+import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
+import { getAuthorRatingSummary } from "@/db/queries/ratings";
+import {
+  getActiveQuiz,
+  getActiveQuizParticipantState,
+} from "@/db/queries/quizzes";
+import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
+import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
+import { getDailyDossier } from "@/lib/main-page/daily-dossier";
+import { getAuthorResearchMessage } from "@/lib/main-page/author-research-message";
+import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 
-const MEDIA_TYPE_ICONS: Record<string, LucideIcon> = {
-  anime: Sparkles,
-  book: BookOpen,
-  comic: PanelsTopLeft,
-  film: Clapperboard,
-  game: Gamepad2,
-  other: Shapes,
-  series: Tv,
-};
+import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
+import { ArchiveFeed } from "./main/archive-feed";
+import { ArchiveRiddle } from "./main/archive-riddle";
+import { MainHeader } from "./main/main-header";
 
-type SectionProps = {
-  children: React.ReactNode;
-  className?: string;
-  href: string;
-  icon: React.ReactNode;
-  showAllLink?: boolean;
-  title: React.ReactNode;
-};
+export const dynamic = "force-dynamic";
 
-type MainPageProps = {
-  searchParams: Promise<{
-    suggested?: string;
-    suggestedItemCode?: string;
-    suggestedItemId?: string;
-    suggestionError?: string;
-  }>;
-};
+type PublishedCollection = Awaited<ReturnType<typeof getPublishedEditorialCollections>>[number];
 
-function Section({ children, className, href, icon, showAllLink = true, title }: SectionProps) {
-  return (
-    <section className={`archive-paper archive-panel min-w-0 p-4 sm:px-5 sm:pt-5 ${className ?? ""}`}>
-      <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
-        <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
-          <span className="shrink-0 text-red-950/70">{icon}</span>
-          {title}
-        </h2>
-        {showAllLink ? (
-          <Link href={href} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
-            Смотреть всё →
-          </Link>
-        ) : null}
-      </div>
-      {children}
-    </section>
-  );
+function EditorialCollectionsStrip({ collections }: { collections: PublishedCollection[] }) {
+  if (collections.length === 0) return null;
+
+  return <section className="archive-paper archive-panel overflow-hidden p-3 sm:p-4" aria-labelledby="main-collections-title">
+    <div className="mb-3 flex items-center justify-between gap-4">
+      <h2 id="main-collections-title" className="flex items-center gap-2 font-serif text-2xl leading-none text-stone-950"><Layers3 className="size-5 text-red-950/70" aria-hidden="true" />Подборки</h2>
+      <Link href="/collections" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link>
+    </div>
+    <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,.45)_transparent]">
+      {collections.map((collection) => <Link key={collection.id} href={`/collections/${collection.slug}`} className="group relative aspect-video w-[15rem] shrink-0 overflow-hidden rounded-lg border border-white/10 bg-stone-900 shadow-md sm:w-[18rem] lg:w-[calc((100%-2.25rem)/4)] lg:min-w-[15rem]">
+        {collection.coverUrl ? <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={collection.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+        </> : <span aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(135deg,#44403c,#1c1917)]" />}
+        <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
+        <span className="absolute inset-x-0 bottom-0 p-3 text-white">
+          <span className="block truncate text-lg font-semibold leading-tight drop-shadow">{collection.title}</span>
+          <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-stone-300">{collection.itemsCount} записей</span>
+        </span>
+      </Link>)}
+    </div>
+  </section>;
 }
 
-function FiveStarRating({ className, score }: { className: string; score: number | null }) {
-  const starRating = (score ?? 0) / 20;
+function formatRelativeArchiveDate(value: Date) {
+  const millisecondsPerDay = 86_400_000;
+  const differenceInDays = Math.round((value.getTime() - Date.now()) / millisecondsPerDay);
+
+  if (differenceInDays >= -1 && differenceInDays <= 0) {
+    return new Intl.RelativeTimeFormat("ru-RU", { numeric: "auto" }).format(differenceInDays, "day");
+  }
+
+  return new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    timeZone: "Europe/Moscow",
+  }).format(value);
+}
+
+function RecommendationRating({ item }: { item: MainPageMediaItem }) {
+  const starRating = (item.averageScore ?? 0) / 20;
 
   return (
-    <div
-      aria-label={`Средняя оценка: ${formatScore(score)} из 10`}
-      className={`flex w-fit flex-col items-center ${className}`}
-      role="img"
-    >
-      <span className="font-mono text-lg font-semibold leading-none tabular-nums">
-        {formatScore(score)}
-      </span>
-      <span className="flex items-center gap-0.5" aria-hidden="true">
-        {Array.from({ length: 5 }, (_, index) => {
-          const fillPercent = Math.max(0, Math.min(100, (starRating - index) * 100));
+    <div className="mt-4 flex items-end gap-3">
+      <strong className="font-mono text-3xl leading-none tabular-nums text-stone-950">
+        {formatScore(item.averageScore)}
+      </strong>
+      <div>
+        <div className="flex gap-0.5 text-amber-700" aria-hidden="true">
+          {Array.from({ length: 5 }, (_, index) => {
+            const fillPercent = Math.max(0, Math.min(100, (starRating - index) * 100));
 
-          return (
-            <span key={index} className="relative size-4">
-              <Star className="absolute inset-0 size-4 opacity-25" />
-              <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
-                <Star className="size-4 fill-current" />
+            return (
+              <span key={index} className="relative size-4">
+                <Star className="absolute inset-0 size-4 text-stone-400/60" />
+                <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+                  <Star className="size-4 fill-current" />
+                </span>
               </span>
-            </span>
-          );
-        })}
-      </span>
+            );
+          })}
+        </div>
+        <p className="mt-1 font-mono text-[10px] uppercase tracking-wider text-stone-600">
+          {formatRatingsCount(item.ratingsCount)}
+        </p>
+      </div>
     </div>
   );
 }
 
-function MainSectionLoader({ minHeight = "min-h-40" }: { minHeight?: string }) {
-  return <div className={`grid place-items-center ${minHeight}`} role="status" aria-label="Загрузка"><Loader2 className="size-6 animate-spin text-red-950/65" /></div>;
-}
-
-function MainArchiveSearch() {
-  return (
-    <form action="/archive" method="get" role="search" aria-label="Поиск по архиву">
-      <label className="sr-only" htmlFor="main-archive-search">
-        Поиск по архиву
-      </label>
-      <div className="relative w-full lg:w-[298px]">
-        <Search
-          aria-hidden="true"
-          className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-500"
-        />
-        <input
-          id="main-archive-search"
-          name="q"
-          type="search"
-          autoComplete="off"
-          className="archive-control-surface h-9 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-3 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
-          placeholder="Поиск"
-        />
-      </div>
-    </form>
-  );
-}
-
-function getMainTileDescriptors(
-  items: MainPageMediaItem[],
-  linkToReview = false,
-): ResponsiveTileDescriptor[] {
-  return items.map((item) => ({
-    currentAuthorScore: item.currentAuthorScore,
-    href: linkToReview && item.reviewId
-      ? `/reviews/${item.reviewId}`
-      : `/media/${item.code}`,
-    item,
-    key: item.id,
-  }));
-}
-
-async function SectionItems({
-  linkToReview = false,
-  promise,
+function DailyRecommendation({
+  item,
+  mediaTypeName,
 }: {
-  linkToReview?: boolean;
-  promise: Promise<MainPageMediaItem[]>;
+  item: MainPageMediaItem | null;
+  mediaTypeName: string | null;
 }) {
-  const items = await promise;
-  return (
-    <ResponsiveTileGrid
-      items={getMainTileDescriptors(items, linkToReview)}
-      variant="top"
-    />
-  );
-}
-
-async function DossierContent({
-  enabledMediaTypeCodes,
-  mediaTypes,
-  promise,
-}: {
-  enabledMediaTypeCodes: string[];
-  mediaTypes: Array<{ code: string; name: string }>;
-  promise: Promise<MainPageMediaItem | null>;
-}) {
-  const globalItem = await promise;
-  const item = globalItem && enabledMediaTypeCodes.includes(globalItem.mediaType) ? globalItem : null;
-  if (!item) return <p className="py-8 text-center font-mono text-sm text-stone-500">Досье появится вместе с первой записью.</p>;
-  const ratingClassName = AVERAGE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(item.averageScore)];
-  return <div className="grid items-stretch grid-cols-[minmax(0,7rem)_1fr] gap-4 xl:[grid-template-columns:calc((min(1480px,calc(100vw_-_3.5rem))_-_444px)/7)_minmax(0,1fr)]"><Link href={`/media/${item.code}`} className="block aspect-[2/3] overflow-hidden rounded-md border border-stone-300/80 bg-stone-100"><ArchiveCover carrierFrame={false} item={{ ...item, coverUrl: item.coverThumbUrl ?? item.coverUrl }} className="h-full w-full" /></Link><div className="flex min-h-0 min-w-0 flex-col overflow-hidden [contain:size]"><h3 className="line-clamp-2 font-serif text-xl" title={item.title}>{item.title}</h3><p className="mt-1 truncate font-mono text-xs uppercase tracking-wider text-stone-600">{mediaTypes.find((type) => type.code === item.mediaType)?.name ?? item.mediaType}{item.releaseYear ? ` · ${item.releaseYear}` : ""}</p><div className="mt-3 shrink-0"><FiveStarRating className={ratingClassName} score={item.averageScore} /><p className="mt-2 font-mono text-xs text-stone-600">{formatRatingsCount(item.ratingsCount)}</p></div><Link href={`/media/${item.code}`} className="archive-control-surface mt-auto flex h-9 shrink-0 items-center justify-center rounded-md border border-stone-300/80 px-3 text-center font-mono text-xs uppercase tracking-wider text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-[border-color,background-color,width,padding] hover:border-stone-700 hover:bg-stone-50">Открыть</Link></div></div>;
-}
-
-async function RandomDossierLink({ promise }: { promise: Promise<MainPageMediaItem | null> }) {
-  const item = await promise;
-  return <Link href={item ? `/media/${item.code}` : "/archive"} className="archive-control-surface inline-flex h-10 items-center justify-center rounded-md border border-stone-300/80 px-4 font-mono text-xs uppercase tracking-wider hover:border-stone-700"><Shuffle className="mr-2 size-4" />Случайное досье</Link>;
-}
-
-async function AboutArchive({ promise }: { promise: ReturnType<typeof createMainPageDataPromises>["about"] }) {
-  const { counts, totalCount } = await promise;
-  return <div className="divide-y divide-dashed divide-stone-400/35"><Link href="/archive" className="group flex items-center justify-between py-2"><span className="font-mono text-xs uppercase tracking-wider text-stone-600 group-hover:text-stone-950">Всего записей</span><strong className="font-serif text-2xl">{totalCount.toLocaleString("ru-RU")}</strong></Link>{counts.map((item) => { const MediaTypeIcon = MEDIA_TYPE_ICONS[item.mediaType] ?? Archive; return <Link key={item.mediaType} href={`/archive?type=${encodeURIComponent(item.mediaType)}`} className="group flex items-center justify-between gap-4 py-2"><span className="flex items-center gap-2 font-serif text-lg"><MediaTypeIcon aria-hidden="true" className="size-4 text-red-950/65 transition-colors group-hover:text-red-950" />{item.mediaTypeName}</span><span className="font-mono text-sm tabular-nums text-stone-600 group-hover:text-stone-950">{item.count.toLocaleString("ru-RU")}</span></Link>; })}</div>;
-}
-
-async function RandomFranchiseSection({
-  promise,
-}: {
-  promise: ReturnType<typeof getRandomPublishedFranchisePreview>;
-}) {
-  const preview = await promise;
+  const coverUrl = item?.coverThumbUrl ?? item?.coverUrl;
 
   return (
-    <Section
-      href="/series"
-      icon={<Shuffle className="size-5" />}
-      showAllLink={false}
-      title={preview ? (
-        <span className="flex min-w-0 items-baseline gap-2">
-          <span className="shrink-0">Случайная серия</span>
-          <Link
-            href={`/series/${preview.franchise.code}`}
-            className="truncate text-red-950/75 underline decoration-stone-400/60 underline-offset-4 hover:text-red-950"
-          >
-            {preview.franchise.title}
-          </Link>
-        </span>
-      ) : "Случайная серия"}
+    <section
+      className="archive-paper archive-panel group relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0"
+      aria-labelledby="main-daily-recommendation"
     >
-      {preview ? (
-        <ResponsiveTileGrid items={getMainTileDescriptors(preview.items)} variant="top" />
-      ) : (
-        <p className="py-8 text-center font-mono text-sm text-stone-500">
-          Серия появится, когда в архиве будет хотя бы пять связанных записей.
+      {item ? (
+        <Link
+          href={`/media/${item.code}`}
+          aria-label={`Открыть досье «${item.title}»`}
+          className="inset-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950"
+          style={{ position: "absolute", zIndex: 20 }}
+        />
+      ) : null}
+      {coverUrl ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
+              position: "absolute",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
+            style={{
+              maskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
+              position: "absolute",
+              WebkitMaskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
+            }}
+          />
+        </>
+      ) : null}
+
+      <div className="relative z-10 flex flex-1 max-w-[72%] flex-col">
+        <div className="flex h-8 shrink-0 items-start gap-2">
+          <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
+          <h2 id="main-daily-recommendation" className="font-serif text-2xl leading-none text-stone-950">
+            Рекомендуем сегодня
+          </h2>
+        </div>
+        <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
+          Высоко оценённая находка из нашей коллекции
         </p>
-      )}
-    </Section>
+
+        {item ? (
+          <div className="flex flex-1 flex-col pt-1">
+            <h3 className="font-serif text-2xl leading-tight text-stone-950">{item.title}</h3>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
+              {mediaTypeName ?? item.mediaType}
+              {item.releaseYear ? ` · ${item.releaseYear}` : ""}
+            </p>
+            <RecommendationRating item={item} />
+          </div>
+        ) : (
+          <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
+            Рекомендация появится вместе с подходящей записью.
+          </p>
+        )}
+      </div>
+    </section>
   );
 }
 
-export default async function MainPage({ searchParams }: MainPageProps) {
-  await connection();
+type LatestReviewCard = Awaited<ReturnType<typeof getLatestPublishedReviewCard>>;
 
-  const [currentAuthor, currentAdmin, params] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
-    searchParams,
+function LatestReview({
+  mediaTypeName,
+  review,
+}: {
+  mediaTypeName: string | null;
+  review: LatestReviewCard;
+}) {
+  const coverUrl = review?.coverThumbUrl ?? review?.coverUrl;
+
+  return (
+    <section
+      className="archive-paper archive-panel group relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0"
+      aria-labelledby="main-latest-review"
+    >
+      {review ? (
+        <Link
+          href={`/reviews/${review.id}`}
+          aria-label={`Читать рецензию на «${review.mediaItemTitle}»`}
+          className="inset-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950"
+          style={{ position: "absolute", zIndex: 20 }}
+        />
+      ) : null}
+      {coverUrl ? (
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
+            style={{
+              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
+              position: "absolute",
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
+            style={{
+              maskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
+              position: "absolute",
+              WebkitMaskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
+            }}
+          />
+        </>
+      ) : null}
+
+      <div className="relative z-10 flex flex-1 max-w-[72%] flex-col">
+        <div className="flex h-8 shrink-0 items-start gap-2">
+          <MessageSquareQuote aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
+          <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
+            Мнение из архива
+          </h2>
+        </div>
+        <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
+          Свежая рецензия одного из наших авторов
+        </p>
+
+        {review ? (
+          <div className="flex min-h-0 flex-1 flex-col pt-1">
+            <h3 className="shrink-0 font-serif text-xl leading-tight text-stone-950">{review.mediaItemTitle}</h3>
+            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
+              {mediaTypeName ?? review.mediaType}
+              {review.releaseYear ? ` · ${review.releaseYear}` : ""}
+            </p>
+            <AdaptiveReviewExcerpt text={review.excerpt} />
+            <p className="mt-3 shrink-0 text-xs text-stone-600">— {review.authorName}</p>
+          </div>
+        ) : (
+          <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
+            Рецензия появится после первой публикации.
+          </p>
+        )}
+      </div>
+    </section>
+  );
+}
+
+export default async function MainPage() {
+  const [author, adminUser] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()]);
+  const [activeQuiz, adminNotificationCount, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
+    author ? getActiveQuiz() : Promise.resolve(null),
+    adminUser ? getSubmittedModerationRequestCountForAdmin() : Promise.resolve(0),
+    getDailyDossier(author?.id),
+    getEffectiveMediaTypeOptions(author?.id),
+    getPublishedEditorialCollections(),
   ]);
-  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
-    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
-    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
-  ]);
-  const [effectiveMediaTypes, archiveSettings, authorMediaSuggestionData] = await Promise.all([
-    getEffectiveMediaTypeOptions(currentAuthor?.id),
-    getArchiveSettings(),
-    currentAuthor
-      ? Promise.all([
-          getFranchiseOptions(currentAuthor.id),
-          getMediaCarrierOptions(),
-          isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
-          getPublishedMediaTypeCounts(),
-        ]).then(([franchises, mediaCarriers, canSuggestFranchises, mediaTypeCounts]) => ({
-          canCreateFranchise: canAuthorCreateFranchise({
-            canPublishFranchisesWithoutReview:
-              currentAuthor.canPublishFranchisesWithoutReview,
-          }),
-          canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
-          canSuggestFranchises,
-          franchises,
-          mediaCarriers,
-          mediaTypeCounts,
-        }))
-      : Promise.resolve(null),
-  ]);
-  const [activeQuiz, previousQuiz] = currentAuthor
-    ? await Promise.all([getActiveQuiz(), getPreviousQuizHistory()])
-    : [null, null];
-  const activeQuizParticipant = activeQuiz && currentAuthor
-    ? await getActiveQuizParticipantState(currentAuthor.id)
+  const dailyDossierMediaTypeName = dailyDossier
+    ? mediaTypes.find((mediaType) => mediaType.code === dailyDossier.mediaType)?.name ?? null
+    : null;
+  const enabledMediaTypeCodes = mediaTypes
+    .filter((mediaType) => mediaType.isEnabled)
+    .map((mediaType) => mediaType.code);
+  const latestReview = await getLatestPublishedReviewCard(
+    enabledMediaTypeCodes,
+  );
+  const archiveFeed = await getLatestArchiveFeed(mediaTypes.filter((mediaType) => mediaType.isEnabled));
+  const latestReviewMediaTypeName = latestReview
+    ? mediaTypes.find((mediaType) => mediaType.code === latestReview.mediaType)?.name ?? null
+    : null;
+  const activeQuizParticipant = activeQuiz && author
+    ? await getActiveQuizParticipantState(author.id)
     : null;
   const isActiveQuizParticipant = activeQuizParticipant?.quizId === activeQuiz?.id;
-  const mediaTypes = effectiveMediaTypes.filter((item) => item.isEnabled);
-  const unavailableQuizMediaTypeNames = activeQuiz
-    ? effectiveMediaTypes
-        .filter((item) => !item.isEnabled && activeQuiz.mediaTypes.includes(item.code))
-        .map((item) => item.name)
+  const authorHeroStatistics = author
+    ? await Promise.all([
+        getAuthorDigitalProfile(author.id, enabledMediaTypeCodes),
+        getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
+        getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
+        getAuthorPublishedMediaItemCount(author.id, enabledMediaTypeCodes),
+        getLatestAwardedAchievement(author.id),
+      ]).then(([digitalProfile, ratingSummary, reviewSummary, contributionCount, latestAchievement]) => ({
+        averageScore: ratingSummary.averageScore,
+        contributionCount,
+        digitalProfile,
+        latestAchievement,
+        latestRating: ratingSummary.latestRatings[0] ?? null,
+        ratingsCount: ratingSummary.ratingsCount,
+        reviewCount: reviewSummary.reviewsCount,
+      }))
+    : null;
+  const latestAcquaintanceItem = author && authorHeroStatistics?.latestRating
+    ? (await getMediaItemTilesByIds([authorHeroStatistics.latestRating.mediaItemId], author.id))[0] ?? null
+    : null;
+  const latestAcquaintance = latestAcquaintanceItem && authorHeroStatistics?.latestRating
+    ? {
+        code: latestAcquaintanceItem.code,
+        coverUrl: latestAcquaintanceItem.coverThumbUrl ?? latestAcquaintanceItem.coverUrl,
+        score: authorHeroStatistics.latestRating.score,
+        title: latestAcquaintanceItem.title,
+        updatedAt: authorHeroStatistics.latestRating.updatedAt,
+      }
+    : null;
+  const authorHeroStatisticItems = authorHeroStatistics
+    ? [
+        { label: "Оценок", rawValue: authorHeroStatistics.ratingsCount },
+        { label: "Средняя оценка", rawValue: authorHeroStatistics.averageScore },
+        { label: "Рецензий", rawValue: authorHeroStatistics.reviewCount },
+        { label: "Добавлено в архив", rawValue: authorHeroStatistics.contributionCount },
+      ]
+        .filter((statistic): statistic is { label: string; rawValue: number } => (
+          statistic.rawValue !== null && statistic.rawValue > 0
+        ))
+        .map((statistic) => ({
+          label: statistic.label,
+          value: statistic.label === "Средняя оценка"
+            ? formatScore(statistic.rawValue)
+            : statistic.rawValue.toLocaleString("ru-RU"),
+        }))
     : [];
-  const suggestionMediaTypes = authorMediaSuggestionData
-    ? sortMediaTypesByCount(mediaTypes, authorMediaSuggestionData.mediaTypeCounts)
-    : mediaTypes;
-  const enabledMediaTypeCodes = mediaTypes.map((item) => item.code);
-  const data = createMainPageDataPromises({
-    currentAuthorId: currentAuthor?.id,
-    enabledMediaTypeCodes,
-    topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
-    topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
-  });
-  const dossierPromise = getDailyDossier(currentAuthor?.id);
-  const randomFranchisePromise = getRandomPublishedFranchisePreview({
-    currentAuthorId: currentAuthor?.id,
-    enabledMediaTypeCodes,
-  });
-  const suggestionErrorMessage = getAuthorMediaFormErrorMessage(params.suggestionError);
-  const suggestedItemId = Number(params.suggestedItemId);
-  const suggestedItemHref =
-    Number.isInteger(suggestedItemId) && suggestedItemId > 0
-      ? params.suggested === "published" && params.suggestedItemCode
-        ? `/media/${encodeURIComponent(params.suggestedItemCode)}`
-        : params.suggested === "created"
-          ? `/author/media/${suggestedItemId}/edit`
-          : params.suggested === "submitted" && params.suggestedItemCode
-            ? `/author/media?q=${encodeURIComponent(params.suggestedItemCode)}`
-            : null
-      : null;
-  const suggestionSuccessMessage =
-    params.suggested === "created"
-      ? "создана в черновиках."
-      : params.suggested === "submitted"
-        ? "создана и отправлена на проверку."
-        : params.suggested === "published"
-          ? "создана и опубликована."
-          : null;
-  const toastMessages = [
-    ...(suggestionSuccessMessage
-      ? [
-          {
-            id: "suggested",
-            ...(suggestedItemHref
-              ? { link: { href: suggestedItemHref, label: "Запись" } }
-              : {}),
-            tone: "success",
-            text: suggestionSuccessMessage,
-          } satisfies ArchiveToast,
-        ]
-      : []),
-    ...(suggestionErrorMessage
-      ? [
-          {
-            id: params.suggestionError ?? "suggestion-error",
-            tone: "error",
-            text: suggestionErrorMessage,
-          } satisfies ArchiveToast,
-        ]
-      : []),
-  ];
+  const researchMessage = author && authorHeroStatistics
+    ? getAuthorResearchMessage({
+        authorId: author.id,
+        averageScore: authorHeroStatistics.averageScore,
+        contributionCount: authorHeroStatistics.contributionCount,
+        digitalProfile: authorHeroStatistics.digitalProfile,
+        ratingsCount: authorHeroStatistics.ratingsCount,
+        reviewCount: authorHeroStatistics.reviewCount,
+      })
+    : null;
+  const hasLatestActivity = Boolean(
+    author
+    && authorHeroStatisticItems.length > 0
+    && (latestAcquaintance || authorHeroStatistics?.latestAchievement),
+  );
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <ArchiveToasts
-        clearParams={[
-          "suggested",
-          "suggestedItemCode",
-          "suggestedItemId",
-          "suggestionError",
-        ]}
-        messages={toastMessages}
-      />
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <ArchiveSiteHeader
-          brandHref="/"
-          controls={
-            <div className="flex min-w-0 items-center gap-2">
-              <div className="min-w-0 flex-1"><MainArchiveSearch /></div>
-              <ArchiveExplorationLauncher
-                autoInvite
-                currentAuthor={Boolean(currentAuthor)}
-                className="archive-control-surface inline-flex h-9 w-9 shrink-0 items-center justify-center gap-2 rounded-md border border-stone-300/80 px-0 font-mono text-xs uppercase tracking-wider text-stone-700 hover:border-stone-700 hover:bg-stone-50 lg:w-auto lg:px-3"
-              />
-            </div>
-          }
-          currentAdminUser={Boolean(currentAdmin)}
-          currentAuthor={Boolean(currentAuthor)}
-          incomingFriendRequestCount={incomingFriendRequestCount}
-          submittedRequestCount={submittedRequestCount}
-          quiz={activeQuiz ? {
-            active: activeQuiz,
-            history: previousQuiz,
-            isCompleted: activeQuizParticipant?.completed === true,
-            isParticipating: isActiveQuizParticipant,
-            unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
-          } : null}
-          variant="main"
+        <MainHeader
+          adminNotificationCount={adminNotificationCount}
+          author={author}
+          currentAdminUser={Boolean(adminUser)}
         />
-
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_320px] xl:grid-rows-[auto_auto_auto]">
-          <div className="flex min-w-0 flex-col gap-3 xl:contents">
-            <Section className="xl:col-start-1 xl:row-start-1" href="/archive?sort=average_score" icon={<Star className="size-5" />} title="Топ архива"><Suspense fallback={<MainSectionLoader minHeight="min-h-52" />}><SectionItems promise={data.top} /></Suspense></Section>
-            <div className="grid gap-3 lg:grid-cols-2 xl:col-start-1 xl:row-start-2">
-              <Section href="/archive?sort=created_at" icon={<Clock3 className="size-5" />} title="Новое в базе"><Suspense fallback={<MainSectionLoader />}><SectionItems promise={data.newItems} /></Suspense></Section>
-              <Section href="/archive" icon={<FileText className="size-5" />} title="Последние рецензии">
-                <Suspense fallback={<MainSectionLoader />}><SectionItems linkToReview promise={data.reviews} /></Suspense>
-              </Section>
+        <div className={hasLatestActivity ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
+          <section
+            className="archive-paper archive-panel flex items-center overflow-hidden px-6 py-6 sm:px-10 lg:px-14 lg:py-7"
+            aria-labelledby="main-intro-title"
+          >
+          <div
+            aria-hidden="true"
+            style={{
+              backgroundImage: "url('/back_archieve.png')",
+              backgroundPosition: "right center",
+              backgroundRepeat: "no-repeat",
+              backgroundSize: "auto 100%",
+              aspectRatio: "2 / 1",
+              height: "100%",
+              maskImage:
+                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 12%, rgba(0, 0, 0, 0.35) 28%, rgba(0, 0, 0, 0.78) 46%, #000 62%, #000 100%)",
+              position: "absolute",
+              right: 0,
+              top: 0,
+              WebkitMaskImage:
+                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 12%, rgba(0, 0, 0, 0.35) 28%, rgba(0, 0, 0, 0.78) 46%, #000 62%, #000 100%)",
+              zIndex: 0,
+            }}
+          />
+          {author && authorHeroStatistics && authorHeroStatisticItems.length > 0 ? (
+            <div className="w-full lg:max-w-[66%]">
+              <h1
+                id="main-intro-title"
+                className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+              >
+                {researchMessage?.title}
+              </h1>
+              <p className="mt-3 max-w-4xl text-base leading-7 text-stone-700 sm:text-lg">
+                {researchMessage?.body}
+              </p>
+              <Link
+                href={researchMessage?.cta.href ?? "/archive"}
+                className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
+              >
+                {researchMessage?.cta.label ?? "Продолжить исследование"}
+              </Link>
+              {authorHeroStatisticItems.length > 0 ? (
+                <dl className="mt-5 grid max-w-4xl grid-cols-2 sm:grid-cols-4">
+                {authorHeroStatisticItems.map((statistic, index) => (
+                  <div
+                    key={statistic.label}
+                    className={`flex flex-col px-3 py-1 text-center first:pl-0 sm:px-6 ${index % 2 === 1 ? "border-l border-stone-400/30" : ""} ${index > 0 ? "sm:border-l sm:border-stone-400/30" : ""}`}
+                  >
+                    <dt className="order-2 mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-stone-600">
+                      {statistic.label}
+                    </dt>
+                    <dd className="order-1 font-serif text-2xl leading-none tabular-nums text-stone-950">{statistic.value}</dd>
+                  </div>
+                ))}
+                </dl>
+              ) : null}
             </div>
-            {currentAuthor ? (
-              <div className="grid gap-3 lg:grid-cols-2 xl:col-span-2 xl:row-start-3">
-                <Section href="/archive?sort=my_rating_date&mine=rated" icon={<Star className="size-5" />} title="Мои последние оценки"><Suspense fallback={<MainSectionLoader />}><SectionItems promise={data.latestRatings} /></Suspense></Section>
-                <Section href="/archive?mine=wanted" icon={<Bookmark className="size-5" />} title="Желаемое"><Suspense fallback={<MainSectionLoader />}><SectionItems promise={data.wanted} /></Suspense></Section>
-              </div>
-            ) : (
-              <section className="archive-paper archive-panel flex items-center justify-center px-5 py-4 xl:col-span-2 xl:row-start-3 xl:h-[200px]">
-                <div className="flex w-full max-w-5xl flex-col items-center justify-center gap-5 md:flex-row md:gap-8">
-                  <Image
-                    src="/placeholder.png"
-                    alt=""
-                    aria-hidden="true"
-                    width={800}
-                    height={439}
-                    className="h-auto w-60 shrink-0 object-contain sm:w-64"
-                  />
-                  <div className="min-w-0 text-center md:text-left">
-                    <h2 className="font-serif text-2xl text-stone-950 sm:text-3xl">
-                      Ваши персональные разделы появятся здесь
-                    </h2>
-                    <p className="mt-3 max-w-2xl text-sm leading-6 text-stone-600">
-                      Когда вы начнете оценивать и добавлять записи в желаемое, здесь появятся новые разделы.
-                    </p>
-                    <div className="mt-6 flex flex-wrap items-center justify-center gap-2 md:justify-start">
-                      <MainLoginButton />
-                      <Link href="/archive" className="archive-control-surface inline-flex h-10 items-center justify-center rounded-md border border-stone-300/80 px-4 font-mono text-xs uppercase tracking-wider hover:border-stone-700">
-                        <Archive className="mr-2 size-4" />
-                        Каталог
-                      </Link>
-                      <Suspense fallback={<MainSectionLoader minHeight="min-h-10" />}><RandomDossierLink promise={dossierPromise} /></Suspense>
-                    </div>
+          ) : (
+          <div className="max-w-2xl">
+            <h1
+              id="main-intro-title"
+              className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+            >
+              Начни свою историю
+            </h1>
+            <p className="mt-4 max-w-xl text-base leading-7 text-stone-700 sm:text-lg">
+              Оценивай, высказывай мнения, создавай личные серии и смотри, как из этого складывается твой культурный след.
+            </p>
+            <button
+              type="button"
+              className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
+            >
+              Начать историю
+            </button>
+          </div>
+          )}
+          </section>
+          {hasLatestActivity ? (
+            <aside
+              className={`archive-paper archive-panel w-full p-4 text-left text-stone-950 lg:p-5 ${latestAcquaintance && authorHeroStatistics?.latestAchievement ? "grid grid-rows-2" : "flex flex-col justify-center"}`}
+              aria-label="Последняя активность"
+            >
+              {latestAcquaintance ? (
+                <div className="flex w-full flex-col items-start justify-center">
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
+                    Последняя оценка
+                  </p>
+                  <Link href={`/media/${latestAcquaintance.code}`} className="mt-2 flex items-center gap-4">
+                    {latestAcquaintance.coverUrl ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={latestAcquaintance.coverUrl}
+                        alt=""
+                        className="h-28 w-20 shrink-0 rounded object-cover shadow-lg lg:h-32 lg:w-[5.5rem]"
+                      />
+                    ) : null}
+                    <span className="min-w-0">
+                      <span className="line-clamp-2 font-serif text-xl leading-tight">
+                        {latestAcquaintance.title}
+                      </span>
+                      <span className="mt-1 block text-sm text-stone-600">
+                        Оценка {formatScore(latestAcquaintance.score)} · {formatRelativeArchiveDate(latestAcquaintance.updatedAt)}
+                      </span>
+                    </span>
+                  </Link>
+                </div>
+              ) : null}
+              {authorHeroStatistics?.latestAchievement ? (
+                <div className={`flex w-full flex-col items-start justify-center ${latestAcquaintance ? "border-t-2 border-stone-700/70" : ""}`}>
+                  <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
+                    Новое достижение
+                  </p>
+                  <div className="mt-2 flex items-center gap-4">
+                    <Link
+                      href="/author/achievements"
+                      aria-label="Открыть мои ачивки"
+                      className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
+                    >
+                      {authorHeroStatistics.latestAchievement.imageUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={authorHeroStatistics.latestAchievement.imageUrl}
+                          alt=""
+                          className="size-20 rounded-full object-cover shadow-lg lg:size-24"
+                        />
+                      ) : (
+                        <span className="grid size-20 place-items-center rounded-full bg-amber-100/90 text-amber-900 shadow-lg lg:size-24">
+                          <Trophy className="size-10 lg:size-12" aria-hidden="true" />
+                        </span>
+                      )}
+                    </Link>
+                    <span className="line-clamp-2 font-serif text-xl leading-tight">
+                      {authorHeroStatistics.latestAchievement.name}
+                    </span>
                   </div>
                 </div>
-              </section>
-            )}
-          </div>
-
-          <aside className="flex min-w-0 flex-col gap-3 xl:contents">
-            <section className="archive-paper archive-panel relative !overflow-visible xl:col-start-2 xl:row-start-1">
-              <div className="relative z-10 p-4 sm:px-5 sm:pt-5">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src="/clip-transparent-trimmed.png"
-                  alt=""
-                  aria-hidden="true"
-                  className="pointer-events-none absolute -top-2 right-4 z-50 h-16 w-auto object-contain drop-shadow-[0_8px_9px_rgba(28,25,23,0.22)]"
-                />
-                <div className="mb-4 border-b border-stone-400/25 pb-3">
-                  <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><Sparkles className="size-5 text-red-950/70" />Досье дня</h2>
-                </div>
-                <Suspense fallback={<MainSectionLoader minHeight="min-h-44" />}><DossierContent enabledMediaTypeCodes={enabledMediaTypeCodes} mediaTypes={mediaTypes} promise={dossierPromise} /></Suspense>
-              </div>
-            </section>
-            <section className="archive-paper archive-panel flex min-h-0 flex-col p-4 xl:col-start-2 xl:row-start-2 xl:overflow-hidden xl:[contain:size]">
-              <h2 className="mb-2 shrink-0 flex items-center gap-2 font-serif text-2xl"><Info className="size-5 text-red-950/70" />Об архиве</h2>
-              <div className="relative min-h-0 flex-1">
-                <div className="h-full overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-                  <Suspense fallback={<MainSectionLoader minHeight="min-h-64" />}><AboutArchive promise={data.about} /></Suspense>
-                </div>
-              </div>
-            </section>
-          </aside>
+              ) : null}
+            </aside>
+          ) : null}
         </div>
 
-        <Suspense fallback={(
-          <Section href="/series" icon={<Shuffle className="size-5" />} showAllLink={false} title="Случайная серия">
-            <MainSectionLoader minHeight="min-h-52" />
-          </Section>
-        )}>
-          <RandomFranchiseSection promise={randomFranchisePromise} />
-        </Suspense>
+        <div className="grid gap-3 lg:grid-cols-3">
+          <DailyRecommendation item={dailyDossier} mediaTypeName={dailyDossierMediaTypeName} />
+          <ArchiveRiddle
+            isCompleted={activeQuizParticipant?.completed === true}
+            isParticipating={isActiveQuizParticipant}
+            quiz={activeQuiz}
+          />
+          <LatestReview mediaTypeName={latestReviewMediaTypeName} review={latestReview} />
+        </div>
 
+        <EditorialCollectionsStrip collections={editorialCollections} />
+
+        <ArchiveFeed items={archiveFeed} />
         <ArchiveSiteFooter />
       </div>
-      {currentAuthor && authorMediaSuggestionData ? (
-        <ArchiveAuthorMediaSuggestion
-          action={createAuthorMediaItemAction}
-          canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
-          canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
-          canSuggestFranchises={authorMediaSuggestionData.canSuggestFranchises}
-          franchises={authorMediaSuggestionData.franchises}
-          maxTitleAliases={archiveSettings.maxTitleAliases}
-          mediaCarriers={authorMediaSuggestionData.mediaCarriers}
-          mediaTypeFilter="all"
-          mediaTypes={suggestionMediaTypes}
-          searchQuery=""
-        />
-      ) : null}
     </main>
   );
 }

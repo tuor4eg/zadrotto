@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const catalogPageSource = readFileSync("src/app/series/page.tsx", "utf8");
+const catalogSource = readFileSync("src/app/series/series-catalog.tsx", "utf8");
 const searchSource = readFileSync("src/app/series/series-search.tsx", "utf8");
 const seriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const seriesHeaderSource = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
@@ -57,12 +58,12 @@ describe("public series tree", () => {
 
 describe("public series catalog UI", () => {
   it("renders the paginated roots as a recursive tree with counts and empty states", () => {
-    assert.match(catalogPageSource, /function SeriesTree\(/);
+    assert.match(catalogSource, /function SeriesTree\(/);
     assert.match(
-      catalogPageSource,
-      /series\.children\.length > 0[\s\S]*<SeriesTree nodes=\{series\.children\} depth=\{depth \+ 1\}/,
+      catalogSource,
+      /visibleChildren\.length > 0[\s\S]*<SeriesTree nodes=\{visibleChildren\} depth=\{depth \+ 1\}/,
     );
-    assert.match(catalogPageSource, /<SeriesTree nodes=\{seriesPage\.items\} \/>/);
+    assert.match(catalogPageSource, /<SeriesCatalog[\s\S]*items=\{seriesPage\.items\}[\s\S]*selectedLetter=\{seriesPage\.selectedLetter\}/);
     assert.match(
       catalogPageSource,
       /SERIES_PAGE_SIZE_OPTIONS = \[24, 48, 72\][\s\S]*DEFAULT_SERIES_PAGE_SIZE = 24/,
@@ -72,8 +73,8 @@ describe("public series catalog UI", () => {
       /getEnabledMediaTypeCodes\(currentAuthor\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
     );
     assert.match(catalogPageSource, /seriesPage\.items\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
-    assert.match(catalogPageSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
-    assert.match(catalogPageSource, /formatMediaItemsCount\(series\.mediaItemsCount\)/);
+    assert.match(catalogSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
+    assert.match(catalogSource, /<SeriesCountBadge count=\{series\.mediaItemsCount\}/);
     assert.match(
       catalogPageSource,
       /<PaginationNav[\s\S]*basePath="\/series"[\s\S]*pageSizeOptions=\{SERIES_PAGE_SIZE_OPTIONS\}[\s\S]*showPageJump[\s\S]*variant="archive"/,
@@ -91,15 +92,15 @@ describe("public series catalog UI", () => {
       pageQuerySource,
       /getPublishedFranchiseTree\([\s\S]*input\.searchQuery,[\s\S]*input\.enabledMediaTypeCodes/,
     );
-    assert.match(pageQuerySource, /const paginationTotalCount = tree\.length/);
+    assert.match(pageQuerySource, /const paginationTotalCount = filteredTree\.length/);
     assert.match(
       pageQuerySource,
-      /const items = tree\.slice\(offset, offset \+ input\.pageSize\)/,
+      /const items = filteredTree\.slice\(offset, offset \+ input\.pageSize\)/,
     );
-    assert.match(pageQuerySource, /totalCount: countNodes\(tree\)/);
+    assert.match(pageQuerySource, /totalCount: countNodes\(filteredTree\)/);
     assert.doesNotMatch(pageQuerySource, /flattenTree/);
     assert.doesNotMatch(pageQuerySource, /\.limit\(|\.offset\(/);
-    assert.match(pageQuerySource, /pageSize: input\.pageSize,[\s\S]*paginationTotalCount,[\s\S]*totalCount: countNodes\(tree\),[\s\S]*totalPages/);
+    assert.match(pageQuerySource, /pageSize: input\.pageSize,[\s\S]*paginationTotalCount,[\s\S]*totalCount: countNodes\(filteredTree\),[\s\S]*totalPages/);
   });
 
   it("keeps filters in pagination links and offers page-size and direct-page controls", () => {
