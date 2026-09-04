@@ -10,7 +10,7 @@ const tokenPageSource = readFileSync("src/app/author/token/page.tsx", "utf8");
 const profileActionsSource = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
 const profilePageSource = readFileSync("src/app/author/(protected)/profile/page.tsx", "utf8");
 const headerSource = readFileSync(
-  "src/components/archive/archive-site-header.tsx",
+  "src/components/archive/public-site-header.tsx",
   "utf8",
 );
 const ratingDialogSource = readFileSync("src/app/media-item-rating-dialog.tsx", "utf8");

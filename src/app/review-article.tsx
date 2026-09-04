@@ -125,10 +125,6 @@ export function ReviewArticle({
             <div className="shrink-0 uppercase">Досье</div>
             <nav aria-label="Хлебные крошки" className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
               <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
-                <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href="/">Главная</Link></li>
-                <li aria-hidden="true" className="text-stone-400">/</li>
-                <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href="/archive">Архив</Link></li>
-                <li aria-hidden="true" className="text-stone-400">/</li>
                 <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/archive?type=${encodeURIComponent(review.mediaItemMediaType)}`}>{mediaItemTypeLabel}</Link></li>
                 <li aria-hidden="true" className="text-stone-400">/</li>
                 <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>{review.mediaItemTitle}</Link></li>

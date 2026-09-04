@@ -1,156 +1,89 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-const sharedSource = readFileSync(
-  "src/components/archive/archive-site-header.tsx",
-  "utf8",
-);
-const catalogSource = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
-const mainSource = readFileSync("src/app/page.tsx", "utf8");
-const archiveSource = readFileSync("src/app/archive/page.tsx", "utf8");
-const queueSource = readFileSync("src/db/queries/admin-moderation-queue.ts", "utf8");
-const globalsSource = readFileSync("src/app/globals.css", "utf8");
+const read = (file: string) => readFileSync(file, "utf8");
+const headerSource = read("src/components/archive/public-site-header.tsx");
+const headerStateSource = read("src/lib/archive/public-site-header.ts");
 
-describe("archive site header", () => {
-  it("owns the shared brand, actions, and login modal", () => {
-    assert.match(sharedSource, /src="\/site-logo\.png"/);
-    assert.match(sharedSource, /Журнал &quot;Задротто&quot;/);
-    assert.match(sharedSource, /Твой журнал\. Твой архив\. Твоя база\./);
-    assert.match(sharedSource, /href="\/admin"/);
-    assert.match(sharedSource, /href="\/author"/);
-    assert.match(sharedSource, /<AuthorLoginModal/);
-    assert.match(sharedSource, /router\.refresh\(\)/);
-    assert.equal((sharedSource.match(/<AuthorLoginModal/g) ?? []).length, 1);
+const publicPages = [
+  "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx",
+  "src/app/series/[code]/page.tsx", "src/app/series/[code]/children/page.tsx",
+  "src/app/collections/page.tsx", "src/app/collections/[slug]/page.tsx",
+  "src/app/media/[code]/page.tsx", "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
+  "src/app/users/[id]/page.tsx", "src/app/users/[id]/achievements/page.tsx",
+  "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
+  "src/app/feedback/page.tsx",
+];
+
+const excludedPages = [
+  "src/app/author/(protected)/layout.tsx", "src/app/admin/(protected)/layout.tsx",
+  "src/app/author/login/page.tsx", "src/app/author/register/page.tsx",
+  "src/app/author/forgot-password/page.tsx", "src/app/author/reset-password/page.tsx",
+  "src/app/admin/login/page.tsx",
+];
+
+describe("public site header", () => {
+  it("owns the common brand, navigation, search, and author actions", () => {
+    assert.match(headerSource, /src="\/site-logo\.png"/);
+    assert.match(headerSource, />\s*Задротто\s*</);
+    for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "Подборки"], ["/reviews", "Рецензии"]]) {
+      assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));
+    }
+    assert.match(headerSource, /max-w-\[1480px\]/);
+    assert.match(headerSource, /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"/);
+    assert.match(headerSource, /<NotificationBell align="right" round \/>[\s\S]*href="\/admin"[\s\S]*href="\/author"/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*NotificationBadge[\s\S]*count=\{adminNotificationCount\}/);
   });
 
-  it("presents the quiz action as a high-rating call to play", () => {
-    assert.match(sharedSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
-    assert.match(sharedSource, /const actionClassName = `archive-control-surface \$\{actionLayoutClassName\}/);
-    assert.match(sharedSource, /const quizActionClassName = `\$\{actionLayoutClassName\} \$\{AUTHOR_RATING_TONE_CLASS_NAMES\.good\}/);
-    assert.match(
-      sharedSource,
-      /aria-label="Сыграем"[\s\S]*<span[^>]*>Сыграем<\/span>[\s\S]*<CircleHelp/,
-    );
-    assert.equal((sharedSource.match(/hidden lg:mr-2 lg:block/g) ?? []).length, 2);
+  it("opens guest login in one modal and refreshes after success", () => {
+    assert.match(headerSource, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
+    assert.match(headerSource, /createPortal\([\s\S]*<AuthorLoginModal/);
+    assert.match(headerSource, /onSuccess=\{\(\) => \{[\s\S]*router\.refresh\(\)/);
+    assert.equal((headerSource.match(/<AuthorLoginModal/g) ?? []).length, 1);
+    assert.doesNotMatch(headerSource, /href=[{"']*\/author\/login/);
   });
 
-  it("is used by both archive entry points with the correct brand links", () => {
-    assert.match(
-      catalogSource,
-      /<ArchiveSiteHeader[\s\S]*brandHref="\/"[\s\S]*variant="catalog"/,
-    );
-    assert.match(
-      mainSource,
-      /<ArchiveSiteHeader[\s\S]*brandHref="\/"[\s\S]*variant="main"/,
-    );
-    assert.doesNotMatch(mainSource, /site-logo\.png|<header/);
+  it("loads all shared session state once", () => {
+    assert.match(headerStateSource, /getCurrentAuthor\(\)/);
+    assert.match(headerStateSource, /getCurrentAdminUser\(\)/);
+    assert.match(headerStateSource, /getSubmittedModerationRequestCountForAdmin\(\)/);
+    assert.match(headerStateSource, /adminUser\s*\?\s*await getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*0/);
+    assert.match(headerStateSource, /headerProps:[\s\S]*avatarObjectKey: author\.avatarObjectKey, name: author\.name/);
   });
 
-  it("keeps catalog scrolling, controls, sticky, and compact behavior in its wrapper", () => {
-    assert.match(catalogSource, /window\.addEventListener\("scroll"/);
-    assert.match(catalogSource, /setIsCompact/);
-    assert.match(catalogSource, /<CatalogHeaderControls/);
-    assert.equal((catalogSource.match(/<CatalogHeaderControls/g) ?? []).length, 1);
-    assert.match(catalogSource, /compact=\{isCompact\}/);
-    assert.match(catalogSource, /\bsticky\b/);
-    assert.match(sharedSource, /archive-sticky-header/);
-    assert.match(globalsSource, /\.archive-catalog-header-compact\s*\{[\s\S]*max-width: 320px/);
-    assert.match(sharedSource, /archive-catalog-header archive-textured-block/);
-    assert.match(sharedSource, /archive-catalog-brand-row/);
-    assert.match(sharedSource, /archive-catalog-controls-row/);
-    assert.match(sharedSource, /quizAction && !compact/);
+  it("is mounted on every public page and excluded from private and auth shells", () => {
+    for (const file of publicPages) {
+      const source = read(file);
+      assert.match(source, /<PublicSiteHeader\b/, `${file} must render PublicSiteHeader`);
+      assert.match(source, /getPublicSiteHeaderState/, `${file} must load shared header state`);
+    }
+    for (const file of excludedPages) {
+      assert.doesNotMatch(read(file), /PublicSiteHeader/, `${file} must keep its own shell`);
+    }
   });
 
-  it("keeps one action set in the non-sticky mobile brand row", () => {
-    assert.equal((sharedSource.match(/const catalogActions =/g) ?? []).length, 1);
-    assert.match(
-      sharedSource,
-      /const adminLink = currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*\) : null/,
-    );
-    assert.match(
-      sharedSource,
-      /const authorAction = currentAuthor \? \([\s\S]*href="\/author"[\s\S]*\) : \([\s\S]*<button[\s\S]*setIsLoginOpen\(true\)/,
-    );
-    assert.match(
-      sharedSource,
-      /archive-catalog-brand-row[\s\S]*\{catalogActions\}[\s\S]*archive-catalog-controls-row[^>]*>[\s\S]*\{controls\}/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-header\s*\{\s*display: contents;[\s\S]*\.archive-catalog-controls-row\s*\{[\s\S]*position: sticky/,
-    );
+  it("uses the main-page spacing between the header and primary content", () => {
+    for (const file of [
+      "src/app/page.tsx",
+      "src/app/archive/page.tsx",
+      "src/app/series/page.tsx",
+      "src/app/series/[code]/page.tsx",
+      "src/app/collections/page.tsx",
+      "src/app/collections/[slug]/page.tsx",
+      "src/app/reviews/page.tsx",
+    ]) {
+      assert.match(
+        read(file),
+        /max-w-\[1480px\][^"\n]*flex-col gap-3/,
+        `${file} must use the shared 0.75rem content gap`,
+      );
+    }
   });
 
-  it("uses a neutral catalog wrapper and a dedicated brand landmark", () => {
-    assert.match(sharedSource, /const SiteHeaderContainer = isCatalog \? "div" : "header"/);
-    assert.match(
-      sharedSource,
-      /<SiteHeaderContainer[\s\S]*archive-catalog-brand-row[\s\S]*<header className="archive-catalog-brand-landmark min-w-0">[\s\S]*archive-catalog-brand-link[\s\S]*<\/header>[\s\S]*\{catalogActions\}/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-brand-landmark\s*\{[\s\S]*max-width: 720px;[\s\S]*order: 1;/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-header-compact \.archive-catalog-brand-landmark\s*\{[\s\S]*display: none;/,
-    );
-  });
-
-  it("keeps the main header on its independent non-catalog layout", () => {
-    assert.match(
-      sharedSource,
-      /: "archive-main-brand-header archive-paper archive-panel grid grid-cols-\[minmax\(0,1fr\)_auto\][^"]*lg:flex lg:justify-between[^"]*lg:px-7 lg:py-5"/,
-    );
-    assert.match(
-      sharedSource,
-      /<ActionsContainer aria-label="Основная навигация" className="contents lg:flex[^\"]*">[\s\S]*col-span-2 row-start-2[\s\S]*\{adminLink\}[\s\S]*\{authorAction\}/,
-    );
-    assert.match(mainSource, /className="relative w-full lg:w-\[298px\]"/);
-    assert.match(sharedSource, /col-span-2 row-start-2 min-w-0[^"]*lg:flex[^"]*lg:gap-2[\s\S]*min-w-0 w-full lg:flex-1/);
-    assert.match(sharedSource, /: "w-9 px-0 lg:w-auto lg:gap-2 lg:px-3"/);
-    assert.match(sharedSource, /: "sr-only lg:not-sr-only"/);
-    assert.match(
-      sharedSource,
-      /className="size-11 shrink-0 object-contain lg:size-14"[\s\S]*text-\[clamp\(0\.6875rem,3\.75vw,1\.25rem\)\][^"]*lg:text-4xl[\s\S]*hidden[^"]*lg:block/,
-    );
-  });
-
-  it("badges the admin entry when there are submitted moderation requests", () => {
-    assert.match(
-      sharedSource,
-      /href="\/admin"[\s\S]*NotificationBadge count=\{submittedRequestCount\}/,
-    );
-    assert.match(
-      catalogSource,
-      /submittedRequestCount=\{submittedRequestCount\}/,
-    );
-    assert.match(mainSource, /getSubmittedModerationRequestCountForAdmin/);
-    assert.match(queueSource, /getOpenBugReportCount/);
-    assert.match(
-      mainSource,
-      /currentAdmin \? getSubmittedModerationRequestCountForAdmin\(\) : 0/,
-    );
-    assert.match(archiveSource, /getSubmittedModerationRequestCountForAdmin/);
-    assert.match(
-      archiveSource,
-      /currentAdminUser \? getSubmittedModerationRequestCountForAdmin\(\) : 0/,
-    );
-    assert.match(queueSource, /getSubmittedAuthorMediaItemsCountForAdmin\(\)/);
-    assert.match(queueSource, /getSubmittedFranchisesCountForAdmin\(\)/);
-    assert.match(queueSource, /getSubmittedContributionReviewCountForAdmin\(\)/);
-    assert.match(
-      queueSource,
-      /mediaItemsCount \+ franchisesCount \+ reviewsCount/,
-    );
-  });
-
-  it("does not duplicate navigation or modal ownership in the wrappers", () => {
-    assert.doesNotMatch(
-      catalogSource,
-      /AuthorLoginModal|site-logo\.png|href="\/(?:admin|author)"|createPortal|useRouter/,
-    );
-    assert.doesNotMatch(mainSource, /AuthorLoginModal|href="\/(?:admin|author)"/);
+  it("replaces the legacy header implementations", () => {
+    assert.equal(existsSync("src/components/archive/archive-site-header.tsx"), false);
+    assert.equal(existsSync("src/app/catalog-sticky-header.tsx"), false);
+    assert.equal(existsSync("src/app/main/main-header.tsx"), false);
   });
 });

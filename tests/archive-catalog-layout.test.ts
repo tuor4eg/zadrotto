@@ -5,6 +5,12 @@ import { describe, it } from "node:test";
 const source = readFileSync("src/components/archive/archive-catalog-layout.tsx", "utf8");
 
 describe("archive catalog preview layout", () => {
+  it("aligns the preview edges with the catalog page", () => {
+    assert.match(source, /const FIXED_PREVIEW_TOP_OFFSET = 16/);
+    assert.match(source, /const FIXED_PREVIEW_BOTTOM_OFFSET = 12/);
+    assert.doesNotMatch(source, /const FIXED_PREVIEW_TOP_OFFSET = 84/);
+  });
+
   it("caps the desktop preview at the available viewport height and scrolls its contents", () => {
     assert.match(source, /const height = availableHeight/);
     assert.doesNotMatch(source, /Math\.max\(previewPanel\.offsetHeight, availableHeight\)/);

@@ -1,9 +1,10 @@
 import Link from "next/link";
 
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { PaginationNav } from "@/components/pagination-nav";
 import { getPublishedFranchisesPage } from "@/db/queries/franchises";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { SeriesSearch } from "./series-search";
 import { SeriesCatalog } from "./series-catalog";
@@ -23,14 +24,17 @@ type SeriesPageProps = {
 };
 
 export default async function SeriesPage({ searchParams }: SeriesPageProps) {
-  const [params, currentAuthor] = await Promise.all([searchParams, getCurrentAuthor()]);
+  const [params, headerState] = await Promise.all([
+    searchParams,
+    getPublicSiteHeaderState(),
+  ]);
   const searchQuery = params.q?.trim() ?? "";
   const pageSize = parsePageSize(
     params.pageSize,
     SERIES_PAGE_SIZE_OPTIONS,
     DEFAULT_SERIES_PAGE_SIZE,
   );
-  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
+  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(headerState.author?.id);
   const seriesPage = await getPublishedFranchisesPage({
     enabledMediaTypeCodes,
     letter: params.letter,
@@ -54,35 +58,13 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   };
 
   return (
-    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
-      <div className="mx-auto flex w-full max-w-[1280px] flex-col gap-3">
+    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
+        <div className="mx-auto w-full max-w-[1280px]">
         <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
-          <nav
-            aria-label="Хлебные крошки"
-            className="font-mono text-xs uppercase tracking-[0.14em] text-stone-600"
-          >
-            <ol className="flex flex-wrap items-center gap-x-2 gap-y-1">
-              <li>
-                <Link
-                  className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                  href="/"
-                >
-                  Главная
-                </Link>
-              </li>
-              <li aria-hidden="true" className="text-stone-400">/</li>
-              <li>
-                <Link
-                  className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                  href="/archive"
-                >
-                  Архив
-                </Link>
-              </li>
-            </ol>
-          </nav>
-          <h1 className="mt-3 font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
+          <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Все серии
           </h1>
           <SeriesSearch searchQuery={searchQuery} />
@@ -144,6 +126,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
               variant="archive"
             />
           </div>
+        </div>
         </div>
       </div>
     </main>

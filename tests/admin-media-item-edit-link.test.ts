@@ -36,7 +36,7 @@ describe("admin entity edit action", () => {
   it("shows the edit action in the archive dossier header only to an admin", () => {
     assert.match(
       mediaPageSource,
-      /Promise\.all\(\[[\s\S]*getCurrentAuthor\(\),[\s\S]*getCurrentAdminUser\(\),[\s\S]*\]\)/,
+      /const headerState = await getPublicSiteHeaderState\(\)/,
     );
     assert.match(
       mediaPageSource,
@@ -52,11 +52,11 @@ describe("admin entity edit action", () => {
   it("shows the series edit action only to an admin", () => {
     assert.match(
       franchisePageSource,
-      /Promise\.all\(\[[\s\S]*getCurrentAuthor\(\),[\s\S]*getCurrentAdminUser\(\),[\s\S]*\]\)/,
+      /getPublicSiteHeaderState\(\)/,
     );
     assert.match(
       franchisePageSource,
-      /currentAdminUser \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать серию \$\{franchise\.title\}`\}[\s\S]*href=\{`\/admin\/series\/\$\{franchise\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать серию"[\s\S]*tooltipSide="bottom"[\s\S]*\) : null/,
+      /adminCanEdit=\{headerState\.currentAdminUser\}/,
     );
   });
 });

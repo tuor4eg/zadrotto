@@ -4,10 +4,10 @@ import { describe, it } from "node:test";
 
 const globalsSource = readFileSync("src/app/globals.css", "utf8");
 const sharedHeaderSource = readFileSync(
-  "src/components/archive/archive-site-header.tsx",
+  "src/components/archive/public-site-header.tsx",
   "utf8",
 );
-const headerSource = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
+const archivePageSource = readFileSync("src/app/archive/page.tsx", "utf8");
 const layoutSource = readFileSync(
   "src/components/archive/archive-catalog-layout.tsx",
   "utf8",
@@ -21,9 +21,9 @@ describe("simple catalog layout", () => {
   it("uses the shared textured block without generated layers", () => {
     assert.match(globalsSource, /\.archive-textured-block\s*\{[\s\S]*border-radius: 8px;[\s\S]*box-shadow:/);
     assert.doesNotMatch(globalsSource, /\.archive-textured-block::(?:before|after)/);
-    assert.match(sharedHeaderSource, /archive-catalog-header archive-textured-block/);
-    assert.match(sharedHeaderSource, /archive-sticky-header/);
-    assert.doesNotMatch(headerSource, /archive-(?:paper|panel|stack)|-mt-2/);
+    assert.match(sharedHeaderSource, /z-50 w-full text-stone-100/);
+    assert.doesNotMatch(sharedHeaderSource, /z-50 w-full bg-stone-900/);
+    assert.doesNotMatch(sharedHeaderSource, /sticky top-0/);
     assert.doesNotMatch(sharedHeaderSource, /-mt-2/);
     assert.match(layoutSource, /archive-textured-block flex min-h-0/);
     assert.match(layoutSource, /archive-textured-block relative flex w-full/);
@@ -36,41 +36,13 @@ describe("simple catalog layout", () => {
     );
   });
 
-  it("splits the mobile catalog header and reunifies it on desktop", () => {
-    assert.match(globalsSource, /\.archive-catalog-header\s*\{\s*display: contents;/);
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-controls-row\s*\{[\s\S]*position: sticky;[\s\S]*safe-area-inset-top/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-brand-row\s*\{[\s\S]*padding-right: 0\.5rem;[\s\S]*border-bottom: 0;[\s\S]*box-shadow: none;/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-controls-row\s*\{[\s\S]*margin-top: -0\.75rem;[\s\S]*border-top: 0;/,
-    );
-    assert.match(globalsSource, /@media \(min-width: 1024px\)[\s\S]*\.archive-catalog-header\s*\{[\s\S]*display: flex;/);
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-brand-row\s*\{\s*display: contents;/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-controls-row\s*\{[\s\S]*display: flex;[\s\S]*flex: 0 1 auto;[\s\S]*order: 2;[\s\S]*gap: 0\.5rem;[\s\S]*position: static;[\s\S]*margin: 0 0 0 auto;/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-catalog-header\s*\{[\s\S]*justify-content: flex-start;/,
-    );
-    assert.match(
-      globalsSource,
-      /@media \(min-width: 1024px\)[\s\S]*\.archive-catalog-header\s*\{[\s\S]*gap: 0\.5rem;/,
-    );
-    assert.match(sharedHeaderSource, /archive-catalog-brand-row/);
-    assert.match(sharedHeaderSource, /archive-catalog-brand-landmark/);
-    assert.match(sharedHeaderSource, /archive-catalog-header-actions/);
-    assert.match(sharedHeaderSource, /hidden[\s\S]*lg:block/);
+  it("keeps catalog controls in the single non-sticky header row", () => {
+    assert.match(sharedHeaderSource, /controls \? \([\s\S]*\{controls\}[\s\S]*\) : \(/);
+    assert.doesNotMatch(sharedHeaderSource, /secondaryControls|sticky top-0/);
+    assert.match(archivePageSource, /<PublicSiteHeader[\s\S]*controls=[\s\S]*<CatalogHeaderControls/);
+    assert.doesNotMatch(archivePageSource, /secondaryControls|showSearch|\bsticky\b/);
+    assert.doesNotMatch(archivePageSource, /isCompact|setIsCompact|addEventListener\("scroll"/);
+    assert.doesNotMatch(globalsSource, /archive-catalog-header-compact/);
   });
 
   it("keeps the distinctive paper folder tabs unchanged", () => {

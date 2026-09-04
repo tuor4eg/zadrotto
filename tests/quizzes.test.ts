@@ -153,7 +153,6 @@ describe("quizzes", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
     const participationRoute = readFileSync("src/app/api/quizzes/active/participation/route.ts", "utf8");
     const guessRoute = readFileSync("src/app/quiz/guess/route.ts", "utf8");
-    const header = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
     const modal = readFileSync("src/components/quizzes/quiz-modal.tsx", "utf8");
 
     assert.match(query, /insert\(quizParticipants\)[\s\S]*onConflictDoNothing\(\)/);
@@ -161,16 +160,9 @@ describe("quizzes", () => {
     assert.match(guessRoute, /checkQuizGuess\(Number\(titleId\), author\.id\)/);
     assert.match(guessRoute, /result\.kind === "not-participant"[\s\S]*status: 403/);
     assert.equal(existsSync("src/app/quiz/page.tsx"), false);
-    const sharedHeader = readFileSync("src/components/archive/archive-site-header.tsx", "utf8");
     const mainPage = readFileSync("src/app/page.tsx", "utf8");
-    assert.match(header, /quiz=\{activeQuiz/);
     assert.match(mainPage, /quiz=\{activeQuiz/);
-    assert.match(sharedHeader, /archive-catalog-controls-row[\s\S]*hidden[^\"]*lg:block[\s\S]*quizAction/);
-    assert.match(sharedHeader, /archive-catalog-header-actions[\s\S]*lg:hidden[\s\S]*quizAction/);
-    assert.match(sharedHeader, /quiz && !quiz\.isCompleted && !isCurrentQuizCompleted/);
-    assert.match(sharedHeader, /const \{ quizParticipant \} = useExternalInterface\(\)/);
     assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
-    assert.match(sharedHeader, /<QuizModal/);
     assert.match(modal, /<ActiveQuizPanel/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);

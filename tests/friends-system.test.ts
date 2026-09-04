@@ -13,7 +13,7 @@ const profilePage = read("src/app/users/[id]/page.tsx");
 const friendsPage = read("src/app/author/(protected)/friends/page.tsx");
 const settingsPage = read("src/app/author/(protected)/profile/page.tsx");
 const authorLayout = read("src/app/author/(protected)/layout.tsx");
-const archiveHeader = read("src/components/archive/archive-site-header.tsx");
+const publicHeader = read("src/components/archive/public-site-header.tsx");
 const mediaItemTile = read("src/app/media-item-tile.tsx");
 const authorStatistics = read("src/components/author/author-statistics.tsx");
 
@@ -87,7 +87,7 @@ test("incoming requests are badged through the site, profile, and friends naviga
   assert.match(queries, /getIncomingFriendRequestCount/);
   assert.match(queries, /eq\(authorFriendships\.status, "pending"\)/);
   assert.match(queries, /ne\(authorFriendships\.requestedByAuthorId, authorId\)/);
-  assert.match(archiveHeader, /NotificationBadge count=\{incomingFriendRequestCount\}/);
+  assert.match(publicHeader, /<NotificationBell align="right" round \/>/);
   assert.match(authorLayout, /NotificationBadge count=\{incomingFriendRequestCount\}/);
   assert.match(friendsPage, /item === "incoming"[\s\S]*NotificationBadge/);
 });

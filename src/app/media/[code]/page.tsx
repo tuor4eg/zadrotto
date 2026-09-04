@@ -9,6 +9,7 @@ import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-s
 import { MediaItemReviews } from "@/app/media-item-reviews";
 import { RecentlyViewedMarker } from "@/app/media/recently-viewed-marker";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublishedReviewsForMediaItem } from "@/db/queries/contribution-reviews";
 import {
   getMediaItemByCode,
@@ -22,8 +23,8 @@ import {
 } from "@/db/queries/media-types";
 import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
@@ -80,10 +81,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   if (legacyReviewId && /^\d+$/.test(legacyReviewId)) {
     redirect(`/reviews/${legacyReviewId}`);
   }
-  const [currentAuthor, currentAdminUser] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
-  ]);
+  const headerState = await getPublicSiteHeaderState();
+  const currentAuthor = headerState.author;
   const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(currentAuthor?.id);
   const item = await getMediaItemByCode(code, accessibleMediaTypeCodes, currentAuthor?.id);
 
@@ -116,12 +115,14 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <BugReportEntityContextRegistration context={{ entityId: String(item.id), entityType: "media-item" }} />
       {currentAuthor ? <RecentlyViewedMarker code={item.code} /> : null}
-      <div className="mx-auto w-full max-w-6xl">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
+        <div className="mx-auto w-full max-w-6xl">
         <MediaItemDetails
           item={item}
           variant="archive"
           headerActions={
-            currentAdminUser ? (
+            headerState.currentAdminUser ? (
               <AdminEntityEditLink
                 ariaLabel={`Редактировать запись ${item.title}`}
                 href={`/admin/media/${item.id}/edit`}
@@ -135,28 +136,6 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               className="min-w-0 flex-1 text-xs leading-5 text-stone-600"
             >
               <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
-                <li>
-                  <Link
-                    className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                    href="/"
-                  >
-                    Главная
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-stone-400">
-                  /
-                </li>
-                <li>
-                  <Link
-                    className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                    href="/archive"
-                  >
-                    Архив
-                  </Link>
-                </li>
-                <li aria-hidden="true" className="text-stone-400">
-                  /
-                </li>
                 <li>
                   <Link
                     className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
@@ -270,6 +249,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
             />
           }
         />
+        </div>
       </div>
     </main>
   );

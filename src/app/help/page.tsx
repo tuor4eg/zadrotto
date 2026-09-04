@@ -2,11 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 
-import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
-import { getIncomingFriendRequestCount } from "@/db/queries/friends";
-import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
 export const metadata: Metadata = {
   title: 'Помощь — Журнал "Задротто"',
@@ -17,26 +14,13 @@ const linkClassName =
   "font-medium text-red-950 underline decoration-stone-400 underline-offset-4 hover:decoration-red-950";
 
 export default async function HelpPage() {
-  const [currentAuthor, currentAdmin] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
-  ]);
-  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
-    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
-    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
-  ]);
+  const headerState = await getPublicSiteHeaderState();
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
-        <ArchiveSiteHeader
-          brandHref="/"
-          currentAdminUser={Boolean(currentAdmin)}
-          currentAuthor={Boolean(currentAuthor)}
-          incomingFriendRequestCount={incomingFriendRequestCount}
-          submittedRequestCount={submittedRequestCount}
-          variant="main"
-        />
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
           <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
@@ -78,8 +62,8 @@ export default async function HelpPage() {
           <h2 className="font-serif text-2xl">Как войти в аккаунт автора?</h2>
           <div className="mt-3 space-y-3 text-sm leading-6 text-stone-600">
             <p>
-              Нажмите «Войти» в правой части шапки. После входа там появится кнопка «Профиль»,
-              ведущая в кабинет автора.
+              Нажмите кнопку входа в правой части шапки. После входа там появится аватар,
+              ведущий в кабинет автора.
             </p>
             <p>
               В кабинете находятся статистика, предложения, рецензии, профиль, друзья и настройки
@@ -210,6 +194,7 @@ export default async function HelpPage() {
             модерации — человеческим языком и без торжественного шелеста папок.
           </p>
         </section>
+        </div>
       </div>
     </main>
   );

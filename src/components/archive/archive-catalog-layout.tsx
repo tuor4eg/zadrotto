@@ -19,8 +19,8 @@ type ArchiveCatalogLayoutProps = {
   toolbar?: ReactNode;
 };
 
-const FIXED_PREVIEW_TOP_OFFSET = 84;
-const FIXED_PREVIEW_BOTTOM_OFFSET = 16;
+const FIXED_PREVIEW_TOP_OFFSET = 16;
+const FIXED_PREVIEW_BOTTOM_OFFSET = 12;
 
 const EMPTY_FIXED_PREVIEW_STATE: FixedPreviewState = {
   height: 0,

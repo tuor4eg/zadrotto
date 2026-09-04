@@ -48,18 +48,6 @@ export function SeriesPageHeader({
         <nav aria-label="Хлебные крошки" className="min-w-0 flex-1 leading-5 text-stone-600">
           <ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
             <li className="shrink-0">
-              <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href="/">
-                Главная
-              </Link>
-            </li>
-            <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-            <li className="shrink-0">
-              <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href="/archive">
-                Архив
-              </Link>
-            </li>
-            <li aria-hidden="true" className="shrink-0 text-stone-400">/</li>
-            <li className="shrink-0">
               <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href="/series">
                 Все серии
               </Link>

@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, inArray, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, exists, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -181,6 +181,215 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
     coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
     coverUrl: resolveCoverUrl(review.coverUrl),
   };
+}
+
+export type PublishedReviewsCatalogFilters = {
+  authorId: number | null
+  enabledMediaTypeCodes: readonly string[]
+  mediaType: string | "all"
+  page: number
+  pageSize: number
+  preset: "all" | "fresh" | "high" | "long" | "short"
+  scoreFilter: "all" | "10" | "9" | "8" | "7" | "6" | "low" | "none"
+  searchQuery: string
+}
+
+function buildPublishedReviewsCatalogConditions(filters: PublishedReviewsCatalogFilters) {
+  const conditions = [
+    eq(contributions.type, "review"),
+    eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+    getMediaTypeCodeFilterSql(mediaItems.mediaType, filters.enabledMediaTypeCodes),
+  ]
+
+  if (filters.mediaType !== "all") {
+    conditions.push(eq(mediaItems.mediaType, filters.mediaType))
+  }
+
+  if (filters.authorId) {
+    conditions.push(eq(contributions.authorId, filters.authorId))
+  }
+
+  const normalizedQuery = normalizeSearchText(filters.searchQuery)
+  if (normalizedQuery) {
+    conditions.push(containsNormalizedSearchSql(mediaItems.title, normalizedQuery))
+  }
+
+  if (filters.scoreFilter === "none") {
+    conditions.push(isNull(ratings.score))
+  } else if (filters.scoreFilter === "low") {
+    conditions.push(lte(ratings.score, 50))
+  } else if (filters.scoreFilter !== "all") {
+    conditions.push(eq(ratings.score, Number(filters.scoreFilter) * 10))
+  }
+
+  if (filters.preset === "fresh") {
+    conditions.push(sql`${contributions.reviewedAt} >= now() - interval '30 days'`)
+  } else if (filters.preset === "high") {
+    conditions.push(gte(ratings.score, 80))
+  } else if (filters.preset === "long") {
+    conditions.push(sql`char_length(${contributionReviews.body}) >= 2000`)
+  } else if (filters.preset === "short") {
+    conditions.push(sql`char_length(${contributionReviews.body}) <= 500`)
+  }
+
+  return and(...conditions)
+}
+
+export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalogFilters) {
+  if (filters.enabledMediaTypeCodes.length === 0) {
+    return {
+      items: [],
+      page: 1,
+      pageSize: filters.pageSize,
+      totalCount: 0,
+      totalPages: 1,
+    }
+  }
+
+  const whereCondition = buildPublishedReviewsCatalogConditions(filters)
+  const fromCatalog = () =>
+    db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(contributions)
+      .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+      .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+      .innerJoin(authors, eq(authors.id, contributions.authorId))
+      .leftJoin(
+        ratings,
+        and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      )
+      .where(whereCondition)
+
+  const [countRow] = await fromCatalog()
+  const totalCount = countRow?.count ?? 0
+  const totalPages = getTotalPages(totalCount, filters.pageSize)
+  const page = clampPage(filters.page, totalPages)
+
+  const items = await db
+    .select({
+      id: contributions.id,
+      authorId: authors.id,
+      authorName: authors.name,
+      authorCode: authors.code,
+      authorAvatarObjectKey: authors.avatarObjectKey,
+      authorScore: ratings.score,
+      title: contributionReviews.title,
+      publishedAt: contributions.reviewedAt,
+      updatedAt: contributions.updatedAt,
+      mediaItemCode: mediaItems.code,
+      mediaItemTitle: mediaItems.title,
+      mediaType: mediaItems.mediaType,
+      mediaItemReleaseYear: mediaItems.releaseYear,
+      mediaItemCarrierCode: mediaCarriers.code,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverUrl: mediaItems.coverUrl,
+    })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
+    .where(whereCondition)
+    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .limit(filters.pageSize)
+    .offset(getOffset(page, filters.pageSize))
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      coverUrl: resolveCoverUrl(item.coverUrl),
+    })),
+    page,
+    pageSize: filters.pageSize,
+    totalCount,
+    totalPages,
+  }
+}
+
+export async function getPublishedReviewCatalogAuthors(
+  enabledMediaTypeCodes: readonly string[],
+) {
+  if (enabledMediaTypeCodes.length === 0) {
+    return []
+  }
+
+  return db
+    .selectDistinct({
+      id: authors.id,
+      name: authors.name,
+    })
+    .from(contributions)
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(
+      and(
+        eq(contributions.type, "review"),
+        eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ),
+    )
+    .orderBy(asc(authors.name))
+}
+
+export async function getLatestPublishedReviewCards(
+  accessibleMediaTypeCodes: readonly string[],
+  limit = 3,
+) {
+  if (accessibleMediaTypeCodes.length === 0 || limit <= 0) {
+    return []
+  }
+
+  const rows = await db
+    .select({
+      id: contributions.id,
+      authorId: authors.id,
+      authorName: authors.name,
+      authorCode: authors.code,
+      authorAvatarObjectKey: authors.avatarObjectKey,
+      authorScore: ratings.score,
+      title: contributionReviews.title,
+      body: contributionReviews.body,
+      mediaItemTitle: mediaItems.title,
+      mediaType: mediaItems.mediaType,
+      mediaItemCarrierCode: mediaCarriers.code,
+      mediaItemReleaseYear: mediaItems.releaseYear,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverUrl: mediaItems.coverUrl,
+      publishedAt: contributions.reviewedAt,
+      updatedAt: contributions.updatedAt,
+    })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
+    .where(
+      and(
+        eq(contributions.type, "review"),
+        eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        inArray(mediaItems.mediaType, [...accessibleMediaTypeCodes]),
+      ),
+    )
+    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .limit(limit)
+
+  return rows.map((review) => ({
+    ...review,
+    coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
+    coverUrl: resolveCoverUrl(review.coverUrl),
+  }))
 }
 
 export async function getAuthorReviews(

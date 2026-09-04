@@ -9,11 +9,12 @@ const mediaItemsQuery = readFileSync("src/db/queries/media-items.ts", "utf8");
 const page = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 
 describe("public media related series", () => {
-  it("starts the record breadcrumb from the home page", () => {
+  it("starts the record breadcrumb from its media type", () => {
     assert.match(
       page,
-      /aria-label="Хлебные крошки"[\s\S]*href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив/,
+      /aria-label="Хлебные крошки"[\s\S]*href=\{`\/archive\?type=\$\{encodeURIComponent\(item\.mediaType\)\}`\}/,
     );
+    assert.doesNotMatch(page, />\s*(?:Главная|Архив)\s*</);
   });
 
   it("builds direct sections before unique nearest-first ancestor sections", () => {

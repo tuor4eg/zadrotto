@@ -12,7 +12,7 @@ Specialists live in `.codex/agents`:
 The primary agent normally implements, tests, and reviews focused changes itself. Spawn a
 specialist only when the task is large, risky, or contains an independent subtask that benefits
 from separate context. Do not create temporary agents duplicating these roles. Pass specialists a
-focused brief and the minimum useful conversation history.
+focused brief, applicable skill names, and the minimum useful conversation history.
 
 ## Context discipline
 

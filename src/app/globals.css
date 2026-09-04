@@ -192,6 +192,12 @@
   }
 }
 
+html {
+  /* Chrome ignores scrollbar-gutter on the root unless overflow is not visible */
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -280,6 +286,27 @@ body {
   color: var(--archive-paper-ink);
 }
 
+.archive-page:not(.archive-catalog-page):has(.public-site-header) {
+  padding-top: 0.75rem;
+  padding-bottom: 0.75rem;
+}
+
+.archive-page > :has(> .public-site-header) {
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .archive-page:not(.archive-catalog-page):has(.public-site-header) {
+    padding-bottom: 1.25rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .archive-page:not(.archive-catalog-page):has(.public-site-header) {
+    padding-bottom: 1.75rem;
+  }
+}
+
 .archive-catalog-page {
   --archive-catalog-page-padding-x: 0.75rem;
   --archive-catalog-page-padding-y: 0.75rem;
@@ -317,9 +344,7 @@ body {
 }
 
 .archive-paper,
-.archive-textured-block,
-.archive-catalog-brand-row,
-.archive-catalog-controls-row {
+.archive-textured-block {
   background:
     radial-gradient(circle at 20% 15%, rgb(var(--archive-paper-grain-primary) / 8%) 0 1px, transparent 1px),
     radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),
@@ -492,46 +517,6 @@ body {
   border: 1px solid rgb(var(--archive-paper-edge) / 22%);
   border-radius: 8px;
   box-shadow: 0 8px 20px rgb(var(--archive-shadow) / 12%);
-}
-
-.archive-catalog-header {
-  display: contents;
-}
-
-.archive-catalog-brand-row,
-.archive-catalog-controls-row {
-  border: 1px solid rgb(var(--archive-paper-edge) / 22%);
-  border-radius: 8px;
-  box-shadow: 0 8px 20px rgb(var(--archive-shadow) / 12%);
-}
-
-.archive-catalog-brand-row {
-  position: relative;
-  z-index: 41;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  padding: 0.75rem;
-  padding-right: 0.5rem;
-  padding-bottom: 0.5rem;
-  margin-bottom: -1px;
-  border-bottom: 0;
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 0;
-  box-shadow: none;
-}
-
-.archive-catalog-controls-row {
-  position: sticky;
-  top: calc(0.75rem + env(safe-area-inset-top));
-  z-index: 40;
-  margin-top: -0.75rem;
-  padding: 0.5rem;
-  padding-top: 0.375rem;
-  border-top: 0;
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
 }
 
 .archive-catalog-filter-menu {
@@ -836,71 +821,7 @@ body {
   transform: translateY(5px);
 }
 
-.archive-sticky-header {
-  position: sticky;
-  top: calc(0.75rem + constant(safe-area-inset-top));
-  top: calc(0.75rem + env(safe-area-inset-top));
-  z-index: 40;
-}
-
 @media (min-width: 1024px) {
-  .archive-catalog-header {
-    display: flex;
-    width: 100%;
-    max-width: none;
-    align-items: center;
-    justify-content: flex-start;
-    gap: 0.5rem;
-    margin-right: auto;
-    margin-left: auto;
-    padding: 1.25rem 1.75rem;
-    transition-property: max-width, padding, width;
-    transition-duration: 200ms;
-  }
-
-  .archive-catalog-header-compact {
-    width: 100%;
-    max-width: 320px;
-    flex-wrap: nowrap;
-    justify-content: center;
-    gap: 0.5rem;
-    margin-right: 0;
-    margin-left: auto;
-    padding: 0.75rem 0.5rem;
-  }
-
-  .archive-catalog-brand-row {
-    display: contents;
-  }
-
-  .archive-catalog-brand-landmark {
-    max-width: 720px;
-    order: 1;
-  }
-
-  .archive-catalog-header-compact .archive-catalog-brand-landmark {
-    display: none;
-  }
-
-  .archive-catalog-controls-row {
-    display: flex;
-    min-width: 0;
-    flex: 0 1 auto;
-    order: 2;
-    gap: 0.5rem;
-    position: static;
-    margin: 0 0 0 auto;
-    padding: 0;
-    border: 0;
-    border-radius: 0;
-    background: none;
-    box-shadow: none;
-  }
-
-  .archive-catalog-header-actions {
-    order: 3;
-  }
-
   .archive-catalog-filter-menu {
     position: absolute;
     top: 100%;
@@ -909,10 +830,6 @@ body {
     width: min(19rem, calc(100vw - 2rem));
     max-width: calc(100vw - 1.5rem);
     margin-top: 0.5rem;
-  }
-
-  .archive-sticky-header {
-    top: calc(0.75rem + env(safe-area-inset-top));
   }
 }
 

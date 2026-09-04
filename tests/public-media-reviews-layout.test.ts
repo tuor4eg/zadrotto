@@ -9,6 +9,7 @@ const reviewArticle = readFileSync("src/app/review-article.tsx", "utf8");
 const reviewPage = readFileSync("src/app/reviews/[id]/page.tsx", "utf8");
 const globals = readFileSync("src/app/globals.css", "utf8");
 const reviewQuery = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
+const mainPage = readFileSync("src/app/page.tsx", "utf8");
 
 describe("public media reviews layout", () => {
   it("hides an empty review shelf from guests and keeps it below the cover", () => {
@@ -34,6 +35,19 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(mediaPage, /MediaItemReviewLayer/);
     assert.match(mediaPage, /legacyReviewId[\s\S]*redirect\(`\/reviews\/\$\{legacyReviewId\}`\)/);
     assert.match(reviewPage, /<ReviewArticle[\s\S]*mediaItemMeta=\{getMediaItemSummaryParts/);
+  });
+
+  it("keeps the latest review cover visible on the main page", () => {
+    assert.match(mainPage, /const coverUrl = review\?\.coverThumbUrl \?\? review\?\.coverUrl/);
+    assert.match(
+      mainPage,
+      /aria-labelledby="main-latest-review"[\s\S]*backgroundImage: `url\(\$\{JSON\.stringify\(coverUrl\)\}\)`[\s\S]*position: "absolute"/,
+    );
+  });
+
+  it("keeps the main-page review card focused on the latest review", () => {
+    assert.doesNotMatch(mainPage, /href="\/reviews"[\s\S]*Смотреть всё/);
+    assert.match(mainPage, /href=\{`\/reviews\/\$\{review\.id\}`\}/);
   });
 
   it("renders full document-sized review content and actions", () => {

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Layers3, MessageSquareQuote, Sparkles, Star, Trophy } from "lucide-react";
 
 import { getLatestAwardedAchievement } from "@/db/queries/achievements";
-import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getAuthorDigitalProfile } from "@/db/queries/author-digital-profile";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import {
@@ -19,8 +19,8 @@ import {
   getActiveQuiz,
   getActiveQuizParticipantState,
 } from "@/db/queries/quizzes";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
+import { formatRelativeArchiveDate } from "@/lib/archive/relative-date";
 import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
 import { getDailyDossier } from "@/lib/main-page/daily-dossier";
 import { getAuthorResearchMessage } from "@/lib/main-page/author-research-message";
@@ -29,7 +29,6 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
 import { ArchiveFeed } from "./main/archive-feed";
 import { ArchiveRiddle } from "./main/archive-riddle";
-import { MainHeader } from "./main/main-header";
 
 export const dynamic = "force-dynamic";
 
@@ -57,21 +56,6 @@ function EditorialCollectionsStrip({ collections }: { collections: PublishedColl
       </Link>)}
     </div>
   </section>;
-}
-
-function formatRelativeArchiveDate(value: Date) {
-  const millisecondsPerDay = 86_400_000;
-  const differenceInDays = Math.round((value.getTime() - Date.now()) / millisecondsPerDay);
-
-  if (differenceInDays >= -1 && differenceInDays <= 0) {
-    return new Intl.RelativeTimeFormat("ru-RU", { numeric: "auto" }).format(differenceInDays, "day");
-  }
-
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    timeZone: "Europe/Moscow",
-  }).format(value);
 }
 
 function RecommendationRating({ item }: { item: MainPageMediaItem }) {
@@ -187,29 +171,21 @@ function LatestReview({
   mediaTypeName,
   review,
 }: {
-  mediaTypeName: string | null;
-  review: LatestReviewCard;
+  mediaTypeName: string | null
+  review: LatestReviewCard
 }) {
-  const coverUrl = review?.coverThumbUrl ?? review?.coverUrl;
+  const coverUrl = review?.coverThumbUrl ?? review?.coverUrl
 
   return (
     <section
       className="archive-paper archive-panel group relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0"
       aria-labelledby="main-latest-review"
     >
-      {review ? (
-        <Link
-          href={`/reviews/${review.id}`}
-          aria-label={`Читать рецензию на «${review.mediaItemTitle}»`}
-          className="inset-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950"
-          style={{ position: "absolute", zIndex: 20 }}
-        />
-      ) : null}
       {coverUrl ? (
         <>
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
+            className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
             style={{
               backgroundImage: `url(${JSON.stringify(coverUrl)})`,
               maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
@@ -219,7 +195,7 @@ function LatestReview({
           />
           <div
             aria-hidden="true"
-            className="absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
+            className="pointer-events-none absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
             style={{
               maskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
               position: "absolute",
@@ -229,42 +205,60 @@ function LatestReview({
         </>
       ) : null}
 
-      <div className="relative z-10 flex flex-1 max-w-[72%] flex-col">
-        <div className="flex h-8 shrink-0 items-start gap-2">
-          <MessageSquareQuote aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
-          <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
-            Мнение из архива
-          </h2>
+      <div className="relative z-10 flex flex-1 flex-col">
+        <div className="flex h-8 shrink-0 items-center gap-2">
+          <div className="flex min-w-0 items-center gap-2">
+            <MessageSquareQuote aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
+            <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
+              Мнение из архива
+            </h2>
+          </div>
         </div>
-        <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
-          Свежая рецензия одного из наших авторов
-        </p>
 
         {review ? (
-          <div className="flex min-h-0 flex-1 flex-col pt-1">
-            <h3 className="shrink-0 font-serif text-xl leading-tight text-stone-950">{review.mediaItemTitle}</h3>
-            <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
-              {mediaTypeName ?? review.mediaType}
-              {review.releaseYear ? ` · ${review.releaseYear}` : ""}
-            </p>
-            <AdaptiveReviewExcerpt text={review.excerpt} />
-            <p className="mt-3 shrink-0 text-xs text-stone-600">— {review.authorName}</p>
-          </div>
+          <Link
+            href={`/reviews/${review.id}`}
+            className="mt-1 flex min-h-0 flex-1 flex-col rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
+            aria-label={`Читать рецензию на «${review.mediaItemTitle}»`}
+          >
+            <div className="flex min-h-0 max-w-[72%] flex-1 flex-col">
+              <p className="h-8 shrink-0 text-sm leading-6 text-stone-600">
+                Свежая рецензия одного из наших авторов
+              </p>
+              <div className="flex min-h-0 flex-1 flex-col pt-1">
+                <h3 className="shrink-0 font-serif text-xl leading-tight text-stone-950">
+                  {review.mediaItemTitle}
+                </h3>
+                <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
+                  {mediaTypeName ?? review.mediaType}
+                  {review.releaseYear ? ` · ${review.releaseYear}` : ""}
+                </p>
+                <AdaptiveReviewExcerpt text={review.excerpt} />
+                <p className="mt-3 shrink-0 text-xs text-stone-600">— {review.authorName}</p>
+              </div>
+            </div>
+          </Link>
         ) : (
-          <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
-            Рецензия появится после первой публикации.
-          </p>
+          <>
+            <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
+              Свежая рецензия одного из наших авторов
+            </p>
+            <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
+              Рецензия появится после первой публикации.
+            </p>
+          </>
         )}
       </div>
     </section>
-  );
+  )
 }
 
+
 export default async function MainPage() {
-  const [author, adminUser] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()]);
-  const [activeQuiz, adminNotificationCount, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
+  const headerState = await getPublicSiteHeaderState();
+  const author = headerState.author;
+  const [activeQuiz, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
     author ? getActiveQuiz() : Promise.resolve(null),
-    adminUser ? getSubmittedModerationRequestCountForAdmin() : Promise.resolve(0),
     getDailyDossier(author?.id),
     getEffectiveMediaTypeOptions(author?.id),
     getPublishedEditorialCollections(),
@@ -351,11 +345,7 @@ export default async function MainPage() {
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <MainHeader
-          adminNotificationCount={adminNotificationCount}
-          author={author}
-          currentAdminUser={Boolean(adminUser)}
-        />
+        <PublicSiteHeader {...headerState.headerProps} />
         <div className={hasLatestActivity ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
           <section
             className="archive-paper archive-panel flex items-center overflow-hidden px-6 py-6 sm:px-10 lg:px-14 lg:py-7"

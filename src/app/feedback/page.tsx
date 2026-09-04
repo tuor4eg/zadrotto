@@ -1,11 +1,8 @@
 import type { Metadata } from "next";
 import Image from "next/image";
 
-import { ArchiveSiteHeader } from "@/components/archive/archive-site-header";
-import { getIncomingFriendRequestCount } from "@/db/queries/friends";
-import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
 export const metadata: Metadata = {
   title: 'Обратная связь — Журнал "Задротто"',
@@ -13,26 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default async function FeedbackPage() {
-  const [currentAuthor, currentAdmin] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
-  ]);
-  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
-    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
-    currentAdmin ? getSubmittedModerationRequestCountForAdmin() : 0,
-  ]);
+  const headerState = await getPublicSiteHeaderState();
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
-        <ArchiveSiteHeader
-          brandHref="/"
-          currentAdminUser={Boolean(currentAdmin)}
-          currentAuthor={Boolean(currentAuthor)}
-          incomingFriendRequestCount={incomingFriendRequestCount}
-          submittedRequestCount={submittedRequestCount}
-          variant="main"
-        />
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
+        <div className="mx-auto flex w-full max-w-4xl flex-col gap-3">
 
         <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
           <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
@@ -63,6 +47,7 @@ export default async function FeedbackPage() {
             />
           </div>
         </article>
+        </div>
       </div>
     </main>
   );

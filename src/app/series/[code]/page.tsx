@@ -9,6 +9,7 @@ import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/m
 import { MediaItemTile } from "@/app/media-item-tile";
 import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { ArchiveNote } from "@/components/archive/archive-note";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
@@ -23,8 +24,8 @@ import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel, sortMediaTypesByCount, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatMediaItemsCount } from "@/app/series/series-format";
@@ -126,11 +127,11 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
     notFound();
   }
 
-  const [currentAuthor, currentAdminUser, archiveSettings] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
+  const [headerState, archiveSettings] = await Promise.all([
+    getPublicSiteHeaderState(),
     getArchiveSettings(),
   ]);
+  const currentAuthor = headerState.author;
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
@@ -207,7 +208,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
   ];
 
   return (
-    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <BugReportEntityContextRegistration context={{ entityId: String(franchise.id), entityType: "franchise" }} />
       <ArchiveToasts
         clearParams={[
@@ -218,10 +219,12 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
         ]}
         messages={toastMessages}
       />
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
-        <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
+        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
+          <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
           <SeriesPageHeader
-            adminCanEdit={Boolean(currentAdminUser)}
+            adminCanEdit={headerState.currentAdminUser}
             franchise={franchise}
             mediaItemsCount={items.length}
           >
@@ -308,7 +311,8 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
               </div>
             </div>
           ) : null}
-        </section>
+          </section>
+        </div>
       </div>
       {currentAuthor && authorMediaSuggestionData ? (
         <ArchiveAuthorMediaSuggestion

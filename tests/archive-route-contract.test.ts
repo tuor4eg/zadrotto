@@ -4,9 +4,8 @@ import path from "node:path";
 import { describe, it } from "node:test";
 
 const mainPage = readFileSync("src/app/page.tsx", "utf8");
-const mainHeader = readFileSync("src/app/main/main-header.tsx", "utf8");
+const publicHeader = readFileSync("src/components/archive/public-site-header.tsx", "utf8");
 const archivePage = readFileSync("src/app/archive/page.tsx", "utf8");
-const catalogHeader = readFileSync("src/app/catalog-sticky-header.tsx", "utf8");
 const catalogControls = readFileSync("src/app/catalog-header-controls.tsx", "utf8");
 const catalogItems = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
@@ -35,16 +34,16 @@ const layoutRevalidationFiles = [
 
 describe("archive route split", () => {
   it("serves the new journal at root, the catalog at /archive, and removes temporary routes", () => {
-    assert.match(mainPage, /from "\.\/main\/main-header"/);
+    assert.match(mainPage, /PublicSiteHeader/);
     assert.match(mainPage, /export const dynamic = "force-dynamic"/);
-    assert.match(mainHeader, /<Link href="\/" aria-label="Главная"/);
+    assert.match(publicHeader, /<Link href="\/" aria-label="Главная"/);
     assert.equal(existsSync(path.join("src", "app", "test", "page.tsx")), false);
     assert.equal(existsSync(path.join("src", "app", "main", "page.tsx")), false);
 
     assert.match(archivePage, /from "@\/app\/media-items-catalog"/);
-    assert.match(archivePage, /from "@\/app\/catalog-sticky-header"/);
-    assert.match(catalogHeader, /brandHref="\/"/);
-    assert.doesNotMatch(catalogHeader, /\/main/);
+    assert.match(archivePage, /from "@\/components\/archive\/public-site-header"/);
+    assert.match(archivePage, /<PublicSiteHeader[\s\S]*controls=[\s\S]*<CatalogHeaderControls/);
+    assert.doesNotMatch(archivePage, /secondaryControls|showSearch|\bsticky\b/);
   });
 
   it("keeps the public series spread slightly narrower than the archive catalog", () => {
@@ -54,31 +53,31 @@ describe("archive route split", () => {
 
   it("submits the main-page search to the archive only on form submission", () => {
     assert.match(
-      mainHeader,
-      /<form action="\/archive" method="get" role="search" aria-label="Поиск по архиву"/,
+      publicHeader,
+      /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"[\s\S]*aria-label="Поиск по архиву"/,
     );
-    assert.match(mainHeader, /<input[\s\S]*name="q"[\s\S]*type="search"/);
-    assert.doesNotMatch(mainHeader, /onChange=|useDebouncedSearchDraft/);
+    assert.match(publicHeader, /<input[\s\S]*name="q"[\s\S]*type="search"/);
+    assert.doesNotMatch(publicHeader, /onChange=|useDebouncedSearchDraft/);
   });
 
   it("opens guest authorization in a modal and reserves notifications for authors", () => {
-    assert.match(mainHeader, /author \? \([\s\S]*<NotificationBell align="right" round/);
+    assert.match(publicHeader, /author \? \([\s\S]*<NotificationBell align="right" round/);
     assert.match(
-      mainHeader,
+      publicHeader,
       /<NotificationBell align="right" round \/>[\s\S]*currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*href="\/author"/,
     );
-    assert.match(mainHeader, /<UserRound[^>]*aria-hidden="true"/);
-    assert.match(mainHeader, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
-    assert.match(mainHeader, /createPortal\([\s\S]*<AuthorLoginModal/);
-    assert.match(mainHeader, /onSuccess=\{\(\) => \{[\s\S]*router\.refresh\(\)/);
-    assert.doesNotMatch(mainHeader, /href=\{author \? "\/author" : "\/author\/login"\}/);
+    assert.match(publicHeader, /<UserRound[^>]*aria-hidden="true"/);
+    assert.match(publicHeader, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
+    assert.match(publicHeader, /createPortal\([\s\S]*<AuthorLoginModal/);
+    assert.match(publicHeader, /onSuccess=\{\(\) => \{[\s\S]*router\.refresh\(\)/);
+    assert.doesNotMatch(publicHeader, /href=\{author \? "\/author" : "\/author\/login"\}/);
   });
 
-  it("links public archive breadcrumbs and media types to the catalog", () => {
-    assert.match(mediaPage, /href="\/archive"/);
-    assert.match(seriesCatalogPage, /href="\/archive"/);
+  it("links public breadcrumbs without duplicating the global archive navigation", () => {
+    assert.doesNotMatch(mediaPage, /href="\/archive"/);
+    assert.doesNotMatch(seriesCatalogPage, /href="\/archive"/);
     assert.match(seriesPage, /SeriesPageHeader/);
-    assert.match(seriesPageHeader, /href="\/archive"/);
+    assert.doesNotMatch(seriesPageHeader, /href="\/archive"/);
     assert.match(
       mediaPage,
       /href=\{`\/archive\?type=\$\{encodeURIComponent\(item\.mediaType\)\}`\}/,

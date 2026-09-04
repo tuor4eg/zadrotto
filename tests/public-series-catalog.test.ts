@@ -70,7 +70,7 @@ describe("public series catalog UI", () => {
     );
     assert.match(
       catalogPageSource,
-      /getEnabledMediaTypeCodes\(currentAuthor\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
+      /getEnabledMediaTypeCodes\(headerState\.author\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
     );
     assert.match(catalogPageSource, /seriesPage\.items\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
     assert.match(catalogSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
@@ -120,12 +120,13 @@ describe("public series catalog UI", () => {
     assert.match(searchSource, /nextSearchParams\.set\("q", normalizedQuery\)/);
   });
 
-  it("links the series detail breadcrumb through the full catalog", () => {
+  it("links the series detail breadcrumb from the series catalog", () => {
     assert.match(
       seriesHeaderSource,
-      /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив[\s\S]*href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
+      /href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
     );
-    assert.match(catalogPageSource, /href="\/"[\s\S]*Главная[\s\S]*href="\/archive"[\s\S]*Архив/);
+    assert.doesNotMatch(seriesHeaderSource, />\s*(?:Главная|Архив)\s*</);
+    assert.doesNotMatch(catalogPageSource, /aria-label="Хлебные крошки"/);
     assert.match(querySource, /const visitedParentIds = new Set\(\[franchise\.id\]\)/);
     assert.match(querySource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
     assert.match(seriesHeaderSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);

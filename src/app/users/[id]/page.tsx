@@ -6,6 +6,7 @@ import { Suspense } from "react";
 import { FriendshipControls } from "@/app/users/friendship-controls";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { AdaptiveArchivePageSizeSync } from "@/components/archive/adaptive-archive-page-size-sync";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { AuthorStatistics } from "@/components/author/author-statistics";
 import { RecentAchievementShowcase } from "@/components/achievements/recent-achievement-showcase";
 import { getAchievementShowcase } from "@/db/queries/achievements";
@@ -19,6 +20,7 @@ import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { ARCHIVE_CATALOG_GRID_CLASS_NAME, parseArchiveCatalogPageSize } from "@/lib/archive/tile-grid-capacity";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { parsePage } from "@/lib/common/pagination";
 
 type PageProps = {
@@ -46,8 +48,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PublicUserPage({ params, searchParams }: PageProps) {
   const id = parseId((await params).id);
   if (!id) notFound();
-  const [current, admin, query] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser(), searchParams]);
-  const isAdmin = Boolean(admin);
+  const [headerState, query] = await Promise.all([getPublicSiteHeaderState(), searchParams]);
+  const current = headerState.author;
+  const isAdmin = headerState.currentAdminUser;
   const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
   const view = query.view === "ratings" || query.view === "reviews"
@@ -99,7 +102,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
 
   return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
     <div className="mx-auto w-full max-w-[1480px] space-y-3">
-      <nav className="text-sm text-stone-600"><Link href="/" className="underline underline-offset-4">На главную</Link></nav>
+      <PublicSiteHeader {...headerState.headerProps} />
       {query.friendship === "error" || query.friendship === "conflict" ? <Alert variant="destructive">Не удалось изменить состояние дружбы. Возможно, оно уже изменилось.</Alert> : null}
       <header className="archive-paper-surface archive-panel">
         <div className="flex flex-wrap items-center gap-4 p-5 sm:p-7">

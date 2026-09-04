@@ -13,7 +13,7 @@ type Collection = NonNullable<Awaited<ReturnType<typeof getEditorialCollectionBy
 export function EditorialCollectionView({ collection, currentAuthor }: { collection: Collection; currentAuthor: boolean }) {
   return <article className="archive-paper archive-panel overflow-hidden">
     <header className="grid gap-5 p-5 sm:p-7">
-      <nav aria-label="Хлебные крошки" className="flex flex-wrap gap-2 font-mono text-xs text-stone-600"><Link className="underline underline-offset-4" href="/">Главная</Link><span>/</span><Link className="underline underline-offset-4" href="/collections">Подборки</Link><span>/</span><span aria-current="page">{collection.title}</span></nav>
+      <nav aria-label="Хлебные крошки" className="flex flex-wrap gap-2 font-mono text-xs text-stone-600"><Link className="underline underline-offset-4" href="/collections">Подборки</Link><span>/</span><span aria-current="page">{collection.title}</span></nav>
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1fr)_minmax(300px,44%)] lg:items-start">
         <div className="min-w-0"><h1 className="font-serif text-4xl leading-tight sm:text-5xl">{collection.title}</h1>{collection.description ? <div className="mt-3 max-w-3xl whitespace-pre-line text-sm leading-7 text-stone-700">{collection.description}</div> : null}</div>
         <div className="relative aspect-video w-full overflow-hidden rounded-md border border-stone-950/10 bg-[linear-gradient(135deg,#d9d1bd,#f2ead7)] shadow-sm">{collection.coverUrl ? <Image fill priority unoptimized className="object-cover" alt="" src={collection.coverUrl} /> : <div className="grid h-full place-items-center font-serif text-2xl text-stone-600">Подборка</div>}</div>

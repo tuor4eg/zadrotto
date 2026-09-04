@@ -12,15 +12,13 @@ import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
-import { getIncomingFriendRequestCount } from "@/db/queries/friends";
-import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
-import { CatalogStickyHeader } from "@/app/catalog-sticky-header";
+import { CatalogHeaderControls } from "@/app/catalog-header-controls";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import {
   parseAuthorRatingFilter,
   parseCatalogSort,
@@ -35,7 +33,7 @@ import { MediaItemsCatalog } from "@/app/media-items-catalog";
 import { createAuthorMediaItemAction } from "@/app/author/(protected)/media/actions";
 import { getAuthorMediaFormErrorMessage } from "@/app/author/(protected)/media/messages";
 import { sortMediaTypesByCount } from "@/lib/media/types";
-import { getActiveQuiz, getActiveQuizParticipantState, getPreviousQuizHistory } from "@/db/queries/quizzes";
+import { getActiveQuiz, getActiveQuizParticipantState } from "@/db/queries/quizzes";
 
 const CATALOG_PAGE_SIZE_OPTIONS = [24, 48, 72, 96] as const;
 const DEFAULT_CATALOG_PAGE_SIZE = 48;
@@ -61,20 +59,15 @@ type HomeProps = {
 export default async function Home({ searchParams }: HomeProps) {
   await connection();
 
-  const [currentAuthor, currentAdminUser, params, archiveSettings] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
+  const [headerState, params, archiveSettings] = await Promise.all([
+    getPublicSiteHeaderState(),
     searchParams,
     getArchiveSettings(),
   ]);
-  const [incomingFriendRequestCount, submittedRequestCount] = await Promise.all([
-    currentAuthor ? getIncomingFriendRequestCount(currentAuthor.id) : 0,
-    currentAdminUser ? getSubmittedModerationRequestCountForAdmin() : 0,
-  ]);
+  const currentAuthor = headerState.author;
+  const currentAdminUser = headerState.currentAdminUser;
   const effectiveMediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
-  const [activeQuiz, previousQuiz] = currentAuthor
-    ? await Promise.all([getActiveQuiz(), getPreviousQuizHistory()])
-    : [null, null];
+  const activeQuiz = currentAuthor ? await getActiveQuiz() : null;
   const activeQuizParticipant = activeQuiz && currentAuthor
     ? await getActiveQuizParticipantState(currentAuthor.id)
     : null;
@@ -85,11 +78,6 @@ export default async function Home({ searchParams }: HomeProps) {
     isActiveQuizParticipant && activeQuizParticipant && !activeQuizParticipant.completed,
   );
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
-  const unavailableQuizMediaTypeNames = activeQuiz
-    ? effectiveMediaTypes
-        .filter((item) => !item.isEnabled && activeQuiz.mediaTypes.includes(item.code))
-        .map((item) => item.name)
-    : [];
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
@@ -216,28 +204,29 @@ export default async function Home({ searchParams }: HomeProps) {
         ]}
         messages={toastMessages}
       />
-      <div className="archive-catalog-shell mx-auto flex w-full max-w-[1480px] flex-col gap-3">
-        <CatalogStickyHeader
-          activeQuiz={activeQuiz}
-          previousQuiz={previousQuiz}
-          authorRatingFilter={authorRatingFilter}
-          currentAdminUser={Boolean(currentAdminUser)}
-          currentAuthor={Boolean(currentAuthor)}
-          incomingFriendRequestCount={incomingFriendRequestCount}
-          submittedRequestCount={submittedRequestCount}
-          isActiveQuizCompleted={activeQuizParticipant?.completed === true}
-          isActiveQuizParticipant={isActiveQuizParticipant}
-          unavailableQuizMediaTypeNames={unavailableQuizMediaTypeNames}
-          mediaTypeFilter={mediaTypeFilter}
-          minReleaseYear={releaseYearBounds.minReleaseYear}
-          searchQuery={searchQuery}
-          sort={sort}
-          sortDirection={sortDirection}
-          yearFilter={yearFilter}
-          yearMode={yearMode}
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader
+        adminNotificationCount={headerState.adminNotificationCount}
+        author={currentAuthor
+          ? { avatarObjectKey: currentAuthor.avatarObjectKey, name: currentAuthor.name }
+          : null}
+        currentAdminUser={currentAdminUser}
+        controls={
+          <CatalogHeaderControls
+            authorRatingFilter={authorRatingFilter}
+            currentAuthor={Boolean(currentAuthor)}
+            mediaTypeFilter={mediaTypeFilter}
+            minReleaseYear={releaseYearBounds.minReleaseYear}
+            searchQuery={searchQuery}
+            sort={sort}
+            sortDirection={sortDirection}
+            yearFilter={yearFilter}
+            yearMode={yearMode}
+          />
+        }
         />
-
-        <MediaItemsCatalog
+        <div className="archive-catalog-shell flex w-full flex-col gap-3">
+          <MediaItemsCatalog
           activeQuiz={activeQuiz && canGuessActiveQuiz ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
           authorRatingFilter={authorRatingFilter}
           currentAdmin={Boolean(currentAdminUser)}
@@ -264,7 +253,8 @@ export default async function Home({ searchParams }: HomeProps) {
           totalPages={catalog.totalPages}
           yearFilter={yearFilter}
           yearMode={yearMode}
-        />
+          />
+        </div>
       </div>
       {currentAuthor && authorMediaSuggestionData ? (
         <ArchiveAuthorMediaSuggestion

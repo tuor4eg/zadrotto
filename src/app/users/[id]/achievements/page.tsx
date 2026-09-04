@@ -4,12 +4,14 @@ import { notFound } from "next/navigation";
 
 import { FriendshipControls } from "@/app/users/friendship-controls";
 import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getPublicUserProfile } from "@/db/queries/friends";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -29,8 +31,9 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PublicUserAchievementsPage({ params }: PageProps) {
   const id = parseId((await params).id)
   if (!id) notFound()
-  const [current, admin] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()])
-  const isAdmin = Boolean(admin)
+  const headerState = await getPublicSiteHeaderState()
+  const current = headerState.author
+  const isAdmin = headerState.currentAdminUser
   const profile = await getPublicUserProfile(id, current?.id, isAdmin)
   if (!profile) notFound()
   const items = await getAchievementShowcase(profile.id)
@@ -39,7 +42,7 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
   return (
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto w-full max-w-[1480px] space-y-3">
-        <nav className="text-sm text-stone-600"><Link href="/" className="underline underline-offset-4">На главную</Link></nav>
+        <PublicSiteHeader {...headerState.headerProps} />
         <header className="archive-paper-surface archive-panel">
           <div className="flex flex-wrap items-center gap-4 p-5 sm:p-7">
             <Avatar name={profile.name} objectKey={profile.avatarObjectKey} className="size-20 text-2xl" />

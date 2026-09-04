@@ -37,7 +37,6 @@ import {
 
 type CatalogHeaderControlsProps = {
   authorRatingFilter: AuthorRatingFilter;
-  compact?: boolean;
   currentAuthor: boolean;
   mediaTypeFilter: MediaTypeFilter;
   minReleaseYear: number | null;
@@ -171,7 +170,6 @@ function updateFilterParam(
 
 export function CatalogHeaderControls({
   authorRatingFilter,
-  compact = false,
   currentAuthor,
   mediaTypeFilter,
   minReleaseYear,
@@ -320,23 +318,11 @@ export function CatalogHeaderControls({
   }, [openSelect]);
 
   return (
-    <div
-      className={`grid min-w-0 flex-1 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] items-center gap-2 overflow-visible ${
-        compact
-          ? "lg:flex lg:min-w-0 lg:flex-1 lg:flex-nowrap lg:items-center lg:gap-2 lg:overflow-visible"
-          : "lg:contents"
-      }`}
-    >
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap">
       <label className="sr-only" htmlFor="header-catalog-search">
         Поиск
       </label>
-      <div
-        className={`relative ${
-          compact
-            ? "min-w-0 flex-1 basis-auto"
-            : "min-w-0 flex-1 basis-auto lg:w-[210px] lg:flex-none lg:basis-auto"
-        }`}
-      >
+      <div className="relative min-w-0 flex-1 basis-auto">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
         <input
           id="header-catalog-search"
@@ -367,7 +353,7 @@ export function CatalogHeaderControls({
       <ArchiveExplorationLauncher
         currentAuthor={currentAuthor}
         iconOnly
-        className="archive-control-surface inline-flex h-9 w-9 items-center justify-center rounded-md border border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50"
+        className="archive-control-surface inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50"
       />
 
       <ArchiveTooltip
@@ -386,7 +372,7 @@ export function CatalogHeaderControls({
             aria-expanded={openSelect === "filters"}
             aria-controls={filtersMenuId}
             onClick={() => setOpenSelect(openSelect === "filters" ? null : "filters")}
-            className={`archive-control-surface relative inline-flex h-9 w-9 items-center justify-center rounded-md border font-mono text-xs uppercase tracking-[0.12em] shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+            className={`archive-control-surface relative inline-flex h-9 w-9 items-center justify-center rounded-full border font-mono text-xs uppercase tracking-[0.12em] shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
               hasActiveFilters
                 ? "border-red-900/50 bg-red-900/10 text-red-950 hover:border-red-900 hover:bg-red-900/15"
                 : "border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50"
@@ -396,7 +382,7 @@ export function CatalogHeaderControls({
             {hasActiveFilters ? (
               <span
                 aria-hidden="true"
-                className="absolute right-1 top-1 size-1.5 rounded-full bg-red-800 shadow-[0_0_0_1px_rgba(255,255,255,0.8)]"
+                className="absolute right-0 top-0 size-2.5 rounded-full bg-red-700 shadow-sm"
               />
             ) : null}
             <ChevronDown className="sr-only" />
@@ -504,6 +490,7 @@ export function CatalogHeaderControls({
         <ArchiveSelect
           ariaLabel={`${getSortTooltip(sort)}, ${getSortDirectionLabel(sortDirection)}`}
           compact
+          triggerClassName="rounded-full"
           menuClassName="archive-catalog-sort-menu border-stone-300 p-2 shadow-lg"
           onOpenChange={(isOpen) => setOpenSelect(isOpen ? "sort" : null)}
           options={sortOptions.map(([value, label]) => {

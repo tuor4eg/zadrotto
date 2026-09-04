@@ -136,6 +136,8 @@ export async function saveAuthorReviewAction(
   revalidatePath("/author/reviews");
   revalidatePath("/admin/reviews");
   revalidatePath("/admin", "layout");
+  revalidatePath("/reviews");
+  revalidatePath("/");
 
   redirect(
     `/author/reviews?${

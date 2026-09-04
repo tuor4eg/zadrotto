@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getFranchiseByCode, getPublishedFranchiseBranch } from "@/db/queries/franchises";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
-import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { formatSeriesCount } from "@/app/series/series-format";
 import { SeriesPageHeader } from "../series-page-header";
 import {
@@ -33,11 +33,8 @@ export default async function ChildSeriesPage({ params }: ChildSeriesPageProps) 
 
   if (!franchise) notFound();
 
-  const [currentAuthor, currentAdminUser] = await Promise.all([
-    getCurrentAuthor(),
-    getCurrentAdminUser(),
-  ]);
-  const mediaTypes = await getEffectiveMediaTypeOptions(currentAuthor?.id);
+  const headerState = await getPublicSiteHeaderState();
+  const mediaTypes = await getEffectiveMediaTypeOptions(headerState.author?.id);
   const enabledMediaTypeCodes = mediaTypes
     .filter(({ isEnabled }) => isEnabled)
     .map(({ code: mediaTypeCode }) => mediaTypeCode);
@@ -45,13 +42,16 @@ export default async function ChildSeriesPage({ params }: ChildSeriesPageProps) 
   const childSeries = franchiseBranch?.children ?? [];
 
   return (
-    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <BugReportEntityContextRegistration context={{ entityId: String(franchise.id), entityType: "franchise" }} />
+      <div className="mx-auto mb-3 w-full max-w-[1480px]">
+        <PublicSiteHeader {...headerState.headerProps} />
+      </div>
       <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
         <ChildSeriesCatalogProvider series={childSeries}>
           <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
             <SeriesPageHeader
-              adminCanEdit={Boolean(currentAdminUser)}
+              adminCanEdit={headerState.currentAdminUser}
               franchise={franchise}
               mediaItemsCount={franchiseBranch?.mediaItemsCount ?? 0}
               view="children"
