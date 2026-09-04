@@ -121,6 +121,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 <ReviewsCatalogControls
                   authors={catalogAuthors}
                   authorId={authorId}
+                  currentAuthorId={headerState.author?.id ?? null}
                   mediaType={mediaType}
                   mediaTypes={mediaTypes.filter((item) => item.isEnabled)}
                   preset={preset}

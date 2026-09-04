@@ -19,6 +19,7 @@ import {
 type ReviewsCatalogControlsProps = {
   authors: readonly { id: number; name: string }[]
   authorId: number | null
+  currentAuthorId: number | null
   mediaType: string
   mediaTypes: readonly MediaTypeOption[]
   preset: ReviewCatalogPreset
@@ -29,6 +30,7 @@ type ReviewsCatalogControlsProps = {
 export function ReviewsCatalogControls({
   authors,
   authorId,
+  currentAuthorId,
   mediaType,
   mediaTypes,
   preset,
@@ -94,7 +96,12 @@ export function ReviewsCatalogControls({
   ]
   const authorOptions = [
     { label: "Все авторы", value: "all" },
-    ...authors.map((author) => ({ label: author.name, value: String(author.id) })),
+    ...(currentAuthorId === null
+      ? []
+      : [{ label: "Я", value: String(currentAuthorId) }]),
+    ...authors
+      .filter((author) => author.id !== currentAuthorId)
+      .map((author) => ({ label: author.name, value: String(author.id) })),
   ]
   const scoreOptions = REVIEW_CATALOG_SCORE_FILTERS.map((value) => ({
     label: REVIEW_CATALOG_SCORE_FILTER_LABELS[value],

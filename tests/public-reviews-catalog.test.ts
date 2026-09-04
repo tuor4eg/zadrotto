@@ -23,6 +23,11 @@ describe("public reviews catalog page", () => {
     assert.match(page, /<FeaturedReviews reviews=\{featuredReviews\} \/>/)
     assert.match(page, /<PaginationNav[\s\S]*basePath="\/reviews"[\s\S]*variant="archive"/)
     assert.match(controls, /Поиск по названию записи/)
+    assert.match(page, /currentAuthorId=\{headerState\.author\?\.id \?\? null\}/)
+    assert.match(
+      controls,
+      /currentAuthorId === null[\s\S]*label: "Я", value: String\(currentAuthorId\)[\s\S]*filter\(\(author\) => author\.id !== currentAuthorId\)/,
+    )
     assert.match(controls, /REVIEW_CATALOG_PRESETS\.map/)
     assert.doesNotMatch(controls, /Популярн|С комментари|Лента|Компактно/)
     assert.doesNotMatch(page, /Популярн|С комментари|Лента|Компактно/)
