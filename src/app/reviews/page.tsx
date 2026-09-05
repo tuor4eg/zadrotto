@@ -302,17 +302,6 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 {currentAuthor ? <ReviewsViewToggle view="all" /> : null}
               </div>
 
-              {currentAuthor ? (
-                <div className="mt-4">
-                  <Link
-                    href="/reviews/new"
-                    className={buttonVariants({ variant: "default", size: "sm" })}
-                  >
-                    + Написать рецензию
-                  </Link>
-                </div>
-              ) : null}
-
               <Suspense fallback={null}>
                 <ReviewsCatalogControls
                   authors={catalogAuthors}

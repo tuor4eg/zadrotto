@@ -42,8 +42,11 @@ describe("public reviews catalog page", () => {
     assert.match(viewToggle, /href="\/reviews\?view=mine"/)
     assert.match(page, /currentAuthor \? <ReviewsViewToggle view="all" \/> : null/)
     assert.match(page, /view = currentAuthor && requestedView === "mine" \? "mine" : "all"/)
-    assert.match(page, /href="\/reviews\/new"/)
-    assert.match(page, /\+ Написать рецензию/)
+    assert.match(page, /view === "mine"[\s\S]*href="\/reviews\/new"[\s\S]*\+ Написать рецензию/)
+    assert.doesNotMatch(
+      page,
+      /ReviewsViewToggle view="all"[\s\S]*href="\/reviews\/new"/,
+    )
   })
 
   it("loads mine mode with status filters, icon actions, and author-scoped query", () => {
