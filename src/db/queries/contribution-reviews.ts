@@ -338,6 +338,30 @@ export async function getPublishedReviewCatalogAuthors(
     .orderBy(asc(authors.name))
 }
 
+export async function getPublishedReviewMediaTypeCodes(
+  enabledMediaTypeCodes: readonly string[],
+) {
+  if (enabledMediaTypeCodes.length === 0) {
+    return [] as string[]
+  }
+
+  const rows = await db
+    .selectDistinct({ mediaType: mediaItems.mediaType })
+    .from(contributions)
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(
+      and(
+        eq(contributions.type, "review"),
+        eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ),
+    )
+    .orderBy(asc(mediaItems.mediaType))
+
+  return rows.map((row) => row.mediaType)
+}
+
 export async function getLatestPublishedReviewCards(
   accessibleMediaTypeCodes: readonly string[],
   limit = 3,
@@ -434,6 +458,171 @@ export async function getAuthorReviews(
     .offset(getOffset(page, pageSize));
 
   return { items, page, pageSize, totalCount, totalPages };
+}
+
+export type MyReviewsCatalogStatusFilter = ContributionStatus | "all"
+
+export type MyReviewsCatalogFilters = {
+  authorId: number
+  enabledMediaTypeCodes: readonly string[]
+  mediaType: string | "all"
+  page: number
+  pageSize: number
+  status: MyReviewsCatalogStatusFilter
+}
+
+export async function getMyReviewStatusCounts(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
+  if (enabledMediaTypeCodes.length === 0) {
+    return {
+      all: 0,
+      draft: 0,
+      submitted: 0,
+      published: 0,
+      rejected: 0,
+      hidden: 0,
+    }
+  }
+
+  const rows = await db
+    .select({
+      status: contributions.status,
+      reviewsCount: sql<number>`count(${contributions.id})::int`,
+    })
+    .from(contributions)
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(
+      and(
+        eq(contributions.authorId, authorId),
+        eq(contributions.type, "review"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ),
+    )
+    .groupBy(contributions.status)
+
+  const counts = {
+    all: 0,
+    draft: 0,
+    submitted: 0,
+    published: 0,
+    rejected: 0,
+    hidden: 0,
+  }
+
+  for (const row of rows) {
+    const status = row.status as ContributionStatus
+    counts[status] = row.reviewsCount
+    counts.all += row.reviewsCount
+  }
+
+  return counts
+}
+
+export async function getMyReviewMediaTypeCodes(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+) {
+  if (enabledMediaTypeCodes.length === 0) {
+    return [] as string[]
+  }
+
+  const rows = await db
+    .selectDistinct({ mediaType: mediaItems.mediaType })
+    .from(contributions)
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(
+      and(
+        eq(contributions.authorId, authorId),
+        eq(contributions.type, "review"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      ),
+    )
+    .orderBy(asc(mediaItems.mediaType))
+
+  return rows.map((row) => row.mediaType)
+}
+
+export async function getMyReviewsCatalog(filters: MyReviewsCatalogFilters) {
+  if (filters.enabledMediaTypeCodes.length === 0) {
+    return {
+      items: [],
+      page: 1,
+      pageSize: filters.pageSize,
+      totalCount: 0,
+      totalPages: 1,
+    }
+  }
+
+  const conditions = [
+    eq(contributions.authorId, filters.authorId),
+    eq(contributions.type, "review"),
+    getMediaTypeCodeFilterSql(mediaItems.mediaType, filters.enabledMediaTypeCodes),
+  ]
+
+  if (filters.status !== "all") {
+    conditions.push(eq(contributions.status, filters.status))
+  }
+
+  if (filters.mediaType !== "all") {
+    conditions.push(eq(mediaItems.mediaType, filters.mediaType))
+  }
+
+  const whereCondition = and(...conditions)
+
+  const [countRow] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .where(whereCondition)
+
+  const totalCount = countRow?.count ?? 0
+  const totalPages = getTotalPages(totalCount, filters.pageSize)
+  const page = clampPage(filters.page, totalPages)
+
+  const items = await db
+    .select({
+      id: contributions.id,
+      status: contributions.status,
+      adminNote: contributions.adminNote,
+      authorScore: ratings.score,
+      title: contributionReviews.title,
+      publishedAt: contributions.reviewedAt,
+      updatedAt: contributions.updatedAt,
+      mediaItemCode: mediaItems.code,
+      mediaItemTitle: mediaItems.title,
+      mediaType: mediaItems.mediaType,
+      mediaItemReleaseYear: mediaItems.releaseYear,
+      mediaItemCarrierCode: mediaCarriers.code,
+      coverThumbUrl: mediaItems.coverThumbUrl,
+      coverUrl: mediaItems.coverUrl,
+    })
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
+    .where(whereCondition)
+    .orderBy(desc(contributions.updatedAt), desc(contributions.id))
+    .limit(filters.pageSize)
+    .offset(getOffset(page, filters.pageSize))
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+      coverUrl: resolveCoverUrl(item.coverUrl),
+    })),
+    page,
+    pageSize: filters.pageSize,
+    totalCount,
+    totalPages,
+  }
 }
 
 export async function getAuthorReviewSummary(
@@ -539,29 +728,61 @@ export async function getAuthorReviewForMediaItem(authorId: number, mediaItemId:
 export async function searchPublishedMediaItemsForReview(
   query: string,
   enabledMediaTypeCodes: readonly string[],
+  options?: { authorId?: number },
 ) {
-  const normalizedQuery = normalizeSearchText(query);
-  const condition = normalizedQuery
-    ? and(
-        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-        or(
-          containsNormalizedSearchSql(mediaItems.title, normalizedQuery),
-          containsNormalizedSearchSql(mediaItems.originalTitle, normalizedQuery),
-          containsNormalizedSearchSql(mediaItems.code, normalizedQuery),
-          exists(
-            db
-              .select({ id: mediaItemTitleAliases.id })
-              .from(mediaItemTitleAliases)
-              .where(
-                and(
-                  eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                  containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedQuery),
-                ),
-              ),
+  const normalizedQuery = normalizeSearchText(query)
+
+  if (!normalizedQuery || enabledMediaTypeCodes.length === 0) {
+    return []
+  }
+
+  const condition = and(
+    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+    getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+    or(
+      containsNormalizedSearchSql(mediaItems.title, normalizedQuery),
+      containsNormalizedSearchSql(mediaItems.originalTitle, normalizedQuery),
+      containsNormalizedSearchSql(mediaItems.code, normalizedQuery),
+      exists(
+        db
+          .select({ id: mediaItemTitleAliases.id })
+          .from(mediaItemTitleAliases)
+          .where(
+            and(
+              eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
+              containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedQuery),
+            ),
           ),
+      ),
+    ),
+  )
+
+  if (options?.authorId) {
+    const rows = await db
+      .select({
+        id: mediaItems.id,
+        code: mediaItems.code,
+        title: mediaItems.title,
+        originalTitle: mediaItems.originalTitle,
+        mediaType: mediaItems.mediaType,
+        releaseYear: mediaItems.releaseYear,
+        existingReviewId: contributions.id,
+      })
+      .from(mediaItems)
+      .leftJoin(
+        contributions,
+        and(
+          eq(contributions.primaryMediaItemId, mediaItems.id),
+          eq(contributions.authorId, options.authorId),
+          eq(contributions.type, "review"),
         ),
       )
-    : eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS);
+      .where(condition)
+      .orderBy(desc(mediaItems.updatedAt), desc(mediaItems.id))
+      .limit(30)
+
+    return rows
+  }
 
   return db
     .select({
@@ -569,15 +790,13 @@ export async function searchPublishedMediaItemsForReview(
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
-    .where(and(
-      condition,
-      getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
-    ))
+    .where(condition)
     .orderBy(desc(mediaItems.updatedAt), desc(mediaItems.id))
-    .limit(30);
+    .limit(30)
 }
 
 export async function getPublishedMediaItemForReview(

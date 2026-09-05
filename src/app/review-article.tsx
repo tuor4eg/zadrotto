@@ -168,7 +168,7 @@ export function ReviewArticle({
                 </button>
                 {canEdit ? (
                   <Link
-                    href={`/author/reviews/${review.id}/edit`}
+                    href={`/reviews/${review.id}/edit`}
                     className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-stone-50/95 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
                     aria-label="Редактировать рецензию"
                   >

@@ -1,0 +1,146 @@
+"use server"
+
+import { revalidatePath } from "next/cache"
+import { notFound, redirect } from "next/navigation"
+
+import {
+  getAuthorReviewForEdit,
+  getPublishedMediaItemForReview,
+  upsertAuthorReview,
+} from "@/db/queries/contribution-reviews"
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types"
+import { requireAuthor } from "@/lib/auth/author-auth"
+import {
+  getReviewFormErrorMessage,
+  parseReviewFormInput,
+} from "@/lib/forms/contribution-review"
+import { logActivity } from "@/lib/activity-logs/server"
+
+export type SavePublicReviewState = {
+  error: string | null
+  values: {
+    title: string
+    body: string
+  }
+}
+
+function getFormString(formData: FormData, key: string) {
+  const value = formData.get(key)
+
+  return typeof value === "string" ? value.trim() : ""
+}
+
+function getPositiveInteger(value: string) {
+  const parsedValue = Number(value)
+
+  return Number.isInteger(parsedValue) && parsedValue > 0 ? parsedValue : null
+}
+
+function getFormValues(formData: FormData) {
+  return {
+    title: getFormString(formData, "title"),
+    body: getFormString(formData, "body"),
+  }
+}
+
+export async function savePublicReviewAction(
+  _state: SavePublicReviewState,
+  formData: FormData,
+): Promise<SavePublicReviewState> {
+  const author = await requireAuthor()
+  const contributionId = getPositiveInteger(getFormString(formData, "contributionId"))
+  const mediaItemId = getPositiveInteger(getFormString(formData, "mediaItemId"))
+  const intent = getFormString(formData, "intent")
+  const status =
+    intent === "draft"
+      ? "draft"
+      : author.canPublishMediaWithoutReview
+        ? "published"
+        : "submitted"
+  const values = getFormValues(formData)
+  const form = parseReviewFormInput({
+    title: values.title,
+    body: values.body,
+  })
+
+  if (!mediaItemId) {
+    return {
+      error: getReviewFormErrorMessage("invalid-media-item"),
+      values,
+    }
+  }
+
+  if (!form.ok) {
+    return {
+      error: getReviewFormErrorMessage(form.error),
+      values,
+    }
+  }
+
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id)
+  const mediaItem = await getPublishedMediaItemForReview(
+    mediaItemId,
+    accessibleMediaTypeCodes,
+  )
+
+  if (!mediaItem) {
+    return {
+      error: getReviewFormErrorMessage("not-found"),
+      values,
+    }
+  }
+
+  if (contributionId) {
+    const existingReview = await getAuthorReviewForEdit(
+      author.id,
+      contributionId,
+      accessibleMediaTypeCodes,
+    )
+
+    if (!existingReview) {
+      notFound()
+    }
+  }
+
+  const result = await upsertAuthorReview({
+    contributionId,
+    mediaItemId,
+    authorId: author.id,
+    status,
+    ...form.value,
+  })
+
+  if (!result.ok) {
+    return {
+      error: getReviewFormErrorMessage(result.reason),
+      values,
+    }
+  }
+
+  await logActivity({
+    action: contributionId ? "review.updated" : "review.created",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "review",
+    entityId: result.id,
+    entityLabel: form.value.title,
+    message: contributionId ? "Рецензия изменена автором." : "Рецензия создана автором.",
+    metadata: {
+      mediaItemId,
+      mediaItemCode: mediaItem.code,
+      publicationStatus: status,
+    },
+  })
+
+  revalidatePath(`/media/${mediaItem.code}`)
+  revalidatePath("/author/reviews")
+  revalidatePath("/admin/reviews")
+  revalidatePath("/admin", "layout")
+  revalidatePath("/reviews")
+  revalidatePath("/")
+
+  const toastParam =
+    status === "draft" ? "saved" : status === "published" ? "published" : "submitted"
+
+  redirect(`/reviews?view=mine&${toastParam}=1`)
+}

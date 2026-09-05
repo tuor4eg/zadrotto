@@ -305,7 +305,7 @@ function ReviewActionStack({
   hiddenReviewsCount: number
   mediaItemId: number
 }) {
-  const href = currentAuthor ? `/author/reviews/new?mediaItemId=${mediaItemId}` : "/author/login"
+  const href = currentAuthor ? `/reviews/new?mediaItemId=${mediaItemId}` : "/author/login"
   const ariaLabel = currentAuthor
     ? "Поделиться мнением"
     : "Войти как автор, чтобы поделиться мнением"

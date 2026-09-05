@@ -1,5 +1,22 @@
+import {
+  CONTRIBUTION_STATUS_LABELS,
+} from "@/lib/contributions/model"
+
 export const REVIEW_CATALOG_PAGE_SIZE_OPTIONS = [24, 48, 72] as const
 export const DEFAULT_REVIEW_CATALOG_PAGE_SIZE = 24
+
+export const REVIEW_CATALOG_VIEWS = ["all", "mine"] as const
+export type ReviewCatalogView = (typeof REVIEW_CATALOG_VIEWS)[number]
+
+export const MY_REVIEW_STATUS_FILTERS = ["all", "published", "draft", "submitted"] as const
+export type MyReviewStatusFilter = (typeof MY_REVIEW_STATUS_FILTERS)[number]
+
+export const MY_REVIEW_STATUS_FILTER_LABELS: Record<MyReviewStatusFilter, string> = {
+  all: "Все",
+  published: CONTRIBUTION_STATUS_LABELS.published,
+  draft: CONTRIBUTION_STATUS_LABELS.draft,
+  submitted: CONTRIBUTION_STATUS_LABELS.submitted,
+}
 
 export const REVIEW_CATALOG_PRESETS = ["all", "fresh", "high", "long", "short"] as const
 export type ReviewCatalogPreset = (typeof REVIEW_CATALOG_PRESETS)[number]
@@ -33,6 +50,18 @@ export const REVIEW_CATALOG_SCORE_FILTER_LABELS: Record<ReviewCatalogScoreFilter
   "6": "6",
   low: "5 и ниже",
   none: "Без оценки",
+}
+
+export function parseReviewCatalogView(value: string | null | undefined): ReviewCatalogView {
+  return value === "mine" ? "mine" : "all"
+}
+
+export function parseMyReviewStatusFilter(
+  value: string | null | undefined,
+): MyReviewStatusFilter {
+  return MY_REVIEW_STATUS_FILTERS.includes(value as MyReviewStatusFilter)
+    ? (value as MyReviewStatusFilter)
+    : "all"
 }
 
 export function parseReviewCatalogPreset(value: string | null | undefined): ReviewCatalogPreset {

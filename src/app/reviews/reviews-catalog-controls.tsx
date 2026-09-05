@@ -94,6 +94,7 @@ export function ReviewsCatalogControls({
     { label: "Все типы", value: "all" },
     ...mediaTypes.map((item) => ({ label: item.name, value: item.code })),
   ]
+  const showMediaTypeFilter = mediaTypes.length >= 2
   const authorOptions = [
     { label: "Все авторы", value: "all" },
     ...(currentAuthorId === null
@@ -129,23 +130,31 @@ export function ReviewsCatalogControls({
             value={draft}
           />
         </div>
-        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3 lg:w-auto lg:min-w-[28rem]">
-          <ArchiveSelect
-            ariaLabel="Тип записи"
-            className="w-full"
-            triggerClassName="w-full min-w-0"
-            onChange={(value) => {
-              replaceParams((params) => {
-                if (value === "all") {
-                  params.delete("type")
-                } else {
-                  params.set("type", value)
-                }
-              })
-            }}
-            options={mediaTypeOptions}
-            value={mediaType}
-          />
+        <div
+          className={`grid grid-cols-1 gap-2 lg:w-auto ${
+            showMediaTypeFilter
+              ? "sm:grid-cols-3 lg:min-w-[28rem]"
+              : "sm:grid-cols-2 lg:min-w-[18rem]"
+          }`}
+        >
+          {showMediaTypeFilter ? (
+            <ArchiveSelect
+              ariaLabel="Тип записи"
+              className="w-full"
+              triggerClassName="w-full min-w-0"
+              onChange={(value) => {
+                replaceParams((params) => {
+                  if (value === "all") {
+                    params.delete("type")
+                  } else {
+                    params.set("type", value)
+                  }
+                })
+              }}
+              options={mediaTypeOptions}
+              value={mediaType}
+            />
+          ) : null}
           <ArchiveSelect
             ariaLabel="Оценка автора"
             className="w-full"

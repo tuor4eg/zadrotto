@@ -39,7 +39,7 @@ export function ReviewCatalogRow({
   return (
     <Link
       href={`/reviews/${item.id}`}
-      className="group grid grid-cols-[2.75rem_minmax(5.5rem,9rem)_minmax(0,1fr)_minmax(4.5rem,7.5rem)_2.25rem] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(9rem,14rem)_minmax(0,1fr)_minmax(8rem,11rem)_2.75rem] sm:gap-x-4 sm:px-3"
+      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.35fr)_minmax(5.5rem,8rem)_2.25rem] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_2.75rem] sm:gap-x-4 sm:px-3"
       aria-label={`Рецензия «${item.title}» на «${item.mediaItemTitle}», автор ${item.authorName}`}
     >
       <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:w-12">
