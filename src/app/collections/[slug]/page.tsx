@@ -18,5 +18,5 @@ export default async function CollectionPage({ params }: { params: Promise<{ slu
   const { author, headerProps: headerState } = await getPublicSiteHeaderState();
   const collection = await getPublishedEditorialCollectionBySlug((await params).slug, author?.id);
   if (!collection) notFound();
-  return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7"><div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3"><PublicSiteHeader {...headerState} /><div className="mx-auto w-full max-w-6xl"><EditorialCollectionView collection={collection} currentAuthor={Boolean(author)} /></div></div></main>;
+  return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7"><div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3"><PublicSiteHeader {...headerState} /><div className="w-full"><EditorialCollectionView collection={collection} currentAuthor={Boolean(author)} /></div></div></main>;
 }

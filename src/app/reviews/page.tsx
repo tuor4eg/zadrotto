@@ -143,7 +143,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
       <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
         <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
           <PublicSiteHeader {...headerState.headerProps} />
-          <div className="mx-auto w-full max-w-[1280px]">
+          <div className="w-full">
             <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden">
               <header className="relative z-20 p-5 pb-3 sm:p-6 sm:pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
@@ -287,7 +287,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="mx-auto w-full max-w-[1280px]">
+        <div className="w-full">
           <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden">
             <header className="relative z-20 p-5 pb-3 sm:p-6 sm:pb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">

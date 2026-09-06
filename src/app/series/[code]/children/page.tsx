@@ -47,7 +47,7 @@ export default async function ChildSeriesPage({ params }: ChildSeriesPageProps) 
       <div className="mx-auto mb-3 w-full max-w-[1480px]">
         <PublicSiteHeader {...headerState.headerProps} />
       </div>
-      <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <ChildSeriesCatalogProvider series={childSeries}>
           <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
             <SeriesPageHeader

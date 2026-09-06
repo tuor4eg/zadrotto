@@ -21,7 +21,6 @@ import {
 } from "@/db/queries/quizzes";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { formatRelativeArchiveDate } from "@/lib/archive/relative-date";
-import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
 import { getDailyDossier } from "@/lib/main-page/daily-dossier";
 import { getAuthorResearchMessage } from "@/lib/main-page/author-research-message";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -500,7 +499,6 @@ export default async function MainPage() {
         <EditorialCollectionsStrip collections={editorialCollections} />
 
         <ArchiveFeed items={archiveFeed} />
-        <ArchiveSiteFooter />
       </div>
     </main>
   );

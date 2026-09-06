@@ -5,6 +5,10 @@ import { describe, it } from "node:test";
 const read = (file: string) => readFileSync(file, "utf8");
 const headerSource = read("src/components/archive/public-site-header.tsx");
 const headerStateSource = read("src/lib/archive/public-site-header.ts");
+const footerLayerSource = read("src/components/archive/public-site-footer-layer.tsx");
+const rootLayoutSource = read("src/app/layout.tsx");
+const mainPageSource = read("src/app/page.tsx");
+const globalsSource = read("src/app/globals.css");
 
 const publicPages = [
   "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx",
@@ -26,6 +30,8 @@ const excludedPages = [
 describe("public site header", () => {
   it("owns the common brand, navigation, search, and author actions", () => {
     assert.match(headerSource, /src="\/site-logo\.png"/);
+    assert.match(headerSource, /width=\{60\}[\s\S]*height=\{60\}[\s\S]*className="size-\[60px\] object-contain"/);
+    assert.match(headerSource, /<header className="[^"]*h-14[^"]*"/);
     assert.match(headerSource, />\s*Задротто\s*</);
     for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "Подборки"], ["/reviews", "Рецензии"]]) {
       assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));
@@ -85,5 +91,21 @@ describe("public site header", () => {
     assert.equal(existsSync("src/components/archive/archive-site-header.tsx"), false);
     assert.equal(existsSync("src/app/catalog-sticky-header.tsx"), false);
     assert.equal(existsSync("src/app/main/main-header.tsx"), false);
+  });
+
+  it("mounts one shared footer layer on public routes only", () => {
+    assert.match(rootLayoutSource, /<PublicSiteFooterLayer \/>/);
+    assert.match(footerLayerSource, /<ArchiveSiteFooter \/>/);
+    assert.match(footerLayerSource, /max-w-\[1480px\]/);
+    assert.match(footerLayerSource, /"\/admin"[\s\S]*"\/author"/);
+    assert.doesNotMatch(mainPageSource, /<ArchiveSiteFooter \/>/);
+    assert.match(
+      globalsSource,
+      /archive-page:not\(\.archive-catalog-page\):has\(\.public-site-header\) \{[\s\S]*padding-bottom: 0\.75rem;/,
+    );
+    assert.doesNotMatch(
+      globalsSource,
+      /archive-page:not\(\.archive-catalog-page\):has\(\.public-site-header\) \{\s*padding-bottom: (?:1\.25|1\.75)rem;/,
+    );
   });
 });

@@ -63,6 +63,7 @@ import type {
 } from "@/lib/media/media-item-duplicates";
 import {
   getRelatedFranchiseSectionSources,
+  RELATED_SERIES_ROW_LIMIT,
   type RelatedFranchiseSource,
 } from "@/lib/media/related-franchises";
 
@@ -1831,7 +1832,7 @@ export async function getOtherMediaItemsFromFranchises(
       mediaItemRatingStats.mediaItemId,
     )
     .orderBy(sql`random()`)
-    .limit(4);
+    .limit(RELATED_SERIES_ROW_LIMIT);
 
   return items.map((item) => ({
     ...item,

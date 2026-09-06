@@ -31,6 +31,18 @@ test("shared toasts select duration for site and admin routes", () => {
   assert.match(toasts, /durationSeconds \* 1000/);
 });
 
+test("inline toast links remain clickable while full-toast links keep their overlay", () => {
+  assert.match(toasts, /hasFullToastLink && "pointer-events-none"/);
+  assert.doesNotMatch(toasts, /<p className="pointer-events-none/);
+  assert.match(toasts, /message\.link && !hasFullToastLink[\s\S]*<Link/);
+});
+
+test("shared toasts escape nested panel stacking contexts", () => {
+  assert.match(toasts, /import \{ createPortal \} from "react-dom"/);
+  assert.match(toasts, /useSyncExternalStore<HTMLElement \| null>[\s\S]*\(\) => document\.body/);
+  assert.match(toasts, /return createPortal\([\s\S]*portalRoot/);
+});
+
 test("toast settings are loaded at runtime without making static pages query the database", () => {
   assert.doesNotMatch(rootLayout, /getToastSettings/);
   assert.match(provider, /fetch\("\/api\/toast-settings"/);

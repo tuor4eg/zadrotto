@@ -19,6 +19,8 @@ describe("public media reviews layout", () => {
     const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
     const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
     assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
+    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:ml-2"/);
+    assert.doesNotMatch(details, /className="mx-auto mt-7 w-full max-w-\[420px\]"/);
   });
 
   it("renders three review previews and one action card", () => {
@@ -57,12 +59,21 @@ describe("public media reviews layout", () => {
     assert.match(reviewArticle, /mediaItemMeta\.map/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
     assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
+    assert.match(reviewArticle, /<div className="mt-8 w-full">[\s\S]*\{review\.body\}/);
+    assert.doesNotMatch(reviewArticle, /mt-8 max-w-4xl/);
     assert.doesNotMatch(reviewArticle, /border-t border-stone-400\/30/);
     assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);
     assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
     assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);
     assert.match(reviewArticle, /navigator\.share\(shareData\)/);
     assert.match(reviewArticle, /navigator\.clipboard\?\.writeText/);
+  });
+
+  it("keeps every desktop rating skin at its original centered width", () => {
+    assert.match(
+      details,
+      /mx-auto mt-6 hidden w-full min-w-0 max-w-\[584px\] gap-3 sm:grid sm:grid-cols-2/,
+    );
   });
 
   it("loads only published reviews attached to visible records", () => {

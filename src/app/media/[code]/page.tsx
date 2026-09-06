@@ -117,7 +117,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
       {currentAuthor ? <RecentlyViewedMarker code={item.code} /> : null}
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="w-full">
         <MediaItemDetails
           item={item}
           variant="archive"

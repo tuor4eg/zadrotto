@@ -136,6 +136,13 @@ describe("public series catalog UI", () => {
     assert.doesNotMatch(seriesHeaderSource, /flex-1 truncate text-stone-800/);
   });
 
+  it("keeps record previews near their original width as the series page expands", () => {
+    assert.match(
+      seriesPageSource,
+      /xl:grid-cols-\[repeat\(auto-fill,minmax\(170px,1fr\)\)\]/,
+    );
+  });
+
   it("shows a bounded preview of immediate child series before its media items", () => {
     assert.match(
       seriesPageSource,

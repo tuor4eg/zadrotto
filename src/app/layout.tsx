@@ -6,6 +6,7 @@ import { AchievementToastHost } from "@/components/achievements/achievement-toas
 import { NotificationInboxProvider } from "@/components/notifications/notification-inbox";
 import { ToastSettingsProvider } from "@/components/ui/toast-settings-provider";
 import { ExternalInterfaceLayer } from "@/components/external-interface/external-interface-layer";
+import { PublicSiteFooterLayer } from "@/components/archive/public-site-footer-layer";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -32,6 +33,7 @@ export default function RootLayout({
           <NotificationInboxProvider>
             <ExternalInterfaceLayer>
               {children}
+              <PublicSiteFooterLayer />
               <Suspense fallback={null}>
                 <AchievementToastHost />
               </Suspense>

@@ -2,7 +2,12 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-import { getRelatedFranchiseSectionSources } from "@/lib/media/related-franchises";
+import {
+  getRelatedFranchiseSectionSources,
+  getRelatedSeriesColumnCount,
+  RELATED_SERIES_ROW_LIMIT,
+  RELATED_SERIES_TILE_MIN_WIDTH_PX,
+} from "@/lib/media/related-franchises";
 
 const details = readFileSync("src/app/media-item-details.tsx", "utf8");
 const mediaItemsQuery = readFileSync("src/db/queries/media-items.ts", "utf8");
@@ -96,5 +101,20 @@ describe("public media related series", () => {
       details,
       /franchise: Pick<MediaItemDetailsItem\["franchises"\]\[number\], "id" \| "code" \| "title">/,
     );
+  });
+
+  it("keeps related record previews near their original width as the page expands", () => {
+    assert.match(
+      details,
+      new RegExp(
+        `xl:grid-cols-\\[repeat\\(auto-fill,minmax\\(${RELATED_SERIES_TILE_MIN_WIDTH_PX}px,1fr\\)\\)\\]`,
+      ),
+    );
+  });
+
+  it("fills one related row at the public dossier width without stretching tiles", () => {
+    assert.equal(getRelatedSeriesColumnCount(1416), 7);
+    assert.equal(RELATED_SERIES_ROW_LIMIT, 7);
+    assert.match(mediaItemsQuery, /limit\(RELATED_SERIES_ROW_LIMIT\)/);
   });
 });

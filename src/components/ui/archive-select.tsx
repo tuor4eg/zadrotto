@@ -190,6 +190,7 @@ export function ArchiveSelect<TValue extends string>({
             ref={menuRef}
             id={selectId}
             role="listbox"
+            data-archive-select-menu=""
             aria-label={ariaLabel}
             className={cn(
               "archive-paper-surface archive-scrollbar fixed z-[120] overflow-y-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]",

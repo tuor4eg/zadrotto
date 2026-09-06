@@ -46,9 +46,9 @@ describe("archive route split", () => {
     assert.doesNotMatch(archivePage, /secondaryControls|showSearch|\bsticky\b/);
   });
 
-  it("keeps the public series spread slightly narrower than the archive catalog", () => {
+  it("keeps the public series catalog as wide as the archive catalog", () => {
     assert.match(archivePage, /max-w-\[1480px\]/);
-    assert.match(seriesCatalogPage, /max-w-\[1280px\]/);
+    assert.match(seriesCatalogPage, /max-w-\[1480px\]/);
   });
 
   it("submits the main-page search to the archive only on form submission", () => {

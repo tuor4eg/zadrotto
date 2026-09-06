@@ -1,6 +1,25 @@
 import type { PublicationStatus } from "@/lib/media/publication-status";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
+export const RELATED_SERIES_TILE_MIN_WIDTH_PX = 170;
+export const RELATED_SERIES_TILE_GAP_PX = 10;
+const PUBLIC_ARCHIVE_MAX_WIDTH_PX = 1480;
+const RELATED_SERIES_SECTION_PADDING_X_PX = 32;
+
+export function getRelatedSeriesColumnCount(containerWidth: number) {
+  return Math.max(
+    1,
+    Math.floor(
+      (containerWidth + RELATED_SERIES_TILE_GAP_PX) /
+        (RELATED_SERIES_TILE_MIN_WIDTH_PX + RELATED_SERIES_TILE_GAP_PX),
+    ),
+  );
+}
+
+export const RELATED_SERIES_ROW_LIMIT = getRelatedSeriesColumnCount(
+  PUBLIC_ARCHIVE_MAX_WIDTH_PX - RELATED_SERIES_SECTION_PADDING_X_PX * 2,
+);
+
 export type RelatedFranchiseSource = {
   id: number;
   code: string;

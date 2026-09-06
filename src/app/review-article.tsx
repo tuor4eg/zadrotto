@@ -185,7 +185,7 @@ export function ReviewArticle({
               {publishedAt ? <span>{publishedAt}</span> : null}
             </div>
             <div className="mt-4 flex justify-start"><ReviewAuthorStars score={review.authorScore} /></div>
-            <div className="mt-8 max-w-4xl">
+            <div className="mt-8 w-full">
               <p className="archive-typewriter-text whitespace-pre-wrap text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
             </div>
             </div>

@@ -221,7 +221,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
       />
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="mx-auto flex w-full max-w-6xl flex-col gap-3">
+        <div className="flex w-full flex-col gap-3">
           <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
           <SeriesPageHeader
             adminCanEdit={headerState.currentAdminUser}
@@ -297,7 +297,7 @@ export default async function FranchisePage({ params, searchParams }: FranchiseP
                       <ChevronDown className="size-4 shrink-0 text-stone-500 transition-transform group-open/section:rotate-180" />
                     </summary>
 
-                    <div className="grid grid-cols-3 content-start gap-2.5 border-t border-stone-300/70 p-3 md:grid-cols-4 xl:grid-cols-6">
+                    <div className="grid grid-cols-3 content-start gap-2.5 border-t border-stone-300/70 p-3 md:grid-cols-4 xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
                       {section.items.map((item) => currentAuthor && item.hasDirectFranchiseLink ? (
                         <SeriesMediaUnlinkTile key={item.id} canPublishFranchisesWithoutReview={currentAuthor.canPublishFranchisesWithoutReview} franchiseCode={franchise.code} item={item} mediaTypes={mediaTypes} currentAuthorScore={item.currentAuthorScore} currentAuthorStatus={item.currentAuthorStatus} />
                       ) : currentAuthor ? (

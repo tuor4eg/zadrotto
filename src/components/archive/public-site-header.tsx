@@ -46,9 +46,9 @@ export function PublicSiteHeader({
             <Image
               src="/site-logo.png"
               alt=""
-              width={40}
-              height={40}
-              className="size-9 object-contain sm:size-10"
+              width={60}
+              height={60}
+              className="size-[60px] object-contain"
               priority
             />
             <span className="hidden font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-100 sm:inline">

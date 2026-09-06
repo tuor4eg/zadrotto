@@ -55,7 +55,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       <BugReportEntityContextRegistration context={{ entityId: String(review.mediaItemId), entityType: "media-item" }} />
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="mx-auto w-full max-w-6xl">
+        <div className="w-full">
         <ReviewArticle
           canEdit={currentAuthor?.code === review.authorCode}
           mediaItemTypeLabel={getMediaTypeLabel(review.mediaItemMediaType, mediaTypes)}

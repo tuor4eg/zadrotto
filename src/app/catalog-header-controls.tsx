@@ -297,9 +297,19 @@ export function CatalogHeaderControls({
     }
 
     function handlePointerDown(event: PointerEvent) {
-      if (!filtersRootRef.current?.contains(event.target as Node)) {
-        setOpenSelect(null);
+      const target = event.target;
+
+      if (!(target instanceof Node) || filtersRootRef.current?.contains(target)) {
+        return;
       }
+
+      const targetElement = target instanceof Element ? target : target.parentElement;
+
+      if (targetElement?.closest("[data-archive-select-menu]")) {
+        return;
+      }
+
+      setOpenSelect(null);
     }
 
     function handleKeyDown(event: KeyboardEvent) {

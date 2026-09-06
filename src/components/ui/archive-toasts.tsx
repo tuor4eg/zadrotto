@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -27,6 +28,8 @@ type ArchiveToastsProps = {
   messages: ArchiveToast[];
 };
 
+const subscribeToPortalRoot = () => () => {};
+
 export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -36,6 +39,11 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
     ? adminDurationSeconds
     : siteDurationSeconds;
   const [visibleMessages, setVisibleMessages] = useState(messages);
+  const portalRoot = useSyncExternalStore<HTMLElement | null>(
+    subscribeToPortalRoot,
+    () => document.body,
+    () => null,
+  );
   const messageSignature = useMemo(
     () =>
       messages
@@ -90,11 +98,11 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
     return () => window.clearTimeout(timeoutId);
   }, [durationSeconds, visibleMessages.length]);
 
-  if (visibleMessages.length === 0) {
+  if (visibleMessages.length === 0 || !portalRoot) {
     return null;
   }
 
-  return (
+  return createPortal(
     <div className="fixed bottom-4 right-4 z-[90] grid w-[min(24rem,calc(100vw-2rem))] gap-2">
       {visibleMessages.map((message) => {
         const isSuccess = message.tone === "success";
@@ -143,7 +151,12 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
                 <Icon className="size-4" />
               </span>
             )}
-            <p className="pointer-events-none relative z-[1] min-w-0 pt-1 leading-5 text-stone-800">
+            <p
+              className={cn(
+                "relative z-[1] min-w-0 pt-1 leading-5 text-stone-800",
+                hasFullToastLink && "pointer-events-none",
+              )}
+            >
               {message.link && !hasFullToastLink ? (
                 <>
                   <Link
@@ -172,6 +185,7 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
           </div>
         );
       })}
-    </div>
+    </div>,
+    portalRoot,
   );
 }

@@ -163,5 +163,8 @@ describe("feedback page contracts", () => {
     assert.match(feedbackPageSource, /href="https:\/\/t\.me\/zadrotto"/);
     assert.match(feedbackPageSource, /target="_blank"/);
     assert.match(feedbackPageSource, /rel="noreferrer"/);
+    assert.match(feedbackPageSource, /flex min-h-dvh flex-col/);
+    assert.match(feedbackPageSource, /max-w-\[1480px\] flex-1 flex-col/);
+    assert.match(feedbackPageSource, /archive-stack-left flex-1/);
   });
 });

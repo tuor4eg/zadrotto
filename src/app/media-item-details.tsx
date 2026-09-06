@@ -451,7 +451,7 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
             {adjacentShelfSlot ? (
-              <div className="mx-auto mt-7 w-full max-w-[420px]">
+              <div className="mt-7 w-full max-w-[420px] sm:ml-2">
                 {adjacentShelfSlot}
               </div>
             ) : null}
@@ -542,7 +542,7 @@ function ArchiveMediaItemDetails({
                 </div>
               </div>
 
-              <div className="mt-6 hidden min-w-0 gap-3 sm:grid sm:grid-cols-2">
+              <div className="mx-auto mt-6 hidden w-full min-w-0 max-w-[584px] gap-3 sm:grid sm:grid-cols-2">
                 <div className="min-w-0">
                   <ArchiveRatingPanel
                     displayFontClassName={displayFontClassName}
@@ -593,7 +593,7 @@ function ArchiveMediaItemDetails({
                       />
                     </div>
                     {section.items.length > 0 ? (
-                      <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-6">
+                      <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
                         {section.items.map((relatedItem) => (
                           <MediaItemTile
                             key={relatedItem.id}

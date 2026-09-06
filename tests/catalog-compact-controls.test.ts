@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 const source = readFileSync("src/app/catalog-header-controls.tsx", "utf8");
 const globalsSource = readFileSync("src/app/globals.css", "utf8");
+const selectSource = readFileSync("src/components/ui/archive-select.tsx", "utf8");
 
 describe("catalog header controls", () => {
   it("keeps filter and sort popovers visible in the shared header row", () => {
@@ -22,6 +23,15 @@ describe("catalog header controls", () => {
     assert.match(
       source,
       /hasActiveFilters[\s\S]*aria-hidden="true"[\s\S]*className="absolute right-0 top-0 size-2\.5 rounded-full bg-red-700 shadow-sm"/,
+    );
+  });
+
+  it("keeps the year select usable inside the filter menu", () => {
+    assert.match(selectSource, /createPortal\(/);
+    assert.match(selectSource, /data-archive-select-menu=""/);
+    assert.match(
+      source,
+      /closest\("\[data-archive-select-menu\]"\)/,
     );
   });
 
