@@ -28,7 +28,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ru" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">
+      <body className="min-h-dvh flex flex-col">
         <ToastSettingsProvider>
           <NotificationInboxProvider>
             <ExternalInterfaceLayer>

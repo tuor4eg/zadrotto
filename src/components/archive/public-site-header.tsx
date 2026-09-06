@@ -57,7 +57,10 @@ export function PublicSiteHeader({
           </Link>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
-            {MENU_ITEMS.map((item) => (
+            {(author
+              ? [...MENU_ITEMS, { href: "/achievements", label: "Ачивки" }]
+              : MENU_ITEMS
+            ).map((item) => (
               <Link
                 key={item.href}
                 href={item.href}

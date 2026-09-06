@@ -1,5 +1,7 @@
 import { Trophy } from "lucide-react"
 
+import { sortAchievementsByAwardedAt } from "@/lib/achievements/showcase"
+
 import {
   AchievementCard,
   type AchievementShowcaseItem,
@@ -14,7 +16,7 @@ export function AchievementShowcase({
   items: AchievementShowcaseItem[]
   title?: string
 }) {
-  const sortedItems = [...items].sort((left, right) => Number(Boolean(right.awardedAt)) - Number(Boolean(left.awardedAt)))
+  const sortedItems = sortAchievementsByAwardedAt(items)
 
   return (
     <section aria-labelledby="achievements-title">
@@ -27,7 +29,7 @@ export function AchievementShowcase({
       {sortedItems.length === 0 ? (
         <p className="text-sm text-stone-600">{emptyText}</p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
           {sortedItems.map((item) => <AchievementCard key={item.code} browseAwardedLevels fillWidth item={item} />)}
         </div>
       )}

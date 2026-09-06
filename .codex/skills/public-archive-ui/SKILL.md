@@ -18,7 +18,8 @@ Preserve one coherent public shell without duplicating header or session-loading
 
 - Keep the brand, `Архив / Серии / Подборки`, search or page controls, notifications, admin action, and avatar/login in one row.
 - Preserve the action order `уведомления → админка → аватар`. Show the admin badge only for a non-zero moderation count.
-- On `/archive`, put search, exploration, filters, and sorting in the same header row. Search updates `q` with the existing 250 ms debounce, preserves other parameters, resets `page`, and clears `q` immediately when emptied.
+- On `/archive`, put search, filters, and sorting in the same header row. Search updates `q` with the existing 250 ms debounce, preserves other parameters, resets `page`, and clears `q` immediately when emptied.
+- For a logged-in author, also show `Ачивки` in the main navigation.
 - Breadcrumbs start at the nearest useful section; do not repeat `Главная` or `Архив`, which are already available in the shared header.
 
 ## Boundaries

@@ -13,7 +13,7 @@ export default async function FeedbackPage() {
   const headerState = await getPublicSiteHeaderState();
 
   return (
-    <main className="archive-page flex min-h-dvh flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
@@ -40,7 +40,7 @@ export default async function FeedbackPage() {
                 alt=""
                 className="h-auto w-40 justify-self-center sm:w-48 sm:justify-self-end"
                 height={425}
-                src="/mascot/deadz_contact.png"
+                src="/mascot/deadz_contact.webp"
                 unoptimized
                 width={420}
               />

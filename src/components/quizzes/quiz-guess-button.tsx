@@ -81,7 +81,7 @@ function QuizGuessResultModal({
             alt=""
             className="mx-auto mb-4 h-auto w-40"
             height={525}
-            src="/mascot/deadz_quiz_win.png"
+            src="/mascot/deadz_quiz_win.webp"
             unoptimized
             width={350}
           />
@@ -90,7 +90,7 @@ function QuizGuessResultModal({
             alt=""
             className="mx-auto mb-4 h-auto w-40"
             height={460}
-            src="/mascot/deadz_quiz_correct.png"
+            src="/mascot/deadz_quiz_correct.webp"
             unoptimized
             width={420}
           />
@@ -99,7 +99,7 @@ function QuizGuessResultModal({
             alt=""
             className="mx-auto mb-4 h-auto w-40"
             height={525}
-            src="/mascot/deadz_quiz_fail.png"
+            src="/mascot/deadz_quiz_fail.webp"
             unoptimized
             width={420}
           />

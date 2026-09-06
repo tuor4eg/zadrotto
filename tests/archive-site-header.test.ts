@@ -14,7 +14,8 @@ const publicPages = [
   "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx",
   "src/app/series/[code]/page.tsx", "src/app/series/[code]/children/page.tsx",
   "src/app/collections/page.tsx", "src/app/collections/[slug]/page.tsx",
-  "src/app/media/[code]/page.tsx", "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
+  "src/app/media/[code]/page.tsx",   "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
+  "src/app/achievements/page.tsx",
   "src/app/users/[id]/page.tsx", "src/app/users/[id]/achievements/page.tsx",
   "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
   "src/app/feedback/page.tsx",
@@ -38,6 +39,7 @@ describe("public site header", () => {
     }
     assert.match(headerSource, /max-w-\[1480px\]/);
     assert.match(headerSource, /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"/);
+    assert.match(headerSource, /author[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/);
     assert.match(headerSource, /<NotificationBell align="right" round \/>[\s\S]*href="\/admin"[\s\S]*href="\/author"/);
     assert.match(headerSource, /href="\/admin"[\s\S]*NotificationBadge[\s\S]*count=\{adminNotificationCount\}/);
   });
@@ -78,6 +80,7 @@ describe("public site header", () => {
       "src/app/collections/page.tsx",
       "src/app/collections/[slug]/page.tsx",
       "src/app/reviews/page.tsx",
+      "src/app/achievements/page.tsx",
     ]) {
       assert.match(
         read(file),
@@ -95,10 +98,15 @@ describe("public site header", () => {
 
   it("mounts one shared footer layer on public routes only", () => {
     assert.match(rootLayoutSource, /<PublicSiteFooterLayer \/>/);
+    assert.match(footerLayerSource, /public-site-footer-layer/);
     assert.match(footerLayerSource, /<ArchiveSiteFooter \/>/);
     assert.match(footerLayerSource, /max-w-\[1480px\]/);
     assert.match(footerLayerSource, /"\/admin"[\s\S]*"\/author"/);
     assert.doesNotMatch(mainPageSource, /<ArchiveSiteFooter \/>/);
+    assert.match(
+      globalsSource,
+      /\.archive-page:has\(\+ \.public-site-footer-layer\) \{\s*min-height: auto;/,
+    );
     assert.match(
       globalsSource,
       /archive-page:not\(\.archive-catalog-page\):has\(\.public-site-header\) \{[\s\S]*padding-bottom: 0\.75rem;/,

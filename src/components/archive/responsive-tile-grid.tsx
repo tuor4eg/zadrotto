@@ -3,11 +3,15 @@
 import { useEffect, useRef, useState } from "react";
 
 import { MediaItemTile, type MediaItemTileItem } from "@/app/media-item-tile";
+import {
+  ARCHIVE_LIST_TARGET_TILE_WIDTH,
+  ARCHIVE_LIST_TILE_GAP,
+} from "@/lib/archive/tile-grid-capacity";
 
-const GRID_GAP = 12;
-const TARGET_CARD_WIDTH = {
-  compact: 72,
-  top: 140,
+const TILE_GRID = {
+  archive: { gap: ARCHIVE_LIST_TILE_GAP, width: ARCHIVE_LIST_TARGET_TILE_WIDTH },
+  compact: { gap: 12, width: 72 },
+  top: { gap: 12, width: 140 },
 } as const;
 
 export type ResponsiveTileDescriptor = {
@@ -21,22 +25,21 @@ export type ResponsiveTileDescriptor = {
 type ResponsiveTileGridProps = {
   initialColumnCount?: number;
   items: ResponsiveTileDescriptor[];
-  variant?: keyof typeof TARGET_CARD_WIDTH;
+  variant?: keyof typeof TILE_GRID;
 };
 
 export function getTileGridColumnCount(
   width: number,
-  variant: keyof typeof TARGET_CARD_WIDTH,
+  variant: keyof typeof TILE_GRID,
 ) {
-  return Math.max(
-    3,
-    Math.floor((width + GRID_GAP) / (TARGET_CARD_WIDTH[variant] + GRID_GAP)),
-  );
+  const { gap, width: cardWidth } = TILE_GRID[variant];
+
+  return Math.max(3, Math.floor((width + gap) / (cardWidth + gap)));
 }
 
 export function getInitialTileGridColumnCount(
   initialColumnCount: number | undefined,
-  variant: keyof typeof TARGET_CARD_WIDTH,
+  variant: keyof typeof TILE_GRID,
 ) {
   const defaultColumnCount = variant === "top" ? 7 : 6;
 
@@ -88,8 +91,11 @@ export function ResponsiveTileGrid({
   return (
     <div
       ref={gridRef}
-      className="grid gap-3"
-      style={{ gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))` }}
+      className="grid"
+      style={{
+        gap: `${TILE_GRID[variant].gap}px`,
+        gridTemplateColumns: `repeat(${columnCount}, minmax(0, 1fr))`,
+      }}
     >
       {visibleItems.map((descriptor) => (
         <MediaItemTile

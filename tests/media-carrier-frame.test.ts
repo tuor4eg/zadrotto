@@ -12,7 +12,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "nes" }),
       {
-        assetPath: "/mediaCarriers/game/nes/cartridge.png",
+        assetPath: "/mediaCarriers/game/nes/cartridge.webp",
         aspectRatioClassName: "aspect-[3/2]",
         coverAreaClassName: "left-[9.5%] top-[18.5%] h-[58.5%] w-[81%]",
         displayFontClassName: "media-carrier-font-nes",
@@ -29,7 +29,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "sega" }),
       {
-        assetPath: "/mediaCarriers/game/sega/cartridge.png",
+        assetPath: "/mediaCarriers/game/sega/cartridge.webp",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[15.2%] top-[7.8%] h-[79.5%] w-[69.6%]",
         displayFontClassName: "media-carrier-font-sega",
@@ -42,7 +42,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "snes" }),
       {
-        assetPath: "/mediaCarriers/game/snes/cartridge.png",
+        assetPath: "/mediaCarriers/game/snes/cartridge.webp",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[14.6%] top-[4.5%] h-[41.5%] w-[70.8%]",
         displayFontClassName: "media-carrier-font-sega",
@@ -58,7 +58,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "ps1" }),
       {
-        assetPath: "/mediaCarriers/game/ps1/jewel.png",
+        assetPath: "/mediaCarriers/game/ps1/jewel.webp",
         aspectRatioClassName: "aspect-[209/208]",
         coverAreaClassName: "left-[19.7%] top-[1.9%] h-[95%] w-[76.8%]",
         displayFontClassName: "media-carrier-font-ps1",
@@ -83,7 +83,7 @@ describe("media carrier frames", () => {
         releaseYear: 1981,
       }),
       {
-        assetPath: "/mediaCarriers/game/pc/dos/disk35.png",
+        assetPath: "/mediaCarriers/game/pc/dos/disk35.webp",
         aspectRatioClassName: "aspect-square",
         coverAreaClassName: "left-[12%] top-[61%] h-[35%] w-[76.5%]",
         displayFontClassName: "media-carrier-font-pc-dos",
@@ -118,7 +118,7 @@ describe("media carrier frames", () => {
         releaseYear: 1997,
       }),
       {
-        assetPath: "/mediaCarriers/game/pc/win9x/jewel.png",
+        assetPath: "/mediaCarriers/game/pc/win9x/jewel.webp",
         aspectRatioClassName: "aspect-[10/9]",
         coverAreaClassName: "left-[12.2%] top-[9.6%] h-[87.6%] w-[65.1%]",
         displayFontClassName: "media-carrier-font-pc-win9x",
@@ -128,7 +128,7 @@ describe("media carrier frames", () => {
         ratingPanelVariant: "win9x-window",
         renderKind: "cartridge",
         titleIconHeight: 123,
-        titleIconPath: "/mediaCarriers/game/pc/win9x/folder.png",
+        titleIconPath: "/mediaCarriers/game/pc/win9x/folder.webp",
         titleIconWidth: 160,
         titleTemplate: "C:\\{title}",
       },
@@ -151,7 +151,7 @@ describe("media carrier frames", () => {
         releaseYear: 2004,
       }),
       {
-        assetPath: "/mediaCarriers/game/pc/windvd/dvd.png",
+        assetPath: "/mediaCarriers/game/pc/windvd/dvd.webp",
         aspectRatioClassName: "aspect-[3/4]",
         compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
         compactViewportClassName: "h-[min(28vh,260px)] max-w-full sm:h-[min(32vh,300px)]",
@@ -164,7 +164,7 @@ describe("media carrier frames", () => {
         renderKind: "cartridge",
         sizeClassName: "h-[min(44vh,380px)] w-auto max-w-full sm:h-[min(58vh,520px)]",
         titleIconHeight: 124,
-        titleIconPath: "/mediaCarriers/game/pc/windvd/folder.png",
+        titleIconPath: "/mediaCarriers/game/pc/windvd/folder.webp",
         titleIconWidth: 128,
         titleTemplate: "C ▸ {title}",
         viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
@@ -204,7 +204,7 @@ describe("media carrier frames", () => {
         sizeClassName: "h-[min(44vh,380px)] w-auto max-w-full sm:h-[min(58vh,520px)]",
         topGradientClassName: "h-[30%] bg-gradient-to-b from-black/56 via-black/20 to-transparent",
         topLogoClassName: "left-[2%] top-[2%] w-[17%]",
-        topLogoPath: "/mediaCarriers/game/pc/steam/steam-logo.png",
+        topLogoPath: "/mediaCarriers/game/pc/steam/steam-logo.webp",
         viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
       },
     );
@@ -214,7 +214,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs" }),
       {
-        assetPath: "/mediaCarriers/video/vhs/vhs.png",
+        assetPath: "/mediaCarriers/video/vhs/vhs.webp",
         aspectRatioClassName: "aspect-[767/1463]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
@@ -233,7 +233,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
       {
-        assetPath: "/mediaCarriers/video/dvd/dvd.png",
+        assetPath: "/mediaCarriers/video/dvd/dvd.webp",
         aspectRatioClassName: "aspect-[357/490]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
@@ -256,7 +256,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1979 }),
       {
-        assetPath: "/mediaCarriers/video/reel/reel.png?v=2",
+        assetPath: "/mediaCarriers/video/reel/reel.webp",
         aspectRatioClassName: "aspect-[1000/1040]",
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
@@ -281,11 +281,11 @@ describe("media carrier frames", () => {
     assert.doesNotMatch(compactReelFrame?.compactViewportClassName ?? "", /\bh-|sm:w-auto/);
     assert.equal(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1980 })?.assetPath,
-      "/mediaCarriers/video/vhs/vhs.png",
+      "/mediaCarriers/video/vhs/vhs.webp",
     );
     assert.equal(
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs", releaseYear: 1979 })?.assetPath,
-      "/mediaCarriers/video/vhs/vhs.png",
+      "/mediaCarriers/video/vhs/vhs.webp",
     );
   });
 
@@ -312,7 +312,7 @@ describe("media carrier frames", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2003 }),
       {
-        assetPath: "/mediaCarriers/video/tv/tv.png",
+        assetPath: "/mediaCarriers/video/tv/tv.webp",
         aspectRatioClassName: "aspect-[1033/910]",
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
@@ -329,7 +329,7 @@ describe("media carrier frames", () => {
     );
     assert.equal(
       getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 })?.assetPath,
-      "/mediaCarriers/video/moderntv/tv.png",
+      "/mediaCarriers/video/moderntv/tv.webp",
     );
     assert.equal(
       hasMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: "dvd", releaseYear: 2003 }),

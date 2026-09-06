@@ -274,12 +274,12 @@ describe("quizzes", () => {
     assert.match(guessButton, /role="dialog"/);
     assert.match(guessButton, /Верно!/);
     assert.match(guessButton, /Попытки закончились/);
-    assert.match(guessButton, /src="\/mascot\/deadz_quiz_fail\.png"/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_fail\.webp"/);
     assert.match(guessButton, /data\.participant\?\.isWinner \? "winner" : "correct"/);
-    assert.match(guessButton, /src="\/mascot\/deadz_quiz_win\.png"/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_win\.webp"/);
     assert.match(guessButton, /!isWinner \? \([\s\S]*?<X className="size-4"/);
     assert.match(guessButton, /isWinner \? \([\s\S]*?Ура!/);
-    assert.match(guessButton, /src="\/mascot\/deadz_quiz_correct\.png"/);
+    assert.match(guessButton, /src="\/mascot\/deadz_quiz_correct\.webp"/);
     assert.match(guessButton, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.doesNotMatch(guessButton, /ArchiveTooltip/);
     assert.match(guessButton, /variant === "preview" \? "w-full"/);

@@ -18,7 +18,9 @@ describe("responsive tile grid", () => {
   it("uses measured capacity independently of the number of items", () => {
     assert.equal(getTileGridColumnCount(500, "top"), 3);
     assert.equal(getTileGridColumnCount(1000, "top"), 6);
-    assert.equal(getTileGridColumnCount(1000, "compact"), 12);
+    assert.equal(getTileGridColumnCount(1, "archive"), 3);
+    assert.equal(getTileGridColumnCount(1000, "archive"), 6);
+    assert.match(gridSource, /ARCHIVE_LIST_TARGET_TILE_WIDTH/);
   });
 
   it("keeps stable initial columns and limits only the rendered items", () => {

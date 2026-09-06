@@ -49,7 +49,7 @@ export function AchievementToastHost() {
           imageUrl: achievement.imageUrl,
           link: {
             fullToast: true,
-            href: "/author/achievements",
+            href: "/achievements",
             label: `Открыть ачивку «${achievement.name}»`,
           },
           tone: "success",

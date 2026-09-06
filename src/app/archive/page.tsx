@@ -194,7 +194,7 @@ export default async function Home({ searchParams }: HomeProps) {
   ];
 
   return (
-    <main className="archive-page archive-catalog-page min-h-screen text-stone-950">
+    <main className="archive-page archive-catalog-page text-stone-950">
       <ArchiveToasts
         clearParams={[
           "suggested",
@@ -204,7 +204,7 @@ export default async function Home({ searchParams }: HomeProps) {
         ]}
         messages={toastMessages}
       />
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader
         adminNotificationCount={headerState.adminNotificationCount}
         author={currentAuthor
@@ -225,7 +225,7 @@ export default async function Home({ searchParams }: HomeProps) {
           />
         }
         />
-        <div className="archive-catalog-shell flex w-full flex-col gap-3">
+        <div className="archive-catalog-shell flex min-h-0 w-full flex-1 flex-col gap-3">
           <MediaItemsCatalog
           activeQuiz={activeQuiz && canGuessActiveQuiz ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
           authorRatingFilter={authorRatingFilter}

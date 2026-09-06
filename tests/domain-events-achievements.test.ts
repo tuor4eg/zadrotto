@@ -181,7 +181,7 @@ describe("achievement consumer", () => {
     assert.match(toastHostSource, /group\.achievements\.map\(\(achievement\) =>/);
     assert.match(toastHostSource, /imageUrl: achievement\.imageUrl/);
     assert.match(toastHostSource, /fullToast: true/);
-    assert.match(toastHostSource, /href: "\/author\/achievements"/);
+    assert.match(toastHostSource, /href: "\/achievements"/);
     assert.match(toastHostSource, /Получена ачивка «\$\{achievement\.name\}»/);
     assert.match(
       achievementQuerySource,
@@ -314,19 +314,26 @@ describe("achievement consumer", () => {
     assert.match(querySource, /inArray\(achievementLevels\.achievementId, achievementIds\)/)
   });
 
-  it("renders a 2-by-1 split achievement card and shows five recent awards in the same grid", () => {
+  it("renders a vertical achievement card and shows five recent awards in the same grid", () => {
     const cardSource = readFileSync("src/components/achievements/achievement-card.tsx", "utf8")
     const recentSource = readFileSync(
       "src/components/achievements/recent-achievement-showcase.tsx",
       "utf8",
     )
     const showcaseSource = readFileSync("src/components/achievements/achievement-showcase.tsx", "utf8")
-    assert.match(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX = ACHIEVEMENT_CARD_HEIGHT_PX \* 2/)
-    assert.match(cardSource, /grid h-full w-full shrink-0 basis-full grid-cols-2/)
+    assert.match(cardSource, /ACHIEVEMENT_CARD_IMAGE_PX = 96/)
+    assert.match(cardSource, /flex h-full w-full shrink-0 basis-full flex-col/)
+    assert.doesNotMatch(cardSource, /aspectRatio: "2 \/ 1"/)
+    assert.doesNotMatch(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX/)
+    assert.match(cardSource, /rounded-full/)
     assert.match(cardSource, /translateX\(-\$\{viewIndex \* 100\}%\)/)
     assert.match(cardSource, /transition-transform duration-300 ease-out/)
     assert.match(cardSource, /formatLevel\(/)
-    assert.match(cardSource, /formatReceivedAt\(/)
+    assert.match(cardSource, /if \(item\.levelCount <= 1\) return null/)
+    assert.match(cardSource, /\$\{slide\.name\} \(\$\{level\}\)/)
+    assert.match(cardSource, /slide\.awardedAt/)
+    assert.match(cardSource, /formatAwardedAt\(slide\.awardedAt\)/)
+    assert.match(cardSource, /line-clamp-3/)
     assert.match(cardSource, /browseAwardedLevels/)
     assert.doesNotMatch(cardSource, /onMouseLeave=/)
     assert.match(cardSource, /SWIPE_THRESHOLD_PX = 40/)
@@ -337,9 +344,9 @@ describe("achievement consumer", () => {
     assert.match(cardSource, /if \(dx < 0\) setViewIndex\(\(index\) => Math\.min\(currentIndex, index \+ 1\)\)/)
     assert.match(recentSource, /RECENT_ACHIEVEMENT_LIMIT = 5/)
     assert.match(recentSource, /browseAwardedLevels fillWidth item=\{item\}/)
-    assert.match(recentSource, /grid gap-2 sm:grid-cols-2 xl:grid-cols-5/)
+    assert.match(recentSource, /grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5/)
     assert.match(showcaseSource, /browseAwardedLevels fillWidth item=\{item\}/)
-    assert.match(showcaseSource, /grid gap-2 sm:grid-cols-2 xl:grid-cols-5/)
+    assert.match(showcaseSource, /grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6/)
     assert.doesNotMatch(showcaseSource, /auto-fill/)
   })
 

@@ -135,7 +135,7 @@ export function BugReportModal({
         {submitted ? (
           <div className="grid justify-items-center gap-4 py-5 text-center">
             <Image
-              src="/mascot/deadz_bugreport.png"
+              src="/mascot/deadz_bugreport.webp"
               alt=""
               width={240}
               height={300}

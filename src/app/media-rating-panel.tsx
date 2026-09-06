@@ -178,15 +178,15 @@ type ArchiveRatingPanelProps = {
   showStarsWhenCompact?: boolean;
 };
 
-const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.png";
-const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_all.png";
-const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_my.png";
-const PS1_LOGO_PATH = "/mediaCarriers/game/ps1/ps1_logo.png";
-const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.png";
-const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.png";
-const COMIC_ARCHIVE_BURST_PATH = "/mediaCarriers/comic/star.png";
-const COMIC_AUTHOR_BURST_PATH = "/mediaCarriers/comic/bam.png";
-const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.png";
+const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.webp";
+const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_all.webp";
+const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_my.webp";
+const PS1_LOGO_PATH = "/mediaCarriers/game/ps1/ps1_logo.webp";
+const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.webp";
+const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.webp";
+const COMIC_ARCHIVE_BURST_PATH = "/mediaCarriers/comic/star.webp";
+const COMIC_AUTHOR_BURST_PATH = "/mediaCarriers/comic/bam.webp";
+const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.webp";
 const ANIME_ARCHIVE_RATING_ART_PATH = "/mediaCarriers/anime/robot.webp";
 const ANIME_AUTHOR_RATING_ART_PATH = "/mediaCarriers/anime/kawai.webp";
 

@@ -20,7 +20,6 @@ import {
 
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import { ArchiveExplorationLauncher } from "@/components/archive/archive-exploration-launcher";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import type {
   AuthorRatingFilter,
@@ -328,7 +327,7 @@ export function CatalogHeaderControls({
   }, [openSelect]);
 
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap">
       <label className="sr-only" htmlFor="header-catalog-search">
         Поиск
       </label>
@@ -359,12 +358,6 @@ export function CatalogHeaderControls({
           </ArchiveTooltip>
         ) : null}
       </div>
-
-      <ArchiveExplorationLauncher
-        currentAuthor={currentAuthor}
-        iconOnly
-        className="archive-control-surface inline-flex h-9 w-9 items-center justify-center rounded-full border border-stone-300/80 text-stone-700 hover:border-stone-700 hover:bg-stone-50"
-      />
 
       <ArchiveTooltip
         label={

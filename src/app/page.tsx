@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { Layers3, MessageSquareQuote, Sparkles, Star, Trophy } from "lucide-react";
 
 import { getLatestAwardedAchievement } from "@/db/queries/achievements";
@@ -10,6 +11,7 @@ import {
   getLatestPublishedReviewCard,
 } from "@/db/queries/contribution-reviews";
 import { getLatestArchiveFeed } from "@/db/queries/archive-feed";
+import { getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getPublishedEditorialCollections } from "@/db/queries/editorial-collections";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
@@ -28,6 +30,10 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
 import { ArchiveFeed } from "./main/archive-feed";
 import { ArchiveRiddle } from "./main/archive-riddle";
+import {
+  RandomFranchiseSection,
+  RandomFranchiseSectionFallback,
+} from "./main/random-franchise-section";
 
 export const dynamic = "force-dynamic";
 
@@ -268,6 +274,10 @@ export default async function MainPage() {
   const enabledMediaTypeCodes = mediaTypes
     .filter((mediaType) => mediaType.isEnabled)
     .map((mediaType) => mediaType.code);
+  const randomFranchisePromise = getRandomPublishedFranchisePreview({
+    currentAuthorId: author?.id,
+    enabledMediaTypeCodes,
+  });
   const latestReview = await getLatestPublishedReviewCard(
     enabledMediaTypeCodes,
   );
@@ -459,7 +469,7 @@ export default async function MainPage() {
                   </p>
                   <div className="mt-2 flex items-center gap-4">
                     <Link
-                      href="/author/achievements"
+                      href="/achievements"
                       aria-label="Открыть мои ачивки"
                       className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
                     >
@@ -499,6 +509,10 @@ export default async function MainPage() {
         <EditorialCollectionsStrip collections={editorialCollections} />
 
         <ArchiveFeed items={archiveFeed} />
+
+        <Suspense fallback={<RandomFranchiseSectionFallback />}>
+          <RandomFranchiseSection promise={randomFranchisePromise} />
+        </Suspense>
       </div>
     </main>
   );

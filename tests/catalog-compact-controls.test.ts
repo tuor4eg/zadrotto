@@ -14,7 +14,8 @@ describe("catalog header controls", () => {
   });
 
   it("renders all icon actions in the header as round buttons", () => {
-    assert.match(source, /ArchiveExplorationLauncher[\s\S]*?className="[^"]*rounded-full/);
+    assert.doesNotMatch(source, /ArchiveExplorationLauncher/);
+    assert.match(source, /grid-cols-\[minmax\(0,1fr\)_2\.25rem_2\.25rem\]/);
     assert.match(source, /aria-controls=\{filtersMenuId\}[\s\S]*?className=\{`[^`]*rounded-full/);
     assert.match(source, /compact\s+triggerClassName="rounded-full"/);
   });

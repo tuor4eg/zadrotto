@@ -88,7 +88,7 @@ describe("about page contracts", () => {
     assert.match(aboutPageSource, /GNU GPLv3/);
     assert.match(
       aboutPageSource,
-      /sm:grid-cols-\[minmax\(0,1fr\)_auto\][\s\S]*src="\/mascot\/deadz\.png"[\s\S]*unoptimized/,
+      /sm:grid-cols-\[minmax\(0,1fr\)_auto\][\s\S]*src="\/mascot\/deadz\.webp"[\s\S]*unoptimized/,
     );
   });
 
@@ -134,7 +134,7 @@ describe("rules page contracts", () => {
     assert.match(footerSource, /href: "\/rules"/);
     assert.match(rulesPageSource, /Правила архива/);
     assert.match(rulesPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(rulesPageSource, /src="\/mascot\/deadz_rulez\.png"/);
+    assert.match(rulesPageSource, /src="\/mascot\/deadz_rulez\.webp"/);
     assert.match(rulesPageSource, /архив получает из публичных баз данных/);
     assert.match(rulesPageSource, /запись можно заполнить вручную/);
     assert.match(rulesPageSource, /Рецензии проходят проверку перед публикацией/);
@@ -145,7 +145,7 @@ describe("help page contracts", () => {
   it("links the footer and explains the primary and alternative suggestion flows", () => {
     assert.match(footerSource, /href: "\/help"/);
     assert.match(helpPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(helpPageSource, /src="\/mascot\/deadz_faq\.png"/);
+    assert.match(helpPageSource, /src="\/mascot\/deadz_faq\.webp"/);
     assert.match(helpPageSource, /Как добавить то, чего ещё нет в архиве\?/);
     assert.match(helpPageSource, /кнопку «\+» в левом нижнем углу/);
     assert.match(helpPageSource, /кабинет автора → «Предложения» → «Записи» → «Добавить»/);
@@ -159,11 +159,11 @@ describe("feedback page contracts", () => {
     assert.match(footerSource, /href: "\/feedback"/);
     assert.match(feedbackPageSource, /Обратная связь/);
     assert.match(feedbackPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(feedbackPageSource, /src="\/mascot\/deadz_contact\.png"/);
+    assert.match(feedbackPageSource, /src="\/mascot\/deadz_contact\.webp"/);
     assert.match(feedbackPageSource, /href="https:\/\/t\.me\/zadrotto"/);
     assert.match(feedbackPageSource, /target="_blank"/);
     assert.match(feedbackPageSource, /rel="noreferrer"/);
-    assert.match(feedbackPageSource, /flex min-h-dvh flex-col/);
+    assert.match(feedbackPageSource, /flex min-h-0 flex-1 flex-col/);
     assert.match(feedbackPageSource, /max-w-\[1480px\] flex-1 flex-col/);
     assert.match(feedbackPageSource, /archive-stack-left flex-1/);
   });

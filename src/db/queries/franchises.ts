@@ -348,47 +348,38 @@ export async function getPublishedFranchiseOptions() {
 }
 
 export async function getRandomPublishedFranchisePreview(input: {
-  currentAuthorId?: number;
-  enabledMediaTypeCodes: readonly string[];
+  currentAuthorId?: number
+  enabledMediaTypeCodes: readonly string[]
 }): Promise<{
-  franchise: { code: string; title: string };
-  items: MainPageMediaItem[];
+  franchise: { code: string; title: string }
+  items: MainPageMediaItem[]
 } | null> {
   if (input.enabledMediaTypeCodes.length === 0) {
-    return null;
+    return null
   }
 
-  const [franchise] = await db.execute<{ id: number; code: string; title: string }>(sql`
-    with recursive published_franchise_branches as (
-      select root.id as root_id, root.id as descendant_id
-      from ${franchises} root
-      where root.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-
-      union all
-
-      select branch.root_id, child.id
-      from published_franchise_branches branch
-      inner join ${franchises} child on child.parent_id = branch.descendant_id
-      where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-    )
-    select root.id, root.code, root.title
-    from published_franchise_branches branch
-    inner join ${franchises} root on root.id = branch.root_id
-    inner join ${mediaItemFranchises}
-      on ${mediaItemFranchises.franchiseId} = branch.descendant_id
-    inner join ${mediaItems}
-      on ${mediaItems.id} = ${mediaItemFranchises.mediaItemId}
-    where ${mediaItemFranchises.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
-      and ${mediaItems.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
-      and ${getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes)}
-    group by root.id
-    having count(distinct ${mediaItemFranchises.mediaItemId}) >= 5
-    order by random()
-    limit 1
-  `);
+  const [franchise] = await db
+    .select({
+      code: franchises.code,
+      id: franchises.id,
+      title: franchises.title,
+    })
+    .from(franchises)
+    .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.franchiseId, franchises.id))
+    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+    .where(and(
+      publishedFranchiseCondition,
+      eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
+    ))
+    .groupBy(franchises.id, franchises.code, franchises.title)
+    .having(sql`count(distinct ${mediaItemFranchises.mediaItemId}) >= 5`)
+    .orderBy(sql`random()`)
+    .limit(1)
 
   if (!franchise) {
-    return null;
+    return null
   }
 
   const rows = await db
@@ -412,7 +403,7 @@ export async function getRandomPublishedFranchisePreview(input: {
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(and(
-      sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchise.id)})`,
+      eq(mediaItemFranchises.franchiseId, franchise.id),
       eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
@@ -429,7 +420,7 @@ export async function getRandomPublishedFranchisePreview(input: {
       asc(mediaItems.title),
       asc(mediaItems.id),
     )
-    .limit(12);
+    .limit(12)
 
   return {
     franchise,
@@ -438,7 +429,7 @@ export async function getRandomPublishedFranchisePreview(input: {
       coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       coverUrl: resolveCoverUrl(item.coverUrl),
     })),
-  };
+  }
 }
 
 export async function getPublishedFranchiseOptionById(id: number) {

@@ -1,12 +1,10 @@
 "use client"
 
 import Image from "next/image"
-import { ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
+import { BadgeCheck, ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-export const ACHIEVEMENT_CARD_HEIGHT_PX = 148
-export const ACHIEVEMENT_CARD_WIDTH_PX = ACHIEVEMENT_CARD_HEIGHT_PX * 2
-export const ACHIEVEMENT_CARD_GAP_PX = 8
+export const ACHIEVEMENT_CARD_IMAGE_PX = 96
 const SWIPE_THRESHOLD_PX = 40
 
 export type AchievementAwardedLevel = {
@@ -53,21 +51,9 @@ function formatAwardedAt(value: Date | string) {
   return `${day} ${month} ${year}`
 }
 
-function formatLevel(item: { highestAwardedLevel: number | null; levelCount: number; nextLevel: number | null }) {
+function formatLevel(item: { level: number | null; levelCount: number }) {
   if (item.levelCount <= 1) return null
-  const level = item.highestAwardedLevel ?? item.nextLevel
-  return level ? `ур.${level}` : null
-}
-
-function formatReceivedAt(item: { awardedAt: Date | string | null }) {
-  if (!item.awardedAt) return null
-  return `Получена ${formatAwardedAt(item.awardedAt)}`
-}
-
-export function selectRecentAwardedAchievements(items: AchievementShowcaseItem[]) {
-  return items
-    .filter((item) => item.awardedAt !== null)
-    .sort((left, right) => new Date(right.awardedAt!).getTime() - new Date(left.awardedAt!).getTime())
+  return item.level ? `ур.${item.level}` : null
 }
 
 function hasVisibleProgress(threshold: number | null): threshold is number {
@@ -143,29 +129,24 @@ function AchievementCardPanel({
   item: AchievementShowcaseItem
   slide: AchievementCardSlide
 }) {
-  const level = formatLevel({
-    highestAwardedLevel: slide.level,
-    levelCount: item.levelCount,
-    nextLevel: item.nextLevel,
-  })
-  const receivedAt = formatReceivedAt(slide)
+  const level = formatLevel({ level: slide.level, levelCount: item.levelCount })
   const nextThreshold = item.nextThreshold
   const showProgress = slide.showProgress && hasVisibleProgress(nextThreshold)
 
   return (
-    <div className="grid h-full w-full shrink-0 basis-full grid-cols-2">
+    <div className="flex h-full w-full shrink-0 basis-full flex-col items-center px-3 pb-4 pt-4">
       <div
-        className={`grid min-h-0 min-w-0 place-items-center p-1.5 ${
+        className={`grid size-24 shrink-0 place-items-center ${
           isAwarded ? "text-amber-800" : "text-stone-400"
         }`}
       >
-        <div className="relative h-full w-full overflow-hidden rounded-sm">
+        <div className="relative size-full overflow-hidden rounded-full">
           {slide.imageUrl ? (
             <Image
               alt=""
               className="object-cover"
               fill
-              sizes={`${ACHIEVEMENT_CARD_HEIGHT_PX}px`}
+              sizes={`${ACHIEVEMENT_CARD_IMAGE_PX}px`}
               src={slide.imageUrl}
               unoptimized
             />
@@ -180,53 +161,61 @@ function AchievementCardPanel({
           )}
         </div>
       </div>
-      <div className="flex min-h-0 min-w-0 flex-col py-2.5 pr-2.5">
-        <ClampedAchievementText
-          as="h3"
-          className="line-clamp-2 text-sm font-bold leading-4 text-stone-950"
-          text={level ? `${slide.name} (${level})` : slide.name}
-        />
-        <ClampedAchievementText
-          as="p"
-          className="mt-1 line-clamp-3 min-h-0 flex-1 text-xs leading-4"
-          text={slide.description}
-        />
-        <div className="mt-auto grid gap-1 pt-1">
-          {receivedAt ? (
-            <p className="font-mono text-[10px] uppercase tracking-wider">
-              {receivedAt}
+      <ClampedAchievementText
+        as="h3"
+        className="mt-3 line-clamp-2 text-center text-sm font-bold leading-4 text-stone-950"
+        text={level ? `${slide.name} (${level})` : slide.name}
+      />
+      <ClampedAchievementText
+        as="p"
+        className="mt-1 line-clamp-3 text-center text-xs leading-4"
+        text={slide.description}
+      />
+      <div className="mt-auto grid w-full gap-1 pt-3">
+        {slide.awardedAt ? (
+          <div className="flex items-center justify-center gap-1.5">
+            <BadgeCheck className="size-4 shrink-0 text-teal-700" aria-hidden="true" />
+            <p className="text-xs font-medium text-stone-800">Получено</p>
+            <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">
+              {formatAwardedAt(slide.awardedAt)}
             </p>
-          ) : null}
-          {showProgress ? (
-            <div className="grid gap-0.5">
+          </div>
+        ) : null}
+        {showProgress ? (
+          <div className="grid gap-0.5">
+            <p className="text-center text-[10px] tabular-nums text-stone-600">
+              {item.currentValue} / {nextThreshold}
+            </p>
+            <div
+              className={`h-1.5 overflow-hidden rounded-full ${
+                isAwarded ? "bg-amber-800/15" : "bg-stone-300/80"
+              }`}
+              role="progressbar"
+              aria-label="Прогресс до следующего уровня"
+              aria-valuemin={0}
+              aria-valuemax={nextThreshold}
+              aria-valuenow={Math.min(item.currentValue, nextThreshold)}
+            >
               <div
-                className={`h-1.5 overflow-hidden rounded-full ${
-                  isAwarded ? "bg-amber-800/15" : "bg-stone-300/80"
+                className={`h-full rounded-full ${
+                  isAwarded ? "bg-amber-700" : "bg-stone-500"
                 }`}
-                role="progressbar"
-                aria-label="Прогресс до следующего уровня"
-                aria-valuemin={0}
-                aria-valuemax={nextThreshold}
-                aria-valuenow={Math.min(item.currentValue, nextThreshold)}
-              >
-                <div
-                  className={`h-full rounded-full ${
-                    isAwarded ? "bg-amber-700" : "bg-stone-500"
-                  }`}
-                  style={{
-                    width: `${Math.min(100, Math.max(0, (item.currentValue / nextThreshold) * 100))}%`,
-                  }}
-                />
-              </div>
-              <p className="text-[10px] text-stone-600">
-                {item.currentValue} из {nextThreshold}
-              </p>
+                style={{
+                  width: `${Math.min(100, Math.max(0, (item.currentValue / nextThreshold) * 100))}%`,
+                }}
+              />
             </div>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     </div>
   )
+}
+
+export function selectRecentAwardedAchievements(items: AchievementShowcaseItem[]) {
+  return items
+    .filter((item) => item.awardedAt !== null)
+    .sort((left, right) => new Date(right.awardedAt!).getTime() - new Date(left.awardedAt!).getTime())
 }
 
 export function AchievementCard({
@@ -254,7 +243,7 @@ export function AchievementCard({
 
   return (
     <article
-      className={`group relative overflow-hidden rounded-md border ${
+      className={`group relative h-full overflow-hidden rounded-md border ${
         isAwarded
           ? "border-amber-700/35 bg-amber-50/55"
           : "border-stone-300/80 bg-stone-100/45 text-stone-500"
@@ -275,17 +264,9 @@ export function AchievementCard({
         else setViewIndex((index) => Math.max(0, index - 1))
       } : undefined}
       onPointerCancel={canBrowse ? clearPointer : undefined}
-      style={
-        fillWidth
-          ? { aspectRatio: "2 / 1" }
-          : {
-              width: ACHIEVEMENT_CARD_WIDTH_PX,
-              height: ACHIEVEMENT_CARD_HEIGHT_PX,
-            }
-      }
     >
       <div
-        className={`flex h-full ${canBrowse ? "transition-transform duration-300 ease-out" : ""}`}
+        className={`flex h-full w-full ${canBrowse ? "transition-transform duration-300 ease-out" : ""}`}
         style={{ transform: `translateX(-${viewIndex * 100}%)` }}
       >
         {slides.map((slide, index) => (
@@ -303,7 +284,7 @@ export function AchievementCard({
             <button
               type="button"
               aria-label="Предыдущий уровень"
-              className="absolute left-1 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
+              className="absolute left-1 top-14 z-10 grid size-7 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
               onClick={() => setViewIndex((index) => Math.max(0, index - 1))}
             >
               <ChevronLeft className="size-4" />
@@ -313,7 +294,7 @@ export function AchievementCard({
             <button
               type="button"
               aria-label="Следующий уровень"
-              className="absolute right-1 top-1/2 z-10 grid size-7 -translate-y-1/2 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
+              className="absolute right-1 top-14 z-10 grid size-7 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
               onClick={() => setViewIndex((index) => Math.min(currentIndex, index + 1))}
             >
               <ChevronRight className="size-4" />

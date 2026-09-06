@@ -34,7 +34,7 @@ export function RecentAchievementShowcase({
       {recent.length === 0 ? (
         <p className="text-sm text-stone-600">Пока нет полученных ачивок.</p>
       ) : (
-        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
           {recent.map((item) => <AchievementCard key={item.code} browseAwardedLevels fillWidth item={item} />)}
         </div>
       )}
