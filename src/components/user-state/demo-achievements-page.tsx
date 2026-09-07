@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 
 import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
@@ -21,6 +21,8 @@ type DemoAchievementState = {
   values: Record<string, number>
 }
 
+const subscribeToHydration = () => () => {}
+
 export function DemoAchievementsPage({
   headerProps,
 }: {
@@ -29,15 +31,11 @@ export function DemoAchievementsPage({
   const router = useRouter()
   const profile = useDemoProfile()
   const [state, setState] = useState<DemoAchievementState | null>(null)
-  const [ready, setReady] = useState(false)
+  const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false)
   const isDemo = Boolean(profile && profile.import.importedAt == null)
   const ratedCodesKey = profile
     ? Object.keys(profile.ratings).sort().join("\0")
     : ""
-
-  useEffect(() => {
-    setReady(true)
-  }, [])
 
   useEffect(() => {
     if (!ready) return

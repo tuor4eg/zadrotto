@@ -126,9 +126,6 @@ export function PublicReviewForm({
     const normalizedQuery = mediaQuery.trim()
 
     if (normalizedQuery.length < 2 || normalizedQuery === selectedMedia?.title) {
-      setSearchItems([])
-      setSearchLoading(false)
-      setSearchError(null)
       return
     }
 
@@ -218,6 +215,7 @@ export function PublicReviewForm({
     setMediaQuery(item.title)
     setSearchItems([])
     setSearchOpen(false)
+    setSearchLoading(false)
     setSearchError(null)
   }
 
@@ -258,13 +256,21 @@ export function PublicReviewForm({
               className="pl-10"
               onChange={(event) => {
                 const nextQuery = event.target.value
+                const normalizedQuery = nextQuery.trim()
                 setMediaQuery(nextQuery)
 
                 if (selectedMedia && nextQuery !== selectedMedia.title) {
                   setSelectedMedia(null)
                 }
 
-                setSearchOpen(true)
+                const canSearch = normalizedQuery.length >= 2
+                  && normalizedQuery !== selectedMedia?.title
+                setSearchOpen(canSearch)
+                if (!canSearch) {
+                  setSearchItems([])
+                  setSearchLoading(false)
+                  setSearchError(null)
+                }
               }}
               onFocus={() => {
                 if (searchItems.length > 0 || searchError) {
