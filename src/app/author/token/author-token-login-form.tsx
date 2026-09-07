@@ -7,6 +7,7 @@ import { Alert } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { loginAuthorInline, type AuthorLoginState } from "../login/actions";
+import { USER_HUD_REFRESH_EVENT } from "@/lib/onboarding/model";
 
 const ERROR_MESSAGES = {
   invalid: "Не удалось войти. Проверь токен доступа.",
@@ -23,6 +24,7 @@ export function AuthorTokenLoginForm() {
 
   useEffect(() => {
     if (!state?.ok) return;
+    window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT));
     router.replace(state.onboarding ? "/author/profile" : "/author");
   }, [router, state]);
 

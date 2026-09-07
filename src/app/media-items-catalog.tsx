@@ -22,6 +22,7 @@ import { PaginationNav } from "@/components/pagination-nav";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { ActiveQuizContext } from "@/lib/quizzes/model";
+import { ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT } from "@/lib/onboarding/model";
 import {
   sortMediaTypesByCount,
   type MediaType,
@@ -245,7 +246,10 @@ export function MediaItemsCatalog({
         const tileProps = {
           href: `/media/${item.code}`,
           item,
-          onSelect: () => setSelectedId(item.id),
+          onSelect: () => {
+            setSelectedId(item.id);
+            window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT));
+          },
           selected: selectedItem?.id === item.id,
         };
 

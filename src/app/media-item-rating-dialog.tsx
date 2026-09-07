@@ -26,6 +26,7 @@ import {
   Win9xRatingContent,
 } from "@/app/media-rating-panel";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { RatingCoachAnchor } from "@/components/onboarding/rating-coach-anchor";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { formatFirstExperiencedDate } from "@/lib/authors/experience-date";
 import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
@@ -343,36 +344,40 @@ export function MediaItemRatingPanel({
 
   if (!currentAuthor) {
     return (
-      <ArchiveTooltip label={tooltip} className={tooltipClassName}>
-        <button
-          type="button"
-          className={ratingPanelClassName}
-          aria-label="Войти как автор, чтобы поставить оценку"
-          onClick={(event) => {
-            event.stopPropagation();
-            onOpen?.();
-          }}
-        >
-          {content}
-        </button>
-      </ArchiveTooltip>
+      <RatingCoachAnchor>
+        <ArchiveTooltip label={tooltip} className={tooltipClassName}>
+          <button
+            type="button"
+            className={ratingPanelClassName}
+            aria-label="Войти как автор, чтобы поставить оценку"
+            onClick={(event) => {
+              event.stopPropagation();
+              onOpen?.();
+            }}
+          >
+            {content}
+          </button>
+        </ArchiveTooltip>
+      </RatingCoachAnchor>
     );
   }
 
   return (
-    <ArchiveTooltip label={tooltip} className={tooltipClassName}>
-      <button
-        type="button"
-        onClick={(event) => {
-          event.stopPropagation();
-          onOpen?.();
-        }}
-        className={ratingPanelClassName}
-        aria-label={ratingActionLabel}
-      >
-        {content}
-      </button>
-    </ArchiveTooltip>
+    <RatingCoachAnchor>
+      <ArchiveTooltip label={tooltip} className={tooltipClassName}>
+        <button
+          type="button"
+          onClick={(event) => {
+            event.stopPropagation();
+            onOpen?.();
+          }}
+          className={ratingPanelClassName}
+          aria-label={ratingActionLabel}
+        >
+          {content}
+        </button>
+      </ArchiveTooltip>
+    </RatingCoachAnchor>
   );
 }
 

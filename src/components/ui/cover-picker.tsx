@@ -103,6 +103,9 @@ export function CoverPicker({
     canSearchCandidates && hasSearchInput && candidatesSearchKey === coverSearchKey
       ? candidates
       : [];
+  const submittedCandidateToken =
+    selectedCandidateToken ||
+    (!previewUrl && !isCoverRemoved ? visibleCandidates[0]?.token ?? "" : "");
   const hasVisibleGoogleBooksCandidates = visibleCandidates.some(
     (candidate) => candidate.provider === "google-books",
   );
@@ -219,9 +222,9 @@ export function CoverPicker({
       <input
         type="hidden"
         name="coverAction"
-        value={isCoverRemoved && !selectedCandidateToken ? "remove" : "keep"}
+        value={isCoverRemoved && !submittedCandidateToken ? "remove" : "keep"}
       />
-      <input type="hidden" name="coverCandidateToken" value={selectedCandidateToken} />
+      <input type="hidden" name="coverCandidateToken" value={submittedCandidateToken} />
 
       <div className="flex flex-wrap items-center gap-3">
         <input

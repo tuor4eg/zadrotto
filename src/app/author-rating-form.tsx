@@ -7,6 +7,7 @@ import { saveAuthorRatingAction, type SaveAuthorRatingState } from "@/app/rating
 import { RatingExperienceFields } from "@/components/ui/rating-experience-fields";
 import { RatingScoreButtons } from "@/components/ui/rating-score-buttons";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
+import { ARCHIVE_ONBOARDING_RATING_SAVED_EVENT } from "@/lib/onboarding/model";
 
 type AuthorRatingFormProps = {
   mediaItemCode: string;
@@ -70,6 +71,7 @@ export function AuthorRatingForm({
   useEffect(() => {
     if (wasPendingRef.current && !isPending && state.error === null) {
       onSaved?.();
+      window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RATING_SAVED_EVENT));
     }
 
     wasPendingRef.current = isPending;

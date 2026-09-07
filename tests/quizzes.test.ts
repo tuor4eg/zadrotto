@@ -254,7 +254,8 @@ describe("quizzes", () => {
     assert.match(layer, /\/api\/user-hud/);
     assert.match(layer, /isAdminRoute/);
     assert.match(layer, /quizParticipant && !quizParticipant\.completed/);
-    assert.match(layer, /\(\) => \(\{ quizParticipant, registerBugReportEntityContext, setQuizParticipant \}\)/);
+    assert.match(layer, /showRatingCoachMark: onboarding\.showRatingCoachMark/);
+    assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);

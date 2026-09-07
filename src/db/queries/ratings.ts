@@ -67,6 +67,17 @@ export async function getAuthorRating(mediaItemId: number, authorId: number) {
   return rating ?? null;
 }
 
+export async function getAuthorRatingsCount(authorId: number) {
+  const [row] = await db
+    .select({
+      ratingsCount: sql<number>`count(${ratings.id})::int`,
+    })
+    .from(ratings)
+    .where(eq(ratings.authorId, authorId));
+
+  return row?.ratingsCount ?? 0;
+}
+
 export async function deleteAuthorRating(input: {
   mediaItemId: number;
   authorId: number;

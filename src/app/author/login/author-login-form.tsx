@@ -8,6 +8,7 @@ import { PasswordInput } from "@/components/auth/password-field";
 import { ArchiveToasts } from "@/components/ui/archive-toasts";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
+import { USER_HUD_REFRESH_EVENT } from "@/lib/onboarding/model";
 import {
   loginAuthorWithPasswordInline,
   type AuthorLoginState,
@@ -37,6 +38,7 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
 
   useEffect(() => {
     if (!state?.ok) return;
+    window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT));
     if (redirectOnSuccess || state.onboarding) {
       router.replace(state.onboarding ? "/author/profile" : "/author");
     }

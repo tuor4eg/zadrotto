@@ -235,7 +235,7 @@ describe("bug report notifications", () => {
 describe("bug report HUD flow", () => {
   it("shows the global author utility outside admin and keeps quiz lives conditional", () => {
     assert.match(hudApi, /getCurrentAuthor\(\)/);
-    assert.match(hudApi, /authenticated: false, quizParticipant: null/);
+    assert.match(hudApi, /authenticated: false[\s\S]*quizParticipant: null/);
     assert.match(hudApi, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(hud, /fetch\("\/api\/user-hud"/);
     assert.match(hud, /authenticated && !isAdminRoute/);
