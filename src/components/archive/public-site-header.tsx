@@ -11,6 +11,7 @@ import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { NotificationBell } from "@/components/notifications/notification-inbox";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 export type PublicSiteHeaderProps = {
   adminNotificationCount: number;
@@ -37,6 +38,9 @@ export function PublicSiteHeader({
 }: PublicSiteHeaderProps) {
   const router = useRouter();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
+  const demoProfile = useDemoProfile();
+  const isDemo = Boolean(!author && demoProfile && demoProfile.import.importedAt == null);
+  const showAchievements = Boolean(author || isDemo);
 
   return (
     <>
@@ -57,7 +61,7 @@ export function PublicSiteHeader({
           </Link>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
-            {(author
+            {(showAchievements
               ? [...MENU_ITEMS, { href: "/achievements", label: "Ачивки" }]
               : MENU_ITEMS
             ).map((item) => (
@@ -71,7 +75,36 @@ export function PublicSiteHeader({
             ))}
           </nav>
 
+          {isDemo ? (
+            <button
+              type="button"
+              onClick={() => setIsLoginOpen(true)}
+              className="hidden min-w-0 max-w-[18rem] shrink items-start rounded-md border border-amber-200/35 bg-amber-950/35 px-2.5 py-1 text-left transition-colors hover:border-amber-100/50 hover:bg-amber-900/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50 md:flex xl:max-w-[24rem]"
+              aria-label="Демо-режим. Данные хранятся только на устройстве, авторизуйтесь чтобы не потерять их"
+            >
+              <span className="min-w-0">
+                <span className="block font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-100">
+                  Демо-режим
+                </span>
+                <span className="mt-0.5 block text-[10px] leading-snug text-amber-50/85">
+                  Данные хранятся только на устройстве, авторизуйтесь чтобы не потерять их
+                </span>
+              </span>
+            </button>
+          ) : null}
+
           <div className="ml-auto flex min-w-0 flex-1 items-center justify-end gap-1.5">
+            {isDemo ? (
+              <button
+                type="button"
+                onClick={() => setIsLoginOpen(true)}
+                className="shrink-0 rounded-md border border-amber-200/35 bg-amber-950/35 px-2 py-1 font-mono text-[9px] font-semibold uppercase tracking-[0.14em] text-amber-100 transition-colors hover:border-amber-100/50 hover:bg-amber-900/45 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-200/50 md:hidden"
+                aria-label="Демо-режим. Данные хранятся только на устройстве, авторизуйтесь чтобы не потерять их"
+                title="Данные хранятся только на устройстве, авторизуйтесь чтобы не потерять их"
+              >
+                Демо
+              </button>
+            ) : null}
             {controls ? (
               <div className="min-w-0 flex-1 text-stone-950">{controls}</div>
             ) : (
@@ -95,7 +128,7 @@ export function PublicSiteHeader({
                     name="q"
                     type="search"
                     autoComplete="off"
-                    className="archive-control-surface h-8 w-full appearance-none rounded-lg border-0 pl-8 pr-3 text-xs text-stone-950 shadow-none outline-none placeholder:text-stone-500 focus:ring-2 focus:ring-stone-400/40"
+                    className="archive-control-surface h-9 w-full appearance-none rounded-lg border-0 pl-8 pr-3 text-xs text-stone-950 shadow-none outline-none placeholder:text-stone-500 focus:ring-2 focus:ring-stone-400/40"
                     placeholder="Поиск"
                   />
                 </div>
@@ -134,7 +167,7 @@ export function PublicSiteHeader({
               <button
                 type="button"
                 aria-label="Войти"
-                className="grid size-8 shrink-0 place-items-center rounded-full text-stone-300 transition-colors hover:bg-white/10 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+                className="grid size-9 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-200 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
                 onClick={() => setIsLoginOpen(true)}
               >
                 <UserRound className="size-5" aria-hidden="true" />

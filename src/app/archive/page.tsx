@@ -17,7 +17,7 @@ import { canAuthorCreateFranchise } from "@/lib/authors/media-publication";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { ArchiveAuthorMediaSuggestion } from "@/app/archive-author-media-suggestion";
-import { CatalogHeaderControls } from "@/app/catalog-header-controls";
+import { CatalogHeaderControlsWithDemo } from "@/components/user-state/catalog-header-controls-with-demo";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import {
   parseAuthorRatingFilter,
@@ -89,6 +89,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const authorRatingFilter = currentAuthor
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
+  const urlAuthorRatingFilter = parseAuthorRatingFilter(params.mine ?? null);
   const parsedSort = parseCatalogSort(params.sort ?? null);
   const sort = !currentAuthor && isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
   const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
@@ -212,8 +213,8 @@ export default async function Home({ searchParams }: HomeProps) {
           : null}
         currentAdminUser={currentAdminUser}
         controls={
-          <CatalogHeaderControls
-            authorRatingFilter={authorRatingFilter}
+          <CatalogHeaderControlsWithDemo
+            authorRatingFilter={currentAuthor ? authorRatingFilter : urlAuthorRatingFilter}
             currentAuthor={Boolean(currentAuthor)}
             mediaTypeFilter={mediaTypeFilter}
             minReleaseYear={releaseYearBounds.minReleaseYear}
@@ -228,7 +229,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <div className="archive-catalog-shell flex min-h-0 w-full flex-1 flex-col gap-3">
           <MediaItemsCatalog
           activeQuiz={activeQuiz && canGuessActiveQuiz ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
-          authorRatingFilter={authorRatingFilter}
+          authorRatingFilter={currentAuthor ? authorRatingFilter : urlAuthorRatingFilter}
           currentAdmin={Boolean(currentAdminUser)}
           defaultPageSize={DEFAULT_CATALOG_PAGE_SIZE}
           currentAuthor={

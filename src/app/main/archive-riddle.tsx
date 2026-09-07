@@ -1,25 +1,32 @@
 "use client";
 
 import { CircleHelp } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
+import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { useQuizParticipation } from "@/components/quizzes/quiz-participation-button";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
 type ArchiveRiddleProps = {
+  authenticated: boolean;
   isCompleted: boolean;
   isParticipating: boolean;
   quiz: ActiveQuiz | null;
 };
 
 export function ArchiveRiddle({
+  authenticated,
   isCompleted,
   isParticipating,
   quiz,
 }: ArchiveRiddleProps) {
+  const router = useRouter();
   const { quizParticipant } = useExternalInterface();
+  const [loginOpen, setLoginOpen] = useState(false);
   const [now, setNow] = useState(() => new Date());
   const isLocallyCompleted = Boolean(
     quizParticipant && quizParticipant.quizId === quiz?.id && quizParticipant.completed,
@@ -27,11 +34,19 @@ export function ArchiveRiddle({
   const canOpenQuiz = Boolean(quiz && !isCompleted && !isLocallyCompleted);
   const { error, openArchive, pending } = useQuizParticipation({ isParticipating });
 
+  function openQuiz() {
+    if (!authenticated) {
+      setLoginOpen(true);
+      return;
+    }
+    void openArchive();
+  }
+
   function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
     if (!canOpenQuiz || pending || (event.key !== "Enter" && event.key !== " ")) return;
 
     event.preventDefault();
-    void openArchive();
+    openQuiz();
   }
 
   useEffect(() => {
@@ -42,11 +57,12 @@ export function ArchiveRiddle({
   }, [quiz]);
 
   return (
-    <section
+    <>
+      <section
       className={`archive-paper archive-panel relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0 ${canOpenQuiz ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950" : ""}`}
       aria-labelledby="main-archive-riddle"
       aria-disabled={canOpenQuiz ? undefined : true}
-      onClick={canOpenQuiz && !pending ? () => void openArchive() : undefined}
+      onClick={canOpenQuiz && !pending ? openQuiz : undefined}
       onKeyDown={handleCardKeyDown}
       role={canOpenQuiz ? "button" : undefined}
       tabIndex={canOpenQuiz ? 0 : undefined}
@@ -106,6 +122,19 @@ export function ArchiveRiddle({
             Сейчас в архиве всё спокойно. Новая загадка появится позже.
           </p>
       )}
-    </section>
+      </section>
+      {loginOpen
+        ? createPortal(
+            <AuthorLoginModal
+              onClose={() => setLoginOpen(false)}
+              onSuccess={() => {
+                setLoginOpen(false);
+                router.refresh();
+              }}
+            />,
+            document.body,
+          )
+        : null}
+    </>
   );
 }

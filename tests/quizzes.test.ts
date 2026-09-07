@@ -162,6 +162,9 @@ describe("quizzes", () => {
     assert.equal(existsSync("src/app/quiz/page.tsx"), false);
     const mainPage = readFileSync("src/app/page.tsx", "utf8");
     assert.match(mainPage, /quiz=\{activeQuiz/);
+    assert.match(mainPage, /const \[activeQuiz[\s\S]*getActiveQuiz\(\)/);
+    assert.doesNotMatch(mainPage, /author \? getActiveQuiz\(\) : Promise\.resolve\(null\)/);
+    assert.match(mainPage, /authenticated=\{Boolean\(author\)\}/);
     assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(modal, /<ActiveQuizPanel/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
@@ -263,7 +266,9 @@ describe("quizzes", () => {
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);
     assert.match(archiveRiddle, /useQuizParticipation\(\{ isParticipating \}\)/);
-    assert.match(archiveRiddle, /onClick=\{canOpenQuiz && !pending \? \(\) => void openArchive\(\)/);
+    assert.match(archiveRiddle, /if \(!authenticated\)[\s\S]*setLoginOpen\(true\)/);
+    assert.match(archiveRiddle, /onClick=\{canOpenQuiz && !pending \? openQuiz/);
+    assert.match(archiveRiddle, /<AuthorLoginModal[\s\S]*router\.refresh\(\)/);
     assert.match(archiveRiddle, /onKeyDown=\{handleCardKeyDown\}/);
     assert.match(archiveRiddle, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
     assert.doesNotMatch(archiveRiddle, /<QuizParticipationButton/);
@@ -296,6 +301,7 @@ describe("quizzes", () => {
     const nginx = readFileSync("deploy/nginx/zadrotto.conf", "utf8");
 
     assert.match(route, /"X-Accel-Redirect": `\/_quiz-images\//);
+    assert.match(route, /authorized[\s\S]*isAssignedQuizImageObjectKey[\s\S]*isActiveQuizImageObjectKey/);
     assert.match(nginx, /location \^~ \/_quiz-images\/ \{[\s\S]*?internal;[\s\S]*?proxy_pass/);
   });
   it("loads protected quiz previews in the browser instead of the cookie-less image optimizer", () => {

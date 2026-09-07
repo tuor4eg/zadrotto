@@ -2,8 +2,11 @@
 
 import { ArrowRight, Plus, Star } from "lucide-react"
 import Link from "next/link"
+import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
+import { createPortal } from "react-dom"
 
+import { AuthorLoginModal } from "@/app/author/login/author-login-modal"
 import { ArchiveCover } from "@/app/media-item-tile"
 import { formatScore } from "@/lib/ratings/score"
 
@@ -305,10 +308,13 @@ function ReviewActionStack({
   hiddenReviewsCount: number
   mediaItemId: number
 }) {
-  const href = currentAuthor ? `/reviews/new?mediaItemId=${mediaItemId}` : "/author/login"
+  const router = useRouter()
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+  const newReviewHref = `/reviews/new?mediaItemId=${mediaItemId}`
   const ariaLabel = currentAuthor
     ? "Поделиться мнением"
     : "Войти как автор, чтобы поделиться мнением"
+  const actionClassName = "group absolute left-1/2 top-1/2 z-10 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-stone-700 transition-[color,transform] hover:scale-110 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950 sm:size-16"
 
   return (
     <div className="relative aspect-square min-w-0">
@@ -316,14 +322,22 @@ function ReviewActionStack({
       <div className="absolute inset-x-0 bottom-1 top-1 -rotate-[2deg] border border-stone-300/80 bg-[#faf6ec] shadow-md" />
       <div className="absolute inset-0 flex flex-col items-center justify-center border border-stone-300/90 bg-white px-3 text-center shadow-[0_8px_16px_rgba(68,64,60,0.2)]">
         <span className="pointer-events-none absolute inset-[7px] border border-stone-200/80 bg-[#eee6d7] shadow-[inset_0_0_12px_rgba(120,113,108,0.08)]" aria-hidden="true" />
-        <Link
-          href={href}
-          className="group absolute left-1/2 top-1/2 z-10 grid size-14 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full text-stone-700 transition-[color,transform] hover:scale-110 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-stone-950 sm:size-16"
-          aria-label={ariaLabel}
-        >
-          <Plus className="size-10 stroke-[1.5] sm:size-12" aria-hidden="true" />
-          <span className="sr-only">Создать новую рецензию</span>
-        </Link>
+        {currentAuthor ? (
+          <Link href={newReviewHref} className={actionClassName} aria-label={ariaLabel}>
+            <Plus className="size-10 stroke-[1.5] sm:size-12" aria-hidden="true" />
+            <span className="sr-only">Создать новую рецензию</span>
+          </Link>
+        ) : (
+          <button
+            type="button"
+            className={actionClassName}
+            aria-label={ariaLabel}
+            onClick={() => setIsLoginOpen(true)}
+          >
+            <Plus className="size-10 stroke-[1.5] sm:size-12" aria-hidden="true" />
+            <span className="sr-only">Создать новую рецензию</span>
+          </button>
+        )}
         {hiddenReviewsCount > 0 ? (
           <button
             type="button"
@@ -336,6 +350,19 @@ function ReviewActionStack({
           </button>
         ) : null}
       </div>
+      {isLoginOpen
+        ? createPortal(
+            <AuthorLoginModal
+              onClose={() => setIsLoginOpen(false)}
+              onSuccess={() => {
+                setIsLoginOpen(false)
+                router.push(newReviewHref)
+                router.refresh()
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </div>
   )
 }

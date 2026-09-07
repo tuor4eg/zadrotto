@@ -14,12 +14,12 @@ export type AuthorResearchMessage = {
 };
 
 type AuthorResearchMessageInput = {
-  authorId: number;
   averageScore: number | null;
   contributionCount: number;
   digitalProfile: AuthorDigitalProfile;
   ratingsCount: number;
   reviewCount: number;
+  selectionSeed: number;
 };
 
 type MessageCandidate = Omit<AuthorResearchMessage, "maturity">;
@@ -51,7 +51,7 @@ function formatCount(
 function getSelectionValue(input: AuthorResearchMessageInput) {
   const profile = input.digitalProfile;
   return (
-    input.authorId
+    input.selectionSeed
     + input.ratingsCount
     + input.reviewCount * 3
     + input.contributionCount * 5

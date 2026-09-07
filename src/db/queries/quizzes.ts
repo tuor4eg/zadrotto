@@ -372,3 +372,16 @@ export async function searchQuizAnswerTitles(query: string, mediaTypeFilter: rea
     .limit(20)
 }
 export async function isAssignedQuizImageObjectKey(key: string) { const [row] = await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.imageObjectKey, key)).limit(1); return Boolean(row); }
+export async function isActiveQuizImageObjectKey(key: string) {
+  const [row] = await db
+    .select({ id: quizzes.id })
+    .from(quizzes)
+    .where(and(
+      eq(quizzes.imageObjectKey, key),
+      eq(quizzes.enabled, true),
+      lte(quizzes.startsAt, sql`now()`),
+      gt(quizzes.endsAt, sql`now()`),
+    ))
+    .limit(1);
+  return Boolean(row);
+}

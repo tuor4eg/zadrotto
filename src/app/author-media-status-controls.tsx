@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { EyeOff, Heart } from "lucide-react";
 
 import {
@@ -10,6 +10,9 @@ import {
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { cn } from "@/lib/common/utils";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
+import { toggleDemoStatus } from "@/lib/user-state/demo-actions";
+import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 const INITIAL_STATE: ToggleAuthorMediaStatusState = { error: null };
 
@@ -41,15 +44,65 @@ export function AuthorMediaStatusControls({
   mediaItemCode: string;
   variant?: "detail" | "preview" | "tile";
 }) {
+  const demoProfile = useDemoProfile();
+  const isDemo = Boolean(demoProfile && demoProfile.import.importedAt == null);
+  const overlay = useDemoMediaOverlay(mediaItemCode, currentAuthorScore, currentAuthorStatus);
+  const effectiveScore = isDemo ? overlay.score : currentAuthorScore;
+  const effectiveStatus = isDemo ? overlay.status : currentAuthorStatus;
+
   const [state, action, pending] = useActionState(toggleAuthorMediaStatusAction, INITIAL_STATE);
-  const disabled = currentAuthorScore !== null || pending;
+  const [demoError, setDemoError] = useState<string | null>(null);
+  const [demoPending, startDemoTransition] = useTransition();
+  const disabled = effectiveScore !== null || (isDemo ? demoPending : pending);
+
+  function handleDemoToggle(status: AuthorMediaStatus) {
+    startDemoTransition(() => {
+      try {
+        setDemoError(null);
+        toggleDemoStatus(mediaItemCode, status);
+      } catch (error) {
+        setDemoError(error instanceof Error ? error.message : "Не удалось сохранить статус.");
+      }
+    });
+  }
 
   return (
     <div className={cn(variant === "detail" && "mt-2", variant === "preview" && "w-full", className)}>
       <div className={variant === "preview" ? "grid grid-cols-2 gap-2" : variant === "detail" ? "flex gap-2" : "flex gap-1"}>
         {STATUS_OPTIONS.map(({ status, label, activeLabel, Icon }) => {
-          const active = currentAuthorStatus === status;
+          const active = effectiveStatus === status;
           const actionLabel = active ? activeLabel : label;
+          if (isDemo) {
+            return (
+              <div key={status} className={variant === "preview" ? "min-w-0" : undefined}>
+                <ArchiveTooltip className={variant === "preview" ? "w-full" : undefined} label={actionLabel} side="bottom">
+                  <button
+                    type="button"
+                    disabled={disabled}
+                    aria-label={actionLabel}
+                    aria-pressed={active}
+                    onClick={() => handleDemoToggle(status)}
+                    className={`inline-flex items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
+                      variant === "preview"
+                        ? "h-9 w-full rounded-md"
+                        : variant === "detail"
+                          ? "size-9 rounded-md"
+                        : "size-7 rounded-full shadow-sm backdrop-blur-[1px]"
+                    } ${
+                      active
+                        ? "border-red-900/40 bg-red-900/10 text-red-950"
+                        : variant === "detail" || variant === "preview"
+                          ? "border-stone-300/80 bg-stone-50/50 text-stone-700 hover:border-stone-700 hover:text-stone-950"
+                          : "border-stone-50/40 bg-stone-950/62 text-stone-50 hover:border-stone-50/80 hover:bg-stone-950/80"
+                    }`}
+                  >
+                    <Icon className={`${variant === "tile" ? "size-3.5" : "size-4"} ${active ? "fill-current" : ""}`} />
+                  </button>
+                </ArchiveTooltip>
+              </div>
+            );
+          }
+
           return (
             <form key={status} action={action} className={variant === "preview" ? "min-w-0" : undefined}>
               <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
@@ -81,7 +134,9 @@ export function AuthorMediaStatusControls({
           );
         })}
       </div>
-      {state.error ? <p className="mt-2 text-xs text-red-900">{state.error}</p> : null}
+      {(isDemo ? demoError : state.error) ? (
+        <p className="mt-2 text-xs text-red-700">{isDemo ? demoError : state.error}</p>
+      ) : null}
     </div>
   );
 }

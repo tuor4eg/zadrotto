@@ -29,7 +29,7 @@ const emptyProfile: AuthorDigitalProfile = {
 
 function buildInput(overrides: Partial<Parameters<typeof getAuthorResearchMessage>[0]> = {}) {
   return {
-    authorId: 1,
+    selectionSeed: 1,
     averageScore: 7.4,
     contributionCount: 1,
     digitalProfile: completeProfile,
@@ -41,8 +41,8 @@ function buildInput(overrides: Partial<Parameters<typeof getAuthorResearchMessag
 
 describe("author research message", () => {
   it("keeps archives below 25 ratings in cautious early scenarios", () => {
-    for (let authorId = 1; authorId <= 20; authorId += 1) {
-      const message = getAuthorResearchMessage(buildInput({ authorId }));
+    for (let selectionSeed = 1; selectionSeed <= 20; selectionSeed += 1) {
+      const message = getAuthorResearchMessage(buildInput({ selectionSeed }));
       assert.equal(message.maturity, "early");
       assert.match(message.key, /^early-/);
       assert.doesNotMatch(`${message.title} ${message.body}`, /обрёл характер/);
@@ -53,7 +53,7 @@ describe("author research message", () => {
 
   it("enables mature analytical scenarios exactly at the threshold", () => {
     const messages = Array.from({ length: 20 }, (_, index) => getAuthorResearchMessage(
-      buildInput({ authorId: index + 1, ratingsCount: 25 }),
+      buildInput({ selectionSeed: index + 1, ratingsCount: 25 }),
     ));
 
     assert.ok(messages.every((message) => message.maturity === "mature"));
@@ -64,7 +64,7 @@ describe("author research message", () => {
 
   it("only offers scenarios supported by available profile data", () => {
     const message = getAuthorResearchMessage(buildInput({
-      authorId: 9,
+      selectionSeed: 9,
       contributionCount: 0,
       digitalProfile: emptyProfile,
       ratingsCount: 3,
@@ -78,7 +78,7 @@ describe("author research message", () => {
 
   it("does not mention zero ratings when another contribution opens the widget", () => {
     const message = getAuthorResearchMessage(buildInput({
-      authorId: 4,
+      selectionSeed: 4,
       averageScore: null,
       contributionCount: 0,
       digitalProfile: emptyProfile,
@@ -95,7 +95,7 @@ describe("author research message", () => {
     assert.deepEqual(getAuthorResearchMessage(input), getAuthorResearchMessage(input));
 
     const keys = new Set(Array.from({ length: 12 }, (_, index) => (
-      getAuthorResearchMessage(buildInput({ authorId: index + 1 })).key
+      getAuthorResearchMessage(buildInput({ selectionSeed: index + 1 })).key
     )));
     assert.ok(keys.size > 1);
   });

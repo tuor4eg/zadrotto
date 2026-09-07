@@ -39,13 +39,22 @@ describe("public site header", () => {
     }
     assert.match(headerSource, /max-w-\[1480px\]/);
     assert.match(headerSource, /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"/);
-    assert.match(headerSource, /author[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/);
+    assert.match(headerSource, /id="public-header-search"[\s\S]*className="archive-control-surface h-9/);
+    assert.match(headerSource, /showAchievements[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/);
+    assert.match(headerSource, /isDemo/);
+    assert.match(headerSource, /Демо-режим/);
+    assert.match(headerSource, /Данные хранятся только на устройстве/);
+    assert.match(headerSource, /авторизуйтесь чтобы не потерять их/);
     assert.match(headerSource, /<NotificationBell align="right" round \/>[\s\S]*href="\/admin"[\s\S]*href="\/author"/);
     assert.match(headerSource, /href="\/admin"[\s\S]*NotificationBadge[\s\S]*count=\{adminNotificationCount\}/);
   });
 
   it("opens guest login in one modal and refreshes after success", () => {
     assert.match(headerSource, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
+    assert.match(
+      headerSource,
+      /aria-label="Войти"[\s\S]*className="grid size-9[^\"]*border border-stone-200 bg-white/,
+    );
     assert.match(headerSource, /createPortal\([\s\S]*<AuthorLoginModal/);
     assert.match(headerSource, /onSuccess=\{\(\) => \{[\s\S]*router\.refresh\(\)/);
     assert.equal((headerSource.match(/<AuthorLoginModal/g) ?? []).length, 1);
@@ -103,6 +112,10 @@ describe("public site header", () => {
     assert.match(footerLayerSource, /max-w-\[1480px\]/);
     assert.match(footerLayerSource, /"\/admin"[\s\S]*"\/author"/);
     assert.doesNotMatch(mainPageSource, /<ArchiveSiteFooter \/>/);
+    assert.match(
+      read("src/components/archive/archive-site-footer.tsx"),
+      /18\+ · В отдельных статьях, мнениях и описаниях может встречаться ненормативная лексика/,
+    );
     assert.match(
       globalsSource,
       /\.archive-page:has\(\+ \.public-site-footer-layer\) \{\s*min-height: auto;/,

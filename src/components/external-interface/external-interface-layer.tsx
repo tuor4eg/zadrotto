@@ -16,11 +16,17 @@ import type { QuizParticipantState } from "@/lib/quizzes/model";
 import { BugReportModal } from "@/components/bug-reports/bug-report-modal";
 import { OnboardingHudCard } from "@/components/onboarding/onboarding-hud-card";
 import { useArchiveOnboarding } from "@/components/onboarding/use-archive-onboarding";
+import { DemoLoginPromptCard } from "@/components/user-state/demo-login-prompt-card";
+import { DemoProfileImportBridge } from "@/components/user-state/demo-profile-import-bridge";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import {
   ARCHIVE_ONBOARDING_RATING_SAVED_EVENT,
   USER_HUD_REFRESH_EVENT,
 } from "@/lib/onboarding/model";
+import { getDemoRatingsCount } from "@/lib/user-state/demo-profile";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
+
+export const ARCHIVE_BOTTOM_HUD_OFFSET_VAR = "--archive-bottom-hud-offset";
 
 export type QuizParticipantHudState = QuizParticipantState;
 export type BugReportEntityContext = {
@@ -125,12 +131,22 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     };
   }, [isAdminRoute, refreshUserHud]);
 
+  const demoProfile = useDemoProfile();
+  const isDemo = Boolean(!authenticated && demoProfile && demoProfile.import.importedAt == null);
+  const effectiveRatingsCount = authenticated
+    ? ratingsCount
+    : isDemo && demoProfile
+      ? getDemoRatingsCount(demoProfile)
+      : 0;
+  const onboardingReady = hudReady || isDemo;
+
   const onboarding = useArchiveOnboarding({
     authorId,
     authenticated,
+    demo: isDemo,
     pathname,
-    ratingsCount,
-    ready: hudReady,
+    ratingsCount: effectiveRatingsCount,
+    ready: onboardingReady,
   });
 
   const value = useMemo(
@@ -152,11 +168,73 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     : null;
   const showTools = authenticated && !isAdminRoute;
   const showOnboardingCard = Boolean(onboarding.card);
+  const showDemoLoginPrompt = isDemo && !isAdminRoute;
+  const showHudStack = showTools || showOnboardingCard || showDemoLoginPrompt;
+
+  useEffect(() => {
+    const root = document.documentElement;
+
+    const clearOffset = () => {
+      root.style.removeProperty(ARCHIVE_BOTTOM_HUD_OFFSET_VAR);
+    };
+
+    if (!showOnboardingCard && !showDemoLoginPrompt) {
+      clearOffset();
+      return;
+    }
+
+    const updateOffset = () => {
+      const nodes = document.querySelectorAll<HTMLElement>("[data-archive-bottom-hud]");
+      if (nodes.length === 0) {
+        clearOffset();
+        return;
+      }
+
+      const gapPx = 8;
+      const stacked = !window.matchMedia("(min-width: 640px)").matches;
+      let offset = 0;
+
+      if (stacked) {
+        nodes.forEach((node) => {
+          offset += node.getBoundingClientRect().height;
+        });
+        offset += Math.max(0, nodes.length - 1) * gapPx;
+      } else {
+        nodes.forEach((node) => {
+          offset = Math.max(offset, node.getBoundingClientRect().height);
+        });
+      }
+
+      root.style.setProperty(
+        ARCHIVE_BOTTOM_HUD_OFFSET_VAR,
+        `${Math.ceil(offset)}px`,
+      );
+    };
+
+    updateOffset();
+    const observer = new ResizeObserver(updateOffset);
+    document.querySelectorAll<HTMLElement>("[data-archive-bottom-hud]").forEach((node) => {
+      observer.observe(node);
+    });
+    window.addEventListener("resize", updateOffset);
+
+    return () => {
+      observer.disconnect();
+      window.removeEventListener("resize", updateOffset);
+      clearOffset();
+    };
+  }, [
+    onboarding.card?.stepId,
+    onboarding.collapsed,
+    showDemoLoginPrompt,
+    showOnboardingCard,
+  ]);
 
   return (
     <ExternalInterfaceContext.Provider value={value}>
       {children}
-      {showTools || showOnboardingCard ? (
+      <DemoProfileImportBridge authenticated={authenticated} authorId={authorId} />
+      {showHudStack ? (
         <div className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:contents">
           {showTools ? (
             <aside
@@ -196,8 +274,20 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
               </ArchiveTooltip>
             </aside>
           ) : null}
+          {showDemoLoginPrompt ? (
+            <aside
+              data-archive-bottom-hud
+              className="pointer-events-auto sm:fixed sm:bottom-[max(1rem,env(safe-area-inset-bottom))] sm:right-[max(1rem,env(safe-area-inset-right))] sm:z-[70]"
+              aria-label="Сохранение истории"
+            >
+              <DemoLoginPromptCard
+                onboardingBusy={onboarding.card?.stepId === "complete"}
+              />
+            </aside>
+          ) : null}
           {showOnboardingCard && onboarding.card ? (
             <aside
+              data-archive-bottom-hud
               className="pointer-events-auto sm:fixed sm:bottom-[max(1rem,env(safe-area-inset-bottom))] sm:right-[max(1rem,env(safe-area-inset-right))] sm:z-[70]"
               aria-label="Обучение архива"
             >

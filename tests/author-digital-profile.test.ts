@@ -40,10 +40,10 @@ test("exposes explicit nullable summaries and zero counts and loads the DTO on t
 });
 
 test("renders a generated research message in the signed-in home hero", () => {
-  assert.match(homePageSource, /getAuthorResearchMessage\(\{/);
-  assert.match(homePageSource, /\{researchMessage\?\.title\}/);
-  assert.match(homePageSource, /\{researchMessage\?\.body\}/);
-  assert.match(homePageSource, /href=\{researchMessage\?\.cta\.href \?\? "\/archive"\}/);
+  assert.match(homePageSource, /getHomeResearchMessage\(authorResearchSnapshot\)/);
+  assert.match(homePageSource, /buildHomeResearchSnapshotFromAuthor/);
+  assert.match(homePageSource, /<HomeIntroHero/);
+  assert.match(homePageSource, /<DemoHomeIntro/);
   assert.doesNotMatch(homePageSource, /hasDigitalProfileCopy|activeSeriesIsStrongest/);
   assert.match(messageSource, /MATURE_AUTHOR_RESEARCH_RATINGS_COUNT = 25/);
 });

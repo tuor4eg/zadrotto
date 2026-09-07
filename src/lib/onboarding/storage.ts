@@ -10,9 +10,9 @@ export const EMPTY_ARCHIVE_ONBOARDING_STORAGE_SNAPSHOT = JSON.stringify(
   EMPTY_ARCHIVE_ONBOARDING_STORAGE,
 )
 
-export function getArchiveOnboardingStorageKey(authorId?: number | null) {
-  if (authorId == null) return ARCHIVE_ONBOARDING_STORAGE_KEY
-  return `${ARCHIVE_ONBOARDING_STORAGE_KEY}:author:${authorId}`
+export function getArchiveOnboardingStorageKey(subject?: number | "demo" | null) {
+  if (subject == null) return ARCHIVE_ONBOARDING_STORAGE_KEY
+  return `${ARCHIVE_ONBOARDING_STORAGE_KEY}:author:${subject}`
 }
 
 export function parseArchiveOnboardingStorage(raw: unknown): ArchiveOnboardingStorageState {
@@ -28,17 +28,18 @@ export function parseArchiveOnboardingStorage(raw: unknown): ArchiveOnboardingSt
       : null,
     completed: value.completed === true,
     dismissed: value.dismissed === true,
+    firstAchievementSeen: value.firstAchievementSeen === true,
     started: value.started === true,
   }
 }
 
-export function readArchiveOnboardingStorage(authorId?: number | null): ArchiveOnboardingStorageState {
+export function readArchiveOnboardingStorage(subject?: number | "demo" | null): ArchiveOnboardingStorageState {
   if (typeof window === "undefined") {
     return { ...EMPTY_ARCHIVE_ONBOARDING_STORAGE }
   }
 
   try {
-    const raw = window.localStorage.getItem(getArchiveOnboardingStorageKey(authorId))
+    const raw = window.localStorage.getItem(getArchiveOnboardingStorageKey(subject))
     if (!raw) return { ...EMPTY_ARCHIVE_ONBOARDING_STORAGE }
     return parseArchiveOnboardingStorage(JSON.parse(raw) as unknown)
   } catch {
@@ -46,8 +47,8 @@ export function readArchiveOnboardingStorage(authorId?: number | null): ArchiveO
   }
 }
 
-export function getArchiveOnboardingStorageSnapshot(authorId?: number | null) {
-  return JSON.stringify(readArchiveOnboardingStorage(authorId))
+export function getArchiveOnboardingStorageSnapshot(subject?: number | "demo" | null) {
+  return JSON.stringify(readArchiveOnboardingStorage(subject))
 }
 
 export function subscribeArchiveOnboardingStorage(onStoreChange: () => void) {
@@ -61,12 +62,12 @@ export function subscribeArchiveOnboardingStorage(onStoreChange: () => void) {
 
 export function writeArchiveOnboardingStorage(
   state: ArchiveOnboardingStorageState,
-  authorId?: number | null,
+  subject?: number | "demo" | null,
 ) {
   if (typeof window === "undefined") return
 
   try {
-    window.localStorage.setItem(getArchiveOnboardingStorageKey(authorId), JSON.stringify(state))
+    window.localStorage.setItem(getArchiveOnboardingStorageKey(subject), JSON.stringify(state))
     window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_STORAGE_EVENT))
   } catch {
     // Private mode can block storage; dismiss then lasts for this session only.

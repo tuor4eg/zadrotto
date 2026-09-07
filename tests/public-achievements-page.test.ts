@@ -24,12 +24,14 @@ const toast = readFileSync("src/components/achievements/achievement-toast-host.t
 const homePage = readFileSync("src/app/page.tsx", "utf8")
 
 describe("public achievements page", () => {
-  it("is a public-shell page for the signed-in author only", () => {
+  it("is a public-shell page for signed-in authors and demo guests", () => {
     assert.match(page, /<PublicSiteHeader \{\.\.\.headerState\.headerProps\} \/>/)
     assert.match(page, /getPublicSiteHeaderState/)
     assert.match(page, /max-w-\[1480px\][^"\n]*flex-col gap-3/)
-    assert.match(page, /if \(!author\) \{\s*redirect\("\/"\)/)
-    assert.match(header, /author[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/)
+    assert.match(page, /DemoAchievementsPage/)
+    assert.doesNotMatch(page, /if \(!author\) \{\s*redirect\("\/"\)/)
+    assert.match(header, /showAchievements[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/)
+    assert.match(header, /isDemo/)
   })
 
   it("renders the hero copy and main-page-like stats", () => {

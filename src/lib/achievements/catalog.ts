@@ -130,6 +130,31 @@ async function evaluateAuthoredCount(input: {
   return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
 }
 
+/** Demo guest progress: count published media items by code with the same filters as rating.authored.count. */
+export async function countRatingAuthoredForMediaCodes(input: {
+  tx: DbTransaction;
+  mediaItemCodes: readonly string[];
+  instances: readonly AchievementMechanicInstance<CountMechanicParams>[];
+}) {
+  if (input.mediaItemCodes.length === 0 || input.instances.length === 0) return [];
+  const groupedInstances = groupCountInstances(input.instances);
+  const codeList = sql.join(input.mediaItemCodes.map((code) => sql`${code}`), sql`, `);
+  const queries = groupedInstances.map((instance, groupIndex) => sql`select ${groupIndex}::int as "groupIndex",
+      count(distinct ${mediaItems.id})::int as "value"
+    from ${mediaItems}
+    where ${mediaItems.code} in (${codeList})
+      and ${mediaItems.publicationStatus} = 'published'
+      and ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
+      and ${publishedSeriesFilter(mediaItems.id, instance.params.seriesId)}`);
+  const result = await input.tx.execute(sql.join(queries, sql` union all `));
+  return Array.from(result as Iterable<Record<string, unknown>>).flatMap((row) =>
+    groupedInstances[Number(row.groupIndex)]!.achievementIds.map((achievementId) => ({
+      achievementId,
+      value: Number(row.value),
+    })),
+  );
+}
+
 async function evaluateCreatedMediaCount(input: {
   tx: DbTransaction;
   authorIds: readonly number[];

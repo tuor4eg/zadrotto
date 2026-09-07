@@ -1,9 +1,9 @@
 import type { Metadata } from "next"
-import { redirect } from "next/navigation"
 
 import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
 import { AuthorAchievementHeroStats } from "@/components/achievements/author-achievement-hero-stats"
 import { PublicSiteHeader } from "@/components/archive/public-site-header"
+import { DemoAchievementsPage } from "@/components/user-state/demo-achievements-page"
 import { getAchievementShowcase } from "@/db/queries/achievements"
 import { getAchievementShowcaseStats, getNearestAchievementGoal } from "@/lib/achievements/showcase"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
@@ -20,7 +20,7 @@ export default async function AchievementsPage() {
   const author = headerState.author
 
   if (!author) {
-    redirect("/")
+    return <DemoAchievementsPage headerProps={headerState.headerProps} />
   }
 
   const items = await getAchievementShowcase(author.id)

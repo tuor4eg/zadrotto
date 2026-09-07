@@ -146,9 +146,9 @@ describe("public series catalog UI", () => {
   it("shows a bounded preview of immediate child series before its media items", () => {
     assert.match(
       seriesPageSource,
-      /archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0/,
+      /archive-panel archive-stack archive-stack-bottom relative z-10 flex min-h-0 min-w-0 flex-1/,
     );
-    assert.doesNotMatch(seriesPageSource, /archive-stack-left relative z-10 min-w-0/);
+    assert.doesNotMatch(seriesPageSource, /archive-stack-left relative z-10/);
     assert.match(querySource, /export async function getPublishedFranchiseBranch\([\s\S]*enabledMediaTypeCodes/);
     assert.match(querySource, /getPublishedFranchiseTree\("", enabledMediaTypeCodes\)/);
     assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id, enabledMediaTypeCodes\)/);

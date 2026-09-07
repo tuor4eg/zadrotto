@@ -4,7 +4,7 @@ import Image from "next/image"
 import { BadgeCheck, ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-export const ACHIEVEMENT_CARD_IMAGE_PX = 96
+export const ACHIEVEMENT_CARD_IMAGE_PX = 144
 const SWIPE_THRESHOLD_PX = 40
 
 export type AchievementAwardedLevel = {
@@ -136,7 +136,7 @@ function AchievementCardPanel({
   return (
     <div className="flex h-full w-full shrink-0 basis-full flex-col items-center px-3 pb-4 pt-4">
       <div
-        className={`grid size-24 shrink-0 place-items-center ${
+        className={`grid size-36 shrink-0 place-items-center ${
           isAwarded ? "text-amber-800" : "text-stone-400"
         }`}
       >
@@ -152,11 +152,11 @@ function AchievementCardPanel({
             />
           ) : isAwarded ? (
             <span className="grid h-full w-full place-items-center">
-              <Trophy className="size-8" />
+              <Trophy className="size-12" />
             </span>
           ) : (
             <span className="grid h-full w-full place-items-center">
-              <LockKeyhole className="size-8" />
+              <LockKeyhole className="size-12" />
             </span>
           )}
         </div>

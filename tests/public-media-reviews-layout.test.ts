@@ -33,10 +33,17 @@ describe("public media reviews layout", () => {
 
   it("opens reviews as normal links to a dedicated page", () => {
     assert.match(reviews, /<Link[\s\S]*href=\{`\/reviews\/\$\{review\.id\}`\}/);
-    assert.doesNotMatch(reviews, /useRouter|useSearchParams|role="dialog"/);
+    assert.doesNotMatch(reviews, /useSearchParams|MediaItemReviewLayer/);
     assert.doesNotMatch(mediaPage, /MediaItemReviewLayer/);
     assert.match(mediaPage, /legacyReviewId[\s\S]*redirect\(`\/reviews\/\$\{legacyReviewId\}`\)/);
     assert.match(reviewPage, /<ReviewArticle[\s\S]*mediaItemMeta=\{getMediaItemSummaryParts/);
+  });
+
+  it("opens author login modal from the guest review action instead of the login page", () => {
+    assert.match(reviews, /AuthorLoginModal/);
+    assert.match(reviews, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);
+    assert.match(reviews, /router\.push\(newReviewHref\)/);
+    assert.doesNotMatch(reviews, /href=\{[^}]*\/author\/login/);
   });
 
   it("keeps the latest review cover visible on the main page", () => {

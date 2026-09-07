@@ -23,6 +23,7 @@ import { parseArchiveOnboardingStorage, getArchiveOnboardingStorageKey } from ".
 const modelSource = readFileSync("src/lib/onboarding/model.ts", "utf8")
 const cardSource = readFileSync("src/components/onboarding/onboarding-hud-card.tsx", "utf8")
 const coachSource = readFileSync("src/components/onboarding/rating-coach-anchor.tsx", "utf8")
+const demoLoginPromptSource = readFileSync("src/components/user-state/demo-login-prompt-card.tsx", "utf8")
 const layerSource = readFileSync("src/components/external-interface/external-interface-layer.tsx", "utf8")
 const hudApiSource = readFileSync("src/app/api/user-hud/route.ts", "utf8")
 const ratingsQuerySource = readFileSync("src/db/queries/ratings.ts", "utf8")
@@ -33,23 +34,32 @@ const ratingDialogSource = readFileSync("src/app/media-item-rating-dialog.tsx", 
 function visibleCard(input: {
   completed?: boolean
   dismissed?: boolean
+  firstAchievementSeen?: boolean
   ratingsCount: number
   recordFocused?: boolean
+  showFirstAchievement?: boolean
   started?: boolean
 }) {
   return getArchiveOnboardingCard({
     completed: input.completed ?? false,
     dismissed: input.dismissed ?? false,
+    firstAchievementSeen: input.firstAchievementSeen ?? true,
     ratingsCount: input.ratingsCount,
     recordFocused: input.recordFocused ?? false,
+    showFirstAchievement: input.showFirstAchievement ?? false,
     started: input.started ?? true,
   })
 }
 
 describe("archive onboarding steps", () => {
-  it("shows start, hint, first rating, and completion copy without using title slang", () => {
+  it("shows start, hint, first achievement, progress, and completion copy without using title slang", () => {
     const start = visibleCard({ ratingsCount: 0 })
     const hint = visibleCard({ ratingsCount: 0, recordFocused: true })
+    const achievement = visibleCard({
+      firstAchievementSeen: false,
+      ratingsCount: 1,
+      showFirstAchievement: true,
+    })
     const first = visibleCard({ ratingsCount: 1 })
     const second = visibleCard({ ratingsCount: 2 })
     const complete = visibleCard({ ratingsCount: 3 })
@@ -62,11 +72,16 @@ describe("archive onboarding steps", () => {
     assert.equal(start?.showRatingCoachMark, false)
     assert.equal(start?.canHide, false)
     assert.equal(hint?.canHide, false)
+    assert.equal(achievement?.canHide, false)
     assert.equal(first?.canHide, true)
 
     assert.equal(hint?.stepId, "hint")
     assert.equal(hint?.title, "Знакомая запись?")
     assert.equal(hint?.showRatingCoachMark, true)
+
+    assert.equal(achievement?.stepId, "achievement")
+    assert.equal(achievement?.title, "Первая ачивка!")
+    assert.match(achievement?.body ?? "", /Поздравляю/)
 
     assert.equal(first?.stepId, "progress")
     assert.equal(first?.title, "Отлично!")
@@ -81,7 +96,9 @@ describe("archive onboarding steps", () => {
     assert.equal(complete?.title, "Архив начат!")
     assert.match(complete?.body ?? "", /записи/)
     assert.doesNotMatch(
-      [start, hint, first, second, complete].map((card) => `${card?.title} ${card?.body}`).join("\n"),
+      [start, hint, achievement, first, second, complete]
+        .map((card) => `${card?.title} ${card?.body}`)
+        .join("\n"),
       /тайтл/i,
     )
     assert.doesNotMatch(ARCHIVE_ONBOARDING_COACH_MARK_TEXT, /тайтл/i)
@@ -95,8 +112,10 @@ describe("archive onboarding steps", () => {
       getArchiveOnboardingCard({
         completed: true,
         dismissed: false,
+        firstAchievementSeen: true,
         ratingsCount: 0,
         recordFocused: false,
+        showFirstAchievement: false,
         started: true,
       })?.stepId,
       "start",
@@ -106,8 +125,10 @@ describe("archive onboarding steps", () => {
       getArchiveOnboardingCard({
         completed: false,
         dismissed: false,
+        firstAchievementSeen: true,
         ratingsCount: 5,
         recordFocused: false,
+        showFirstAchievement: false,
         started: false,
       }),
       null,
@@ -116,8 +137,10 @@ describe("archive onboarding steps", () => {
       getArchiveOnboardingCard({
         completed: true,
         dismissed: false,
+        firstAchievementSeen: true,
         ratingsCount: 3,
         recordFocused: false,
+        showFirstAchievement: false,
         started: true,
       }),
       null,
@@ -126,8 +149,10 @@ describe("archive onboarding steps", () => {
       getArchiveOnboardingCard({
         completed: false,
         dismissed: false,
+        firstAchievementSeen: true,
         ratingsCount: 3,
         recordFocused: false,
+        showFirstAchievement: false,
         started: true,
       })?.stepId,
       "complete",
@@ -138,6 +163,7 @@ describe("archive onboarding steps", () => {
           acknowledgedStepId: null,
           completed: true,
           dismissed: true,
+          firstAchievementSeen: false,
           started: true,
         },
         0,
@@ -150,6 +176,7 @@ describe("archive onboarding steps", () => {
           acknowledgedStepId: null,
           completed: true,
           dismissed: true,
+          firstAchievementSeen: false,
           started: true,
         },
         0,
@@ -169,12 +196,14 @@ describe("archive onboarding steps", () => {
         acknowledgedStepId: "start",
         completed: false,
         dismissed: false,
+        firstAchievementSeen: false,
         started: true,
       }),
       {
         acknowledgedStepId: "start",
         completed: false,
         dismissed: true,
+        firstAchievementSeen: false,
         started: true,
       },
     )
@@ -184,6 +213,7 @@ describe("archive onboarding steps", () => {
           acknowledgedStepId: null,
           completed: false,
           dismissed: false,
+          firstAchievementSeen: false,
           started: true,
         },
         "complete",
@@ -196,6 +226,7 @@ describe("archive onboarding steps", () => {
           acknowledgedStepId: null,
           completed: false,
           dismissed: false,
+          firstAchievementSeen: false,
           started: true,
         },
         "complete",
@@ -208,11 +239,25 @@ describe("archive onboarding steps", () => {
           acknowledgedStepId: null,
           completed: false,
           dismissed: false,
+          firstAchievementSeen: false,
           started: true,
         },
         "hint",
       ).acknowledgedStepId,
       "hint",
+    )
+    assert.equal(
+      acknowledgeArchiveOnboardingStep(
+        {
+          acknowledgedStepId: null,
+          completed: false,
+          dismissed: false,
+          firstAchievementSeen: false,
+          started: true,
+        },
+        "achievement",
+      ).firstAchievementSeen,
+      true,
     )
   })
 
@@ -237,12 +282,14 @@ describe("archive onboarding steps", () => {
         acknowledgedStepId: "hint",
         completed: false,
         dismissed: false,
+        firstAchievementSeen: true,
         started: true,
       }),
       {
         acknowledgedStepId: "hint",
         completed: false,
         dismissed: false,
+        firstAchievementSeen: true,
         started: true,
       },
     )
@@ -265,13 +312,30 @@ describe("archive onboarding HUD wiring", () => {
     assert.match(layerSource, /refreshUserHud/)
     assert.match(layerSource, /USER_HUD_REFRESH_EVENT/)
     assert.match(layerSource, /ARCHIVE_ONBOARDING_RATING_SAVED_EVENT/)
-    assert.match(layerSource, /sm:contents/)
-    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /temporaryHide/)
+    assert.match(layerSource, /demo: isDemo/)
+    assert.match(layerSource, /DemoProfileImportBridge/)
+    assert.match(layerSource, /DemoLoginPromptCard/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /DEMO_ONBOARDING_STORAGE_AUTHOR_KEY/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /demo = false/)
     assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /onNeverShow/)
     assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /dismissArchiveOnboardingStorage/)
     assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /showCompletion/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /completionPathRef/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /completionPathRef\.current === pathname/)
     assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /previousRatingsRef/)
+    assert.match(
+      readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"),
+      /showCompletion[\s\S]*previousRatings >= ARCHIVE_ONBOARDING_GOAL_COUNT[\s\S]*ratingsCount > previousRatings[\s\S]*completed: true[\s\S]*setShowCompletion\(false\)/,
+    )
     assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /goalReached && !showCompletion/)
+    assert.match(
+      readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"),
+      /card\.stepId === "complete"[\s\S]*acknowledgedStepId: "complete"/,
+    )
+    assert.doesNotMatch(
+      readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"),
+      /const onAcknowledge[\s\S]*card\.stepId === "complete"[\s\S]*setShowCompletion\(false\)/,
+    )
     assert.doesNotMatch(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /writeArchiveOnboardingSnooze/)
     assert.doesNotMatch(readFileSync("src/lib/onboarding/storage.ts", "utf8"), /sessionStorage/)
     assert.match(readFileSync("src/app/author/login/author-login-form.tsx", "utf8"), /USER_HUD_REFRESH_EVENT/)
@@ -287,14 +351,19 @@ describe("archive onboarding HUD wiring", () => {
     assert.match(layerSource, /showTools \|\| showOnboardingCard/)
     assert.match(layerSource, /Пользовательские инструменты[\s\S]*Обучение архива/)
     assert.match(cardSource, /ONBOARDING_IMAGE_SLOT_CLASS_NAME/)
+    assert.match(demoLoginPromptSource, /ONBOARDING_IMAGE_SLOT_CLASS_NAME/)
+    assert.match(demoLoginPromptSource, /ARCHIVE_ONBOARDING_IMAGE_SRC/)
+    assert.match(demoLoginPromptSource, /<Image/)
     assert.match(cardSource, /self-stretch/)
     assert.match(cardSource, /h-full w-full object-contain object-bottom/)
     assert.match(cardSource, /card\.imageSrc \?/)
     assert.match(cardSource, /<Image/)
     assert.match(cardSource, /aria-label="Поехали в архив"/)
+    assert.match(cardSource, /aria-label="Дальше"/)
     assert.match(cardSource, /ArrowRight/)
     assert.match(cardSource, /rounded-full/)
-    assert.match(cardSource, /archiveHref \?/)
+    assert.match(cardSource, /showAdvance/)
+    assert.match(cardSource, /showArchiveLink/)
     assert.match(cardSource, /flex flex-nowrap items-center gap-1\.5/)
     assert.match(cardSource, /showProgress = card\.stepId !== "start" \|\| !archiveHref/)
     assert.match(cardSource, /variant: "outline"/)
@@ -302,8 +371,11 @@ describe("archive onboarding HUD wiring", () => {
     assert.match(layerSource, /onNeverShow=\{onboarding\.onNeverShow\}/)
     assert.match(cardSource, /aria-label="Скрыть подсказку"/)
     assert.match(cardSource, /Больше не показывать/)
-    assert.match(cardSource, /showNeverShow = showActions && card\.stepId !== "complete"/)
+    assert.match(cardSource, /card\.stepId !== "achievement"/)
     assert.match(cardSource, /onNeverShow/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /showFirstAchievement/)
+    assert.match(readFileSync("src/components/onboarding/use-archive-onboarding.ts", "utf8"), /ratingsCount > previousRatings && showFirstAchievement/)
+    assert.match(modelSource, /stepId: "achievement"/)
     assert.match(cardSource, /aria-label="Свернуть"/)
     assert.match(cardSource, /aria-label="Развернуть"/)
     assert.match(cardSource, /onExpand/)

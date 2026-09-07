@@ -32,6 +32,8 @@ import { formatFirstExperiencedDate } from "@/lib/authors/experience-date";
 import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { formatScore } from "@/lib/ratings/score";
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
+import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 type MediaItemRatingDialogProps = {
   mediaItemCode: string;
@@ -482,7 +484,21 @@ export function MediaItemRatingDialog({
   const [isOpen, setIsOpen] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
-  const isRatingOpen = isOpen || Boolean(currentAuthor && openRatingAfterLogin);
+  const demoProfile = useDemoProfile();
+  const hasRealAuthor = Boolean(currentAuthor && currentAuthor.code !== "demo");
+  const isDemo = Boolean(
+    demoProfile && demoProfile.import.importedAt == null && !hasRealAuthor,
+  );
+  const demoOverlay = useDemoMediaOverlay(mediaItemCode, currentAuthorScore, null);
+  const effectiveScore = hasRealAuthor ? currentAuthorScore : demoOverlay.score;
+  const effectiveFirstExperiencedAt = hasRealAuthor
+    ? currentAuthorFirstExperiencedAt
+    : demoOverlay.firstExperiencedAt;
+  const effectiveFirstExperiencedPrecision = hasRealAuthor
+    ? currentAuthorFirstExperiencedPrecision
+    : demoOverlay.firstExperiencedPrecision;
+  const canRate = Boolean(hasRealAuthor || isDemo);
+  const isRatingOpen = isOpen || Boolean(hasRealAuthor && openRatingAfterLogin);
 
   return (
     <>
@@ -490,11 +506,17 @@ export function MediaItemRatingDialog({
         mediaItemCode={mediaItemCode}
         franchiseCode={franchiseCode}
         title={title}
-        currentAuthor={currentAuthor}
-        currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
-        currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
-        currentAuthorScore={currentAuthorScore}
-        onOpen={() => currentAuthor ? setIsOpen(true) : setIsLoginOpen(true)}
+        currentAuthor={
+          hasRealAuthor
+            ? currentAuthor
+            : isDemo
+              ? { name: "Гость", code: "demo" }
+              : null
+        }
+        currentAuthorFirstExperiencedAt={effectiveFirstExperiencedAt}
+        currentAuthorFirstExperiencedPrecision={effectiveFirstExperiencedPrecision}
+        currentAuthorScore={effectiveScore}
+        onOpen={() => canRate ? setIsOpen(true) : setIsLoginOpen(true)}
         panelDisplayClassName={panelDisplayClassName}
         panelLabelClassName={panelLabelClassName}
         panelVariant={panelVariant}
@@ -507,10 +529,10 @@ export function MediaItemRatingDialog({
               mediaItemCode={mediaItemCode}
               franchiseCode={franchiseCode}
               title={title}
-              currentAuthor={currentAuthor}
-              currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
-              currentAuthorFirstExperiencedPrecision={currentAuthorFirstExperiencedPrecision}
-              currentAuthorScore={currentAuthorScore}
+              currentAuthor={hasRealAuthor ? currentAuthor : null}
+              currentAuthorFirstExperiencedAt={effectiveFirstExperiencedAt}
+              currentAuthorFirstExperiencedPrecision={effectiveFirstExperiencedPrecision}
+              currentAuthorScore={effectiveScore}
               releaseYear={releaseYear}
               formId="media-item-rating-form"
               onClose={() => {

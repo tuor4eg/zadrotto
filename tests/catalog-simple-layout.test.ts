@@ -25,8 +25,9 @@ describe("simple catalog layout", () => {
     assert.doesNotMatch(sharedHeaderSource, /z-50 w-full bg-stone-900/);
     assert.doesNotMatch(sharedHeaderSource, /sticky top-0/);
     assert.doesNotMatch(sharedHeaderSource, /-mt-2/);
-    assert.match(layoutSource, /archive-textured-block flex min-h-0/);
-    assert.match(layoutSource, /archive-textured-block relative flex w-full/);
+    assert.match(layoutSource, /archive-textured-block flex min-h-0/)
+    assert.match(layoutSource, /archive-textured-block flex h-full min-h-0 w-full/)
+    assert.match(layoutSource, /xl:sticky xl:top-4/)
     assert.doesNotMatch(layoutSource, /archive-(?:paper|panel|stack)/);
     assert.match(catalogSource, /archive-textured-block p-6/);
     assert.match(layoutSource, /archive-catalog-list-panel archive-textured-block/);

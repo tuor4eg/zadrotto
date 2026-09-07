@@ -1,142 +1,21 @@
-"use client";
+"use client"
 
-import type { CSSProperties, ReactNode } from "react";
-import { useEffect, useRef, useState } from "react";
-
-type FixedPreviewState = {
-  height: number;
-  isFixed: boolean;
-  left: number;
-  minHeight: number;
-  width: number;
-};
+import type { ReactNode } from "react"
 
 type ArchiveCatalogLayoutProps = {
-  children: ReactNode;
-  footer?: ReactNode;
-  preview: ReactNode;
-  previewKey?: string | number | null;
-  toolbar?: ReactNode;
-};
-
-const FIXED_PREVIEW_TOP_OFFSET = 16;
-const FIXED_PREVIEW_BOTTOM_OFFSET = 12;
-
-const EMPTY_FIXED_PREVIEW_STATE: FixedPreviewState = {
-  height: 0,
-  isFixed: false,
-  left: 0,
-  minHeight: 0,
-  width: 0,
-};
+  children: ReactNode
+  footer?: ReactNode
+  preview: ReactNode
+  previewKey?: string | number | null
+  toolbar?: ReactNode
+}
 
 export function ArchiveCatalogLayout({
   children,
   footer,
   preview,
-  previewKey,
   toolbar,
 }: ArchiveCatalogLayoutProps) {
-  const previewPanelRef = useRef<HTMLElement>(null);
-  const previewSlotRef = useRef<HTMLDivElement>(null);
-  const previewFrameRef = useRef<number | null>(null);
-  const [fixedPreview, setFixedPreview] = useState<FixedPreviewState>(
-    EMPTY_FIXED_PREVIEW_STATE,
-  );
-  const previewSlotStyle: CSSProperties | undefined = fixedPreview.isFixed
-    ? { minHeight: fixedPreview.height }
-    : undefined;
-  const previewPanelStyle: CSSProperties | undefined = fixedPreview.isFixed
-    ? {
-        height: fixedPreview.height,
-        left: fixedPreview.left,
-        maxHeight: fixedPreview.height,
-        minHeight: fixedPreview.minHeight,
-        position: "fixed",
-        top: FIXED_PREVIEW_TOP_OFFSET,
-        width: fixedPreview.width,
-        zIndex: 20,
-      }
-    : fixedPreview.minHeight > 0
-      ? {
-          height: fixedPreview.height,
-          maxHeight: fixedPreview.height,
-          minHeight: fixedPreview.minHeight,
-        }
-      : undefined;
-
-  useEffect(() => {
-    const desktopMediaQuery = window.matchMedia("(min-width: 1280px)");
-
-    function updateFixedPreview() {
-      const previewPanel = previewPanelRef.current;
-      const previewSlot = previewSlotRef.current;
-
-      if (!previewPanel || !previewSlot || !desktopMediaQuery.matches) {
-        setFixedPreview((currentState) =>
-          currentState.isFixed || currentState.height > 0
-            ? EMPTY_FIXED_PREVIEW_STATE
-            : currentState,
-        );
-        return;
-      }
-
-      const slotRect = previewSlot.getBoundingClientRect();
-      const isFixed = slotRect.top <= FIXED_PREVIEW_TOP_OFFSET;
-      const panelTop = isFixed
-        ? FIXED_PREVIEW_TOP_OFFSET
-        : Math.max(slotRect.top, FIXED_PREVIEW_TOP_OFFSET);
-      const availableHeight = Math.max(
-        0,
-        window.innerHeight - panelTop - FIXED_PREVIEW_BOTTOM_OFFSET,
-      );
-      const height = availableHeight;
-      const nextState: FixedPreviewState = {
-        height,
-        isFixed,
-        left: slotRect.left,
-        minHeight: availableHeight,
-        width: slotRect.width,
-      };
-
-      setFixedPreview((currentState) =>
-        currentState.height === nextState.height &&
-        currentState.isFixed === nextState.isFixed &&
-        Math.round(currentState.left) === Math.round(nextState.left) &&
-        Math.round(currentState.minHeight) === Math.round(nextState.minHeight) &&
-        Math.round(currentState.width) === Math.round(nextState.width)
-          ? currentState
-          : nextState,
-      );
-    }
-
-    function scheduleFixedPreviewUpdate() {
-      if (previewFrameRef.current !== null) {
-        return;
-      }
-
-      previewFrameRef.current = window.requestAnimationFrame(() => {
-        previewFrameRef.current = null;
-        updateFixedPreview();
-      });
-    }
-
-    updateFixedPreview();
-    window.addEventListener("scroll", scheduleFixedPreviewUpdate, { passive: true });
-    window.addEventListener("resize", scheduleFixedPreviewUpdate);
-    desktopMediaQuery.addEventListener("change", scheduleFixedPreviewUpdate);
-
-    return () => {
-      if (previewFrameRef.current !== null) {
-        window.cancelAnimationFrame(previewFrameRef.current);
-      }
-
-      window.removeEventListener("scroll", scheduleFixedPreviewUpdate);
-      window.removeEventListener("resize", scheduleFixedPreviewUpdate);
-      desktopMediaQuery.removeEventListener("change", scheduleFixedPreviewUpdate);
-    };
-  }, [previewKey]);
-
   return (
     <section className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(290px,0.28fr)]">
       <div className="archive-catalog-list-panel archive-textured-block flex min-h-0 min-w-0 flex-col p-4">
@@ -153,28 +32,23 @@ export function ArchiveCatalogLayout({
         {footer ? <div className="mt-3 pl-1 pr-4">{footer}</div> : null}
       </div>
 
-      <div
-        ref={previewSlotRef}
-        className="relative hidden min-w-0 overflow-visible xl:block"
-        style={previewSlotStyle}
-      >
-        <article
-          ref={previewPanelRef}
-          className="archive-textured-block relative flex w-full min-w-0 flex-col overflow-visible"
-          style={previewPanelStyle}
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/clip-transparent-trimmed.png"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-3 right-4 z-50 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
-          />
-          <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            {preview}
-          </div>
-        </article>
+      <div className="relative hidden min-h-0 min-w-0 xl:block">
+        {/* Sticky wrapper stays outside .archive-textured-block: that class forces position:relative. */}
+        <div className="xl:sticky xl:top-4 xl:z-20 xl:flex xl:h-[calc(100dvh-1.75rem)] xl:max-h-[calc(100dvh-1.75rem)] xl:self-start">
+          <article className="archive-textured-block flex h-full min-h-0 w-full min-w-0 flex-col overflow-visible">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/clip-transparent-trimmed.png"
+              alt=""
+              aria-hidden="true"
+              className="pointer-events-none absolute -top-3 right-4 z-50 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
+            />
+            <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {preview}
+            </div>
+          </article>
+        </div>
       </div>
     </section>
-  );
+  )
 }

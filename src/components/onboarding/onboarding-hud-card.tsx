@@ -31,7 +31,9 @@ export function OnboardingHudCard({
   const progressLabel = `${card.ratingsCount}/${card.goalCount}`
   const showProgress = card.stepId !== "start" || !archiveHref
   const showActions = !collapsed
-  const showNeverShow = showActions && card.stepId !== "complete"
+  const showAdvance = showActions && card.stepId === "achievement"
+  const showNeverShow = showActions && card.stepId !== "complete" && card.stepId !== "achievement"
+  const showArchiveLink = Boolean(archiveHref) && showActions && !showAdvance
 
   return (
     <div
@@ -78,7 +80,7 @@ export function OnboardingHudCard({
               </ol>
             </div>
           ) : null}
-          {showActions && (showNeverShow || archiveHref) ? (
+          {showActions && (showNeverShow || showArchiveLink || showAdvance) ? (
             <div className="mt-2 flex flex-nowrap items-center gap-1.5">
               {showNeverShow ? (
                 <button
@@ -92,7 +94,20 @@ export function OnboardingHudCard({
                   Больше не показывать
                 </button>
               ) : null}
-              {archiveHref ? (
+              {showAdvance ? (
+                <button
+                  type="button"
+                  className={cn(
+                    buttonVariants({ size: "icon" }),
+                    "size-8 shrink-0 rounded-full",
+                  )}
+                  aria-label="Дальше"
+                  onClick={onAcknowledge}
+                >
+                  <ArrowRight className="size-4" />
+                </button>
+              ) : null}
+              {showArchiveLink && archiveHref ? (
                 <Link
                   href={archiveHref}
                   className={cn(

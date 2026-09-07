@@ -6,7 +6,13 @@ export const USER_HUD_REFRESH_EVENT = "zadrotto:user-hud-refresh"
 export const ARCHIVE_ONBOARDING_COACH_MARK_TEXT = "Начни здесь. Поставь свою оценку"
 export const ARCHIVE_ONBOARDING_IMAGE_SRC = "/mascot/deadz_map.webp"
 
-export const ARCHIVE_ONBOARDING_STEP_IDS = ["start", "hint", "progress", "complete"] as const
+export const ARCHIVE_ONBOARDING_STEP_IDS = [
+  "start",
+  "hint",
+  "achievement",
+  "progress",
+  "complete",
+] as const
 
 export type ArchiveOnboardingStepId = (typeof ARCHIVE_ONBOARDING_STEP_IDS)[number]
 
@@ -25,6 +31,7 @@ export type ArchiveOnboardingStorageState = {
   acknowledgedStepId: ArchiveOnboardingStepId | null
   completed: boolean
   dismissed: boolean
+  firstAchievementSeen: boolean
   started: boolean
 }
 
@@ -32,6 +39,7 @@ export const EMPTY_ARCHIVE_ONBOARDING_STORAGE: ArchiveOnboardingStorageState = {
   acknowledgedStepId: null,
   completed: false,
   dismissed: false,
+  firstAchievementSeen: false,
   started: false,
 }
 
@@ -82,8 +90,10 @@ export function canHideArchiveOnboarding(ratingsCount: number) {
 export function getArchiveOnboardingCard(input: {
   completed: boolean
   dismissed: boolean
+  firstAchievementSeen: boolean
   ratingsCount: number
   recordFocused: boolean
+  showFirstAchievement: boolean
   started: boolean
 }): ArchiveOnboardingCard | null {
   const ratingsCount = Math.max(0, input.ratingsCount)
@@ -105,6 +115,23 @@ export function getArchiveOnboardingCard(input: {
       showRatingCoachMark: false,
       stepId: "complete",
       title: "Архив начат!",
+    }
+  }
+
+  if (
+    ratingsCount === 1
+    && input.showFirstAchievement
+    && !input.firstAchievementSeen
+  ) {
+    return {
+      body: "Поздравляю — первая ачивка получена. Так архив отмечает твои шаги.",
+      canHide: false,
+      goalCount: ARCHIVE_ONBOARDING_GOAL_COUNT,
+      imageSrc: ARCHIVE_ONBOARDING_IMAGE_SRC,
+      ratingsCount: filledCount,
+      showRatingCoachMark: false,
+      stepId: "achievement",
+      title: "Первая ачивка!",
     }
   }
 
@@ -192,6 +219,14 @@ export function acknowledgeArchiveOnboardingStep(
       ...current,
       completed: true,
       dismissed: true,
+    }
+  }
+
+  if (stepId === "achievement") {
+    return {
+      ...current,
+      acknowledgedStepId: null,
+      firstAchievementSeen: true,
     }
   }
 

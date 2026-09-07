@@ -103,8 +103,13 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
   }
 
   return createPortal(
-    <div className="fixed bottom-4 right-4 z-[90] grid w-[min(24rem,calc(100vw-2rem))] gap-2">
-      {visibleMessages.map((message) => {
+    <div
+      className="fixed right-4 z-[90] grid w-[min(24rem,calc(100vw-2rem))] gap-2"
+      style={{
+        bottom:
+          "calc(max(1rem, env(safe-area-inset-bottom, 0px)) + var(--archive-bottom-hud-offset, 0px) + min(0.5rem, var(--archive-bottom-hud-offset, 0px)))",
+      }}
+    >      {visibleMessages.map((message) => {
         const isSuccess = message.tone === "success";
         const hasFullToastLink = message.link?.fullToast === true;
         const Icon = isSuccess ? CheckCircle2 : AlertTriangle;

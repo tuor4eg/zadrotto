@@ -23,6 +23,8 @@ import type { CatalogMediaItem } from "@/db/queries/media-items";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { ActiveQuizContext } from "@/lib/quizzes/model";
 import { ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT } from "@/lib/onboarding/model";
+import { matchDemoAuthorRatingFilter } from "@/lib/user-state/demo-selectors";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 import {
   sortMediaTypesByCount,
   type MediaType,
@@ -101,7 +103,15 @@ export function MediaItemsCatalog({
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [selectedId, setSelectedId] = useState(items[0]?.id);
+  const demoProfile = useDemoProfile();
+  const isDemo = Boolean(!currentAuthor && demoProfile && demoProfile.import.importedAt == null);
+  const visibleItems = useMemo(() => {
+    if (!isDemo || !demoProfile || authorRatingFilter === "all") return items;
+    return items.filter((item) =>
+      matchDemoAuthorRatingFilter(item.code, authorRatingFilter, demoProfile),
+    );
+  }, [authorRatingFilter, demoProfile, isDemo, items]);
+  const [selectedId, setSelectedId] = useState(visibleItems[0]?.id);
   const [, startTransition] = useTransition();
   const availableMediaTypes = useMemo(
     () =>
@@ -115,8 +125,8 @@ export function MediaItemsCatalog({
     [mediaTypeCountRows, mediaTypeFilter, mediaTypes],
   );
   const selectedItem = useMemo(
-    () => items.find((item) => item.id === selectedId) ?? items[0] ?? null,
-    [items, selectedId],
+    () => visibleItems.find((item) => item.id === selectedId) ?? visibleItems[0] ?? null,
+    [visibleItems, selectedId],
   );
   const archiveTotalCount = useMemo(
     () => mediaTypeCountRows.reduce((total, item) => total + item.count, 0),
@@ -128,7 +138,7 @@ export function MediaItemsCatalog({
     searchQuery !== "" ||
     yearFilter !== null;
   const paginationSearchParams = {
-    mine: currentAuthor && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
+    mine: (currentAuthor || isDemo) && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
     q: searchQuery || undefined,
     dir:
@@ -209,14 +219,26 @@ export function MediaItemsCatalog({
           currentAdmin={currentAdmin}
           currentAuthor={currentAuthor}
           franchises={publishedFranchises}
-          item={selectedItem}
+          item={selectedItem
+            ? {
+              ...selectedItem,
+              currentAuthorScore: currentAuthor
+                ? selectedItem.currentAuthorScore
+                : (isDemo && demoProfile?.ratings[selectedItem.code]?.score) || null,
+              currentAuthorStatus: currentAuthor
+                ? selectedItem.currentAuthorStatus
+                : (isDemo && demoProfile && !demoProfile.ratings[selectedItem.code]
+                  ? (demoProfile.statuses[selectedItem.code]?.status ?? null)
+                  : null),
+            }
+            : null}
           mediaTypes={mediaTypes}
           activeQuiz={activeQuiz}
         />
       }
       previewKey={selectedItem?.id ?? null}
     >
-      {items.length === 0 ? (
+      {visibleItems.length === 0 ? (
         <div className="col-span-full rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
@@ -242,7 +264,9 @@ export function MediaItemsCatalog({
           </div>
         </div>
       ) : null}
-      {items.map((item) => {
+      {visibleItems.map((item) => {
+        const demoRating = isDemo && demoProfile ? demoProfile.ratings[item.code] : null;
+        const demoStatus = isDemo && demoProfile ? demoProfile.statuses[item.code] : null;
         const tileProps = {
           href: `/media/${item.code}`,
           item,
@@ -253,12 +277,14 @@ export function MediaItemsCatalog({
           selected: selectedItem?.id === item.id,
         };
 
-        return currentAuthor ? (
+        return currentAuthor || isDemo ? (
           <MediaItemStatusTile
             key={item.id}
             {...tileProps}
-            currentAuthorScore={item.currentAuthorScore}
-            currentAuthorStatus={item.currentAuthorStatus}
+            currentAuthorScore={currentAuthor ? item.currentAuthorScore : (demoRating?.score ?? null)}
+            currentAuthorStatus={currentAuthor
+              ? item.currentAuthorStatus
+              : (demoRating ? null : (demoStatus?.status ?? null))}
           />
         ) : (
           <MediaItemTile key={item.id} {...tileProps} />

@@ -25,6 +25,7 @@ import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
 import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
 import type { ActiveQuizContext } from "@/lib/quizzes/model";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 type MediaCatalogPreviewProps = {
   canPublishFranchisesWithoutReview: boolean;
@@ -50,6 +51,11 @@ export function MediaCatalogPreview({
   item,
   mediaTypes,
 }: MediaCatalogPreviewProps) {
+  const demoProfile = useDemoProfile();
+  const isDemo = Boolean(
+    !currentAuthor && demoProfile && demoProfile.import.importedAt == null,
+  );
+
   if (!item) {
     return (
       <div className="grid min-h-[420px] place-items-center p-6 text-sm text-stone-600">
@@ -188,7 +194,7 @@ export function MediaCatalogPreview({
               Открыть досье
             </Link>
           </div>
-          {currentAuthor && item.currentAuthorScore === null ? (
+          {(currentAuthor || isDemo) && item.currentAuthorScore === null ? (
             <AuthorMediaStatusControls
               className="mt-0"
               currentAuthorScore={item.currentAuthorScore}

@@ -4,6 +4,9 @@ import { Layers3, MessageSquareQuote, Sparkles, Star, Trophy } from "lucide-reac
 
 import { getLatestAwardedAchievement } from "@/db/queries/achievements";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { StartDemoHistoryButton } from "@/components/user-state/start-demo-history-button";
+import { DemoHomeIntro } from "@/components/user-state/demo-home-intro";
+import { HomeIntroHero } from "@/components/user-state/home-intro-hero";
 import { getAuthorDigitalProfile } from "@/db/queries/author-digital-profile";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import {
@@ -24,7 +27,11 @@ import {
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { formatRelativeArchiveDate } from "@/lib/archive/relative-date";
 import { getDailyDossier } from "@/lib/main-page/daily-dossier";
-import { getAuthorResearchMessage } from "@/lib/main-page/author-research-message";
+import {
+  buildHomeHeroStatisticItems,
+  buildHomeResearchSnapshotFromAuthor,
+  getHomeResearchMessage,
+} from "@/lib/main-page/home-research-snapshot";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
@@ -263,7 +270,7 @@ export default async function MainPage() {
   const headerState = await getPublicSiteHeaderState();
   const author = headerState.author;
   const [activeQuiz, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
-    author ? getActiveQuiz() : Promise.resolve(null),
+    getActiveQuiz(),
     getDailyDossier(author?.id),
     getEffectiveMediaTypeOptions(author?.id),
     getPublishedEditorialCollections(),
@@ -318,25 +325,8 @@ export default async function MainPage() {
         updatedAt: authorHeroStatistics.latestRating.updatedAt,
       }
     : null;
-  const authorHeroStatisticItems = authorHeroStatistics
-    ? [
-        { label: "Оценок", rawValue: authorHeroStatistics.ratingsCount },
-        { label: "Средняя оценка", rawValue: authorHeroStatistics.averageScore },
-        { label: "Рецензий", rawValue: authorHeroStatistics.reviewCount },
-        { label: "Добавлено в архив", rawValue: authorHeroStatistics.contributionCount },
-      ]
-        .filter((statistic): statistic is { label: string; rawValue: number } => (
-          statistic.rawValue !== null && statistic.rawValue > 0
-        ))
-        .map((statistic) => ({
-          label: statistic.label,
-          value: statistic.label === "Средняя оценка"
-            ? formatScore(statistic.rawValue)
-            : statistic.rawValue.toLocaleString("ru-RU"),
-        }))
-    : [];
-  const researchMessage = author && authorHeroStatistics
-    ? getAuthorResearchMessage({
+  const authorResearchSnapshot = authorHeroStatistics && author
+    ? buildHomeResearchSnapshotFromAuthor({
         authorId: author.id,
         averageScore: authorHeroStatistics.averageScore,
         contributionCount: authorHeroStatistics.contributionCount,
@@ -344,6 +334,12 @@ export default async function MainPage() {
         ratingsCount: authorHeroStatistics.ratingsCount,
         reviewCount: authorHeroStatistics.reviewCount,
       })
+    : null;
+  const authorHeroStatisticItems = authorResearchSnapshot
+    ? buildHomeHeroStatisticItems(authorResearchSnapshot)
+    : [];
+  const researchMessage = authorResearchSnapshot
+    ? getHomeResearchMessage(authorResearchSnapshot)
     : null;
   const hasLatestActivity = Boolean(
     author
@@ -379,57 +375,30 @@ export default async function MainPage() {
               zIndex: 0,
             }}
           />
-          {author && authorHeroStatistics && authorHeroStatisticItems.length > 0 ? (
-            <div className="w-full lg:max-w-[66%]">
-              <h1
-                id="main-intro-title"
-                className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
-              >
-                {researchMessage?.title}
-              </h1>
-              <p className="mt-3 max-w-4xl text-base leading-7 text-stone-700 sm:text-lg">
-                {researchMessage?.body}
-              </p>
-              <Link
-                href={researchMessage?.cta.href ?? "/archive"}
-                className="mt-4 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
-              >
-                {researchMessage?.cta.label ?? "Продолжить исследование"}
-              </Link>
-              {authorHeroStatisticItems.length > 0 ? (
-                <dl className="mt-5 grid max-w-4xl grid-cols-2 sm:grid-cols-4">
-                {authorHeroStatisticItems.map((statistic, index) => (
-                  <div
-                    key={statistic.label}
-                    className={`flex flex-col px-3 py-1 text-center first:pl-0 sm:px-6 ${index % 2 === 1 ? "border-l border-stone-400/30" : ""} ${index > 0 ? "sm:border-l sm:border-stone-400/30" : ""}`}
-                  >
-                    <dt className="order-2 mt-2 font-mono text-[9px] uppercase tracking-[0.12em] text-stone-600">
-                      {statistic.label}
-                    </dt>
-                    <dd className="order-1 font-serif text-2xl leading-none tabular-nums text-stone-950">{statistic.value}</dd>
-                  </div>
-                ))}
-                </dl>
-              ) : null}
-            </div>
+          {author && researchMessage && authorHeroStatisticItems.length > 0 ? (
+            <HomeIntroHero
+              message={researchMessage}
+              statisticItems={authorHeroStatisticItems}
+            />
           ) : (
-          <div className="max-w-2xl">
-            <h1
-              id="main-intro-title"
-              className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
-            >
-              Начни свою историю
-            </h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-stone-700 sm:text-lg">
-              Оценивай, высказывай мнения, создавай личные серии и смотри, как из этого складывается твой культурный след.
-            </p>
-            <button
-              type="button"
-              className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
-            >
-              Начать историю
-            </button>
-          </div>
+            <DemoHomeIntro
+              fallback={(
+                <div className="max-w-2xl">
+                  <h1
+                    id="main-intro-title"
+                    className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+                  >
+                    Начни свою историю
+                  </h1>
+                  <p className="mt-4 max-w-xl text-base leading-7 text-stone-700 sm:text-lg">
+                    Оценивай, высказывай мнения, создавай личные серии и смотри, как из этого складывается твой культурный след.
+                  </p>
+                  <StartDemoHistoryButton
+                    className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
+                  />
+                </div>
+              )}
+            />
           )}
           </section>
           {hasLatestActivity ? (
@@ -499,6 +468,7 @@ export default async function MainPage() {
         <div className="grid gap-3 lg:grid-cols-3">
           <DailyRecommendation item={dailyDossier} mediaTypeName={dailyDossierMediaTypeName} />
           <ArchiveRiddle
+            authenticated={Boolean(author)}
             isCompleted={activeQuizParticipant?.completed === true}
             isParticipating={isActiveQuizParticipant}
             quiz={activeQuiz}

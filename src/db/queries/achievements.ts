@@ -6,9 +6,134 @@ import { getAchievementSettings } from "@/db/queries/achievement-settings";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { achievementLevels, achievementSettings, achievements, userAchievements } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+import {
+  countRatingAuthoredForMediaCodes,
+  getAchievementMechanic,
+  type CountMechanicParams,
+} from "@/lib/achievements/catalog";
 import { resolveAchievementImageUrl } from "@/lib/achievements/images";
 import { getAchievementProgressValues } from "@/lib/achievements/service";
 import { normalizeSearchText } from "@/lib/search/normalize";
+
+const DEMO_RATING_PROGRESS_CODE_LIMIT = 2_000;
+
+type DemoRatingAchievementDefinition = {
+  achievementId: number;
+  code: string;
+  description: string | null;
+  levels: Array<{
+    description: string | null;
+    imageUrl: string | null;
+    level: number;
+    name: string;
+    threshold: number;
+  }>;
+  name: string;
+  params: Record<string, unknown>;
+};
+
+async function loadDemoRatingAchievementDefinitions(): Promise<DemoRatingAchievementDefinition[]> {
+  const rows = await db
+    .select({
+      achievementId: achievements.id,
+      code: achievements.code,
+      description: achievements.description,
+      level: achievementLevels.level,
+      levelDescription: achievementLevels.description,
+      levelImageObjectKey: achievementLevels.imageObjectKey,
+      levelName: achievementLevels.name,
+      name: achievements.name,
+      params: achievements.params,
+      threshold: achievementLevels.threshold,
+    })
+    .from(achievements)
+    .innerJoin(achievementLevels, eq(achievementLevels.achievementId, achievements.id))
+    .where(and(
+      eq(achievements.enabled, true),
+      eq(achievements.mechanic, "rating.authored.count"),
+    ))
+    .orderBy(asc(achievements.displayOrder), asc(achievements.id), asc(achievementLevels.level));
+
+  const byAchievement = new Map<number, typeof rows>();
+  for (const row of rows) {
+    byAchievement.set(row.achievementId, [...(byAchievement.get(row.achievementId) ?? []), row]);
+  }
+
+  return [...byAchievement.values()].map((levels) => ({
+    achievementId: levels[0]!.achievementId,
+    code: levels[0]!.code,
+    description: levels[0]!.description,
+    levels: levels.map((level) => ({
+      description: level.levelDescription ?? level.description,
+      imageUrl: resolveAchievementImageUrl(level.levelImageObjectKey),
+      level: level.level,
+      name: level.levelName ?? level.name,
+      threshold: level.threshold,
+    })),
+    name: levels[0]!.name,
+    params: levels[0]!.params ?? {},
+  }));
+}
+
+function toDemoRatingAchievementCatalogItem(definition: DemoRatingAchievementDefinition) {
+  return {
+    code: definition.code,
+    description: definition.description,
+    levels: definition.levels,
+    name: definition.name,
+  };
+}
+
+export async function getDemoRatingAchievementCatalog() {
+  const definitions = await loadDemoRatingAchievementDefinitions();
+  return definitions.map(toDemoRatingAchievementCatalogItem);
+}
+
+export async function getDemoRatingAchievementState(mediaItemCodes: readonly string[]) {
+  const definitions = await loadDemoRatingAchievementDefinitions();
+  const achievementsCatalog = definitions.map(toDemoRatingAchievementCatalogItem);
+  const values: Record<string, number> = Object.fromEntries(
+    definitions.map((definition) => [definition.code, 0]),
+  );
+
+  const mechanic = getAchievementMechanic("rating.authored.count");
+  if (!mechanic || definitions.length === 0) {
+    return { achievements: achievementsCatalog, values };
+  }
+
+  const instances = new Map<number, CountMechanicParams>();
+  for (const definition of definitions) {
+    try {
+      instances.set(
+        definition.achievementId,
+        mechanic.parseParams(definition.params) as CountMechanicParams,
+      );
+    } catch (error) {
+      console.error(`Некорректная конфигурация demo-ачивки ${definition.achievementId}.`, error);
+    }
+  }
+
+  const uniqueCodes = [...new Set(
+    mediaItemCodes.filter((code) => typeof code === "string" && code.trim() !== ""),
+  )].slice(0, DEMO_RATING_PROGRESS_CODE_LIMIT);
+
+  if (uniqueCodes.length === 0 || instances.size === 0) {
+    return { achievements: achievementsCatalog, values };
+  }
+
+  const progress = await db.transaction((tx) => countRatingAuthoredForMediaCodes({
+    tx,
+    mediaItemCodes: uniqueCodes,
+    instances: [...instances].map(([achievementId, params]) => ({ achievementId, params })),
+  }));
+
+  const valueByAchievementId = new Map(progress.map((item) => [item.achievementId, item.value]));
+  for (const definition of definitions) {
+    values[definition.code] = valueByAchievementId.get(definition.achievementId) ?? 0;
+  }
+
+  return { achievements: achievementsCatalog, values };
+}
 
 export async function getAchievementShowcase(authorId: number) {
   const [rows, settings] = await Promise.all([

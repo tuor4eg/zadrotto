@@ -321,7 +321,7 @@ describe("achievement consumer", () => {
       "utf8",
     )
     const showcaseSource = readFileSync("src/components/achievements/achievement-showcase.tsx", "utf8")
-    assert.match(cardSource, /ACHIEVEMENT_CARD_IMAGE_PX = 96/)
+    assert.match(cardSource, /ACHIEVEMENT_CARD_IMAGE_PX = 144/)
     assert.match(cardSource, /flex h-full w-full shrink-0 basis-full flex-col/)
     assert.doesNotMatch(cardSource, /aspectRatio: "2 \/ 1"/)
     assert.doesNotMatch(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX/)

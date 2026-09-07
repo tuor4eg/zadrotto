@@ -365,11 +365,11 @@ function ArchiveMediaItemDetails({
   ];
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-h-0 flex-1 flex-col gap-3">
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
-      <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 min-w-0 overflow-visible">
-        <div className="relative z-10 grid pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
+      <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-visible">
+        <div className="relative z-10 grid flex-1 pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"

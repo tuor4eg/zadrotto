@@ -42,14 +42,12 @@ export default async function ChildSeriesPage({ params }: ChildSeriesPageProps) 
   const childSeries = franchiseBranch?.children ?? [];
 
   return (
-    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <BugReportEntityContextRegistration context={{ entityId: String(franchise.id), entityType: "franchise" }} />
-      <div className="mx-auto mb-3 w-full max-w-[1480px]">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-      </div>
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <ChildSeriesCatalogProvider series={childSeries}>
-          <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 min-w-0 overflow-visible pt-8">
+          <section className="archive-paper archive-panel archive-stack archive-stack-bottom relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-visible pt-8">
             <SeriesPageHeader
               adminCanEdit={headerState.currentAdminUser}
               franchise={franchise}
@@ -84,3 +82,4 @@ export default async function ChildSeriesPage({ params }: ChildSeriesPageProps) 
     </main>
   );
 }
+
