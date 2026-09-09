@@ -215,15 +215,16 @@ describe("bug report notifications", () => {
   });
 
   it("inherits claim-before-handle idempotence from the domain dispatcher", () => {
-    assert.match(dispatcher, /insert\(domainEventConsumptions\)[\s\S]*onConflictDoNothing\(\)[\s\S]*if \(!claimedRow\) return false/);
+    assert.match(dispatcher, /from\(domainEventOutbox\)[\s\S]*\.for\("update"\)/);
+    assert.match(dispatcher, /insert\(domainEventConsumptions\)[\s\S]*onConflictDoNothing\(\)[\s\S]*if \(!claimedRow\) continue/);
     assert.match(dispatcher, /await consumer\.handle\(tx, typedEvent\)/);
-    assert.match(dispatcher, /if \(!claimed \|\| !consumer\.afterCommit\) continue/);
   });
 
   it("does not notify admins about a manually created bug report", () => {
     assert.match(notificationConsumer, /event\.type === "bug-report\.created" && event\.actorAuthorId === null/);
     assert.match(notificationConsumer, /async handle\(tx, event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
-    assert.match(notificationConsumer, /async afterCommit\(event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
+    assert.match(notificationConsumer, /async handle\(tx, event\) \{[\s\S]*isManualBugReportCreated\(event\)[\s\S]*return/);
+    assert.match(notificationConsumer, /insert\(notificationTransportOutbox\)/);
   });
 
   it("drops processed bug reports from admin queue and notification badges", () => {

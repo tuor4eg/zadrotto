@@ -24,6 +24,24 @@ export async function appendDomainEvent<TType extends DomainEventType>(
   return event as PersistedDomainEvent<TType>;
 }
 
+export async function appendDomainEvents<TType extends DomainEventType>(
+  tx: DbTransaction,
+  inputs: DomainEventInput<TType>[],
+): Promise<PersistedDomainEvent<TType>[]> {
+  if (inputs.length === 0) return [];
+  const events = await tx.insert(domainEvents).values(inputs.map((input) => ({
+    actorAuthorId: input.actorAuthorId,
+    aggregateId: input.aggregateId,
+    aggregateType: input.aggregateType,
+    occurredAt: input.occurredAt,
+    payload: input.payload,
+    schemaVersion: input.schemaVersion ?? 1,
+    type: input.type,
+  }))).returning();
+  await tx.insert(domainEventOutbox).values(events.map((event) => ({ eventId: event.id })));
+  return events as PersistedDomainEvent<TType>[];
+}
+
 export async function getDomainEvent(tx: DbTransaction, eventId: string) {
   const [event] = await tx.select().from(domainEvents).where(eq(domainEvents.id, eventId)).limit(1);
   return event ?? null;

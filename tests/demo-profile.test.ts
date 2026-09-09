@@ -17,11 +17,70 @@ import {
 } from "../src/lib/user-state/demo-selectors"
 import { canUsePersonalArchiveActions, resolveUserStateMode } from "../src/lib/user-state/mode"
 import {
+  clearDemoProfileIfSnapshot,
+  writeDemoProfile,
+} from "../src/lib/user-state/demo-storage"
+import {
   buildHomeResearchSnapshotFromDemo,
   getHomeResearchMessage,
 } from "../src/lib/main-page/home-research-snapshot"
 
 describe("demo profile foundation", () => {
+  it("imports demo history atomically in batches with account state winning conflicts", () => {
+    const actionSource = readFileSync("src/app/demo-profile/actions.ts", "utf8")
+    const importSource = readFileSync("src/db/operations/demo-profile-import.ts", "utf8")
+
+    assert.match(actionSource, /await importDemoProfile\(\{/)
+    assert.match(importSource, /runInDomainEventTransaction/)
+    assert.match(importSource, /pg_advisory_xact_lock/)
+    assert.match(importSource, /existingRatings[\s\S]*existingStatuses[\s\S]*const occupied = new Set/)
+    assert.match(importSource, /insert\(ratings\)[\s\S]*onConflictDoNothing/)
+    assert.match(importSource, /insert\(authorMediaExperiences\)[\s\S]*onConflictDoNothing/)
+    assert.match(importSource, /insert\(authorMediaStatuses\)[\s\S]*onConflictDoNothing/)
+    assert.match(importSource, /appendEvents\(insertedRatings\.map[\s\S]*type: "rating\.created"/)
+    assert.doesNotMatch(actionSource, /for \(const \[code|getAuthorRating|setAuthorMediaStatus|upsertAuthorRating/)
+  })
+
+  it("retries a temporary import failure with bounded delays and clears only after success", () => {
+    const bridgeSource = readFileSync("src/components/user-state/demo-profile-import-bridge.tsx", "utf8")
+    assert.match(bridgeSource, /IMPORT_RETRY_DELAYS_MS = \[1_000, 3_000\]/)
+    assert.match(bridgeSource, /if \(result\.ok\)[\s\S]*clearDemoProfileIfSnapshot\(snapshot\)[\s\S]*lastAuthorRef\.current = authorId/)
+    assert.match(bridgeSource, /setTimeout\(\(\) => void importWithRetry\(attempt \+ 1\), delay\)/)
+    assert.match(bridgeSource, /IMPORT_LONG_RETRY_MAX_MS = 15 \* 60_000/)
+    assert.match(bridgeSource, /clearDemoProfileIfSnapshot\(snapshot\)/)
+    assert.match(bridgeSource, /setTimeout\(\(\) => void importWithRetry\(0\)/)
+    assert.doesNotMatch(bridgeSource, /lastAuthorRef\.current = authorId\s*\n\s*const profile/)
+  })
+
+  it("does not clear a newer cross-tab profile after an older snapshot imports", () => {
+    const values = new Map<string, string>()
+    const previousWindow = globalThis.window
+    Object.defineProperty(globalThis, "window", {
+      configurable: true,
+      value: {
+        dispatchEvent() { return true },
+        localStorage: {
+          getItem(key: string) { return values.get(key) ?? null },
+          removeItem(key: string) { values.delete(key) },
+          setItem(key: string, value: string) { values.set(key, value) },
+        },
+      },
+    })
+    try {
+      const oldProfile = createEmptyDemoProfile("2026-01-01T00:00:00.000Z")
+      writeDemoProfile(oldProfile)
+      const oldSnapshot = JSON.stringify(oldProfile)
+      const newerProfile = structuredClone(oldProfile)
+      newerProfile.ratings.alien = { score: 80, updatedAt: "2026-01-02T00:00:00.000Z" }
+      writeDemoProfile(newerProfile)
+      assert.equal(clearDemoProfileIfSnapshot(oldSnapshot), false)
+      assert.ok(values.size > 0)
+      assert.equal(clearDemoProfileIfSnapshot(JSON.stringify(newerProfile)), true)
+    } finally {
+      Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow })
+    }
+  })
+
   it("resets guest onboarding together with an imported demo profile", () => {
     const storageSource = readFileSync("src/lib/user-state/demo-storage.ts", "utf8")
 
@@ -46,6 +105,7 @@ describe("demo profile foundation", () => {
     assert.equal(getDemoRatingsCount(parsed!), 1)
     assert.equal(parseDemoProfile(null), null)
     assert.equal(parseDemoProfile({ schemaVersion: "nope" }), null)
+    assert.equal(parseDemoProfile({ schemaVersion: 2 }), null)
   })
 
   it("drops status entries that collide with ratings", () => {
@@ -61,6 +121,24 @@ describe("demo profile foundation", () => {
 
     assert.equal(parsed?.statuses.alien, undefined)
     assert.equal(parsed?.ratings.alien?.score, 70)
+  })
+
+  it("drops malformed experience without dropping its valid rating", () => {
+    const profile = createEmptyDemoProfile("2026-01-01T00:00:00.000Z")
+    profile.ratings.alien = {
+      score: 80,
+      updatedAt: "2026-01-02T00:00:00.000Z",
+      experience: { experiencedAt: "2026-02-31", precision: "day" },
+    }
+    const parsed = parseDemoProfile(profile)
+    assert.equal(parsed?.ratings.alien?.score, 80)
+    assert.equal(parsed?.ratings.alien?.experience, undefined)
+
+    profile.ratings.alien!.experience = { experiencedAt: "2020-05-01", precision: "month" }
+    assert.deepEqual(parseDemoProfile(profile)?.ratings.alien?.experience, {
+      experiencedAt: "2020-05-01",
+      precision: "month",
+    })
   })
 
   it("shows the login prompt after the threshold with exponential backoff", () => {

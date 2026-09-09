@@ -22,14 +22,21 @@ function getSiteOriginOrNull() {
   }
 }
 
-export async function dispatchExternalNotificationTransports(event: PersistedDomainEvent) {
-  if (!isNotificationType(event.type)) return
+export async function dispatchExternalNotificationTransport(input: {
+  event: PersistedDomainEvent
+  recipient: string
+  transport: string
+  signal?: AbortSignal
+}) {
+  const { event } = input
+  if (!isNotificationType(event.type)) throw new Error("Unsupported notification event type.")
 
   const transportCodes = await getEnabledExternalTransportCodes(event.type)
-  if (!transportCodes.includes(TELEGRAM_TRANSPORT_CODE)) return
+  if (!transportCodes.includes(TELEGRAM_TRANSPORT_CODE)) return "disabled" as const
+  if (input.transport !== TELEGRAM_TRANSPORT_CODE) throw new Error("Unsupported notification transport.")
 
   const draft = await db.transaction((tx) => resolveNotificationDraft(tx, event))
-  if (!draft) return
+  if (!draft) return "obsolete" as const
 
   const text = formatExternalNotificationText({
     body: draft.body,
@@ -43,23 +50,14 @@ export async function dispatchExternalNotificationTransports(event: PersistedDom
     title: draft.title,
   })
 
-  try {
-    const transport = new TelegramTransport(await getTelegramTransportConfig())
-    if (!transport.isReady()) return
+  const transport = new TelegramTransport(await getTelegramTransportConfig())
+  if (!transport.isReady()) throw new Error("Telegram transport configuration is not ready.")
 
-    const results = await transport.send(text)
-    const failed = results.filter((item) => !item.ok)
-    if (failed.length === 0) return
+  const results = await transport.send(text, { recipient: input.recipient, signal: input.signal })
+  const failed = results.filter((item) => !item.ok)
+  if (failed.length === 0) return "delivered" as const
 
-    console.error("Failed to send Telegram notification", {
-      type: event.type,
-      failedCount: failed.length,
-      errors: failed.map((item) => ({ chatId: item.chatId, error: item.error })),
-    })
-  } catch (error) {
-    console.error("Failed to send Telegram notification", {
-      type: event.type,
-      errorName: error instanceof Error ? error.name : typeof error,
-    })
-  }
+  throw new Error(`Telegram notification failed for ${failed.length} recipient(s): ${failed
+    .map((item) => item.error)
+    .join("; ")}`)
 }

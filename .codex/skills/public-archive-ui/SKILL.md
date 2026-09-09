@@ -16,10 +16,11 @@ Preserve one coherent public shell without duplicating header or session-loading
 
 ## Header and navigation
 
-- Keep the brand, `Архив / Серии / Подборки`, search or page controls, notifications, admin action, and avatar/login in one row.
+- Keep the brand, `Архив / Серии / Подборки / Рецензии`, search or page controls, notifications, admin action, and avatar/login in one row.
 - Preserve the action order `уведомления → админка → аватар`. Show the admin badge only for a non-zero moderation count.
 - On `/archive`, put search, filters, and sorting in the same header row. Search updates `q` with the existing 250 ms debounce, preserves other parameters, resets `page`, and clears `q` immediately when emptied.
-- For a logged-in author, also show `Ачивки` in the main navigation.
+- Show `Ачивки` for a logged-in author or an active demo profile.
+- Preserve the shared header's demo indicator and login entry point. Demo state is client-side; do not fake an authenticated author in server-loaded header state.
 - Breadcrumbs start at the nearest useful section; do not repeat `Главная` or `Архив`, which are already available in the shared header.
 
 ## Boundaries
@@ -27,5 +28,6 @@ Preserve one coherent public shell without duplicating header or session-loading
 - Keep reusable public archive UI in `src/components/archive`; keep route-specific content in `src/app`.
 - Editorial collections use the existing document/query boundary in `src/components/archive/editorial-*` and `src/db/queries/editorial-*`.
 - Use `media-carrier-skins` instead for carrier-specific cover frames, geometry, fonts, or placeholders.
+- Use `user-state-modes` for demo detection, persistence, import, or mode-dependent personal actions.
 
 Verify affected public routes with focused contract tests, targeted lint, and `git diff --check`. Do not run a production build unless requested.

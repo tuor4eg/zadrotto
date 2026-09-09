@@ -979,6 +979,38 @@ export const domainEventConsumptions = pgTable(
   ],
 );
 
+export const notificationTransportOutbox = pgTable(
+  "notification_transport_outbox",
+  {
+    eventId: uuid("event_id")
+      .notNull()
+      .references(() => domainEvents.id, { onDelete: "cascade" }),
+    transport: text("transport").notNull(),
+    recipient: text("recipient").notNull(),
+    status: text("status").default("pending").notNull(),
+    attempts: integer("attempts").default(0).notNull(),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
+    leaseToken: uuid("lease_token"),
+    leaseExpiresAt: timestamp("lease_expires_at", { withTimezone: true }),
+    deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+    lastError: text("last_error"),
+    ...timestamps(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.eventId, table.transport, table.recipient] }),
+    index("notification_transport_outbox_delivery_idx")
+      .on(table.status, table.nextAttemptAt)
+      .where(sql`${table.status} in ('pending', 'sending')`),
+    check(
+      "notification_transport_outbox_status_check",
+      sql`${table.status} in ('pending', 'sending', 'delivered', 'failed')`,
+    ),
+    check("notification_transport_outbox_attempts_check", sql`${table.attempts} >= 0`),
+    check("notification_transport_outbox_transport_check", sql`${table.transport} in ('telegram')`),
+    check("notification_transport_outbox_recipient_check", sql`btrim(${table.recipient}) <> ''`),
+  ],
+);
+
 export const notifications = pgTable(
   "notifications",
   {

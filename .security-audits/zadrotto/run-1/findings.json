@@ -1,0 +1,57 @@
+[
+  {
+    "verdict": "confirmed",
+    "title": "Unauthenticated Next.js Server Action DoS in next@16.2.4",
+    "description": "The project deploys next@16.2.4, which is inside the affected range for GHSA-m99w-x7hq-7vfj (>=16.0.0 <16.2.11). The application uses the App Router and binds an unauthenticated admin-login Server Action to a public form. A crafted request can consume excessive CPU and block further requests in the same process.",
+    "root_cause": "The Next.js dependency in package.json pins an affected framework version for the public App Router runtime.",
+    "intended_behavior": "The public App Router and Server Actions should run on a supported framework version containing all published security fixes.",
+    "trace": [
+      {"kind":"entrypoint","file":"src/app/admin/login/actions.ts","line":23,"scope":"loginAdmin","description":"An unauthenticated public Server Action accepts attacker-controlled FormData through the Next.js App Router."},
+      {"kind":"sink","file":"package.json","line":35,"scope":"dependencies","description":"The request is handled by the declared next@16.2.4 runtime, which is inside the advisory's affected range."}
+    ],
+    "conditions": [{"kind":"system_configuration","description":"The application uses the Next.js App Router with at least one reachable Server Action."},{"kind":"network_routing","description":"The attacker can reach the public application and the request is not rejected by an upstream proxy before reaching Next.js."}],
+    "execution": {
+      "attacker_perspective": "Unauthenticated remote client able to reach the public Next.js application.",
+      "payloads": ["The crafted Server Action request described by GHSA-m99w-x7hq-7vfj; exact bytes were not published or dynamically reproduced in this source audit."],
+      "instructions": ["Send the advisory trigger to the public admin-login Server Action endpoint.","Observe excessive CPU and blocked requests in the same Next.js process."],
+      "expected_result": "The vulnerable Next.js worker consumes resources and degrades or loses availability."
+    },
+    "remediation": {"strategy":"Upgrade to 16.3.4 or a newer current patched release, refresh the lockfile and rebuild. Version 16.2.11 is the minimum fix for this advisory alone.","code_changes":[{"file_name":"package.json","fixed_code":"\"next\": \"16.3.4\""}]},
+    "severity": {"likelihood":{"score":"high","reason":"The App Router is internet-facing and authentication is not required to reach framework parsing."},"impact":{"score":"high","reason":"Successful exploitation can make the public service unavailable."},"overall_severity":"high"},
+    "confidence": {"score":"medium","reason":"The installed affected version and public reachability are verified; the advisory trigger was not executed against a production build during this source audit."}
+  },
+  {
+    "verdict": "confirmed",
+    "title": "Known vulnerable Sharp/libvips version parses author-controlled images",
+    "description": "The project installs sharp@0.34.5, which the current npm advisory database reports as affected by libvips/libheif memory-safety advisories. A normal authenticated author can upload avatar and cover bytes which are decoded by Sharp. File size, pixel and page limits reduce resource abuse but do not patch native codec defects.",
+    "root_cause": "The Sharp dependency in package.json remains on an affected native image-processing release, allowing crafted author-controlled image bytes to reach vulnerable codecs.",
+    "intended_behavior": "Authenticated image uploads should be decoded only by a patched image-processing library and safely re-encoded before storage or display.",
+    "trace": [
+      {"kind":"entrypoint","file":"src/app/author/(protected)/profile/actions.ts","line":35,"scope":"updateAuthorAvatarAction","description":"An ordinary authenticated author supplies avatarFile as multipart FormData."},
+      {"kind":"propagation","file":"src/lib/avatars/storage.ts","line":73,"scope":"transformAuthorAvatar","description":"The full attacker-supplied file is copied into a Buffer."},
+      {"kind":"sink","file":"src/lib/avatars/storage.ts","line":74,"scope":"transformAuthorAvatar","description":"The Buffer is passed to the affected Sharp native decoder."}
+    ],
+    "conditions": [{"kind":"authentication_level","description":"The attacker needs an ordinary author account and valid session."}],
+    "execution": {"attacker_perspective":"Authenticated low-privilege author.","payloads":["A crafted JPEG/PNG/WebP/HEIF-family image exercising an affected libvips/libheif codec path while remaining within upload limits."],"instructions":["Authenticate as a normal author.","Submit the crafted file as avatarFile with valid crop fields, or through a cover upload.","Observe the native image worker/process failure."],"expected_result":"Native decoder memory corruption or process crash, causing at least denial of service."},
+    "remediation":{"strategy":"Upgrade Sharp to the fixed version reported by npm audit, perform a clean native rebuild, and regression-test every upload pipeline.","code_changes":[{"file_name":"package.json","fixed_code":"\"sharp\": \"^0.35.4\""}]},
+    "severity":{"likelihood":{"score":"medium","reason":"Requires an author account and a codec-specific crafted file, but the upload-to-decoder path is direct."},"impact":{"score":"high","reason":"Native memory-safety defects can crash the process and may have stronger consequences depending on the codec defect."},"overall_severity":"high"},
+    "confidence":{"score":"medium","reason":"Affected version and reachable native sink are verified; no exploit image was executed in this audit."}
+  },
+  {
+    "verdict":"confirmed",
+    "title":"Unbounded bug-report creation amplifies notifications and transport deliveries",
+    "description":"Any authenticated author can repeatedly create identical bug reports. Every accepted request transactionally persists a report and domain event. When the dispatcher processes it, the consumer creates one inbox notification per current administrator and, if the transport route is enabled, a transport-outbox row per configured chat or a missing-recipient sentinel. There is no endpoint rate limit, quota, cooldown or duplicate constraint.",
+    "root_cause":"POST in src/app/api/bug-reports/route.ts does not rate-limit or deduplicate authenticated submissions, allowing persistent notification and queue amplification.",
+    "intended_behavior":"Authors should be able to report legitimate bugs without being able to flood administrator inboxes, external transports or persistence queues.",
+    "trace":[
+      {"kind":"entrypoint","file":"src/app/api/bug-reports/route.ts","line":52,"scope":"POST","description":"An authenticated author submits JSON containing a bounded description and same-origin URL."},
+      {"kind":"propagation","file":"src/db/queries/bug-reports.ts","line":35,"scope":"createBugReport","description":"Each request inserts a new bug report and unique bug-report.created domain event."},
+      {"kind":"sink","file":"src/lib/notifications/consumer.ts","line":52,"scope":"notificationDomainEventConsumer.handle","description":"After domain-event dispatch, the handler inserts admin inbox notifications and then optional configured transport-outbox rows."}
+    ],
+    "conditions":[{"kind":"authentication_level","description":"The attacker needs an ordinary author account and valid session."},{"kind":"data_state","description":"Inbox fan-out requires at least one current administrator and successful domain-event dispatch; report/event growth occurs regardless."},{"kind":"system_configuration","description":"Telegram spam additionally requires the bug_report_created transport route to be enabled; an enabled route with no chat IDs still creates a missing-recipient outbox row."}],
+    "execution":{"attacker_perspective":"Ordinary authenticated author using their own session.","payloads":["POST /api/bug-reports with Cookie: author_session_v2=<valid>, Content-Type: application/json, body {\"description\":\"x\",\"url\":\"/\"}"],"instructions":["Authenticate as an author.","Send the valid request repeatedly or concurrently.","Observe a fresh 201 and report ID for every request.","After successful domain-event dispatch, observe admin notifications and optional transport deliveries."],"expected_result":"Guaranteed unbounded report/event growth; after dispatch, admin-notification growth when admins exist and transport-outbox growth when its route is enabled."},
+    "remediation":{"strategy":"Apply fail-closed per-author and per-IP rate limits before the transaction, return 429, and add a short duplicate cooldown or pending-report quota.","code_changes":[{"file_name":"src/app/api/bug-reports/route.ts","fixed_code":"Check a bug-report-specific per-author and trusted-client-IP limiter before createBugReport; return HTTP 429 when exceeded."}]},
+    "severity":{"likelihood":{"score":"high","reason":"The attack is trivial for any account and uses a normal valid request."},"impact":{"score":"low","reason":"Damage is operational spam and storage/queue growth requiring sustained traffic, not confidentiality or privilege loss."},"overall_severity":"low"},
+    "confidence":{"score":"high","reason":"Two independent code reviews traced the full route-to-database-to-fan-out path and found no rate limit, quota or deduplication layer."}
+  }
+]

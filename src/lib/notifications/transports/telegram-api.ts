@@ -1,6 +1,6 @@
 import type { TelegramTransportConfig } from "@/lib/notifications/transports/telegram"
 
-const TELEGRAM_API_TIMEOUT_MS = 10_000
+export const TELEGRAM_API_TIMEOUT_MS = 10_000
 const TELEGRAM_TEST_MESSAGE = "Тестовое сообщение из админки zadrotto."
 
 export type TelegramSendResult =
@@ -26,8 +26,14 @@ export async function sendTelegramMessage(input: {
   botToken: string
   chatId: string
   text: string
+  signal?: AbortSignal
 }): Promise<TelegramSendResult> {
+  if (input.signal?.aborted) {
+    return { ok: false, httpStatus: null, error: "Telegram не ответил вовремя." }
+  }
   const controller = new AbortController()
+  const abort = () => controller.abort()
+  input.signal?.addEventListener("abort", abort, { once: true })
   const timeout = setTimeout(() => controller.abort(), TELEGRAM_API_TIMEOUT_MS)
 
   try {
@@ -67,6 +73,7 @@ export async function sendTelegramMessage(input: {
     }
   } finally {
     clearTimeout(timeout)
+    input.signal?.removeEventListener("abort", abort)
   }
 }
 
@@ -74,6 +81,7 @@ export async function sendTelegramMessages(input: {
   botToken: string
   chatIds: string[]
   text: string
+  signal?: AbortSignal
 }): Promise<TelegramTestRecipientResult[]> {
   const results: TelegramTestRecipientResult[] = []
 
@@ -82,6 +90,7 @@ export async function sendTelegramMessages(input: {
       botToken: input.botToken,
       chatId,
       text: input.text,
+      signal: input.signal,
     })
     results.push(result.ok
       ? { chatId, ok: true, error: null }
@@ -108,13 +117,14 @@ export class TelegramTransport {
     return Boolean(this.config.enabled && this.config.botToken && this.config.chatIds.length > 0)
   }
 
-  async send(text: string) {
+  async send(text: string, options?: { recipient?: string; signal?: AbortSignal }) {
     if (!this.isReady() || !this.config.botToken) return []
 
     return sendTelegramMessages({
       botToken: this.config.botToken,
-      chatIds: this.config.chatIds,
+      chatIds: options?.recipient ? [options.recipient] : this.config.chatIds,
       text,
+      signal: options?.signal,
     })
   }
 }

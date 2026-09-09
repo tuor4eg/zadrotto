@@ -13,7 +13,6 @@ const actionSource = readFileSync(
 const archiveToastsSource = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");
 const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const homePageSource = readFileSync("src/app/archive/page.tsx", "utf8");
-const mainPageSource = readFileSync("src/app/page.tsx", "utf8");
 const mediaItemFormSource = readFileSync(
   "src/app/author/(protected)/media/media-item-form.tsx",
   "utf8",
@@ -53,15 +52,14 @@ describe("archive author media suggestion placement", () => {
     assert.match(mediaItemFormSource, /Пожалуйста, не закрывайте страницу\./);
   });
 
-  it("mounts the shared suggestion layer on the home, catalog, and franchise pages", () => {
+  it("mounts the shared suggestion layer on the catalog and franchise pages", () => {
     assert.deepEqual(findSuggestionMountFiles("src/app").sort(), [
       "src/app/archive/page.tsx",
-      "src/app/page.tsx",
       "src/app/series/[code]/page.tsx",
     ]);
-    assert.match(mainPageSource, /<ArchiveAuthorMediaSuggestion/);
-    assert.match(mainPageSource, /mediaTypeFilter="all"/);
-    assert.match(mainPageSource, /searchQuery=""/);
+    assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion/);
+    assert.match(homePageSource, /mediaTypeFilter=\{mediaTypeFilter\}/);
+    assert.match(homePageSource, /searchQuery=\{searchQuery\}/);
     assert.match(franchisePageSource, /defaultFranchiseIds=\{\[franchise\.id\]\}/);
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);
   });
@@ -159,7 +157,7 @@ describe("archive author media suggestion placement", () => {
     );
   });
 
-  it("links the home-page success toast to the created media item", () => {
+  it("links the archive success toast to the created media item", () => {
     assert.match(
       actionSource,
       /appendRedirectParam\(redirectPath, "suggestedItemId", String\(item\.id\)\)/,
@@ -183,7 +181,6 @@ describe("archive author media suggestion placement", () => {
       /`\/media\/\$\{encodeURIComponent\(params\.suggestedItemCode\)\}`/,
     );
     assert.match(homePageSource, /link: \{ href: suggestedItemHref, label: "Запись" \}/);
-    assert.match(mainPageSource, /link: \{ href: suggestedItemHref, label: "Запись" \}/);
     assert.match(archiveToastsSource, /<Link[\s\S]*href=\{message\.link\.href\}[\s\S]*\{message\.link\.label\}[\s\S]*<\/Link>/);
   });
 });

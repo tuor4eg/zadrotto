@@ -5,52 +5,50 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { domainEventConsumptions, domainEventOutbox, domainEvents } from "@/db/schema";
 import { isDomainEventType, type PersistedDomainEvent } from "./catalog";
+import { enqueueNotificationTransportDelivery } from "./queue";
 import { domainEventConsumerRegistry } from "./registry";
 
 const DEFAULT_RECOVERY_BATCH_SIZE = 50;
 
 export async function dispatchDomainEvent(eventId: string) {
-  const event = await db.transaction(async (tx) => {
-    const [row] = await tx.select().from(domainEvents).where(eq(domainEvents.id, eventId)).limit(1);
-    return row ?? null;
-  });
-  if (!event) return false;
-  if (!isDomainEventType(event.type)) {
-    throw new Error(`Unsupported domain event type: ${event.type}`);
-  }
+  const result = await db.transaction(async (tx) => {
+    const [outbox] = await tx.select({ dispatchedAt: domainEventOutbox.dispatchedAt })
+      .from(domainEventOutbox)
+      .where(eq(domainEventOutbox.eventId, eventId))
+      .for("update")
+      .limit(1);
+    if (!outbox) return { dispatched: false, shouldDeliverNotifications: false };
+    if (outbox.dispatchedAt) return { dispatched: true, shouldDeliverNotifications: false };
 
-  const typedEvent = event as PersistedDomainEvent;
-  for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
-    const claimed = await db.transaction(async (tx) => {
+    const [event] = await tx.select().from(domainEvents).where(eq(domainEvents.id, eventId)).limit(1);
+    if (!event) return { dispatched: false, shouldDeliverNotifications: false };
+    if (!isDomainEventType(event.type)) {
+      throw new Error(`Unsupported domain event type: ${event.type}`);
+    }
+
+    const typedEvent = event as PersistedDomainEvent;
+    let shouldDeliverNotifications = false;
+    for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
       const [claimedRow] = await tx.insert(domainEventConsumptions).values({
         consumerKey: consumer.key,
         eventId,
       }).onConflictDoNothing().returning({ eventId: domainEventConsumptions.eventId });
-      if (!claimedRow) return false;
+      if (!claimedRow) continue;
       await consumer.handle(tx, typedEvent);
-      return true;
-    });
-
-    if (!claimed || !consumer.afterCommit) continue;
-    try {
-      await consumer.afterCommit(typedEvent);
-    } catch (error) {
-      console.error("Failed to run domain event consumer afterCommit", {
-        consumerKey: consumer.key,
-        error,
-        eventId,
-      });
+      if (consumer.key === "notifications.create") shouldDeliverNotifications = true;
     }
-  }
 
-  await db.update(domainEventOutbox).set({
-    dispatchedAt: new Date(),
-    updatedAt: new Date(),
-  }).where(and(
-    eq(domainEventOutbox.eventId, eventId),
-    isNull(domainEventOutbox.dispatchedAt),
-  ));
-  return true;
+    await tx.update(domainEventOutbox).set({
+      dispatchedAt: new Date(),
+      updatedAt: new Date(),
+    }).where(and(
+      eq(domainEventOutbox.eventId, eventId),
+      isNull(domainEventOutbox.dispatchedAt),
+    ));
+    return { dispatched: true, shouldDeliverNotifications };
+  });
+  if (result.shouldDeliverNotifications) await enqueueNotificationTransportDelivery();
+  return result.dispatched;
 }
 
 export async function recoverPendingDomainEvents(limit = DEFAULT_RECOVERY_BATCH_SIZE) {

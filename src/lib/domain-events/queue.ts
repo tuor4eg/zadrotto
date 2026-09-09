@@ -24,3 +24,20 @@ export async function enqueueDomainEventDispatch(eventId: string) {
     console.error("Failed to enqueue immediate domain event dispatch", { error, eventId });
   }
 }
+
+export async function enqueueNotificationTransportDelivery() {
+  try {
+    await createJobRun({
+      maxAttempts: DEFAULT_JOB_MAX_ATTEMPTS,
+      payload: {},
+      retryBaseSeconds: DEFAULT_JOB_RETRY_BASE_SECONDS,
+      retryMaxSeconds: DEFAULT_JOB_RETRY_MAX_SECONDS,
+      source: "event",
+      timeoutSeconds: DEFAULT_JOB_TIMEOUT_SECONDS,
+      type: "notifications.transport-delivery",
+    });
+  } catch (error) {
+    // The scheduled scanner remains the delivery guarantee; this job is only a fast path.
+    console.error("Failed to enqueue immediate notification transport delivery", { error });
+  }
+}

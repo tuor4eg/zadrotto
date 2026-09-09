@@ -9,6 +9,7 @@ const clientSource = readFileSync(
 );
 const globalStylesSource = readFileSync("src/app/globals.css", "utf8");
 const pageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const headerSource = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
 const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const routeSource = readFileSync(
   "src/app/api/series/[code]/media-search/route.ts",
@@ -170,20 +171,16 @@ describe("author series media link client", () => {
   });
 
   it("stays inside the series sticker without changing its intrinsic width", () => {
-    const stickerStart = pageSource.indexOf('<div className="archive-franchise-sticker">');
-    const stickerEnd = pageSource.indexOf(
-      "{franchise.description?.trim() ? (",
-      stickerStart,
-    );
-    const stickerSource = pageSource.slice(stickerStart, stickerEnd);
+    const stickerStart = headerSource.indexOf('<div className="archive-franchise-sticker">');
+    const stickerSource = headerSource.slice(stickerStart);
 
     assert.notEqual(stickerStart, -1);
-    assert.notEqual(stickerEnd, -1);
     assert.equal(pageSource.match(/<SeriesMediaLinkSearch/g)?.length, 1);
     assert.match(
       stickerSource,
-      /\{franchise\.title\}[\s\S]*formatMediaItemsCount\(items\.length\)[\s\S]*currentAuthor \? \([\s\S]*<SeriesMediaLinkSearch/,
+      /\{franchise\.title\}[\s\S]*formatMediaItemsCount\(mediaItemsCount\)[\s\S]*\{children\}/,
     );
+    assert.match(pageSource, /<SeriesPageHeader[\s\S]*currentAuthor \? \([\s\S]*<SeriesMediaLinkSearch/);
     assert.match(
       clientSource,
       /return \([\s\S]*<div ref=\{rootRef\} className="relative mt-4 w-0 min-w-full border-t border-dashed border-stone-300 pt-4">/,

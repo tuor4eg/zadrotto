@@ -7,6 +7,7 @@ import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/achievements/backfill";
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
+import { deliverPendingNotificationTransports } from "@/lib/notifications/outbox-delivery";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
 import {
@@ -273,6 +274,17 @@ const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayloa
   },
 };
 
+const notificationTransportDeliveryHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "notifications.transport-delivery",
+  label: "Доставка внешних уведомлений",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseEmptyPayload,
+  async execute({ signal }) {
+    await deliverPendingNotificationTransports(signal);
+  },
+};
+
 function parseAchievementBackfillPayload(value: unknown): AchievementBackfillPayload {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
@@ -337,5 +349,6 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   metadataRefreshHandler,
   ratingStatsReconciliationHandler,
   domainEventDispatchHandler,
+  notificationTransportDeliveryHandler,
   achievementBackfillHandler,
 ]);

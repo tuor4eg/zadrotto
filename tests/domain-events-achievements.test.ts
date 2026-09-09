@@ -59,7 +59,8 @@ describe("domain event foundation", () => {
       /PRIMARY KEY\("event_id","consumer_key"\)/,
     );
     assert.match(dispatcherSource, /onConflictDoNothing\(\)[\s\S]*consumer\.handle\(tx, typedEvent\)/);
-    assert.match(dispatcherSource, /if \(!claimed \|\| !consumer\.afterCommit\) continue/);
+    assert.match(dispatcherSource, /from\(domainEventOutbox\)[\s\S]*\.for\("update"\)/);
+    assert.match(dispatcherSource, /if \(outbox\.dispatchedAt\) return \{ dispatched: true/);
   });
 
   it("commits event and outbox before best-effort immediate delivery", () => {

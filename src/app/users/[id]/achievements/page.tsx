@@ -1,17 +1,15 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
 
-import { FriendshipControls } from "@/app/users/friendship-controls";
 import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
-import { Avatar } from "@/components/ui/avatar";
-import { buttonVariants } from "@/components/ui/button";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getPublicUserProfile } from "@/db/queries/friends";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
+
+import { PublicUserHeader } from "../public-user-header";
 
 type PageProps = { params: Promise<{ id: string }> };
 
@@ -43,21 +41,7 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
     <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto w-full max-w-[1480px] space-y-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <header className="archive-paper-surface archive-panel">
-          <div className="flex flex-wrap items-center gap-4 p-5 sm:p-7">
-            <Avatar name={profile.name} objectKey={profile.avatarObjectKey} className="size-20 text-2xl" />
-            <div className="min-w-0 flex-1"><h1 className="break-words font-serif text-3xl sm:text-4xl">{profile.name}</h1></div>
-            {current ? <FriendshipControls returnTo={`${basePath}/achievements`} state={profile.relationState} targetId={profile.id} /> : isAdmin ? null : <Link href="/author/login" className={buttonVariants({ variant: "outline" })}>Войти</Link>}
-          </div>
-          <nav aria-label="Разделы профиля пользователя" className="flex flex-wrap gap-2 border-t border-stone-300/70 px-5 py-3 sm:px-7">
-            <Link href={basePath} className={buttonVariants({ variant: "outline", size: "sm" })}>Статистика</Link>
-            {profile.canViewJournal ? <>
-              <Link href={`${basePath}?view=ratings`} className={buttonVariants({ variant: "outline", size: "sm" })}>Оценки</Link>
-              <Link href={`${basePath}?view=reviews`} className={buttonVariants({ variant: "outline", size: "sm" })}>Рецензии</Link>
-            </> : null}
-            <Link href={`${basePath}/achievements`} className={buttonVariants({ size: "sm" })}>Ачивки</Link>
-          </nav>
-        </header>
+        <PublicUserHeader active="achievements" currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={`${basePath}/achievements`} />
         <div className="archive-paper archive-panel p-4 sm:p-5">
           <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
         </div>

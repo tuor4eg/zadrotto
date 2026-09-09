@@ -68,6 +68,12 @@ export function clearDemoProfile() {
   }
 }
 
+export function clearDemoProfileIfSnapshot(snapshot: string) {
+  if (getDemoProfileSnapshot() !== snapshot) return false
+  clearDemoProfile()
+  return true
+}
+
 export function ensureDemoProfile(): DemoProfile {
   const existing = readDemoProfile()
   if (existing && existing.import.importedAt == null) return existing

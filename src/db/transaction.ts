@@ -2,7 +2,7 @@ import { sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import type { DomainEventInput, DomainEventType, PersistedDomainEvent } from "@/lib/domain-events/catalog";
-import { appendDomainEvent } from "@/lib/domain-events/persistence";
+import { appendDomainEvent, appendDomainEvents } from "@/lib/domain-events/persistence";
 import { enqueueDomainEventDispatch } from "@/lib/domain-events/queue";
 
 export type DbTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -21,14 +21,25 @@ export async function runInDomainEventTransaction<TResult>(
     append: <TType extends DomainEventType>(
       event: DomainEventInput<TType>,
     ) => Promise<PersistedDomainEvent<TType>>,
+    appendMany: <TType extends DomainEventType>(
+      events: DomainEventInput<TType>[],
+    ) => Promise<PersistedDomainEvent<TType>[]>,
   ) => Promise<TResult>,
 ) {
   const eventIds: string[] = [];
-  const result = await db.transaction(async (tx) => callback(tx, async (event) => {
-    const persisted = await appendDomainEvent(tx, event);
-    eventIds.push(persisted.id);
-    return persisted;
-  }));
+  const result = await db.transaction(async (tx) => callback(
+    tx,
+    async (event) => {
+      const persisted = await appendDomainEvent(tx, event);
+      eventIds.push(persisted.id);
+      return persisted;
+    },
+    async (events) => {
+      const persisted = await appendDomainEvents(tx, events);
+      eventIds.push(...persisted.map((event) => event.id));
+      return persisted;
+    },
+  ));
 
   await Promise.all(eventIds.map(enqueueDomainEventDispatch));
   return result;

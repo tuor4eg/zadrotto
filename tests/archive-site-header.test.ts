@@ -16,7 +16,8 @@ const publicPages = [
   "src/app/collections/page.tsx", "src/app/collections/[slug]/page.tsx",
   "src/app/media/[code]/page.tsx",   "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
   "src/app/achievements/page.tsx",
-  "src/app/users/[id]/page.tsx", "src/app/users/[id]/achievements/page.tsx",
+  "src/app/users/[id]/page.tsx", "src/app/users/[id]/ratings/page.tsx",
+  "src/app/users/[id]/achievements/page.tsx",
   "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
   "src/app/feedback/page.tsx",
 ];

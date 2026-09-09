@@ -70,14 +70,15 @@ describe("author login modal contracts", () => {
     assert.match(headerSource, /setIsLoginOpen\(true\)/);
 
     assert.doesNotMatch(ratingDialogSource, /href=[{"']*\/author\/login/);
-    assert.match(ratingDialogSource, /currentAuthor \? setIsOpen\(true\) : setIsLoginOpen\(true\)/);
+    assert.match(ratingDialogSource, /const canRate = Boolean\(hasRealAuthor \|\| isDemo\)/);
+    assert.match(ratingDialogSource, /onOpen=\{\(\) => canRate \? setIsOpen\(true\) : setIsLoginOpen\(true\)\}/);
   });
 
   it("requests refreshed author data and opens rating after modal login", () => {
     assert.match(ratingDialogSource, /setOpenRatingAfterLogin\(true\);\s*router\.refresh\(\)/);
     assert.match(
       ratingDialogSource,
-      /const isRatingOpen = isOpen \|\| Boolean\(currentAuthor && openRatingAfterLogin\)/,
+      /const isRatingOpen = isOpen \|\| Boolean\(hasRealAuthor && openRatingAfterLogin\)/,
     );
     assert.match(
       ratingDialogSource,

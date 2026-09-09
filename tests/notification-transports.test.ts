@@ -157,7 +157,7 @@ describe("Telegram transport settings", () => {
     assert.match(telegramApi, /TELEGRAM_API_TIMEOUT_MS = 10_000/)
     assert.match(telegramApi, /setTimeout\(\(\) => controller\.abort\(\), TELEGRAM_API_TIMEOUT_MS\)/)
     assert.match(telegramApi, /export class TelegramTransport/)
-    assert.match(telegramApi, /async send\(text: string\)/)
+    assert.match(telegramApi, /async send\(text: string, options\?: \{ recipient\?: string; signal\?: AbortSignal \}\)/)
     assert.match(telegramApi, /sendTelegramTestMessages[\s\S]*return sendTelegramMessages/)
     assert.doesNotMatch(telegramApi, /media\.submitted|title_submission/)
     assert.doesNotMatch(telegramApi, /submitted|notification type|заявк/i)
@@ -217,6 +217,19 @@ describe("Telegram transport settings", () => {
         await sendTelegramMessage({ botToken: token, chatId: "100", text: "ping" }),
         { ok: false, httpStatus: null, error: "Telegram не ответил вовремя." },
       )
+
+      let abortedFetchCalls = 0
+      globalThis.fetch = async () => {
+        abortedFetchCalls += 1
+        return Response.json({ ok: true })
+      }
+      const controller = new AbortController()
+      controller.abort()
+      assert.deepEqual(
+        await sendTelegramMessage({ botToken: token, chatId: "100", text: "ping", signal: controller.signal }),
+        { ok: false, httpStatus: null, error: "Telegram не ответил вовремя." },
+      )
+      assert.equal(abortedFetchCalls, 0)
     } finally {
       globalThis.fetch = previousFetch
     }

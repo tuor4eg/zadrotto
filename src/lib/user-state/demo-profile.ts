@@ -72,6 +72,28 @@ function isScore(value: unknown): value is number {
     && value % 10 === 0
 }
 
+function parseDemoExperience(raw: unknown): DemoRatingExperience | undefined {
+  if (!raw || typeof raw !== "object") return undefined
+  const value = raw as Record<string, unknown>
+  if (typeof value.experiencedAt !== "string") return undefined
+  const precision = value.precision
+  const patterns = {
+    year: /^\d{4}-01-01$/,
+    month: /^\d{4}-(0[1-9]|1[0-2])-01$/,
+    day: /^\d{4}-(0[1-9]|1[0-2])-([0-2]\d|3[01])$/,
+  } as const
+  if (precision !== "year" && precision !== "month" && precision !== "day") return undefined
+  if (!patterns[precision].test(value.experiencedAt)) return undefined
+  const [year, month, day] = value.experiencedAt.split("-").map(Number)
+  const date = new Date(Date.UTC(year, month - 1, day))
+  if (
+    date.getUTCFullYear() !== year
+    || date.getUTCMonth() !== month - 1
+    || date.getUTCDate() !== day
+  ) return undefined
+  return { experiencedAt: value.experiencedAt, precision }
+}
+
 function parseRatingEntry(raw: unknown): DemoRatingEntry | null {
   if (!raw || typeof raw !== "object") return null
   const value = raw as Record<string, unknown>
@@ -82,16 +104,8 @@ function parseRatingEntry(raw: unknown): DemoRatingEntry | null {
     updatedAt: value.updatedAt,
   }
 
-  if (value.experience && typeof value.experience === "object") {
-    const experience = value.experience as Record<string, unknown>
-    const precision = experience.precision
-    entry.experience = {
-      experiencedAt: typeof experience.experiencedAt === "string" ? experience.experiencedAt : null,
-      precision: precision === "year" || precision === "month" || precision === "day"
-        ? precision
-        : null,
-    }
-  }
+  const experience = parseDemoExperience(value.experience)
+  if (experience) entry.experience = experience
 
   return entry
 }
@@ -115,10 +129,9 @@ function parseStatusEntry(raw: unknown): DemoStatusEntry | null {
 export function parseDemoProfile(raw: unknown): DemoProfile | null {
   if (!raw || typeof raw !== "object") return null
   const value = raw as Record<string, unknown>
-  if (value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) {
-    // Future migrations land here; unknown versions are ignored.
-    if (typeof value.schemaVersion !== "number") return null
-  }
+  // Unknown versions require an explicit migration. Silently interpreting a
+  // future shape as the current one can corrupt or discard local demo data.
+  if (value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) return null
 
   const base = createEmptyDemoProfile(
     typeof value.createdAt === "string" ? value.createdAt : undefined,

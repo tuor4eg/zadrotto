@@ -63,6 +63,10 @@ whose descriptions directly match the task.
   endpoints, or AI-powered UI.
 - `media-carrier-skins` is mandatory for carrier-specific covers, frames, placeholders, geometry,
   fonts, hover effects, rating styles, or archive presentation.
+- `user-state-modes` is mandatory for guest/demo/authorized state, local demo persistence,
+  onboarding, login prompts, demo import, and mode-dependent personal archive actions.
+- `security-audit` is mandatory when the user explicitly requests a security audit,
+  vulnerability assessment, threat hunt, or penetration-oriented review of the codebase.
 
 ## Next.js
 

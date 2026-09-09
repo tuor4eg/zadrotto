@@ -76,7 +76,7 @@ describe("author media status action and controls", () => {
   it("renders both toggle values and disables them when an author rating exists", () => {
     assert.match(controls, /activeLabel: "Убрать из желаемого"/);
     assert.match(controls, /activeLabel: "Отменить пропуск"/);
-    assert.match(controls, /currentAuthorScore !== null \|\| pending/);
+    assert.match(controls, /const disabled = effectiveScore !== null \|\| \(isDemo \? demoPending : pending\)/);
     assert.match(controls, /const actionLabel = active \? activeLabel : label/);
     assert.match(
       controls,
@@ -86,7 +86,7 @@ describe("author media status action and controls", () => {
     assert.match(controls, /variant === "preview" \? "grid grid-cols-2 gap-2"/);
     assert.match(controls, /aria-label=\{actionLabel\}/);
     assert.match(controls, /aria-pressed=\{active\}/);
-    assert.match(catalogPreview, /currentAuthor && item\.currentAuthorScore === null/);
+    assert.match(catalogPreview, /\(currentAuthor \|\| isDemo\) && item\.currentAuthorScore === null/);
     assert.match(
       mediaItemPage,
       /titleActions=\{\s*currentAuthor && item\.currentAuthorScore === null/,

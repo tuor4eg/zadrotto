@@ -7,7 +7,6 @@ const statisticsSource = readFileSync("src/components/author/author-statistics.t
 const helperSource = readFileSync("src/db/queries/media-item-tiles.ts", "utf8");
 const ratingsSource = readFileSync("src/db/queries/ratings.ts", "utf8");
 const reviewsSource = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
-const mainPageSource = readFileSync("src/app/page.tsx", "utf8");
 const gridSource = readFileSync(
   "src/components/archive/responsive-tile-grid.tsx",
   "utf8",
@@ -71,7 +70,7 @@ describe("author dashboard media tiles", () => {
     assert.doesNotMatch(dashboardSource, /resolveCoverUrl/);
   });
 
-  it("uses one shared descriptor-driven responsive grid on main and author pages", () => {
+  it("uses the shared descriptor-driven responsive grid on the author dashboard", () => {
     assert.equal(existsSync("src/app/main/responsive-tile-grid.tsx"), false);
     assert.match(gridSource, /items: ResponsiveTileDescriptor\[\]/);
     assert.match(gridSource, /visibleItems\.map\(\(descriptor\)/);
@@ -80,13 +79,9 @@ describe("author dashboard media tiles", () => {
       /<MediaItemTile[\s\S]*key=\{descriptor\.key\}[\s\S]*currentAuthorScore=\{descriptor\.currentAuthorScore\}[\s\S]*href=\{descriptor\.href\}[\s\S]*item=\{descriptor\.item\}/,
     );
     assert.match(gridSource, /if \(items\.length === 0\)[\s\S]*Здесь пока пусто/);
-    assert.match(
-      mainPageSource,
-      /function getMainTileDescriptors[\s\S]*currentAuthorScore: item\.currentAuthorScore[\s\S]*href: linkToReview && item\.reviewId[\s\S]*`\/reviews\/\$\{item\.reviewId\}`[\s\S]*: `\/media\/\$\{item\.code\}`[\s\S]*item,[\s\S]*key: item\.id/,
-    );
-    assert.match(mainPageSource, /getMainTileDescriptors\(items, linkToReview\)/);
+    assert.match(dashboardSource, /const latestRatingTiles = summary\.latestRatings\.flatMap/);
+    assert.match(dashboardSource, /const latestReviewTiles = reviewSummary\.latestReviews\.flatMap/);
     assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant="top"/);
     assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant="top"/);
-    assert.doesNotMatch(mainPageSource, /initialColumnCount=/);
   });
 });

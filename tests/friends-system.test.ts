@@ -10,6 +10,8 @@ const migration = read("drizzle/0058_author_friendships.sql");
 const queries = read("src/db/queries/friends.ts");
 const actions = read("src/app/users/actions.ts");
 const profilePage = read("src/app/users/[id]/page.tsx");
+const ratingsPage = read("src/app/users/[id]/ratings/page.tsx");
+const profileHeader = read("src/app/users/[id]/public-user-header.tsx");
 const friendsPage = read("src/app/author/(protected)/friends/page.tsx");
 const settingsPage = read("src/app/author/(protected)/profile/page.tsx");
 const authorLayout = read("src/app/author/(protected)/layout.tsx");
@@ -48,29 +50,33 @@ test("hidden users are excluded from search and protected on direct access", () 
   assert.match(profilePage, /if \(!profile\) notFound\(\)/);
 });
 
-test("friends journal exposes only published records and reviews", () => {
+test("friends journal exposes ratings on a dedicated paginated route", () => {
   assert.match(queries, /eq\(mediaItems\.publicationStatus, "published"\)/);
   assert.match(queries, /eq\(contributions\.status, "published"\)/);
-  assert.doesNotMatch(profilePage, /adminNote|draft|submitted|rejected/);
+  assert.doesNotMatch(profilePage + ratingsPage, /adminNote|draft|submitted|rejected/);
   assert.match(profilePage, /profile\.canViewJournal/);
-  assert.match(profilePage, /journal === "reviews"/);
-  assert.match(profilePage, /MediaItemTile[\s\S]*ratingDisplay="author-only"/);
-  assert.match(profilePage, /getPublicRatingJournal/);
-  assert.match(profilePage, /parseArchiveCatalogPageSize\(query\.pageSize\)/);
-  assert.match(profilePage, /ARCHIVE_CATALOG_GRID_CLASS_NAME/);
-  assert.match(profilePage, /AdaptiveArchivePageSizeSync/);
+  assert.doesNotMatch(profilePage, /view === "reviews"|getPublicReviewJournal|view=reviews/);
+  assert.doesNotMatch(profilePage, /getPublicRatingJournal|query\.pageSize|view=ratings/);
+  assert.match(ratingsPage, /ratingDisplay="author-only"/);
+  assert.match(ratingsPage, /getPublicRatingJournal/);
+  assert.match(ratingsPage, /parsePageSize\([\s\S]*RATING_PAGE_SIZE_OPTIONS/);
+  assert.match(ratingsPage, /pageSizeOptions=\{RATING_PAGE_SIZE_OPTIONS\}/);
+  assert.match(ratingsPage, /basePath=\{ratingsPath\}/);
+  assert.match(ratingsPage, /grid-cols-3[\s\S]*sm:grid-cols-4[\s\S]*md:grid-cols-5[\s\S]*lg:grid-cols-7[\s\S]*xl:grid-cols-9/);
   assert.match(mediaItemTile, /ratingDisplay\?: "default" \| "author-only"/);
   assert.match(mediaItemTile, /shouldShowAuthorOnly \? currentAuthorScore : item\.averageScore/);
   assert.match(queries, /getPublicAuthorStatistics/);
   assert.match(queries, /const ratingFilter = and\([\s\S]*mediaItems\.publicationStatus, "published"/);
   assert.match(queries, /const reviewFilter = and\([\s\S]*contributions\.status, "published"/);
-  assert.match(profilePage, />Статистика<[^]*>Оценки<[^]*>Рецензии</);
+  assert.match(profileHeader, /href=\{`\$\{basePath\}\/ratings`\}[\s\S]*>Оценки<\/Link>/);
+  assert.doesNotMatch(profileHeader, />Рецензии<\/Link>/);
   assert.match(profilePage, /<AuthorStatistics/);
+  assert.match(profilePage, /reviewsHref=\{`\/reviews\?author=\$\{profile\.id\}`\}/);
   assert.doesNotMatch(authorStatistics, /adminNote|draft|submitted|rejected/);
-  assert.match(profilePage, /getCurrentAdminUser/);
+  assert.match(ratingsPage, /getCurrentAdminUser/);
   assert.match(profilePage, /getPublicUserProfile\(id, current\?\.id, isAdmin\)/);
-  assert.match(profilePage, /isAdmin[\s\S]*getAllMediaTypeOptions\(\)/);
-  assert.match(profilePage, /current \? <FriendshipControls[\s\S]*isAdmin \? null : <Link href="\/author\/login"/);
+  assert.match(ratingsPage, /isAdmin[\s\S]*getAllMediaTypeOptions\(\)/);
+  assert.match(profileHeader, /currentAuthor \? \([\s\S]*<FriendshipControls[\s\S]*currentAdmin \? null/);
 });
 
 test("friends UI contains all MVP lists, actions, setting, and pagination", () => {
@@ -80,7 +86,7 @@ test("friends UI contains all MVP lists, actions, setting, and pagination", () =
   for (const label of ["Друзья", "Входящие", "Исходящие", "Поиск"]) assert.match(friendsPage, new RegExp(label));
   assert.match(friendsPage, /PaginationNav/);
   assert.match(settingsPage, /Показывать меня в поиске пользователей/);
-  assert.match(profilePage, /FriendshipControls/);
+  assert.match(profileHeader, /FriendshipControls/);
 });
 
 test("incoming requests are badged through the site, profile, and friends navigation", () => {
