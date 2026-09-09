@@ -1,5 +1,7 @@
 #!/usr/bin/env node
 
+/* eslint-disable @typescript-eslint/no-require-imports -- This executable intentionally uses CommonJS. */
+
 /**
  * Validates findings.json against report-schema.json.
  * Usage: node validate-findings.cjs <path-to-findings.json>
