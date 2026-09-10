@@ -17,11 +17,11 @@ function NearestAchievementGoal({ goal }: { goal: AchievementNearestGoal }) {
             goal.isAwarded ? "text-amber-800" : "text-stone-400"
           }`}
         >
-          <div className="relative size-full overflow-hidden rounded-full">
+          <div className="relative size-full">
             {goal.imageUrl ? (
               <Image
                 alt=""
-                className="object-cover"
+                className="object-contain"
                 fill
                 sizes="40px"
                 src={goal.imageUrl}

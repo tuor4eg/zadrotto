@@ -15,6 +15,7 @@ const mediaReviews = read("src/app/media-item-reviews.tsx")
 const authorActions = read("src/app/author/(protected)/reviews/actions.ts")
 const adminActions = read("src/app/admin/(protected)/reviews/actions.ts")
 const mainPage = read("src/app/page.tsx")
+const confirmDialog = read("src/components/ui/confirm-dialog.tsx")
 
 describe("public reviews catalog page", () => {
   it("renders the public catalog shell with search and presets", () => {
@@ -34,6 +35,12 @@ describe("public reviews catalog page", () => {
     assert.match(controls, /REVIEW_CATALOG_PRESETS\.map/)
     assert.doesNotMatch(controls, /Популярн|С комментари|Лента|Компактно/)
     assert.doesNotMatch(page, /Популярн|С комментари|Лента|Компактно/)
+    assert.equal(
+      page.match(/archive-paper archive-panel archive-stack archive-stack-left flex min-h-0 w-full flex-1 flex-col overflow-hidden/g)?.length,
+      2,
+    )
+    assert.match(page, /aria-labelledby="my-reviews-title" className="flex-1/)
+    assert.match(page, /aria-labelledby="all-reviews-title" className="flex-1/)
   })
 
   it("shows all/mine toggle and write CTA only for authenticated authors", () => {
@@ -66,6 +73,9 @@ describe("public reviews catalog page", () => {
     assert.match(myControls, /Статус рецензии/)
     assert.match(myRow, /<ArchiveTooltip label="Открыть">[\s\S]*?<Eye \/>/)
     assert.match(myRow, /<ArchiveTooltip label="Редактировать">[\s\S]*?<Edit3 \/>/)
+    assert.match(myRow, /item\.status === "draft"[\s\S]*<ArchiveTooltip label="Удалить">/)
+    assert.match(myRow, /action=\{deleteAuthorReviewDraftAction\}/)
+    assert.match(myRow, /sm:grid-cols-\[3rem_minmax\(0,1fr\)_minmax\(0,1\.5fr\)_7rem_8\.5rem_5rem_2\.75rem\]/)
     assert.match(myRow, /href=\{`\/reviews\/\$\{item\.id\}\/edit`\}/)
     assert.match(myRow, /CONTRIBUTION_STATUS_VALUE_LABELS/)
     assert.match(
@@ -77,6 +87,16 @@ describe("public reviews catalog page", () => {
       /getMyReviewsCatalog[\s\S]*filters\.status !== "all"[\s\S]*eq\(contributions\.status, filters\.status\)/,
     )
     assert.match(queries, /export async function getMyReviewStatusCounts/)
+  })
+
+  it("lets authors delete only their own draft reviews", () => {
+    assert.match(authorActions, /export async function deleteAuthorReviewDraftAction/)
+    assert.match(authorActions, /deleteAuthorDraftContributionReview\(author\.id, contributionId\)/)
+    assert.match(queries, /export async function deleteAuthorDraftContributionReview/)
+    assert.match(queries, /eq\(contributions\.authorId, authorId\)/)
+    assert.match(queries, /eq\(contributions\.status, "draft"\)/)
+    assert.match(page, /Черновик рецензии удален\./)
+    assert.match(confirmDialog, /createPortal\([\s\S]*document\.body/)
   })
 
   it("reuses the media-item review card for featured reviews", () => {

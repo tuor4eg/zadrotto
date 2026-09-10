@@ -1,7 +1,9 @@
 import Link from "next/link"
-import { Edit3, Eye } from "lucide-react"
+import { Edit3, Eye, Trash2 } from "lucide-react"
 
 import { ArchiveCover } from "@/app/media-item-tile"
+import { deleteAuthorReviewDraftAction } from "@/app/author/(protected)/reviews/actions"
+import { ConfirmAction } from "@/components/ui/confirm-action"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip"
@@ -71,6 +73,21 @@ function MyReviewActions({ item }: { item: MyReviewCatalogRowItem }) {
           </Link>
         </ArchiveTooltip>
       ) : null}
+      {item.status === "draft" ? (
+        <ArchiveTooltip label="Удалить">
+          <ConfirmAction
+            action={deleteAuthorReviewDraftAction}
+            confirmLabel="Удалить"
+            description={`Черновик рецензии «${item.title}» будет удален без возможности восстановления.`}
+            fields={[{ name: "contributionId", value: item.id }]}
+            title="Удалить черновик?"
+            triggerAriaLabel={`Удалить черновик рецензии «${item.title}»`}
+            triggerIcon={<Trash2 />}
+            triggerLabel="Удалить"
+            triggerSize="icon"
+          />
+        </ArchiveTooltip>
+      ) : null}
     </div>
   )
 }
@@ -105,7 +122,7 @@ export function MyReviewCatalogRow({
 
   return (
     <>
-      <article className="hidden items-center gap-x-3 border-b border-stone-300/60 px-2 py-2 last:border-b-0 sm:grid sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_auto_minmax(5.5rem,7.5rem)_auto_2.75rem] sm:gap-x-4 sm:px-3">
+      <article className="hidden items-center gap-x-3 border-b border-stone-300/60 px-2 py-2 last:border-b-0 sm:grid sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_7rem_8.5rem_5rem_2.75rem] sm:gap-x-4 sm:px-3">
         <span className="relative block aspect-[2/3] w-12 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm">
           <ArchiveCover
             carrierFrame={false}

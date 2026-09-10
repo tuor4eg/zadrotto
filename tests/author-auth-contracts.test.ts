@@ -28,7 +28,7 @@ const registrationTimestamp = readFileSync(
 const profileActions = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
 const onboardingForm = readFileSync("src/app/author/(protected)/profile/author-onboarding-form.tsx", "utf8");
 const reviewForm = readFileSync("src/app/author/(protected)/reviews/review-form.tsx", "utf8");
-const mediaTypeSettingsPage = readFileSync("src/app/author/(protected)/settings/media-types/page.tsx", "utf8");
+const mediaTypeSettingsPage = readFileSync("src/app/author/(protected)/profile/interests/page.tsx", "utf8");
 const forgotActions = readFileSync("src/app/author/forgot-password/actions.ts", "utf8");
 const verifyPage = readFileSync("src/app/author/verify-email/page.tsx", "utf8");
 const verifyActions = readFileSync("src/app/author/verify-email/actions.ts", "utf8");
@@ -335,6 +335,7 @@ describe("author auth persistence contracts", () => {
   it("separates general profile settings from session management", () => {
     assert.match(profileLayout, /<ProfileNav/);
     assert.match(profileNavigation, /href: "\/author\/profile"[\s\S]*label: "Общие"/);
+    assert.match(profileNavigation, /href: "\/author\/profile\/interests"[\s\S]*label: "Интересы"/);
     assert.match(profileNavigation, /href: "\/author\/profile\/sessions"[\s\S]*label: "Сессии"/);
 
     assert.doesNotMatch(profilePage, /getAuthorSessions|revokeAuthorSessionAction|Завершить .*сесси|Выйти везде/);

@@ -200,8 +200,8 @@ function LevelImage({
 }) {
   if (imageUrl) {
     return (
-      <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-stone-300 bg-stone-100">
-        <Image alt="" className="object-cover" fill sizes="40px" src={imageUrl} unoptimized />
+      <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border border-stone-300 bg-stone-100">
+        <Image alt="" className="object-contain" fill sizes="40px" src={imageUrl} unoptimized />
       </span>
     )
   }

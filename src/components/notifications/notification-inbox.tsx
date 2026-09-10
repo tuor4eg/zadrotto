@@ -16,6 +16,7 @@ import { usePathname } from "next/navigation"
 import { Bell, Trash2 } from "lucide-react"
 
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts"
+import { usePageUnavailable } from "@/components/external-interface/page-availability"
 import { buttonVariants } from "@/components/ui/button"
 import { NotificationBadge } from "@/components/ui/notification-badge"
 import { cn } from "@/lib/common/utils"
@@ -41,6 +42,7 @@ function getNotificationsApiBase(isAdminRoute: boolean) {
 
 export function NotificationInboxProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const pageUnavailable = usePageUnavailable()
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/")
   const [items, setItems] = useState<NotificationInboxItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
@@ -72,7 +74,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
   }, [])
 
   const checkNotifications = useCallback(async () => {
-    if (requestPendingRef.current || document.visibilityState !== "visible") {
+    if (pageUnavailable || requestPendingRef.current || document.visibilityState !== "visible") {
       return
     }
 
@@ -129,7 +131,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
     } finally {
       requestPendingRef.current = false
     }
-  }, [markRead])
+  }, [markRead, pageUnavailable])
 
   const deleteOne = useCallback(async (id: number) => {
     const apiBase = getNotificationsApiBase(audienceRef.current)
@@ -207,7 +209,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
     <NotificationInboxContext.Provider value={value}>
       {children}
       <Suspense fallback={null}>
-        <ArchiveToasts messages={toastMessages} />
+        <ArchiveToasts messages={pageUnavailable ? [] : toastMessages} />
       </Suspense>
     </NotificationInboxContext.Provider>
   )

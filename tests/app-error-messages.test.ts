@@ -64,6 +64,35 @@ describe("app error messages", () => {
     assert.equal(getRuntimeErrorMessage(), "Сервис временно недоступен.");
   });
 
+  it("suppresses global interactive overlays while the page error fallback is mounted", () => {
+    const layout = readFileSync("src/app/layout.tsx", "utf8");
+    const errorBoundary = readFileSync("src/app/error.tsx", "utf8");
+    const availability = readFileSync(
+      "src/components/external-interface/page-availability.tsx",
+      "utf8",
+    );
+    const externalLayer = readFileSync(
+      "src/components/external-interface/external-interface-layer.tsx",
+      "utf8",
+    );
+    const achievementToasts = readFileSync(
+      "src/components/achievements/achievement-toast-host.tsx",
+      "utf8",
+    );
+    const notificationInbox = readFileSync(
+      "src/components/notifications/notification-inbox.tsx",
+      "utf8",
+    );
+
+    assert.match(layout, /<PageAvailabilityProvider>/);
+    assert.match(errorBoundary, /useReportPageUnavailable\(\)/);
+    assert.match(availability, /setPageUnavailable\(true\)/);
+    assert.match(availability, /setPageUnavailable\(false\)/);
+    assert.match(externalLayer, /!pageUnavailable && \(showTools/);
+    assert.match(achievementToasts, /return pageUnavailable \? null/);
+    assert.match(notificationInbox, /pageUnavailable \? \[\] : toastMessages/);
+  });
+
   it("maps oversized image uploads to a 413 message instead of a silent 503", () => {
     const bodyExceeded = new Error("Body exceeded 1 MB limit.");
     const nginxStyle = new Error("An unexpected response was received from the server.");

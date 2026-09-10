@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
 
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
+import { usePageUnavailable } from "@/components/external-interface/page-availability";
 import { ARCHIVE_ONBOARDING_RATING_SAVED_EVENT } from "@/lib/onboarding/model";
 import {
   claimNewlyEarnedDemoAchievements,
@@ -55,6 +56,7 @@ async function loadDemoAchievementState(mediaItemCodes: string[]): Promise<DemoA
 
 export function AchievementToastHost() {
   const pathname = usePathname();
+  const pageUnavailable = usePageUnavailable();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const [messages, setMessages] = useState<ArchiveToast[]>([]);
   const authenticatedRef = useRef<boolean | null>(null);
@@ -62,7 +64,7 @@ export function AchievementToastHost() {
   const demoCheckPendingRef = useRef(false);
 
   const checkPendingAchievements = useCallback(async () => {
-    if (isAdminRoute || requestPendingRef.current || document.visibilityState !== "visible") {
+    if (pageUnavailable || isAdminRoute || requestPendingRef.current || document.visibilityState !== "visible") {
       return;
     }
 
@@ -82,6 +84,7 @@ export function AchievementToastHost() {
         setMessages(group.achievements.map((achievement) => ({
           id: `achievement-${group.awardGroupId}-${achievement.id}`,
           imageUrl: achievement.imageUrl,
+          imageFit: "contain",
           link: {
             fullToast: true,
             href: "/achievements",
@@ -96,11 +99,12 @@ export function AchievementToastHost() {
     } finally {
       requestPendingRef.current = false;
     }
-  }, [isAdminRoute]);
+  }, [isAdminRoute, pageUnavailable]);
 
   const checkDemoAchievements = useCallback(async () => {
     if (
-      isAdminRoute
+      pageUnavailable
+      || isAdminRoute
       || demoCheckPendingRef.current
       || document.visibilityState !== "visible"
       || !hasActiveDemoProfile()
@@ -135,6 +139,7 @@ export function AchievementToastHost() {
       setMessages(claim.newlyEarned.map((achievement) => ({
         id: `achievement-${groupId}-${achievement.key}`,
         imageUrl: achievement.imageUrl,
+        imageFit: "contain",
         link: {
           fullToast: true,
           href: "/achievements",
@@ -148,7 +153,7 @@ export function AchievementToastHost() {
     } finally {
       demoCheckPendingRef.current = false
     }
-  }, [isAdminRoute])
+  }, [isAdminRoute, pageUnavailable])
 
   useEffect(() => {
     if (isAdminRoute) return;
@@ -192,5 +197,5 @@ export function AchievementToastHost() {
     };
   }, [checkDemoAchievements, checkPendingAchievements, isAdminRoute]);
 
-  return <ArchiveToasts messages={messages} />;
+  return pageUnavailable ? null : <ArchiveToasts messages={messages} />;
 }

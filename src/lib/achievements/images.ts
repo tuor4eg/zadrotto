@@ -50,7 +50,10 @@ async function processAchievementImageFile(file: File) {
     const source = Buffer.from(await file.arrayBuffer());
     const body = await sharp(source, { animated: false, limitInputPixels: MAX_INPUT_PIXELS, pages: 1 })
       .rotate()
-      .resize(OUTPUT_SIZE, OUTPUT_SIZE, { fit: "cover", position: "centre" })
+      .resize(OUTPUT_SIZE, OUTPUT_SIZE, {
+        fit: "contain",
+        background: { r: 0, g: 0, b: 0, alpha: 0 },
+      })
       .webp({ quality: 84 })
       .toBuffer();
     return { ok: true as const, body };

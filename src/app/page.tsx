@@ -23,6 +23,7 @@ import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import {
   getActiveQuiz,
   getActiveQuizParticipantState,
+  getAuthorQuizStatistics,
 } from "@/db/queries/quizzes";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { formatRelativeArchiveDate } from "@/lib/archive/relative-date";
@@ -37,6 +38,7 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
 import { ArchiveFeed } from "./main/archive-feed";
 import { ArchiveRiddle } from "./main/archive-riddle";
+import { HomeAuthorStatistics } from "./main/home-author-statistics";
 import {
   RandomFranchiseSection,
   RandomFranchiseSectionFallback,
@@ -124,27 +126,16 @@ function DailyRecommendation({
         />
       ) : null}
       {coverUrl ? (
-        <>
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
-              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
-              position: "absolute",
-              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
-            style={{
-              maskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
-              position: "absolute",
-              WebkitMaskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
-            }}
-          />
-        </>
+        <div
+          aria-hidden="true"
+          className="absolute inset-y-0 right-0 w-[48%] bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+            position: "absolute",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+          }}
+        />
       ) : null}
 
       <div className="relative z-10 flex flex-1 max-w-[72%] flex-col">
@@ -194,27 +185,16 @@ function LatestReview({
       aria-labelledby="main-latest-review"
     >
       {coverUrl ? (
-        <>
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-0 w-[38%] bg-cover bg-center"
-            style={{
-              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
-              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
-              position: "absolute",
-              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.45) 24%, #000 48%)",
-            }}
-          />
-          <div
-            aria-hidden="true"
-            className="pointer-events-none absolute inset-y-0 right-[62%] w-[14%] backdrop-blur-[3px]"
-            style={{
-              maskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
-              position: "absolute",
-              WebkitMaskImage: "linear-gradient(to right, transparent, #000 45%, transparent)",
-            }}
-          />
-        </>
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-y-0 right-0 w-[48%] bg-cover bg-center"
+          style={{
+            backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+            position: "absolute",
+            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+          }}
+        />
       ) : null}
 
       <div className="relative z-10 flex flex-1 flex-col">
@@ -303,14 +283,17 @@ export default async function MainPage() {
         getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
         getAuthorPublishedMediaItemCount(author.id, enabledMediaTypeCodes),
         getLatestAwardedAchievement(author.id),
-      ]).then(([digitalProfile, ratingSummary, reviewSummary, contributionCount, latestAchievement]) => ({
+        getAuthorQuizStatistics(author.id),
+      ]).then(([digitalProfile, ratingSummary, reviewSummary, contributionCount, latestAchievement, quizStatistics]) => ({
         averageScore: ratingSummary.averageScore,
         contributionCount,
         digitalProfile,
         latestAchievement,
         latestRating: ratingSummary.latestRatings[0] ?? null,
+        ratingSummary,
         ratingsCount: ratingSummary.ratingsCount,
         reviewCount: reviewSummary.reviewsCount,
+        quizWinnerCount: quizStatistics.winnerCount,
       }))
     : null;
   const latestAcquaintanceItem = author && authorHeroStatistics?.latestRating
@@ -335,8 +318,16 @@ export default async function MainPage() {
         reviewCount: authorHeroStatistics.reviewCount,
       })
     : null;
-  const authorHeroStatisticItems = authorResearchSnapshot
-    ? buildHomeHeroStatisticItems(authorResearchSnapshot)
+  const authorHeroStatisticItems = authorResearchSnapshot && authorHeroStatistics
+    ? [
+        ...buildHomeHeroStatisticItems(authorResearchSnapshot),
+        ...(authorHeroStatistics.quizWinnerCount > 0
+          ? [{
+              label: "Побед в квизах",
+              value: authorHeroStatistics.quizWinnerCount.toLocaleString("ru-RU"),
+            }]
+          : []),
+      ]
     : [];
   const researchMessage = authorResearchSnapshot
     ? getHomeResearchMessage(authorResearchSnapshot)
@@ -353,7 +344,7 @@ export default async function MainPage() {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className={hasLatestActivity ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
           <section
-            className="archive-paper archive-panel flex items-center overflow-hidden px-6 py-6 sm:px-10 lg:px-14 lg:py-7"
+            className="archive-paper archive-panel flex items-center overflow-hidden px-4 py-6 sm:px-5 lg:py-7"
             aria-labelledby="main-intro-title"
           >
           <div
@@ -366,12 +357,12 @@ export default async function MainPage() {
               aspectRatio: "2 / 1",
               height: "100%",
               maskImage:
-                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 12%, rgba(0, 0, 0, 0.35) 28%, rgba(0, 0, 0, 0.78) 46%, #000 62%, #000 100%)",
+                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.05) 18%, rgba(0, 0, 0, 0.22) 38%, rgba(0, 0, 0, 0.55) 56%, rgba(0, 0, 0, 0.84) 72%, #000 86%, #000 100%)",
               position: "absolute",
               right: 0,
               top: 0,
               WebkitMaskImage:
-                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.08) 12%, rgba(0, 0, 0, 0.35) 28%, rgba(0, 0, 0, 0.78) 46%, #000 62%, #000 100%)",
+                "linear-gradient(to right, transparent 0%, rgba(0, 0, 0, 0.05) 18%, rgba(0, 0, 0, 0.22) 38%, rgba(0, 0, 0, 0.55) 56%, rgba(0, 0, 0, 0.84) 72%, #000 86%, #000 100%)",
               zIndex: 0,
             }}
           />
@@ -403,7 +394,7 @@ export default async function MainPage() {
           </section>
           {hasLatestActivity ? (
             <aside
-              className={`archive-paper archive-panel w-full p-4 text-left text-stone-950 lg:p-5 ${latestAcquaintance && authorHeroStatistics?.latestAchievement ? "grid grid-rows-2" : "flex flex-col justify-center"}`}
+              className={`archive-paper archive-panel w-full p-4 text-left text-stone-950 lg:p-5 ${latestAcquaintance && authorHeroStatistics?.latestAchievement ? "grid grid-rows-[minmax(0,1fr)_auto]" : "flex flex-col justify-center"}`}
               aria-label="Последняя активность"
             >
               {latestAcquaintance ? (
@@ -440,17 +431,17 @@ export default async function MainPage() {
                     <Link
                       href="/achievements"
                       aria-label="Открыть мои ачивки"
-                      className="shrink-0 rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
+                      className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
                     >
                       {authorHeroStatistics.latestAchievement.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={authorHeroStatistics.latestAchievement.imageUrl}
                           alt=""
-                          className="size-20 rounded-full object-cover shadow-lg lg:size-24"
+                          className="size-20 object-contain drop-shadow-lg lg:size-[5.5rem]"
                         />
                       ) : (
-                        <span className="grid size-20 place-items-center rounded-full bg-amber-100/90 text-amber-900 shadow-lg lg:size-24">
+                        <span className="grid size-20 place-items-center rounded-full bg-amber-100/90 text-amber-900 shadow-lg lg:size-[5.5rem]">
                           <Trophy className="size-10 lg:size-12" aria-hidden="true" />
                         </span>
                       )}
@@ -464,6 +455,10 @@ export default async function MainPage() {
             </aside>
           ) : null}
         </div>
+
+        {authorHeroStatistics ? (
+          <HomeAuthorStatistics ratingSummary={authorHeroStatistics.ratingSummary} />
+        ) : null}
 
         <div className="grid gap-3 lg:grid-cols-3">
           <DailyRecommendation item={dailyDossier} mediaTypeName={dailyDossierMediaTypeName} />

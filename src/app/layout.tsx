@@ -6,6 +6,7 @@ import { AchievementToastHost } from "@/components/achievements/achievement-toas
 import { NotificationInboxProvider } from "@/components/notifications/notification-inbox";
 import { ToastSettingsProvider } from "@/components/ui/toast-settings-provider";
 import { ExternalInterfaceLayer } from "@/components/external-interface/external-interface-layer";
+import { PageAvailabilityProvider } from "@/components/external-interface/page-availability";
 import { PublicSiteFooterLayer } from "@/components/archive/public-site-footer-layer";
 import { getSiteOrigin } from "@/lib/site-url";
 
@@ -30,18 +31,20 @@ export default function RootLayout({
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-dvh flex flex-col">
         <ToastSettingsProvider>
-          <NotificationInboxProvider>
-            <ExternalInterfaceLayer>
-              {children}
-              <PublicSiteFooterLayer />
-              <Suspense fallback={null}>
-                <AchievementToastHost />
-              </Suspense>
-              <Suspense fallback={null}>
-                <RouteTransitionProgress />
-              </Suspense>
-            </ExternalInterfaceLayer>
-          </NotificationInboxProvider>
+          <PageAvailabilityProvider>
+            <NotificationInboxProvider>
+              <ExternalInterfaceLayer>
+                {children}
+                <PublicSiteFooterLayer />
+                <Suspense fallback={null}>
+                  <AchievementToastHost />
+                </Suspense>
+                <Suspense fallback={null}>
+                  <RouteTransitionProgress />
+                </Suspense>
+              </ExternalInterfaceLayer>
+            </NotificationInboxProvider>
+          </PageAvailabilityProvider>
         </ToastSettingsProvider>
       </body>
     </html>

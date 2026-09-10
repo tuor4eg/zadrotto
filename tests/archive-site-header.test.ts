@@ -119,7 +119,7 @@ describe("public site header", () => {
     );
     assert.match(
       globalsSource,
-      /\.archive-page:has\(\+ \.public-site-footer-layer\) \{\s*min-height: auto;/,
+      /\.archive-page:has\(\+ \.public-site-footer-layer\) \{\s*flex: 1 0 auto;\s*min-height: 0;/,
     );
     assert.match(
       globalsSource,

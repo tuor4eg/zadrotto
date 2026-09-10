@@ -206,7 +206,8 @@ describe("achievement consumer", () => {
 
   it("normalizes images and safely replaces assigned objects", () => {
     assert.match(achievementImageSource, /achievements\/\$\{achievementId\}\/\$\{randomUUID\(\)\}\.webp/);
-    assert.match(achievementImageSource, /resize\(OUTPUT_SIZE, OUTPUT_SIZE, \{ fit: "cover", position: "centre" \}\)/);
+    assert.match(achievementImageSource, /fit: "contain"/);
+    assert.match(achievementImageSource, /alpha: 0/);
     assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementLevel[\s\S]*deleteAchievementImageBestEffort\(currentLevel\.imageObjectKey\)/);
     assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteAchievementImageBestEffort\(imageResult\.uploadedObjectKey\)/);
   });
@@ -326,7 +327,8 @@ describe("achievement consumer", () => {
     assert.match(cardSource, /flex h-full w-full shrink-0 basis-full flex-col/)
     assert.doesNotMatch(cardSource, /aspectRatio: "2 \/ 1"/)
     assert.doesNotMatch(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX/)
-    assert.match(cardSource, /rounded-full/)
+    assert.match(cardSource, /className="object-contain"/)
+    assert.doesNotMatch(cardSource, /relative size-full overflow-hidden rounded-full/)
     assert.match(cardSource, /translateX\(-\$\{viewIndex \* 100\}%\)/)
     assert.match(cardSource, /transition-transform duration-300 ease-out/)
     assert.match(cardSource, /formatLevel\(/)

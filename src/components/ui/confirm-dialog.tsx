@@ -2,6 +2,7 @@
 
 import { X } from "lucide-react";
 import { useEffect, useId } from "react";
+import { createPortal } from "react-dom";
 
 import { Button } from "./button";
 
@@ -31,7 +32,7 @@ export function ConfirmDialog({
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [onClose]);
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 px-4 py-6">
       <button
         aria-label="Закрыть подтверждение"
@@ -60,6 +61,7 @@ export function ConfirmDialog({
           {children}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }

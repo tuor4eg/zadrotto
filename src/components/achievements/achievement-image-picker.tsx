@@ -64,8 +64,8 @@ export function AchievementImagePicker({
     />
 
     <div className="flex flex-wrap items-center gap-4">
-      <span className={`relative grid shrink-0 place-items-center overflow-hidden border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48 rounded-md" : "size-28 rounded-full"}`}>
-        {previewUrl ? <Image alt="" fill sizes="112px" className="object-cover" src={previewUrl} unoptimized /> : pickerVariant === "locked" ? <LockKeyhole className="size-10 text-stone-400" /> : <Trophy className="size-10 text-stone-400" />}
+      <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-md border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48" : "size-28"}`}>
+        {previewUrl ? <Image alt="" fill sizes="112px" className={pickerVariant === "quiz" ? "object-cover" : "object-contain"} src={previewUrl} unoptimized /> : pickerVariant === "locked" ? <LockKeyhole className="size-10 text-stone-400" /> : <Trophy className="size-10 text-stone-400" />}
       </span>
       <div className="grid min-w-0 gap-2">
         <div className="flex flex-wrap gap-2">
@@ -97,7 +97,7 @@ export function AchievementImagePicker({
     <p className="text-xs leading-5 text-stone-500">
       {pickerVariant === "quiz"
         ? "JPG, PNG или WebP до 5 МБ. Пропорции изображения сохранятся."
-        : "JPG, PNG или WebP до 5 МБ. Центр будет обрезан до квадрата 512×512."}
+        : "JPG, PNG или WebP до 5 МБ. Изображение целиком впишется в область 512×512."}
     </p>
   </div>;
 }

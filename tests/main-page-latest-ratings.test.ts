@@ -16,6 +16,7 @@ describe("main page latest ratings", () => {
   });
 
   it("renders the latest rating as current activity and removes user-facing history", () => {
+    assert.match(page, /grid grid-rows-\[minmax\(0,1fr\)_auto\]/);
     assert.match(page, /latestRating: ratingSummary\.latestRatings\[0\] \?\? null/);
     assert.match(page, /getMediaItemTilesByIds\(\[authorHeroStatistics\.latestRating\.mediaItemId\], author\.id\)/);
     assert.match(page, /Последняя оценка/);

@@ -257,7 +257,7 @@ describe("quizzes", () => {
     assert.match(layer, /\/api\/user-hud/);
     assert.match(layer, /isAdminRoute/);
     assert.match(layer, /quizParticipant && !quizParticipant\.completed/);
-    assert.match(layer, /showRatingCoachMark: onboarding\.showRatingCoachMark/);
+    assert.match(layer, /showRatingCoachMark: !pageUnavailable && onboarding\.showRatingCoachMark/);
     assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);

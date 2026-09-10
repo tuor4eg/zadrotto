@@ -128,8 +128,8 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
           {items.map((item) => (
             <div key={item.id} className="rounded-lg border border-stone-200 bg-white p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border bg-stone-100">
-                  {item.imageUrl ? <Image alt="" fill sizes="48px" className="object-cover" src={item.imageUrl} unoptimized /> : <Trophy className="size-5 text-stone-500" />}
+                <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-md border bg-stone-100">
+                  {item.imageUrl ? <Image alt="" fill sizes="48px" className="object-contain" src={item.imageUrl} unoptimized /> : <Trophy className="size-5 text-stone-500" />}
                 </span>
                 <div className="min-w-0">
                   <div className="break-words font-medium text-stone-950">{item.name}</div>
@@ -162,8 +162,8 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
                 <TR key={item.id}>
                   <TD className="min-w-0 overflow-hidden">
                     <div className="flex items-center gap-3">
-                      <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-full border bg-stone-100">
-                        {item.imageUrl ? <Image alt="" fill sizes="48px" className="object-cover" src={item.imageUrl} unoptimized /> : <Trophy className="size-5 text-stone-500" />}
+                      <span className="relative grid size-12 shrink-0 place-items-center overflow-hidden rounded-md border bg-stone-100">
+                        {item.imageUrl ? <Image alt="" fill sizes="48px" className="object-contain" src={item.imageUrl} unoptimized /> : <Trophy className="size-5 text-stone-500" />}
                       </span>
                       <div className="min-w-0">
                         <div className="truncate font-medium">{item.name}</div>

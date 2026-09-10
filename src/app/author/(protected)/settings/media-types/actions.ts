@@ -10,7 +10,7 @@ import {
 } from "@/db/queries/media-types";
 import { requireAuthor } from "@/lib/auth/author-auth";
 
-const SETTINGS_PATH = "/author/settings/media-types";
+const SETTINGS_PATH = "/author/profile/interests";
 
 function revalidateMediaTypeVisibilitySurfaces() {
   revalidatePath(SETTINGS_PATH);

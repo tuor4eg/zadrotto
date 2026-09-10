@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import sharp from "sharp";
+import sharp, { type Metadata } from "sharp";
 
 import {
   AVATAR_IMAGE_TYPES,
@@ -50,7 +50,7 @@ export function parseAvatarCrop(input: {
   return { x, y, width, height };
 }
 
-function getRotatedDimensions(metadata: sharp.Metadata) {
+function getRotatedDimensions(metadata: Metadata) {
   if (!metadata.width || !metadata.height) return null;
   const swapsAxes = metadata.orientation && metadata.orientation >= 5 && metadata.orientation <= 8;
   return swapsAxes

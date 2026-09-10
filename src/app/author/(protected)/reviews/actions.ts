@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 
 import {
+  deleteAuthorDraftContributionReview,
   getAuthorReviewForEdit,
   getPublishedMediaItemForReview,
   upsertAuthorReview,
@@ -28,6 +29,37 @@ function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
 
   return typeof value === "string" ? value.trim() : "";
+}
+
+export async function deleteAuthorReviewDraftAction(formData: FormData) {
+  const author = await requireAuthor();
+  const contributionId = getPositiveInteger(getFormString(formData, "contributionId"));
+
+  if (!contributionId) {
+    notFound();
+  }
+
+  const deletedReview = await deleteAuthorDraftContributionReview(author.id, contributionId);
+
+  if (!deletedReview) {
+    redirect("/reviews?view=mine&error=delete-locked");
+  }
+
+  revalidatePath("/author/reviews");
+  revalidatePath("/reviews");
+  revalidatePath("/");
+
+  await logActivity({
+    action: "review.deleted",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "review",
+    entityId: deletedReview.id,
+    entityLabel: `Черновик рецензии #${deletedReview.id}`,
+    message: "Черновик рецензии удален автором.",
+  });
+
+  redirect("/reviews?view=mine&deleted=1");
 }
 
 function getPositiveInteger(value: string) {

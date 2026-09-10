@@ -13,7 +13,6 @@ const PRIMARY_LINKS = [
   { href: "/author/achievements", label: "Ачивки" },
   { href: "/author/reviews", label: "Рецензии" },
   { href: "/author/profile", label: "Профиль" },
-  { href: "/author/settings/media-types", label: "Интересы" },
 ] as const;
 
 export function AuthorMobileNavMenu({

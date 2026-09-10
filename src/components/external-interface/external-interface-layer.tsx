@@ -18,6 +18,7 @@ import { OnboardingHudCard } from "@/components/onboarding/onboarding-hud-card";
 import { useArchiveOnboarding } from "@/components/onboarding/use-archive-onboarding";
 import { DemoLoginPromptCard } from "@/components/user-state/demo-login-prompt-card";
 import { DemoProfileImportBridge } from "@/components/user-state/demo-profile-import-bridge";
+import { usePageUnavailable } from "@/components/external-interface/page-availability";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import {
   ARCHIVE_ONBOARDING_RATING_SAVED_EVENT,
@@ -45,6 +46,7 @@ const ExternalInterfaceContext = createContext<ExternalInterfaceValue | null>(nu
 
 export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const pageUnavailable = usePageUnavailable();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const [authenticated, setAuthenticated] = useState(false);
   const [bugReportContext, setBugReportContext] = useState<BugReportEntityContext | null>(null);
@@ -154,10 +156,11 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
       quizParticipant,
       registerBugReportEntityContext,
       setQuizParticipant,
-      showRatingCoachMark: onboarding.showRatingCoachMark,
+      showRatingCoachMark: !pageUnavailable && onboarding.showRatingCoachMark,
     }),
     [
       onboarding.showRatingCoachMark,
+      pageUnavailable,
       quizParticipant,
       registerBugReportEntityContext,
       setQuizParticipant,
@@ -169,7 +172,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   const showTools = authenticated && !isAdminRoute;
   const showOnboardingCard = Boolean(onboarding.card);
   const showDemoLoginPrompt = isDemo && !isAdminRoute;
-  const showHudStack = showTools || showOnboardingCard || showDemoLoginPrompt;
+  const showHudStack = !pageUnavailable && (showTools || showOnboardingCard || showDemoLoginPrompt);
 
   useEffect(() => {
     const root = document.documentElement;
@@ -233,7 +236,9 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   return (
     <ExternalInterfaceContext.Provider value={value}>
       {children}
-      <DemoProfileImportBridge authenticated={authenticated} authorId={authorId} />
+      {!pageUnavailable ? (
+        <DemoProfileImportBridge authenticated={authenticated} authorId={authorId} />
+      ) : null}
       {showHudStack ? (
         <div className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:contents">
           {showTools ? (
@@ -304,7 +309,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
           ) : null}
         </div>
       ) : null}
-      {isBugReportOpen ? (
+      {!pageUnavailable && isBugReportOpen ? (
         <BugReportModal entityContext={bugReportContext} onClose={() => setIsBugReportOpen(false)} />
       ) : null}
     </ExternalInterfaceContext.Provider>

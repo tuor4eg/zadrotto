@@ -1171,3 +1171,25 @@ export async function deleteHiddenContributionReview(contributionId: number) {
       : null;
   });
 }
+
+export async function deleteAuthorDraftContributionReview(
+  authorId: number,
+  contributionId: number,
+) {
+  const [review] = await db
+    .delete(contributions)
+    .where(
+      and(
+        eq(contributions.id, contributionId),
+        eq(contributions.authorId, authorId),
+        eq(contributions.type, "review"),
+        eq(contributions.status, "draft"),
+      ),
+    )
+    .returning({
+      id: contributions.id,
+      mediaItemId: contributions.primaryMediaItemId,
+    });
+
+  return review ?? null;
+}

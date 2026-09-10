@@ -125,6 +125,16 @@ describe("author dashboard layout", () => {
     assert.doesNotMatch(globalsSource, /\.author-content-shell\s*\{/);
   });
 
+  it("uses the dashboard background for friends and profile pages", () => {
+    const friendsPage = readFileSync("src/app/author/(protected)/friends/page.tsx", "utf8");
+    const profileLayout = readFileSync("src/app/author/(protected)/profile/layout.tsx", "utf8");
+
+    for (const page of [friendsPage, profileLayout]) {
+      assert.match(page, /className="author-dashboard"/);
+      assert.match(page, /className="archive-paper-surface archive-panel[^\"]*p-5 sm:p-6"/);
+    }
+  });
+
   it("keeps the latest ratings and reviews as two independent data panels", () => {
     const sections = getSections();
     const activitySection = sections[1];

@@ -12,6 +12,7 @@ import { useToastSettings } from "@/components/ui/toast-settings-provider";
 
 export type ArchiveToast = {
   id: string;
+  imageFit?: "cover" | "contain";
   imageUrl?: string | null;
   link?: {
     fullToast?: boolean;
@@ -49,7 +50,7 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
       messages
         .map(
           (message) =>
-            `${message.id}:${message.link?.href ?? ""}:${message.link?.label ?? ""}:${message.link?.fullToast ?? false}:${message.text}:${message.imageUrl ?? ""}`,
+            `${message.id}:${message.link?.href ?? ""}:${message.link?.label ?? ""}:${message.link?.fullToast ?? false}:${message.text}:${message.imageUrl ?? ""}:${message.imageFit ?? "cover"}`,
         )
         .join("|"),
     [messages],
@@ -137,7 +138,7 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
               <span className="pointer-events-none relative z-[1] mt-0.5 size-10 overflow-hidden rounded-sm border border-stone-300/80 bg-white/70">
                 <Image
                   alt=""
-                  className="object-cover"
+                  className={message.imageFit === "contain" ? "object-contain" : "object-cover"}
                   fill
                   sizes="40px"
                   src={message.imageUrl}

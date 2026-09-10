@@ -28,7 +28,7 @@ export function HomeIntroHero({
         {message.cta.label}
       </Link>
       {statisticItems.length > 0 ? (
-        <dl className="mt-5 grid max-w-4xl grid-cols-2 sm:grid-cols-4">
+        <dl className={`mt-5 grid max-w-4xl grid-cols-2 ${statisticItems.length >= 5 ? "sm:grid-cols-5" : "sm:grid-cols-4"}`}>
           {statisticItems.map((statistic, index) => (
             <div
               key={statistic.label}

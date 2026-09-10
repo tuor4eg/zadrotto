@@ -1,6 +1,6 @@
 "use client";
 
-import { MonitorSmartphone, UserRound } from "lucide-react";
+import { Heart, MonitorSmartphone, UserRound } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
@@ -11,6 +11,11 @@ const PROFILE_NAV_ITEMS = [
     href: "/author/profile",
     label: "Общие",
     icon: UserRound,
+  },
+  {
+    href: "/author/profile/interests",
+    label: "Интересы",
+    icon: Heart,
   },
   {
     href: "/author/profile/sessions",

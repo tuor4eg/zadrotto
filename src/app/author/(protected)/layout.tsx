@@ -117,12 +117,6 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               <NotificationBadge count={incomingFriendRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
             </Link>
             <NotificationBell />
-            <Link
-              href="/author/settings/media-types"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Интересы
-            </Link>
             <form action={logoutAuthor}>
               <Button type="submit" variant="outline" size="sm" className="cursor-pointer">
                 Выйти

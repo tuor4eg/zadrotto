@@ -30,7 +30,8 @@ export default async function FriendsPage({ searchParams }: { searchParams: Prom
   ]);
   const currentUrl = `/author/friends?${new URLSearchParams({ tab, ...(searchQuery ? { q: searchQuery } : {}) }).toString()}`;
 
-  return <div className="space-y-5">
+  return <div className="author-dashboard">
+    <div className="archive-paper-surface archive-panel space-y-5 p-5 sm:p-6">
     <div><h2 className="font-serif text-3xl">Друзья</h2><p className="mt-1 text-stone-600">Заявки и пользователи, которых вы добавили в друзья.</p></div>
     {query.friendship === "error" || query.friendship === "conflict" ? <Alert variant="destructive">Не удалось изменить состояние дружбы. Обновите страницу и попробуйте ещё раз.</Alert> : null}
     <nav aria-label="Разделы друзей" className="flex flex-wrap gap-2 border-b border-stone-300/70 pb-3">
@@ -44,5 +45,6 @@ export default async function FriendsPage({ searchParams }: { searchParams: Prom
       </div>)}
     </div> : <p className="rounded-md border border-dashed border-stone-300 p-6 text-center text-stone-600">Ничего не найдено.</p>}
     <PaginationNav basePath="/author/friends" itemLabel="пользователей" page={result.page} pageSize={result.pageSize} searchParams={{ tab, q: searchQuery || undefined }} totalCount={result.totalCount} totalPages={result.totalPages} variant="archive" />
+    </div>
   </div>;
 }

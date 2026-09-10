@@ -292,7 +292,8 @@ body:has(.public-site-footer-layer) {
 }
 
 .archive-page:has(+ .public-site-footer-layer) {
-  min-height: auto;
+  flex: 1 0 auto;
+  min-height: 0;
 }
 
 .archive-page:not(.archive-catalog-page):has(.public-site-header) {
