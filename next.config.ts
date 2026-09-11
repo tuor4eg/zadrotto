@@ -11,6 +11,16 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        source: "/series/:code/children",
+        destination: "/archive?series=:code",
+        permanent: true,
+      },
+      {
+        source: "/series/:code",
+        destination: "/archive?series=:code",
+        permanent: true,
+      },
+      {
         source: "/franchises/:path*",
         destination: "/series/:path*",
         permanent: true,

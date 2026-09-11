@@ -12,7 +12,7 @@ const myControls = read("src/app/reviews/my-reviews-catalog-controls.tsx")
 const viewToggle = read("src/app/reviews/reviews-view-toggle.tsx")
 const queries = read("src/db/queries/contribution-reviews.ts")
 const mediaReviews = read("src/app/media-item-reviews.tsx")
-const authorActions = read("src/app/author/(protected)/reviews/actions.ts")
+const reviewActions = read("src/app/reviews/actions.ts")
 const adminActions = read("src/app/admin/(protected)/reviews/actions.ts")
 const mainPage = read("src/app/page.tsx")
 const confirmDialog = read("src/components/ui/confirm-dialog.tsx")
@@ -90,8 +90,8 @@ describe("public reviews catalog page", () => {
   })
 
   it("lets authors delete only their own draft reviews", () => {
-    assert.match(authorActions, /export async function deleteAuthorReviewDraftAction/)
-    assert.match(authorActions, /deleteAuthorDraftContributionReview\(author\.id, contributionId\)/)
+    assert.match(reviewActions, /export async function deleteAuthorReviewDraftAction/)
+    assert.match(reviewActions, /deleteAuthorDraftContributionReview\(author\.id, contributionId\)/)
     assert.match(queries, /export async function deleteAuthorDraftContributionReview/)
     assert.match(queries, /eq\(contributions\.authorId, authorId\)/)
     assert.match(queries, /eq\(contributions\.status, "draft"\)/)
@@ -166,7 +166,7 @@ describe("public reviews catalog page", () => {
 
   it("links from the main page and revalidates the catalog after publish changes", () => {
     assert.doesNotMatch(mainPage, /href="\/reviews"[\s\S]*Смотреть всё/)
-    assert.match(authorActions, /revalidatePath\("\/reviews"\)/)
+    assert.match(reviewActions, /revalidatePath\("\/reviews"\)/)
     assert.match(adminActions, /revalidatePath\("\/reviews"\)/)
   })
 })

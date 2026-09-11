@@ -6,8 +6,21 @@ export type MediaTypeFilter = MediaType | "all";
 export type AuthorRatingFilter = "all" | "rated" | "wanted" | "skipped" | "unmarked";
 export type CatalogYearMode = "release" | "experience" | "rating";
 export type CatalogYearFilter = number | null;
+export type ArchiveRatingComparison = "average" | "mine";
 
 const MIN_CATALOG_YEAR = 1900;
+
+export function parseRatedByAuthorId(value: string | null | undefined) {
+  if (!value) return null;
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+}
+
+export function parseArchiveRatingComparison(
+  value: string | null | undefined,
+): ArchiveRatingComparison {
+  return value === "average" ? "average" : "mine";
+}
 
 export const CATALOG_SORTS = [
   "title",

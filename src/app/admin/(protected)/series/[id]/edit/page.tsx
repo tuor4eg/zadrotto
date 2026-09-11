@@ -127,7 +127,7 @@ export default async function EditFranchisePage({
             <FranchiseForm
               action={updateFranchiseAction}
               submitLabel="Сохранить"
-              publicHref={franchise.publicationStatus === "published" ? `/series/${franchise.code}` : null}
+              publicHref={franchise.publicationStatus === "published" ? `/archive?series=${encodeURIComponent(franchise.code)}` : null}
               values={franchise}
               parentOptions={parentOptions}
               errorMessage={getFranchiseErrorMessage(query.error)}

@@ -13,7 +13,6 @@ import {
   ratings,
 } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
-import { clampArchiveListPageSize } from "@/lib/archive/tile-grid-capacity";
 import { FRIENDS_PAGE_SIZE, type FriendshipViewState } from "@/lib/friends/model";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { runInDomainEventTransaction } from "@/db/transaction";
@@ -261,28 +260,6 @@ export async function searchDiscoverableUsers(authorId: number, query: string, r
   return { items: rows.map((row) => ({ ...row, relationState: relationById.get(row.id) ?? "none" })), page, pageSize: FRIENDS_PAGE_SIZE, totalCount, totalPages };
 }
 
-export async function getPublicRatingJournal(
-  authorId: number,
-  requestedPage: number,
-  accessibleMediaTypeCodes: readonly string[],
-  requestedPageSize: number,
-) {
-  const pageSize = clampArchiveListPageSize(requestedPageSize);
-  const filter = and(
-    eq(ratings.authorId, authorId),
-    eq(mediaItems.publicationStatus, "published"),
-    getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
-  );
-  const [countRow] = await db.select({ count: sql<number>`count(*)::int` }).from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(filter);
-  const totalCount = countRow?.count ?? 0;
-  const totalPages = getTotalPages(totalCount, pageSize);
-  const page = clampPage(requestedPage, totalPages);
-  const items = await db.select({ mediaItemId: mediaItems.id, code: mediaItems.code, title: mediaItems.title, score: ratings.score, updatedAt: ratings.updatedAt })
-    .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(filter)
-    .orderBy(desc(ratings.updatedAt), desc(ratings.id)).limit(pageSize).offset(getOffset(page, pageSize));
-  return { items, page, pageSize, totalCount, totalPages };
-}
-
 export async function getPublicReviewJournal(authorId: number, requestedPage: number, accessibleMediaTypeCodes: readonly string[]) {
   const filter = and(
     eq(contributions.authorId, authorId),
@@ -333,9 +310,9 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     }).from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter),
     db.select({ mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
       .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(mediaItems.mediaType),
-    db.select({ year: mediaItems.releaseYear, ratingsCount: sql<number>`count(${ratings.id})::int` })
+    db.select({ year: mediaItems.releaseYear, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
       .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(and(ratingFilter, sql`${mediaItems.releaseYear} is not null`))
-      .groupBy(mediaItems.releaseYear).orderBy(mediaItems.releaseYear),
+      .groupBy(mediaItems.releaseYear, mediaItems.mediaType).orderBy(mediaItems.releaseYear),
     db.select({ score: ratings.score, ratingsCount: sql<number>`count(${ratings.id})::int` })
       .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(ratings.score),
     db.select({ mediaItemId: mediaItems.id, score: ratings.score })
@@ -351,13 +328,21 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     getAuthorPublishedMediaItemCount(authorId, accessibleMediaTypeCodes),
   ]);
   const totals = totalRows[0];
+  const releaseYearTotals = new Map<number, number>();
+  const releaseYearMediaTypeDistribution = releaseYearDistribution.flatMap((item) => {
+    if (item.year === null) return [];
+
+    releaseYearTotals.set(item.year, (releaseYearTotals.get(item.year) ?? 0) + item.ratingsCount);
+    return [{ count: item.ratingsCount, mediaType: item.mediaType, year: item.year }];
+  });
   return {
     ratingSummary: {
       ratingsCount: totals?.ratingsCount ?? 0,
       averageScore: totals?.averageScore ?? null,
       currentYearRatingsCount: totals?.currentYearRatingsCount ?? 0,
       distribution,
-      releaseYearDistribution: releaseYearDistribution.flatMap((item) => item.year === null ? [] : [{ year: item.year, count: item.ratingsCount }]),
+      releaseYearDistribution: [...releaseYearTotals].map(([year, count]) => ({ count, year })),
+      releaseYearMediaTypeDistribution,
       scoreDistribution,
     },
     reviewCount: reviewCountRows[0]?.reviewsCount ?? 0,

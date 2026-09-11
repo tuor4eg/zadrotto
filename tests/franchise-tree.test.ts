@@ -12,10 +12,6 @@ const mediaItemFranchiseLinksSource = readFileSync(
   "utf8",
 );
 const adminSeriesPageSource = readFileSync("src/app/admin/(protected)/series/page.tsx", "utf8");
-const publicSeriesHeaderSource = readFileSync(
-  "src/app/series/[code]/series-page-header.tsx",
-  "utf8",
-);
 
 function getFunctionSource(source: string, name: string, nextName: string) {
   const start = source.indexOf(`export async function ${name}`);
@@ -134,12 +130,6 @@ describe("franchise tree display and traversal", () => {
     "getAdminFranchiseTree",
     "getAdminFranchiseById",
   );
-  const subtreeQuerySource = getFunctionSource(
-    franchisesQuerySource,
-    "getMediaItemsByFranchiseId",
-    "getAdminMediaItemsByFranchiseId",
-  );
-
   it("builds breadcrumbs only from the selected series parent chain", () => {
     const franchiseByCodeSource = getFunctionSource(
       franchisesQuerySource,
@@ -152,10 +142,6 @@ describe("franchise tree display and traversal", () => {
     assert.match(franchiseByCodeSource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
     assert.match(franchiseByCodeSource, /eq\(franchises\.id, parentId\)/);
     assert.match(franchiseByCodeSource, /parents\.unshift\(\{ id: parent\.id, code: parent\.code, title: parent\.title \}\)/);
-    assert.match(publicSeriesHeaderSource, /const parentBreadcrumbs = getParentBreadcrumbs\(franchise\)/);
-    assert.match(publicSeriesHeaderSource, /parent\.id !== franchise\.id/);
-    assert.match(publicSeriesHeaderSource, /parent\.code !== franchise\.code/);
-    assert.match(publicSeriesHeaderSource, /\{parentBreadcrumbs\.map\(\(parent\) => \(/);
   });
 
   it("shows every published series in a record's inherited path as its own link", () => {
@@ -165,17 +151,7 @@ describe("franchise tree display and traversal", () => {
     assert.match(mediaItemDetailsSource, /<MediaItemFranchiseLinks/);
     assert.match(mediaItemFranchiseLinksSource, /\(franchise\.path \?\? \[franchise\]\)\.map\(\(part, index\) => \(/);
     assert.match(mediaItemFranchiseLinksSource, /index > 0 \? <span aria-hidden="true">\/<\/span> : null/);
-    assert.match(mediaItemFranchiseLinksSource, /<Link href=\{`\/series\/\$\{part\.code\}`\} className=\{className\}>/);
-  });
-
-  it("includes descendant series on a parent series page and deduplicates records", () => {
-    assert.match(franchisesQuerySource, /function publishedFranchiseBranchIdsSql/);
-    assert.match(franchisesQuerySource, /with recursive descendants as \(/);
-    assert.match(franchisesQuerySource, /select child\.id/);
-    assert.match(franchisesQuerySource, /inner join descendants parent on child\.parent_id = parent\.id/);
-    assert.match(subtreeQuerySource, /publishedFranchiseBranchIdsSql\(franchiseId\)/);
-    assert.match(subtreeQuerySource, /mediaItemFranchises\.franchiseId\} in \(/);
-    assert.match(subtreeQuerySource, /\.groupBy\([\s\S]*mediaItems\.id/);
+    assert.match(mediaItemFranchiseLinksSource, /<Link href=\{`\/archive\?series=\$\{encodeURIComponent\(part\.code\)\}`\} className=\{className\}>/);
   });
 
   it("keeps every matching admin branch readable through all parents and descendants", () => {
@@ -235,7 +211,7 @@ describe("franchise tree display and traversal", () => {
     const deleteSource = getFunctionSource(
       franchisesQuerySource,
       "deleteFranchiseIfEmpty",
-      "getMediaItemsByFranchiseId",
+      "getAdminMediaItemsByFranchiseId",
     );
 
     assert.match(deleteSource, /notExists\([\s\S]*mediaItemFranchises\.franchiseId/);

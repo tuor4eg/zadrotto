@@ -81,7 +81,6 @@ function revalidateMediaTypeSurfaces() {
   revalidatePath("/author/media/new");
   revalidatePath("/author/settings/media-types");
   revalidatePath("/series");
-  revalidatePath("/series/[code]", "page");
   revalidatePath("/media/[code]", "page");
   revalidatePath("/");
   revalidatePath("/archive");

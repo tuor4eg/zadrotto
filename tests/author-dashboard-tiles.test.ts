@@ -54,7 +54,7 @@ describe("author dashboard media tiles", () => {
     assert.match(dashboardSource, /summary\.latestRatings\.flatMap[\s\S]*latestMediaItemsById\.get\(rating\.mediaItemId\)/);
     assert.match(dashboardSource, /reviewSummary\.latestReviews\.flatMap[\s\S]*latestMediaItemsById\.get\(review\.mediaItemId\)/);
     assert.match(dashboardSource, /href: `\/media\/\$\{item\.code\}`/);
-    assert.match(dashboardSource, /href: `\/author\/reviews\/\$\{review\.id\}\/edit`/);
+    assert.match(dashboardSource, /href: `\/reviews\/\$\{review\.id\}\/edit`/);
   });
 
   it("keeps tile shaping and cover resolution in one reusable data helper", () => {
@@ -81,7 +81,11 @@ describe("author dashboard media tiles", () => {
     assert.match(gridSource, /if \(items\.length === 0\)[\s\S]*Здесь пока пусто/);
     assert.match(dashboardSource, /const latestRatingTiles = summary\.latestRatings\.flatMap/);
     assert.match(dashboardSource, /const latestReviewTiles = reviewSummary\.latestReviews\.flatMap/);
-    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant="top"/);
-    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant="top"/);
+    assert.match(dashboardSource, /href: `\/reviews\/\$\{review\.id\}\/edit`/);
+    assert.match(dashboardSource, /reviewsHref="\/reviews\?view=mine"/);
+    assert.match(statisticsSource, /tileGridInitialColumnCount = 3/);
+    assert.match(statisticsSource, /tileGridVariant = "top"/);
+    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant=\{tileGridVariant\}/);
+    assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestReviewTiles\}[\s\S]*variant=\{tileGridVariant\}/);
   });
 });

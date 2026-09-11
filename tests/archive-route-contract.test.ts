@@ -11,15 +11,12 @@ const catalogItems = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 const mediaItemDetails = readFileSync("src/app/media-item-details.tsx", "utf8");
 const seriesCatalogPage = readFileSync("src/app/series/page.tsx", "utf8");
-const seriesPage = readFileSync("src/app/series/[code]/page.tsx", "utf8");
-const seriesChildrenPage = readFileSync("src/app/series/[code]/children/page.tsx", "utf8");
-const seriesPageHeader = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
 
 const catalogRevalidationFiles = [
   "src/app/media/franchise-actions.ts",
   "src/app/ratings/actions.ts",
   "src/app/media-status/actions.ts",
-  "src/app/series/[code]/actions.ts",
+  "src/app/archive/archive-series-actions.ts",
   "src/app/admin/(protected)/media-review/actions.ts",
   "src/app/admin/(protected)/franchise-review/actions.ts",
   "src/app/admin/(protected)/media/actions.ts",
@@ -53,24 +50,14 @@ describe("archive route split", () => {
     assert.match(seriesCatalogPage, /max-w-\[1480px\]/);
   });
 
-  it("stretches short media and series dossier cards to the footer", () => {
-    for (const source of [mediaPage, seriesPage, seriesChildrenPage]) {
-      assert.match(source, /archive-page flex min-h-0 flex-1 flex-col/);
-      assert.match(source, /max-w-\[1480px\] flex-1 flex-col/);
-      assert.match(source, /flex min-h-0 w-full flex-1 flex-col|flex-1 flex-col gap-3/);
-    }
+  it("stretches a short media dossier card to the footer", () => {
+    assert.match(mediaPage, /archive-page flex min-h-0 flex-1 flex-col/);
+    assert.match(mediaPage, /max-w-\[1480px\] flex-1 flex-col/);
+    assert.match(mediaPage, /flex min-h-0 w-full flex-1 flex-col|flex-1 flex-col gap-3/);
 
     assert.match(
       mediaItemDetails,
       /archive-paper archive-panel archive-stack archive-stack-left[^"]*flex-1/,
-    );
-    assert.match(
-      seriesPage,
-      /archive-paper archive-panel archive-stack archive-stack-bottom[^"]*flex-1/,
-    );
-    assert.match(
-      seriesChildrenPage,
-      /archive-paper archive-panel archive-stack archive-stack-bottom[^"]*flex-1/,
     );
   });
 
@@ -100,8 +87,6 @@ describe("archive route split", () => {
   it("links public breadcrumbs without duplicating the global archive navigation", () => {
     assert.doesNotMatch(mediaPage, /href="\/archive"/);
     assert.doesNotMatch(seriesCatalogPage, /href="\/archive"/);
-    assert.match(seriesPage, /SeriesPageHeader/);
-    assert.doesNotMatch(seriesPageHeader, /href="\/archive"/);
     assert.match(
       mediaPage,
       /href=\{`\/archive\?type=\$\{encodeURIComponent\(item\.mediaType\)\}`\}/,

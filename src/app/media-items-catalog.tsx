@@ -48,7 +48,10 @@ type MediaItemsCatalogProps = {
   pageSize: number;
   pageSizeOptions: readonly number[];
   publishedFranchises: SearchableFranchiseOption[];
+  ratedAuthorComparison: "average" | "mine";
+  ratedByAuthorId: number | null;
   searchQuery: string;
+  seriesCode: string | null;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   totalCount: number;
@@ -92,7 +95,10 @@ export function MediaItemsCatalog({
   pageSize,
   pageSizeOptions,
   publishedFranchises,
+  ratedAuthorComparison,
+  ratedByAuthorId,
   searchQuery,
+  seriesCode,
   sort,
   sortDirection,
   totalCount,
@@ -106,11 +112,11 @@ export function MediaItemsCatalog({
   const demoProfile = useDemoProfile();
   const isDemo = Boolean(!currentAuthor && demoProfile && demoProfile.import.importedAt == null);
   const visibleItems = useMemo(() => {
-    if (!isDemo || !demoProfile || authorRatingFilter === "all") return items;
+    if (ratedByAuthorId || !isDemo || !demoProfile || authorRatingFilter === "all") return items;
     return items.filter((item) =>
       matchDemoAuthorRatingFilter(item.code, authorRatingFilter, demoProfile),
     );
-  }, [authorRatingFilter, demoProfile, isDemo, items]);
+  }, [authorRatingFilter, demoProfile, isDemo, items, ratedByAuthorId]);
   const [selectedId, setSelectedId] = useState(visibleItems[0]?.id);
   const [, startTransition] = useTransition();
   const availableMediaTypes = useMemo(
@@ -136,11 +142,15 @@ export function MediaItemsCatalog({
     authorRatingFilter !== "all" ||
     mediaTypeFilter !== "all" ||
     searchQuery !== "" ||
+    seriesCode !== null ||
     yearFilter !== null;
   const paginationSearchParams = {
     mine: (currentAuthor || isDemo) && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
+    ratedBy: ratedByAuthorId ? String(ratedByAuthorId) : undefined,
+    compare: ratedByAuthorId && ratedAuthorComparison !== "mine" ? ratedAuthorComparison : undefined,
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
     q: searchQuery || undefined,
+    series: seriesCode ?? undefined,
     dir:
       sortDirection !== DEFAULT_CATALOG_SORT_DIRECTIONS[sort]
         ? sortDirection
@@ -270,6 +280,13 @@ export function MediaItemsCatalog({
         const tileProps = {
           href: `/media/${item.code}`,
           item,
+          profileRating: ratedByAuthorId && item.ratedByAuthorScore !== null
+            ? {
+                comparison: ratedAuthorComparison,
+                score: item.ratedByAuthorScore,
+                viewerScore: item.currentAuthorScore,
+              }
+            : undefined,
           onSelect: () => {
             setSelectedId(item.id);
             window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT));

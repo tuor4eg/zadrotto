@@ -16,6 +16,7 @@ export function CatalogHeaderControlsWithDemo(props: {
   currentAuthor: boolean
   mediaTypeFilter: MediaTypeFilter
   minReleaseYear: number | null
+  ratedByAuthor: boolean
   searchQuery: string
   sort: CatalogSort
   sortDirection: CatalogSortDirection
@@ -23,8 +24,15 @@ export function CatalogHeaderControlsWithDemo(props: {
   yearMode: CatalogYearMode
 }) {
   const demoProfile = useDemoProfile()
-  const personalArchive = props.currentAuthor
-    || Boolean(demoProfile && demoProfile.import.importedAt == null)
+  const personalArchive = !props.ratedByAuthor && (
+    props.currentAuthor || Boolean(demoProfile && demoProfile.import.importedAt == null)
+  )
 
-  return <CatalogHeaderControls {...props} currentAuthor={personalArchive} />
+  return (
+    <CatalogHeaderControls
+      {...props}
+      currentAuthor={personalArchive}
+      ratingSubject={personalArchive || props.ratedByAuthor}
+    />
+  )
 }

@@ -121,6 +121,7 @@ export async function getAuthorRatingSummary(
     db
       .select({
         year: mediaItems.releaseYear,
+        mediaType: mediaItems.mediaType,
         ratingsCount: sql<number>`count(${ratings.id})::int`,
       })
       .from(ratings)
@@ -130,7 +131,7 @@ export async function getAuthorRatingSummary(
         getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
         isNotNull(mediaItems.releaseYear),
       ))
-      .groupBy(mediaItems.releaseYear)
+      .groupBy(mediaItems.releaseYear, mediaItems.mediaType)
       .orderBy(asc(mediaItems.releaseYear)),
     db
       .select({
@@ -162,15 +163,25 @@ export async function getAuthorRatingSummary(
       .limit(5),
   ]);
   const totals = totalRows[0];
+  const releaseYearTotals = new Map<number, number>();
+  const releaseYearMediaTypeDistribution = releaseYearDistribution.flatMap((item) => {
+    if (item.year === null) return [];
+
+    releaseYearTotals.set(item.year, (releaseYearTotals.get(item.year) ?? 0) + item.ratingsCount);
+    return [{
+      count: item.ratingsCount,
+      mediaType: item.mediaType,
+      year: item.year,
+    }];
+  });
 
   return {
     ratingsCount: totals?.ratingsCount ?? 0,
     averageScore: totals?.averageScore ?? null,
     currentYearRatingsCount: totals?.currentYearRatingsCount ?? 0,
     distribution,
-    releaseYearDistribution: releaseYearDistribution.flatMap((item) =>
-      item.year === null ? [] : [{ year: item.year, count: item.ratingsCount }],
-    ),
+    releaseYearDistribution: [...releaseYearTotals].map(([year, count]) => ({ count, year })),
+    releaseYearMediaTypeDistribution,
     scoreDistribution,
     latestRatings,
   };

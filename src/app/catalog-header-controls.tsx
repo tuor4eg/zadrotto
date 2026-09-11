@@ -39,6 +39,8 @@ type CatalogHeaderControlsProps = {
   currentAuthor: boolean;
   mediaTypeFilter: MediaTypeFilter;
   minReleaseYear: number | null;
+  ratingSubject: boolean;
+  ratedByAuthor: boolean;
   searchQuery: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
@@ -172,6 +174,8 @@ export function CatalogHeaderControls({
   currentAuthor,
   mediaTypeFilter,
   minReleaseYear,
+  ratingSubject,
+  ratedByAuthor,
   searchQuery,
   sort,
   sortDirection,
@@ -186,9 +190,17 @@ export function CatalogHeaderControls({
   const filtersMenuId = useId();
   const filtersRootRef = useRef<HTMLDivElement>(null);
   const sortOptions = Object.entries(CATALOG_SORT_LABELS).filter(
-    ([value]) => currentAuthor || !isAuthorOnlyCatalogSort(value as CatalogSort),
-  );
-  const yearModeOptions = CATALOG_YEAR_MODES;
+    ([value]) => (
+      (ratingSubject || !isAuthorOnlyCatalogSort(value as CatalogSort))
+      && (!ratedByAuthor || value !== "my_first_experience_year")
+    ),
+  ).map(([value, label]) => [
+    value,
+    ratedByAuthor && value === "my_rating_score" ? "Оценка пользователя" : label,
+  ] as const);
+  const yearModeOptions = ratedByAuthor
+    ? CATALOG_YEAR_MODES.filter((mode) => mode !== "experience")
+    : CATALOG_YEAR_MODES;
   const hasActiveFilters =
     (currentAuthor && authorRatingFilter !== "all") || yearFilter !== null;
 
@@ -224,6 +236,9 @@ export function CatalogHeaderControls({
       }
 
       if (nextFilters.q !== undefined) {
+        nextSearchParams.delete("series");
+        nextSearchParams.delete("ratedBy");
+        nextSearchParams.delete("compare");
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");
       }
 
@@ -327,11 +342,11 @@ export function CatalogHeaderControls({
   }, [openSelect]);
 
   return (
-    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap">
+    <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap lg:justify-end">
       <label className="sr-only" htmlFor="header-catalog-search">
         Поиск
       </label>
-      <div className="relative min-w-0 flex-1 basis-auto">
+      <div className="relative min-w-0 w-full sm:w-56 sm:justify-self-start lg:w-60 lg:flex-none">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
         <input
           id="header-catalog-search"
@@ -446,7 +461,7 @@ export function CatalogHeaderControls({
                       replaceFilters({ year: nextYear === "all" ? null : Number(nextYear) })
                     }
                   />
-                  {currentAuthor && yearFilter !== null ? (
+                  {ratingSubject && yearFilter !== null ? (
                     <div className="flex shrink-0 items-center gap-1 rounded-md border border-stone-300/80 bg-stone-50/60 p-0.5 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)]">
                       {yearModeOptions.map((mode) => {
                         const isSelected = yearMode === mode;

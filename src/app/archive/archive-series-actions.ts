@@ -20,11 +20,10 @@ export type SeriesMediaLinkActionResult = {
   success: boolean;
 };
 
-function revalidateSeriesMediaSurfaces(franchiseCode: string, mediaItemCode: string) {
+function revalidateSeriesMediaSurfaces(mediaItemCode: string) {
   revalidatePath("/");
   revalidatePath("/archive");
   revalidatePath("/series");
-  revalidatePath(`/series/${franchiseCode}`);
   revalidatePath(`/media/${mediaItemCode}`);
   revalidatePath("/author/series");
   revalidatePath("/admin/franchise-review");
@@ -66,7 +65,7 @@ export async function addAuthorSeriesMediaLinkAction(input: {
     return { error: "unavailable", linkStatus: null, success: false };
   }
 
-  revalidateSeriesMediaSurfaces(franchise.code, mediaItem.code);
+  revalidateSeriesMediaSurfaces(mediaItem.code);
   await logActivity({
     action:
       publicationStatus === "published"
@@ -119,7 +118,7 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
     return { error: "unavailable", linkStatus: null, success: false };
   }
 
-  revalidateSeriesMediaSurfaces(franchise.code, mediaItem.code);
+  revalidateSeriesMediaSurfaces(mediaItem.code);
   await logActivity({
     action: removalStatus === "requested"
       ? "franchise.media.removal-requested"

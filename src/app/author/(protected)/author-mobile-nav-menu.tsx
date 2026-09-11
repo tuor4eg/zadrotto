@@ -10,8 +10,6 @@ import { NotificationBadge } from "@/components/ui/notification-badge";
 const PRIMARY_LINKS = [
   { href: "/author", label: "Статистика" },
   { href: "/author/quizzes", label: "Викторины" },
-  { href: "/author/achievements", label: "Ачивки" },
-  { href: "/author/reviews", label: "Рецензии" },
   { href: "/author/profile", label: "Профиль" },
 ] as const;
 
@@ -83,7 +81,7 @@ export function AuthorMobileNavMenu({
           aria-label="Мобильная навигация кабинета автора"
           className="archive-paper-surface absolute right-0 top-full z-[60] mt-1 grid w-[min(20rem,calc(100vw-1.5rem))] gap-1 rounded-md border border-stone-300 bg-white p-2 shadow-lg"
         >
-          {PRIMARY_LINKS.slice(0, 3).map((item) => (
+          {PRIMARY_LINKS.slice(0, 2).map((item) => (
             <Link key={item.href} href={item.href} onClick={closeMenu} className={linkClassName}>
               {item.label}
             </Link>
@@ -108,7 +106,7 @@ export function AuthorMobileNavMenu({
             ) : null}
           </div>
 
-          {PRIMARY_LINKS.slice(3).map((item) => (
+          {PRIMARY_LINKS.slice(2).map((item) => (
             <Link key={item.href} href={item.href} onClick={closeMenu} className={linkClassName}>
               {item.label}
             </Link>

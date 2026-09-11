@@ -2,7 +2,7 @@ import Link from "next/link"
 import { Edit3, Eye, Trash2 } from "lucide-react"
 
 import { ArchiveCover } from "@/app/media-item-tile"
-import { deleteAuthorReviewDraftAction } from "@/app/author/(protected)/reviews/actions"
+import { deleteAuthorReviewDraftAction } from "@/app/reviews/actions"
 import { ConfirmAction } from "@/components/ui/confirm-action"
 import { Badge } from "@/components/ui/badge"
 import { buttonVariants } from "@/components/ui/button"

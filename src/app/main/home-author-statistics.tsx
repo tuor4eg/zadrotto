@@ -1,13 +1,20 @@
 "use client";
 
 import { CalendarRange, ChartNoAxesColumn } from "lucide-react";
-import { useRef, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
+import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from "react";
 
-import type { AuthorStatisticsRatingSummary } from "@/components/author/author-statistics";
+import { ArchiveSelect } from "@/components/ui/archive-select";
+import type { MediaTypeOption } from "@/lib/media/types";
 import { formatScore, RATING_SCORE_VALUES } from "@/lib/ratings/score";
 import { getRatingTone, RATING_BAR_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
-type ReleaseYearItem = AuthorStatisticsRatingSummary["releaseYearDistribution"][number];
+export type HomeAuthorStatisticsData = {
+  releaseYearDistribution: { count: number; year: number }[];
+  releaseYearMediaTypeDistribution: { count: number; mediaType: string; year: number }[];
+  scoreDistribution: { ratingsCount: number; score: number }[];
+};
+
+type ReleaseYearItem = HomeAuthorStatisticsData["releaseYearDistribution"][number];
 
 function DraggableTimeline({ children }: { children: ReactNode }) {
   const dragRef = useRef<{
@@ -98,7 +105,7 @@ export function getCountAxisTicks(maximumCount: number) {
 function RatingsByReleaseYearBars({
   items,
 }: {
-  items: AuthorStatisticsRatingSummary["releaseYearDistribution"];
+  items: HomeAuthorStatisticsData["releaseYearDistribution"];
 }) {
   if (items.length === 0) {
     return (
@@ -185,7 +192,7 @@ function RatingsByReleaseYearBars({
 function ScoreDistributionBars({
   items,
 }: {
-  items: AuthorStatisticsRatingSummary["scoreDistribution"];
+  items: HomeAuthorStatisticsData["scoreDistribution"];
 }) {
   const distributionByScore = new Map(items.map((item) => [item.score, item.ratingsCount]));
   const maximumCount = Math.max(1, ...items.map((item) => item.ratingsCount));
@@ -221,23 +228,51 @@ function ScoreDistributionBars({
 }
 
 export function HomeAuthorStatistics({
+  mediaTypes,
   ratingSummary,
+  title = "Мои интересы по годам",
 }: {
-  ratingSummary: AuthorStatisticsRatingSummary;
+  mediaTypes: readonly MediaTypeOption[];
+  ratingSummary: HomeAuthorStatisticsData;
+  title?: string;
 }) {
+  const [selectedMediaType, setSelectedMediaType] = useState("all");
+  const mediaTypeItems = ratingSummary.releaseYearMediaTypeDistribution;
+  const availableMediaTypeCodes = new Set(mediaTypeItems.map((item) => item.mediaType));
+  const availableMediaTypes = mediaTypes.filter((mediaType) => availableMediaTypeCodes.has(mediaType.code));
+  const mediaTypeOptions = [
+    { label: "Все типы", value: "all" },
+    ...availableMediaTypes.map((mediaType) => ({ label: mediaType.name, value: mediaType.code })),
+  ];
+  const releaseYearItems = selectedMediaType === "all"
+    ? ratingSummary.releaseYearDistribution
+    : mediaTypeItems
+      .filter((item) => item.mediaType === selectedMediaType)
+      .map(({ count, year }) => ({ count, year }));
+
   return (
     <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-label="Статистика пользователя">
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-3">
         <div className="lg:col-span-2">
-          <h3 className="mb-3 flex items-center gap-2 font-serif text-lg leading-none text-stone-900">
-            <CalendarRange className="size-4 text-red-950/65" aria-hidden="true" />
-            Мои интересы по годам
-          </h3>
-          <RatingsByReleaseYearBars items={ratingSummary.releaseYearDistribution} />
+          <div className="mb-3 flex items-center justify-between gap-3">
+            <h3 className="flex min-w-0 items-center gap-2 font-serif text-2xl leading-none text-stone-900">
+              <CalendarRange className="size-5 shrink-0 text-red-950/65" aria-hidden="true" />
+              {title}
+            </h3>
+            <ArchiveSelect
+              ariaLabel="Тип медиа"
+              className="w-32 shrink-0 sm:w-44"
+              onChange={setSelectedMediaType}
+              options={mediaTypeOptions}
+              triggerClassName="w-full min-w-0"
+              value={selectedMediaType}
+            />
+          </div>
+          <RatingsByReleaseYearBars items={releaseYearItems} />
         </div>
         <div className="border-t border-stone-400/25 pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <h3 className="mb-3 flex items-center gap-2 font-serif text-lg leading-none text-stone-900">
-            <ChartNoAxesColumn className="size-4 text-red-950/65" aria-hidden="true" />
+          <h3 className="mb-3 flex items-center gap-2 font-serif text-2xl leading-none text-stone-900">
+            <ChartNoAxesColumn className="size-5 text-red-950/65" aria-hidden="true" />
             Распределение оценок
           </h3>
           <ScoreDistributionBars items={ratingSummary.scoreDistribution} />

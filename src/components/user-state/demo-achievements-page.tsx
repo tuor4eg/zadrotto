@@ -9,7 +9,7 @@ import {
   PublicSiteHeader,
   type PublicSiteHeaderProps,
 } from "@/components/archive/public-site-header"
-import { getAchievementShowcaseStats, getNearestAchievementGoal } from "@/lib/achievements/showcase"
+import { getAchievementShowcaseStats } from "@/lib/achievements/showcase"
 import {
   buildDemoAchievementShowcaseItems,
   type DemoAchievementCatalogItem,
@@ -85,7 +85,6 @@ export function DemoAchievementsPage({
   }, [isDemo, profile, state])
 
   const stats = getAchievementShowcaseStats(items)
-  const nearestGoal = getNearestAchievementGoal(items)
 
   if (!ready || !isDemo) {
     return (
@@ -136,7 +135,6 @@ export function DemoAchievementsPage({
             completedCount={stats.completedCount}
             earnedCount={stats.earnedCount}
             inProgressCount={stats.inProgressCount}
-            nearestGoal={nearestGoal}
           />
         </section>
         {state == null ? (

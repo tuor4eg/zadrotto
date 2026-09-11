@@ -9,13 +9,19 @@ import {
 
 const page = readFileSync("src/app/page.tsx", "utf8");
 const widget = readFileSync("src/app/main/home-author-statistics.tsx", "utf8");
+const widgetWithDemo = readFileSync(
+  "src/components/user-state/home-author-statistics-with-demo.tsx",
+  "utf8",
+);
 const existingStatistics = readFileSync("src/components/author/author-statistics.tsx", "utf8");
 
 describe("main page author statistics", () => {
-  it("renders a full-width statistics widget only from authenticated server data", () => {
+  it("renders a full-width statistics widget through the user-state wrapper", () => {
     assert.match(page, /archive-panel flex items-center overflow-hidden px-4 py-6 sm:px-5 lg:py-7/);
-    assert.match(page, /ratingSummary,[\s\S]*<HomeAuthorStatistics ratingSummary=\{authorHeroStatistics\.ratingSummary\} \/>/);
-    assert.match(page, /\{authorHeroStatistics \? \([\s\S]*<HomeAuthorStatistics[\s\S]*\) : null\}/);
+    assert.match(page, /<HomeAuthorStatisticsWithDemo[\s\S]*mediaTypes=\{mediaTypes\.filter\(\(mediaType\) => mediaType\.isEnabled\)\}[\s\S]*serverSummary=\{authorHeroStatistics\?\.ratingSummary \?\? null\}/);
+    assert.match(widgetWithDemo, /serverSummary \?\? demoSummary/);
+    assert.match(widgetWithDemo, /useDemoProfile\(\)/);
+    assert.match(widgetWithDemo, /fetch\("\/api\/demo-home-statistics"/);
     assert.doesNotMatch(widget, /DemoHomeIntro|demo-profile|localStorage/);
     assert.match(widget, /archive-paper archive-panel overflow-hidden/);
     assert.match(widget, /grid gap-5 lg:grid-cols-3 lg:gap-3/);
@@ -40,6 +46,9 @@ describe("main page author statistics", () => {
     assert.match(widget, /Распределение оценок/);
     assert.match(widget, /<CalendarRange className=/);
     assert.match(widget, /<ChartNoAxesColumn className=/);
+    assert.match(widget, /<ArchiveSelect[\s\S]*ariaLabel="Тип медиа"[\s\S]*options=\{mediaTypeOptions\}/);
+    assert.match(widget, /releaseYearMediaTypeDistribution/);
+    assert.match(widget, /onChange=\{setSelectedMediaType\}/);
     assert.match(existingStatistics, /AuthorMediaInterestsPanel/);
     assert.match(existingStatistics, /Распределение оценок/);
   });

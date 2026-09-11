@@ -107,7 +107,7 @@ function FranchiseRelatedTitle({
   return (
     <>
       Еще из серии{" "}
-      <Link href={`/series/${franchise.code}`} className={linkClassName}>
+      <Link href={`/archive?series=${encodeURIComponent(franchise.code)}`} className={linkClassName}>
         {franchise.title}
       </Link>
     </>

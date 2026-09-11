@@ -12,7 +12,10 @@ const TILE_GRID = {
   archive: { gap: ARCHIVE_LIST_TILE_GAP, width: ARCHIVE_LIST_TARGET_TILE_WIDTH },
   compact: { gap: 12, width: 72 },
   top: { gap: 12, width: 140 },
+  topCompact: { gap: 12, width: 112 },
 } as const;
+
+export type ResponsiveTileGridVariant = keyof typeof TILE_GRID;
 
 export type ResponsiveTileDescriptor = {
   currentAuthorScore?: number | null;
@@ -25,12 +28,12 @@ export type ResponsiveTileDescriptor = {
 type ResponsiveTileGridProps = {
   initialColumnCount?: number;
   items: ResponsiveTileDescriptor[];
-  variant?: keyof typeof TILE_GRID;
+  variant?: ResponsiveTileGridVariant;
 };
 
 export function getTileGridColumnCount(
   width: number,
-  variant: keyof typeof TILE_GRID,
+  variant: ResponsiveTileGridVariant,
 ) {
   const { gap, width: cardWidth } = TILE_GRID[variant];
 
@@ -39,7 +42,7 @@ export function getTileGridColumnCount(
 
 export function getInitialTileGridColumnCount(
   initialColumnCount: number | undefined,
-  variant: keyof typeof TILE_GRID,
+  variant: ResponsiveTileGridVariant,
 ) {
   const defaultColumnCount = variant === "top" ? 7 : 6;
 

@@ -62,7 +62,7 @@ describe("simple catalog layout", () => {
     assert.match(tabsSource, /archive-paper-surface/);
   });
 
-  it("continues the catalog paper through the active folder tab", () => {
+  it("highlights the active tab by color without a raised top label", () => {
     assert.match(
       globalsSource,
       /\.archive-media-type-tab-active\s*\{[\s\S]*background: transparent;/,
@@ -70,10 +70,6 @@ describe("simple catalog layout", () => {
     assert.match(
       globalsSource,
       /\.archive-media-type-tab::before\s*\{[\s\S]*calc\(100% - var\(--archive-media-type-tab-shape-size\)\)[\s\S]*100% var\(--archive-media-type-tab-shape-size\)/,
-    );
-    assert.match(
-      globalsSource,
-      /\.archive-media-type-tab-active::before\s*\{[\s\S]*56% 0,[\s\S]*calc\(56% \+ var\(--archive-media-type-tab-shape-size\)\) var\(--archive-media-type-tab-shape-size\),[\s\S]*100% var\(--archive-media-type-tab-double-shape-size\)/,
     );
     assert.match(globalsSource, /\.archive-media-type-tab\s*\{[\s\S]*0\.833333rem/);
     assert.match(globalsSource, /@media \(min-width: 1024px\)[\s\S]*\.archive-media-type-tab\s*\{[\s\S]*1rem/);
@@ -83,7 +79,8 @@ describe("simple catalog layout", () => {
     );
     assert.doesNotMatch(globalsSource, /polygon\(\s*round/);
     assert.match(tabsSource, /inline-flex shrink-0 items-end justify-center/);
-    assert.match(tabsSource, /archive-media-type-tab-active[^"]*pb-2\.5[^"]*lg:pb-3/);
+    assert.match(tabsSource, /archive-media-type-tab-active h-10[^"]*lg:h-12/);
+    assert.match(tabsSource, /min-h-10[^"]*lg:min-h-12/);
     assert.match(
       globalsSource,
       /\.archive-media-type-tab-inactive::before\s*\{[\s\S]*background-color: color-mix[\s\S]*inset 0 -6px 10px -10px[^;]*\/ 34%/,
@@ -100,15 +97,13 @@ describe("simple catalog layout", () => {
       globalsSource.match(/\.archive-media-type-tab-active::before\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
       /inset 0 7px|drop-shadow/,
     );
-    assert.match(
-      globalsSource,
-      /\.archive-media-type-tab-active-shadow\s*\{[\s\S]*clip-path: inset\(-20px -20px 1px -20px\);[\s\S]*filter: drop-shadow\(0 -6px 9px rgb\(var\(--archive-shadow\) \/ 34%\)\)/,
+    assert.match(globalsSource, /archive-media-type-tab-active-shadow[\s\S]*drop-shadow\(4px 2px 5px/);
+    assert.match(globalsSource, /archive-media-type-tab-active-shadow > span[\s\S]*border-top-left-radius: 6px/);
+    assert.match(tabsSource, /archive-media-type-tab-active-shadow/);
+    assert.doesNotMatch(
+      globalsSource.match(/\.archive-media-type-tab-active::before\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
+      /56%/,
     );
-    assert.match(
-      globalsSource,
-      /\.archive-media-type-tab-active-shadow > span\s*\{[\s\S]*clip-path: polygon\([\s\S]*56% 0,[\s\S]*100% var\(--archive-media-type-tab-double-shape-size\)/,
-    );
-    assert.match(tabsSource, /className="archive-media-type-tab-active-shadow"/);
     assert.match(tabsSource, /isSelected[\s\S]*archive-media-type-tab-active/);
     assert.match(
       tabsSource,
@@ -144,6 +139,7 @@ describe("simple catalog layout", () => {
     assert.match(previewSource, /<MediaItemRatingDialog/);
     assert.match(previewSource, /<AuthorMediaStatusControls/);
     assert.match(previewSource, /Открыть досье/);
+    assert.match(previewSource, /h-14 min-w-0 flex-1 px-4 text-base[^"\n]*\[&_svg\]:size-6/);
     assert.match(previewSource, /variant="preview"/);
     assert.match(previewSource, /mt-auto flex justify-end pt-4/);
     assert.match(previewSource, /<MediaItemFranchiseLinks/);
@@ -153,6 +149,8 @@ describe("simple catalog layout", () => {
   });
 
   it("uses a plain local filter popup", () => {
+    assert.match(controlsSource, /relative min-w-0 w-full sm:w-56[^"\n]*lg:w-60 lg:flex-none/);
+    assert.match(controlsSource, /lg:flex lg:flex-nowrap lg:justify-end/);
     assert.match(controlsSource, /role="menu"[\s\S]*bg-stone-50/);
     assert.doesNotMatch(
       controlsSource.match(/id=\{filtersMenuId\}[\s\S]*?\n\s*>/)?.[0] ?? "",

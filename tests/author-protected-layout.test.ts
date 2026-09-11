@@ -57,10 +57,17 @@ describe("protected author layout", () => {
     assert.match(header, /className="hidden flex-wrap[^"]*md:flex/);
     assert.match(header, /<AuthorMobileNavMenu[\s\S]*incomingFriendRequestCount=\{incomingFriendRequestCount\}/);
     assert.match(header, /className="flex items-center justify-end[^"]*md:hidden"/);
+    assert.doesNotMatch(header, /<NotificationBell/);
     assert.match(header, /style=\{\{ overflow: "visible" \}\}/);
-    assert.match(header, /href="\/author"[\s\S]*?>\s*Статистика\s*<\/Link>[\s\S]*?href="\/author\/quizzes"[\s\S]*?>\s*Викторины\s*<\/Link>[\s\S]*?href="\/author\/achievements"[\s\S]*?>\s*Ачивки\s*<\/Link>[\s\S]*?<AuthorProposalsMenu \/>/);
+    assert.match(header, /href="\/author"[\s\S]*?>\s*Статистика\s*<\/Link>[\s\S]*?href="\/author\/quizzes"[\s\S]*?>\s*Викторины\s*<\/Link>[\s\S]*?<AuthorProposalsMenu \/>/);
+    assert.doesNotMatch(header, /href="\/author\/(?:achievements|reviews)"/);
     assert.match(header, /href="\/author\/profile"/);
     assert.match(header, /action=\{logoutAuthor\}/);
+  });
+
+  it("renders the shared public navigation above the cabinet header", () => {
+    assert.match(authorLayoutSource, /<PublicSiteHeader \{\.\.\.headerState\.headerProps\} \/>[\s\S]*<header/);
+    assert.match(authorLayoutSource, /getPublicSiteHeaderState\(author\)/);
   });
 
   it("uses a hamburger menu for the complete mobile navigation", () => {
@@ -75,6 +82,7 @@ describe("protected author layout", () => {
     assert.match(mobileMenuSource, /href="\/author\/friends"[\s\S]*NotificationBadge/);
     assert.match(mobileMenuSource, /event\.key === "Escape"[\s\S]*triggerRef\.current\?\.focus\(\)/);
     assert.match(mobileMenuSource, /document\.addEventListener\("pointerdown"/);
+    assert.doesNotMatch(mobileMenuSource, /\/author\/(?:achievements|reviews)/);
   });
 
   it("uses a proposals disclosure without duplicating its links in the layout", () => {

@@ -193,7 +193,6 @@ describe("media type visibility query boundaries", () => {
     for (const functionName of [
       "searchPublishedMediaItemsForFranchise",
       "getPublishedFranchiseTree",
-      "getMediaItemsByFranchiseId",
     ]) {
       assert.match(
         getExportedFunctionSource(franchisesQuery, functionName),
@@ -240,7 +239,7 @@ describe("media type visibility query boundaries", () => {
       "src/app/covers/[...objectKey]/route.ts",
       "src/app/ratings/actions.ts",
       "src/app/media/franchise-actions.ts",
-      "src/app/series/[code]/actions.ts",
+      "src/app/archive/archive-series-actions.ts",
     ]) {
       assert.match(read(path), /getAccessibleMediaTypeCodes/);
     }
@@ -271,7 +270,6 @@ describe("media type visibility query boundaries", () => {
     for (const [source, functionName] of [
       [mediaItemsQuery, "getAuthorMediaItems"],
       [mediaItemsQuery, "getAuthorPublishedMediaItemCount"],
-      [reviewsQuery, "getAuthorReviews"],
       [reviewsQuery, "getAuthorReviewSummary"],
       [reviewsQuery, "searchPublishedMediaItemsForReview"],
       [ratingsQuery, "getAuthorRatingSummary"],
@@ -301,9 +299,9 @@ describe("media type visibility query boundaries", () => {
     }
 
     for (const path of [
-      "src/app/author/(protected)/reviews/new/page.tsx",
-      "src/app/author/(protected)/reviews/[id]/edit/page.tsx",
-      "src/app/author/(protected)/reviews/actions.ts",
+      "src/app/reviews/new/page.tsx",
+      "src/app/reviews/[id]/edit/page.tsx",
+      "src/app/reviews/actions.ts",
     ]) {
       assert.match(read(path), /getAccessibleMediaTypeCodes\(author\.id\)/);
     }

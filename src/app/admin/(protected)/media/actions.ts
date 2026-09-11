@@ -185,7 +185,6 @@ function revalidateMediaSurfaces(input: {
   revalidatePath(`/media/${input.code}`);
 
   for (const franchise of input.franchises) {
-    revalidatePath(`/series/${franchise.code}`);
     revalidatePath(`/admin/series/${franchise.id}/edit`);
   }
 }
@@ -371,7 +370,6 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     for (const franchise of existingItem.franchises) {
       if (!nextIdentity.franchises.some((nextFranchise) => nextFranchise.id === franchise.id)) {
         revalidatePath(`/admin/series/${franchise.id}/edit`);
-        revalidatePath(`/series/${franchise.code}`);
       }
     }
   }

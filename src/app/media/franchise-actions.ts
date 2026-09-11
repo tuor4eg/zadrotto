@@ -61,7 +61,7 @@ export async function removeAuthorMediaItemFranchiseAction(input: {
     });
     if (!result) return { error: "invalid", status: null };
     revalidatePath(`/media/${mediaItem.code}`);
-    revalidatePath(`/series/${franchise.code}`);
+    revalidatePath("/archive");
     revalidatePath("/admin/franchise-review");
     revalidatePath("/", "layout");
     await logActivity({

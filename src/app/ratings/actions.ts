@@ -30,7 +30,6 @@ function getFormString(formData: FormData, key: string) {
 function revalidateRatingPaths(input: {
   mediaItemId: number;
   mediaItemCode: string;
-  franchiseCodes: string[];
 }) {
   revalidatePath("/");
   revalidatePath("/archive");
@@ -38,9 +37,6 @@ function revalidateRatingPaths(input: {
   revalidatePath(`/author/media/${input.mediaItemId}`);
   revalidatePath("/author/media");
 
-  for (const franchiseCode of input.franchiseCodes) {
-    revalidatePath(`/series/${franchiseCode}`);
-  }
 }
 
 export async function saveAuthorRatingAction(
@@ -74,8 +70,6 @@ export async function saveAuthorRatingAction(
   if (!mediaItem) {
     return { error: "Запись архива не найдена." };
   }
-  const relatedFranchiseCodes = mediaItem.franchises.map((franchise) => franchise.code);
-
   if (intent === "delete") {
     await deleteAuthorRating({
       mediaItemId: mediaItem.id,
@@ -85,7 +79,6 @@ export async function saveAuthorRatingAction(
     revalidateRatingPaths({
       mediaItemId: mediaItem.id,
       mediaItemCode: mediaItem.code,
-      franchiseCodes: relatedFranchiseCodes,
     });
 
     return { error: null };
@@ -138,7 +131,6 @@ export async function saveAuthorRatingAction(
   revalidateRatingPaths({
     mediaItemId: mediaItem.id,
     mediaItemCode: mediaItem.code,
-    franchiseCodes: relatedFranchiseCodes,
   });
 
   return { error: null };

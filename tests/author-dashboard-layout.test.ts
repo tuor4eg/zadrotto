@@ -31,24 +31,14 @@ function getSections() {
 
 describe("author dashboard layout", () => {
   it("groups analytics and statistics into one responsive three-card grid", () => {
-    const [analyticsSection] = getSections();
-
-    assert.ok(analyticsSection, "analytics section should be present");
     assert.match(source, /author-dashboard flex flex-col gap-3/);
     assert.match(
-      analyticsSection[1],
-      /grid items-stretch gap-3 lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)_minmax\(14rem,0\.65fr\)\]/,
+      source,
+      /showAnalytics \? <section className=\{`grid items-stretch gap-3 \$\{showStatistics \? "lg:grid-cols-\[minmax\(0,1fr\)_minmax\(0,1fr\)_minmax\(14rem,0\.65fr\)\]"/,
     );
     assert.match(interestsPanelSource, /Мои интересы/);
-    assert.match(analyticsSection[2], /AuthorMediaInterestsPanel[\s\S]*Распределение оценок[\s\S]*Статистика/);
-    assert.equal(
-      analyticsSection[2].match(
-        /<Card className="archive-paper archive-panel h-full">/g,
-      )?.length,
-      3,
-    );
+    assert.match(source, /AuthorMediaInterestsPanel[\s\S]*Распределение оценок[\s\S]*Статистика/);
     assert.match(source, /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}[\s\S]*yearlyItems=\{ratingSummary\.releaseYearDistribution\}/);
-    assert.doesNotMatch(analyticsSection[1], /(?:sm|md):grid-cols/);
   });
 
   it("keeps the existing metrics and quiz wins in one divided statistics list", () => {
@@ -137,7 +127,7 @@ describe("author dashboard layout", () => {
 
   it("keeps the latest ratings and reviews as two independent data panels", () => {
     const sections = getSections();
-    const activitySection = sections[1];
+    const activitySection = sections[0];
 
     assert.ok(activitySection, "latest activity section should be present");
     assert.match(activitySection[1], /grid gap-3 lg:grid-cols-2/);
@@ -149,11 +139,11 @@ describe("author dashboard layout", () => {
     );
     assert.match(
       activitySection[2],
-      /Последние оценки[\s\S]*href=\{ratingsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestRatingTiles\}/,
+      /Последние оценки[\s\S]*href=\{ratingsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestRatingTiles\}/,
     );
     assert.match(
       activitySection[2],
-      /Последние рецензии[\s\S]*href=\{reviewsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{3\}[\s\S]*items=\{latestReviewTiles\}/,
+      /Последние рецензии[\s\S]*href=\{reviewsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestReviewTiles\}/,
     );
     assert.equal(activitySection[2].match(/Смотреть всё →/g)?.length, 2);
   });

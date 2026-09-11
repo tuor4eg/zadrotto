@@ -5,7 +5,7 @@ import { AuthorAchievementHeroStats } from "@/components/achievements/author-ach
 import { PublicSiteHeader } from "@/components/archive/public-site-header"
 import { DemoAchievementsPage } from "@/components/user-state/demo-achievements-page"
 import { getAchievementShowcase } from "@/db/queries/achievements"
-import { getAchievementShowcaseStats, getNearestAchievementGoal } from "@/lib/achievements/showcase"
+import { getAchievementShowcaseStats } from "@/lib/achievements/showcase"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
 
 export const metadata: Metadata = {
@@ -25,7 +25,6 @@ export default async function AchievementsPage() {
 
   const items = await getAchievementShowcase(author.id)
   const stats = getAchievementShowcaseStats(items)
-  const nearestGoal = getNearestAchievementGoal(items)
 
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -66,7 +65,6 @@ export default async function AchievementsPage() {
             completedCount={stats.completedCount}
             earnedCount={stats.earnedCount}
             inProgressCount={stats.inProgressCount}
-            nearestGoal={nearestGoal}
           />
         </section>
         <AuthorAchievementGallery items={items} />

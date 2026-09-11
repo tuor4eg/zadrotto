@@ -11,7 +11,6 @@ const actionSource = readFileSync(
   "utf8",
 );
 const archiveToastsSource = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");
-const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const homePageSource = readFileSync("src/app/archive/page.tsx", "utf8");
 const mediaItemFormSource = readFileSync(
   "src/app/author/(protected)/media/media-item-form.tsx",
@@ -52,15 +51,14 @@ describe("archive author media suggestion placement", () => {
     assert.match(mediaItemFormSource, /Пожалуйста, не закрывайте страницу\./);
   });
 
-  it("mounts the shared suggestion layer on the catalog and franchise pages", () => {
+  it("mounts the shared suggestion layer once in the archive", () => {
     assert.deepEqual(findSuggestionMountFiles("src/app").sort(), [
       "src/app/archive/page.tsx",
-      "src/app/series/[code]/page.tsx",
     ]);
     assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion/);
     assert.match(homePageSource, /mediaTypeFilter=\{mediaTypeFilter\}/);
     assert.match(homePageSource, /searchQuery=\{searchQuery\}/);
-    assert.match(franchisePageSource, /defaultFranchiseIds=\{\[franchise\.id\]\}/);
+    assert.match(homePageSource, /defaultFranchiseIds=\{selectedSeries \? \[selectedSeries\.id\] : \[\]\}/);
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);
   });
 
@@ -113,6 +111,10 @@ describe("archive author media suggestion placement", () => {
       /mediaTypesByCount = authorMediaSuggestionData[\s\S]*sortMediaTypesByCount\(mediaTypes, authorMediaSuggestionData\.mediaTypeCounts\)/,
     );
     assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion[\s\S]*mediaTypes=\{mediaTypesByCount\}/);
+    assert.match(
+      homePageSource,
+      /defaultFranchiseIds=\{selectedSeries \? \[selectedSeries\.id\] : \[\]\}/,
+    );
     assert.match(homePageSource, /getPublishedMediaTypeCounts\(\)/);
     assert.match(
       homePageSource,
@@ -120,8 +122,6 @@ describe("archive author media suggestion placement", () => {
     );
     assert.match(authorCreatePageSource, /getPublishedMediaTypeCounts\(\)/);
     assert.match(authorCreatePageSource, /sortMediaTypesByCount\(effectiveMediaTypes, mediaTypeCounts\)/);
-    assert.match(franchisePageSource, /getPublishedMediaTypeCounts\(\)/);
-    assert.match(franchisePageSource, /sortMediaTypesByCount\(mediaTypes, authorMediaSuggestionData\.mediaTypeCounts\)/);
   });
 
   it("shows carriers only for games and selects PC by default", () => {
@@ -147,12 +147,12 @@ describe("archive author media suggestion placement", () => {
     assert.match(suggestionSource, /nextSearchParams\.delete\("suggestedItemCode"\)/);
     assert.match(suggestionSource, /nextSearchParams\.delete\("suggestedItemId"\)/);
 
-    assert.match(franchisePageSource, /query\.suggestionError/);
-    assert.match(franchisePageSource, /query\.suggested === "created"/);
-    assert.match(franchisePageSource, /query\.suggested === "submitted"/);
-    assert.match(franchisePageSource, /query\.suggested === "published"/);
+    assert.match(homePageSource, /params\.suggestionError/);
+    assert.match(homePageSource, /params\.suggested === "created"/);
+    assert.match(homePageSource, /params\.suggested === "submitted"/);
+    assert.match(homePageSource, /params\.suggested === "published"/);
     assert.match(
-      franchisePageSource,
+      homePageSource,
       /"suggestedItemCode",[\s\S]*"suggestedItemId",[\s\S]*"suggestionError",/,
     );
   });

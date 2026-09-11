@@ -27,7 +27,7 @@ const registrationTimestamp = readFileSync(
 );
 const profileActions = readFileSync("src/app/author/(protected)/profile/actions.ts", "utf8");
 const onboardingForm = readFileSync("src/app/author/(protected)/profile/author-onboarding-form.tsx", "utf8");
-const reviewForm = readFileSync("src/app/author/(protected)/reviews/review-form.tsx", "utf8");
+const reviewForm = readFileSync("src/app/reviews/review-form.tsx", "utf8");
 const mediaTypeSettingsPage = readFileSync("src/app/author/(protected)/profile/interests/page.tsx", "utf8");
 const forgotActions = readFileSync("src/app/author/forgot-password/actions.ts", "utf8");
 const verifyPage = readFileSync("src/app/author/verify-email/page.tsx", "utf8");
@@ -313,9 +313,10 @@ describe("author auth persistence contracts", () => {
   });
 
   it("uses toasts for transient author cabinet feedback", () => {
-    for (const source of [profilePage, onboardingForm, reviewForm, mediaTypeSettingsPage]) {
+    for (const source of [profilePage, onboardingForm, mediaTypeSettingsPage]) {
       assert.match(source, /<AuthorToasts/);
     }
+    assert.match(reviewForm, /<ArchiveToasts/);
     assert.doesNotMatch(profilePage, /query\.verified \? <Alert|query\.updated \? <Alert/);
     assert.doesNotMatch(mediaTypeSettingsPage, /query\.(?:saved|reset|error) \? <Alert/);
     assert.doesNotMatch(reviewForm, /state\.error \? <Alert/);

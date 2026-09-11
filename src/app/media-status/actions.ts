@@ -60,9 +60,5 @@ export async function toggleAuthorMediaStatusAction(
   revalidatePath(`/media/${mediaItem.code}`);
   revalidatePath(`/author/media/${mediaItem.id}`);
   revalidatePath("/author/media");
-  for (const franchise of mediaItem.franchises) {
-    revalidatePath(`/series/${franchise.code}`);
-  }
-
   return { error: null };
 }

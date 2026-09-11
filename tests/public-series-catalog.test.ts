@@ -6,8 +6,6 @@ const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const catalogPageSource = readFileSync("src/app/series/page.tsx", "utf8");
 const catalogSource = readFileSync("src/app/series/series-catalog.tsx", "utf8");
 const searchSource = readFileSync("src/app/series/series-search.tsx", "utf8");
-const seriesPageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
-const seriesHeaderSource = readFileSync("src/app/series/[code]/series-page-header.tsx", "utf8");
 const paginationSource = readFileSync("src/components/pagination-nav.tsx", "utf8");
 
 function getFunctionSource(name: string, nextName: string) {
@@ -73,7 +71,7 @@ describe("public series catalog UI", () => {
       /getEnabledMediaTypeCodes\(headerState\.author\?\.id\)[\s\S]*getPublishedFranchisesPage\(\{[\s\S]*enabledMediaTypeCodes,[\s\S]*page: parsePage\(params\.page\),[\s\S]*pageSize,[\s\S]*searchQuery/,
     );
     assert.match(catalogPageSource, /seriesPage\.items\.length === 0[\s\S]*По вашему запросу серии не найдены\.[\s\S]*Пока в архиве нет серий\./);
-    assert.match(catalogSource, /href=\{`\/series\/\$\{series\.code\}`\}/);
+    assert.match(catalogSource, /href=\{`\/archive\?series=\$\{encodeURIComponent\(series\.code\)\}`\}/);
     assert.match(catalogSource, /<SeriesCountBadge count=\{series\.mediaItemsCount\}/);
     assert.match(
       catalogPageSource,
@@ -120,59 +118,4 @@ describe("public series catalog UI", () => {
     assert.match(searchSource, /nextSearchParams\.set\("q", normalizedQuery\)/);
   });
 
-  it("links the series detail breadcrumb from the series catalog", () => {
-    assert.match(
-      seriesHeaderSource,
-      /href="\/series"[\s\S]*Все серии[\s\S]*aria-current="page"[\s\S]*\{franchise\.title\}/,
-    );
-    assert.doesNotMatch(seriesHeaderSource, />\s*(?:Главная|Архив)\s*</);
-    assert.doesNotMatch(catalogPageSource, /aria-label="Хлебные крошки"/);
-    assert.match(querySource, /const visitedParentIds = new Set\(\[franchise\.id\]\)/);
-    assert.match(querySource, /while \(parentId && !visitedParentIds\.has\(parentId\)\)/);
-    assert.match(seriesHeaderSource, /parentBreadcrumbs\.map\(\(parent\) => \(/);
-    assert.match(seriesHeaderSource, /href=\{`\/series\/\$\{parent\.code\}`\}/);
-    assert.match(seriesHeaderSource, /Все серии[\s\S]*parentBreadcrumbs\.map[\s\S]*aria-current/);
-    assert.match(seriesHeaderSource, /<ol className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">/);
-    assert.doesNotMatch(seriesHeaderSource, /flex-1 truncate text-stone-800/);
-  });
-
-  it("keeps record previews near their original width as the series page expands", () => {
-    assert.match(
-      seriesPageSource,
-      /xl:grid-cols-\[repeat\(auto-fill,minmax\(170px,1fr\)\)\]/,
-    );
-  });
-
-  it("shows a bounded preview of immediate child series before its media items", () => {
-    assert.match(
-      seriesPageSource,
-      /archive-panel archive-stack archive-stack-bottom relative z-10 flex min-h-0 min-w-0 flex-1/,
-    );
-    assert.doesNotMatch(seriesPageSource, /archive-stack-left relative z-10/);
-    assert.match(querySource, /export async function getPublishedFranchiseBranch\([\s\S]*enabledMediaTypeCodes/);
-    assert.match(querySource, /getPublishedFranchiseTree\("", enabledMediaTypeCodes\)/);
-    assert.match(seriesPageSource, /getPublishedFranchiseBranch\(franchise\.id, enabledMediaTypeCodes\)/);
-    assert.match(seriesPageSource, /childSeries\.length > 0/);
-    assert.match(seriesPageSource, /Серии внутри/);
-    assert.match(seriesPageSource, /<ul className="mt-3 flex min-w-0 max-w-full flex-wrap gap-1\.5/);
-    assert.match(seriesPageSource, /<li key=\{child\.id\} className="min-w-0 max-w-full">/);
-    assert.match(
-      seriesPageSource,
-      /className="inline-block max-w-full rounded-full bg-\[var\(--archive-bg-end\)\][^\"]*\[overflow-wrap:anywhere\][^\"]*hover:bg-\[var\(--archive-bg-start\)\]/,
-    );
-    assert.match(seriesPageSource, /const childSeries = franchiseBranch\?\.children \?\? \[\]/);
-    assert.match(seriesPageSource, /getChildSeriesPreview\(childSeries\)/);
-    assert.match(seriesPageSource, /childSeriesPreview\.map/);
-    assert.match(seriesPageSource, /Все \{childSeries\.length\} серий →/);
-    assert.match(seriesPageSource, /href=\{`\/series\/\$\{franchise\.code\}\/children`\}/);
-    assert.doesNotMatch(seriesPageSource, /getFranchiseDescendants/);
-    assert.match(seriesPageSource, /<Link[\s\S]*href=\{`\/series\/\$\{child\.code\}`\}[\s\S]*\{child\.title\}/);
-
-    const branchSection = seriesPageSource.indexOf("childSeries.length > 0");
-    const mediaItems = seriesPageSource.indexOf("{items.length === 0 ?");
-
-    assert.notEqual(branchSection, -1);
-    assert.notEqual(mediaItems, -1);
-    assert.ok(branchSection < mediaItems, "The series branch must precede the media list");
-  });
 });

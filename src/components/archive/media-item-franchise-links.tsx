@@ -28,7 +28,7 @@ export function MediaItemFranchiseLinks({
             {(franchise.path ?? [franchise]).map((part, index) => (
               <Fragment key={part.id}>
                 {index > 0 ? <span aria-hidden="true">/</span> : null}
-                <Link href={`/series/${part.code}`} className={className}>
+                <Link href={`/archive?series=${encodeURIComponent(part.code)}`} className={className}>
                   {part.title}
                 </Link>
               </Fragment>

@@ -94,7 +94,7 @@ export async function RandomFranchiseSection({
         >
           <span className="shrink-0">Случайная серия</span>
           <Link
-            href={`/series/${preview.franchise.code}`}
+            href={`/archive?series=${encodeURIComponent(preview.franchise.code)}`}
             className="min-w-0 truncate hover:text-red-950"
           >
             {preview.franchise.title}

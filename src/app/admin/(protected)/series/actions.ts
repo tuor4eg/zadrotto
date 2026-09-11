@@ -386,12 +386,11 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${mediaItemId.value}/edit`);
   revalidatePath(`/admin/series/${franchiseId.value}/edit`);
-  revalidatePath(`/series/${franchise.code}`);
+  revalidatePath("/archive");
   revalidatePath(`/media/${item.code}`);
 
   for (const existingFranchise of itemBeforeUpdate.franchises) {
     revalidatePath(`/admin/series/${existingFranchise.id}/edit`);
-    revalidatePath(`/series/${existingFranchise.code}`);
   }
 
   await logActivity({
@@ -445,7 +444,7 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
   revalidatePath("/admin/media");
   revalidatePath(`/admin/media/${mediaItemId.value}/edit`);
   revalidatePath(`/admin/series/${franchiseId.value}/edit`);
-  revalidatePath(`/series/${franchise.code}`);
+  revalidatePath("/archive");
   revalidatePath(`/media/${item.code}`);
 
   await logActivity({

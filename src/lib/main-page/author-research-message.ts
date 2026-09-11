@@ -86,7 +86,7 @@ function getEarlyCandidates(input: AuthorResearchMessageInput): MessageCandidate
   ) {
     candidates.push({
       body: `В серии «${activeSeries.title}» тебе знакомо ${input.digitalProfile.seriesRated} из ${input.digitalProfile.seriesTotal} записей. Можно продолжить с уже намеченного маршрута.`,
-      cta: { href: `/series/${activeSeries.code}`, label: "Продолжить эту серию" },
+      cta: { href: `/archive?series=${encodeURIComponent(activeSeries.code)}`, label: "Продолжить эту серию" },
       key: "early-active-series",
       title: "Есть знакомый маршрут",
     });
@@ -95,7 +95,7 @@ function getEarlyCandidates(input: AuthorResearchMessageInput): MessageCandidate
   if (input.reviewCount > 0) {
     candidates.push({
       body: `В твоём архиве уже ${formatCount(input.reviewCount, { one: "опубликованная рецензия", few: "опубликованные рецензии", many: "опубликованных рецензий" })}. Оценки отмечают впечатления, а тексты сохраняют, почему они такими стали.`,
-      cta: { href: "/author/reviews", label: "Открыть мои рецензии" },
+      cta: { href: "/reviews?view=mine", label: "Открыть мои рецензии" },
       key: "early-reviews",
       title: "Появились первые заметки",
     });
@@ -120,7 +120,7 @@ function getMatureCandidates(input: AuthorResearchMessageInput): MessageCandidat
   if (profile.strongestSeries && profile.strongestSeriesCount > 0) {
     candidates.push({
       body: `Серия «${profile.strongestSeries.title}» встречается в твоём архиве особенно часто: знакомы уже ${formatCount(profile.strongestSeriesCount, { one: "запись", few: "записи", many: "записей" })}.`,
-      cta: { href: `/series/${profile.strongestSeries.code}`, label: "Открыть эту серию" },
+      cta: { href: `/archive?series=${encodeURIComponent(profile.strongestSeries.code)}`, label: "Открыть эту серию" },
       key: "mature-strongest-series",
       title: "У архива появились ориентиры",
     });
@@ -141,7 +141,7 @@ function getMatureCandidates(input: AuthorResearchMessageInput): MessageCandidat
   if (profile.activeSeries && profile.seriesRated > 0 && profile.seriesTotal > profile.seriesRated) {
     candidates.push({
       body: `В серии «${profile.activeSeries.title}» тебе знакомо ${profile.seriesRated} из ${profile.seriesTotal} записей. До завершённой картины осталось совсем немного — или целая новая ветка.`,
-      cta: { href: `/series/${profile.activeSeries.code}`, label: "Продолжить эту серию" },
+      cta: { href: `/archive?series=${encodeURIComponent(profile.activeSeries.code)}`, label: "Продолжить эту серию" },
       key: "mature-active-series",
       title: "Одна серия ещё зовёт",
     });

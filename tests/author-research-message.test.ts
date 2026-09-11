@@ -58,7 +58,7 @@ describe("author research message", () => {
 
     assert.ok(messages.every((message) => message.maturity === "mature"));
     assert.ok(messages.every((message) => message.key.startsWith("mature-")));
-    assert.ok(messages.some((message) => message.cta.href === "/series/firefly"));
+    assert.ok(messages.some((message) => message.cta.href === "/archive?series=firefly"));
     assert.ok(messages.some((message) => message.cta.href === "/archive?type=film"));
   });
 

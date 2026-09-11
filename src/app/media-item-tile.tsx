@@ -50,6 +50,11 @@ type MediaItemTileProps = {
   mediaTypes?: readonly MediaTypeOption[];
   onSelect?: () => void;
   ratingDisplay?: "default" | "author-only";
+  profileRating?: {
+    comparison: "average" | "mine";
+    score: number;
+    viewerScore: number | null;
+  };
   selected?: boolean;
   showMediaTypeLabel?: boolean;
 };
@@ -642,6 +647,7 @@ export function MediaItemTile({
   item,
   mediaTypes = [],
   onSelect,
+  profileRating,
   ratingDisplay = "default",
   selected = false,
   showMediaTypeLabel = false,
@@ -657,6 +663,13 @@ export function MediaItemTile({
     AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(item.averageScore)];
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore ?? null)];
+  const profileRatingToneClassName =
+    AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(profileRating?.score ?? null)];
+  const comparisonScore = profileRating?.comparison === "mine"
+    ? profileRating.viewerScore
+    : item.averageScore;
+  const comparisonRatingToneClassName =
+    AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(comparisonScore)];
   const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-red-900/60 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-red-900/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900/35 ${
     selected ? "border-red-900/70" : "border-stone-300/80"
   }`;
@@ -689,7 +702,21 @@ export function MediaItemTile({
           {item.title}
         </span>
       </span>
-      {shouldShowRating ? <span
+      {profileRating ? (
+        <span
+          aria-label={`Оценка пользователя ${formatScore(profileRating.score)}, ${profileRating.comparison === "mine" ? "моя оценка" : "средняя оценка"} ${formatScore(comparisonScore)}`}
+          className={`absolute right-2 top-2 inline-flex h-7 items-center justify-center gap-1 rounded-full border pl-2 pr-1 text-center shadow-sm ${comparisonRatingToneClassName}`}
+        >
+          <span className="min-w-3.5 text-center font-mono text-xs leading-none tabular-nums">
+            {formatScore(comparisonScore)}
+          </span>
+          <span className={`grid size-6 place-items-center rounded-full border text-center shadow-sm ${profileRatingToneClassName}`}>
+            <span className="min-w-3.5 text-center font-mono text-xs leading-none tabular-nums">
+              {formatScore(profileRating.score)}
+            </span>
+          </span>
+        </span>
+      ) : shouldShowRating ? <span
         className={`absolute right-2 top-2 inline-flex h-7 items-center justify-center rounded-full border text-center shadow-sm ${
           shouldShowAuthorOnly ? authorRatingToneClassName : averageRatingToneClassName
         } ${

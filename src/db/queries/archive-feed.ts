@@ -153,7 +153,7 @@ export async function getLatestArchiveFeed(
     })),
     ...seriesRows.map((item): ArchiveFeedItem => ({
       createdAt: item.createdAt,
-      href: `/series/${item.code}`,
+      href: `/archive?series=${encodeURIComponent(item.code)}`,
       imageUrl: seriesCoverById.get(item.id) ?? null,
       key: `series-${item.code}`,
       kind: "series",

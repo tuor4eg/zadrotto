@@ -16,10 +16,13 @@ describe("main page latest ratings", () => {
   });
 
   it("renders the latest rating as current activity and removes user-facing history", () => {
-    assert.match(page, /grid grid-rows-\[minmax\(0,1fr\)_auto\]/);
     assert.match(page, /latestRating: ratingSummary\.latestRatings\[0\] \?\? null/);
     assert.match(page, /getMediaItemTilesByIds\(\[authorHeroStatistics\.latestRating\.mediaItemId\], author\.id\)/);
     assert.match(page, /Последняя оценка/);
+    assert.match(page, /grid grid-rows-\[auto_minmax\(0,1fr\)\]/);
+    assert.match(page, /latestAchievement \? "pb-5"/);
+    assert.match(page, /border-t-2 border-stone-700\/70 pt-4/);
+    assert.match(page, /aspect-square h-full max-h-20 min-h-0 shrink/);
     assert.match(page, /href=\{`\/media\/\$\{latestAcquaintance\.code\}`\}/);
     assert.doesNotMatch(page, /\/history|Недавно просмотренное|getRecentlyViewed/);
     assert.equal(existsSync("src/app/history/page.tsx"), false);

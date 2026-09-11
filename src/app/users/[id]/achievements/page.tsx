@@ -38,11 +38,11 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
   const basePath = `/users/${profile.id}`
 
   return (
-    <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
-      <div className="mx-auto w-full max-w-[1480px] space-y-3">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <PublicUserHeader active="achievements" currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={`${basePath}/achievements`} />
-        <div className="archive-paper archive-panel p-4 sm:p-5">
+        <PublicUserHeader currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={`${basePath}/achievements`} />
+        <div className="archive-paper archive-panel flex-1 p-4 sm:p-5">
           <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
         </div>
       </div>

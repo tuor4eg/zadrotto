@@ -38,7 +38,7 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
 import { ArchiveFeed } from "./main/archive-feed";
 import { ArchiveRiddle } from "./main/archive-riddle";
-import { HomeAuthorStatistics } from "./main/home-author-statistics";
+import { HomeAuthorStatisticsWithDemo } from "@/components/user-state/home-author-statistics-with-demo";
 import {
   RandomFranchiseSection,
   RandomFranchiseSectionFallback,
@@ -394,11 +394,11 @@ export default async function MainPage() {
           </section>
           {hasLatestActivity ? (
             <aside
-              className={`archive-paper archive-panel w-full p-4 text-left text-stone-950 lg:p-5 ${latestAcquaintance && authorHeroStatistics?.latestAchievement ? "grid grid-rows-[minmax(0,1fr)_auto]" : "flex flex-col justify-center"}`}
+              className={`archive-paper archive-panel w-full p-4 text-left text-stone-950 lg:p-5 ${latestAcquaintance && authorHeroStatistics?.latestAchievement ? "grid grid-rows-[auto_minmax(0,1fr)]" : "flex flex-col justify-center"}`}
               aria-label="Последняя активность"
             >
               {latestAcquaintance ? (
-                <div className="flex w-full flex-col items-start justify-center">
+                <div className={`flex w-full flex-col items-start justify-center ${authorHeroStatistics?.latestAchievement ? "pb-5" : ""}`}>
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
                     Последняя оценка
                   </p>
@@ -423,26 +423,26 @@ export default async function MainPage() {
                 </div>
               ) : null}
               {authorHeroStatistics?.latestAchievement ? (
-                <div className={`flex w-full flex-col items-start justify-center ${latestAcquaintance ? "border-t-2 border-stone-700/70" : ""}`}>
+                <div className={`flex min-h-0 w-full flex-col items-start justify-center overflow-hidden ${latestAcquaintance ? "border-t-2 border-stone-700/70 pt-4" : ""}`}>
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
                     Новое достижение
                   </p>
-                  <div className="mt-2 flex items-center gap-4">
+                  <div className="mt-2 flex min-h-0 flex-1 items-center gap-4">
                     <Link
                       href="/achievements"
                       aria-label="Открыть мои ачивки"
-                      className="shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2"
+                      className="aspect-square h-full max-h-20 min-h-0 shrink rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2 lg:max-h-[5.5rem]"
                     >
                       {authorHeroStatistics.latestAchievement.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img
                           src={authorHeroStatistics.latestAchievement.imageUrl}
                           alt=""
-                          className="size-20 object-contain drop-shadow-lg lg:size-[5.5rem]"
+                          className="size-full object-contain drop-shadow-lg"
                         />
                       ) : (
-                        <span className="grid size-20 place-items-center rounded-full bg-amber-100/90 text-amber-900 shadow-lg lg:size-[5.5rem]">
-                          <Trophy className="size-10 lg:size-12" aria-hidden="true" />
+                        <span className="grid size-full place-items-center rounded-full bg-amber-100/90 text-amber-900 shadow-lg">
+                          <Trophy className="size-1/2" aria-hidden="true" />
                         </span>
                       )}
                     </Link>
@@ -456,9 +456,10 @@ export default async function MainPage() {
           ) : null}
         </div>
 
-        {authorHeroStatistics ? (
-          <HomeAuthorStatistics ratingSummary={authorHeroStatistics.ratingSummary} />
-        ) : null}
+        <HomeAuthorStatisticsWithDemo
+          mediaTypes={mediaTypes.filter((mediaType) => mediaType.isEnabled)}
+          serverSummary={authorHeroStatistics?.ratingSummary ?? null}
+        />
 
         <div className="grid gap-3 lg:grid-cols-3">
           <DailyRecommendation item={dailyDossier} mediaTypeName={dailyDossierMediaTypeName} />

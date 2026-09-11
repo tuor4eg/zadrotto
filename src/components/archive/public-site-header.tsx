@@ -44,7 +44,7 @@ export function PublicSiteHeader({
 
   return (
     <>
-      <div className="public-site-header z-50 w-full text-stone-100">
+      <div className="public-site-header z-[70] w-full text-stone-100">
         <header className="mx-auto flex h-14 w-full max-w-[1480px] items-center gap-2 lg:gap-4">
           <Link href="/" aria-label="Главная" className="flex shrink-0 items-center gap-2">
             <Image

@@ -32,11 +32,11 @@ export default async function AuthorPage() {
   });
   const latestReviewTiles = reviewSummary.latestReviews.flatMap((review) => {
     const item = latestMediaItemsById.get(review.mediaItemId);
-    return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/author/reviews/${review.id}/edit`, item, key: `review-${review.id}` }] : [];
+    return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/reviews/${review.id}/edit`, item, key: `review-${review.id}` }] : [];
   });
 
   return <div className="author-dashboard flex flex-col gap-3">
-    <RecentAchievementShowcase allHref="/author/achievements" items={achievementItems} />
+    <RecentAchievementShowcase allHref="/achievements" items={achievementItems} />
     <AuthorStatistics
       latestRatingTiles={latestRatingTiles}
       latestReviewTiles={latestReviewTiles}
@@ -44,7 +44,7 @@ export default async function AuthorPage() {
       ratingSummary={summary}
       ratingsHref="/archive?sort=my_rating_date&mine=rated"
       reviewCount={reviewSummary.reviewsCount}
-      reviewsHref="/author/reviews"
+      reviewsHref="/reviews?view=mine"
       contributionCount={contributionCount}
       quizWinnerCount={quizStatistics.winnerCount}
     />

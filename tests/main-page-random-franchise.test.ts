@@ -90,7 +90,7 @@ describe("main page random franchise preview", () => {
     assert.match(sectionSource, /<span className="shrink-0">Случайная серия<\/span>/)
     assert.match(
       sectionSource,
-      /<Link[\s\S]*href=\{`\/series\/\$\{preview\.franchise\.code\}`\}[\s\S]*\{preview\.franchise\.title\}/,
+      /<Link[\s\S]*href=\{`\/archive\?series=\$\{encodeURIComponent\(preview\.franchise\.code\)\}`\}[\s\S]*\{preview\.franchise\.title\}/,
     )
     assert.doesNotMatch(sectionSource, /Смотреть всё/)
     assert.match(sectionSource, /overflow-x-auto pb-1 md:hidden/)

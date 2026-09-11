@@ -6,7 +6,7 @@ import test from "node:test";
 const sourceRoot = "src";
 const nextConfigSource = readFileSync("next.config.ts", "utf8");
 const routeFiles = [
-  "src/app/series/[code]/page.tsx",
+  "src/app/series/page.tsx",
   "src/app/author/(protected)/series/page.tsx",
   "src/app/admin/(protected)/series/page.tsx",
 ];
@@ -47,4 +47,10 @@ test("legacy franchises URLs redirect to series URLs", () => {
   assert.match(nextConfigSource, /destination: "\/author\/series\/:path\*"/);
   assert.match(nextConfigSource, /source: "\/admin\/franchises\/:path\*"/);
   assert.match(nextConfigSource, /destination: "\/admin\/series\/:path\*"/);
+});
+
+test("legacy standalone series cards redirect into the archive", () => {
+  assert.match(nextConfigSource, /source: "\/series\/:code"[\s\S]*destination: "\/archive\?series=:code"/);
+  assert.equal(existsSync("src/app/series/[code]/page.tsx"), false);
+  assert.equal(existsSync("src/app/series/[code]/children/page.tsx"), false);
 });

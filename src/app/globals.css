@@ -407,19 +407,15 @@ body:has(.public-site-footer-layer) {
   background-size: 9px 9px, 13px 13px;
   -webkit-clip-path: polygon(
     0 0,
-    56% 0,
-    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    100% var(--archive-media-type-tab-double-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
   clip-path: polygon(
     0 0,
-    56% 0,
-    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    100% var(--archive-media-type-tab-double-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
@@ -432,8 +428,8 @@ body:has(.public-site-footer-layer) {
   position: absolute;
   inset: 0;
   z-index: 0;
-  clip-path: inset(-20px -20px 1px -20px);
-  filter: drop-shadow(0 -6px 9px rgb(var(--archive-shadow) / 34%));
+  clip-path: inset(-16px -16px 1px -16px);
+  filter: drop-shadow(4px 2px 5px rgb(var(--archive-shadow) / 28%));
   pointer-events: none;
 }
 
@@ -444,19 +440,15 @@ body:has(.public-site-footer-layer) {
   background: rgb(var(--archive-shadow));
   -webkit-clip-path: polygon(
     0 0,
-    56% 0,
-    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    100% var(--archive-media-type-tab-double-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
   clip-path: polygon(
     0 0,
-    56% 0,
-    calc(56% + var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    calc(100% - var(--archive-media-type-tab-shape-size)) var(--archive-media-type-tab-shape-size),
-    100% var(--archive-media-type-tab-double-shape-size),
+    calc(100% - var(--archive-media-type-tab-shape-size)) 0,
+    100% var(--archive-media-type-tab-shape-size),
     100% calc(100% + 6px),
     0 calc(100% + 6px)
   );
@@ -838,57 +830,6 @@ body:has(.public-site-footer-layer) {
   z-index: 1;
 }
 
-.archive-franchise-sticker {
-  position: relative;
-  z-index: 30;
-  width: fit-content;
-  max-width: calc(100% - 3rem);
-  margin: 1.5rem 1.5rem 0;
-  padding: 1.05rem 1.15rem 1rem;
-  border: 1px solid rgb(120 113 108 / 42%);
-  border-radius: 3px;
-  background:
-    radial-gradient(circle at 16% 18%, rgb(120 113 108 / 9%) 0 1px, transparent 1px),
-    radial-gradient(circle at 70% 55%, rgb(68 64 60 / 6%) 0 1px, transparent 1px),
-    linear-gradient(135deg, #fff4bd, #ead58b);
-  background-size: 8px 8px, 13px 13px, auto;
-  box-shadow:
-    0 14px 22px rgb(var(--archive-shadow) / 18%),
-    inset 0 0 0 1px rgb(255 255 255 / 42%);
-  transform: rotate(-0.2deg);
-}
-
-@media (min-width: 640px) {
-  .archive-franchise-sticker {
-    max-width: calc(100% - 4rem);
-    margin-top: -2.5rem;
-    margin-right: 2rem;
-    margin-bottom: 2rem;
-    margin-left: 2rem;
-    transform: translateY(32px) rotate(-0.2deg);
-  }
-}
-
-.archive-franchise-sticker::before {
-  position: absolute;
-  top: -0.85rem;
-  left: clamp(1rem, 12%, 5rem);
-  width: 7.5rem;
-  height: 1.45rem;
-  content: "";
-  border: 1px solid rgb(120 113 108 / 16%);
-  background:
-    linear-gradient(90deg, rgb(255 255 255 / 24%), transparent 32%, rgb(120 113 108 / 10%)),
-    rgb(232 220 194 / 86%);
-  box-shadow: 0 4px 8px rgb(var(--archive-shadow) / 10%);
-  transform: rotate(-1.6deg);
-}
-
-.archive-franchise-sticker > * {
-  position: relative;
-  z-index: 1;
-}
-
 .archive-scrollbar {
   scrollbar-color: rgb(var(--archive-paper-edge) / 48%) rgb(var(--archive-paper-underlay-end) / 34%);
   scrollbar-gutter: stable;
@@ -922,39 +863,6 @@ body:has(.public-site-footer-layer) {
     linear-gradient(180deg, rgb(var(--archive-paper-highlight) / 20%), transparent 45%),
     rgb(var(--archive-paper-edge) / 72%);
   background-clip: padding-box;
-}
-
-.series-media-search-scrollbar {
-  scrollbar-color: rgb(var(--archive-paper-edge) / 62%) transparent;
-  scrollbar-gutter: stable;
-  scrollbar-width: thin;
-}
-
-.series-media-search-scrollbar::-webkit-scrollbar {
-  width: 7px;
-}
-
-.series-media-search-scrollbar::-webkit-scrollbar-track {
-  border-radius: 999px;
-  background: rgb(var(--archive-paper-underlay-end) / 24%);
-}
-
-.series-media-search-scrollbar::-webkit-scrollbar-thumb {
-  border: 1px solid transparent;
-  border-radius: 999px;
-  background: rgb(var(--archive-paper-edge) / 62%);
-  background-clip: padding-box;
-}
-
-.series-media-search-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgb(var(--archive-paper-edge) / 78%);
-  background-clip: padding-box;
-}
-
-.series-media-search-scrollbar::-webkit-scrollbar-button {
-  display: none;
-  width: 0;
-  height: 0;
 }
 
 @media (max-width: 1023px) {

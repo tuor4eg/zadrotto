@@ -3,7 +3,7 @@ import { Archive, CalendarCheck, ChartNoAxesColumn, FileText, Gauge, Info, Star 
 
 import { AuthorMediaInterestsPanel } from "@/app/author/(protected)/author-media-interests-panel";
 import { AuthorStatisticList } from "@/components/author/author-statistic-list";
-import { ResponsiveTileGrid, type ResponsiveTileDescriptor } from "@/components/archive/responsive-tile-grid";
+import { ResponsiveTileGrid, type ResponsiveTileDescriptor, type ResponsiveTileGridVariant } from "@/components/archive/responsive-tile-grid";
 import { Card, CardContent } from "@/components/ui/card";
 import type { MediaTypeOption } from "@/lib/media/types";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
@@ -16,6 +16,7 @@ export type AuthorStatisticsRatingSummary = {
   distribution: { mediaType: string; ratingsCount: number }[];
   ratingsCount: number;
   releaseYearDistribution: { count: number; year: number }[];
+  releaseYearMediaTypeDistribution?: { count: number; mediaType: string; year: number }[];
   scoreDistribution: { ratingsCount: number; score: number }[];
 };
 
@@ -30,6 +31,10 @@ export function AuthorStatistics({
   reviewsHref,
   contributionCount,
   quizWinnerCount,
+  showAnalytics = true,
+  showStatistics = true,
+  tileGridInitialColumnCount = 3,
+  tileGridVariant = "top",
 }: {
   interestsTitle?: string;
   latestRatingTiles: ResponsiveTileDescriptor[];
@@ -41,6 +46,10 @@ export function AuthorStatistics({
   reviewsHref: string;
   contributionCount: number;
   quizWinnerCount?: number;
+  showAnalytics?: boolean;
+  showStatistics?: boolean;
+  tileGridInitialColumnCount?: number;
+  tileGridVariant?: ResponsiveTileGridVariant;
 }) {
   const distributionByMediaType = new Map(ratingSummary.distribution.map((item) => [item.mediaType, item.ratingsCount]));
   const mediaTypesByRatingCount = sortMediaTypesByCount(mediaTypes, ratingSummary.distribution.map((item) => ({ count: item.ratingsCount, mediaType: item.mediaType })));
@@ -60,7 +69,7 @@ export function AuthorStatistics({
   ];
 
   return <div className="author-dashboard flex flex-col gap-3">
-    <section className="grid items-stretch gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,0.65fr)]">
+    {showAnalytics ? <section className={`grid items-stretch gap-3 ${showStatistics ? "lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(14rem,0.65fr)]" : "lg:grid-cols-2"}`}>
       <Card className="archive-paper archive-panel h-full"><CardContent className="p-4 sm:px-5 sm:pt-5"><AuthorMediaInterestsPanel items={interestItems} yearlyItems={ratingSummary.releaseYearDistribution} title={interestsTitle} /></CardContent></Card>
       <Card className="archive-paper archive-panel h-full"><CardContent className="flex h-full flex-col p-4 sm:px-5 sm:pt-5">
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><ChartNoAxesColumn className="size-5 shrink-0 text-red-950/70" />Распределение оценок</h2></div>
@@ -76,14 +85,14 @@ export function AuthorStatistics({
           <div className="mt-1 grid grid-cols-10 gap-1 text-center sm:gap-1.5">{scoreDistributionValues.map((score) => <span key={score} className="font-mono text-[10px] font-semibold leading-none tabular-nums text-stone-950">{formatScore(score)}</span>)}</div>
         </div>
       </CardContent></Card>
-      <Card className="archive-paper archive-panel h-full"><CardContent className="p-4 sm:px-5 sm:pt-5">
+      {showStatistics ? <Card className="archive-paper archive-panel h-full"><CardContent className="p-4 sm:px-5 sm:pt-5">
         <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><Info className="size-5 shrink-0 text-red-950/70" />Статистика</h2></div>
         <AuthorStatisticList items={statistics} />
-      </CardContent></Card>
-    </section>
+      </CardContent></Card> : null}
+    </section> : null}
     <section className="grid gap-3 lg:grid-cols-2">
-      <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5"><div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><Star className="size-5 shrink-0 text-red-950/70" />Последние оценки</h2><Link href={ratingsHref} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link></div><ResponsiveTileGrid initialColumnCount={3} items={latestRatingTiles} variant="top" /></Card>
-      <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5"><div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><FileText className="size-5 shrink-0 text-red-950/70" />Последние рецензии</h2><Link href={reviewsHref} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link></div><ResponsiveTileGrid initialColumnCount={3} items={latestReviewTiles} variant="top" /></Card>
+      <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5"><div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><Star className="size-5 shrink-0 text-red-950/70" />Последние оценки</h2><Link href={ratingsHref} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link></div><ResponsiveTileGrid initialColumnCount={tileGridInitialColumnCount} items={latestRatingTiles} variant={tileGridVariant} /></Card>
+      <Card className="archive-paper archive-panel p-4 sm:px-5 sm:pt-5"><div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3"><h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl"><FileText className="size-5 shrink-0 text-red-950/70" />Последние рецензии</h2><Link href={reviewsHref} className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link></div><ResponsiveTileGrid initialColumnCount={tileGridInitialColumnCount} items={latestReviewTiles} variant={tileGridVariant} /></Card>
     </section>
   </div>;
 }

@@ -17,7 +17,6 @@ function revalidateMediaTypeVisibilitySurfaces() {
   revalidatePath("/");
   revalidatePath("/archive");
   revalidatePath("/series");
-  revalidatePath("/series/[code]", "page");
   revalidatePath("/media/[code]", "page");
 }
 

@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache"
 import { notFound, redirect } from "next/navigation"
 
 import {
+  deleteAuthorDraftContributionReview,
   getAuthorReviewForEdit,
   getPublishedMediaItemForReview,
   upsertAuthorReview,
@@ -41,6 +42,32 @@ function getFormValues(formData: FormData) {
     title: getFormString(formData, "title"),
     body: getFormString(formData, "body"),
   }
+}
+
+export async function deleteAuthorReviewDraftAction(formData: FormData) {
+  const author = await requireAuthor()
+  const contributionId = getPositiveInteger(getFormString(formData, "contributionId"))
+
+  if (!contributionId) notFound()
+
+  const deletedReview = await deleteAuthorDraftContributionReview(author.id, contributionId)
+
+  if (!deletedReview) redirect("/reviews?view=mine&error=delete-locked")
+
+  revalidatePath("/reviews")
+  revalidatePath("/")
+
+  await logActivity({
+    action: "review.deleted",
+    actorType: "author",
+    authorId: author.id,
+    entityType: "review",
+    entityId: deletedReview.id,
+    entityLabel: `Черновик рецензии #${deletedReview.id}`,
+    message: "Черновик рецензии удален автором.",
+  })
+
+  redirect("/reviews?view=mine&deleted=1")
 }
 
 export async function savePublicReviewAction(
@@ -133,7 +160,6 @@ export async function savePublicReviewAction(
   })
 
   revalidatePath(`/media/${mediaItem.code}`)
-  revalidatePath("/author/reviews")
   revalidatePath("/admin/reviews")
   revalidatePath("/admin", "layout")
   revalidatePath("/reviews")

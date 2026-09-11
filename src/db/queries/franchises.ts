@@ -1,18 +1,17 @@
-import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { mediaItemAverageScoreSql, mediaItemRatingsCountSql } from "@/db/queries/media-item-rating-stats";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
-import { authorMediaStatuses, authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemRatingStats, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemRatingStats, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
-import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
-import { normalizeSearchText } from "@/lib/search/normalize";
+import { matchesNormalizedSearch, normalizeSearchText } from "@/lib/search/normalize";
 import {
   compareSeriesAlphabetGroups,
   getSeriesAlphabetGroup,
@@ -27,20 +26,6 @@ const publishedFranchiseCondition = eq(
   franchises.publicationStatus,
   PUBLISHED_PUBLICATION_STATUS,
 );
-
-function publishedFranchiseBranchIdsSql(franchiseId: number | SQLWrapper) {
-  return sql`
-    with recursive descendants as (
-      select ${franchiseId}::integer as id
-      union all
-      select child.id
-      from ${franchises} child
-      inner join descendants parent on child.parent_id = parent.id
-      where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-    )
-    select id from descendants
-  `;
-}
 
 const MEDIA_ITEM_FRANCHISE_ADVISORY_LOCK_NAMESPACE = 58_391_039;
 
@@ -111,17 +96,6 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
         limit 1
       )`
     : sql<number | null>`null`;
-
-const currentAuthorStatusSql = (currentAuthorId?: number) =>
-  currentAuthorId
-    ? sql<AuthorMediaStatus | null>`(
-        select ${authorMediaStatuses.status}
-        from ${authorMediaStatuses}
-        where ${authorMediaStatuses.mediaItemId} = ${mediaItems.id}
-          and ${authorMediaStatuses.authorId} = ${currentAuthorId}
-        limit 1
-      )`
-    : sql<AuthorMediaStatus | null>`null`;
 
 type FranchiseLink = {
   id: number;
@@ -630,6 +604,55 @@ export type FranchiseTreeNode = {
   mediaItemsCount: number;
   children: FranchiseTreeNode[];
 };
+
+export type ArchiveSeriesMatch = {
+  id: number;
+  code: string;
+  title: string;
+  mediaItemsCount: number;
+  parents: FranchiseBreadcrumb[];
+};
+
+export async function searchArchiveSeriesMatches(
+  searchQuery: string,
+  enabledMediaTypeCodes: readonly string[],
+  limit = 3,
+) {
+  const normalizedQuery = normalizeSearchText(searchQuery);
+
+  if (!normalizedQuery || enabledMediaTypeCodes.length === 0) {
+    return { items: [] as ArchiveSeriesMatch[], totalCount: 0 };
+  }
+
+  const tree = await getPublishedFranchiseTree(normalizedQuery, enabledMediaTypeCodes);
+  const matches: ArchiveSeriesMatch[] = [];
+
+  const visit = (nodes: FranchiseTreeNode[], parents: FranchiseBreadcrumb[]) => {
+    for (const series of nodes) {
+      if (matchesNormalizedSearch([series.title, series.originalTitle, series.code], normalizedQuery)) {
+        matches.push({
+          id: series.id,
+          code: series.code,
+          title: series.title,
+          mediaItemsCount: series.mediaItemsCount,
+          parents,
+        });
+      }
+
+      visit(series.children, [
+        ...parents,
+        { id: series.id, code: series.code, title: series.title },
+      ]);
+    }
+  };
+
+  visit(tree, []);
+
+  return {
+    items: matches.slice(0, Math.max(0, limit)),
+    totalCount: matches.length,
+  };
+}
 
 export type FranchiseBranchNode = {
   id: number;
@@ -1977,69 +2000,6 @@ export async function deleteFranchiseIfEmpty(id: number) {
   return franchise ?? null;
 }
 
-export async function getMediaItemsByFranchiseId(
-  franchiseId: number,
-  enabledMediaTypeCodes: readonly string[],
-  currentAuthorId?: number,
-) {
-  const items = await db
-    .select({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      aliases: mediaItemTitleAliasesSql(),
-      description: mediaItems.description,
-      mediaType: mediaItems.mediaType,
-      mediaCarrierCode: mediaCarriers.code,
-      mediaCarrierName: mediaCarriers.name,
-      releaseYear: mediaItems.releaseYear,
-      coverUrl: mediaItems.coverUrl,
-      coverThumbUrl: mediaItems.coverThumbUrl,
-      averageScore: mediaItemAverageScoreSql,
-      ratingsCount: mediaItemRatingsCountSql,
-      currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
-      currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
-      hasDirectFranchiseLink: sql<boolean>`bool_or(${mediaItemFranchises.franchiseId} = ${franchiseId})`,
-    })
-    .from(mediaItems)
-    .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, mediaItems.id))
-    .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
-    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
-    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
-    .where(
-      and(
-        sql`${mediaItemFranchises.franchiseId} in (${publishedFranchiseBranchIdsSql(franchiseId)})`,
-        eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-        publishedFranchiseCondition,
-        publishedMediaItemCondition,
-        getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
-      ),
-    )
-    .groupBy(
-      mediaItems.id,
-      mediaItems.code,
-      mediaItems.title,
-      mediaItems.originalTitle,
-      mediaItems.description,
-      mediaItems.mediaType,
-      mediaCarriers.code,
-      mediaCarriers.name,
-      mediaItems.releaseYear,
-      mediaItems.coverUrl,
-      mediaItems.coverThumbUrl,
-      mediaItemRatingStats.ratingsCount,
-      mediaItemRatingStats.scoreSum,
-    )
-    .orderBy(sql`${mediaItems.releaseYear} asc nulls last`, asc(mediaItems.title));
-
-  return items.map((item) => ({
-    ...item,
-    coverUrl: resolveCoverUrl(item.coverUrl),
-    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
-  }));
-}
-
 export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
   const items = await db
     .select({
@@ -2204,7 +2164,3 @@ export async function removeMediaItemFromFranchise(input: {
 
   return mediaItem ?? null;
 }
-
-export type FranchiseMediaItem = Awaited<
-  ReturnType<typeof getMediaItemsByFranchiseId>
->[number];

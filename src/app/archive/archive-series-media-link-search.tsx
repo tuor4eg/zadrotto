@@ -1,12 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Loader2, Minus, Plus, Search } from "lucide-react";
+import { Loader2, Minus, Plus, Search, X } from "lucide-react";
 
 import {
   addAuthorSeriesMediaLinkAction,
   removeAuthorSeriesMediaLinkAction,
-} from "./actions";
+} from "./archive-series-actions";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { cn } from "@/lib/common/utils";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
@@ -21,7 +22,7 @@ type SearchItem = {
   canRemove: boolean;
 };
 
-export function SeriesMediaLinkSearch({
+export function ArchiveSeriesMediaLinkSearch({
   franchiseCode,
   mediaTypes,
 }: {
@@ -36,6 +37,7 @@ export function SeriesMediaLinkSearch({
   const [pendingId, setPendingId] = useState<number | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [open, setOpen] = useState(false);
+  const [overlayOpen, setOverlayOpen] = useState(false);
   const [, startTransition] = useTransition();
   const queryRef = useRef("");
   const rootRef = useRef<HTMLDivElement>(null);
@@ -61,12 +63,14 @@ export function SeriesMediaLinkSearch({
     function handlePointerDown(event: PointerEvent) {
       if (!rootRef.current?.contains(event.target as Node)) {
         setOpen(false);
+        setOverlayOpen(false);
       }
     }
 
     function handleKeyDown(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setOpen(false);
+        setOverlayOpen(false);
       }
     }
 
@@ -161,6 +165,7 @@ export function SeriesMediaLinkSearch({
             queryRef.current.trim() === mutationQuery
           ) {
             setOpen(false);
+            setOverlayOpen(false);
             queryRef.current = "";
             setQuery("");
             setItems([]);
@@ -224,15 +229,30 @@ export function SeriesMediaLinkSearch({
   }, [dropdownOpen, loading, message, searchError, updateScrollShadow, visibleItems.length]);
 
   return (
-    <div ref={rootRef} className="relative mt-4 w-0 min-w-full border-t border-dashed border-stone-300 pt-4">
-      <label className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-700" htmlFor="series-media-search">
-        Добавить запись
-      </label>
-      <div className="relative mt-2">
+    <div
+      ref={rootRef}
+      className="relative z-[90] shrink-0"
+    >
+      <ArchiveTooltip label="Добавить запись в серию" side="bottom">
+        <button
+          aria-label="Добавить запись в серию"
+          className="grid size-9 place-items-center rounded-md border border-stone-300/80 bg-white/80 text-stone-700 hover:border-stone-700 hover:text-stone-950"
+          onClick={() => {
+            if (overlayOpen) setOpen(false);
+            setOverlayOpen((current) => !current);
+          }}
+          type="button"
+        >
+          {overlayOpen ? <X className="size-4" /> : <Plus className="size-4" />}
+        </button>
+      </ArchiveTooltip>
+      <div className={`${overlayOpen ? "block" : "hidden"} absolute right-11 top-1/2 w-[min(24rem,calc(100vw-6rem))] -translate-y-1/2`}>
         <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
         <input
-          className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 py-2 pl-9 pr-3 font-mono text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-950"
+          className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50 py-2 pl-9 pr-3 font-mono text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-950"
           aria-controls="series-media-search-results"
+          aria-label="Найти запись для добавления в серию"
+          autoFocus={overlayOpen}
           id="series-media-search"
           onChange={(event) => {
           const nextQuery = event.target.value;
@@ -263,7 +283,7 @@ export function SeriesMediaLinkSearch({
       {dropdownOpen ? (
         <div
           aria-label="Результаты поиска записей"
-          className="absolute left-0 right-0 top-full z-[80] mt-1 min-w-0 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg"
+          className="absolute right-11 top-full z-[80] mt-1 w-[min(24rem,calc(100vw-6rem))] min-w-0 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg"
           id="series-media-search-results"
           role="region"
         >

@@ -35,7 +35,6 @@ const hudApi = readFileSync("src/app/api/user-hud/route.ts", "utf8");
 const modal = readFileSync("src/components/bug-reports/bug-report-modal.tsx", "utf8");
 const registration = readFileSync("src/components/bug-reports/bug-report-entity-context.tsx", "utf8");
 const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
-const seriesPage = readFileSync("src/app/series/[code]/page.tsx", "utf8");
 const quizModal = readFileSync("src/components/quizzes/quiz-modal.tsx", "utf8");
 const adminList = readFileSync("src/app/admin/(protected)/bug-reports/page.tsx", "utf8");
 const adminDetail = readFileSync("src/app/admin/(protected)/bug-reports/[id]/page.tsx", "utf8");
@@ -255,7 +254,6 @@ describe("bug report HUD flow", () => {
     assert.match(hud, /bugReportContextsRef\.current\.delete\(registrationId\)/);
     assert.match(hud, /remainingContexts\.at\(-1\) \?\? null/);
     assert.match(mediaPage, /entityType: "media-item"/);
-    assert.match(seriesPage, /entityType: "franchise"/);
     assert.match(quizModal, /entityType: "quiz"/);
   });
 });

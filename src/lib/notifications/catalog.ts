@@ -117,7 +117,9 @@ export function getNotificationHref(input: {
     case "media-franchise.removal.requested":
       return "/admin/franchise-review"
     case "franchise.approved":
-      return input.franchiseCode ? `/series/${input.franchiseCode}` : null
+      return input.franchiseCode
+        ? `/archive?series=${encodeURIComponent(input.franchiseCode)}`
+        : null
     case "media-franchise.approved":
     case "media-franchise.removal.approved":
       return input.mediaItemCode ? `/media/${input.mediaItemCode}` : null

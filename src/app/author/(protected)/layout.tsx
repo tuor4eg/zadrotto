@@ -7,7 +7,8 @@ import { Avatar } from "@/components/ui/avatar";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { NotificationBadge } from "@/components/ui/notification-badge";
-import { NotificationBell } from "@/components/notifications/notification-inbox";
+import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { AuthorMobileNavMenu } from "./author-mobile-nav-menu";
 import { AuthorProposalsMenu } from "./author-proposals-menu";
 
@@ -19,11 +20,15 @@ type AuthorLayoutProps = {
 
 export default async function AuthorLayout({ children }: AuthorLayoutProps) {
   const author = await requireAuthor();
-  const incomingFriendRequestCount = await getIncomingFriendRequestCount(author.id);
+  const [incomingFriendRequestCount, headerState] = await Promise.all([
+    getIncomingFriendRequestCount(author.id),
+    getPublicSiteHeaderState(author),
+  ]);
 
   return (
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+        <PublicSiteHeader {...headerState.headerProps} />
         <header
           className="archive-main-brand-header archive-paper archive-panel relative z-20"
           style={{ overflow: "visible" }}
@@ -58,7 +63,6 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
           </div>
 
           <div className="flex items-center justify-end gap-2 border-t border-stone-300/70 px-3 py-2 md:hidden">
-            <NotificationBell align="right" />
             <AuthorMobileNavMenu
               incomingFriendRequestCount={incomingFriendRequestCount}
               logoutSlot={(
@@ -90,19 +94,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
             >
               Викторины
             </Link>
-            <Link
-              href="/author/achievements"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Ачивки
-            </Link>
             <AuthorProposalsMenu />
-            <Link
-              href="/author/reviews"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Рецензии
-            </Link>
             <Link
               href="/author/profile"
               className={buttonVariants({ variant: "outline", size: "sm" })}
@@ -116,7 +108,6 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
               Друзья
               <NotificationBadge count={incomingFriendRequestCount} className="absolute -right-2 -top-2 min-w-4 px-1 text-[9px] leading-4" />
             </Link>
-            <NotificationBell />
             <form action={logoutAuthor}>
               <Button type="submit" variant="outline" size="sm" className="cursor-pointer">
                 Выйти

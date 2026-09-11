@@ -60,7 +60,7 @@ function MediaTypeTab({
       className={cn(
         "archive-media-type-tab group relative inline-flex shrink-0 items-end justify-center px-4 text-center font-mono text-[10px] uppercase tracking-[0.1em] transition-[color,transform,filter] hover:z-[80] focus-visible:z-[80] ml-[var(--tab-mobile-overlap)] lg:ml-[var(--tab-overlap)] lg:max-w-[220px] lg:grow lg:px-6 lg:text-xs lg:tracking-[0.12em]",
         isSelected
-          ? "archive-media-type-tab-active h-12 min-w-[116px] pb-2.5 pt-3 text-stone-950 lg:h-16 lg:min-w-[156px] lg:pb-3 lg:pt-5"
+          ? "archive-media-type-tab-active h-10 min-w-[116px] pb-2.5 pt-2.5 text-stone-950 lg:h-12 lg:min-w-[156px] lg:pb-3 lg:pt-3"
           : "archive-media-type-tab-inactive h-10 min-w-[104px] pb-2.5 pt-2.5 text-stone-800 hover:text-stone-950 lg:h-12 lg:min-w-[124px] lg:pb-3 lg:pt-3",
         !isSelected && index < selectedIndex && "archive-media-type-tab-before-active",
       )}
@@ -131,8 +131,8 @@ export function MediaTypeTabs({
   );
 
   return (
-    <div className="archive-scrollbar archive-tabs-scrollbar relative max-w-full overflow-x-auto overflow-y-hidden rounded-t-[18px] pl-1 pr-1 pt-2 lg:overflow-visible lg:pr-4">
-      <div className="relative z-10 flex min-h-16 min-w-0 items-end gap-1.5">
+    <div className="archive-scrollbar archive-tabs-scrollbar relative max-w-full overflow-x-auto overflow-y-hidden rounded-t-[18px] pl-1 pr-1 lg:overflow-visible lg:pr-4">
+      <div className="relative z-10 flex min-h-10 min-w-0 items-end gap-1.5 lg:min-h-12">
         <div
           role="tablist"
           aria-label="Тип медиа"

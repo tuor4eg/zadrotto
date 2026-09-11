@@ -2,9 +2,11 @@ import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-m
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 
-export async function getPublicSiteHeaderState() {
+export async function getPublicSiteHeaderState(
+  currentAuthor?: Awaited<ReturnType<typeof getCurrentAuthor>>,
+) {
   const [author, adminUser] = await Promise.all([
-    getCurrentAuthor(),
+    currentAuthor === undefined ? getCurrentAuthor() : Promise.resolve(currentAuthor),
     getCurrentAdminUser(),
   ]);
   const adminNotificationCount = adminUser

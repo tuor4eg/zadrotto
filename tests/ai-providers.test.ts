@@ -758,10 +758,6 @@ describe("AI persistence and UI security contracts", () => {
       root,
       "src/app/media-item-franchise-suggestion-dialog.tsx",
     ), "utf8");
-    const seriesPage = await readFile(path.join(
-      root,
-      "src/app/series/[code]/page.tsx",
-    ), "utf8");
     const clientHelper = await readFile(path.join(
       root,
       "src/lib/ai/scenarios/suggest-franchises-client.ts",
@@ -941,7 +937,6 @@ describe("AI persistence and UI security contracts", () => {
       authorMediaEditPage,
       archivePage,
       mediaItemPage,
-      seriesPage,
     ]) {
       assert.match(
         source,

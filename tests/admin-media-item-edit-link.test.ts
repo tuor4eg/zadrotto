@@ -10,7 +10,7 @@ const homeSource = readFileSync("src/app/archive/page.tsx", "utf8");
 const catalogSource = readFileSync("src/app/media-items-catalog.tsx", "utf8");
 const previewSource = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 const mediaPageSource = readFileSync("src/app/media/[code]/page.tsx", "utf8");
-const franchisePageSource = readFileSync("src/app/series/[code]/page.tsx", "utf8");
+const archiveSeriesContextSource = readFileSync("src/app/archive/archive-series-context.tsx", "utf8");
 const detailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
 
 describe("admin entity edit action", () => {
@@ -51,12 +51,12 @@ describe("admin entity edit action", () => {
 
   it("shows the series edit action only to an admin", () => {
     assert.match(
-      franchisePageSource,
-      /getPublicSiteHeaderState\(\)/,
+      homeSource,
+      /adminCanEdit=\{Boolean\(currentAdminUser\)\}/,
     );
     assert.match(
-      franchisePageSource,
-      /adminCanEdit=\{headerState\.currentAdminUser\}/,
+      archiveSeriesContextSource,
+      /adminCanEdit \? \([\s\S]*<AdminEntityEditLink/,
     );
   });
 });

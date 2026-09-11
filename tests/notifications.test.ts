@@ -213,7 +213,7 @@ describe("notification catalog", () => {
         mediaItemCode: null,
         type: "franchise.approved",
       }),
-      "/series/series-witcher",
+      "/archive?series=series-witcher",
     )
     assert.equal(
       getNotificationHref({

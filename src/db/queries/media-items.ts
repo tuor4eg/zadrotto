@@ -292,6 +292,17 @@ const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
       )`
     : sql<Date | null>`null`;
 
+const currentAuthorRatingUpdatedAtSql = (currentAuthorId?: number) =>
+  currentAuthorId
+    ? sql<Date | null>`(
+        select ${ratings.updatedAt}
+        from ${ratings}
+        where ${ratings.mediaItemId} = ${mediaItems.id}
+          and ${ratings.authorId} = ${currentAuthorId}
+        limit 1
+      )`
+    : sql<Date | null>`null`;
+
 const currentAuthorFirstExperiencedAtSql = (currentAuthorId?: number) =>
   currentAuthorId
     ? sql<string | null>`(
@@ -363,11 +374,40 @@ const currentAuthorStatusCondition = (currentAuthorId: number, status: AuthorMed
       ),
   );
 
+const catalogSeriesCondition = (seriesId: number) =>
+  exists(
+    db
+      .select({ mediaItemId: mediaItemFranchises.mediaItemId })
+      .from(mediaItemFranchises)
+      .where(
+        and(
+          eq(mediaItemFranchises.mediaItemId, mediaItems.id),
+          eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+          sql`${mediaItemFranchises.franchiseId} in (
+            with recursive published_descendants as (
+              select ${franchises.id}
+              from ${franchises}
+              where ${franchises.id} = ${seriesId}
+                and ${franchises.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
+              union all
+              select child.id
+              from ${franchises} child
+              inner join published_descendants parent on child.parent_id = parent.id
+              where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+            )
+            select id from published_descendants
+          )`,
+        ),
+      ),
+  );
+
 function catalogFilterConditions(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  ratedByAuthorId?: number;
   enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
+  seriesId?: number;
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -386,7 +426,15 @@ function catalogFilterConditions(input: {
     conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
   }
 
-  if (input.currentAuthorId && input.authorRatingFilter !== "all") {
+  if (input.seriesId) {
+    conditions.push(catalogSeriesCondition(input.seriesId));
+  }
+
+  if (input.ratedByAuthorId) {
+    conditions.push(currentAuthorRatingExistsCondition(input.ratedByAuthorId));
+  }
+
+  if (!input.ratedByAuthorId && input.currentAuthorId && input.authorRatingFilter !== "all") {
     const ratingExistsCondition = currentAuthorRatingExistsCondition(input.currentAuthorId);
 
     if (input.authorRatingFilter === "rated") {
@@ -405,7 +453,14 @@ function catalogFilterConditions(input: {
   }
 
   if (input.yearFilter !== null) {
-    conditions.push(catalogYearCondition(input.yearFilter, input.yearMode, input.currentAuthorId));
+    const yearSubjectAuthorId = input.yearMode === "experience"
+      ? (input.ratedByAuthorId ? undefined : input.currentAuthorId)
+      : input.ratedByAuthorId ?? input.currentAuthorId;
+    conditions.push(catalogYearCondition(
+      input.yearFilter,
+      input.yearMode,
+      yearSubjectAuthorId,
+    ));
   }
 
   return and(...conditions)!;
@@ -453,7 +508,9 @@ function catalogOrderBy(
   sort: CatalogSort,
   direction: CatalogSortDirection,
   currentAuthorId?: number,
+  ratedByAuthorId?: number,
 ) {
+  const ratingSubjectAuthorId = ratedByAuthorId ?? currentAuthorId;
   const titleOrder = direction === "asc" ? asc(mediaItems.title) : desc(mediaItems.title);
 
   if (sort === "created_at") {
@@ -488,26 +545,29 @@ function catalogOrderBy(
     ];
   }
 
-  if (sort === "my_rating_score" && currentAuthorId) {
+  if (sort === "my_rating_score" && ratingSubjectAuthorId) {
     return [
       direction === "asc"
-        ? sql`${currentAuthorScoreSql(currentAuthorId)} asc nulls last`
-        : sql`${currentAuthorScoreSql(currentAuthorId)} desc nulls last`,
+        ? sql`${currentAuthorScoreSql(ratingSubjectAuthorId)} asc nulls last`
+        : sql`${currentAuthorScoreSql(ratingSubjectAuthorId)} desc nulls last`,
       asc(mediaItems.title),
     ];
   }
 
-  if (sort === "my_rating_date" && currentAuthorId) {
+  if (sort === "my_rating_date" && ratingSubjectAuthorId) {
+    const ratingDateSql = ratedByAuthorId
+      ? currentAuthorRatingUpdatedAtSql(ratingSubjectAuthorId)
+      : currentAuthorRatedAtSql(ratingSubjectAuthorId);
     return [
       direction === "asc"
-        ? sql`${currentAuthorRatedAtSql(currentAuthorId)} asc nulls last`
-        : sql`${currentAuthorRatedAtSql(currentAuthorId)} desc nulls last`,
+        ? sql`${ratingDateSql} asc nulls last`
+        : sql`${ratingDateSql} desc nulls last`,
       asc(mediaItems.title),
       asc(mediaItems.id),
     ];
   }
 
-  if (sort === "my_first_experience_year" && currentAuthorId) {
+  if (sort === "my_first_experience_year" && currentAuthorId && !ratedByAuthorId) {
     return [
       direction === "asc"
         ? sql`${currentAuthorFirstExperiencedAtSql(currentAuthorId)} asc nulls last`
@@ -522,6 +582,7 @@ function catalogOrderBy(
 const catalogMediaItemsQuery = (input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  ratedByAuthorId?: number;
   filterCondition: SQL;
   mediaTypeFilter: MediaTypeFilter;
   page: number;
@@ -557,6 +618,7 @@ const catalogMediaItemsQuery = (input: {
       averageScore: mediaItemAverageScoreSql,
       ratingsCount: mediaItemRatingsCountSql,
       currentAuthorScore: currentAuthorScoreSql(input.currentAuthorId),
+      ratedByAuthorScore: currentAuthorScoreSql(input.ratedByAuthorId),
       currentAuthorStatus: currentAuthorStatusSql(input.currentAuthorId),
       currentAuthorRatedAt: currentAuthorRatedAtSql(input.currentAuthorId),
       currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(
@@ -571,7 +633,12 @@ const catalogMediaItemsQuery = (input: {
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(input.filterCondition)
-    .orderBy(...catalogOrderBy(input.sort, input.sortDirection, input.currentAuthorId))
+    .orderBy(...catalogOrderBy(
+      input.sort,
+      input.sortDirection,
+      input.currentAuthorId,
+      input.ratedByAuthorId,
+    ))
     .limit(input.pageSize)
     .offset(getOffset(input.page, input.pageSize));
 
@@ -582,11 +649,13 @@ export type CatalogMediaItem = Awaited<
 export async function getCatalogMediaItems(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  ratedByAuthorId?: number;
   enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
   searchQuery: string;
+  seriesId?: number;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   yearFilter: CatalogYearFilter;
@@ -617,8 +686,10 @@ export async function getCatalogMediaItems(input: {
 export async function getCatalogMediaTypeCounts(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
+  ratedByAuthorId?: number;
   enabledMediaTypeCodes: readonly string[];
   searchQuery: string;
+  seriesId?: number;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {

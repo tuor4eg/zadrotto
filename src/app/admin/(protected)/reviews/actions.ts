@@ -95,7 +95,6 @@ export async function reviewContributionReviewAction(formData: FormData) {
   revalidatePath("/admin/reviews");
   revalidatePath("/admin/materials/reviews");
   revalidatePath("/admin", "layout");
-  revalidatePath("/author/reviews");
   revalidatePath("/reviews");
   revalidatePath(`/media/${result.mediaItemCode}`);
   await logActivity({
@@ -150,7 +149,6 @@ export async function deleteContributionReviewAction(formData: FormData) {
   revalidatePath("/admin/materials/reviews");
   revalidatePath("/admin/reviews");
   revalidatePath("/admin", "layout");
-  revalidatePath("/author/reviews");
   revalidatePath("/reviews");
   revalidatePath(`/media/${result.mediaItemCode}`);
   await logActivity({

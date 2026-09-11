@@ -63,7 +63,7 @@ function PublicFranchiseName({
   title: string;
 }) {
   return isPublished ? (
-    <Link href={`/series/${code}`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
+    <Link href={`/archive?series=${encodeURIComponent(code)}`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">
       {title}
     </Link>
   ) : (

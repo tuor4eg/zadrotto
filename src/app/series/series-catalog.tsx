@@ -80,7 +80,7 @@ function SeriesTree({
         ) : null}
         <Link
           className={`group relative z-[2] flex items-center justify-between gap-4 border-b border-stone-300/45 px-2.5 py-2 transition-colors ${depth > 0 ? "bg-amber-50/40 hover:bg-amber-100/55" : "hover:bg-stone-50/60"}`}
-          href={`/series/${series.code}`}
+          href={`/archive?series=${encodeURIComponent(series.code)}`}
           style={depth > 1 ? { marginLeft: `${Math.min(depth - 1, 4) * 0.5}rem` } : undefined}
         >
           <span className="min-w-0">

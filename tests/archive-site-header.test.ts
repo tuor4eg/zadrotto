@@ -12,18 +12,17 @@ const globalsSource = read("src/app/globals.css");
 
 const publicPages = [
   "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx",
-  "src/app/series/[code]/page.tsx", "src/app/series/[code]/children/page.tsx",
   "src/app/collections/page.tsx", "src/app/collections/[slug]/page.tsx",
   "src/app/media/[code]/page.tsx",   "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
   "src/app/achievements/page.tsx",
-  "src/app/users/[id]/page.tsx", "src/app/users/[id]/ratings/page.tsx",
+  "src/app/users/[id]/page.tsx",
   "src/app/users/[id]/achievements/page.tsx",
   "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
   "src/app/feedback/page.tsx",
 ];
 
 const excludedPages = [
-  "src/app/author/(protected)/layout.tsx", "src/app/admin/(protected)/layout.tsx",
+  "src/app/admin/(protected)/layout.tsx",
   "src/app/author/login/page.tsx", "src/app/author/register/page.tsx",
   "src/app/author/forgot-password/page.tsx", "src/app/author/reset-password/page.tsx",
   "src/app/admin/login/page.tsx",
@@ -39,6 +38,7 @@ describe("public site header", () => {
       assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));
     }
     assert.match(headerSource, /max-w-\[1480px\]/);
+    assert.match(headerSource, /public-site-header z-\[70\]/);
     assert.match(headerSource, /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"/);
     assert.match(headerSource, /id="public-header-search"[\s\S]*className="archive-control-surface h-9/);
     assert.match(headerSource, /showAchievements[\s\S]*href: "\/achievements"[\s\S]*label: "Ачивки"/);
@@ -79,6 +79,7 @@ describe("public site header", () => {
     for (const file of excludedPages) {
       assert.doesNotMatch(read(file), /PublicSiteHeader/, `${file} must keep its own shell`);
     }
+    assert.match(read("src/app/author/(protected)/layout.tsx"), /<PublicSiteHeader\b/);
   });
 
   it("uses the main-page spacing between the header and primary content", () => {
@@ -86,7 +87,6 @@ describe("public site header", () => {
       "src/app/page.tsx",
       "src/app/archive/page.tsx",
       "src/app/series/page.tsx",
-      "src/app/series/[code]/page.tsx",
       "src/app/collections/page.tsx",
       "src/app/collections/[slug]/page.tsx",
       "src/app/reviews/page.tsx",

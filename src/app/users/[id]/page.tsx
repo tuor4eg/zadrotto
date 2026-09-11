@@ -3,15 +3,18 @@ import { notFound } from "next/navigation";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { AuthorStatistics } from "@/components/author/author-statistics";
+import { HomeAuthorStatistics } from "@/app/main/home-author-statistics";
 import { RecentAchievementShowcase } from "@/components/achievements/recent-achievement-showcase";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { Alert } from "@/components/ui/alert";
 import { getPublicAuthorStatistics, getPublicUserProfile } from "@/db/queries/friends";
 import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
+import { getAuthorQuizStatistics } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
+import { formatScore } from "@/lib/ratings/score";
 
 import { PublicUserHeader } from "./public-user-header";
 
@@ -52,9 +55,12 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const mediaTypes = profile.canViewJournal
     ? (await getEffectiveMediaTypeOptions(profile.id)).filter((item) => item.isEnabled && accessibleMediaTypeCodeSet.has(item.code))
     : [];
-  const statistics = profile.canViewJournal
-    ? await getPublicAuthorStatistics(profile.id, mediaTypes.map((item) => item.code))
-    : null;
+  const [statistics, quizStatistics] = profile.canViewJournal
+    ? await Promise.all([
+        getPublicAuthorStatistics(profile.id, mediaTypes.map((item) => item.code)),
+        getAuthorQuizStatistics(profile.id),
+      ])
+    : [null, null];
   const statisticsMediaItemIds = statistics ? [...new Set([
     ...statistics.latestRatings.map((item) => item.mediaItemId),
     ...statistics.latestReviews.map((item) => item.mediaItemId),
@@ -74,9 +80,19 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
     <div className="mx-auto w-full max-w-[1480px] space-y-3">
       <PublicSiteHeader {...headerState.headerProps} />
       {query.friendship === "error" || query.friendship === "conflict" ? <Alert variant="destructive">Не удалось изменить состояние дружбы. Возможно, оно уже изменилось.</Alert> : null}
-      <PublicUserHeader active="statistics" currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={basePath} />
-
-      <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} />
+      <PublicUserHeader
+        currentAdmin={isAdmin}
+        currentAuthor={Boolean(current)}
+        profile={profile}
+        returnTo={basePath}
+        statistics={statistics && quizStatistics ? [
+          { label: "Оценок", value: statistics.ratingSummary.ratingsCount.toLocaleString("ru-RU") },
+          { label: "Средняя", value: formatScore(statistics.ratingSummary.averageScore) },
+          { label: "Рецензий", value: statistics.reviewCount.toLocaleString("ru-RU") },
+          { label: "Добавлено в архив", value: statistics.contributionCount.toLocaleString("ru-RU") },
+          { label: "Побед в квизах", value: quizStatistics.winnerCount.toLocaleString("ru-RU") },
+        ] : undefined}
+      />
 
       {profile.canViewJournal && statistics ? <section className="space-y-3">
           <AuthorStatistics
@@ -85,12 +101,19 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
             latestReviewTiles={latestReviewTiles}
             mediaTypes={mediaTypes}
             ratingSummary={statistics.ratingSummary}
-            ratingsHref={`${basePath}/ratings`}
+            ratingsHref={`/archive?ratedBy=${profile.id}&sort=my_rating_date`}
             reviewCount={statistics.reviewCount}
             reviewsHref={`/reviews?author=${profile.id}`}
             contributionCount={statistics.contributionCount}
+            showAnalytics={false}
+            showStatistics={false}
+            tileGridInitialColumnCount={4}
+            tileGridVariant="topCompact"
           />
+          <HomeAuthorStatistics mediaTypes={mediaTypes} ratingSummary={statistics.ratingSummary} title="Интересы по годам" />
       </section> : <p className="archive-paper-surface archive-panel p-5 text-stone-600 sm:p-7">Журнал пользователя доступен только его друзьям.</p>}
+
+      <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} />
     </div>
   </main>;
 }

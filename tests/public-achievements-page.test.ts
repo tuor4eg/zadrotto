@@ -10,6 +10,7 @@ import {
 } from "@/lib/achievements/showcase"
 
 const page = readFileSync("src/app/achievements/page.tsx", "utf8")
+const publicProfilePage = readFileSync("src/app/users/[id]/achievements/page.tsx", "utf8")
 const stats = readFileSync(
   "src/components/achievements/author-achievement-hero-stats.tsx",
   "utf8",
@@ -34,6 +35,12 @@ describe("public achievements page", () => {
     assert.match(header, /isDemo/)
   })
 
+  it("stretches the public profile achievement paper to the footer", () => {
+    assert.match(publicProfilePage, /archive-page flex min-h-0 flex-1 flex-col/)
+    assert.match(publicProfilePage, /max-w-\[1480px\] flex-1 flex-col gap-3/)
+    assert.match(publicProfilePage, /archive-paper archive-panel flex-1 p-4/)
+  })
+
   it("renders the hero copy and main-page-like stats", () => {
     assert.match(page, />\s*Твои ачивки\s*</)
     assert.match(page, />\s*Маленькие победы\. Большая история\s*</)
@@ -45,26 +52,20 @@ describe("public achievements page", () => {
     assert.doesNotMatch(page, /max-w-\[68%\]/)
     assert.doesNotMatch(page, /max-w-\[58%\]/)
     assert.match(page, /maskImage: "linear-gradient\(to right, transparent, black 18%\)"/)
-    assert.match(page, /getNearestAchievementGoal\(items\)/)
-    assert.match(page, /nearestGoal=\{nearestGoal\}/)
+    assert.doesNotMatch(page, /getNearestAchievementGoal\(items\)/)
+    assert.doesNotMatch(page, /nearestGoal=\{nearestGoal\}/)
     assert.match(stats, /Получено/)
     assert.match(stats, /Завершено/)
     assert.match(stats, /В процессе/)
-    assert.match(stats, /Ближайшая цель/)
+    assert.doesNotMatch(stats, /Ближайшая цель/)
     assert.match(stats, /icon: Trophy/)
     assert.match(stats, /icon: BadgeCheck/)
     assert.match(stats, /icon: ChartColumnIncreasing/)
     assert.doesNotMatch(stats, /icon: Target/)
-    assert.match(stats, /function NearestAchievementGoal/)
-    assert.match(stats, /LockKeyhole/)
-    assert.match(stats, /goal\.isAwarded \? \(/)
-    assert.match(stats, /\{goal\.currentValue\} \/ \{goal\.nextThreshold\}/)
-    assert.match(stats, /role="progressbar"/)
+    assert.doesNotMatch(stats, /function NearestAchievementGoal/)
+    assert.doesNotMatch(stats, /LockKeyhole|goal\.isAwarded|role="progressbar"/)
     assert.match(stats, /flex flex-wrap items-end gap-8 sm:flex-nowrap/)
     assert.match(stats, /dl className="contents"/)
-    assert.match(stats, /w-20/)
-    assert.match(stats, /bg-stone-500/)
-    assert.match(stats, /goal\.isAwarded \? "" : "text-center"/)
     assert.doesNotMatch(stats, /mt-6/)
     assert.doesNotMatch(stats, /bg-amber-50/)
     assert.match(stats, /font-serif text-3xl/)

@@ -42,8 +42,11 @@ describe("author interests by release year", () => {
     assert.match(querySource, /releaseYearDistribution/);
     assert.match(querySource, /year: mediaItems\.releaseYear/);
     assert.match(querySource, /isNotNull\(mediaItems\.releaseYear\)/);
-    assert.match(querySource, /groupBy\(mediaItems\.releaseYear\)/);
+    assert.match(querySource, /mediaType: mediaItems\.mediaType/);
+    assert.match(querySource, /groupBy\(mediaItems\.releaseYear, mediaItems\.mediaType\)/);
     assert.match(querySource, /orderBy\(asc\(mediaItems\.releaseYear\)\)/);
+    assert.match(querySource, /releaseYearTotals/);
+    assert.match(querySource, /releaseYearMediaTypeDistribution/);
   });
 
   it("uses only rated years as evenly spaced categories", () => {

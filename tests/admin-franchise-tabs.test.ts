@@ -24,6 +24,7 @@ test("admin franchise edit separates edit, media and children tabs", () => {
   assert.match(page, /tab === "edit" \? <section/);
   assert.match(page, /tab === "media" \? <Card>/);
   assert.match(page, /tab === "children" \? <FranchiseChildrenTab/);
+  assert.match(page, /publicHref=\{franchise\.publicationStatus === "published" \? `\/archive\?series=\$\{encodeURIComponent\(franchise\.code\)\}` : null\}/);
   assert.match(page, /tab === "children" \? getAdminFranchiseChildCandidates\(franchiseId\) : Promise\.resolve\(\[\]\)/);
   assert.match(page, /tab === "children" \? getAdminFranchiseDescendantTree\(franchiseId\) : Promise\.resolve\(\[\]\)/);
   assert.match(childrenTab, /Текущие потомки/);
@@ -67,7 +68,7 @@ test("children tab validates duplicates before creating and provides the parent 
 test("moving a child reuses guarded hierarchy updates and deletion is blocked by children", () => {
   const moveChild = sourceBetween(actions, "export async function moveFranchiseChildAction", "export async function createFranchiseChildAction");
   const update = sourceBetween(queries, "export async function updateFranchise", "export async function deleteFranchiseIfEmpty");
-  const deletion = sourceBetween(queries, "export async function deleteFranchiseIfEmpty", "export async function getMediaItemsByFranchiseId");
+  const deletion = sourceBetween(queries, "export async function deleteFranchiseIfEmpty", "export async function getAdminMediaItemsByFranchiseId");
 
   assert.match(moveChild, /const moved = await updateFranchise\(\{/);
   assert.match(moveChild, /parentId: parent\.id/);

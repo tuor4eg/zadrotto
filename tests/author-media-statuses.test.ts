@@ -70,7 +70,7 @@ describe("author media status action and controls", () => {
     assert.match(action, /Статус доступен только для записи без вашей оценки/);
     assert.match(action, /revalidatePath\("\/"\)/);
     assert.match(action, /revalidatePath\(`\/media\/\$\{mediaItem\.code\}`\)/);
-    assert.match(action, /revalidatePath\(`\/series\/\$\{franchise\.code\}`\)/);
+    assert.match(action, /revalidatePath\("\/archive"\)/);
   });
 
   it("renders both toggle values and disables them when an author rating exists", () => {
