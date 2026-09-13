@@ -26,6 +26,10 @@ import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
+import { getEditorialSummary, getEditorialSummaryJob, getEditorialSummarySource } from "@/db/queries/editorial-summaries";
+import { getEditorialSummarySourceHash, parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
+import { generateEditorialSummaryAction, saveEditorialSummaryAction, setEditorialSummaryLockAction } from "./editorial-summary-actions";
+import { Label, Textarea } from "@/components/ui/form";
 import { getMediaItemCollectionReferences } from "@/db/queries/editorial-collections";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel } from "@/lib/media/types";
@@ -39,6 +43,9 @@ type EditAdminMediaPageProps = {
     created?: string;
     error?: string;
     updated?: string;
+    summaryError?: string;
+    summaryQueued?: string;
+    summarySaved?: string;
   }>;
 };
 
@@ -138,15 +145,23 @@ export default async function EditAdminMediaPage({
     notFound();
   }
 
-  const [item, metadata, collectionReferences] = await Promise.all([
+  const [item, metadata, collectionReferences, editorialSummary, editorialSource, editorialJob, canGenerateSummary] = await Promise.all([
     getAdminMediaItemForEdit(mediaItemId),
     getMediaItemMetadata(mediaItemId),
     getMediaItemCollectionReferences(mediaItemId),
+    getEditorialSummary(mediaItemId),
+    getEditorialSummarySource(mediaItemId),
+    getEditorialSummaryJob(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.EDITORIAL_SUMMARY),
   ]);
 
   if (!item) {
     notFound();
   }
+
+  const summaryPrompt = editorialJob ? parseEditorialSummaryOptions(editorialJob.options).prompt : null;
+  const summaryStale = Boolean(editorialSummary && !editorialSummary.locked && summaryPrompt && editorialSource &&
+    editorialSummary.sourceHash !== getEditorialSummarySourceHash(editorialSource, summaryPrompt));
 
   const isPublished = item.publicationStatus === "published";
   const successMessage =
@@ -200,6 +215,43 @@ export default async function EditAdminMediaPage({
               errorMessage={getAdminMediaErrorMessage(query.error)}
               successMessage={successMessage}
             />
+          </CardContent>
+        </Card>
+
+        <Card className="mt-5">
+          <CardContent className="grid gap-4 pt-5">
+            <div>
+              <h2 className="text-lg font-semibold">Редакционная справка</h2>
+              <p className="text-sm text-stone-600">Короткое описание для публичной страницы. Исходное описание хранится отдельно.</p>
+            </div>
+            {query.summaryError ? <Alert variant="destructive">Не удалось выполнить действие со справкой.</Alert> : null}
+            {query.summaryQueued ? <Alert>Генерация поставлена в очередь.</Alert> : null}
+            {query.summarySaved ? <Alert>Справка сохранена и защищена от автозамены.</Alert> : null}
+            <div className="text-sm text-stone-600">
+              {editorialSummary?.locked ? "Защищена от автозамены" : summaryStale ? "Устарела — ожидает обновления" : editorialSummary?.status === "unusable" ? "Данных недостаточно для справки" : editorialSummary?.summary ? "Актуальна" : "Ещё не создана"}
+              {editorialSummary?.generatedAt ? ` · Последняя генерация: ${editorialSummary.generatedAt.toLocaleString("ru-RU")}` : ""}
+              {editorialSummary?.modelId ? ` · Модель: ${editorialSummary.modelId}` : ""}
+            </div>
+            <form action={saveEditorialSummaryAction} className="grid gap-3">
+              <input type="hidden" name="mediaItemId" value={mediaItemId} />
+              <Label htmlFor="editorial-summary">Текст справки</Label>
+              <Textarea id="editorial-summary" name="summary" defaultValue={editorialSummary?.summary ?? ""} maxLength={400} required />
+              <Button type="submit" className="w-fit">Сохранить вручную и защитить</Button>
+            </form>
+            <div className="flex flex-wrap gap-2">
+              <form action={generateEditorialSummaryAction}>
+                <input type="hidden" name="mediaItemId" value={mediaItemId} />
+                <Button type="submit" variant="outline" disabled={!editorialJob || !canGenerateSummary || Boolean(editorialSummary?.locked)}>
+                  {editorialSummary?.summary ? "Перегенерировать" : "Сгенерировать"}
+                </Button>
+              </form>
+              {editorialSummary ? <form action={setEditorialSummaryLockAction}>
+                <input type="hidden" name="mediaItemId" value={mediaItemId} />
+                <input type="hidden" name="locked" value={String(!editorialSummary.locked)} />
+                <Button type="submit" variant="outline">{editorialSummary.locked ? "Разблокировать" : "Защитить"}</Button>
+              </form> : null}
+            </div>
+            {!editorialJob || !canGenerateSummary ? <p className="text-xs text-stone-500">Для генерации настройте и включите AI-сценарий и задачу в админке.</p> : null}
           </CardContent>
         </Card>
       </section>

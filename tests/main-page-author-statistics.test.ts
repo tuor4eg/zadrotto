@@ -5,6 +5,7 @@ import { describe, it } from "node:test";
 import {
   fillReleaseYearTimeline,
   getCountAxisTicks,
+  getReleaseYearAxisLabel,
 } from "../src/app/main/home-author-statistics";
 
 const page = readFileSync("src/app/page.tsx", "utf8");
@@ -26,6 +27,7 @@ describe("main page author statistics", () => {
     assert.match(widget, /archive-paper archive-panel overflow-hidden/);
     assert.match(widget, /grid gap-5 lg:grid-cols-3 lg:gap-3/);
     assert.match(widget, /className="lg:col-span-2"/);
+    assert.equal(widget.match(/mb-3 flex min-h-9 items-center/g)?.length, 2);
     assert.match(widget, /aria-label="Статистика пользователя"/);
     assert.doesNotMatch(widget, /<BarChart3|main-author-statistics-title/);
   });
@@ -48,6 +50,8 @@ describe("main page author statistics", () => {
     assert.match(widget, /<ChartNoAxesColumn className=/);
     assert.match(widget, /<ArchiveSelect[\s\S]*ariaLabel="Тип медиа"[\s\S]*options=\{mediaTypeOptions\}/);
     assert.match(widget, /releaseYearMediaTypeDistribution/);
+    assert.match(widget, /scoreMediaTypeDistribution/);
+    assert.match(widget, /<ScoreDistributionBars items=\{scoreItems\} \/>/);
     assert.match(widget, /onChange=\{setSelectedMediaType\}/);
     assert.match(existingStatistics, /AuthorMediaInterestsPanel/);
     assert.match(existingStatistics, /Распределение оценок/);
@@ -68,7 +72,10 @@ describe("main page author statistics", () => {
     ]);
     assert.deepEqual(getCountAxisTicks(47), [0, 20, 40, 60]);
     assert.deepEqual(getCountAxisTicks(857), [0, 500, 1000]);
-    assert.match(widget, /year % 10 === 0/);
+    assert.equal(getReleaseYearAxisLabel(2010, 10, 12, 2011), null);
+    assert.equal(getReleaseYearAxisLabel(2011, 11, 12, 2011), 2011);
+    assert.equal(getReleaseYearAxisLabel(2010, 10, 14, 2013), 2010);
+    assert.equal(getReleaseYearAxisLabel(2000, 0, 2, 2001), null);
     assert.match(widget, /count > 0 \? Math\.max\(3, \(count \/ scaleMaximum\) \* 100\) : 0/);
     assert.match(widget, /border-r border-stone-500\/15/);
     assert.match(widget, /border-t border-stone-500\/10/);

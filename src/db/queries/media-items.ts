@@ -39,6 +39,7 @@ import {
   editorialDocumentBlocks,
   franchises,
   mediaItemFranchiseRemovalRequests,
+  mediaItemEditorialSummaries,
   mediaItemFranchises,
   mediaItemMetadata,
   mediaItemTitleAliases,
@@ -49,6 +50,7 @@ import {
   ratings,
 } from "@/db/schema";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
+import type { AdminMediaSort } from "@/lib/media/admin-editorial-summary";
 import type { MediaType } from "@/lib/media/types";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -823,7 +825,7 @@ export async function getAdminMediaItems(input: {
   page: number;
   pageSize: number;
   searchQuery: string;
-  sort: CatalogSort;
+  sort: AdminMediaSort;
   sortDirection?: CatalogSortDirection;
 }) {
   const filterCondition = adminMediaFilterConditions(input);
@@ -840,6 +842,11 @@ export async function getAdminMediaItems(input: {
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
+      metadataFacts: mediaItemMetadata.facts,
+      editorialSummaryStatus: mediaItemEditorialSummaries.status,
+      editorialSummarySourceHash: mediaItemEditorialSummaries.sourceHash,
+      editorialSummaryLocked: mediaItemEditorialSummaries.locked,
+      editorialSummaryAttemptedAt: mediaItemEditorialSummaries.attemptedAt,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, false),
       mediaCarrierCode: mediaCarriers.code,
@@ -856,16 +863,15 @@ export async function getAdminMediaItems(input: {
       currentAuthorScore: sql<number | null>`null`,
     })
     .from(mediaItems)
+    .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemEditorialSummaries, eq(mediaItemEditorialSummaries.mediaItemId, mediaItems.id))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
     .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(filterCondition)
-    .orderBy(
-      ...catalogOrderBy(
-        input.sort,
-        input.sortDirection ?? DEFAULT_CATALOG_SORT_DIRECTIONS[input.sort],
-      ),
-    )
+    .orderBy(...(input.sort === "editorial_attempted_at"
+      ? [sql`${mediaItemEditorialSummaries.attemptedAt} desc nulls last`, asc(mediaItems.title), asc(mediaItems.id)]
+      : catalogOrderBy(input.sort, input.sortDirection ?? DEFAULT_CATALOG_SORT_DIRECTIONS[input.sort])))
     .limit(input.pageSize)
     .offset(getOffset(page, input.pageSize));
 
@@ -1721,6 +1727,8 @@ export async function getPublicMediaItemMetadataByCode(
   const [item] = await db
     .select({
       title: mediaItems.title,
+      description: mediaItems.description,
+      editorialSummary: mediaItemEditorialSummaries.summary,
       coverUrl: mediaItems.coverUrl,
       mediaType: mediaItems.mediaType,
       mediaTypeLabel: mediaTypes.name,
@@ -1730,6 +1738,7 @@ export async function getPublicMediaItemMetadataByCode(
     .from(mediaItems)
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemEditorialSummaries, eq(mediaItemEditorialSummaries.mediaItemId, mediaItems.id))
     .where(and(
       eq(mediaItems.code, code),
       publishedMediaItemCondition,
@@ -1787,6 +1796,7 @@ export async function getMediaItemByCode(
       originalTitle: mediaItems.originalTitle,
       aliases: mediaItemTitleAliasesSql(),
       description: mediaItems.description,
+      editorialSummary: mediaItemEditorialSummaries.summary,
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, currentAuthorId == null, currentAuthorId),
       franchiseLinkStatuses: franchiseLinkStatusesSql(),
@@ -1811,6 +1821,7 @@ export async function getMediaItemByCode(
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(mediaItemEditorialSummaries, eq(mediaItemEditorialSummaries.mediaItemId, mediaItems.id))
     .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
     .where(and(
       eq(mediaItems.code, code),

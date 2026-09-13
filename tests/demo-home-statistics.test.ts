@@ -41,6 +41,10 @@ describe("demo home statistics", () => {
         { ratingsCount: 2, score: 80 },
         { ratingsCount: 1, score: 100 },
       ],
+      scoreMediaTypeDistribution: [
+        { mediaType: "movie", ratingsCount: 1, score: 60 },
+        { mediaType: "book", ratingsCount: 2, score: 80 },
+      ],
     })
   })
 

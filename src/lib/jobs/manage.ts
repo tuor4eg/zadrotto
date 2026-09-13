@@ -9,11 +9,13 @@ import {
   MIN_JOB_HISTORY_RETENTION_DAYS,
 } from "./model";
 import { resolveJobRunPolicy, validateJobRunPolicy } from "./queue";
+import { EDITORIAL_SUMMARY_JOB_CODE, EDITORIAL_SUMMARY_SWEEP_TYPE, parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
 
 type PeriodicJobInput = {
   code: string;
   cronExpression: string;
   payload: unknown;
+  options?: unknown;
   policy?: Partial<JobRunPolicy>;
   type: string;
   enabled?: boolean;
@@ -23,6 +25,9 @@ type PeriodicJobInput = {
 function normalize(input: PeriodicJobInput) {
   const code = input.code.trim();
   if (!code) throw new Error("Код задачи обязателен.");
+  if ((input.type === EDITORIAL_SUMMARY_SWEEP_TYPE) !== (code === EDITORIAL_SUMMARY_JOB_CODE)) {
+    throw new Error("INVALID_EDITORIAL_SUMMARY_JOB_CODE");
+  }
   const handler = jobHandlerRegistry.get(input.type);
   if (handler.schedulable === false) throw new Error("Этот обработчик нельзя ставить на расписание.");
   const cronExpression = validateJobCronExpression(input.cronExpression);
@@ -30,7 +35,10 @@ function normalize(input: PeriodicJobInput) {
   if (!Number.isInteger(historyRetentionDays) || historyRetentionDays < MIN_JOB_HISTORY_RETENTION_DAYS || historyRetentionDays > MAX_JOB_HISTORY_RETENTION_DAYS) {
     throw new Error("Invalid job history retention period.");
   }
-  return { code, cronExpression, enabled: input.enabled ?? false, historyRetentionDays, nextRunAt: getNextJobRunAt(cronExpression, new Date()), payload: handler.parsePayload(input.payload) as Record<string, unknown>, policy: validateJobRunPolicy(resolveJobRunPolicy(input.type, input.policy)), type: handler.type };
+  const options = input.type === EDITORIAL_SUMMARY_SWEEP_TYPE
+    ? parseEditorialSummaryOptions(input.options)
+    : {};
+  return { code, cronExpression, enabled: input.enabled ?? false, historyRetentionDays, nextRunAt: getNextJobRunAt(cronExpression, new Date()), payload: handler.parsePayload(input.payload) as Record<string, unknown>, options, policy: validateJobRunPolicy(resolveJobRunPolicy(input.type, input.policy)), type: handler.type };
 }
 
 export async function createManagedPeriodicJob(input: PeriodicJobInput) {

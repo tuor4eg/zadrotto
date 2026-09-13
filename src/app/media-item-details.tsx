@@ -368,24 +368,36 @@ function ArchiveMediaItemDetails({
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
-      <article className="archive-paper archive-panel archive-stack archive-stack-left relative z-10 flex min-h-0 min-w-0 flex-1 flex-col overflow-visible">
+      <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="relative z-10 grid flex-1 pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute top-[68px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-[-12px] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute top-[67px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-[-13px] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
-          <div className="relative min-w-0 px-6 pb-6 pt-3">
+          <div className="relative order-1 min-w-0 px-6 pt-3 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0">
             <div
               className={`${labelFontClassName} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
             >
-              <div className="shrink-0 uppercase">Досье</div>
               {breadcrumbSlot}
               {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
             </div>
+          </div>
+
+          <div
+            className={
+              mediaCarrierFrame
+                ? `${displayFontClassName} order-3 min-w-0 px-6 text-2xl leading-[1.55] text-stone-950 sm:px-8 sm:text-4xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
+                : "order-3 min-w-0 px-6 font-serif text-4xl leading-none text-stone-950 sm:px-8 sm:text-6xl lg:col-start-2 lg:row-start-1 lg:self-baseline"
+            }
+          >
+            <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
+          </div>
+
+          <div className="relative order-2 min-w-0 px-6 pb-6 lg:col-start-1 lg:row-start-2">
             <div
               className={
                 hasCarrierFrame
@@ -457,18 +469,9 @@ function ArchiveMediaItemDetails({
             ) : null}
           </div>
 
-          <div className="flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:-mt-2">
+          <div className="order-4 flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:col-start-2 lg:row-start-2">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
-                <div
-                  className={
-                    mediaCarrierFrame
-                      ? `${displayFontClassName} text-2xl leading-[1.55] text-stone-950 sm:text-4xl`
-                      : "font-serif text-4xl leading-none text-stone-950 sm:text-6xl"
-                  }
-                >
-                  <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
-                </div>
                 {titleActions}
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
@@ -582,7 +585,7 @@ function ArchiveMediaItemDetails({
           </div>
 
           {relatedFranchiseSections.length > 0 ? (
-            <div className="flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2">
+            <div className="order-5 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-3">
               <div className="flex flex-col gap-6">
                 {relatedFranchiseSections.map((section) => (
                   <section key={section.franchise.id}>

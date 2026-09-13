@@ -9,7 +9,6 @@ const footerSource = readFileSync("src/components/archive/archive-site-footer.ts
 const aboutPageSource = readFileSync("src/app/about/page.tsx", "utf8");
 const rulesPageSource = readFileSync("src/app/rules/page.tsx", "utf8");
 const helpPageSource = readFileSync("src/app/help/page.tsx", "utf8");
-const feedbackPageSource = readFileSync("src/app/feedback/page.tsx", "utf8");
 const coverSourceAttributionSource = readFileSync(
   "src/components/archive/cover-source-attribution.tsx",
   "utf8",
@@ -30,7 +29,6 @@ const informationalPageSources = [
   aboutPageSource,
   rulesPageSource,
   helpPageSource,
-  feedbackPageSource,
 ];
 
 describe("informational page shell contracts", () => {
@@ -154,17 +152,14 @@ describe("help page contracts", () => {
   });
 });
 
-describe("feedback page contracts", () => {
-  it("links the footer to the public Telegram contact", () => {
-    assert.match(footerSource, /href: "\/feedback"/);
-    assert.match(feedbackPageSource, /Обратная связь/);
-    assert.match(feedbackPageSource, /sm:grid-cols-\[minmax\(0,1fr\)_auto\]/);
-    assert.match(feedbackPageSource, /src="\/mascot\/deadz_contact\.webp"/);
-    assert.match(feedbackPageSource, /href="https:\/\/t\.me\/zadrotto"/);
-    assert.match(feedbackPageSource, /target="_blank"/);
-    assert.match(feedbackPageSource, /rel="noreferrer"/);
-    assert.match(feedbackPageSource, /flex min-h-0 flex-1 flex-col/);
-    assert.match(feedbackPageSource, /max-w-\[1480px\] flex-1 flex-col/);
-    assert.match(feedbackPageSource, /archive-stack-left flex-1/);
+describe("footer contact contracts", () => {
+  it("links directly to the public Telegram channel", () => {
+    assert.doesNotMatch(footerSource, /\/feedback|Обратная связь/);
+    assert.match(footerSource, /href="https:\/\/t\.me\/zadrotto"/);
+    assert.match(footerSource, /aria-label="Telegram-канал Задротто"/);
+    assert.match(footerSource, /className="flex items-center border-l border-stone-400\/40 px-3"/);
+    assert.match(footerSource, /target="_blank"/);
+    assert.match(footerSource, /rel="noreferrer"/);
+    assert.match(footerSource, /<TelegramIcon \/>/);
   });
 });

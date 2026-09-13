@@ -38,7 +38,7 @@ function parseScenarioInput(
   const providerCode = read(formData, "providerCode");
   const adapter = aiProviderRegistry.get(providerCode);
   const fields = getAiProviderSettingFields(adapter.settingFields);
-  const instruction = read(formData, "instruction") || null;
+  const instruction = identity.key === "editorial_summary" ? null : read(formData, "instruction") || null;
   if (instruction && instruction.length > 8_000) {
     throw new Error("INVALID_AI_SCENARIO_INSTRUCTION");
   }
@@ -52,7 +52,7 @@ function parseScenarioInput(
       { allowMissingRequired: true },
     ),
     instruction,
-    config: parseSuggestSeriesConfig({
+    config: identity.key === "editorial_summary" ? {} : parseSuggestSeriesConfig({
       resultLimit: Number(read(formData, "resultLimit")),
     }),
     enabled,

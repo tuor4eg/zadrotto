@@ -48,6 +48,11 @@ export async function getJobById(id: number) {
   return job ?? null;
 }
 
+export async function getJobByCode(code: string) {
+  const [job] = await db.select().from(jobs).where(eq(jobs.code, code)).limit(1);
+  return job ?? null;
+}
+
 export async function getJobRunById(id: number) {
   const [run] = await db.select().from(jobRuns).where(eq(jobRuns.id, id)).limit(1);
   return run ?? null;
@@ -60,6 +65,7 @@ export async function createPeriodicJob(input: {
   historyRetentionDays: number;
   nextRunAt: Date;
   payload: Record<string, unknown>;
+  options: Record<string, unknown>;
   policy: JobRunPolicy;
   type: string;
 }) {
@@ -71,6 +77,7 @@ export async function createPeriodicJob(input: {
     maxAttempts: input.policy.maxAttempts,
     nextRunAt: input.nextRunAt,
     payload: input.payload,
+    options: input.options,
     retryBaseSeconds: input.policy.retryBaseSeconds,
     retryMaxSeconds: input.policy.retryMaxSeconds,
     timeoutSeconds: input.policy.timeoutSeconds,
@@ -87,6 +94,7 @@ export async function updatePeriodicJob(input: {
   historyRetentionDays: number;
   nextRunAt: Date;
   payload: Record<string, unknown>;
+  options: Record<string, unknown>;
   policy: JobRunPolicy;
   type: string;
 }) {
@@ -98,6 +106,7 @@ export async function updatePeriodicJob(input: {
     maxAttempts: input.policy.maxAttempts,
     nextRunAt: input.nextRunAt,
     payload: input.payload,
+    options: input.options,
     retryBaseSeconds: input.policy.retryBaseSeconds,
     retryMaxSeconds: input.policy.retryMaxSeconds,
     timeoutSeconds: input.policy.timeoutSeconds,
@@ -141,7 +150,7 @@ export async function retryFailedJobRun(id: number, createdByAdminId: number | n
       source: "manual",
       timeoutSeconds: source.timeoutSeconds,
       type: source.type,
-    }, now)).returning();
+    }, now)).onConflictDoNothing().returning();
     return run;
   });
 }
@@ -288,6 +297,22 @@ export async function requeueJobRun(input: { errorCode: string; errorMessage: st
     updatedAt: now,
   }).where(and(eq(jobRuns.id, input.id), eq(jobRuns.status, "running"), eq(jobRuns.lockToken, input.lockToken))).returning();
   return updated ?? null;
+}
+
+export async function deferJobRun(input: { id: number; lockToken: string; delaySeconds: number; errorCode: string; errorMessage: string }) {
+  const now = new Date();
+  return db.update(jobRuns).set({
+    attempts: sql`${jobRuns.attempts} - 1`,
+    availableAt: new Date(now.getTime() + input.delaySeconds * 1000),
+    errorCode: input.errorCode,
+    errorMessage: input.errorMessage,
+    lockExpiresAt: null,
+    lockToken: null,
+    lockedAt: null,
+    lockedBy: null,
+    status: "queued",
+    updatedAt: now,
+  }).where(and(eq(jobRuns.id, input.id), eq(jobRuns.status, "running"), eq(jobRuns.lockToken, input.lockToken)));
 }
 
 export async function getAdminJobs() {

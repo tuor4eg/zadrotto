@@ -49,10 +49,11 @@ export function ScenarioForm({
     profile?.parameters ?? {},
   );
   const [modelId, setModelId] = useState(profile?.modelId ?? "");
-  const definition = getAiScenarioDefinition(profile?.key ?? "suggest_series");
+  const [scenarioKey, setScenarioKey] = useState(profile?.key ?? catalogEntries[0]?.key ?? "suggest_series");
+  const definition = getAiScenarioDefinition(scenarioKey);
   const [instruction, setInstruction] = useState(profile?.instruction ?? "");
   const [resultLimit, setResultLimit] = useState(
-    String(profile?.config.resultLimit ?? definition?.defaultConfig.resultLimit ?? 3),
+    String(profile?.config.resultLimit ?? 3),
   );
   const hasExistingOverrides = Boolean(
     profile?.modelId || profile?.instruction ||
@@ -89,7 +90,7 @@ export function ScenarioForm({
             <p className="text-xs text-stone-500">Технический ключ: {profile.key}</p>
           </>
         ) : (
-          <Select id="scenario-key" name="scenarioKey" defaultValue={catalogEntries[0]?.key}>
+          <Select id="scenario-key" name="scenarioKey" value={scenarioKey} onChange={(event) => setScenarioKey(event.currentTarget.value)}>
             {catalogEntries.map((entry) => (
               <option key={entry.key} value={entry.key}>{entry.name}</option>
             ))}
@@ -124,7 +125,7 @@ export function ScenarioForm({
           </p>
         ) : null}
       </div>
-      <div className="grid gap-2">
+      {scenarioKey !== "editorial_summary" ? <div className="grid gap-2">
         <Label htmlFor="scenario-instruction">Инструкция</Label>
         <Textarea
           id="scenario-instruction"
@@ -143,8 +144,8 @@ export function ScenarioForm({
         >
           Сбросить к системной
         </Button>
-      </div>
-      <div className="grid gap-2">
+      </div> : null}
+      {scenarioKey !== "editorial_summary" ? <div className="grid gap-2">
         <Label htmlFor="scenario-result-limit">Количество предложений</Label>
         <Input
           id="scenario-result-limit"
@@ -168,7 +169,7 @@ export function ScenarioForm({
         {fieldErrors.resultLimit ? (
           <FieldError id="scenario-result-limit-error">{fieldErrors.resultLimit}</FieldError>
         ) : null}
-      </div>
+      </div> : null}
       <details
         className="rounded-md border border-stone-200 bg-stone-50/50 p-4"
         open={detailsOpen}
@@ -267,8 +268,10 @@ export function ScenarioForm({
 
 function validateScenarioForm(formData: FormData, provider: ScenarioFormProvider) {
   const errors: Record<string, string> = {};
-  const resultLimitError = validateResultLimit(String(formData.get("resultLimit") ?? ""));
-  if (resultLimitError) errors.resultLimit = resultLimitError;
+  if (formData.get("scenarioKey") !== "editorial_summary" && formData.get("resultLimit") !== null) {
+    const resultLimitError = validateResultLimit(String(formData.get("resultLimit") ?? ""));
+    if (resultLimitError) errors.resultLimit = resultLimitError;
+  }
   for (const field of provider.settingFields) {
     if (field.type === "boolean") continue;
     const error = validateScenarioParameter(

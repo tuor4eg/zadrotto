@@ -1,8 +1,15 @@
 export const AI_SCENARIO_KEYS = {
   SUGGEST_SERIES: "suggest_series",
+  EDITORIAL_SUMMARY: "editorial_summary",
 } as const;
 
 export const AI_SCENARIOS = {
+  editorial_summary: {
+    key: "editorial_summary",
+    name: "Редакционные справки",
+    defaultInstruction: "Редакционная инструкция находится в настройках фоновой задачи.",
+    defaultConfig: {},
+  },
   suggest_series: {
     key: "suggest_series",
     name: "Предложить серии",

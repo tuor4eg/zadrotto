@@ -111,36 +111,33 @@ export function ReviewArticle({
   return (
     <>
       <ArchiveToasts messages={toastMessages} />
-      <article className="archive-paper archive-panel archive-stack archive-stack-left relative flex min-h-[calc(100dvh-2rem)] flex-col overflow-visible px-6 pb-3 pt-11 sm:px-10 sm:pb-5 sm:pt-12">
-        <header className="relative grid gap-x-7 gap-y-3 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)] lg:items-baseline lg:gap-x-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/clip-transparent-trimmed.png"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -right-1 -top-9 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:-right-3 sm:-top-11 sm:h-28 lg:-right-2 lg:-top-14 lg:h-32"
-          />
+      <div className="relative flex min-h-0 flex-1 flex-col">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/clip-transparent-trimmed.png"
+          alt=""
+          aria-hidden="true"
+          className="pointer-events-none absolute right-5 top-1 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-7 sm:top-0 sm:h-28 lg:right-8 lg:top-[-12px] lg:h-32"
+        />
+        <article className="archive-paper archive-panel relative flex flex-1 flex-col px-6 pb-3 pt-11 sm:px-10 sm:pb-5 sm:pt-12">
+        <header className="relative">
+          <nav aria-label="Хлебные крошки" className={`${labelFontClassName} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
+            <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
+              <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/archive?type=${encodeURIComponent(review.mediaItemMediaType)}`}>{mediaItemTypeLabel}</Link></li>
+              <li aria-hidden="true" className="text-stone-400">/</li>
+              <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>{review.mediaItemTitle}</Link></li>
+              <li aria-hidden="true" className="text-stone-400">/</li>
+              <li aria-current="page" className="min-w-0 truncate text-stone-800">Рецензия</li>
+            </ol>
+          </nav>
 
-          <div className={`${labelFontClassName} flex min-w-0 items-start gap-3 text-sm leading-7 text-stone-950`}>
-            <div className="shrink-0 uppercase">Досье</div>
-            <nav aria-label="Хлебные крошки" className="min-w-0 flex-1 text-xs leading-5 text-stone-600">
-              <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
-                <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/archive?type=${encodeURIComponent(review.mediaItemMediaType)}`}>{mediaItemTypeLabel}</Link></li>
-                <li aria-hidden="true" className="text-stone-400">/</li>
-                <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>{review.mediaItemTitle}</Link></li>
-                <li aria-hidden="true" className="text-stone-400">/</li>
-                <li aria-current="page" className="min-w-0 truncate text-stone-800">Рецензия</li>
-              </ol>
-            </nav>
-          </div>
-
-          <div className="max-w-[880px] pr-16 sm:pr-24">
+          <div className="mt-3 max-w-[880px] pr-16 sm:pr-24">
             <div className={mediaCarrierFrame ? `${displayFontClassName} text-xl leading-[1.5] text-stone-950 sm:text-3xl` : "font-serif text-3xl leading-none text-stone-950 sm:text-5xl"}>
               <MediaCarrierDisplayTitle title={review.mediaItemTitle} frame={mediaCarrierFrame} />
             </div>
           </div>
 
-          <div className={`${labelFontClassName} text-xs leading-6 text-stone-800 lg:col-span-2`}>
+          <div className={`${labelFontClassName} mt-3 text-xs leading-6 text-stone-800`}>
             {mediaItemMeta.map((label, index) => (
               <Fragment key={`${label}-${index}`}>
                 {index > 0 ? <span className="mx-1.5">•</span> : null}
@@ -220,7 +217,8 @@ export function ReviewArticle({
             </nav>
           ) : null}
         </section>
-      </article>
+        </article>
+      </div>
     </>
   );
 }

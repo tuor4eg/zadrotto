@@ -18,7 +18,6 @@ const publicPages = [
   "src/app/users/[id]/page.tsx",
   "src/app/users/[id]/achievements/page.tsx",
   "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
-  "src/app/feedback/page.tsx",
 ];
 
 const excludedPages = [

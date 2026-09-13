@@ -62,7 +62,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="w-full">
-        <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden">
+        <div className="archive-paper archive-panel overflow-hidden">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Все серии

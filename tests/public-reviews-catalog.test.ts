@@ -26,7 +26,7 @@ describe("public reviews catalog page", () => {
     assert.match(page, /<ReviewsCatalogControls/)
     assert.match(page, /<FeaturedReviews reviews=\{featuredReviews\} \/>/)
     assert.match(page, /<PaginationNav[\s\S]*basePath="\/reviews"[\s\S]*variant="archive"/)
-    assert.match(controls, /Поиск по названию записи/)
+    assert.match(controls, /placeholder="Поиск рецензий по названию записи"/)
     assert.match(page, /currentAuthorId=\{currentAuthor\?\.id \?\? null\}/)
     assert.match(
       controls,
@@ -36,7 +36,7 @@ describe("public reviews catalog page", () => {
     assert.doesNotMatch(controls, /Популярн|С комментари|Лента|Компактно/)
     assert.doesNotMatch(page, /Популярн|С комментари|Лента|Компактно/)
     assert.equal(
-      page.match(/archive-paper archive-panel archive-stack archive-stack-left flex min-h-0 w-full flex-1 flex-col overflow-hidden/g)?.length,
+      page.match(/archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden/g)?.length,
       2,
     )
     assert.match(page, /aria-labelledby="my-reviews-title" className="flex-1/)

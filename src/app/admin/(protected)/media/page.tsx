@@ -3,7 +3,6 @@ import { Edit3, Plus, Trash2 } from "lucide-react";
 
 import {
   isAuthorOnlyCatalogSort,
-  parseCatalogSort,
   parseMediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
 import { Badge } from "@/components/ui/badge";
@@ -15,6 +14,9 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getAuthorOptions } from "@/db/queries/authors";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getAdminMediaItems, getAdminMediaTypeCounts } from "@/db/queries/media-items";
+import { getEditorialSummaryJob } from "@/db/queries/editorial-summaries";
+import { getAdminEditorialSummaryState, parseAdminMediaSort, type AdminEditorialSummaryState } from "@/lib/media/admin-editorial-summary";
+import { parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { parsePage } from "@/lib/common/pagination";
@@ -43,6 +45,26 @@ type AdminMediaPageProps = {
 
 const ADMIN_MEDIA_PAGE_SIZE = 50;
 type AdminMediaItem = Awaited<ReturnType<typeof getAdminMediaItems>>["items"][number];
+
+const EDITORIAL_SUMMARY_STATES: Record<AdminEditorialSummaryState, { label: string; variant: "outline" | "positive" | "warning" | "destructive" }> = {
+  missing: { label: "Нет справки", variant: "outline" },
+  ready: { label: "Готова", variant: "positive" },
+  stale: { label: "Устарела", variant: "warning" },
+  unusable: { label: "Непригодно", variant: "destructive" },
+  locked: { label: "Защищена", variant: "outline" },
+};
+
+function AdminEditorialSummaryStatus({ item, prompt }: { item: AdminMediaItem; prompt: string | null }) {
+  const state = getAdminEditorialSummaryState({
+    source: item,
+    status: item.editorialSummaryStatus,
+    sourceHash: item.editorialSummarySourceHash,
+    locked: item.editorialSummaryLocked,
+    prompt,
+  });
+  const { label, variant } = EDITORIAL_SUMMARY_STATES[state];
+  return <div className="flex flex-col items-start gap-1"><Badge variant={variant}>{label}</Badge>{item.editorialSummaryAttemptedAt ? <time className="text-xs text-stone-500" dateTime={item.editorialSummaryAttemptedAt.toISOString()}>{item.editorialSummaryAttemptedAt.toLocaleString("ru-RU")}</time> : null}</div>;
+}
 
 function parseAuthorFilter(value: string | undefined) {
   if (!value) {
@@ -195,9 +217,9 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     mediaCarriers,
     mediaTypeFilter,
   });
-  const parsedSort = parseCatalogSort(params.sort ?? null);
-  const sort = isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
-  const [mediaResult, mediaTypeCounts, authors] = await Promise.all([
+  const parsedSort = parseAdminMediaSort(params.sort ?? null);
+  const sort = parsedSort === "editorial_attempted_at" ? parsedSort : isAuthorOnlyCatalogSort(parsedSort) ? "title" : parsedSort;
+  const [mediaResult, mediaTypeCounts, authors, editorialJob] = await Promise.all([
     getAdminMediaItems({
       authorId: authorFilter ?? undefined,
       mediaCarrierId: mediaCarrierFilter ?? undefined,
@@ -209,7 +231,9 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     }),
     getAdminMediaTypeCounts({ authorId: authorFilter ?? undefined }),
     getAuthorOptions(),
+    getEditorialSummaryJob(),
   ]);
+  const editorialPrompt = editorialJob ? parseEditorialSummaryOptions(editorialJob.options).prompt : null;
   const items = mediaResult.items;
   const totalItemsCount = mediaTypeCounts.reduce((total, item) => total + item.count, 0);
   const errorMessage = getAdminMediaErrorMessage(params.error);
@@ -319,6 +343,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                         {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}
                       </Badge>
                     </div>
+                    <div className="mt-2"><AdminEditorialSummaryStatus item={item} prompt={editorialPrompt} /></div>
                   </div>
                 </div>
 
@@ -356,6 +381,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                   <TH>Название</TH>
                   <TH className="hidden w-24 sm:table-cell">Тип</TH>
                   <TH className="hidden w-28 md:table-cell">Статус</TH>
+                  <TH className="hidden w-40 lg:table-cell">AI-справка</TH>
                   <TH className="w-28 px-2 text-right">Действия</TH>
                 </tr>
               </THead>
@@ -376,6 +402,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                             {item.originalTitle}
                           </div>
                         ) : null}
+                        <div className="mt-2 lg:hidden"><AdminEditorialSummaryStatus item={item} prompt={editorialPrompt} /></div>
                         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-stone-500">
                           {item.franchises.length > 0 ? (
                             <span className="truncate">
@@ -404,6 +431,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                         {PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus]}
                       </Badge>
                     </TD>
+                    <TD className="hidden lg:table-cell"><AdminEditorialSummaryStatus item={item} prompt={editorialPrompt} /></TD>
                     <TD className="px-2">
                       <AdminMediaItemActions item={item} />
                     </TD>

@@ -302,7 +302,7 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     eq(mediaItems.publicationStatus, "published"),
     getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
   );
-  const [totalRows, distribution, releaseYearDistribution, scoreDistribution, latestRatings, reviewCountRows, latestReviews, contributionCount] = await Promise.all([
+  const [totalRows, distribution, releaseYearDistribution, scoreMediaTypeDistribution, latestRatings, reviewCountRows, latestReviews, contributionCount] = await Promise.all([
     db.select({
       ratingsCount: sql<number>`count(${ratings.id})::int`,
       averageScore: sql<number | null>`avg(${ratings.score})::float`,
@@ -313,8 +313,8 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     db.select({ year: mediaItems.releaseYear, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
       .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(and(ratingFilter, sql`${mediaItems.releaseYear} is not null`))
       .groupBy(mediaItems.releaseYear, mediaItems.mediaType).orderBy(mediaItems.releaseYear),
-    db.select({ score: ratings.score, ratingsCount: sql<number>`count(${ratings.id})::int` })
-      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(ratings.score),
+    db.select({ score: ratings.score, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
+      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(ratings.score, mediaItems.mediaType),
     db.select({ mediaItemId: mediaItems.id, score: ratings.score })
       .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter)
       .orderBy(desc(ratings.updatedAt), desc(ratings.id)).limit(5),
@@ -329,6 +329,10 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
   ]);
   const totals = totalRows[0];
   const releaseYearTotals = new Map<number, number>();
+  const scoreTotals = new Map<number, number>();
+  for (const item of scoreMediaTypeDistribution) {
+    scoreTotals.set(item.score, (scoreTotals.get(item.score) ?? 0) + item.ratingsCount);
+  }
   const releaseYearMediaTypeDistribution = releaseYearDistribution.flatMap((item) => {
     if (item.year === null) return [];
 
@@ -343,7 +347,8 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
       distribution,
       releaseYearDistribution: [...releaseYearTotals].map(([year, count]) => ({ count, year })),
       releaseYearMediaTypeDistribution,
-      scoreDistribution,
+      scoreDistribution: [...scoreTotals].map(([score, ratingsCount]) => ({ ratingsCount, score })),
+      scoreMediaTypeDistribution,
     },
     reviewCount: reviewCountRows[0]?.reviewsCount ?? 0,
     contributionCount,

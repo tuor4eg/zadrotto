@@ -37,6 +37,14 @@ describe("simple catalog layout", () => {
     );
   });
 
+  it("aligns the media tabs with equal catalog grid gutters", () => {
+    assert.match(layoutSource, /archive-scrollbar archive-catalog-list-scrollbar grid/);
+    assert.match(layoutSource, /overflow-y-auto px-0/);
+    assert.match(tabsSource, /archive-scrollbar archive-tabs-scrollbar[^\"]*px-0 \[scrollbar-gutter:auto\]/);
+    assert.match(globalsSource, /\.archive-catalog-list-scrollbar \{[\s\S]*scrollbar-gutter: auto;[\s\S]*scrollbar-width: none;/);
+    assert.match(globalsSource, /\.archive-catalog-list-scrollbar::-webkit-scrollbar \{\s*display: none;/);
+  });
+
   it("keeps catalog controls in the single non-sticky header row", () => {
     assert.match(sharedHeaderSource, /controls \? \([\s\S]*\{controls\}[\s\S]*\) : \(/);
     assert.doesNotMatch(sharedHeaderSource, /secondaryControls|sticky top-0/);

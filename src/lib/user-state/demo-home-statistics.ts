@@ -49,6 +49,11 @@ export function buildDemoHomeStatistics(
   for (const rating of Object.values(profile.ratings)) {
     scoreCounts.set(rating.score, (scoreCounts.get(rating.score) ?? 0) + 1)
   }
+  const scoreMediaTypeCounts = new Map<string, {
+    mediaType: string
+    ratingsCount: number
+    score: number
+  }>()
 
   const releaseYearCounts = new Map<number, number>()
   const releaseYearMediaTypeCounts = new Map<string, {
@@ -59,8 +64,17 @@ export function buildDemoHomeStatistics(
   const seenCodes = new Set<string>()
 
   for (const item of mediaItems) {
-    if (seenCodes.has(item.code) || !profile.ratings[item.code] || item.releaseYear === null) continue
+    const rating = profile.ratings[item.code]
+    if (seenCodes.has(item.code) || !rating) continue
     seenCodes.add(item.code)
+    const scoreKey = `${item.mediaType}\0${rating.score}`
+    const currentScore = scoreMediaTypeCounts.get(scoreKey)
+    scoreMediaTypeCounts.set(scoreKey, {
+      mediaType: item.mediaType,
+      ratingsCount: (currentScore?.ratingsCount ?? 0) + 1,
+      score: rating.score,
+    })
+    if (item.releaseYear === null) continue
     releaseYearCounts.set(item.releaseYear, (releaseYearCounts.get(item.releaseYear) ?? 0) + 1)
 
     const key = `${item.releaseYear}\0${item.mediaType}`
@@ -81,5 +95,7 @@ export function buildDemoHomeStatistics(
     scoreDistribution: [...scoreCounts]
       .map(([score, ratingsCount]) => ({ ratingsCount, score }))
       .sort((left, right) => left.score - right.score),
+    scoreMediaTypeDistribution: [...scoreMediaTypeCounts.values()]
+      .sort((left, right) => left.score - right.score || left.mediaType.localeCompare(right.mediaType)),
   }
 }

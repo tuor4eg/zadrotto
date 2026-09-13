@@ -10,6 +10,8 @@ import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-ev
 import { deliverPendingNotificationTransports } from "@/lib/notifications/outbox-delivery";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
+import { generateEditorialSummary, sweepEditorialSummaries } from "@/lib/media/editorial-summary-jobs";
+import { EDITORIAL_SUMMARY_GENERATE_TYPE, EDITORIAL_SUMMARY_SWEEP_TYPE } from "@/lib/media/editorial-summary";
 import {
   reconcileMediaItemRatingStatsBatch,
   type RatingStatsReconciliationPayload,
@@ -259,6 +261,34 @@ const ratingStatsReconciliationHandler: JobHandlerDefinition<RatingStatsReconcil
   },
 };
 
+const editorialSummarySweepHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: EDITORIAL_SUMMARY_SWEEP_TYPE,
+  label: "Поиск записей для AI-справок",
+  parsePayload: parseEmptyPayload,
+  async execute() { await sweepEditorialSummaries(); },
+};
+
+function parseEditorialSummaryGeneratePayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new JobError("invalid-payload", "Ожидался ID записи.", { retryable: false });
+  }
+  const payload = value as Record<string, unknown>;
+  if (Object.keys(payload).some((key) => key !== "mediaItemId" && key !== "force") ||
+    !Number.isSafeInteger(payload.mediaItemId) || Number(payload.mediaItemId) < 1 ||
+    (payload.force !== undefined && payload.force !== true)) {
+    throw new JobError("invalid-payload", "Некорректный ID записи.", { retryable: false });
+  }
+  return { mediaItemId: Number(payload.mediaItemId), force: payload.force === true };
+}
+
+const editorialSummaryGenerateHandler: JobHandlerDefinition<{ mediaItemId: number; force: boolean }> = {
+  type: EDITORIAL_SUMMARY_GENERATE_TYPE,
+  label: "Генерация AI-справки записи",
+  schedulable: false,
+  parsePayload: parseEditorialSummaryGeneratePayload,
+  async execute({ payload }) { await generateEditorialSummary(payload.mediaItemId, payload.force); },
+};
+
 const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayload> = {
   type: "domain-events.dispatch",
   label: "Доставка доменных событий",
@@ -347,6 +377,8 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   coverThumbnailBackfillHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,
+  editorialSummarySweepHandler,
+  editorialSummaryGenerateHandler,
   ratingStatsReconciliationHandler,
   domainEventDispatchHandler,
   notificationTransportDeliveryHandler,

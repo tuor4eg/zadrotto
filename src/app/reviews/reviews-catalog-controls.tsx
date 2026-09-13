@@ -125,7 +125,7 @@ export function ReviewsCatalogControls({
             id="reviews-search"
             name="q"
             onChange={(event) => setDraft(event.target.value)}
-            placeholder="Поиск по названию записи..."
+            placeholder="Поиск рецензий по названию записи"
             type="search"
             value={draft}
           />

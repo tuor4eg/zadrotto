@@ -6,6 +6,7 @@ import { getNextJobRunAt, validateJobCronExpression } from "../src/lib/jobs/cron
 import { calculateJobRetryDelaySeconds } from "../src/lib/jobs/model";
 import { createJobHandlerRegistry } from "../src/lib/jobs/registry";
 import { executeClaimedJobRun } from "../src/lib/jobs/worker";
+import { JobError } from "../src/lib/jobs/types";
 
 const handler = { defaultMaxAttempts: 1, defaultRetryBaseSeconds: 1, defaultRetryMaxSeconds: 1, defaultTimeoutSeconds: 1, execute: async () => {}, label: "Тест", parsePayload: (value: unknown) => value, type: "test.job" };
 
@@ -87,6 +88,21 @@ test("timeout aborts a cooperative handler and requeues the same run", async () 
   assert.equal(requeues[0]?.errorCode, "timeout");
 });
 
+test("rate-limit deferral keeps the same run without consuming retry attempts", async () => {
+  const deferred: Array<Record<string, unknown>> = [];
+  await executeClaimedJobRun({
+    getHandler: () => ({ ...handler, execute: async () => { throw new JobError("ai-rate-limit", "Лимит AI", { deferSeconds: 120 }); } }),
+    operations: {
+      finish: async () => null,
+      requeue: async () => null,
+      defer: async (input) => { deferred.push(input); return null as never; },
+    },
+    run: { attempts: 3, id: 13, jobId: 1, lockToken: "token", maxAttempts: 3, payload: {}, source: "event", timeoutSeconds: 10, type: "test.job" } as never,
+  });
+  assert.equal(deferred[0]?.delaySeconds, 120);
+  assert.equal(deferred[0]?.id, 13);
+});
+
 test("queue queries retain locking, deduplication, and token guards", async () => {
   const source = await readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8");
   assert.match(source, /for\("update", \{ skipLocked: true \}\)/);
@@ -139,7 +155,7 @@ test("achievement backfill is enqueue-only and cannot be created as a periodic s
   assert.match(manage, /if \(handler\.schedulable === false\) throw new Error/);
   assert.match(schedules, /schedulable: schedulable !== false/);
   assert.match(manager, /handlers\.filter\(\(item\) => item\.schedulable \|\| item\.type === job\?\.type\)/);
-  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.map\(\(item\) => <option key=\{item\.type\}/);
+  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.filter\(\(item\) => item\.type !== EDITORIAL_SUMMARY_GENERATE_TYPE\)\.map\(\(item\) => <option key=\{item\.type\}/);
 });
 
 test("jobs admin separates schedules from paginated run history", async () => {
@@ -197,4 +213,3 @@ test("metadata jobs seed two enabled schedules with split cron and payloads", as
   assert.match(migration, /ON CONFLICT \("code"\) DO NOTHING/);
   assert.match(manager, /name="payload" value="\{\}"/);
 });
-

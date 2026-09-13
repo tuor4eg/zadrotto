@@ -22,7 +22,7 @@ export function ArchiveCatalogLayout({
         {toolbar}
 
         <div
-          className={`archive-scrollbar grid min-h-0 flex-1 grid-cols-3 content-start gap-2.5 overflow-y-auto pl-1 pr-1 md:grid-cols-4 xl:grid-cols-6 ${
+          className={`archive-scrollbar archive-catalog-list-scrollbar grid min-h-0 flex-1 grid-cols-3 content-start gap-2.5 overflow-y-auto px-0 md:grid-cols-4 xl:grid-cols-6 ${
             toolbar ? "mt-2" : ""
           }`}
         >

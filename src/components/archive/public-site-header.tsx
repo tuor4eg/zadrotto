@@ -129,7 +129,7 @@ export function PublicSiteHeader({
                     type="search"
                     autoComplete="off"
                     className="archive-control-surface h-9 w-full appearance-none rounded-lg border-0 pl-8 pr-3 text-xs text-stone-950 shadow-none outline-none placeholder:text-stone-500 focus:ring-2 focus:ring-stone-400/40"
-                    placeholder="Поиск"
+                    placeholder="Поиск по архиву"
                   />
                 </div>
               </form>

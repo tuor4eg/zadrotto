@@ -34,7 +34,7 @@ export default async function AboutPage() {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex w-full flex-col gap-3">
 
-        <article className="archive-paper archive-panel archive-stack archive-stack-left p-5 sm:p-7">
+        <article className="archive-paper archive-panel p-5 sm:p-7">
           <div className="grid gap-5 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start sm:gap-7">
             <div>
               <h1 className="font-serif text-4xl leading-none sm:text-5xl">О проекте</h1>

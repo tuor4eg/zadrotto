@@ -10,6 +10,7 @@ import {
   type MediaTypeFilter,
 } from "@/app/media-items-catalog-logic";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
+import type { AdminMediaSort } from "@/lib/media/admin-editorial-summary";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 type AdminMediaFiltersFormProps = {
@@ -31,7 +32,7 @@ type AdminMediaFiltersFormProps = {
   mediaTypeFilter: MediaTypeFilter;
   mediaTypes: MediaTypeOption[];
   searchQuery: string;
-  sort: CatalogSort;
+  sort: AdminMediaSort;
   totalCount: number;
 };
 
@@ -82,7 +83,7 @@ export function AdminMediaFiltersForm({
       author?: number | null;
       carrier?: number | null;
       q?: string;
-      sort?: CatalogSort;
+      sort?: AdminMediaSort;
       type?: MediaTypeFilter;
     }) => {
       const nextSearchParams = new URLSearchParams(searchParams.toString());
@@ -223,7 +224,7 @@ export function AdminMediaFiltersForm({
 
         <Select
           value={sort}
-          onChange={(event) => replaceFilters({ sort: event.target.value as CatalogSort })}
+          onChange={(event) => replaceFilters({ sort: event.target.value as AdminMediaSort })}
           aria-label="Сортировка записей"
         >
           {Object.entries(SORT_LABELS).map(([value, label]) => {
@@ -235,6 +236,7 @@ export function AdminMediaFiltersForm({
               </option>
             );
           })}
+          <option value="editorial_attempted_at">По последней попытке AI</option>
         </Select>
 
         <button

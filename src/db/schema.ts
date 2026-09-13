@@ -849,6 +849,7 @@ export const jobs = pgTable(
     code: text("code").notNull().unique(),
     type: text("type").notNull(),
     payload: jsonb("payload").$type<Record<string, unknown>>().default({}).notNull(),
+    options: jsonb("options").$type<Record<string, unknown>>().default({}).notNull(),
     cronExpression: text("cron_expression").notNull(),
     nextRunAt: timestamp("next_run_at", { withTimezone: true }).notNull(),
     enabled: boolean("enabled").default(true).notNull(),
@@ -913,6 +914,9 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_scheduled_job_occurrence_unique")
       .on(table.jobId, table.scheduledFor)
       .where(sql`${table.source} = 'schedule'`),
+    uniqueIndex("job_runs_editorial_summary_active_unique")
+      .on(sql`(${table.payload}->>'mediaItemId')`)
+      .where(sql`${table.type} = 'media.editorial-summary-generate' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
     check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
@@ -1435,6 +1439,22 @@ export const mediaItemMetadata = pgTable("media_item_metadata", {
   fetchedAt: timestamp("fetched_at", { withTimezone: true }),
   ...timestamps(),
 });
+
+export const mediaItemEditorialSummaries = pgTable("media_item_editorial_summaries", {
+  mediaItemId: integer("media_item_id").primaryKey()
+    .references(() => mediaItems.id, { onDelete: "cascade" }),
+  summary: text("summary"),
+  status: text("status").notNull(),
+  generatedAt: timestamp("generated_at", { withTimezone: true }),
+  attemptedAt: timestamp("attempted_at", { withTimezone: true }),
+  modelId: text("model_id"),
+  sourceHash: text("source_hash"),
+  locked: boolean("locked").default(false).notNull(),
+  ...timestamps(),
+}, (table) => [
+  check("media_item_editorial_summaries_status_check", sql`${table.status} in ('ready', 'unusable')`),
+  check("media_item_editorial_summaries_ready_check", sql`${table.status} <> 'ready' or nullif(btrim(${table.summary}), '') is not null`),
+]);
 
 export const mediaItemFranchises = pgTable(
   "media_item_franchises",

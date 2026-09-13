@@ -344,7 +344,7 @@ export function CatalogHeaderControls({
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap lg:justify-end">
       <label className="sr-only" htmlFor="header-catalog-search">
-        Поиск
+        Поиск по архиву
       </label>
       <div className="relative min-w-0 w-full sm:w-56 sm:justify-self-start lg:w-60 lg:flex-none">
         <Search className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
@@ -354,7 +354,7 @@ export function CatalogHeaderControls({
           value={search}
           onChange={(event) => setSearch(event.target.value)}
           className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
-          placeholder="Поиск"
+          placeholder="Поиск по архиву"
         />
         {search ? (
           <ArchiveTooltip

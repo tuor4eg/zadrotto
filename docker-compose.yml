@@ -58,6 +58,8 @@ services:
     command: npm run jobs:worker
     environment:
       <<: *jobs-environment
+      AI_PROVIDER_CREDENTIALS_KEY: ${AI_PROVIDER_CREDENTIALS_KEY}
+      REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       S3_ENDPOINT: ${S3_ENDPOINT}
       S3_REGION: ${S3_REGION}
       S3_BUCKET: ${S3_BUCKET}

@@ -12,6 +12,7 @@ export type HomeAuthorStatisticsData = {
   releaseYearDistribution: { count: number; year: number }[];
   releaseYearMediaTypeDistribution: { count: number; mediaType: string; year: number }[];
   scoreDistribution: { ratingsCount: number; score: number }[];
+  scoreMediaTypeDistribution: { mediaType: string; ratingsCount: number; score: number }[];
 };
 
 type ReleaseYearItem = HomeAuthorStatisticsData["releaseYearDistribution"][number];
@@ -102,6 +103,18 @@ export function getCountAxisTicks(maximumCount: number) {
   );
 }
 
+export function getReleaseYearAxisLabel(
+  year: number,
+  index: number,
+  totalYears: number,
+  lastYear: number,
+) {
+  if (index === totalYears - 1) return year;
+  if (lastYear - year < 3) return null;
+
+  return index === 0 || year % 10 === 0 ? year : null;
+}
+
 function RatingsByReleaseYearBars({
   items,
 }: {
@@ -116,6 +129,7 @@ function RatingsByReleaseYearBars({
   }
 
   const timelineItems = fillReleaseYearTimeline(items);
+  const lastTimelineYear = timelineItems.at(-1)?.year ?? 0;
   const maximumCount = Math.max(1, ...items.map(({ count }) => count));
   const yTicks = getCountAxisTicks(maximumCount);
   const scaleMaximum = yTicks.at(-1) ?? maximumCount;
@@ -179,7 +193,12 @@ function RatingsByReleaseYearBars({
           >
             {timelineItems.map(({ year }, index) => (
               <span key={year} className="font-mono text-[9px] font-semibold leading-none tabular-nums text-stone-600">
-                {index === 0 || index === timelineItems.length - 1 || year % 10 === 0 ? year : null}
+                {getReleaseYearAxisLabel(
+                  year,
+                  index,
+                  timelineItems.length,
+                  lastTimelineYear,
+                )}
               </span>
             ))}
           </div>
@@ -238,7 +257,10 @@ export function HomeAuthorStatistics({
 }) {
   const [selectedMediaType, setSelectedMediaType] = useState("all");
   const mediaTypeItems = ratingSummary.releaseYearMediaTypeDistribution;
-  const availableMediaTypeCodes = new Set(mediaTypeItems.map((item) => item.mediaType));
+  const availableMediaTypeCodes = new Set([
+    ...mediaTypeItems.map((item) => item.mediaType),
+    ...ratingSummary.scoreMediaTypeDistribution.map((item) => item.mediaType),
+  ]);
   const availableMediaTypes = mediaTypes.filter((mediaType) => availableMediaTypeCodes.has(mediaType.code));
   const mediaTypeOptions = [
     { label: "Все типы", value: "all" },
@@ -249,12 +271,15 @@ export function HomeAuthorStatistics({
     : mediaTypeItems
       .filter((item) => item.mediaType === selectedMediaType)
       .map(({ count, year }) => ({ count, year }));
+  const scoreItems = selectedMediaType === "all"
+    ? ratingSummary.scoreDistribution
+    : ratingSummary.scoreMediaTypeDistribution.filter((item) => item.mediaType === selectedMediaType);
 
   return (
     <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-label="Статистика пользователя">
       <div className="grid gap-5 lg:grid-cols-3 lg:gap-3">
         <div className="lg:col-span-2">
-          <div className="mb-3 flex items-center justify-between gap-3">
+          <div className="mb-3 flex min-h-9 items-center justify-between gap-3">
             <h3 className="flex min-w-0 items-center gap-2 font-serif text-2xl leading-none text-stone-900">
               <CalendarRange className="size-5 shrink-0 text-red-950/65" aria-hidden="true" />
               {title}
@@ -271,11 +296,11 @@ export function HomeAuthorStatistics({
           <RatingsByReleaseYearBars items={releaseYearItems} />
         </div>
         <div className="border-t border-stone-400/25 pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <h3 className="mb-3 flex items-center gap-2 font-serif text-2xl leading-none text-stone-900">
+          <h3 className="mb-3 flex min-h-9 items-center gap-2 font-serif text-2xl leading-none text-stone-900">
             <ChartNoAxesColumn className="size-5 text-red-950/65" aria-hidden="true" />
             Распределение оценок
           </h3>
-          <ScoreDistributionBars items={ratingSummary.scoreDistribution} />
+          <ScoreDistributionBars items={scoreItems} />
         </div>
       </div>
     </section>

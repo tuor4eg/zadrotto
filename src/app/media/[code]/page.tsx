@@ -54,7 +54,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
     return {};
   }
 
-  const description = formatMediaItemSummary(item);
+  const description = item.editorialSummary ?? item.description ?? formatMediaItemSummary(item);
   const images = item.coverUrl ? [item.coverUrl] : undefined;
 
   return {
@@ -119,7 +119,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
-          item={item}
+          item={{ ...item, description: item.editorialSummary ?? item.description }}
           variant="archive"
           headerActions={
             headerState.currentAdminUser ? (

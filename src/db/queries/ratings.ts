@@ -92,7 +92,7 @@ export async function getAuthorRatingSummary(
   enabledMediaTypeCodes: readonly string[],
 ) {
   const currentYear = getCurrentMoscowYear();
-  const [totalRows, distribution, releaseYearDistribution, scoreDistribution, latestRatings] = await Promise.all([
+  const [totalRows, distribution, releaseYearDistribution, scoreMediaTypeDistribution, latestRatings] = await Promise.all([
     db
       .select({
         ratingsCount: sql<number>`count(${ratings.id})::int`,
@@ -136,6 +136,7 @@ export async function getAuthorRatingSummary(
     db
       .select({
         score: ratings.score,
+        mediaType: mediaItems.mediaType,
         ratingsCount: sql<number>`count(${ratings.id})::int`,
       })
       .from(ratings)
@@ -144,7 +145,7 @@ export async function getAuthorRatingSummary(
         eq(ratings.authorId, authorId),
         getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ))
-      .groupBy(ratings.score),
+      .groupBy(ratings.score, mediaItems.mediaType),
     db
       .select({
         mediaItemId: mediaItems.id,
@@ -164,6 +165,10 @@ export async function getAuthorRatingSummary(
   ]);
   const totals = totalRows[0];
   const releaseYearTotals = new Map<number, number>();
+  const scoreTotals = new Map<number, number>();
+  for (const item of scoreMediaTypeDistribution) {
+    scoreTotals.set(item.score, (scoreTotals.get(item.score) ?? 0) + item.ratingsCount);
+  }
   const releaseYearMediaTypeDistribution = releaseYearDistribution.flatMap((item) => {
     if (item.year === null) return [];
 
@@ -182,7 +187,8 @@ export async function getAuthorRatingSummary(
     distribution,
     releaseYearDistribution: [...releaseYearTotals].map(([year, count]) => ({ count, year })),
     releaseYearMediaTypeDistribution,
-    scoreDistribution,
+    scoreDistribution: [...scoreTotals].map(([score, ratingsCount]) => ({ ratingsCount, score })),
+    scoreMediaTypeDistribution,
     latestRatings,
   };
 }

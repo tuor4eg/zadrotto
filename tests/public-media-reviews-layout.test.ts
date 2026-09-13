@@ -60,9 +60,14 @@ describe("public media reviews layout", () => {
   });
 
   it("renders full document-sized review content and actions", () => {
-    assert.match(reviewArticle, /archive-paper archive-panel archive-stack archive-stack-left[^"]*min-h-\[calc\(100dvh-2rem\)\]/);
-    assert.match(reviewArticle, />Досье<[\s\S]*aria-label="Хлебные крошки"/);
-    assert.match(reviewArticle, /<MediaCarrierDisplayTitle title=\{review\.mediaItemTitle\}/);
+    assert.match(reviewPage, /archive-page flex min-h-0 flex-1 flex-col/);
+    assert.match(reviewPage, /max-w-\[1480px\] flex-1 flex-col/);
+    assert.match(reviewPage, /flex min-h-0 w-full flex-1 flex-col/);
+    assert.match(reviewArticle, /<div className="relative flex min-h-0 flex-1 flex-col">[\s\S]*src="\/clip-transparent-trimmed\.png"[\s\S]*<article className="archive-paper archive-panel[^\"]*flex-1 flex-col/);
+    assert.doesNotMatch(reviewArticle, /min-h-\[calc\(100dvh/);
+    assert.match(globals, /\.archive-panel\.archive-panel-overflow-visible \{\s*overflow: visible;/);
+    assert.doesNotMatch(reviewArticle, />Досье</);
+    assert.match(reviewArticle, /aria-label="Хлебные крошки"[\s\S]*mt-3 max-w-\[880px\][\s\S]*<MediaCarrierDisplayTitle title=\{review\.mediaItemTitle\}/);
     assert.match(reviewArticle, /mediaItemMeta\.map/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
     assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
@@ -72,6 +77,10 @@ describe("public media reviews layout", () => {
     assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);
     assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
     assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);
+    const reviewPaperStyles = globals.match(/\.archive-review-paper \{([\s\S]*?)\n\}/)?.[1] ?? "";
+    assert.match(reviewPaperStyles, /radial-gradient\(circle at 17px 14px/);
+    assert.doesNotMatch(reviewPaperStyles, /rgb\(147 197 253|linear-gradient\(180deg/);
+    assert.doesNotMatch(globals, /\.archive-review-paper::before/);
     assert.match(reviewArticle, /navigator\.share\(shareData\)/);
     assert.match(reviewArticle, /navigator\.clipboard\?\.writeText/);
   });

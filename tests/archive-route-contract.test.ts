@@ -57,7 +57,7 @@ describe("archive route split", () => {
 
     assert.match(
       mediaItemDetails,
-      /archive-paper archive-panel archive-stack archive-stack-left[^"]*flex-1/,
+      /archive-paper archive-panel archive-panel-overflow-visible[^"]*flex-1/,
     );
   });
 
@@ -67,6 +67,8 @@ describe("archive route split", () => {
       /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"[\s\S]*aria-label="Поиск по архиву"/,
     );
     assert.match(publicHeader, /<input[\s\S]*name="q"[\s\S]*type="search"/);
+    assert.match(publicHeader, /placeholder="Поиск по архиву"/);
+    assert.match(catalogControls, /placeholder="Поиск по архиву"/);
     assert.match(publicHeader, /id="public-header-search"[\s\S]*archive-control-surface h-9/);
     assert.doesNotMatch(publicHeader, /onChange=|useDebouncedSearchDraft/);
   });

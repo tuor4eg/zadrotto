@@ -74,7 +74,7 @@ export default async function EditReviewPage({
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="w-full">
-          <div className="archive-paper archive-panel archive-stack archive-stack-left overflow-hidden p-5 sm:p-6">
+          <div className="archive-paper archive-panel overflow-hidden p-5 sm:p-6">
             <div className="flex flex-wrap items-end justify-between gap-3">
               <div>
                 <h1 className="font-serif text-3xl leading-none text-stone-950 sm:text-4xl">

@@ -45,8 +45,9 @@ describe("admin entity edit action", () => {
     assert.match(detailsSource, /headerActions=\{headerActions\}/);
     assert.match(
       detailsSource,
-      /Досье<\/div>[\s\S]*\{breadcrumbSlot\}[\s\S]*headerActions \? <div className="shrink-0">\{headerActions\}<\/div> : null/,
+      /\{breadcrumbSlot\}[\s\S]*headerActions \? <div className="shrink-0">\{headerActions\}<\/div> : null/,
     );
+    assert.doesNotMatch(detailsSource, />Досье</);
   });
 
   it("shows the series edit action only to an admin", () => {

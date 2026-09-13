@@ -3,12 +3,14 @@ import type { JobRunSource } from "./model";
 export class JobError extends Error {
   code: string;
   retryable: boolean;
+  deferSeconds: number | null;
 
-  constructor(code: string, message: string, options?: { retryable?: boolean; cause?: unknown }) {
+  constructor(code: string, message: string, options?: { retryable?: boolean; cause?: unknown; deferSeconds?: number }) {
     super(message, options);
     this.name = "JobError";
     this.code = code;
     this.retryable = options?.retryable ?? true;
+    this.deferSeconds = options?.deferSeconds ?? null;
   }
 }
 
