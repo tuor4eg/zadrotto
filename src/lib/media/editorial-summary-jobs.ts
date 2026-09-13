@@ -1,11 +1,11 @@
 import "server-only";
 
-import { countActiveEditorialSummaryRuns, enqueueEditorialSummaryRun, getEditorialSummaryJob, getEditorialSummarySource, listEditorialSummarySources, saveGeneratedEditorialSummary } from "@/db/queries/editorial-summaries";
+import { enqueueEditorialSummaryRun, getEditorialSummaryJob, getEditorialSummaryQueueState, getEditorialSummarySource, listEditorialSummarySources, saveGeneratedEditorialSummary } from "@/db/queries/editorial-summaries";
 import { generateAiObject } from "@/lib/ai/service";
 import { getEnabledAiScenarioProfile } from "@/db/queries/ai-scenarios";
 import { checkFixedWindowRateLimits } from "@/lib/rate-limits/redis";
 import { JobError } from "@/lib/jobs/types";
-import { EDITORIAL_SUMMARY_SCENARIO_KEY, EDITORIAL_SUMMARY_SCHEMA, EDITORIAL_SUMMARY_SYSTEM_PROMPT, getEditorialSummarySourceHash, isEditorialSummaryResponse, isEditorialSummaryStale, parseEditorialSummaryOptions } from "./editorial-summary";
+import { EDITORIAL_SUMMARY_SCENARIO_KEY, EDITORIAL_SUMMARY_SCHEMA, EDITORIAL_SUMMARY_SYSTEM_PROMPT, getEditorialSummarySourceHash, isEditorialSummaryResponse, isEditorialSummaryStale, nextEditorialSummaryAvailableAt, parseEditorialSummaryOptions } from "./editorial-summary";
 import { runEditorialSummaryFlow } from "./editorial-summary-flow";
 
 export async function sweepEditorialSummaries() {
@@ -15,7 +15,9 @@ export async function sweepEditorialSummaries() {
     throw new JobError("ai-scenario-disabled", "Создайте и включите AI-сценарий «Редакционные справки».", { retryable: false });
   }
   const { prompt } = parseEditorialSummaryOptions(job.options);
-  let slots = Math.max(0, 25 - await countActiveEditorialSummaryRuns());
+  const queue = await getEditorialSummaryQueueState();
+  let slots = Math.max(0, 25 - queue.count);
+  let lastAvailableAt = queue.lastAvailableAt;
   let afterId = 0;
   while (slots > 0) {
     const batch = await listEditorialSummarySources(afterId, 100);
@@ -25,8 +27,12 @@ export async function sweepEditorialSummaries() {
       if (item.locked) continue;
       const hash = getEditorialSummarySourceHash(item, prompt);
       if (!isEditorialSummaryStale({ locked: false, sourceHash: item.sourceHash, currentHash: hash })) continue;
-      const result = await enqueueEditorialSummaryRun({ mediaItemId: item.id, source: "event" });
-      if (result.created) slots -= 1;
+      const availableAt = nextEditorialSummaryAvailableAt(lastAvailableAt, new Date());
+      const result = await enqueueEditorialSummaryRun({ mediaItemId: item.id, source: "event", availableAt });
+      if (result.created) {
+        slots -= 1;
+        lastAvailableAt = availableAt;
+      }
       if (slots === 0) break;
     }
     if (batch.length < 100) break;

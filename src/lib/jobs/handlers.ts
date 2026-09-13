@@ -187,6 +187,9 @@ const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
   async execute({ attempt, payload, runId }) {
     const result = await backfillMediaMetadata({ attempt, runId, ...payload });
 
+    if (result.stopError) {
+      throw new JobError(result.stopError, "Заполнение метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
+    }
     if (result.retryableFailed > 0) {
       throw new JobError(
         "metadata-backfill-failed",
@@ -212,6 +215,9 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   async execute({ attempt, payload, runId }) {
     const result = await refreshStaleMediaMetadata({ attempt, runId, ...payload });
 
+    if (result.stopError) {
+      throw new JobError(result.stopError, "Обновление метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
+    }
     if (result.retryableFailed > 0) {
       throw new JobError(
         "metadata-refresh-failed",

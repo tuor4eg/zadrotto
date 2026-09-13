@@ -228,7 +228,7 @@ export default async function EditAdminMediaPage({
             {query.summaryQueued ? <Alert>Генерация поставлена в очередь.</Alert> : null}
             {query.summarySaved ? <Alert>Справка сохранена и защищена от автозамены.</Alert> : null}
             <div className="text-sm text-stone-600">
-              {editorialSummary?.locked ? "Защищена от автозамены" : summaryStale ? "Устарела — ожидает обновления" : editorialSummary?.status === "unusable" ? "Данных недостаточно для справки" : editorialSummary?.summary ? "Актуальна" : "Ещё не создана"}
+              {editorialSummary?.locked ? "Защищена от автозамены" : summaryStale ? "Устарела — ожидает обновления" : editorialSummary?.status === "unusable" ? "AI не подготовил справку" : editorialSummary?.summary ? "Актуальна" : "Ещё не создана"}
               {editorialSummary?.generatedAt ? ` · Последняя генерация: ${editorialSummary.generatedAt.toLocaleString("ru-RU")}` : ""}
               {editorialSummary?.modelId ? ` · Модель: ${editorialSummary.modelId}` : ""}
             </div>
@@ -340,6 +340,8 @@ export default async function EditAdminMediaPage({
             ) : (
               <EmptyState className="p-4 text-left">Запись добавлена не через авторский профиль.</EmptyState>
             )}
+            <p>Создана: <time dateTime={item.createdAt.toISOString()}>{item.createdAt.toLocaleString("ru-RU")}</time></p>
+            <p>Изменена: <time dateTime={item.updatedAt.toISOString()}>{item.updatedAt.toLocaleString("ru-RU")}</time></p>
           </div>
         </CardContent>
       </Card>

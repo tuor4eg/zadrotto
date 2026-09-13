@@ -23,6 +23,7 @@ type MediaItemDetailsItem = {
   originalTitle: string | null;
   aliases?: string[];
   description: string | null;
+  editorialSummary?: string | null;
   mediaType: MediaType;
   franchises: MediaItemFranchiseLink[];
   mediaCarrierCode?: string | null;
@@ -575,7 +576,7 @@ function ArchiveMediaItemDetails({
               </div>
 
               <div className="mt-6">
-                <ArchiveNote text={item.description} maxWidthClassName="max-w-none" />
+                <ArchiveNote text={item.description} maxWidthClassName="max-w-none" collapsible={!item.editorialSummary} />
               </div>
 
               <div className="mt-6 flex flex-col gap-3">

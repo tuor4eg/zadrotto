@@ -63,6 +63,12 @@ function createStore() {
 }
 
 describe("metadata job schema and selection", () => {
+  it("passes encrypted cover provider credentials key to the jobs worker", () => {
+    const compose = readFileSync("docker-compose.yml", "utf8")
+    const worker = compose.slice(compose.indexOf("  jobs-worker:"), compose.indexOf("\n  redis:"))
+    assert.match(worker, /COVER_PROVIDER_CREDENTIALS_KEY: \$\{COVER_PROVIDER_CREDENTIALS_KEY\}/)
+  })
+
   it("adds metadata_attempted_at with an index for both jobs", () => {
     assert.match(schemaSource, /metadataAttemptedAt: timestamp\("metadata_attempted_at"/)
     assert.match(schemaSource, /index\("media_items_metadata_attempted_at_idx"\)\.on\(table\.metadataAttemptedAt\)/)
@@ -263,11 +269,26 @@ describe("metadata backfill and refresh runs", () => {
       store,
     })
 
-    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 0 })
+    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, stopError: "provider-daily-limit" })
     assert.equal(fetched.length, 1)
     assert.deepEqual(attempts, [])
     assert.deepEqual(upserts, [])
     assert.deepEqual(failures, [])
+  })
+
+  it("reports an unavailable quota check without marking the record attempted", async () => {
+    const { attempts, store } = createStore()
+    const result = await runMetadataBackfill({
+      context: {
+        async fetchTitleMetadata() { throw new Error("should not fetch") },
+        async searchTitles() { return { candidates: [], error: "rate-limit-unavailable" } },
+      },
+      items: [item({ id: 23, title: "Dune" })],
+      store,
+    })
+
+    assert.equal(result.stopError, "rate-limit-unavailable")
+    assert.deepEqual(attempts, [])
   })
 
   it("marks provider-unavailable and continues to the next record", async () => {

@@ -34,6 +34,7 @@ import {
   type ProviderRequestError,
 } from "@/lib/covers/provider-errors";
 import { getMediaMetadataRefreshSource } from "@/lib/media/metadata-refresh-source";
+import { hasMediaItemDuplicateIdentityChanged } from "@/lib/media/media-item-duplicate-identity";
 import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh-candidates";
 import {
   getMediaTitleCandidateFormFields,
@@ -191,6 +192,19 @@ export function AdminMediaForm({
   const [isSuggestingFranchises, setIsSuggestingFranchises] = useState(false);
   const [localErrorToast, setLocalErrorToast] = useState<AdminToast | null>(null);
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
+  const shouldCheckDuplicates = !isEditing || Boolean(selectedTitleSource?.token) || hasMediaItemDuplicateIdentityChanged({
+    mediaType: values?.mediaType ?? selectedMediaType,
+    title: values?.title ?? "",
+    originalTitle: values?.originalTitle ?? null,
+    aliases: values?.aliases ?? [],
+    releaseYear: values?.releaseYear ?? null,
+  }, {
+    mediaType: selectedMediaType,
+    title,
+    originalTitle,
+    aliases,
+    releaseYear: releaseYear.trim() ? Number(releaseYear) : null,
+  });
   const availableMediaCarriers = useMemo(
     () => mediaCarriers.filter((carrier) => carrier.mediaTypes.includes(selectedMediaType)),
     [mediaCarriers, selectedMediaType],
@@ -676,7 +690,7 @@ export function AdminMediaForm({
           </div>
         </div>
 
-        <div className="md:col-span-2">
+        {shouldCheckDuplicates ? <div className="md:col-span-2">
           <MediaItemDuplicateCheck
             mediaItemId={values?.id}
             mediaType={selectedMediaType}
@@ -686,7 +700,7 @@ export function AdminMediaForm({
             releaseYear={releaseYear}
             onBlockedChange={handleDuplicateBlockedChange}
           />
-        </div>
+        </div> : null}
 
         <div className="flex flex-col gap-2 md:col-span-2">
           <Label htmlFor="admin-media-author">Автор</Label>
@@ -781,7 +795,7 @@ export function AdminMediaForm({
       <div>
         <Button
           type="submit"
-          disabled={(requireAuthor && !hasAuthors) || duplicateBlocked || isSuggestingFranchises}
+          disabled={(requireAuthor && !hasAuthors) || (shouldCheckDuplicates && duplicateBlocked) || isSuggestingFranchises}
         >
           <Save />
           {submitLabel}

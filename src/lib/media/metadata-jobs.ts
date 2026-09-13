@@ -21,6 +21,7 @@ export type MetadataJobResult = {
   retryableFailed: number
   skipped: number
   updated: number
+  stopError?: "provider-daily-limit" | "rate-limit-unavailable"
 }
 
 export type MetadataJobContext = {
@@ -56,12 +57,14 @@ export type MetadataJobStore = {
 }
 
 type ItemOutcome =
-  | { kind: "quota-stop" }
+  | { kind: "quota-stop"; error: "provider-daily-limit" | "rate-limit-unavailable" }
   | { kind: "retryable"; error: string }
   | { kind: "skip" }
   | { kind: "updated" }
 
-export function isMetadataQuotaStopError(error: string | null | undefined) {
+export function isMetadataQuotaStopError(
+  error: string | null | undefined,
+): error is "provider-daily-limit" | "rate-limit-unavailable" {
   return Boolean(error && (METADATA_QUOTA_STOP_ERRORS as readonly string[]).includes(error))
 }
 
@@ -106,7 +109,7 @@ async function fetchAndStoreMetadata(input: {
     provider: input.provider,
   })
 
-  if (isMetadataQuotaStopError(result.error)) return { kind: "quota-stop" }
+  if (isMetadataQuotaStopError(result.error)) return { kind: "quota-stop", error: result.error }
 
   if (result.error === "provider-unavailable" || result.error === "provider-rate-limit") {
     return { kind: "retryable", error: result.error }
@@ -138,7 +141,7 @@ async function matchAndStoreMetadata(input: {
   })
 
   if (search.candidates.length === 0) {
-    if (isMetadataQuotaStopError(search.error)) return { kind: "quota-stop" }
+    if (isMetadataQuotaStopError(search.error)) return { kind: "quota-stop", error: search.error }
     if (search.error === "provider-unavailable" || search.error === "provider-rate-limit") {
       return { kind: "retryable", error: search.error }
     }
@@ -164,7 +167,10 @@ async function applyItemOutcome(input: {
   result: MetadataJobResult
   store: MetadataJobStore
 }) {
-  if (input.outcome.kind === "quota-stop") return "stop" as const
+  if (input.outcome.kind === "quota-stop") {
+    input.result.stopError = input.outcome.error
+    return "stop" as const
+  }
 
   if (input.outcome.kind === "updated") {
     input.result.updated += 1

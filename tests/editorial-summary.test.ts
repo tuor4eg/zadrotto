@@ -9,6 +9,7 @@ import {
   getGeneratedEditorialSummaryWrite,
   isEditorialSummaryResponse,
   isEditorialSummaryStale,
+  nextEditorialSummaryAvailableAt,
   prepareManualEditorialSummary,
   type EditorialSummarySource,
 } from "../src/lib/media/editorial-summary";
@@ -45,6 +46,15 @@ test("production jobs worker receives AI credentials and Redis for summary gener
   assert.match(worker, /REDIS_URL: \$\{REDIS_URL:-redis:\/\/redis:6379\}/);
 });
 
+test("batch generation is spaced across scheduled slots", () => {
+  const now = new Date("2026-09-13T12:00:00.000Z");
+  const first = nextEditorialSummaryAvailableAt(null, now);
+  const second = nextEditorialSummaryAvailableAt(first, now);
+  assert.equal(first.toISOString(), now.toISOString());
+  assert.equal(second.getTime() - first.getTime(), 15_000);
+  assert.equal(nextEditorialSummaryAvailableAt(second, new Date(now.getTime() + 60_000)).getTime(), now.getTime() + 60_000);
+});
+
 test("context selects relevant metadata and hash changes with source or prompt", () => {
   assert.deepEqual(buildEditorialSummaryContext(source).facts, {
     developers: ["Студия"], genres: ["Приключение"],
@@ -63,6 +73,7 @@ test("editorial prompt controls the tone while system prompt keeps factual const
   assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Тон и стиль задаёт редакционная инструкция/);
   assert.doesNotMatch(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Стиль нейтральный/);
   assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Не выдумывай факты/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Недостаток материала для желаемой длины сам по себе не причина для отказа/);
 });
 
 test("structured output accepts short Russian prose and rejects malformed answers", () => {

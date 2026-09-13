@@ -56,6 +56,12 @@ export async function getRedisClient() {
   return connectionPromise;
 }
 
+export async function closeRedisClient() {
+  const client = cachedClient;
+  cachedClient = null;
+  if (client?.isOpen) await client.close();
+}
+
 export async function checkRedisHealth(): Promise<ServiceHealthCheck> {
   const startedAt = Date.now();
   const url = getRedisUrl();

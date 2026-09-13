@@ -1134,6 +1134,8 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       createdByAuthorId: mediaItems.createdByAuthorId,
       authorName: authors.name,
       authorCode: authors.code,
+      createdAt: mediaItems.createdAt,
+      updatedAt: mediaItems.updatedAt,
     })
     .from(mediaItems)
     .leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
@@ -1436,6 +1438,9 @@ export async function getAdminMediaItemIdentityById(mediaItemId: number) {
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      releaseYear: mediaItems.releaseYear,
+      aliases: mediaItemTitleAliasesSql(),
       mediaType: mediaItems.mediaType,
       franchises: franchisesJsonSql(mediaItems.id, false),
       createdByAuthorId: mediaItems.createdByAuthorId,

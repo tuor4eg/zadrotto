@@ -10,6 +10,7 @@ import {
   type MediaItemDuplicateMatch,
 } from "@/lib/media/media-item-duplicates";
 import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
+import { hasMediaItemDuplicateIdentityChanged } from "@/lib/media/media-item-duplicate-identity";
 
 const form = {
   mediaType: "film",
@@ -28,6 +29,17 @@ const match = {
 } satisfies MediaItemDuplicateMatch;
 
 describe("media item duplicate checks", () => {
+  it("skips duplicate search for unchanged edit identity and detects meaningful changes", () => {
+    const previous = { ...form, aliases: ["Neo"] };
+    assert.equal(hasMediaItemDuplicateIdentityChanged(previous, {
+      ...previous,
+      title: "  THE   MATRIX ",
+      aliases: ["neo"],
+    }), false);
+    assert.equal(hasMediaItemDuplicateIdentityChanged(previous, { ...previous, title: "The Matrix Reloaded" }), true);
+    assert.equal(hasMediaItemDuplicateIdentityChanged(previous, { ...previous, aliases: ["Neo", "Морфеус"] }), true);
+    assert.equal(hasMediaItemDuplicateIdentityChanged(previous, { ...previous, releaseYear: 2003 }), true);
+  });
   it("normalizes title whitespace and casing", () => {
     assert.equal(normalizeMediaItemDuplicateTitle("  The   Matrix  "), "the matrix");
     assert.equal(normalizeMediaItemDuplicateTitle("ЁЖИК"), "ежик");

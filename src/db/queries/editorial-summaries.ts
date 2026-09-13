@@ -56,10 +56,13 @@ export async function listEditorialSummarySources(afterId: number, limit: number
     .orderBy(asc(mediaItems.id)).limit(limit);
 }
 
-export async function countActiveEditorialSummaryRuns() {
-  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(jobRuns)
+export async function getEditorialSummaryQueueState() {
+  const [row] = await db.select({
+    count: sql<number>`count(*)::int`,
+    lastAvailableAt: sql<Date | null>`max(${jobRuns.availableAt})`,
+  }).from(jobRuns)
     .where(and(eq(jobRuns.type, EDITORIAL_SUMMARY_GENERATE_TYPE), sql`${jobRuns.status} in ('queued', 'running')`));
-  return row?.count ?? 0;
+  return { count: row?.count ?? 0, lastAvailableAt: row?.lastAvailableAt ?? null };
 }
 
 export async function enqueueEditorialSummaryRun(input: {
@@ -67,6 +70,7 @@ export async function enqueueEditorialSummaryRun(input: {
   createdByAdminId?: number;
   force?: boolean;
   source: "manual" | "event";
+  availableAt?: Date;
 }) {
   const job = await getEditorialSummaryJob();
   if (!job) throw new Error("EDITORIAL_SUMMARY_JOB_MISSING");
@@ -79,8 +83,8 @@ export async function enqueueEditorialSummaryRun(input: {
     source: input.source,
     status: "queued",
     createdByAdminId: input.createdByAdminId ?? null,
-    scheduledFor: now,
-    availableAt: now,
+    scheduledFor: input.availableAt ?? now,
+    availableAt: input.availableAt ?? now,
     maxAttempts: job.maxAttempts,
     timeoutSeconds: job.timeoutSeconds,
     retryBaseSeconds: job.retryBaseSeconds,

@@ -4,6 +4,7 @@ import { getDbClient } from "@/db";
 import { claimNextJobRun, recoverExpiredJobRuns } from "@/db/queries/jobs";
 import { jobHandlerRegistry } from "@/lib/jobs/handlers";
 import { executeClaimedJobRun } from "@/lib/jobs/worker";
+import { closeRedisClient } from "@/lib/services/redis";
 import { JOB_RECOVERY_POLL_MS, JOB_WORKER_POLL_MS } from "./runtime";
 
 let stopping = false;
@@ -56,7 +57,10 @@ async function main() {
   try {
     await Promise.all([runClaimLoop(), runRecoveryLoop()]);
   } finally {
-    await getDbClient().end({ timeout: 5 }).catch(() => undefined);
+    await Promise.all([
+      closeRedisClient().catch(() => undefined),
+      getDbClient().end({ timeout: 5 }).catch(() => undefined),
+    ]);
   }
 }
 

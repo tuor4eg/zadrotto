@@ -44,6 +44,7 @@ import {
   type MediaMetadataFormMutation,
 } from "@/lib/media/metadata-form-mutation";
 import { validateMediaItemDuplicateCheck } from "@/lib/media/validate-media-item-duplicate-check";
+import { hasMediaItemDuplicateIdentityChanged } from "@/lib/media/media-item-duplicate-identity";
 import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
 
@@ -265,13 +266,17 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=too-many-aliases-${maxTitleAliases}`);
   }
 
-  const duplicateCheck = await validateMediaItemDuplicateCheck(formData, {
-    ...form.value,
-    excludeMediaItemId: mediaItemId.value,
-  });
+  const shouldCheckDuplicates = Boolean(getFormString(formData, "metadataTitleSourceToken")) ||
+    hasMediaItemDuplicateIdentityChanged(existingItem, form.value);
+  if (shouldCheckDuplicates) {
+    const duplicateCheck = await validateMediaItemDuplicateCheck(formData, {
+      ...form.value,
+      excludeMediaItemId: mediaItemId.value,
+    });
 
-  if (!duplicateCheck.ok) {
-    redirect(`/admin/media/${mediaItemId.value}/edit?error=${duplicateCheck.error}`);
+    if (!duplicateCheck.ok) {
+      redirect(`/admin/media/${mediaItemId.value}/edit?error=${duplicateCheck.error}`);
+    }
   }
 
   const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);

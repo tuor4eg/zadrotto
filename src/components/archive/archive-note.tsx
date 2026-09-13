@@ -7,6 +7,7 @@ export const ARCHIVE_NOTE_PREVIEW_LENGTH = 255;
 type ArchiveNoteProps = {
   text?: string | null;
   maxWidthClassName?: string;
+  collapsible?: boolean;
 };
 
 export function getArchiveNotePreview(
@@ -23,10 +24,10 @@ export function getArchiveNotePreview(
   return `${preview.slice(0, lastWhitespaceIndex > 0 ? lastWhitespaceIndex : maxLength).trimEnd()}…`;
 }
 
-export function ArchiveNote({ text, maxWidthClassName = "max-w-[620px]" }: ArchiveNoteProps) {
+export function ArchiveNote({ text, maxWidthClassName = "max-w-[620px]", collapsible = true }: ArchiveNoteProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const visibleText = text?.trim() || "Здесь пока пусто...";
-  const preview = getArchiveNotePreview(visibleText);
+  const preview = collapsible ? getArchiveNotePreview(visibleText) : null;
   const displayedText = preview && !isExpanded ? preview : visibleText;
 
   return (
