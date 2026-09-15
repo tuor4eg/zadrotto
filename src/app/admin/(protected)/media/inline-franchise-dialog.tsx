@@ -6,6 +6,10 @@ import { createPortal } from "react-dom";
 
 import { Button } from "@/components/ui/button";
 import { Input, Label, Textarea } from "@/components/ui/form";
+import {
+  SearchableFranchiseSelect,
+  type SearchableFranchiseOption,
+} from "@/components/ui/searchable-franchise-select";
 import { FranchiseDuplicateCheck } from "@/components/franchise-duplicate-check";
 import {
   createInlineFranchiseAction,
@@ -23,6 +27,7 @@ type InlineFranchise = {
 
 type InlineFranchiseDialogProps = {
   onCreated: (franchise: InlineFranchise) => void;
+  options: SearchableFranchiseOption[];
 };
 
 const initialState: CreateInlineFranchiseState = {
@@ -30,7 +35,7 @@ const initialState: CreateInlineFranchiseState = {
   franchise: null,
 };
 
-export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps) {
+export function InlineFranchiseDialog({ onCreated, options }: InlineFranchiseDialogProps) {
   const [open, setOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(
     createInlineFranchiseAction,
@@ -40,6 +45,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
   const lastCreatedFranchiseIdRef = useRef<number | null>(null);
   const [title, setTitle] = useState("");
   const [originalTitle, setOriginalTitle] = useState("");
+  const [parentId, setParentId] = useState("");
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
   const toastMessages = [
     ...(state.error
@@ -63,9 +69,18 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
     formRef.current?.reset();
     setTitle("");
     setOriginalTitle("");
+    setParentId("");
     setDuplicateBlocked(false);
     setOpen(false);
   }, [onCreated, state.franchise]);
+
+  function closeDialog() {
+    setTitle("");
+    setOriginalTitle("");
+    setParentId("");
+    setDuplicateBlocked(false);
+    setOpen(false);
+  }
 
   const dialog = open ? (
     <div
@@ -73,7 +88,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
       role="presentation"
       onMouseDown={(event) => {
         if (event.target === event.currentTarget && !isPending) {
-          setOpen(false);
+          closeDialog();
         }
       }}
     >
@@ -98,7 +113,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
             size="icon"
             aria-label="Закрыть"
             disabled={isPending}
-            onClick={() => setOpen(false)}
+            onClick={closeDialog}
           >
             <X />
           </Button>
@@ -140,6 +155,21 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
           />
 
           <div className="flex flex-col gap-2">
+            <Label htmlFor="inline-franchise-parent">Родительская серия</Label>
+            <SearchableFranchiseSelect
+              id="inline-franchise-parent"
+              name="parentId"
+              options={options}
+              searchByTitleOnly
+              value={parentId}
+              onChange={setParentId}
+            />
+            <p className="text-xs leading-5 text-stone-500">
+              Без выбранного родителя серия будет корневой.
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-2">
             <Label htmlFor="inline-franchise-description">Описание</Label>
             <Textarea
               id="inline-franchise-description"
@@ -154,7 +184,7 @@ export function InlineFranchiseDialog({ onCreated }: InlineFranchiseDialogProps)
               type="button"
               variant="outline"
               disabled={isPending}
-              onClick={() => setOpen(false)}
+              onClick={closeDialog}
             >
               Отмена
             </Button>

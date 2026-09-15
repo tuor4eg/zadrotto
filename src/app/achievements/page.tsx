@@ -1,4 +1,5 @@
 import type { Metadata } from "next"
+import Image from "next/image"
 
 import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
 import { AuthorAchievementHeroStats } from "@/components/achievements/author-achievement-hero-stats"
@@ -31,11 +32,20 @@ export default async function AchievementsPage() {
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <section
-          className="archive-paper archive-panel overflow-hidden px-6 py-6 sm:px-10 lg:px-14 lg:py-7"
+          className="archive-paper archive-panel overflow-hidden px-2 py-6 sm:px-10 lg:px-14 lg:py-7"
           aria-labelledby="achievements-hero-title"
         >
+          <Image
+            src="/mascot/deadz_achieves.webp"
+            alt=""
+            fill
+            sizes="(max-width: 639px) 100vw, 1px"
+            className="object-cover object-right sm:hidden"
+            style={{ opacity: 0.25 }}
+          />
           <div
             aria-hidden="true"
+            className="hidden sm:block"
             style={{
               aspectRatio: "900 / 409",
               backgroundImage: "url('/mascot/deadz_achieves.webp')",
@@ -52,6 +62,7 @@ export default async function AchievementsPage() {
               zIndex: 0,
             }}
           />
+          <div className="relative z-10">
           <h1
             id="achievements-hero-title"
             className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
@@ -66,6 +77,7 @@ export default async function AchievementsPage() {
             earnedCount={stats.earnedCount}
             inProgressCount={stats.inProgressCount}
           />
+          </div>
         </section>
         <AuthorAchievementGallery items={items} />
       </div>

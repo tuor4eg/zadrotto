@@ -17,16 +17,16 @@ function TelegramIcon() {
 export function ArchiveSiteFooter() {
   return (
     <footer className="archive-paper archive-panel flex flex-col items-center gap-2 px-4 py-3 text-stone-600 sm:px-5">
-      <div className="flex flex-wrap items-center justify-center gap-y-2 font-mono text-[10px] uppercase tracking-[0.12em]">
-        <span className="px-3 first:pl-0">{new Date().getFullYear()}</span>
+      <div className="flex flex-nowrap items-center justify-center whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.05em] sm:text-[10px] sm:tracking-[0.12em]">
+        <span className="px-1.5 first:pl-0 sm:px-3">{new Date().getFullYear()}</span>
         {FOOTER_LINKS.map((item) => (
-          <span key={item.href} className="border-l border-stone-400/40 px-3">
+          <span key={item.href} className="border-l border-stone-400/40 px-1.5 sm:px-3">
             <Link className="hover:text-stone-950" href={item.href}>
               {item.label}
             </Link>
           </span>
         ))}
-        <span className="flex items-center border-l border-stone-400/40 px-3">
+        <span className="flex items-center border-l border-stone-400/40 px-1.5 sm:px-3">
           <a
             aria-label="Telegram-канал Задротто"
             className="inline-flex text-stone-600 transition-colors hover:text-stone-950"

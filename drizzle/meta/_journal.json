@@ -610,6 +610,13 @@
       "when": 1789286400000,
       "tag": "0086_media_item_editorial_summaries",
       "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1789372800000,
+      "tag": "0087_media_metadata_issue",
+      "breakpoints": true
     }
   ]
 }

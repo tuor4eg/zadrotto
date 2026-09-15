@@ -156,6 +156,14 @@ describe("public reviews catalog page", () => {
     assert.match(queries, /char_length\(\$\{contributionReviews\.body\}\) >= 2000/)
     assert.match(queries, /char_length\(\$\{contributionReviews\.body\}\) <= 500/)
     assert.match(queries, /gte\(ratings\.score, 80\)/)
+    assert.match(
+      queries,
+      /getPublishedReviewsCatalog[\s\S]*\.orderBy\(desc\(contributions\.createdAt\), desc\(contributions\.id\)\)/,
+    )
+    assert.match(
+      queries,
+      /getLatestPublishedReviewCards[\s\S]*\.orderBy\(desc\(contributions\.createdAt\), desc\(contributions\.id\)\)/,
+    )
     assert.match(queries, /getLatestPublishedReviewCards[\s\S]*mediaItemTitle: mediaItems\.title[\s\S]*\.limit\(limit\)/)
     assert.match(
       queries,

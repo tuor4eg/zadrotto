@@ -59,7 +59,7 @@ export async function listEditorialSummarySources(afterId: number, limit: number
 export async function getEditorialSummaryQueueState() {
   const [row] = await db.select({
     count: sql<number>`count(*)::int`,
-    lastAvailableAt: sql<Date | null>`max(${jobRuns.availableAt})`,
+    lastAvailableAt: sql<Date | null>`max(${jobRuns.availableAt})`.mapWith(jobRuns.availableAt),
   }).from(jobRuns)
     .where(and(eq(jobRuns.type, EDITORIAL_SUMMARY_GENERATE_TYPE), sql`${jobRuns.status} in ('queued', 'running')`));
   return { count: row?.count ?? 0, lastAvailableAt: row?.lastAvailableAt ?? null };

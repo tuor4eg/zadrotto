@@ -284,14 +284,16 @@ export function HomeAuthorStatistics({
               <CalendarRange className="size-5 shrink-0 text-red-950/65" aria-hidden="true" />
               {title}
             </h3>
-            <ArchiveSelect
-              ariaLabel="Тип медиа"
-              className="w-32 shrink-0 sm:w-44"
-              onChange={setSelectedMediaType}
-              options={mediaTypeOptions}
-              triggerClassName="w-full min-w-0"
-              value={selectedMediaType}
-            />
+            <div className="hidden shrink-0 md:block">
+              <ArchiveSelect
+                ariaLabel="Тип медиа"
+                className="w-44"
+                onChange={setSelectedMediaType}
+                options={mediaTypeOptions}
+                triggerClassName="w-full min-w-0"
+                value={selectedMediaType}
+              />
+            </div>
           </div>
           <RatingsByReleaseYearBars items={releaseYearItems} />
         </div>
@@ -303,6 +305,14 @@ export function HomeAuthorStatistics({
           <ScoreDistributionBars items={scoreItems} />
         </div>
       </div>
+      <ArchiveSelect
+        ariaLabel="Тип медиа"
+        className="mt-4 w-full md:hidden"
+        onChange={setSelectedMediaType}
+        options={mediaTypeOptions}
+        triggerClassName="w-full min-w-0"
+        value={selectedMediaType}
+      />
     </section>
   );
 }

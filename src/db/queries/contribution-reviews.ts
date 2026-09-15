@@ -295,7 +295,7 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
       and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
     )
     .where(whereCondition)
-    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .orderBy(desc(contributions.createdAt), desc(contributions.id))
     .limit(filters.pageSize)
     .offset(getOffset(page, filters.pageSize))
 
@@ -406,7 +406,7 @@ export async function getLatestPublishedReviewCards(
         inArray(mediaItems.mediaType, [...accessibleMediaTypeCodes]),
       ),
     )
-    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .orderBy(desc(contributions.createdAt), desc(contributions.id))
     .limit(limit)
 
   return rows.map((review) => ({

@@ -153,7 +153,7 @@ export function ArchiveAuthorMediaSuggestion({
   }, [modalState]);
 
   const picker = (
-    <div className="fixed bottom-5 left-5 z-[70]">
+    <div className="fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] z-[70] sm:bottom-5 sm:left-5">
       <ArchiveTooltip label="Предложить запись" side="right">
         <button
           type="button"

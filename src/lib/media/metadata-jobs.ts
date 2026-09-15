@@ -2,13 +2,15 @@ import type { MediaTitleCandidate, TitleMetadataInput, TitleSearchInput } from "
 import { isCoverProviderCode } from "@/lib/covers/types"
 import { isMediaTypeCode } from "@/lib/media/types"
 import { normalizeMetadataExternalId } from "@/lib/media/metadata-refresh-source"
-import { pickConfidentMetadataMatch } from "@/lib/media/rank-metadata-refresh-candidates"
+import { explainMetadataMatch } from "@/lib/media/rank-metadata-refresh-candidates"
+import type { MetadataIssueCode } from "@/lib/media/metadata-issue"
 
 export const METADATA_QUOTA_STOP_ERRORS = ["provider-daily-limit", "rate-limit-unavailable"] as const
 
 export type MetadataJobItem = {
   id: number
   mediaType: string
+  platformCode: string | null
   originalTitle: string | null
   releaseYear: number | null
   sourceExternalId: string | null
@@ -46,7 +48,7 @@ export type MetadataJobStore = {
     error: string
     item: MetadataJobItem
   }) => Promise<void>
-  markAttempt: (mediaItemId: number) => Promise<void>
+  markAttempt: (mediaItemId: number, issueCode: MetadataIssueCode | null) => Promise<void>
   upsert: (input: {
     facts: Record<string, unknown>
     mediaItemId: number
@@ -59,7 +61,7 @@ export type MetadataJobStore = {
 type ItemOutcome =
   | { kind: "quota-stop"; error: "provider-daily-limit" | "rate-limit-unavailable" }
   | { kind: "retryable"; error: string }
-  | { kind: "skip" }
+  | { kind: "skip"; issue: MetadataIssueCode }
   | { kind: "updated" }
 
 export function isMetadataQuotaStopError(
@@ -84,6 +86,7 @@ function hasKnownMetadataSource(item: MetadataJobItem) {
 function toMatchInput(item: MetadataJobItem) {
   return {
     originalTitle: item.originalTitle ?? "",
+    platformCode: item.mediaType === "game" ? item.platformCode : null,
     releaseYear: item.releaseYear == null ? "" : String(item.releaseYear),
     title: item.title,
   }
@@ -97,11 +100,11 @@ async function fetchAndStoreMetadata(input: {
   store: MetadataJobStore
 }): Promise<ItemOutcome> {
   if (!isCoverProviderCode(input.provider) || !isMediaTypeCode(input.item.mediaType)) {
-    return { kind: "skip" }
+    return { kind: "skip", issue: "unsupported-source" }
   }
 
   const externalId = normalizeMetadataExternalId(input.provider, input.externalId)
-  if (!externalId) return { kind: "skip" }
+  if (!externalId) return { kind: "skip", issue: "unsupported-source" }
 
   const result = await input.context.fetchTitleMetadata({
     externalId,
@@ -115,7 +118,9 @@ async function fetchAndStoreMetadata(input: {
     return { kind: "retryable", error: result.error }
   }
 
-  if (!result.metadata) return { kind: "skip" }
+  if (!result.metadata || Object.keys(result.metadata.facts).length === 0) {
+    return { kind: "skip", issue: result.error ? "provider-error" : "no-provider-metadata" }
+  }
 
   await input.store.upsert({
     facts: result.metadata.facts,
@@ -124,7 +129,7 @@ async function fetchAndStoreMetadata(input: {
     sourceProvider: result.metadata.provider,
     sourceUrl: result.metadata.sourceUrl,
   })
-  await input.store.markAttempt(input.item.id)
+  await input.store.markAttempt(input.item.id, null)
   return { kind: "updated" }
 }
 
@@ -133,7 +138,7 @@ async function matchAndStoreMetadata(input: {
   item: MetadataJobItem
   store: MetadataJobStore
 }): Promise<ItemOutcome> {
-  if (!isMediaTypeCode(input.item.mediaType)) return { kind: "skip" }
+  if (!isMediaTypeCode(input.item.mediaType)) return { kind: "skip", issue: "unsupported-source" }
 
   const search = await input.context.searchTitles({
     mediaType: input.item.mediaType,
@@ -145,17 +150,17 @@ async function matchAndStoreMetadata(input: {
     if (search.error === "provider-unavailable" || search.error === "provider-rate-limit") {
       return { kind: "retryable", error: search.error }
     }
-    return { kind: "skip" }
+    return { kind: "skip", issue: search.error ? "provider-error" : "no-candidates" }
   }
 
-  const match = pickConfidentMetadataMatch(search.candidates, toMatchInput(input.item))
-  if (!match) return { kind: "skip" }
+  const match = explainMetadataMatch(search.candidates, toMatchInput(input.item))
+  if (!match.candidate) return { kind: "skip", issue: match.issue }
 
   return fetchAndStoreMetadata({
     context: input.context,
-    externalId: match.externalId,
+    externalId: match.candidate.externalId,
     item: input.item,
-    provider: match.provider,
+    provider: match.candidate.provider,
     store: input.store,
   })
 }
@@ -180,7 +185,7 @@ async function applyItemOutcome(input: {
   if (input.outcome.kind === "retryable") {
     input.result.failed += 1
     input.result.retryableFailed += 1
-    await input.store.markAttempt(input.item.id)
+    await input.store.markAttempt(input.item.id, "provider-error")
     await input.store.logProviderFailure({
       action: input.action,
       error: input.outcome.error,
@@ -190,7 +195,7 @@ async function applyItemOutcome(input: {
   }
 
   input.result.skipped += 1
-  await input.store.markAttempt(input.item.id)
+  await input.store.markAttempt(input.item.id, input.outcome.issue)
   return "continue" as const
 }
 
@@ -246,7 +251,7 @@ export async function runMetadataRefresh(input: {
           provider: item.sourceProvider!,
           store: input.store,
         })
-      : { kind: "skip" as const }
+      : { kind: "skip" as const, issue: "unsupported-source" as const }
 
     if (await applyItemOutcome({
       action: "media.metadata-refresh.failed",

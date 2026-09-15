@@ -86,16 +86,16 @@ export async function RandomFranchiseSection({
 
   return (
     <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-labelledby="main-random-series-title">
-      <div className="mb-3 flex min-w-0 items-center gap-2">
+      <div className="mb-3 flex min-w-0 items-start gap-2 md:items-center">
         <Layers3 className="size-5 shrink-0 text-red-950/70" aria-hidden="true" />
         <h2
           id="main-random-series-title"
-          className="flex min-w-0 items-baseline gap-2 font-serif text-2xl leading-none text-stone-950"
+          className="flex min-w-0 flex-col items-start gap-1 font-serif text-2xl leading-none text-stone-950 md:flex-row md:items-baseline md:gap-2"
         >
           <span className="shrink-0">Случайная серия</span>
           <Link
             href={`/archive?series=${encodeURIComponent(preview.franchise.code)}`}
-            className="min-w-0 truncate hover:text-red-950"
+            className="min-w-0 break-words text-xl hover:text-red-950 md:truncate md:text-2xl"
           >
             {preview.franchise.title}
           </Link>

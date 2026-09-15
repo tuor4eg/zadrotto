@@ -6,6 +6,7 @@ import {
   exists,
   gte,
   inArray,
+  isNotNull,
   isNull,
   ne,
   not,
@@ -793,6 +794,7 @@ export async function getAuthorMediaItems(
 function adminMediaFilterConditions(input: {
   authorId?: number;
   mediaCarrierId?: number;
+  metadataFilter?: "absent" | "missing";
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
 }) {
@@ -815,12 +817,24 @@ function adminMediaFilterConditions(input: {
     conditions.push(eq(mediaItems.createdByAuthorId, input.authorId));
   }
 
+  if (input.metadataFilter) {
+    if (input.metadataFilter === "missing") {
+      conditions.push(isNotNull(mediaItems.metadataAttemptedAt));
+    }
+    conditions.push(sql`not exists (
+      select 1 from ${mediaItemMetadata}
+      where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id}
+        and ${mediaItemMetadata.facts} <> '{}'::jsonb
+    )`);
+  }
+
   return conditions.length > 0 ? and(...conditions) : undefined;
 }
 
 export async function getAdminMediaItems(input: {
   authorId?: number;
   mediaCarrierId?: number;
+  metadataFilter?: "absent" | "missing";
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
@@ -843,6 +857,8 @@ export async function getAdminMediaItems(input: {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       metadataFacts: mediaItemMetadata.facts,
+      metadataAttemptedAt: mediaItems.metadataAttemptedAt,
+      metadataIssueCode: mediaItems.metadataIssueCode,
       editorialSummaryStatus: mediaItemEditorialSummaries.status,
       editorialSummarySourceHash: mediaItemEditorialSummaries.sourceHash,
       editorialSummaryLocked: mediaItemEditorialSummaries.locked,

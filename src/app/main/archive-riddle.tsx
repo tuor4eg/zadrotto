@@ -67,13 +67,13 @@ export function ArchiveRiddle({
       role={canOpenQuiz ? "button" : undefined}
       tabIndex={canOpenQuiz ? 0 : undefined}
     >
-      <div className="flex h-8 shrink-0 items-start gap-2">
+      <div className="flex flex-wrap shrink-0 items-start gap-x-2 gap-y-1 sm:h-8 sm:flex-nowrap">
           <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
           <h2 id="main-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
             Загадка архива
           </h2>
           {quiz ? (
-            <span className="ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-[10px] text-stone-600 xl:text-xs">
+            <span className="w-full shrink-0 text-[10px] text-stone-600 sm:ml-auto sm:w-auto sm:whitespace-nowrap sm:pt-1 sm:text-right xl:text-xs">
               {formatQuizTimeRemaining(quiz.endsAt, now)}
             </span>
           ) : null}

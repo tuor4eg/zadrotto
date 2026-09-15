@@ -31,7 +31,11 @@ describe("public site header", () => {
   it("owns the common brand, navigation, search, and author actions", () => {
     assert.match(headerSource, /src="\/site-logo\.png"/);
     assert.match(headerSource, /width=\{60\}[\s\S]*height=\{60\}[\s\S]*className="size-\[60px\] object-contain"/);
-    assert.match(headerSource, /<header className="[^"]*h-14[^"]*"/);
+    assert.match(headerSource, /<header className="[^"]*flex-col[^"]*lg:h-14[^"]*lg:flex-row[^"]*"/);
+    assert.match(headerSource, /aria-label=\{isMenuOpen \? "Закрыть меню" : "Открыть меню"\}/);
+    assert.match(headerSource, /id="public-header-mobile-menu"[\s\S]*MENU_ITEMS/);
+    assert.match(headerSource, /document\.addEventListener\("pointerdown", handlePointerDown\)/);
+    assert.match(headerSource, /!menuButtonRef\.current\?\.contains\(target\) && !menuRef\.current\?\.contains\(target\)/);
     assert.match(headerSource, />\s*Задротто\s*</);
     for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "Подборки"], ["/reviews", "Рецензии"]]) {
       assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));

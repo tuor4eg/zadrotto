@@ -10,6 +10,7 @@ import {
 } from "@/lib/achievements/showcase"
 
 const page = readFileSync("src/app/achievements/page.tsx", "utf8")
+const demoPage = readFileSync("src/components/user-state/demo-achievements-page.tsx", "utf8")
 const publicProfilePage = readFileSync("src/app/users/[id]/achievements/page.tsx", "utf8")
 const stats = readFileSync(
   "src/components/achievements/author-achievement-hero-stats.tsx",
@@ -46,7 +47,8 @@ describe("public achievements page", () => {
     assert.match(page, />\s*Маленькие победы\. Большая история\s*</)
     assert.match(page, /<AuthorAchievementHeroStats/)
     assert.match(page, /backgroundImage: "url\('\/mascot\/deadz_achieves\.webp'\)"/)
-    assert.match(page, /archive-panel overflow-hidden px-6 py-6/)
+    assert.match(page, /archive-panel overflow-hidden px-2 py-6 sm:px-10/)
+    assert.match(demoPage, /archive-panel overflow-hidden px-2 py-6 sm:px-10/)
     assert.match(page, /position: "absolute"/)
     assert.match(page, /zIndex: 0/)
     assert.doesNotMatch(page, /max-w-\[68%\]/)
@@ -64,12 +66,11 @@ describe("public achievements page", () => {
     assert.doesNotMatch(stats, /icon: Target/)
     assert.doesNotMatch(stats, /function NearestAchievementGoal/)
     assert.doesNotMatch(stats, /LockKeyhole|goal\.isAwarded|role="progressbar"/)
-    assert.match(stats, /flex flex-wrap items-end gap-8 sm:flex-nowrap/)
+    assert.match(stats, /flex flex-nowrap items-end justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-12/)
     assert.match(stats, /dl className="contents"/)
-    assert.doesNotMatch(stats, /mt-6/)
     assert.doesNotMatch(stats, /bg-amber-50/)
-    assert.match(stats, /font-serif text-3xl/)
-    assert.match(stats, /font-mono text-\[9px\] uppercase/)
+    assert.match(stats, /font-serif text-xl[^"\n]*sm:text-3xl/)
+    assert.match(stats, /font-mono text-\[8px\] uppercase[^"\n]*sm:text-\[9px\]/)
   })
 
   it("loads the showcase once and derives hero stats from the same items", () => {

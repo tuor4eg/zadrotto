@@ -39,7 +39,7 @@ export function ReviewCatalogRow({
   return (
     <Link
       href={`/reviews/${item.id}`}
-      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(0,1.35fr)_minmax(5.5rem,8rem)_2.25rem] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_2.75rem] sm:gap-x-4 sm:px-3"
+      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_2.25rem] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_2.75rem] sm:gap-x-4 sm:px-3"
       aria-label={`Рецензия «${item.title}» на «${item.mediaItemTitle}», автор ${item.authorName}`}
     >
       <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:w-12">
@@ -56,7 +56,20 @@ export function ReviewCatalogRow({
         />
       </span>
 
-      <span className="min-w-0">
+      <span className="min-w-0 sm:hidden">
+        <span className="block truncate text-sm font-semibold leading-tight text-stone-900">
+          {item.title}
+        </span>
+        <span className="mt-1 block truncate text-xs leading-tight text-stone-600">
+          {mediaTypeLabel} · {item.mediaItemTitle}
+        </span>
+        <span className="mt-1 flex min-w-0 items-baseline gap-2 text-[10px] leading-tight">
+          <span className="min-w-0 truncate text-stone-800">{item.authorName}</span>
+          {publishedLabel ? <span className="shrink-0 text-stone-500">{publishedLabel}</span> : null}
+        </span>
+      </span>
+
+      <span className="hidden min-w-0 sm:block">
         <span className="block truncate text-sm font-semibold leading-tight text-stone-950 group-hover:underline group-hover:underline-offset-4">
           {item.mediaItemTitle}
         </span>
@@ -65,11 +78,11 @@ export function ReviewCatalogRow({
         </span>
       </span>
 
-      <span className="min-w-0 truncate text-sm font-semibold leading-snug text-stone-900">
+      <span className="hidden min-w-0 truncate text-sm font-semibold leading-snug text-stone-900 sm:block">
         {item.title}
       </span>
 
-      <span className="flex min-w-0 items-center gap-2">
+      <span className="hidden min-w-0 items-center gap-2 sm:flex">
         <Avatar
           name={item.authorName}
           objectKey={item.authorAvatarObjectKey}
@@ -88,7 +101,7 @@ export function ReviewCatalogRow({
       </span>
 
       <span
-        className={`inline-flex size-9 shrink-0 items-center justify-center justify-self-end rounded-md border font-mono text-sm tabular-nums shadow-sm sm:size-10 sm:text-base ${ratingToneClassName}`}
+        className={`col-start-3 row-start-1 inline-flex size-9 shrink-0 items-center justify-center justify-self-end rounded-md border font-mono text-sm tabular-nums shadow-sm sm:col-auto sm:row-auto sm:size-10 sm:text-base ${ratingToneClassName}`}
         aria-label={
           item.authorScore === null
             ? "Оценка автора не указана"

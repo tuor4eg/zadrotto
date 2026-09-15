@@ -29,6 +29,7 @@ import {
 } from "@/lib/bug-reports/model";
 import { CONTRIBUTION_STATUSES, CONTRIBUTION_TYPES } from "@/lib/contributions/model";
 import { AUTHOR_MEDIA_STATUSES, type AuthorMediaStatus } from "@/lib/media/author-media-status";
+import { METADATA_ISSUE_LABELS } from "@/lib/media/metadata-issue";
 import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/publication-status";
 import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
 import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog";
@@ -1254,6 +1255,7 @@ export const mediaItems = pgTable(
     coverThumbUrl: text("cover_thumb_url"),
     coverThumbAttemptedAt: timestamp("cover_thumb_attempted_at", { withTimezone: true }),
     metadataAttemptedAt: timestamp("metadata_attempted_at", { withTimezone: true }),
+    metadataIssueCode: text("metadata_issue_code"),
     coverSourceProvider: text("cover_source_provider"),
     coverSourceExternalId: text("cover_source_external_id"),
     coverSourcePageUrl: text("cover_source_page_url"),
@@ -1280,6 +1282,10 @@ export const mediaItems = pgTable(
     index("media_items_created_by_author_id_idx").on(table.createdByAuthorId),
     index("media_items_cover_thumb_attempted_at_idx").on(table.coverThumbAttemptedAt),
     index("media_items_metadata_attempted_at_idx").on(table.metadataAttemptedAt),
+    check(
+      "media_items_metadata_issue_code_check",
+      sql`${table.metadataIssueCode} is null or ${table.metadataIssueCode} in (${sql.join(Object.keys(METADATA_ISSUE_LABELS).map((code) => sql`${code}`), sql`, `)})`,
+    ),
     uniqueIndex("media_items_author_creation_request_id_unique_idx").on(
       table.createdByAuthorId,
       table.authorCreationRequestId,

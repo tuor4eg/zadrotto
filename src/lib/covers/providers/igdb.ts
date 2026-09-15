@@ -125,7 +125,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
     async searchGames(input: { query: string; limit: number; requireCover?: boolean }) {
       return fetchGames(
         [
-          "fields name,summary,slug,url,first_release_date,rating,total_rating,cover.image_id,cover.width,cover.height;",
+          "fields name,summary,slug,url,first_release_date,rating,total_rating,cover.image_id,cover.width,cover.height,platforms.name;",
           `search "${escapeIgdbSearchQuery(input.query)}";`,
           input.requireCover ? "where cover != null;" : "",
           `limit ${input.limit};`,
@@ -159,7 +159,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
 }
 
 function getUniqueNames(values: Array<{ name?: string } | undefined> | undefined) {
-  return [...new Set((values ?? []).map((value) => value?.name?.trim()).filter(Boolean))];
+  return [...new Set((values ?? []).map((value) => value?.name?.trim()).filter((name): name is string => Boolean(name)))];
 }
 
 function getInvolvedCompanyNames(
@@ -213,6 +213,7 @@ export const igdbProvider: MediaProvider = {
         coverUrl: imageId ? buildIgdbImageUrl(imageId) : null,
         sourcePageUrl: getIgdbSourcePageUrl(game),
         releaseYear: getIgdbYear(game.first_release_date),
+        platforms: getUniqueNames(game.platforms),
         confidence: game.total_rating ?? game.rating,
       });
     }

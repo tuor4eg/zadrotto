@@ -1,7 +1,9 @@
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { mediaItemMetadata, mediaItems } from "@/db/schema"
+import { mediaCarriers, mediaItemMetadata, mediaItems } from "@/db/schema"
+import type { MetadataIssueCode } from "@/lib/media/metadata-issue"
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status"
 
 export type MediaItemMetadataFacts = Record<string, unknown>;
 
@@ -53,31 +55,38 @@ export async function upsertMediaItemMetadata(
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
   const fetchedAt = input.fetchedAt === undefined ? now : input.fetchedAt;
-  const [row] = await db
-    .insert(mediaItemMetadata)
-    .values({
-      mediaItemId: input.mediaItemId,
-      facts: input.facts,
-      sourceProvider: input.sourceProvider ?? null,
-      sourceExternalId: input.sourceExternalId ?? null,
-      sourceUrl: input.sourceUrl ?? null,
-      fetchedAt,
-      updatedAt: now,
-    })
-    .onConflictDoUpdate({
-      target: mediaItemMetadata.mediaItemId,
-      set: {
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .insert(mediaItemMetadata)
+      .values({
+        mediaItemId: input.mediaItemId,
         facts: input.facts,
         sourceProvider: input.sourceProvider ?? null,
         sourceExternalId: input.sourceExternalId ?? null,
         sourceUrl: input.sourceUrl ?? null,
         fetchedAt,
         updatedAt: now,
-      },
-    })
-    .returning();
+      })
+      .onConflictDoUpdate({
+        target: mediaItemMetadata.mediaItemId,
+        set: {
+          facts: input.facts,
+          sourceProvider: input.sourceProvider ?? null,
+          sourceExternalId: input.sourceExternalId ?? null,
+          sourceUrl: input.sourceUrl ?? null,
+          fetchedAt,
+          updatedAt: now,
+        },
+      })
+      .returning();
 
-  return mapMediaItemMetadata(row);
+    if (Object.keys(input.facts).length > 0) {
+      await tx.update(mediaItems).set({ metadataIssueCode: null })
+        .where(eq(mediaItems.id, input.mediaItemId));
+    }
+
+    return mapMediaItemMetadata(row);
+  });
 }
 
 export async function deleteMediaItemMetadata(mediaItemId: number) {
@@ -103,6 +112,7 @@ export const METADATA_REFRESH_MEDIA_TYPES = ["series", "anime"] as const
 export type MediaMetadataJobItem = {
   id: number
   mediaType: string
+  platformCode: string | null
   metadataAttemptedAt: Date | null
   originalTitle: string | null
   releaseYear: number | null
@@ -114,6 +124,7 @@ export type MediaMetadataJobItem = {
 function mapMetadataJobItem(row: {
   id: number
   mediaType: string
+  platformCode: string | null
   metadataAttemptedAt: Date | null
   originalTitle: string | null
   releaseYear: number | null
@@ -124,6 +135,7 @@ function mapMetadataJobItem(row: {
   return {
     id: row.id,
     mediaType: row.mediaType,
+    platformCode: row.platformCode,
     metadataAttemptedAt: row.metadataAttemptedAt,
     originalTitle: row.originalTitle,
     releaseYear: row.releaseYear,
@@ -136,6 +148,7 @@ function mapMetadataJobItem(row: {
 const metadataJobItemSelect = {
   id: mediaItems.id,
   mediaType: mediaItems.mediaType,
+  platformCode: mediaCarriers.code,
   metadataAttemptedAt: mediaItems.metadataAttemptedAt,
   originalTitle: mediaItems.originalTitle,
   releaseYear: mediaItems.releaseYear,
@@ -150,7 +163,10 @@ export async function getMediaItemsMissingMetadata(input: {
 } = {}) {
   const knownMissing = and(hasMetadataSourceSql, missingMetadataFactsSql)
   const unmatched = sql`not ${hasMetadataSourceSql}`
-  const conditions = [or(knownMissing, unmatched)]
+  const conditions = [
+    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+    or(knownMissing, unmatched),
+  ]
 
   if (input.mediaItemId) {
     conditions.push(eq(mediaItems.id, input.mediaItemId))
@@ -160,6 +176,7 @@ export async function getMediaItemsMissingMetadata(input: {
     .select(metadataJobItemSelect)
     .from(mediaItems)
     .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .where(and(...conditions))
     .orderBy(
       sql`case when ${knownMissing} then 0 else 1 end`,
@@ -177,6 +194,7 @@ export async function getMediaItemsStaleMetadata(input: {
   staleDays: number
 }) {
   const conditions = [
+    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     hasMetadataSourceSql,
     sql`not ${missingMetadataFactsSql}`,
     inArray(mediaItems.mediaType, [...METADATA_REFRESH_MEDIA_TYPES]),
@@ -191,6 +209,7 @@ export async function getMediaItemsStaleMetadata(input: {
     .select(metadataJobItemSelect)
     .from(mediaItems)
     .innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .where(and(...conditions))
     .orderBy(
       sql`${mediaItems.metadataAttemptedAt} asc nulls first`,
@@ -201,9 +220,9 @@ export async function getMediaItemsStaleMetadata(input: {
   return rows.map(mapMetadataJobItem)
 }
 
-export async function markMediaItemMetadataAttempt(mediaItemId: number) {
+export async function markMediaItemMetadataAttempt(mediaItemId: number, issueCode: MetadataIssueCode | null) {
   await db
     .update(mediaItems)
-    .set({ metadataAttemptedAt: new Date() })
+    .set({ metadataAttemptedAt: new Date(), metadataIssueCode: issueCode })
     .where(eq(mediaItems.id, mediaItemId))
 }

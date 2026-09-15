@@ -626,6 +626,7 @@ export function AdminMediaForm({
               onChange={setSelectedFranchiseIds}
             />
             <InlineFranchiseDialog
+              options={franchiseOptions}
               onCreated={(franchise) => {
                 setFranchiseOptions((currentFranchises) => {
                   const nextFranchises = currentFranchises.some(

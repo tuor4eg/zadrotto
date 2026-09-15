@@ -117,7 +117,7 @@ export function ReviewArticle({
           src="/clip-transparent-trimmed.png"
           alt=""
           aria-hidden="true"
-          className="pointer-events-none absolute right-5 top-1 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-7 sm:top-0 sm:h-28 lg:right-8 lg:top-[-12px] lg:h-32"
+          className="pointer-events-none absolute right-[22px] -top-[13px] z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-7 sm:top-0 sm:h-28 lg:right-8 lg:top-[-12px] lg:h-32"
         />
         <article className="archive-paper archive-panel relative flex flex-1 flex-col px-6 pb-3 pt-11 sm:px-10 sm:pb-5 sm:pt-12">
         <header className="relative">
@@ -148,7 +148,7 @@ export function ReviewArticle({
         </header>
 
         <section className="relative mt-5 flex flex-1 flex-col">
-          <div className="relative flex flex-1 flex-col">
+          <div className="relative -mx-6 flex flex-1 flex-col sm:mx-0">
             <div className="archive-review-paper relative flex flex-1 flex-col border border-stone-300/70 px-6 pb-28 pt-4 sm:px-10 sm:pb-32 sm:pt-5">
             <div className="flex items-start justify-between gap-4">
               <h1 className="archive-typewriter-text min-w-0 max-w-3xl flex-1 break-words text-2xl font-semibold leading-tight text-stone-950 sm:text-4xl">
@@ -183,7 +183,7 @@ export function ReviewArticle({
             </div>
             <div className="mt-4 flex justify-start"><ReviewAuthorStars score={review.authorScore} /></div>
             <div className="mt-8 w-full">
-              <p className="archive-typewriter-text whitespace-pre-wrap text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
+              <p className="archive-typewriter-text whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
             </div>
             </div>
             {review.authorScore !== null ? (

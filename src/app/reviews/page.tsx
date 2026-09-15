@@ -148,7 +148,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           <PublicSiteHeader {...headerState.headerProps} />
           <div className="flex w-full flex-1">
             <div className="archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-              <header className="relative z-20 p-5 pb-3 sm:p-6 sm:pb-4">
+              <header className="relative z-20 p-4 pb-3 sm:p-6 sm:pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div>
                     <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
@@ -187,8 +187,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 </Suspense>
               </header>
 
-              <section aria-labelledby="my-reviews-title" className="flex-1 px-5 py-5 sm:px-6">
-                <div className="flex flex-wrap items-end justify-between gap-2">
+              <section aria-labelledby="my-reviews-title" className="flex-1 px-2 py-5 sm:px-6">
+                <div className="flex flex-wrap items-end justify-between gap-2 px-2 sm:px-0">
                   <h2
                     id="my-reviews-title"
                     className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500"
@@ -217,7 +217,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 )}
               </section>
 
-              <div className="border-t border-stone-400/45 bg-amber-50/20 px-3 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
+              <div className="border-t border-stone-400/45 bg-amber-50/20 px-4 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
                 <PaginationNav
                   basePath="/reviews"
                   itemLabel="рецензий"
@@ -292,7 +292,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex w-full flex-1">
           <div className="archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden">
-            <header className="relative z-20 p-5 pb-3 sm:p-6 sm:pb-4">
+            <header className="relative z-20 p-4 pb-3 sm:p-6 sm:pb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
                 <div>
                   <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
@@ -321,8 +321,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
             <FeaturedReviews reviews={featuredReviews} />
 
-            <section aria-labelledby="all-reviews-title" className="flex-1 px-5 py-5 sm:px-6">
-              <div className="flex flex-wrap items-end justify-between gap-2">
+            <section aria-labelledby="all-reviews-title" className="flex-1 px-2 py-5 sm:px-6">
+              <div className="flex flex-wrap items-end justify-between gap-2 px-2 sm:px-0">
                 <h2
                   id="all-reviews-title"
                   className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500"
@@ -347,7 +347,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
               )}
             </section>
 
-            <div className="border-t border-stone-400/45 bg-amber-50/20 px-3 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
+            <div className="border-t border-stone-400/45 bg-amber-50/20 px-4 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
               <PaginationNav
                 basePath="/reviews"
                 itemLabel="рецензий"

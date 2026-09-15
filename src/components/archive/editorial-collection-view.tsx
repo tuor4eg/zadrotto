@@ -24,20 +24,22 @@ export function EditorialCollectionView({ collection, currentAuthor }: { collect
       const coverItem = { ...item, coverUrl: item.coverThumbUrl ?? item.coverUrl };
       return <div key={block.id} className="grid grid-cols-[6rem_minmax(0,1fr)] items-start gap-4 sm:grid-cols-[7rem_minmax(0,1fr)]">
         <Link href={`/media/${item.code}`} className="relative block aspect-[2/3] overflow-hidden rounded-md border border-stone-300/80 bg-stone-100 shadow-sm transition-transform hover:-translate-y-0.5"><ArchiveCover carrierFrame={false} item={coverItem} className="absolute inset-0 h-full w-full" /></Link>
-        <div className="min-w-0 pt-0.5">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <Link href={`/media/${item.code}`} className="font-semibold leading-tight text-stone-950 hover:underline hover:underline-offset-4">{item.title}</Link>
-            {item.originalTitle ? <span className="text-sm text-stone-500">{item.originalTitle}</span> : null}
+        <div className="contents sm:block">
+          <div className="col-start-2 min-w-0 pt-0.5">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <Link href={`/media/${item.code}`} className="font-semibold leading-tight text-stone-950 hover:underline hover:underline-offset-4">{item.title}</Link>
+              {item.originalTitle ? <span className="text-sm text-stone-500">{item.originalTitle}</span> : null}
+            </div>
+            <div className="mt-2 flex flex-col items-start gap-x-4 gap-y-2 text-sm sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+              <span className="text-stone-500">{[item.releaseYear, item.mediaTypeName].filter(Boolean).join(" · ")}</span>
+              <span className="inline-flex flex-wrap items-center justify-start gap-x-3 gap-y-1 sm:ml-auto sm:justify-end">
+                <span className="inline-flex items-center gap-1 font-semibold text-amber-600"><Star className="size-4 fill-current" />{formatScore(item.averageScore)}</span>
+                {item.currentAuthorScore !== null ? <span className="text-stone-600">Моя оценка: {formatScore(item.currentAuthorScore)}</span> : null}
+                {currentAuthor && item.currentAuthorScore === null ? <AuthorMediaStatusControls currentAuthorScore={item.currentAuthorScore} currentAuthorStatus={currentAuthorStatus} mediaItemCode={item.code} variant="tile" /> : null}
+              </span>
+            </div>
           </div>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-2 text-sm">
-            <span className="text-stone-500">{[item.releaseYear, item.mediaTypeName].filter(Boolean).join(" · ")}</span>
-            <span className="ml-auto inline-flex flex-wrap items-center justify-end gap-x-3 gap-y-1">
-              <span className="inline-flex items-center gap-1 font-semibold text-amber-600"><Star className="size-4 fill-current" />{formatScore(item.averageScore)}</span>
-              {item.currentAuthorScore !== null ? <span className="text-stone-600">Моя оценка: {formatScore(item.currentAuthorScore)}</span> : null}
-              {currentAuthor && item.currentAuthorScore === null ? <AuthorMediaStatusControls currentAuthorScore={item.currentAuthorScore} currentAuthorStatus={currentAuthorStatus} mediaItemCode={item.code} variant="tile" /> : null}
-            </span>
-          </div>
-          {editorialComment ? <p className="mt-4 max-w-3xl text-sm leading-6 text-stone-700">{editorialComment}</p> : null}
+          {editorialComment ? <p className="col-span-2 max-w-3xl text-sm leading-6 text-stone-700 sm:mt-4">{editorialComment}</p> : null}
         </div>
       </div>;
     }} />

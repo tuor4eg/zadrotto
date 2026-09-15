@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Suspense } from "react";
 import { Layers3, MessageSquareQuote, Sparkles, Star, Trophy } from "lucide-react";
 
@@ -126,26 +127,43 @@ function DailyRecommendation({
         />
       ) : null}
       {coverUrl ? (
-        <div
-          aria-hidden="true"
-          className="absolute inset-y-0 right-0 w-[48%] bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${JSON.stringify(coverUrl)})`,
-            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
-            position: "absolute",
-            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
-          }}
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={coverUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right md:hidden"
+            style={{
+              position: "absolute",
+              opacity: 0.25,
+              maskImage: "linear-gradient(to right, transparent 38%, rgba(0,0,0,.08) 48%, rgba(0,0,0,.3) 62%, rgba(0,0,0,.65) 78%, rgba(0,0,0,.92) 94%, #000 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 38%, rgba(0,0,0,.08) 48%, rgba(0,0,0,.3) 62%, rgba(0,0,0,.65) 78%, rgba(0,0,0,.92) 94%, #000 100%)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none hidden w-[48%] bg-cover bg-center md:block"
+            style={{
+              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+              height: "100%",
+              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+              position: "absolute",
+              right: 0,
+              top: 0,
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+            }}
+          />
+        </>
       ) : null}
 
-      <div className="relative z-10 flex flex-1 max-w-[72%] flex-col">
-        <div className="flex h-8 shrink-0 items-start gap-2">
+      <div className="relative z-10 flex w-full flex-1 flex-col md:max-w-[72%]">
+        <div className="flex shrink-0 items-start gap-2 md:h-8">
           <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
           <h2 id="main-daily-recommendation" className="font-serif text-2xl leading-none text-stone-950">
             Рекомендуем сегодня
           </h2>
         </div>
-        <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
+        <p className="mt-1 shrink-0 text-sm leading-6 text-stone-600 md:h-8">
           Высоко оценённая находка из нашей коллекции
         </p>
 
@@ -159,7 +177,7 @@ function DailyRecommendation({
             <RecommendationRating item={item} />
           </div>
         ) : (
-          <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
+          <p className="flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500 md:max-w-xs">
             Рекомендация появится вместе с подходящей записью.
           </p>
         )}
@@ -185,20 +203,37 @@ function LatestReview({
       aria-labelledby="main-latest-review"
     >
       {coverUrl ? (
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-y-0 right-0 w-[48%] bg-cover bg-center"
-          style={{
-            backgroundImage: `url(${JSON.stringify(coverUrl)})`,
-            maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
-            position: "absolute",
-            WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
-          }}
-        />
+        <>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={coverUrl}
+            alt=""
+            className="pointer-events-none absolute inset-0 h-full w-full object-contain object-right md:hidden"
+            style={{
+              position: "absolute",
+              opacity: 0.25,
+              maskImage: "linear-gradient(to right, transparent 38%, rgba(0,0,0,.08) 48%, rgba(0,0,0,.3) 62%, rgba(0,0,0,.65) 78%, rgba(0,0,0,.92) 94%, #000 100%)",
+              WebkitMaskImage: "linear-gradient(to right, transparent 38%, rgba(0,0,0,.08) 48%, rgba(0,0,0,.3) 62%, rgba(0,0,0,.65) 78%, rgba(0,0,0,.92) 94%, #000 100%)",
+            }}
+          />
+          <div
+            aria-hidden="true"
+            className="pointer-events-none hidden w-[48%] bg-cover bg-center md:block"
+            style={{
+              backgroundImage: `url(${JSON.stringify(coverUrl)})`,
+              height: "100%",
+              maskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+              position: "absolute",
+              right: 0,
+              top: 0,
+              WebkitMaskImage: "linear-gradient(to right, transparent 0%, rgba(0,0,0,.08) 18%, rgba(0,0,0,.3) 38%, rgba(0,0,0,.65) 62%, rgba(0,0,0,.92) 82%, #000 100%)",
+            }}
+          />
+        </>
       ) : null}
 
-      <div className="relative z-10 flex flex-1 flex-col">
-        <div className="flex h-8 shrink-0 items-center gap-2">
+      <div className="relative z-10 flex w-full flex-1 flex-col">
+        <div className="flex shrink-0 items-center gap-2 md:h-8">
           <div className="flex min-w-0 items-center gap-2">
             <MessageSquareQuote aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
             <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
@@ -213,8 +248,8 @@ function LatestReview({
             className="mt-1 flex min-h-0 flex-1 flex-col rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
             aria-label={`Читать рецензию на «${review.mediaItemTitle}»`}
           >
-            <div className="flex min-h-0 max-w-[72%] flex-1 flex-col">
-              <p className="h-8 shrink-0 text-sm leading-6 text-stone-600">
+            <div className="flex min-h-0 w-full flex-1 flex-col md:max-w-[72%]">
+              <p className="shrink-0 text-sm leading-6 text-stone-600 md:h-8">
                 Свежая рецензия одного из наших авторов
               </p>
               <div className="flex min-h-0 flex-1 flex-col pt-1">
@@ -232,10 +267,10 @@ function LatestReview({
           </Link>
         ) : (
           <>
-            <p className="mt-1 h-8 shrink-0 text-sm leading-6 text-stone-600">
+            <p className="mt-1 shrink-0 text-sm leading-6 text-stone-600 md:h-8">
               Свежая рецензия одного из наших авторов
             </p>
-            <p className="max-w-xs flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500">
+            <p className="flex-1 pt-3 font-mono text-xs uppercase tracking-wider text-stone-500 md:max-w-xs">
               Рецензия появится после первой публикации.
             </p>
           </>
@@ -347,8 +382,17 @@ export default async function MainPage() {
             className="archive-paper archive-panel flex items-center overflow-hidden px-4 py-6 sm:px-5 lg:py-7"
             aria-labelledby="main-intro-title"
           >
+          <Image
+            src="/back_archieve.png"
+            alt=""
+            fill
+            sizes="(max-width: 1023px) 100vw, 1px"
+            className="z-0 object-cover object-right lg:hidden"
+            style={{ opacity: 0.25 }}
+          />
           <div
             aria-hidden="true"
+            className="hidden lg:block"
             style={{
               backgroundImage: "url('/back_archieve.png')",
               backgroundPosition: "right center",
@@ -366,6 +410,7 @@ export default async function MainPage() {
               zIndex: 0,
             }}
           />
+          <div className="relative z-20 w-full">
           {author && researchMessage && authorHeroStatisticItems.length > 0 ? (
             <HomeIntroHero
               message={researchMessage}
@@ -377,20 +422,21 @@ export default async function MainPage() {
                 <div className="max-w-2xl">
                   <h1
                     id="main-intro-title"
-                    className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+                    className="font-serif text-3xl leading-tight tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
                   >
                     Начни свою историю
                   </h1>
-                  <p className="mt-4 max-w-xl text-base leading-7 text-stone-700 sm:text-lg">
+                  <p className="mt-4 max-w-xl text-sm leading-6 text-stone-700 sm:text-lg sm:leading-7">
                     Оценивай, высказывай мнения, создавай личные серии и смотри, как из этого складывается твой культурный след.
                   </p>
                   <StartDemoHistoryButton
-                    className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-xs uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950"
+                    className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950 sm:text-xs"
                   />
                 </div>
               )}
             />
           )}
+          </div>
           </section>
           {hasLatestActivity ? (
             <aside

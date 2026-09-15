@@ -30,6 +30,7 @@ type AdminMediaFiltersFormProps = {
     name: string;
   }>;
   mediaTypeFilter: MediaTypeFilter;
+  metadataFilter: "absent" | "missing" | null;
   mediaTypes: MediaTypeOption[];
   searchQuery: string;
   sort: AdminMediaSort;
@@ -68,6 +69,7 @@ export function AdminMediaFiltersForm({
   mediaCarrierFilter,
   mediaCarriers,
   mediaTypeFilter,
+  metadataFilter,
   mediaTypes,
   searchQuery,
   sort,
@@ -82,6 +84,7 @@ export function AdminMediaFiltersForm({
     (nextFilters: {
       author?: number | null;
       carrier?: number | null;
+      metadataFilter?: "absent" | "missing" | null;
       q?: string;
       sort?: AdminMediaSort;
       type?: MediaTypeFilter;
@@ -122,6 +125,10 @@ export function AdminMediaFiltersForm({
 
       if (nextFilters.sort !== undefined) {
         updateFilterParam(nextSearchParams, "sort", nextFilters.sort, "title");
+      }
+
+      if (nextFilters.metadataFilter !== undefined) {
+        updateFilterParam(nextSearchParams, "metadata", nextFilters.metadataFilter ?? "", "");
       }
 
       const queryString = nextSearchParams.toString();
@@ -167,7 +174,7 @@ export function AdminMediaFiltersForm({
         aria-label="Поиск записей"
       />
 
-      <div className="grid gap-3 lg:grid-cols-[repeat(4,minmax(0,1fr))_auto]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
         <Select
           value={mediaTypeFilter}
           onChange={(event) => replaceFilters({ type: event.target.value as MediaTypeFilter })}
@@ -220,6 +227,16 @@ export function AdminMediaFiltersForm({
               {author.name}
             </option>
           ))}
+        </Select>
+
+        <Select
+          value={metadataFilter ?? "all"}
+          onChange={(event) => replaceFilters({ metadataFilter: event.target.value === "all" ? null : event.target.value as "absent" | "missing" })}
+          aria-label="Фильтр по метаданным"
+        >
+          <option value="all">Все метаданные</option>
+          <option value="absent">Метаданные отсутствуют</option>
+          <option value="missing">Метаданные не найдены</option>
         </Select>
 
         <Select

@@ -46,7 +46,7 @@ function formatAwardedAt(value: Date | string) {
     timeZone: "Europe/Moscow",
   }).formatToParts(new Date(value))
   const day = parts.find((part) => part.type === "day")?.value
-  const month = parts.find((part) => part.type === "month")?.value?.replace(".", "")
+  const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
   const year = parts.find((part) => part.type === "year")?.value
   return `${day} ${month} ${year}`
 }
@@ -134,9 +134,9 @@ function AchievementCardPanel({
   const showProgress = slide.showProgress && hasVisibleProgress(nextThreshold)
 
   return (
-    <div className="flex h-full w-full shrink-0 basis-full flex-col items-center px-3 pb-4 pt-4">
+    <div className="flex h-full w-full shrink-0 basis-full flex-col items-center px-2 pb-4 pt-4 sm:px-3">
       <div
-        className={`grid size-36 shrink-0 place-items-center ${
+        className={`grid aspect-square w-full max-w-36 shrink-0 place-items-center ${
           isAwarded ? "text-amber-800" : "text-stone-400"
         }`}
       >

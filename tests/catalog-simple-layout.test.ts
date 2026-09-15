@@ -21,7 +21,7 @@ describe("simple catalog layout", () => {
   it("uses the shared textured block without generated layers", () => {
     assert.match(globalsSource, /\.archive-textured-block\s*\{[\s\S]*border-radius: 8px;[\s\S]*box-shadow:/);
     assert.doesNotMatch(globalsSource, /\.archive-textured-block::(?:before|after)/);
-    assert.match(sharedHeaderSource, /z-50 w-full text-stone-100/);
+    assert.match(sharedHeaderSource, /z-\[70\] w-full text-stone-100/);
     assert.doesNotMatch(sharedHeaderSource, /z-50 w-full bg-stone-900/);
     assert.doesNotMatch(sharedHeaderSource, /sticky top-0/);
     assert.doesNotMatch(sharedHeaderSource, /-mt-2/);

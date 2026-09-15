@@ -77,6 +77,7 @@ export type MediaTitleCandidate = {
   coverUrl: string | null;
   sourcePageUrl: string | null;
   releaseYear: number | null;
+  platforms?: string[];
   confidence?: number;
   subtitle?: string | null;
 };

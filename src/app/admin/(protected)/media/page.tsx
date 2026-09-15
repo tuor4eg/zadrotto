@@ -18,6 +18,7 @@ import { getEditorialSummaryJob } from "@/db/queries/editorial-summaries";
 import { getAdminEditorialSummaryState, parseAdminMediaSort, type AdminEditorialSummaryState } from "@/lib/media/admin-editorial-summary";
 import { parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
+import { getMetadataIssueLabel } from "@/lib/media/metadata-issue";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { parsePage } from "@/lib/common/pagination";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
@@ -33,6 +34,7 @@ type AdminMediaPageProps = {
     deleted?: string;
     error?: string;
     author?: string;
+    metadata?: string;
     carrier?: string;
     page?: string;
     q?: string;
@@ -64,6 +66,17 @@ function AdminEditorialSummaryStatus({ item, prompt }: { item: AdminMediaItem; p
   });
   const { label, variant } = EDITORIAL_SUMMARY_STATES[state];
   return <div className="flex flex-col items-start gap-1"><Badge variant={variant}>{label}</Badge>{item.editorialSummaryAttemptedAt ? <time className="text-xs text-stone-500" dateTime={item.editorialSummaryAttemptedAt.toISOString()}>{item.editorialSummaryAttemptedAt.toLocaleString("ru-RU")}</time> : null}</div>;
+}
+
+function AdminMetadataIssue({ item }: { item: AdminMediaItem }) {
+  if (!item.metadataAttemptedAt || (item.metadataFacts && Object.keys(item.metadataFacts).length > 0)) return null;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs text-amber-800">
+      <Badge variant="warning">Метаданные не найдены</Badge>
+      <span>{getMetadataIssueLabel(item.metadataIssueCode)}</span>
+      <time dateTime={item.metadataAttemptedAt.toISOString()}>{item.metadataAttemptedAt.toLocaleString("ru-RU")}</time>
+    </div>
+  );
 }
 
 function parseAuthorFilter(value: string | undefined) {
@@ -211,6 +224,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     getMediaCarrierOptions(),
   ]);
   const searchQuery = params.q?.trim() ?? "";
+  const metadataFilter = params.metadata === "missing" || params.metadata === "absent" ? params.metadata : null;
   const authorFilter = parseAuthorFilter(params.author);
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const mediaCarrierFilter = parseMediaCarrierFilter(params.carrier, {
@@ -223,6 +237,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     getAdminMediaItems({
       authorId: authorFilter ?? undefined,
       mediaCarrierId: mediaCarrierFilter ?? undefined,
+      metadataFilter: metadataFilter ?? undefined,
       mediaTypeFilter,
       page: parsePage(params.page),
       pageSize: ADMIN_MEDIA_PAGE_SIZE,
@@ -259,11 +274,13 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     Boolean(searchQuery) ||
     Boolean(authorFilter) ||
     Boolean(mediaCarrierFilter) ||
+    Boolean(metadataFilter) ||
     mediaTypeFilter !== "all" ||
     sort !== "title";
   const paginationSearchParams = {
     author: authorFilter ? String(authorFilter) : undefined,
     carrier: mediaCarrierFilter ? String(mediaCarrierFilter) : undefined,
+    metadata: metadataFilter ?? undefined,
     q: searchQuery || undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
@@ -298,6 +315,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           authorFilter={authorFilter}
           authors={authors}
           mediaCarrierFilter={mediaCarrierFilter}
+          metadataFilter={metadataFilter}
           mediaCarriers={mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypes}
@@ -306,6 +324,8 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           totalCount={totalItemsCount}
         />
       ) : null}
+
+      {metadataFilter ? <p className="text-sm text-stone-600">{metadataFilter === "absent" ? "Метаданные отсутствуют" : "Метаданные не найдены"}: {mediaResult.totalCount}</p> : null}
 
       {totalItemsCount === 0 ? (
         <EmptyState>Записей пока нет.</EmptyState>
@@ -344,6 +364,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                       </Badge>
                     </div>
                     <div className="mt-2"><AdminEditorialSummaryStatus item={item} prompt={editorialPrompt} /></div>
+                    <div className="mt-2"><AdminMetadataIssue item={item} /></div>
                   </div>
                 </div>
 
@@ -403,6 +424,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                           </div>
                         ) : null}
                         <div className="mt-2 lg:hidden"><AdminEditorialSummaryStatus item={item} prompt={editorialPrompt} /></div>
+                        <div className="mt-2"><AdminMetadataIssue item={item} /></div>
                         <div className="mt-2 flex flex-wrap gap-x-3 gap-y-1 overflow-hidden text-xs text-stone-500">
                           {item.franchises.length > 0 ? (
                             <span className="truncate">

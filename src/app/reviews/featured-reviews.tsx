@@ -53,7 +53,7 @@ export function FeaturedReviews({ reviews }: FeaturedReviewsProps) {
   const visibleReviews = reviews.slice(0, columnCount)
 
   return (
-    <section aria-labelledby="featured-reviews-title" className="relative z-0 border-b border-stone-300/60 px-5 py-5 sm:px-6">
+    <section aria-labelledby="featured-reviews-title" className="relative z-0 border-b border-stone-300/60 px-4 py-5 sm:px-6">
       <div className="flex items-center gap-2">
         <Star className="size-4 text-amber-700" aria-hidden="true" />
         <h2

@@ -10,7 +10,8 @@ import {
   type MetadataJobItem,
   type MetadataJobStore,
 } from "@/lib/media/metadata-jobs"
-import { pickConfidentMetadataMatch } from "@/lib/media/rank-metadata-refresh-candidates"
+import { explainMetadataMatch, pickConfidentMetadataMatch } from "@/lib/media/rank-metadata-refresh-candidates"
+import { getMetadataIssueLabel, type MetadataIssueCode } from "@/lib/media/metadata-issue"
 
 const queriesSource = readFileSync("src/db/queries/media-item-metadata.ts", "utf8")
 const backfillSource = readFileSync("src/lib/media/metadata-backfill.ts", "utf8")
@@ -36,6 +37,7 @@ function candidate(input: Partial<MediaTitleCandidate> & Pick<MediaTitleCandidat
 function item(input: Partial<MetadataJobItem> & Pick<MetadataJobItem, "id" | "title">): MetadataJobItem {
   return {
     mediaType: "series",
+    platformCode: null,
     originalTitle: null,
     releaseYear: 2004,
     sourceExternalId: null,
@@ -46,20 +48,22 @@ function item(input: Partial<MetadataJobItem> & Pick<MetadataJobItem, "id" | "ti
 
 function createStore() {
   const attempts: number[] = []
+  const issueCodes: Array<MetadataIssueCode | null> = []
   const upserts: Array<Record<string, unknown>> = []
   const failures: Array<Record<string, unknown>> = []
   const store: MetadataJobStore = {
     async logProviderFailure(input) {
       failures.push(input)
     },
-    async markAttempt(mediaItemId) {
+    async markAttempt(mediaItemId, issueCode) {
       attempts.push(mediaItemId)
+      issueCodes.push(issueCode)
     },
     async upsert(input) {
       upserts.push(input)
     },
   }
-  return { attempts, failures, store, upserts }
+  return { attempts, failures, issueCodes, store, upserts }
 }
 
 describe("metadata job schema and selection", () => {
@@ -79,12 +83,14 @@ describe("metadata job schema and selection", () => {
   it("selects known missing metadata before unmatched records", () => {
     assert.match(queriesSource, /case when \$\{knownMissing\} then 0 else 1 end/)
     assert.match(queriesSource, /sql`not \$\{hasMetadataSourceSql\}`/)
+    assert.match(queriesSource, /getMediaItemsMissingMetadata[\s\S]*eq\(mediaItems\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/)
     assert.match(queriesSource, /metadataAttemptedAt\} asc nulls first/)
     assert.match(backfillSource, /getMediaItemsMissingMetadata\(/)
     assert.match(backfillSource, /input\.mediaItemId \? 1 : input\.limit \?\? 25/)
   })
 
   it("refreshes only stale series and anime with a known source", () => {
+    assert.match(queriesSource, /getMediaItemsStaleMetadata[\s\S]*eq\(mediaItems\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/)
     assert.match(queriesSource, /METADATA_REFRESH_MEDIA_TYPES = \["series", "anime"\]/)
     assert.match(queriesSource, /inArray\(mediaItems\.mediaType, \[\.\.\.METADATA_REFRESH_MEDIA_TYPES\]\)/)
     assert.doesNotMatch(queriesSource, /METADATA_REFRESH_MEDIA_TYPES = \[[^\]]*"film"/)
@@ -105,6 +111,17 @@ describe("metadata job schema and selection", () => {
 })
 
 describe("conservative metadata match", () => {
+  it("explains title, year, and ambiguous match failures without loosening selection", () => {
+    const input = { originalTitle: "", releaseYear: "2022", title: "God of War: Ragnarök" }
+    assert.equal(explainMetadataMatch([candidate({ id: "rawg:1", title: "God of War Ragnarok", releaseYear: 2022 })], input).issue, "title-mismatch")
+    assert.equal(explainMetadataMatch([candidate({ id: "rawg:1", title: input.title, releaseYear: 2023 })], input).issue, "year-mismatch")
+    assert.equal(explainMetadataMatch([
+      candidate({ id: "rawg:1", title: input.title, releaseYear: 2022 }),
+      candidate({ id: "igdb:2", title: input.title, releaseYear: 2022 }),
+    ], input).issue, "ambiguous-match")
+    assert.equal(getMetadataIssueLabel(null), "Причина неизвестна")
+  })
+
   it("binds a unique exact title when the year also matches", () => {
     const match = pickConfidentMetadataMatch(
       [
@@ -152,11 +169,57 @@ describe("conservative metadata match", () => {
       null,
     )
   })
+
+  it("uses a unique game platform to resolve exact title and year ties", () => {
+    const candidates = [
+      candidate({ id: "igdb:1", mediaType: "game", provider: "igdb", title: "Teenage Mutant Ninja Turtles", releaseYear: 1989, platforms: ["Nintendo Entertainment System"] }),
+      candidate({ id: "igdb:2", mediaType: "game", provider: "igdb", title: "Teenage Mutant Ninja Turtles", releaseYear: 1989, platforms: ["Arcade"] }),
+    ]
+    const input = { originalTitle: "", platformCode: "nes", releaseYear: "1989", title: "Teenage Mutant Ninja Turtles" }
+
+    assert.equal(explainMetadataMatch(candidates, input).candidate?.externalId, "1")
+    assert.equal(explainMetadataMatch(candidates, { ...input, platformCode: null }).issue, "ambiguous-match")
+    assert.equal(explainMetadataMatch(candidates, { ...input, platformCode: "pc" }).issue, "ambiguous-match")
+    assert.equal(explainMetadataMatch([...candidates, candidate({ id: "rawg:3", mediaType: "game", provider: "rawg", title: input.title, releaseYear: 1989, platforms: ["NES"] })], input).issue, "ambiguous-match")
+  })
+
+  it("recognizes provider names for PC and console platforms", () => {
+    const input = { originalTitle: "", platformCode: "pc", releaseYear: "2011", title: "Batman: Arkham City" }
+    const candidates = [
+      candidate({ id: "igdb:1", mediaType: "game", provider: "igdb", title: input.title, releaseYear: 2011, platforms: ["PC (Microsoft Windows)"] }),
+      candidate({ id: "igdb:2", mediaType: "game", provider: "igdb", title: input.title, releaseYear: 2011, platforms: ["PlayStation 3"] }),
+    ]
+    assert.equal(explainMetadataMatch(candidates, input).candidate?.externalId, "1")
+    assert.equal(explainMetadataMatch(candidates, { ...input, platformCode: "ps3" }).candidate?.externalId, "2")
+  })
 })
 
 describe("metadata backfill and refresh runs", () => {
+  it("stores metadata for the only exact game candidate on the record platform", async () => {
+    const { issueCodes, store, upserts } = createStore()
+    const result = await runMetadataBackfill({
+      context: {
+        async searchTitles() {
+          return { error: null, candidates: [
+            candidate({ id: "igdb:1", mediaType: "game", provider: "igdb", title: "Batman: Arkham City", releaseYear: 2011, platforms: ["PlayStation 3"] }),
+            candidate({ id: "igdb:2", mediaType: "game", provider: "igdb", title: "Batman: Arkham City", releaseYear: 2011, platforms: ["PC (Microsoft Windows)"] }),
+          ] }
+        },
+        async fetchTitleMetadata(input) {
+          return { error: null, metadata: { externalId: input.externalId, facts: { platforms: ["PC"] }, provider: input.provider, sourceUrl: null } }
+        },
+      },
+      items: [item({ id: 33, mediaType: "game", platformCode: "pc", releaseYear: 2011, title: "Batman: Arkham City" })],
+      store,
+    })
+
+    assert.equal(result.updated, 1)
+    assert.equal(upserts[0]?.sourceExternalId, "2")
+    assert.deepEqual(issueCodes, [null])
+  })
+
   it("fetches a known source without searching", async () => {
-    const { attempts, store, upserts } = createStore()
+    const { attempts, issueCodes, store, upserts } = createStore()
     const searches: string[] = []
     const result = await runMetadataBackfill({
       context: {
@@ -190,11 +253,12 @@ describe("metadata backfill and refresh runs", () => {
     assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 1 })
     assert.equal(searches.length, 0)
     assert.deepEqual(attempts, [11])
+    assert.deepEqual(issueCodes, [null])
     assert.equal(upserts[0]?.sourceExternalId, "100")
   })
 
   it("does not write a source when unmatched search is not an exact unique title", async () => {
-    const { attempts, store, upserts } = createStore()
+    const { attempts, issueCodes, store, upserts } = createStore()
     const result = await runMetadataBackfill({
       context: {
         async fetchTitleMetadata() {
@@ -217,6 +281,34 @@ describe("metadata backfill and refresh runs", () => {
     assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 1, updated: 0 })
     assert.deepEqual(attempts, [12])
     assert.deepEqual(upserts, [])
+    assert.deepEqual(issueCodes, ["year-mismatch"])
+  })
+
+  it("keeps actionable reasons for missing results and empty provider metadata", async () => {
+    const missing = createStore()
+    await runMetadataBackfill({
+      context: {
+        async fetchTitleMetadata() { throw new Error("should not fetch") },
+        async searchTitles() { return { candidates: [], error: null } },
+      },
+      items: [item({ id: 14, title: "Missing" })],
+      store: missing.store,
+    })
+    assert.deepEqual(missing.issueCodes, ["no-candidates"])
+
+    const empty = createStore()
+    await runMetadataBackfill({
+      context: {
+        async fetchTitleMetadata() {
+          return { error: null, metadata: { externalId: "1", facts: {}, provider: "tmdb", sourceUrl: null } }
+        },
+        async searchTitles() { throw new Error("should not search") },
+      },
+      items: [item({ id: 15, title: "Empty", sourceProvider: "tmdb", sourceExternalId: "1" })],
+      store: empty.store,
+    })
+    assert.deepEqual(empty.issueCodes, ["no-provider-metadata"])
+    assert.deepEqual(empty.upserts, [])
   })
 
   it("binds unmatched records only after a unique exact title match", async () => {

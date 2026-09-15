@@ -16,6 +16,7 @@ type RawgResponse = {
     released?: string | null;
     background_image?: string | null;
     rating?: number;
+    platforms?: RawgGameDetailsResponse["platforms"];
   }>;
 };
 
@@ -47,7 +48,7 @@ function getNames(values: Array<{ name?: string } | undefined> | undefined) {
 }
 
 function getPlatformNames(values: RawgGameDetailsResponse["platforms"]) {
-  return [...new Set((values ?? []).map((value) => value.platform?.name?.trim()).filter(Boolean))];
+  return [...new Set((values ?? []).map((value) => value.platform?.name?.trim()).filter((name): name is string => Boolean(name)))];
 }
 
 export const rawgProvider: MediaProvider = {
@@ -82,6 +83,7 @@ export const rawgProvider: MediaProvider = {
         coverUrl: item.background_image ?? null,
         sourcePageUrl: item.slug ? `https://rawg.io/games/${item.slug}` : `https://rawg.io/games/${item.id}`,
         releaseYear: getFirstYear(item.released) ?? null,
+        platforms: getPlatformNames(item.platforms),
         confidence: item.rating,
       }));
   },

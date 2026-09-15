@@ -370,13 +370,13 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative z-10 grid flex-1 pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
+        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
             alt=""
             aria-hidden="true"
-            className="pointer-events-none absolute top-[67px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:top-[-13px] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
+            className="pointer-events-none absolute -top-[13px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
           <div className="relative order-1 min-w-0 px-6 pt-3 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0">
@@ -384,7 +384,7 @@ function ArchiveMediaItemDetails({
               className={`${labelFontClassName} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
             >
               {breadcrumbSlot}
-              {headerActions ? <div className="shrink-0">{headerActions}</div> : null}
+              {headerActions ? <div className="mr-10 shrink-0 sm:mr-0">{headerActions}</div> : null}
             </div>
           </div>
 

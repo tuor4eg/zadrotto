@@ -240,10 +240,15 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
         <DemoProfileImportBridge authenticated={authenticated} authorId={authorId} />
       ) : null}
       {showHudStack ? (
-        <div className="pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(1rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:contents">
+        <div
+          className="pointer-events-none fixed right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:contents"
+          style={{ bottom: showTools && showOnboardingCard
+            ? "calc(max(0.5rem, env(safe-area-inset-bottom)) + 4rem)"
+            : "calc(max(0.5rem, env(safe-area-inset-bottom)) + 0.5rem)" }}
+        >
           {showTools ? (
             <aside
-              className="flex items-center gap-2 sm:fixed sm:bottom-auto sm:right-[max(1rem,env(safe-area-inset-right))] sm:top-[max(0.75rem,env(safe-area-inset-top))] sm:z-[70]"
+              className="fixed bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+0.5rem)] right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex items-center gap-2 sm:bottom-auto sm:right-[max(1rem,env(safe-area-inset-right))] sm:top-[max(0.75rem,env(safe-area-inset-top))]"
               aria-label="Пользовательские инструменты"
             >
               {visibleParticipant ? (
