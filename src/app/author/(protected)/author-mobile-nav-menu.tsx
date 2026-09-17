@@ -7,12 +7,6 @@ import { useEffect, useRef, useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 
-const PRIMARY_LINKS = [
-  { href: "/author", label: "Статистика" },
-  { href: "/author/quizzes", label: "Викторины" },
-  { href: "/author/profile", label: "Профиль" },
-] as const;
-
 export function AuthorMobileNavMenu({
   incomingFriendRequestCount,
   logoutSlot,
@@ -81,12 +75,6 @@ export function AuthorMobileNavMenu({
           aria-label="Мобильная навигация кабинета автора"
           className="archive-paper-surface absolute right-0 top-full z-[60] mt-1 grid w-[min(20rem,calc(100vw-1.5rem))] gap-1 rounded-md border border-stone-300 bg-white p-2 shadow-lg"
         >
-          {PRIMARY_LINKS.slice(0, 2).map((item) => (
-            <Link key={item.href} href={item.href} onClick={closeMenu} className={linkClassName}>
-              {item.label}
-            </Link>
-          ))}
-
           <div className="my-1 border-y border-stone-200 py-1">
             <button
               type="button"
@@ -106,11 +94,9 @@ export function AuthorMobileNavMenu({
             ) : null}
           </div>
 
-          {PRIMARY_LINKS.slice(2).map((item) => (
-            <Link key={item.href} href={item.href} onClick={closeMenu} className={linkClassName}>
-              {item.label}
-            </Link>
-          ))}
+          <Link href="/author/profile" onClick={closeMenu} className={linkClassName}>
+            Профиль
+          </Link>
           <Link href="/author/friends" onClick={closeMenu} className={`${linkClassName} justify-between`}>
             Друзья
             <NotificationBadge count={incomingFriendRequestCount} />

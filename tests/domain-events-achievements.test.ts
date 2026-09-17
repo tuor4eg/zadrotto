@@ -307,11 +307,16 @@ describe("achievement consumer", () => {
     assert.match(filtersSource, /useDebouncedSearchDraft/)
     assert.match(filtersSource, /replaceFilters\(\{ status:/)
     assert.match(filtersSource, /replaceFilters\(\{ visibility:/)
+    assert.match(filtersSource, /replaceFilters\(\{ awardStatus:/)
     assert.doesNotMatch(filtersSource, /Применить/)
     assert.match(listSource, /<PaginationNav/)
     assert.match(querySource, /containsNormalizedSearchSql\(achievements\.name/)
     assert.match(querySource, /eq\(achievements\.enabled, true\)/)
     assert.match(querySource, /eq\(achievements\.showWhenLocked, false\)/)
+    assert.match(querySource, /awardStatus === "awarded" \? sql`exists/)
+    assert.match(querySource, /awardStatus === "unawarded" \? sql`not exists/)
+    assert.match(querySource, /max\(\$\{achievementLevels\.level\}\)::int/)
+    assert.match(listSource, /Получена · макс\. уровень/)
     assert.match(querySource, /limit\(ADMIN_ACHIEVEMENTS_PAGE_SIZE\)/)
     assert.match(querySource, /inArray\(achievementLevels\.achievementId, achievementIds\)/)
   });
@@ -383,7 +388,8 @@ describe("achievement consumer", () => {
       "src/app/admin/(protected)/achievements/actions.ts",
       "utf8",
     )
-    assert.match(querySource, /hasAwards: awardedIds\.has\(row\.id\)/)
+    assert.match(querySource, /hasAwards: maxAwardedLevelByAchievement\.has\(row\.id\)/)
+    assert.match(querySource, /maxAwardedLevel: maxAwardedLevelByAchievement\.get\(row\.id\) \?\? null/)
     assert.match(
       querySource,
       /firstLevelImageByAchievement\.get\(row\.id\) \?\? highestLevelImageByAchievement\.get\(row\.id\) \?\? null/,

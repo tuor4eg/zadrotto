@@ -24,7 +24,7 @@ function getExportedFunctionSource(source: string, functionName: string) {
 }
 
 describe("author dashboard media tiles", () => {
-  it("hydrates unique latest media ids once and restores each summary order", () => {
+  it("removes the private statistics dashboard in favor of the profile", () => {
     const ratingSummarySource = getExportedFunctionSource(
       ratingsSource,
       "getAuthorRatingSummary",
@@ -42,19 +42,8 @@ describe("author dashboard media tiles", () => {
       reviewSummarySource,
       /latestReviews[\s\S]*mediaItemId: mediaItems\.id[\s\S]*\.limit\(5\)/,
     );
-    assert.match(
-      dashboardSource,
-      /const latestMediaItemIds = \[\.\.\.new Set\(\[[\s\S]*summary\.latestRatings\.map[\s\S]*reviewSummary\.latestReviews\.map/,
-    );
-    assert.equal(
-      dashboardSource.match(/getMediaItemTilesByIds\(latestMediaItemIds, author\.id\)/g)?.length,
-      1,
-    );
-    assert.match(dashboardSource, /new Map\(latestMediaItems\.map\(\(item\) => \[item\.id, item\]\)\)/);
-    assert.match(dashboardSource, /summary\.latestRatings\.flatMap[\s\S]*latestMediaItemsById\.get\(rating\.mediaItemId\)/);
-    assert.match(dashboardSource, /reviewSummary\.latestReviews\.flatMap[\s\S]*latestMediaItemsById\.get\(review\.mediaItemId\)/);
-    assert.match(dashboardSource, /href: `\/media\/\$\{item\.code\}`/);
-    assert.match(dashboardSource, /href: `\/reviews\/\$\{review\.id\}\/edit`/);
+    assert.match(dashboardSource, /redirect\("\/author\/profile"\)/);
+    assert.doesNotMatch(dashboardSource, /latestMediaItemIds|getMediaItemTilesByIds|latestRatingTiles|latestReviewTiles/);
   });
 
   it("keeps tile shaping and cover resolution in one reusable data helper", () => {
@@ -70,7 +59,7 @@ describe("author dashboard media tiles", () => {
     assert.doesNotMatch(dashboardSource, /resolveCoverUrl/);
   });
 
-  it("uses the shared descriptor-driven responsive grid on the author dashboard", () => {
+  it("keeps the shared descriptor-driven responsive grid for public statistics", () => {
     assert.equal(existsSync("src/app/main/responsive-tile-grid.tsx"), false);
     assert.match(gridSource, /items: ResponsiveTileDescriptor\[\]/);
     assert.match(gridSource, /visibleItems\.map\(\(descriptor\)/);
@@ -79,10 +68,6 @@ describe("author dashboard media tiles", () => {
       /<MediaItemTile[\s\S]*key=\{descriptor\.key\}[\s\S]*currentAuthorScore=\{descriptor\.currentAuthorScore\}[\s\S]*href=\{descriptor\.href\}[\s\S]*item=\{descriptor\.item\}/,
     );
     assert.match(gridSource, /if \(items\.length === 0\)[\s\S]*Здесь пока пусто/);
-    assert.match(dashboardSource, /const latestRatingTiles = summary\.latestRatings\.flatMap/);
-    assert.match(dashboardSource, /const latestReviewTiles = reviewSummary\.latestReviews\.flatMap/);
-    assert.match(dashboardSource, /href: `\/reviews\/\$\{review\.id\}\/edit`/);
-    assert.match(dashboardSource, /reviewsHref="\/reviews\?view=mine"/);
     assert.match(statisticsSource, /tileGridInitialColumnCount = 3/);
     assert.match(statisticsSource, /tileGridVariant = "top"/);
     assert.match(statisticsSource, /<ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestRatingTiles\}[\s\S]*variant=\{tileGridVariant\}/);

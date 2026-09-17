@@ -1,9 +1,7 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import { logoutAuthor } from "@/app/author/actions";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { Avatar } from "@/components/ui/avatar";
 import { requireAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { NotificationBadge } from "@/components/ui/notification-badge";
@@ -33,36 +31,10 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
           className="archive-main-brand-header archive-paper archive-panel relative z-20"
           style={{ overflow: "visible" }}
         >
-          <div className="flex items-center justify-between gap-3 px-3 py-3 pr-2 lg:gap-4 lg:px-7 lg:py-5">
-            <div className="flex min-w-0 items-center gap-3 lg:gap-4">
-              <Link href="/" className="flex shrink-0 lg:mt-1" aria-label="На главную">
-                <Image
-                  src="/site-logo.png"
-                  alt=""
-                  width={56}
-                  height={56}
-                  className="size-11 shrink-0 object-contain lg:size-14"
-                  priority
-                />
-              </Link>
-              <h1 className="min-w-0 break-words font-serif text-xl leading-tight text-stone-950 lg:text-4xl">
-                Кабинет автора: {author.name}
-              </h1>
-            </div>
-            <Link
-              href="/author"
-              aria-label="Главная кабинета автора"
-              className="shrink-0 rounded-full focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-            >
-              <Avatar
-                name={author.name}
-                objectKey={author.avatarObjectKey}
-                className="size-11 shrink-0 border border-stone-300/80 lg:size-12"
-              />
-            </Link>
-          </div>
-
-          <div className="flex items-center justify-end gap-2 border-t border-stone-300/70 px-3 py-2 md:hidden">
+          <div className="flex items-center justify-between gap-3 px-3 py-2 md:block md:py-3 lg:px-7 lg:py-5">
+            <h1 className="min-w-0 break-words font-serif text-xl leading-tight text-stone-950 lg:text-4xl">
+              Кабинет автора: {author.name}
+            </h1>
             <AuthorMobileNavMenu
               incomingFriendRequestCount={incomingFriendRequestCount}
               logoutSlot={(
@@ -82,18 +54,6 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
             aria-label="Навигация кабинета автора"
             className="hidden flex-wrap items-center gap-2 border-t border-stone-300/70 px-3 py-3 md:flex lg:px-7"
           >
-            <Link
-              href="/author"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Статистика
-            </Link>
-            <Link
-              href="/author/quizzes"
-              className={buttonVariants({ variant: "outline", size: "sm" })}
-            >
-              Викторины
-            </Link>
             <AuthorProposalsMenu />
             <Link
               href="/author/profile"

@@ -325,6 +325,20 @@ body:has(.public-site-footer-layer) {
   min-height: 0;
 }
 
+.archive-riddle-timer-desktop {
+  display: none;
+}
+
+@media (min-width: 1024px) and (min-aspect-ratio: 1 / 1) {
+  .archive-riddle-timer-desktop {
+    display: inline;
+  }
+
+  .archive-riddle-timer-mobile {
+    display: none;
+  }
+}
+
 @media (min-width: 640px) {
   .archive-catalog-page {
     --archive-catalog-page-padding-x: 1.25rem;
@@ -513,7 +527,7 @@ body:has(.public-site-footer-layer) {
 
 .archive-catalog-filter-menu {
   position: fixed;
-  top: calc(4.75rem + env(safe-area-inset-top));
+  top: var(--archive-catalog-filter-menu-top, calc(4.75rem + env(safe-area-inset-top)));
   right: calc(0.75rem + env(safe-area-inset-right));
   left: calc(0.75rem + env(safe-area-inset-left));
   width: auto;

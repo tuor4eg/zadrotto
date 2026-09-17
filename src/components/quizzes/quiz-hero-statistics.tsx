@@ -1,40 +1,42 @@
-import { BadgeCheck, ChartColumnIncreasing, Trophy } from "lucide-react"
+import { Flame, Gamepad2, Trophy } from "lucide-react";
 
-export function AuthorAchievementHeroStats({
-  completedCount,
-  earnedCount,
-  inProgressCount,
+export function QuizHeroStatistics({
+  currentCorrectStreak,
+  playedCount,
+  winnerCount,
 }: {
-  completedCount: number
-  earnedCount: number
-  inProgressCount: number
+  currentCorrectStreak: number;
+  playedCount: number;
+  winnerCount: number;
 }) {
   const items = [
     {
+      icon: Gamepad2,
+      iconClassName: "text-red-950/70",
+      label: "Сыграно",
+      value: playedCount,
+    },
+    {
       icon: Trophy,
       iconClassName: "text-amber-700",
-      label: "Получено",
-      value: earnedCount,
+      label: "Побед",
+      value: winnerCount,
     },
     {
-      icon: BadgeCheck,
-      iconClassName: "text-emerald-800",
-      label: "Завершено",
-      value: completedCount,
+      icon: Flame,
+      iconClassName: "text-orange-700",
+      label: "Текущая серия",
+      value: currentCorrectStreak,
     },
-    {
-      icon: ChartColumnIncreasing,
-      iconClassName: "text-stone-500",
-      label: "В процессе",
-      value: inProgressCount,
-    },
-  ] as const
+  ].filter((item) => item.value > 0);
+
+  if (items.length === 0) return null;
 
   return (
-    <div className="mt-6 flex flex-nowrap items-end justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-12">
+    <div className="mt-auto flex flex-nowrap items-end justify-between gap-2 pt-6 sm:justify-start sm:gap-12">
       <dl className="contents">
         {items.map((item) => {
-          const Icon = item.icon
+          const Icon = item.icon;
 
           return (
             <div key={item.label} className="flex min-w-0 items-center gap-1 sm:gap-3">
@@ -48,9 +50,9 @@ export function AuthorAchievementHeroStats({
                 </dd>
               </div>
             </div>
-          )
+          );
         })}
       </dl>
     </div>
-  )
+  );
 }

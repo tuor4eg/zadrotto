@@ -7,6 +7,7 @@ import { createPortal } from "react-dom";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
+import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { useQuizParticipation } from "@/components/quizzes/quiz-participation-button";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
@@ -16,6 +17,7 @@ type ArchiveRiddleProps = {
   isCompleted: boolean;
   isParticipating: boolean;
   quiz: ActiveQuiz | null;
+  size?: "default" | "large";
 };
 
 export function ArchiveRiddle({
@@ -23,6 +25,7 @@ export function ArchiveRiddle({
   isCompleted,
   isParticipating,
   quiz,
+  size = "default",
 }: ArchiveRiddleProps) {
   const router = useRouter();
   const { quizParticipant } = useExternalInterface();
@@ -52,14 +55,16 @@ export function ArchiveRiddle({
   useEffect(() => {
     if (!quiz) return;
 
-    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    const interval = window.setInterval(() => setNow(new Date()), 1_000);
     return () => window.clearInterval(interval);
   }, [quiz]);
+
+  const timeRemaining = quiz ? formatQuizTimeRemaining(quiz.endsAt, now) : null;
 
   return (
     <>
       <section
-      className={`archive-paper archive-panel relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:h-[280px] lg:min-h-0 ${canOpenQuiz ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950" : ""}`}
+      className={`archive-paper archive-panel relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0 ${size === "large" ? "lg:h-[360px]" : "lg:h-[280px]"} ${canOpenQuiz ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950" : ""}`}
       aria-labelledby="main-archive-riddle"
       aria-disabled={canOpenQuiz ? undefined : true}
       onClick={canOpenQuiz && !pending ? openQuiz : undefined}
@@ -72,9 +77,9 @@ export function ArchiveRiddle({
           <h2 id="main-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
             Загадка архива
           </h2>
-          {quiz ? (
-            <span className="w-full shrink-0 text-[10px] text-stone-600 sm:ml-auto sm:w-auto sm:whitespace-nowrap sm:pt-1 sm:text-right xl:text-xs">
-              {formatQuizTimeRemaining(quiz.endsAt, now)}
+          {timeRemaining ? (
+            <span className="archive-riddle-timer-desktop ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs text-stone-600">
+              {timeRemaining}
             </span>
           ) : null}
       </div>
@@ -89,7 +94,7 @@ export function ArchiveRiddle({
             >
               {quiz.imageUrl ? (
                 <div
-                  className="flex max-h-[170px] max-w-[90%] items-center justify-center"
+                  className={`flex max-w-[90%] items-center justify-center ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
                   onClick={(event) => event.stopPropagation()}
                   onKeyDown={(event) => event.stopPropagation()}
                 >
@@ -97,13 +102,13 @@ export function ArchiveRiddle({
                     src={quiz.imageUrl}
                     alt="Кадр из загадки"
                     title="Кадр из загадки"
-                    triggerClassName="block max-h-[170px] max-w-full cursor-zoom-in rounded-md"
+                    triggerClassName={`block max-w-full cursor-zoom-in rounded-md ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
                   >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={quiz.imageUrl}
                       alt="Кадр из загадки"
-                      className="max-h-[170px] max-w-full rounded-md object-contain"
+                      className={`max-w-full rounded-md object-contain ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
                     />
                   </ImageViewer>
                 </div>
@@ -116,11 +121,12 @@ export function ArchiveRiddle({
                 Загадка уже разгадана
               </p>
             ) : null}
+            <span className="archive-riddle-timer-mobile shrink-0 whitespace-nowrap text-left text-[10px] text-stone-600">
+              {timeRemaining}
+            </span>
           </>
         ) : (
-          <p className="mt-1 h-12 shrink-0 text-sm leading-6 text-stone-600">
-            Сейчас в архиве всё спокойно. Новая загадка появится позже.
-          </p>
+          <QuizNoActiveState compact={size === "default"} />
       )}
       </section>
       {loginOpen

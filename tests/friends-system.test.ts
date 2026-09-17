@@ -108,11 +108,11 @@ test("friends UI contains all MVP lists, actions, setting, and pagination", () =
   assert.match(profileHeader, /FriendshipControls/);
 });
 
-test("incoming requests are badged through the site, profile, and friends navigation", () => {
+test("incoming requests are badged through the profile and friends navigation", () => {
   assert.match(queries, /getIncomingFriendRequestCount/);
   assert.match(queries, /eq\(authorFriendships\.status, "pending"\)/);
   assert.match(queries, /ne\(authorFriendships\.requestedByAuthorId, authorId\)/);
-  assert.match(publicHeader, /<NotificationBell align="right" round \/>/);
+  assert.doesNotMatch(publicHeader, /NotificationBell/);
   assert.match(authorLayout, /NotificationBadge count=\{incomingFriendRequestCount\}/);
   assert.match(friendsPage, /item === "incoming"[\s\S]*NotificationBadge/);
 });

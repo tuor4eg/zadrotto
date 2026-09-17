@@ -276,7 +276,7 @@ export function NotificationBell({
         className={cn(
           buttonVariants({ variant: "outline", size: "sm" }),
           "relative",
-          round && "size-8 rounded-full p-0 hover:bg-stone-200",
+          round && "size-9 rounded-full p-0 hover:bg-stone-200",
         )}
       >
         <Bell className="size-4" />

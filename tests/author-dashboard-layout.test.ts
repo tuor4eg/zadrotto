@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { RATING_SCORE_VALUES, formatScore } from "../src/lib/ratings/score";
@@ -14,10 +14,7 @@ const quizStatisticsSource = readFileSync(
   "utf8",
 );
 const authorPageSource = readFileSync("src/app/author/(protected)/page.tsx", "utf8");
-const authorQuizzesPageSource = readFileSync(
-  "src/app/author/(protected)/quizzes/page.tsx",
-  "utf8",
-);
+const publicQuizzesPageSource = readFileSync("src/app/quizzes/page.tsx", "utf8");
 const interestsPanelSource = readFileSync(
   "src/app/author/(protected)/author-media-interests-panel.tsx",
   "utf8",
@@ -53,14 +50,14 @@ describe("author dashboard layout", () => {
     assert.match(statisticListSource, /<Icon className="size-4 text-red-950\/65" \/>/);
   });
 
-  it("keeps only quiz wins on the dashboard and moves full statistics to their own page", () => {
-    assert.match(authorPageSource, /getAuthorQuizStatistics\(author\.id\)/);
-    assert.match(authorPageSource, /quizWinnerCount=\{quizStatistics\.winnerCount\}/);
-    assert.doesNotMatch(authorPageSource, /<AuthorQuizStatistics/);
-    assert.match(authorQuizzesPageSource, /getAuthorQuizStatistics\(author\.id\)/);
-    assert.match(authorQuizzesPageSource, /<AuthorQuizStatistics statistics=\{statistics\} \/>/);
+  it("moves quiz statistics out of the author cabinet into the public quizzes section", () => {
+    assert.match(authorPageSource, /redirect\("\/author\/profile"\)/);
+    assert.doesNotMatch(authorPageSource, /getAuthorRatingSummary|AuthorStatistics|RecentAchievementShowcase/);
+    assert.equal(existsSync("src/app/author/(protected)/quizzes/page.tsx"), false);
+    assert.match(publicQuizzesPageSource, /getAuthorQuizStatistics\(author\.id\)/);
+    assert.match(publicQuizzesPageSource, /<AuthorQuizStatistics statistics=\{statistics\} \/>/);
     assert.match(quizStatisticsSource, /<AuthorStatisticList items=\{items\} \/>/);
-    for (const label of ["Сыграно", "Правильных ответов", "Точность", "С первой попытки", "Текущая серия", "Лучшая серия", "Побед"]) {
+    for (const label of ["Правильных ответов", "Точность", "С первой попытки", "Лучшая серия"]) {
       assert.match(quizStatisticsSource, new RegExp(label));
     }
   });

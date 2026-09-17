@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
+import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { Button } from "@/components/ui/button";
@@ -23,7 +24,7 @@ export function QuizModal({
   isParticipating: boolean;
   unavailableMediaTypeNames: string[];
   onClose: () => void;
-  quiz: ActiveQuiz;
+  quiz: ActiveQuiz | null;
 }) {
   const [view, setView] = useState<"history" | "quiz" | "rules">("quiz");
   const [dialogTop, setDialogTop] = useState<number | null>(null);
@@ -81,7 +82,11 @@ export function QuizModal({
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <BugReportEntityContextRegistration context={{ entityId: String(quiz.id), entityType: "quiz" }} />
+      {quiz ? (
+        <BugReportEntityContextRegistration
+          context={{ entityId: String(quiz.id), entityType: "quiz" }}
+        />
+      ) : null}
       <div
         ref={dialogRef}
         role="dialog"
@@ -90,52 +95,58 @@ export function QuizModal({
         tabIndex={-1}
         className={`archive-paper archive-panel relative max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
       >
-        <div className="left-2 top-2 z-10 flex items-center gap-1 sm:left-3 sm:top-3" style={{ position: "absolute" }}>
-          {view === "quiz" ? (
-            <>
+        <div className="pointer-events-auto left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3" style={{ position: "absolute" }}>
+          {quiz ? (
+            view === "quiz" ? (
+              <>
+                <button
+                  type="button"
+                  className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
+                  aria-label="Открыть правила викторины"
+                  onClick={() => openSecondaryView("rules")}
+                >
+                  <CircleHelp className="size-4" />
+                </button>
+                <button
+                  type="button"
+                  className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
+                  aria-label="Открыть предыдущий вопрос"
+                  onClick={() => openSecondaryView("history")}
+                >
+                  <History className="size-4" />
+                </button>
+              </>
+            ) : (
               <button
                 type="button"
-                className="grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-                aria-label="Открыть правила викторины"
-                onClick={() => openSecondaryView("rules")}
+                className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
+                aria-label="Назад к викторине"
+                onClick={() => setView("quiz")}
               >
-                <CircleHelp className="size-4" />
+                <ArrowLeft className="size-4" />
               </button>
-              <button
-                type="button"
-                className="grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-                aria-label="Открыть предыдущий вопрос"
-                onClick={() => openSecondaryView("history")}
-              >
-                <History className="size-4" />
-              </button>
-            </>
-          ) : (
-            <button
-              type="button"
-              className="grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-              aria-label="Назад к викторине"
-              onClick={() => setView("quiz")}
-            >
-              <ArrowLeft className="size-4" />
-            </button>
-          )}
+            )
+          ) : null}
         </div>
         <button
           type="button"
-          className="right-2 top-2 z-10 grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-3 sm:top-3"
+          className="pointer-events-auto right-2 top-2 z-20 grid size-9 shrink-0 touch-manipulation place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-3 sm:top-3"
           style={{ position: "absolute" }}
           aria-label="Закрыть викторину"
           onClick={onClose}
         >
           <X className="size-4" />
         </button>
-        <div className="mb-5 px-24 text-center sm:px-32">
+        <div className="pointer-events-none mb-5 px-24 text-center sm:px-32">
           <h2 id="active-quiz-title" className="font-serif text-3xl">
             {view === "rules" ? "Как играть" : view === "history" ? "Предыдущий вопрос" : "Викторина"}
           </h2>
         </div>
-        {view === "rules" ? (
+        {!quiz ? (
+          <div className="flex min-h-80">
+            <QuizNoActiveState />
+          </div>
+        ) : view === "rules" ? (
           <div className="mx-auto max-w-xl text-sm leading-6 text-stone-700">
             <ol className="list-decimal space-y-3 pl-5">
               <li>Раз в день в 12:00 (MSK) публикуются вопросы викторины.</li>

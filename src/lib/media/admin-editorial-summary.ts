@@ -4,7 +4,10 @@ import { getEditorialSummarySourceHash, type EditorialSummarySource } from "./ed
 export type AdminMediaSort = CatalogSort | "editorial_attempted_at";
 
 export function parseAdminMediaSort(value: string | null): AdminMediaSort {
-  return value === "editorial_attempted_at" ? value : parseCatalogSort(value);
+  if (value === "editorial_attempted_at") return value;
+
+  const parsed = parseCatalogSort(value);
+  return value === parsed ? parsed : "title";
 }
 
 export type AdminEditorialSummaryState = "missing" | "ready" | "stale" | "unusable" | "locked";

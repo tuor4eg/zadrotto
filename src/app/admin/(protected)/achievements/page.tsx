@@ -10,6 +10,7 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip"
 import {
   getAdminAchievements,
+  type AdminAchievementAwardFilter,
   type AdminAchievementStatusFilter,
   type AdminAchievementVisibilityFilter,
 } from "@/db/queries/achievements"
@@ -19,7 +20,7 @@ import { deleteAchievementAction, toggleAchievementAction } from "./actions"
 import { AchievementFiltersForm } from "./achievement-filters-form"
 import { getAchievementErrorMessage } from "./messages"
 
-type Props = { searchParams: Promise<{ deleted?: string; disabled?: string; enabled?: string; error?: string; page?: string; q?: string; status?: string; visibility?: string }> }
+type Props = { searchParams: Promise<{ awardStatus?: string; deleted?: string; disabled?: string; enabled?: string; error?: string; page?: string; q?: string; status?: string; visibility?: string }> }
 
 function parsePage(value?: string) {
   const page = Number(value)
@@ -32,6 +33,10 @@ function parseStatus(value?: string): AdminAchievementStatusFilter {
 
 function parseVisibility(value?: string): AdminAchievementVisibilityFilter {
   return value === "regular" || value === "secret" ? value : "all"
+}
+
+function parseAwardStatus(value?: string): AdminAchievementAwardFilter {
+  return value === "awarded" || value === "unawarded" ? value : "all"
 }
 
 function AchievementListActions({
@@ -95,16 +100,18 @@ function AchievementListActions({
 export default async function AdminAchievementsPage({ searchParams }: Props) {
   const query = await searchParams
   const searchQuery = query.q?.trim() ?? ""
+  const awardStatus = parseAwardStatus(query.awardStatus)
   const status = parseStatus(query.status)
   const visibility = parseVisibility(query.visibility)
   const result = await getAdminAchievements({
     page: parsePage(query.page),
+    awardStatus,
     searchQuery,
     status,
     visibility,
   })
   const items = result.items
-  const hasActiveFilters = Boolean(searchQuery || status !== "all" || visibility !== "all")
+  const hasActiveFilters = Boolean(searchQuery || awardStatus !== "all" || status !== "all" || visibility !== "all")
   const successMessage = query.deleted === "1"
     ? "Ачивка удалена."
     : query.enabled === "1"
@@ -121,7 +128,7 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
   return <div className="flex flex-col gap-5">
     <AdminToasts clearParams={["deleted", "disabled", "enabled", "error"]} messages={toastMessages} />
     <PageHeader title="Ачивки" description="Механики, параметры и уровни каталога." aside={<Link className={buttonVariants()} href="/admin/achievements/new"><Plus />Добавить</Link>} />
-    {result.totalCount > 0 || hasActiveFilters ? <AchievementFiltersForm searchQuery={searchQuery} status={status} visibility={visibility} /> : null}
+    {result.totalCount > 0 || hasActiveFilters ? <AchievementFiltersForm awardStatus={awardStatus} searchQuery={searchQuery} status={status} visibility={visibility} /> : null}
     {result.totalCount === 0 && !hasActiveFilters ? <EmptyState>Ачивки пока не добавлены миграциями.</EmptyState> : items.length === 0 ? <EmptyState>По заданным фильтрам ачивок нет.</EmptyState> : (
       <>
         <div className="grid gap-3 sm:hidden">
@@ -138,6 +145,7 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     <Badge variant={item.enabled ? "outline" : "warning"}>{item.enabled ? "Включена" : "Выключена"}</Badge>
                     <Badge variant="outline">{item.showWhenLocked ? "Видна заранее" : "Тайная"}</Badge>
+                    <Badge variant={item.hasAwards ? "positive" : "outline"}>{item.hasAwards ? `Получена · макс. уровень ${item.maxAwardedLevel}` : "Не получена"}</Badge>
                   </div>
                 </div>
               </div>
@@ -176,6 +184,7 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
                     <div className="flex flex-wrap gap-1.5">
                       <Badge variant={item.enabled ? "outline" : "warning"}>{item.enabled ? "Включена" : "Выключена"}</Badge>
                       <Badge variant="outline">{item.showWhenLocked ? "Видна заранее" : "Тайная"}</Badge>
+                      <Badge variant={item.hasAwards ? "positive" : "outline"}>{item.hasAwards ? `Получена · макс. уровень ${item.maxAwardedLevel}` : "Не получена"}</Badge>
                     </div>
                   </TD>
                   <TD className="px-2">
@@ -186,7 +195,7 @@ export default async function AdminAchievementsPage({ searchParams }: Props) {
             </TBody>
           </Table>
         </TableWrap>
-        <PaginationNav basePath="/admin/achievements" itemLabel="ачивок" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, status: status === "all" ? undefined : status, visibility: visibility === "all" ? undefined : visibility }} totalCount={result.totalCount} totalPages={result.totalPages} />
+        <PaginationNav basePath="/admin/achievements" itemLabel="ачивок" page={result.page} pageSize={result.pageSize} searchParams={{ awardStatus: awardStatus === "all" ? undefined : awardStatus, q: searchQuery || undefined, status: status === "all" ? undefined : status, visibility: visibility === "all" ? undefined : visibility }} totalCount={result.totalCount} totalPages={result.totalPages} />
       </>
     )}
   </div>

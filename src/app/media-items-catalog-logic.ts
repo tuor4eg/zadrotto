@@ -23,8 +23,8 @@ export function parseArchiveRatingComparison(
 }
 
 export const CATALOG_SORTS = [
-  "title",
   "created_at",
+  "title",
   "release_year",
   "average_score",
   "ratings_count",
@@ -36,7 +36,7 @@ export const CATALOG_SORTS = [
 export type CatalogSort = (typeof CATALOG_SORTS)[number];
 export type CatalogSortDirection = "asc" | "desc";
 
-export const DEFAULT_CATALOG_SORT: CatalogSort = "title";
+export const DEFAULT_CATALOG_SORT: CatalogSort = "created_at";
 export const AUTHOR_ONLY_CATALOG_SORTS = [
   "my_rating_score",
   "my_rating_date",

@@ -183,7 +183,7 @@ export function ReviewArticle({
             </div>
             <div className="mt-4 flex justify-start"><ReviewAuthorStars score={review.authorScore} /></div>
             <div className="mt-8 w-full">
-              <p className="archive-typewriter-text whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
+              <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
             </div>
             </div>
             {review.authorScore !== null ? (

@@ -303,6 +303,7 @@ export default async function Home({ searchParams }: HomeProps) {
           ? { avatarObjectKey: currentAuthor.avatarObjectKey, name: currentAuthor.name }
           : null}
         currentAdminUser={currentAdminUser}
+        quiz={headerState.headerProps.quiz}
         controls={
           <CatalogHeaderControlsWithDemo
             key={selectedSeries?.code ?? "archive-search"}

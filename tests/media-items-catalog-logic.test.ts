@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 
 import {
+  CATALOG_SORTS,
+  DEFAULT_CATALOG_SORT,
   filterCatalogItems,
   matchesSearch,
   matchesYear,
@@ -231,14 +233,16 @@ describe("filterCatalogItems", () => {
 });
 
 describe("parseCatalogSort", () => {
-  it("keeps known catalog sort values and falls back to title", () => {
+  it("puts date added first and uses it as the catalog default", () => {
+    assert.equal(CATALOG_SORTS[0], "created_at");
+    assert.equal(DEFAULT_CATALOG_SORT, "created_at");
     assert.equal(parseCatalogSort("created_at"), "created_at");
     assert.equal(parseCatalogSort("release_year"), "release_year");
     assert.equal(parseCatalogSort("my_rating_score"), "my_rating_score");
     assert.equal(parseCatalogSort("my_rating_date"), "my_rating_date");
     assert.equal(parseCatalogSort("my_first_experience_year"), "my_first_experience_year");
-    assert.equal(parseCatalogSort("unknown"), "title");
-    assert.equal(parseCatalogSort(null), "title");
+    assert.equal(parseCatalogSort("unknown"), "created_at");
+    assert.equal(parseCatalogSort(null), "created_at");
   });
 });
 

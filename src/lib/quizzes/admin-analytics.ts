@@ -1,5 +1,7 @@
 import type { QuizParticipantOutcome } from "@/lib/quizzes/model";
 
+export { formatQuizDuration } from "@/lib/quizzes/model";
+
 export const ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE = 50;
 
 export type AdminQuizParticipantStatus =
@@ -31,22 +33,4 @@ export function getAdminQuizParticipantStatus(input: {
   if (input.attemptsRemaining < input.attemptLimit) return "answering";
 
   return "not-started";
-}
-
-export function formatQuizDuration(totalSeconds: number | null) {
-  if (totalSeconds === null || !Number.isFinite(totalSeconds)) return "—";
-
-  const roundedSeconds = Math.max(0, Math.round(totalSeconds));
-  const days = Math.floor(roundedSeconds / 86_400);
-  const hours = Math.floor((roundedSeconds % 86_400) / 3_600);
-  const minutes = Math.floor((roundedSeconds % 3_600) / 60);
-  const seconds = roundedSeconds % 60;
-  const parts = [
-    days > 0 ? `${days} дн.` : null,
-    hours > 0 || days > 0 ? `${hours} ч.` : null,
-    minutes > 0 || hours > 0 || days > 0 ? `${minutes} мин.` : null,
-    `${seconds} сек.`,
-  ];
-
-  return parts.filter(Boolean).join(" ");
 }

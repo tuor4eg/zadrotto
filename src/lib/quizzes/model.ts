@@ -45,39 +45,52 @@ export type AuthorQuizStatistics = {
   currentCorrectStreak: number;
   bestCorrectStreak: number;
   winnerCount: number;
+  totalTimeSeconds: number;
 };
 
-function pluralizeRu(value: number, forms: [string, string, string]) {
-  const mod100 = value % 100;
-  const mod10 = value % 10;
-  if (mod100 >= 11 && mod100 <= 14) return forms[2];
-  if (mod10 === 1) return forms[0];
-  if (mod10 >= 2 && mod10 <= 4) return forms[1];
-  return forms[2];
-}
-
 export function formatQuizTimeRemaining(endsAt: string | Date, now = new Date()) {
-  const totalMinutes = Math.max(
+  const totalSeconds = Math.max(
     0,
-    Math.ceil((new Date(endsAt).getTime() - now.getTime()) / 60_000),
+    Math.ceil((new Date(endsAt).getTime() - now.getTime()) / 1_000),
   );
-  const days = Math.floor(totalMinutes / (24 * 60));
-  const hours = Math.floor((totalMinutes % (24 * 60)) / 60);
-  const minutes = totalMinutes % 60;
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
   const parts = [
-    `${days} ${pluralizeRu(days, ["день", "дня", "дней"])}`,
-    `${hours} ${pluralizeRu(hours, ["час", "часа", "часов"])}`,
-    `${minutes} ${pluralizeRu(minutes, ["минута", "минуты", "минут"])}`,
+    `${days} д.`,
+    `${hours} ч.`,
+    `${minutes} м.`,
+    `${seconds} с.`,
   ];
-  const firstNonZeroPart = [days, hours, minutes].findIndex((value) => value > 0);
+  const firstNonZeroPart = [days, hours, minutes, seconds].findIndex((value) => value > 0);
 
   return `Осталось ${parts.slice(firstNonZeroPart === -1 ? -1 : firstNonZeroPart).join(" ")}`;
+}
+
+export function formatQuizDuration(totalSeconds: number | null) {
+  if (totalSeconds === null || !Number.isFinite(totalSeconds)) return "—";
+
+  const roundedSeconds = Math.max(0, Math.round(totalSeconds));
+  const days = Math.floor(roundedSeconds / 86_400);
+  const hours = Math.floor((roundedSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((roundedSeconds % 3_600) / 60);
+  const seconds = roundedSeconds % 60;
+  const parts = [
+    days > 0 ? `${days} д.` : null,
+    hours > 0 || days > 0 ? `${hours} ч.` : null,
+    minutes > 0 || hours > 0 || days > 0 ? `${minutes} м.` : null,
+    `${seconds} с.`,
+  ];
+
+  return parts.filter(Boolean).join(" ");
 }
 
 export function calculateAuthorQuizStatistics(rows: readonly {
   outcome: QuizParticipantOutcome;
   attemptsRemaining: number;
   attemptLimit: number;
+  durationSeconds: number;
   isWinner: boolean;
 }[]): AuthorQuizStatistics {
   let correctCount = 0;
@@ -85,8 +98,10 @@ export function calculateAuthorQuizStatistics(rows: readonly {
   let currentCorrectStreak = 0;
   let bestCorrectStreak = 0;
   let winnerCount = 0;
+  let totalTimeSeconds = 0;
 
   for (const row of rows) {
+    totalTimeSeconds += Math.max(0, row.durationSeconds);
     if (row.outcome === "correct") {
       correctCount += 1;
       currentCorrectStreak += 1;
@@ -106,6 +121,7 @@ export function calculateAuthorQuizStatistics(rows: readonly {
     currentCorrectStreak,
     bestCorrectStreak,
     winnerCount,
+    totalTimeSeconds,
   };
 }
 

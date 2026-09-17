@@ -28,9 +28,9 @@ describe("admin quiz analytics", () => {
 
   it("formats elapsed time and explicit empty values", () => {
     assert.equal(formatQuizDuration(null), "—");
-    assert.equal(formatQuizDuration(0), "0 сек.");
-    assert.equal(formatQuizDuration(65), "1 мин. 5 сек.");
-    assert.equal(formatQuizDuration(90_061), "1 дн. 1 ч. 1 мин. 1 сек.");
+    assert.equal(formatQuizDuration(0), "0 с.");
+    assert.equal(formatQuizDuration(65), "1 м. 5 с.");
+    assert.equal(formatQuizDuration(90_061), "1 д. 1 ч. 1 м. 1 с.");
   });
 
   it("uses a fixed page size and clamps excessive page numbers", () => {
@@ -78,6 +78,7 @@ describe("admin quiz analytics", () => {
 
     assert.match(aggregates, /count\(\*\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)/);
     assert.match(aggregates, /avg\(extract\(epoch from/);
+    assert.match(aggregates, /quizParticipants\.completedAt\} - \$\{quizzes\.startsAt/);
     assert.match(participants, /when \$\{quizParticipants\.isWinner\} then 0[\s\S]*when \$\{quizParticipants\.outcome\} = 'correct' then 1[\s\S]*when \$\{quizParticipants\.outcome\} = 'exhausted' then 2/);
     assert.match(participants, /asc\(quizParticipants\.completedAt\)/);
     assert.match(participants, /limit\(ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE\)[\s\S]*offset\(getOffset\(page, ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE\)\)/);

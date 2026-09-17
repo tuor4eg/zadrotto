@@ -84,11 +84,11 @@ export function ArchiveChildSeries({ items }: { items: ArchiveChildSeriesItem[] 
         ) : null}
       </div>
 
-      <div className="pointer-events-none invisible absolute left-0 top-0 flex w-max items-center gap-1.5" ref={measurementRef} aria-hidden="true">
+      <div className="pointer-events-none invisible absolute left-0 top-0 flex w-full items-center gap-1.5 overflow-hidden" ref={measurementRef} aria-hidden="true">
         {items.map((child) => (
           <span className={tagClassName} data-child-series-tag key={child.id}>{child.title}</span>
         ))}
-        <span className="font-mono text-[10px] font-semibold uppercase tracking-[0.08em]" data-child-series-more>
+        <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[0.08em]" data-child-series-more>
           + ещё {items.length}
         </span>
       </div>

@@ -171,7 +171,6 @@ describe("author avatars", () => {
 
     for (const path of [
       "src/app/author/(protected)/profile/page.tsx",
-      "src/app/author/(protected)/layout.tsx",
       "src/app/review-article.tsx",
       "src/app/admin/(protected)/authors/page.tsx",
       "src/app/admin/(protected)/authors/[id]/page.tsx",

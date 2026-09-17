@@ -7,6 +7,13 @@ const globalsSource = readFileSync("src/app/globals.css", "utf8");
 const selectSource = readFileSync("src/components/ui/archive-select.tsx", "utf8");
 
 describe("catalog header controls", () => {
+  it("shows date added as the first sorting option", () => {
+    assert.match(
+      source,
+      /const CATALOG_SORT_LABELS[\s\S]*created_at: "Дата добавления",[\s\S]*title: "Название",/,
+    );
+  });
+
   it("keeps filter and sort popovers visible in the shared header row", () => {
     assert.match(source, /overflow-visible lg:flex lg:flex-nowrap/);
     assert.doesNotMatch(source, /lg:overflow-hidden/);
@@ -38,6 +45,8 @@ describe("catalog header controls", () => {
 
   it("keeps the filter menu viewport-fixed below the mobile toolbar", () => {
     assert.match(source, /archive-catalog-filter-menu/);
+    assert.match(source, /getBoundingClientRect\(\)[\s\S]*triggerRect\.bottom \+ 8/);
+    assert.match(source, /--archive-catalog-filter-menu-top/);
     assert.match(globalsSource, /\.archive-catalog-filter-menu\s*\{[\s\S]*position: fixed/);
     assert.match(globalsSource, /safe-area-inset-(?:top|right|left)/);
     assert.match(

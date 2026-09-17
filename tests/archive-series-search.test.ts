@@ -25,6 +25,10 @@ describe("archive series search", () => {
     assert.match(seriesContext, /itemHref=\{selectionHrefs\[item\.id\]\}/);
     assert.match(seriesContext, /parentHrefs=\{selectionHrefs\}/);
     assert.match(seriesContext, /itemHref \? \([\s\S]*href=\{itemHref\}/);
+    assert.match(
+      seriesContext,
+      /<ul className="[^"]*flex-1 flex-row flex-wrap[^"]*max-sm:w-full max-sm:basis-full/,
+    );
     assert.doesNotMatch(seriesContext, /href=\{selectionHrefs\[item\.id\]\}>[\s\S]*<SeriesPath item=\{item\}/);
     assert.match(archivePage, /seriesMatches\.items\.flatMap\(\(series\) => \[[\s\S]*series\.parents\.map\(\(parent\)/);
     assert.match(archivePage, /moreHref=\{`\/series\?q=\$\{encodeURIComponent\(searchQuery\)\}`\}/);
@@ -42,8 +46,9 @@ describe("archive series search", () => {
     assert.match(seriesContext, /aria-label="Сбросить выбранную серию"/);
     assert.match(seriesContext, /className="grid size-9 shrink-0 place-items-center[^"\n]*" href=\{clearHref\}/);
     assert.match(seriesContext, /relative z-\[60\][^"\n]*overflow-visible/);
-    assert.match(seriesContext, /flex min-w-0 items-start gap-3/);
+    assert.match(seriesContext, /flex min-w-0 flex-wrap items-start gap-3/);
     assert.match(seriesContext, /<Tag className="mt-2 size-5 shrink-0/);
+    assert.match(seriesContext, /sm:flex-none sm:max-w-\[40%\]/);
     assert.match(seriesContext, /childSeries\.length > 0 \? "pt-1" : "pt-2"/);
     assert.match(childSeries, /relative min-w-0 flex-1 self-baseline/);
     assert.match(seriesContext, /style=\{\{ overflow: "visible" \}\}/);
@@ -59,8 +64,14 @@ describe("archive series search", () => {
     assert.match(archivePage, /getPublishedFranchiseBranch\(selectedSeries\.id, enabledMediaTypeCodes\)/);
     assert.match(seriesContext, /<ArchiveChildSeries items=\{childSeries\}/);
     assert.match(seriesContext, /Серии внутри[\s\S]*<ArchiveChildSeries/);
+    assert.match(
+      seriesContext,
+      /flex min-w-0 flex-1[^"]*max-sm:order-last max-sm:w-full max-sm:basis-full/,
+    );
     assert.doesNotMatch(childSeries, /data-child-series-label/);
     assert.match(childSeries, /ResizeObserver\(measure\)/);
+    assert.match(childSeries, /invisible absolute left-0 top-0 flex w-full[^"\n]*overflow-hidden/);
+    assert.doesNotMatch(childSeries, /invisible absolute left-0 top-0 flex w-max/);
     assert.match(childSeries, /items\.slice\(0, visibleCount\)/);
     assert.match(childSeries, /\+ ещё \{hiddenCount\}/);
     assert.match(childSeries, /setExpanded\(true\)/);

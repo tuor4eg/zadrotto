@@ -31,10 +31,7 @@ describe("author login modal contracts", () => {
 
   it("keeps the standalone login action redirects", () => {
     assert.match(actionsSource, /redirect\(`\/author\/login\?error=\$\{result\.error\}`\)/);
-    assert.match(
-      actionsSource,
-      /redirect\(result\.onboarding \? "\/author\/profile" : "\/author"\)/,
-    );
+    assert.match(actionsSource, /redirect\("\/author\/profile"\)/);
   });
 
   it("links password login to registration and password recovery", () => {
@@ -52,9 +49,9 @@ describe("author login modal contracts", () => {
     assert.match(tokenFormSource, /type="password"/);
     assert.match(tokenFormSource, /autoComplete="off"/);
     assert.match(tokenFormSource, /name="username"[\s\S]*autoComplete="username"/);
-    assert.match(tokenFormSource, /state\.onboarding \? "\/author\/profile" : "\/author"/);
+    assert.match(tokenFormSource, /router\.replace\("\/author\/profile"\)/);
     assert.match(tokenPageSource, /getCurrentAuthor\(\)/);
-    assert.match(tokenPageSource, /if \(author\) \{[\s\S]*redirect\("\/author"\)/);
+    assert.match(tokenPageSource, /if \(author\) \{[\s\S]*redirect\("\/author\/profile"\)/);
     assert.match(tokenPageSource, /Вход по токену/);
     assert.match(tokenPageSource, /href="\/author\/login"/);
     assert.match(tokenPageSource, /robots:[\s\S]*index: false[\s\S]*follow: false/);

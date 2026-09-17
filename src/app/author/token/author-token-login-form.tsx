@@ -25,7 +25,7 @@ export function AuthorTokenLoginForm() {
   useEffect(() => {
     if (!state?.ok) return;
     window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT));
-    router.replace(state.onboarding ? "/author/profile" : "/author");
+    router.replace("/author/profile");
   }, [router, state]);
 
   const error = state && !state.ok ? state.error : null;

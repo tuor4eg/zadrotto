@@ -8,6 +8,7 @@ const headerStateSource = read("src/lib/archive/public-site-header.ts");
 const footerLayerSource = read("src/components/archive/public-site-footer-layer.tsx");
 const rootLayoutSource = read("src/app/layout.tsx");
 const mainPageSource = read("src/app/page.tsx");
+const archivePageSource = read("src/app/archive/page.tsx");
 const globalsSource = read("src/app/globals.css");
 
 const publicPages = [
@@ -49,7 +50,22 @@ describe("public site header", () => {
     assert.match(headerSource, /Демо-режим/);
     assert.match(headerSource, /Данные хранятся только на устройстве/);
     assert.match(headerSource, /авторизуйтесь чтобы не потерять их/);
-    assert.match(headerSource, /<NotificationBell align="right" round \/>[\s\S]*href="\/admin"[\s\S]*href="\/author"/);
+    assert.doesNotMatch(headerSource, /NotificationBell/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*href="\/author\/profile"/);
+    assert.match(headerSource, /aria-label="Открыть текущую викторину"/);
+    assert.match(headerSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
+    assert.match(headerSource, /<QuizModal/);
+    assert.match(headerSource, /\{author \? \([\s\S]*aria-label="Открыть текущую викторину"/);
+    assert.match(headerSource, /quiz=\{visibleQuiz\?\.quiz \?\? null\}/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущую викторину[\s\S]*href="\/author\/profile"/);
+    assert.match(
+      headerSource,
+      /href="\/admin"[\s\S]*className="relative grid size-9[^"]*rounded-full/,
+    );
+    assert.match(
+      headerSource,
+      /href="\/author\/profile"[\s\S]*className="grid size-9[^"]*rounded-full[\s\S]*className="size-9 text-xs"/,
+    );
     assert.match(headerSource, /href="\/admin"[\s\S]*NotificationBadge[\s\S]*count=\{adminNotificationCount\}/);
   });
 
@@ -69,8 +85,12 @@ describe("public site header", () => {
     assert.match(headerStateSource, /getCurrentAuthor\(\)/);
     assert.match(headerStateSource, /getCurrentAdminUser\(\)/);
     assert.match(headerStateSource, /getSubmittedModerationRequestCountForAdmin\(\)/);
+    assert.match(headerStateSource, /getActiveQuiz\(\)/);
+    assert.match(headerStateSource, /getActiveQuizParticipantState\(author\.id\)/);
+    assert.match(headerStateSource, /activeQuiz && !activeQuizParticipant\?\.completed/);
     assert.match(headerStateSource, /adminUser\s*\?\s*await getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*0/);
     assert.match(headerStateSource, /headerProps:[\s\S]*avatarObjectKey: author\.avatarObjectKey, name: author\.name/);
+    assert.match(archivePageSource, /<PublicSiteHeader[\s\S]*quiz=\{headerState\.headerProps\.quiz\}/);
   });
 
   it("is mounted on every public page and excluded from private and auth shells", () => {

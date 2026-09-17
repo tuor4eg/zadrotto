@@ -18,7 +18,7 @@ export default async function AuthorTokenLoginPage() {
   const author = await getCurrentAuthor();
 
   if (author) {
-    redirect("/author");
+    redirect("/author/profile");
   }
 
   return (

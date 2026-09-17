@@ -83,10 +83,10 @@ export default async function QuizzesPage() {
                     </Link>
                     <ConfirmAction
                       action={deleteQuizAction}
-                      confirmLabel="Удалить"
-                      description="Викторина будет удалена без возможности восстановления."
+                      confirmLabel="Удалить квиз и результаты"
+                      description="Квиз, его изображение, список участников и все их результаты будут удалены без возможности восстановления. Это изменит личную статистику, общее время, серии, таблицу победителей и архив квизов. Запись с правильным ответом и уже выданные ачивки останутся."
                       fields={[{ name: "quizId", value: item.id }]}
-                      title="Удалить викторину?"
+                      title="Удалить квиз вместе со всей историей?"
                       triggerAriaLabel="Удалить"
                       triggerIcon={<Trash2 />}
                       triggerLabel="Удалить"

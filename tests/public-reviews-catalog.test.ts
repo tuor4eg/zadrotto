@@ -128,6 +128,14 @@ describe("public reviews catalog page", () => {
     assert.doesNotMatch(row, /comment|комментар/i)
   })
 
+  it("uses the streaming font for the review body without changing its size", () => {
+    const article = read("src/app/review-article.tsx")
+    assert.match(
+      article,
+      /<p className="media-carrier-font-streaming whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-8 text-stone-800 sm:text-base sm:leading-9">\{review\.body\}<\/p>/,
+    )
+  })
+
   it("parses catalog filters without popular or comments presets", () => {
     assert.match(logic, /REVIEW_CATALOG_PRESETS = \["all", "fresh", "high", "long", "short"\]/)
     assert.match(logic, /"low",\s*"none"/)

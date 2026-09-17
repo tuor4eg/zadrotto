@@ -35,7 +35,7 @@ export async function loginAuthor(formData: FormData) {
     redirect(`/author/login?error=${result.error}`);
   }
 
-  redirect(result.onboarding ? "/author/profile" : "/author");
+  redirect("/author/profile");
 }
 
 export type AuthorLoginState =

@@ -40,7 +40,7 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
     if (!state?.ok) return;
     window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT));
     if (redirectOnSuccess || state.onboarding) {
-      router.replace(state.onboarding ? "/author/profile" : "/author");
+      router.replace("/author/profile");
     }
     else onSuccess?.();
   }, [onSuccess, redirectOnSuccess, router, state]);

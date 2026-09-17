@@ -69,8 +69,9 @@ describe("public achievements page", () => {
     assert.match(stats, /flex flex-nowrap items-end justify-between gap-2 sm:mt-8 sm:justify-start sm:gap-12/)
     assert.match(stats, /dl className="contents"/)
     assert.doesNotMatch(stats, /bg-amber-50/)
+    assert.match(stats, /size-9 shrink-0 sm:size-10/)
     assert.match(stats, /font-serif text-xl[^"\n]*sm:text-3xl/)
-    assert.match(stats, /font-mono text-\[8px\] uppercase[^"\n]*sm:text-\[9px\]/)
+    assert.match(stats, /font-mono text-\[8px\] font-semibold uppercase[^"\n]*sm:text-\[9px\]/)
   })
 
   it("loads the showcase once and derives hero stats from the same items", () => {

@@ -1,7 +1,16 @@
 "use client";
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useId, useRef, useState, useTransition } from "react";
+import {
+  type CSSProperties,
+  useCallback,
+  useEffect,
+  useId,
+  useLayoutEffect,
+  useRef,
+  useState,
+  useTransition,
+} from "react";
 import {
   ArrowDown,
   ArrowUp,
@@ -29,6 +38,7 @@ import type {
   MediaTypeFilter,
 } from "./media-items-catalog-logic";
 import {
+  DEFAULT_CATALOG_SORT,
   DEFAULT_CATALOG_SORT_DIRECTIONS,
   isAuthorOnlyCatalogSort,
   type CatalogSortDirection,
@@ -51,8 +61,8 @@ type CatalogHeaderControlsProps = {
 type YearSelectValue = "all" | `${number}`;
 
 const CATALOG_SORT_LABELS: Record<CatalogSort, string> = {
-  title: "Название",
   created_at: "Дата добавления",
+  title: "Название",
   release_year: "Год выпуска",
   average_score: "Средняя оценка",
   ratings_count: "Количество оценок",
@@ -186,6 +196,7 @@ export function CatalogHeaderControls({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [openSelect, setOpenSelect] = useState<"filters" | "sort" | null>(null);
+  const [filtersMenuTop, setFiltersMenuTop] = useState<number | null>(null);
   const [, startTransition] = useTransition();
   const filtersMenuId = useId();
   const filtersRootRef = useRef<HTMLDivElement>(null);
@@ -243,7 +254,7 @@ export function CatalogHeaderControls({
       }
 
       if (nextFilters.sort !== undefined) {
-        updateFilterParam(nextSearchParams, "sort", nextFilters.sort, "title");
+        updateFilterParam(nextSearchParams, "sort", nextFilters.sort, DEFAULT_CATALOG_SORT);
       }
 
       if (nextFilters.sort !== undefined || nextFilters.sortDirection !== undefined) {
@@ -341,6 +352,28 @@ export function CatalogHeaderControls({
     };
   }, [openSelect]);
 
+  useLayoutEffect(() => {
+    if (openSelect !== "filters") return;
+
+    function updateFiltersMenuTop() {
+      const triggerRect = filtersRootRef.current?.getBoundingClientRect();
+      if (triggerRect) setFiltersMenuTop(triggerRect.bottom + 8);
+    }
+
+    updateFiltersMenuTop();
+    window.addEventListener("resize", updateFiltersMenuTop);
+    window.addEventListener("scroll", updateFiltersMenuTop, true);
+    window.visualViewport?.addEventListener("resize", updateFiltersMenuTop);
+    window.visualViewport?.addEventListener("scroll", updateFiltersMenuTop);
+
+    return () => {
+      window.removeEventListener("resize", updateFiltersMenuTop);
+      window.removeEventListener("scroll", updateFiltersMenuTop, true);
+      window.visualViewport?.removeEventListener("resize", updateFiltersMenuTop);
+      window.visualViewport?.removeEventListener("scroll", updateFiltersMenuTop);
+    };
+  }, [openSelect]);
+
   return (
     <div className="grid min-w-0 grid-cols-[minmax(0,1fr)_2.25rem_2.25rem] items-center gap-2 overflow-visible lg:flex lg:flex-nowrap lg:justify-end">
       <label className="sr-only" htmlFor="header-catalog-search">
@@ -411,6 +444,9 @@ export function CatalogHeaderControls({
               id={filtersMenuId}
               role="menu"
               className="archive-catalog-filter-menu z-[80] rounded-md border border-stone-300 bg-stone-50 p-2 shadow-lg"
+              style={filtersMenuTop === null ? undefined : {
+                "--archive-catalog-filter-menu-top": `${filtersMenuTop}px`,
+              } as CSSProperties}
             >
               {currentAuthor ? (
                 <div className="grid">

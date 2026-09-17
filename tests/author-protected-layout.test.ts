@@ -42,24 +42,27 @@ describe("protected author layout", () => {
     );
   });
 
-  it("keeps the logo, author identity, and cabinet navigation in the header", () => {
+  it("keeps the author identity and cabinet navigation without duplicated branding", () => {
     const header = authorLayoutSource.match(/<header[\s\S]*?<\/header>/)?.[0];
 
     assert.ok(header, "author header should be present");
     assert.match(header, /archive-main-brand-header archive-paper archive-panel/);
     assert.match(header, /archive-main-brand-header archive-paper archive-panel relative z-20/);
-    assert.match(
-      header,
-      /<Link href="\/"[^>]*aria-label="На главную">\s*<Image[\s\S]*?src="\/site-logo\.png"[\s\S]*?\/>\s*<\/Link>\s*<h1[\s\S]*?Кабинет автора: \{author\.name\}[\s\S]*?<Link\s+href="\/author"\s+aria-label="Главная кабинета автора"[\s\S]*?<Avatar/,
-    );
+    assert.match(header, /<h1[^>]*>[\s\S]*Кабинет автора: \{author\.name\}[\s\S]*<\/h1>/);
+    assert.doesNotMatch(header, /site-logo|<Image|<Avatar/);
     assert.doesNotMatch(header, /Журнал, которого не было|База хранит факты/);
     assert.match(header, /<nav\s+aria-label="Навигация кабинета автора"/);
     assert.match(header, /className="hidden flex-wrap[^"]*md:flex/);
     assert.match(header, /<AuthorMobileNavMenu[\s\S]*incomingFriendRequestCount=\{incomingFriendRequestCount\}/);
-    assert.match(header, /className="flex items-center justify-end[^"]*md:hidden"/);
+    assert.match(
+      header,
+      /className="flex items-center justify-between gap-3 px-3 py-2 md:block md:py-3[^"]*"[\s\S]*Кабинет автора:[\s\S]*<AuthorMobileNavMenu/,
+    );
+    assert.doesNotMatch(header, /justify-end gap-2 border-t[^"]*md:hidden/);
     assert.doesNotMatch(header, /<NotificationBell/);
     assert.match(header, /style=\{\{ overflow: "visible" \}\}/);
-    assert.match(header, /href="\/author"[\s\S]*?>\s*Статистика\s*<\/Link>[\s\S]*?href="\/author\/quizzes"[\s\S]*?>\s*Викторины\s*<\/Link>[\s\S]*?<AuthorProposalsMenu \/>/);
+    assert.doesNotMatch(header, />\s*Статистика\s*<\/Link>/);
+    assert.doesNotMatch(header, /href="\/author\/quizzes"|>\s*Викторины\s*<\/Link>/);
     assert.doesNotMatch(header, /href="\/author\/(?:achievements|reviews)"/);
     assert.match(header, /href="\/author\/profile"/);
     assert.match(header, /action=\{logoutAuthor\}/);
@@ -83,6 +86,8 @@ describe("protected author layout", () => {
     assert.match(mobileMenuSource, /event\.key === "Escape"[\s\S]*triggerRef\.current\?\.focus\(\)/);
     assert.match(mobileMenuSource, /document\.addEventListener\("pointerdown"/);
     assert.doesNotMatch(mobileMenuSource, /\/author\/(?:achievements|reviews)/);
+    assert.doesNotMatch(mobileMenuSource, /\/author\/quizzes|>\s*Викторины\s*<\/Link>/);
+    assert.doesNotMatch(mobileMenuSource, />\s*Статистика\s*<\/Link>/);
   });
 
   it("uses a proposals disclosure without duplicating its links in the layout", () => {

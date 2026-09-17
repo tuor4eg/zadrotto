@@ -178,7 +178,7 @@ export default async function AdminQuizResultsPage({
               <span className="break-words">{winner.authorName}</span>
             </Link>
             <div className="text-sm tabular-nums text-stone-600">
-              {formatDateTime(winner.completedAt)} · за {formatQuizDuration(winner.secondsSinceJoined)}
+              {formatDateTime(winner.completedAt)} · за {formatQuizDuration(winner.secondsSinceQuizStart)}
             </div>
           </div>
         ) : (

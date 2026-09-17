@@ -12,6 +12,7 @@ import {
   type CatalogYearFilter,
   type CatalogYearMode,
   type MediaTypeFilter,
+  DEFAULT_CATALOG_SORT,
   DEFAULT_CATALOG_SORT_DIRECTIONS,
 } from "@/app/media-items-catalog-logic";
 import { MediaTypeTabs } from "@/app/media-type-tabs";
@@ -155,7 +156,7 @@ export function MediaItemsCatalog({
       sortDirection !== DEFAULT_CATALOG_SORT_DIRECTIONS[sort]
         ? sortDirection
         : undefined,
-    sort: sort !== "title" ? sort : undefined,
+    sort: sort !== DEFAULT_CATALOG_SORT ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
     year: yearFilter !== null ? String(yearFilter) : undefined,
     yearMode: yearFilter !== null && yearMode !== "release" ? yearMode : undefined,

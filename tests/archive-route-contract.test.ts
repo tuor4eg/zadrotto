@@ -73,11 +73,11 @@ describe("archive route split", () => {
     assert.doesNotMatch(publicHeader, /onChange=|useDebouncedSearchDraft/);
   });
 
-  it("opens guest authorization in a modal and reserves notifications for authors", () => {
-    assert.match(publicHeader, /author \? \([\s\S]*<NotificationBell align="right" round/);
+  it("opens guest authorization in a modal and keeps author actions compact", () => {
+    assert.doesNotMatch(publicHeader, /NotificationBell/);
     assert.match(
       publicHeader,
-      /<NotificationBell align="right" round \/>[\s\S]*currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*href="\/author"/,
+      /currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*href="\/author\/profile"/,
     );
     assert.match(publicHeader, /<UserRound[^>]*aria-hidden="true"/);
     assert.match(publicHeader, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);

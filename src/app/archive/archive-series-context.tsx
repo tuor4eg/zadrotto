@@ -66,7 +66,7 @@ export function ArchiveSeriesMatches({
         <FolderOpen className="size-5" />
         <span>Совпадения в сериях: {totalCount}</span>
       </div>
-      <ul className="flex min-w-0 flex-1 flex-col gap-1.5 lg:flex-row lg:flex-wrap lg:gap-x-5">
+      <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
         {items.map((item) => (
           <li className="min-w-0" key={item.id}>
             <SeriesPath
@@ -105,25 +105,27 @@ export function ArchiveSelectedSeries({
 }) {
   return (
     <section
-      className="archive-paper archive-panel relative z-[60] flex min-w-0 items-start gap-3 overflow-visible border-amber-300/70 bg-amber-100/75 px-4 py-2.5 text-sm shadow-md"
+      className="archive-paper archive-panel relative z-[60] flex min-w-0 flex-wrap items-start gap-3 overflow-visible border-amber-300/70 bg-amber-100/75 px-4 py-2.5 text-sm shadow-md"
       style={{ overflow: "visible" }}
       aria-label="Выбранная серия"
     >
       <Tag className="mt-2 size-5 shrink-0 text-stone-500" />
-      <div className={`flex min-w-0 flex-1 flex-nowrap items-baseline gap-x-2 ${
+      <div className={`min-w-0 flex-1 ${
+        childSeries.length > 0 ? "sm:flex-none sm:max-w-[40%]" : ""
+      } ${
         childSeries.length > 0 ? "pt-1" : "pt-2"
       }`}>
         <SeriesPath item={item} parentHrefs={parentHrefs} />
-        {childSeries.length > 0 ? (
-          <>
-            <span aria-hidden="true" className="text-stone-400">·</span>
-            <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-              Серии внутри
-            </span>
-            <ArchiveChildSeries items={childSeries} />
-          </>
-        ) : null}
       </div>
+      {childSeries.length > 0 ? (
+        <div className="flex min-w-0 flex-1 items-baseline gap-x-2 max-sm:order-last max-sm:w-full max-sm:basis-full">
+          <span aria-hidden="true" className="hidden text-stone-400 sm:inline">·</span>
+          <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
+            Серии внутри
+          </span>
+          <ArchiveChildSeries items={childSeries} />
+        </div>
+      ) : null}
       {authorCanAddMedia ? (
         <ArchiveSeriesMediaLinkSearch
           franchiseCode={item.code}

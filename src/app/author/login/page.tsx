@@ -16,7 +16,7 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
   const author = await getCurrentAuthor();
 
   if (author) {
-    redirect("/author");
+    redirect("/author/profile");
   }
 
   const { error } = await searchParams;

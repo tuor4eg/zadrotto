@@ -255,5 +255,7 @@ describe("bug report HUD flow", () => {
     assert.match(hud, /remainingContexts\.at\(-1\) \?\? null/);
     assert.match(mediaPage, /entityType: "media-item"/);
     assert.match(quizModal, /entityType: "quiz"/);
+    assert.match(quizModal, /pointer-events-auto[^\"]*z-20/);
+    assert.match(quizModal, /pointer-events-none mb-5 px-24/);
   });
 });

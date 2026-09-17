@@ -2,15 +2,18 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { Menu, Search, Shield, UserRound, X } from "lucide-react";
+import { CircleHelp, Menu, Search, Shield, UserRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
-import { NotificationBell } from "@/components/notifications/notification-inbox";
+import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
+import { QuizModal } from "@/components/quizzes/quiz-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
+import type { ActiveQuiz, QuizHistoryEntry } from "@/lib/quizzes/model";
+import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 export type PublicSiteHeaderProps = {
@@ -21,29 +24,49 @@ export type PublicSiteHeaderProps = {
   } | null;
   controls?: ReactNode;
   currentAdminUser: boolean;
+  quiz?: {
+    history: QuizHistoryEntry | null;
+    isParticipating: boolean;
+    quiz: ActiveQuiz;
+    unavailableMediaTypeNames: string[];
+  } | null;
 };
 
-const MENU_ITEMS = [
+const BASE_MENU_ITEMS = [
   { href: "/archive", label: "Архив" },
   { href: "/series", label: "Серии" },
   { href: "/collections", label: "Подборки" },
   { href: "/reviews", label: "Рецензии" },
 ] as const;
 
+const QUIZZES_MENU_ITEM = { href: "/quizzes", label: "Квизы" } as const;
+
 export function PublicSiteHeader({
   adminNotificationCount,
   author,
   controls,
   currentAdminUser,
+  quiz = null,
 }: PublicSiteHeaderProps) {
   const router = useRouter();
+  const { quizParticipant } = useExternalInterface();
   const [isLoginOpen, setIsLoginOpen] = useState(false);
   const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isQuizOpen, setIsQuizOpen] = useState(false);
   const menuButtonRef = useRef<HTMLButtonElement>(null);
   const menuRef = useRef<HTMLElement>(null);
   const demoProfile = useDemoProfile();
   const isDemo = Boolean(!author && demoProfile && demoProfile.import.importedAt == null);
   const showAchievements = Boolean(author || isDemo);
+  const MENU_ITEMS = [
+    ...BASE_MENU_ITEMS,
+    ...(author ? [QUIZZES_MENU_ITEM] : []),
+    ...(showAchievements ? [{ href: "/achievements", label: "Ачивки" } as const] : []),
+  ];
+  const isQuizCompleted = Boolean(
+    quizParticipant?.quizId === quiz?.quiz.id && quizParticipant?.completed,
+  );
+  const visibleQuiz = quiz && !isQuizCompleted ? quiz : null;
 
   useEffect(() => {
     if (!isMenuOpen) return;
@@ -91,10 +114,7 @@ export function PublicSiteHeader({
           </button>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
-            {(showAchievements
-              ? [...MENU_ITEMS, { href: "/achievements", label: "Ачивки" }]
-              : MENU_ITEMS
-            ).map((item) => (
+            {MENU_ITEMS.map((item) => (
               <Link
                 key={item.href}
                 href={item.href}
@@ -131,10 +151,7 @@ export function PublicSiteHeader({
               aria-label="Мобильная навигация"
               className="absolute right-0 top-14 z-50 grid min-w-44 gap-1 rounded-lg border border-stone-700 bg-stone-900 p-2 shadow-xl lg:hidden"
             >
-              {(showAchievements
-                ? [...MENU_ITEMS, { href: "/achievements", label: "Ачивки" }]
-                : MENU_ITEMS
-              ).map((item) => (
+              {MENU_ITEMS.map((item) => (
                 <Link
                   key={item.href}
                   href={item.href}
@@ -192,12 +209,11 @@ export function PublicSiteHeader({
 
             {author ? (
               <>
-                <NotificationBell align="right" round />
                 {currentAdminUser ? (
                   <Link
                     href="/admin"
                     aria-label="Админка"
-                    className="relative grid size-8 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-200 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
+                    className="relative grid size-9 shrink-0 place-items-center rounded-full border border-stone-200 bg-white text-stone-700 transition-colors hover:bg-stone-200 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-300"
                   >
                     <Shield className="size-4" aria-hidden="true" />
                     <NotificationBadge
@@ -206,15 +222,25 @@ export function PublicSiteHeader({
                     />
                   </Link>
                 ) : null}
+                {author ? (
+                  <button
+                    type="button"
+                    aria-label="Открыть текущую викторину"
+                    className={`grid size-9 shrink-0 place-items-center rounded-full border transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
+                    onClick={() => setIsQuizOpen(true)}
+                  >
+                    <CircleHelp className="size-5" aria-hidden="true" />
+                  </button>
+                ) : null}
                 <Link
-                  href="/author"
-                  aria-label="Перейти к статистике"
-                  className="grid size-8 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
+                  href="/author/profile"
+                  aria-label="Открыть кабинет автора"
+                  className="grid size-9 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
                 >
                   <Avatar
                     name={author.name}
                     objectKey={author.avatarObjectKey}
-                    className="size-8 text-xs"
+                    className="size-9 text-xs"
                   />
                 </Link>
               </>
@@ -245,6 +271,15 @@ export function PublicSiteHeader({
             document.body,
           )
         : null}
+      {isQuizOpen ? (
+        <QuizModal
+          history={visibleQuiz?.history ?? null}
+          isParticipating={visibleQuiz?.isParticipating ?? false}
+          onClose={() => setIsQuizOpen(false)}
+          quiz={visibleQuiz?.quiz ?? null}
+          unavailableMediaTypeNames={visibleQuiz?.unavailableMediaTypeNames ?? []}
+        />
+      ) : null}
     </>
   );
 }

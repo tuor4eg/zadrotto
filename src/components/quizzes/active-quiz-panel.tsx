@@ -22,7 +22,7 @@ export function ActiveQuizPanel({
   const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
-    const interval = window.setInterval(() => setNow(new Date()), 60_000);
+    const interval = window.setInterval(() => setNow(new Date()), 1_000);
     return () => window.clearInterval(interval);
   }, []);
 

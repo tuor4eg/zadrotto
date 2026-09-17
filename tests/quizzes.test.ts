@@ -49,27 +49,27 @@ describe("quizzes", () => {
     assert.equal(getQuizState({ enabled: true, startsAt: now, endsAt: new Date(now.getTime() + 1) }, now), "active");
     assert.equal(getQuizState({ enabled: true, startsAt: new Date(now.getTime() - 1), endsAt: now }, now), "finished");
   });
-  it("formats the remaining time with Russian plural forms", () => {
+  it("formats the remaining time with compact units down to seconds", () => {
     const now = new Date("2026-08-22T10:00:00.000Z");
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-24T11:02:00.000Z"), now),
-      "Осталось 2 дня 1 час 2 минуты",
+      "Осталось 2 д. 1 ч. 2 м. 0 с.",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T10:00:01.000Z"), now),
-      "Осталось 1 минута",
+      "Осталось 1 с.",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T15:00:00.000Z"), now),
-      "Осталось 5 часов 0 минут",
+      "Осталось 5 ч. 0 м. 0 с.",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-23T10:05:00.000Z"), now),
-      "Осталось 1 день 0 часов 5 минут",
+      "Осталось 1 д. 0 ч. 5 м. 0 с.",
     );
     assert.equal(
       formatQuizTimeRemaining(now, now),
-      "Осталось 0 минут",
+      "Осталось 0 с.",
     );
   });
   it("treats an empty media type selection as any type", () => {
@@ -79,10 +79,10 @@ describe("quizzes", () => {
   });
   it("calculates completed quiz statistics in chronological input order", () => {
     assert.deepEqual(calculateAuthorQuizStatistics([
-      { outcome: "correct", attemptsRemaining: 3, attemptLimit: 3, isWinner: true },
-      { outcome: "correct", attemptsRemaining: 1, attemptLimit: 3, isWinner: false },
-      { outcome: "exhausted", attemptsRemaining: 0, attemptLimit: 3, isWinner: false },
-      { outcome: "correct", attemptsRemaining: 2, attemptLimit: 3, isWinner: true },
+      { outcome: "correct", attemptsRemaining: 3, attemptLimit: 3, isWinner: true, durationSeconds: 25 },
+      { outcome: "correct", attemptsRemaining: 1, attemptLimit: 3, isWinner: false, durationSeconds: 40 },
+      { outcome: "exhausted", attemptsRemaining: 0, attemptLimit: 3, isWinner: false, durationSeconds: 65 },
+      { outcome: "correct", attemptsRemaining: 2, attemptLimit: 3, isWinner: true, durationSeconds: 10 },
     ]), {
       playedCount: 4,
       correctCount: 3,
@@ -91,6 +91,7 @@ describe("quizzes", () => {
       currentCorrectStreak: 1,
       bestCorrectStreak: 2,
       winnerCount: 2,
+      totalTimeSeconds: 140,
     });
     assert.deepEqual(calculateAuthorQuizStatistics([]), {
       playedCount: 0,
@@ -100,7 +101,17 @@ describe("quizzes", () => {
       currentCorrectStreak: 0,
       bestCorrectStreak: 0,
       winnerCount: 0,
+      totalTimeSeconds: 0,
     });
+  });
+  it("warns that deleting a quiz removes its complete play history", () => {
+    const page = readFileSync("src/app/admin/(protected)/quizzes/page.tsx", "utf8");
+
+    assert.match(page, /Удалить квиз вместе со всей историей\?/);
+    assert.match(page, /изображение, список участников и все их результаты будут удалены без возможности восстановления/);
+    assert.match(page, /личную статистику, общее время, серии, таблицу победителей и архив квизов/);
+    assert.match(page, /Запись с правильным ответом и уже выданные ачивки останутся/);
+    assert.match(page, /confirmLabel="Удалить квиз и результаты"/);
   });
   it("searches quiz answers by selected media types and shows Russian type names", () => {
     const picker = readFileSync("src/components/quizzes/quiz-answer-picker.tsx", "utf8");
@@ -167,15 +178,19 @@ describe("quizzes", () => {
     assert.match(mainPage, /authenticated=\{Boolean\(author\)\}/);
     assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(modal, /<ActiveQuizPanel/);
+    assert.match(modal, /quiz: ActiveQuiz \| null/);
+    assert.match(modal, /!quiz \? \([\s\S]*<QuizNoActiveState \/>/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
+    assert.match(activeQuizPanel, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
+    assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /Открыть правила викторины/);
     assert.match(modal, /aria-label="Открыть предыдущий вопрос"[\s\S]*<History/);
     assert.match(modal, /view === "history" \? "Предыдущий вопрос"/);
     assert.match(modal, /aria-label="Назад к викторине"[\s\S]*<ArrowLeft/);
-    assert.match(modal, /left-2 top-2 z-10 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
-    assert.match(modal, /right-2 top-2 z-10[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
+    assert.match(modal, /left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
+    assert.match(modal, /right-2 top-2 z-20[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
     assert.match(modal, /getBoundingClientRect\(\)\.top/);
     assert.match(modal, /paddingTop: `\$\{dialogTop\}px`/);
     assert.match(modal, /dialogTop === null \? "items-center" : "items-start"/);
@@ -244,6 +259,7 @@ describe("quizzes", () => {
     assert.match(guess, /aggregateId: `\$\{quiz\.id\}:\$\{authorId\}`/);
     assert.match(guess, /payload: \{ authorId, outcome, quizId: quiz\.id \}/);
     assert.match(query, /getAuthorQuizStatistics[\s\S]*isNotNull\(quizParticipants\.completedAt\)[\s\S]*orderBy\(asc\(quizParticipants\.completedAt\), asc\(quizParticipants\.quizId\)\)/);
+    assert.match(query, /durationSeconds: sql<number>`extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)::float`/);
   });
   it("renders quiz lives in the shared public external-interface layer", () => {
     const layout = readFileSync("src/app/layout.tsx", "utf8");
@@ -252,6 +268,7 @@ describe("quizzes", () => {
     const guessButton = readFileSync("src/components/quizzes/quiz-guess-button.tsx", "utf8");
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
     const archiveRiddle = readFileSync("src/app/main/archive-riddle.tsx", "utf8");
+    const globals = readFileSync("src/app/globals.css", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
     assert.match(layer, /\/api\/user-hud/);
@@ -271,6 +288,14 @@ describe("quizzes", () => {
     assert.match(archiveRiddle, /<AuthorLoginModal[\s\S]*router\.refresh\(\)/);
     assert.match(archiveRiddle, /onKeyDown=\{handleCardKeyDown\}/);
     assert.match(archiveRiddle, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+    assert.match(
+      archiveRiddle,
+      /archive-riddle-timer-desktop[\s\S]*archive-riddle-timer-mobile/,
+    );
+    assert.match(
+      globals,
+      /@media \(min-width: 1024px\) and \(min-aspect-ratio: 1 \/ 1\)[\s\S]*archive-riddle-timer-desktop[\s\S]*display: inline;[\s\S]*archive-riddle-timer-mobile[\s\S]*display: none;/,
+    );
     assert.doesNotMatch(archiveRiddle, /<QuizParticipationButton/);
     assert.match(guessButton, /setQuizParticipant/);
     assert.match(guessButton, /data\.correct \|\| data\.participant\?\.outcome === "exhausted"/);
