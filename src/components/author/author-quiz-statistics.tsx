@@ -29,7 +29,7 @@ export function AuthorQuizStatistics({ statistics }: { statistics: AuthorQuizSta
             title={
               <>
                 Пройди первый квиз —<br />
-                здесь появится твоя статистика.
+                здесь появится твоя статистика
               </>
             }
             description={

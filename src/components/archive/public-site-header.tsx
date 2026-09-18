@@ -12,7 +12,7 @@ import { useExternalInterface } from "@/components/external-interface/external-i
 import { QuizModal } from "@/components/quizzes/quiz-modal";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
-import type { ActiveQuiz, QuizHistoryEntry } from "@/lib/quizzes/model";
+import type { ActiveQuiz } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
@@ -25,7 +25,6 @@ export type PublicSiteHeaderProps = {
   controls?: ReactNode;
   currentAdminUser: boolean;
   quiz?: {
-    history: QuizHistoryEntry | null;
     isParticipating: boolean;
     quiz: ActiveQuiz;
     unavailableMediaTypeNames: string[];
@@ -226,7 +225,7 @@ export function PublicSiteHeader({
                   <button
                     type="button"
                     aria-label="Открыть текущую викторину"
-                    className={`grid size-9 shrink-0 place-items-center rounded-full border transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
+                    className={`grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
                     onClick={() => setIsQuizOpen(true)}
                   >
                     <CircleHelp className="size-5" aria-hidden="true" />
@@ -273,7 +272,6 @@ export function PublicSiteHeader({
         : null}
       {isQuizOpen ? (
         <QuizModal
-          history={visibleQuiz?.history ?? null}
           isParticipating={visibleQuiz?.isParticipating ?? false}
           onClose={() => setIsQuizOpen(false)}
           quiz={visibleQuiz?.quiz ?? null}

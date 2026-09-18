@@ -6,14 +6,22 @@ import { deleteS3Object, uploadS3Object } from "@/lib/services/minio";
 const MAX_BYTES = 5 * 1024 * 1024;
 const MAX_INPUT_PIXELS = 40_000_000;
 const OUTPUT_SIZE = 512;
+const SHOWCASE_BACKGROUND_WIDTH = 1200;
+const SHOWCASE_BACKGROUND_HEIGHT = 1800;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"] as const;
 const IMAGE_OBJECT_KEY_UUID =
   "[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.webp";
 const ACHIEVEMENT_IMAGE_OBJECT_KEY = new RegExp(
   `^achievements/[1-9]\\d*/${IMAGE_OBJECT_KEY_UUID}$`,
 );
+const ACHIEVEMENT_SHOWCASE_BACKGROUND_OBJECT_KEY = new RegExp(
+  `^achievements/[1-9]\\d*/showcase-background/${IMAGE_OBJECT_KEY_UUID}$`,
+);
 const LOCKED_ACHIEVEMENT_IMAGE_OBJECT_KEY = new RegExp(
   `^achievements/locked/${IMAGE_OBJECT_KEY_UUID}$`,
+);
+const DEFAULT_SHOWCASE_BACKGROUND_OBJECT_KEY = new RegExp(
+  `^achievements/default-showcase-background/${IMAGE_OBJECT_KEY_UUID}$`,
 );
 
 export type AchievementImageError = "image-invalid" | "image-too-large" | "image-upload";
@@ -26,10 +34,23 @@ export function buildLockedAchievementImageObjectKey() {
   return `achievements/locked/${randomUUID()}.webp`;
 }
 
+export function buildAchievementShowcaseBackgroundObjectKey(achievementId: number) {
+  return `achievements/${achievementId}/showcase-background/${randomUUID()}.webp`;
+}
+
+export function buildDefaultShowcaseBackgroundObjectKey() {
+  return `achievements/default-showcase-background/${randomUUID()}.webp`;
+}
+
 export function isAchievementImageObjectKey(objectKey: string | null) {
   return Boolean(
     objectKey
-    && (ACHIEVEMENT_IMAGE_OBJECT_KEY.test(objectKey) || LOCKED_ACHIEVEMENT_IMAGE_OBJECT_KEY.test(objectKey)),
+    && (
+      ACHIEVEMENT_IMAGE_OBJECT_KEY.test(objectKey)
+      || ACHIEVEMENT_SHOWCASE_BACKGROUND_OBJECT_KEY.test(objectKey)
+      || LOCKED_ACHIEVEMENT_IMAGE_OBJECT_KEY.test(objectKey)
+      || DEFAULT_SHOWCASE_BACKGROUND_OBJECT_KEY.test(objectKey)
+    ),
   );
 }
 
@@ -62,6 +83,30 @@ async function processAchievementImageFile(file: File) {
   }
 }
 
+export async function processAchievementShowcaseBackgroundFile(file: File) {
+  if (file.size <= 0 || file.size > MAX_BYTES) {
+    return { ok: false as const, error: "image-too-large" as const };
+  }
+  if (!IMAGE_TYPES.some((type) => type === file.type)) {
+    return { ok: false as const, error: "image-invalid" as const };
+  }
+
+  try {
+    const source = Buffer.from(await file.arrayBuffer());
+    const body = await sharp(source, { animated: false, limitInputPixels: MAX_INPUT_PIXELS, pages: 1 })
+      .rotate()
+      .resize(SHOWCASE_BACKGROUND_WIDTH, SHOWCASE_BACKGROUND_HEIGHT, {
+        fit: "cover",
+        position: "centre",
+      })
+      .webp({ quality: 84 })
+      .toBuffer();
+    return { ok: true as const, body };
+  } catch {
+    return { ok: false as const, error: "image-invalid" as const };
+  }
+}
+
 async function uploadProcessedAchievementImage(input: { body: Buffer; objectKey: string }) {
   try {
     await uploadS3Object({ body: input.body, contentType: "image/webp", objectKey: input.objectKey });
@@ -80,12 +125,33 @@ export async function uploadAchievementImage(input: { achievementId: number; fil
   });
 }
 
+export async function uploadAchievementShowcaseBackgroundImage(input: {
+  achievementId: number;
+  file: File;
+}) {
+  const processed = await processAchievementShowcaseBackgroundFile(input.file);
+  if (!processed.ok) return processed;
+  return uploadProcessedAchievementImage({
+    body: processed.body,
+    objectKey: buildAchievementShowcaseBackgroundObjectKey(input.achievementId),
+  });
+}
+
 export async function uploadLockedAchievementImage(file: File) {
   const processed = await processAchievementImageFile(file);
   if (!processed.ok) return processed;
   return uploadProcessedAchievementImage({
     body: processed.body,
     objectKey: buildLockedAchievementImageObjectKey(),
+  });
+}
+
+export async function uploadDefaultShowcaseBackgroundImage(file: File) {
+  const processed = await processAchievementShowcaseBackgroundFile(file);
+  if (!processed.ok) return processed;
+  return uploadProcessedAchievementImage({
+    body: processed.body,
+    objectKey: buildDefaultShowcaseBackgroundObjectKey(),
   });
 }
 

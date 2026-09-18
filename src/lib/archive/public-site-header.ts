@@ -3,7 +3,6 @@ import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import {
   getActiveQuiz,
   getActiveQuizParticipantState,
-  getPreviousQuizHistory,
 } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -19,13 +18,12 @@ export async function getPublicSiteHeaderState(
     ? await getSubmittedModerationRequestCountForAdmin()
     : 0;
   const activeQuiz = author ? await getActiveQuiz() : null;
-  const [activeQuizParticipant, quizHistory, effectiveMediaTypes] = activeQuiz && author
+  const [activeQuizParticipant, effectiveMediaTypes] = activeQuiz && author
     ? await Promise.all([
         getActiveQuizParticipantState(author.id),
-        getPreviousQuizHistory(),
         getEffectiveMediaTypeOptions(author.id),
       ])
-    : [null, null, []];
+    : [null, []];
   const unavailableQuizMediaTypeNames = activeQuiz
     ? effectiveMediaTypes
         .filter(({ code, isEnabled }) => !isEnabled && (
@@ -48,7 +46,6 @@ export async function getPublicSiteHeaderState(
       currentAdminUser: Boolean(adminUser),
       quiz: activeQuiz && !activeQuizParticipant?.completed
         ? {
-            history: quizHistory,
             isParticipating: activeQuizParticipant?.quizId === activeQuiz.id,
             quiz: activeQuiz,
             unavailableMediaTypeNames: unavailableQuizMediaTypeNames,

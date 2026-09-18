@@ -39,7 +39,9 @@ describe("public achievements page", () => {
   it("stretches the public profile achievement paper to the footer", () => {
     assert.match(publicProfilePage, /archive-page flex min-h-0 flex-1 flex-col/)
     assert.match(publicProfilePage, /max-w-\[1480px\] flex-1 flex-col gap-3/)
-    assert.match(publicProfilePage, /archive-paper archive-panel flex-1 p-4/)
+    assert.match(publicProfilePage, /archive-paper archive-panel flex h-full min-h-0 flex-col p-4/)
+    assert.match(publicProfilePage, /AchievementAwardHistory/)
+    assert.match(publicProfilePage, /lg:h-0 lg:min-h-full/)
   })
 
   it("renders the hero copy and main-page-like stats", () => {
@@ -251,7 +253,7 @@ describe("public achievements page", () => {
   })
 
   it("renders a status gallery without a sort selector or media-type chips", () => {
-    assert.match(page, /<AuthorAchievementGallery items=\{items\} \/>/)
+    assert.match(page, /<AuthorAchievementsCatalog items=\{items\} \/>/)
     assert.match(gallery, /label: "Все"/)
     assert.match(gallery, /label: "Полученные"/)
     assert.match(gallery, /label: "Завершено"/)
@@ -262,7 +264,44 @@ describe("public achievements page", () => {
     assert.doesNotMatch(gallery, /mediaType/)
     assert.doesNotMatch(gallery, /ArchiveSelect/)
     assert.match(gallery, /sortAchievementsByAwardedAt\(filterAchievementsByStatus\(items, filter\)\)/)
-    assert.match(gallery, /xl:grid-cols-6/)
+    assert.match(gallery, /grid-cols-\[repeat\(auto-fill,minmax\(10\.5rem,1fr\)\)\]/)
+  })
+
+  it("places a featured showcase above the unchanged achievement lists", () => {
+    const featured = readFileSync(
+      "src/components/achievements/featured-achievement-showcase.tsx",
+      "utf8",
+    )
+    assert.match(page, /<FeaturedAchievementShowcase/)
+    assert.match(page, /FeaturedAchievementShowcase[\s\S]*AuthorAchievementsCatalog/)
+    assert.match(demoPage, /FeaturedAchievementShowcase[\s\S]*AuthorAchievementsCatalog/)
+    assert.match(publicProfilePage, /FeaturedAchievementShowcase[\s\S]*AchievementShowcase/)
+    assert.match(featured, /selectFeaturedShowcaseAchievements\(items\)/)
+    assert.match(featured, /Витрина достижений/)
+    assert.match(featured, /id="featured-achievements-title"/)
+    assert.match(featured, /Trophy className="size-5 shrink-0 text-amber-700"/)
+    assert.match(featured, /xl:grid-cols-5/)
+    assert.match(featured, /overflow-x-auto/)
+    assert.match(featured, /w-\[14rem\] shrink-0/)
+    assert.match(featured, /aspect-\[2\/3\]/)
+    assert.match(featured, /object-contain/)
+    assert.match(featured, /absolute inset-0 z-10 grid grid-rows-2/)
+    assert.match(featured, /grid items-end justify-items-center px-5 pb-0/)
+    assert.match(featured, /formatAchievementAwardedAt/)
+    assert.match(featured, /Получено/)
+    assert.match(featured, /item\.description/)
+    assert.match(featured, /-webkit-line-clamp:4/)
+    assert.match(featured, /line-clamp-2 min-h-\[2\.5rem\]/)
+    assert.match(featured, /title=\{item\.description\}/)
+    assert.match(featured, /mt-2 flex shrink-0/)
+    assert.match(featured, /pb-14/)
+    assert.doesNotMatch(featured, /mt-auto/)
+    assert.match(featured, /resolveFeaturedShowcaseBackgroundUrl/)
+    assert.match(publicProfilePage, /AchievementAwardHistory/)
+    assert.match(publicProfilePage, /lg:h-0 lg:min-h-full/)
+    assert.match(query, /mechanic: achievements\.mechanic/)
+    assert.match(query, /awardedThreshold: awarded\?\.threshold \?\? null/)
+    assert.match(query, /defaultShowcaseBackgroundImageUrl: settings\.defaultShowcaseBackgroundImageUrl/)
   })
 
   it("opens achievement links on the public gallery", () => {

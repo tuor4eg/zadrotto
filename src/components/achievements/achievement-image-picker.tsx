@@ -11,13 +11,17 @@ const MAX_FILE_BYTES = 5 * 1024 * 1024;
 const IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
 
 export function AchievementImagePicker({
+  fileInputName = "imageFile",
   initialImageUrl,
   inputId,
+  removeInputName = "removeImage",
   variant = "achievement",
 }: {
+  fileInputName?: string;
   initialImageUrl: string | null;
   inputId: string;
-  variant?: "achievement" | "locked" | "quiz";
+  removeInputName?: string;
+  variant?: "achievement" | "locked" | "quiz" | "showcase-background";
 }) {
   const pickerVariant = inputId === "quiz-image" ? "quiz" : variant;
   const inputRef = useRef<HTMLInputElement>(null);
@@ -32,12 +36,12 @@ export function AchievementImagePicker({
   }, [localPreviewUrl]);
 
   return <div className="grid gap-3">
-    <input type="hidden" name="removeImage" value={removeImage ? "1" : "0"} />
+    <input type="hidden" name={removeInputName} value={removeImage ? "1" : "0"} />
     <input
       ref={inputRef}
       id={inputId}
       className="sr-only"
-      name="imageFile"
+      name={fileInputName}
       type="file"
       accept={IMAGE_TYPES.join(",")}
       onChange={(event) => {
@@ -64,8 +68,8 @@ export function AchievementImagePicker({
     />
 
     <div className="flex flex-wrap items-center gap-4">
-      <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-md border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48" : "size-28"}`}>
-        {previewUrl ? <Image alt="" fill sizes="112px" className={pickerVariant === "quiz" ? "object-cover" : "object-contain"} src={previewUrl} unoptimized /> : pickerVariant === "locked" ? <LockKeyhole className="size-10 text-stone-400" /> : <Trophy className="size-10 text-stone-400" />}
+      <span className={`relative grid shrink-0 place-items-center overflow-hidden rounded-md border border-stone-300 bg-stone-100 shadow-sm ${pickerVariant === "quiz" ? "h-32 w-48" : pickerVariant === "showcase-background" ? "aspect-[2/3] w-28" : "size-28"}`}>
+        {previewUrl ? <Image alt="" fill sizes="112px" className={pickerVariant === "achievement" || pickerVariant === "locked" ? "object-contain" : "object-cover"} src={previewUrl} unoptimized /> : pickerVariant === "locked" ? <LockKeyhole className="size-10 text-stone-400" /> : <Trophy className="size-10 text-stone-400" />}
       </span>
       <div className="grid min-w-0 gap-2">
         <div className="flex flex-wrap gap-2">
@@ -97,7 +101,9 @@ export function AchievementImagePicker({
     <p className="text-xs leading-5 text-stone-500">
       {pickerVariant === "quiz"
         ? "JPG, PNG или WebP до 5 МБ. Пропорции изображения сохранятся."
-        : "JPG, PNG или WebP до 5 МБ. Изображение целиком впишется в область 512×512."}
+        : pickerVariant === "showcase-background"
+          ? "JPG, PNG или WebP до 5 МБ. Центр изображения заполняет вертикальную область 1200×1800."
+          : "JPG, PNG или WebP до 5 МБ. Изображение целиком впишется в область 512×512."}
     </p>
   </div>;
 }

@@ -12,6 +12,7 @@ import {
   type CountMechanicParams,
 } from "@/lib/achievements/catalog";
 import { resolveAchievementImageUrl } from "@/lib/achievements/images";
+import { isAchievementRarity, type AchievementRarity } from "@/lib/achievements/model";
 import { getAchievementProgressValues } from "@/lib/achievements/service";
 import { normalizeSearchText } from "@/lib/search/normalize";
 
@@ -26,8 +27,11 @@ type DemoRatingAchievementDefinition = {
     imageUrl: string | null;
     level: number;
     name: string;
+    rarity: AchievementRarity;
+    showcaseBackgroundImageUrl: string | null;
     threshold: number;
   }>;
+  mechanic: string;
   name: string;
   params: Record<string, unknown>;
 };
@@ -42,6 +46,9 @@ async function loadDemoRatingAchievementDefinitions(): Promise<DemoRatingAchieve
       levelDescription: achievementLevels.description,
       levelImageObjectKey: achievementLevels.imageObjectKey,
       levelName: achievementLevels.name,
+      mechanic: achievements.mechanic,
+      rarity: achievementLevels.rarity,
+      showcaseBackgroundImageObjectKey: achievementLevels.showcaseBackgroundImageObjectKey,
       name: achievements.name,
       params: achievements.params,
       threshold: achievementLevels.threshold,
@@ -68,8 +75,11 @@ async function loadDemoRatingAchievementDefinitions(): Promise<DemoRatingAchieve
       imageUrl: resolveAchievementImageUrl(level.levelImageObjectKey),
       level: level.level,
       name: level.levelName ?? level.name,
+      rarity: level.rarity,
+      showcaseBackgroundImageUrl: resolveAchievementImageUrl(level.showcaseBackgroundImageObjectKey),
       threshold: level.threshold,
     })),
+    mechanic: levels[0]!.mechanic,
     name: levels[0]!.name,
     params: levels[0]!.params ?? {},
   }));
@@ -80,7 +90,9 @@ function toDemoRatingAchievementCatalogItem(definition: DemoRatingAchievementDef
     code: definition.code,
     description: definition.description,
     levels: definition.levels,
+    mechanic: definition.mechanic,
     name: definition.name,
+    params: definition.params,
   };
 }
 
@@ -90,7 +102,10 @@ export async function getDemoRatingAchievementCatalog() {
 }
 
 export async function getDemoRatingAchievementState(mediaItemCodes: readonly string[]) {
-  const definitions = await loadDemoRatingAchievementDefinitions();
+  const [definitions, settings] = await Promise.all([
+    loadDemoRatingAchievementDefinitions(),
+    getAchievementSettings(),
+  ]);
   const achievementsCatalog = definitions.map(toDemoRatingAchievementCatalogItem);
   const values: Record<string, number> = Object.fromEntries(
     definitions.map((definition) => [definition.code, 0]),
@@ -98,7 +113,11 @@ export async function getDemoRatingAchievementState(mediaItemCodes: readonly str
 
   const mechanic = getAchievementMechanic("rating.authored.count");
   if (!mechanic || definitions.length === 0) {
-    return { achievements: achievementsCatalog, values };
+    return {
+      achievements: achievementsCatalog,
+      defaultShowcaseBackgroundImageUrl: settings.defaultShowcaseBackgroundImageUrl,
+      values,
+    };
   }
 
   const instances = new Map<number, CountMechanicParams>();
@@ -118,7 +137,11 @@ export async function getDemoRatingAchievementState(mediaItemCodes: readonly str
   )].slice(0, DEMO_RATING_PROGRESS_CODE_LIMIT);
 
   if (uniqueCodes.length === 0 || instances.size === 0) {
-    return { achievements: achievementsCatalog, values };
+    return {
+      achievements: achievementsCatalog,
+      defaultShowcaseBackgroundImageUrl: settings.defaultShowcaseBackgroundImageUrl,
+      values,
+    };
   }
 
   const progress = await db.transaction((tx) => countRatingAuthoredForMediaCodes({
@@ -132,7 +155,11 @@ export async function getDemoRatingAchievementState(mediaItemCodes: readonly str
     values[definition.code] = valueByAchievementId.get(definition.achievementId) ?? 0;
   }
 
-  return { achievements: achievementsCatalog, values };
+  return {
+    achievements: achievementsCatalog,
+    defaultShowcaseBackgroundImageUrl: settings.defaultShowcaseBackgroundImageUrl,
+    values,
+  };
 }
 
 export async function getAchievementShowcase(authorId: number) {
@@ -147,6 +174,10 @@ export async function getAchievementShowcase(authorId: number) {
       levelDescription: achievementLevels.description,
       levelImageObjectKey: achievementLevels.imageObjectKey,
       levelName: achievementLevels.name,
+      mechanic: achievements.mechanic,
+      params: achievements.params,
+      rarity: achievementLevels.rarity,
+      showcaseBackgroundImageObjectKey: achievementLevels.showcaseBackgroundImageObjectKey,
       name: achievements.name,
       threshold: achievementLevels.threshold,
     })
@@ -190,21 +221,28 @@ export async function getAchievementShowcase(authorId: number) {
         imageUrl: resolveAchievementImageUrl(item.levelImageObjectKey),
         level: item.level,
         name: item.levelName ?? item.name,
+        rarity: item.rarity,
+        showcaseBackgroundImageUrl: resolveAchievementImageUrl(item.showcaseBackgroundImageObjectKey),
       }]
     })
     const ownImageUrl = resolveAchievementImageUrl(presentation.levelImageObjectKey)
     return {
       awardedAt: awarded?.awardedAt ?? null,
       awardedLevels,
+      awardedThreshold: awarded?.threshold ?? null,
       code: presentation.code,
       currentValue: valueByAchievement.get(presentation.achievementId) ?? 0,
       description: presentation.levelDescription ?? presentation.description,
       highestAwardedLevel: awarded?.level ?? null,
       imageUrl: awarded ? ownImageUrl : settings.lockedImageUrl,
       levelCount: levels.length,
+      mechanic: presentation.mechanic,
       name: presentation.levelName ?? presentation.name,
       nextLevel: nextLevel?.level ?? null,
       nextThreshold: nextLevel?.threshold ?? null,
+      params: (presentation.params ?? {}) as Record<string, unknown>,
+      rarity: presentation.rarity,
+      showcaseBackgroundImageUrl: resolveAchievementImageUrl(presentation.showcaseBackgroundImageObjectKey),
     }
   });
 }
@@ -347,6 +385,7 @@ export async function getAdminAchievementById(id: number) {
       ...level,
       imageUrl: resolveAchievementImageUrl(level.imageObjectKey),
       isAwarded: awardedIds.has(level.id),
+      showcaseBackgroundImageUrl: resolveAchievementImageUrl(level.showcaseBackgroundImageObjectKey),
     })),
   } : null;
 }
@@ -430,9 +469,15 @@ export async function createAchievementLevel(input: {
   description: string | null;
   imageObjectKey: string | null;
   name: string | null;
+  rarity: AchievementRarity;
+  showcaseBackgroundImageObjectKey: string | null;
   threshold: number;
 }) {
-  if (!Number.isSafeInteger(input.threshold) || input.threshold < 1) throw new Error("invalid-achievement-levels");
+  if (
+    !Number.isSafeInteger(input.threshold)
+    || input.threshold < 1
+    || !isAchievementRarity(input.rarity)
+  ) throw new Error("invalid-achievement-levels");
   return db.transaction(async (tx) => {
     const [achievement] = await tx.select().from(achievements).where(eq(achievements.id, input.achievementId)).limit(1).for("update");
     if (!achievement) return null;
@@ -449,6 +494,8 @@ export async function createAchievementLevel(input: {
       imageObjectKey: input.imageObjectKey,
       level: nextLevelNumber,
       name: input.name,
+      rarity: input.rarity,
+      showcaseBackgroundImageObjectKey: input.showcaseBackgroundImageObjectKey,
       threshold: input.threshold,
     }).returning();
     return created ?? null;
@@ -461,9 +508,15 @@ export async function updateAchievementLevel(input: {
   imageObjectKey: string | null;
   levelId: number;
   name: string | null;
+  rarity: AchievementRarity;
+  showcaseBackgroundImageObjectKey: string | null;
   threshold: number;
 }) {
-  if (!Number.isSafeInteger(input.threshold) || input.threshold < 1) throw new Error("invalid-achievement-levels");
+  if (
+    !Number.isSafeInteger(input.threshold)
+    || input.threshold < 1
+    || !isAchievementRarity(input.rarity)
+  ) throw new Error("invalid-achievement-levels");
   return db.transaction(async (tx) => {
     const [current] = await tx.select().from(achievementLevels)
       .where(and(eq(achievementLevels.id, input.levelId), eq(achievementLevels.achievementId, input.achievementId)))
@@ -484,6 +537,8 @@ export async function updateAchievementLevel(input: {
       description: input.description,
       imageObjectKey: input.imageObjectKey,
       name: input.name,
+      rarity: input.rarity,
+      showcaseBackgroundImageObjectKey: input.showcaseBackgroundImageObjectKey,
       threshold: input.threshold,
       updatedAt: new Date(),
     }).where(and(eq(achievementLevels.id, input.levelId), eq(achievementLevels.achievementId, input.achievementId)))
@@ -531,13 +586,17 @@ export async function deleteAchievementIfUnawarded(id: number) {
     const levels = await tx.select({
       id: achievementLevels.id,
       imageObjectKey: achievementLevels.imageObjectKey,
+      showcaseBackgroundImageObjectKey: achievementLevels.showcaseBackgroundImageObjectKey,
     }).from(achievementLevels).where(eq(achievementLevels.achievementId, id)).for("update")
     const awardedIds = await getAwardedLevelIds(tx, id)
     if (awardedIds.size > 0) throw new Error("achievement-awarded")
     await tx.delete(achievements).where(eq(achievements.id, id))
     return {
       ...current,
-      imageObjectKeys: levels.map((level) => level.imageObjectKey),
+      imageObjectKeys: levels.flatMap((level) => [
+        level.imageObjectKey,
+        level.showcaseBackgroundImageObjectKey,
+      ]),
     }
   })
 }
@@ -545,9 +604,15 @@ export async function deleteAchievementIfUnawarded(id: number) {
 export async function isAssignedAchievementImageObjectKey(objectKey: string) {
   const [level, settings] = await Promise.all([
     db.select({ id: achievementLevels.id }).from(achievementLevels)
-      .where(eq(achievementLevels.imageObjectKey, objectKey)).limit(1),
+      .where(or(
+        eq(achievementLevels.imageObjectKey, objectKey),
+        eq(achievementLevels.showcaseBackgroundImageObjectKey, objectKey),
+      )).limit(1),
     db.select({ id: achievementSettings.id }).from(achievementSettings)
-      .where(eq(achievementSettings.lockedImageObjectKey, objectKey)).limit(1),
+      .where(or(
+        eq(achievementSettings.lockedImageObjectKey, objectKey),
+        eq(achievementSettings.defaultShowcaseBackgroundImageObjectKey, objectKey),
+      )).limit(1),
   ]);
   return Boolean(level[0] || settings[0]);
 }

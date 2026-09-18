@@ -17,7 +17,9 @@ import { logActivity } from "@/lib/activity-logs/server";
 import {
   deleteAchievementImageBestEffort,
   uploadAchievementImage,
+  uploadAchievementShowcaseBackgroundImage,
 } from "@/lib/achievements/images";
+import { isAchievementRarity } from "@/lib/achievements/model";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAchievementMechanic } from "@/lib/achievements/catalog";
 import { generateEntityCode } from "@/lib/common/generated-code";
@@ -96,11 +98,15 @@ function revalidateAchievementPaths() {
 async function parseLevelPresentation(formData: FormData) {
   const name = String(formData.get("levelName") ?? "").trim();
   const description = String(formData.get("levelDescription") ?? "").trim();
+  const rarity = formData.get("rarity");
   const threshold = Number(formData.get("threshold"));
-  if (!Number.isSafeInteger(threshold) || threshold < 1) throw new Error("invalid");
+  if (!Number.isSafeInteger(threshold) || threshold < 1 || !isAchievementRarity(rarity)) {
+    throw new Error("invalid");
+  }
   return {
     description: description || null,
     name: name || null,
+    rarity,
     threshold,
   };
 }
@@ -123,6 +129,33 @@ async function resolveLevelImageObjectKey(input: {
     objectKey: removeImage ? null : input.currentObjectKey,
     uploadedObjectKey: null,
   };
+}
+
+async function resolveLevelShowcaseBackgroundObjectKey(input: {
+  achievementId: number;
+  currentObjectKey: string | null;
+  formData: FormData;
+}) {
+  const removeImage = input.formData.get("removeShowcaseBackgroundImage") === "1";
+  const fileValue = input.formData.get("showcaseBackgroundImageFile");
+  const file = fileValue instanceof File && fileValue.size > 0 ? fileValue : null;
+  if (file && !removeImage) {
+    const uploaded = await uploadAchievementShowcaseBackgroundImage({
+      achievementId: input.achievementId,
+      file,
+    });
+    if (!uploaded.ok) return { error: uploaded.error as string, objectKey: null, uploadedObjectKey: null };
+    return { error: null, objectKey: uploaded.objectKey, uploadedObjectKey: uploaded.objectKey };
+  }
+  return {
+    error: null,
+    objectKey: removeImage ? null : input.currentObjectKey,
+    uploadedObjectKey: null,
+  };
+}
+
+async function deleteUploadedLevelImages(...objectKeys: Array<string | null>) {
+  await Promise.all(objectKeys.map((objectKey) => deleteAchievementImageBestEffort(objectKey)));
 }
 
 export async function updateAchievementAction(formData: FormData) {
@@ -213,12 +246,17 @@ export async function createAchievementLevelAction(formData: FormData) {
   let presentation;
   try { presentation = await parseLevelPresentation(formData); } catch { redirect(levelsPath(achievementId, "&error=invalid")); }
 
-  const imageResult = await resolveLevelImageObjectKey({
-    achievementId,
-    currentObjectKey: null,
-    formData,
-  });
-  if (imageResult.error) redirect(levelsPath(achievementId, `&error=${imageResult.error}`));
+  const [imageResult, showcaseBackgroundResult] = await Promise.all([
+    resolveLevelImageObjectKey({ achievementId, currentObjectKey: null, formData }),
+    resolveLevelShowcaseBackgroundObjectKey({ achievementId, currentObjectKey: null, formData }),
+  ]);
+  if (imageResult.error || showcaseBackgroundResult.error) {
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    );
+    redirect(levelsPath(achievementId, `&error=${imageResult.error ?? showcaseBackgroundResult.error}`));
+  }
 
   let created
   try {
@@ -226,14 +264,21 @@ export async function createAchievementLevelAction(formData: FormData) {
       achievementId,
       ...presentation,
       imageObjectKey: imageResult.objectKey,
+      showcaseBackgroundImageObjectKey: showcaseBackgroundResult.objectKey,
     })
   } catch (error) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey)
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    )
     console.error("Не удалось добавить уровень ачивки.", error)
     redirect(levelsPath(achievementId, "&error=save"))
   }
   if (!created) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey)
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    )
     redirect("/admin/achievements?error=missing")
   }
   if (achievement.enabled) await enqueueAchievementBackfill(achievementId, admin.id)
@@ -256,12 +301,25 @@ export async function updateAchievementLevelAction(formData: FormData) {
   let presentation;
   try { presentation = await parseLevelPresentation(formData); } catch { redirect(levelsPath(achievementId, "&error=invalid")); }
 
-  const imageResult = await resolveLevelImageObjectKey({
-    achievementId,
-    currentObjectKey: currentLevel.imageObjectKey,
-    formData,
-  });
-  if (imageResult.error) redirect(levelsPath(achievementId, `&error=${imageResult.error}`));
+  const [imageResult, showcaseBackgroundResult] = await Promise.all([
+    resolveLevelImageObjectKey({
+      achievementId,
+      currentObjectKey: currentLevel.imageObjectKey,
+      formData,
+    }),
+    resolveLevelShowcaseBackgroundObjectKey({
+      achievementId,
+      currentObjectKey: currentLevel.showcaseBackgroundImageObjectKey,
+      formData,
+    }),
+  ]);
+  if (imageResult.error || showcaseBackgroundResult.error) {
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    );
+    redirect(levelsPath(achievementId, `&error=${imageResult.error ?? showcaseBackgroundResult.error}`));
+  }
 
   let updated
   try {
@@ -270,19 +328,29 @@ export async function updateAchievementLevelAction(formData: FormData) {
       levelId,
       ...presentation,
       imageObjectKey: imageResult.objectKey,
+      showcaseBackgroundImageObjectKey: showcaseBackgroundResult.objectKey,
     })
   } catch (error) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey)
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    )
     console.error("Не удалось сохранить уровень ачивки.", error)
     const message = error instanceof Error && error.message === "achievement-level-locked" ? "level-locked" : "save"
     redirect(levelsPath(achievementId, `&error=${message}`))
   }
   if (!updated) {
-    await deleteAchievementImageBestEffort(imageResult.uploadedObjectKey)
+    await deleteUploadedLevelImages(
+      imageResult.uploadedObjectKey,
+      showcaseBackgroundResult.uploadedObjectKey,
+    )
     redirect(levelsPath(achievementId, "&error=invalid"))
   }
   if (currentLevel.imageObjectKey !== imageResult.objectKey) {
     await deleteAchievementImageBestEffort(currentLevel.imageObjectKey)
+  }
+  if (currentLevel.showcaseBackgroundImageObjectKey !== showcaseBackgroundResult.objectKey) {
+    await deleteAchievementImageBestEffort(currentLevel.showcaseBackgroundImageObjectKey)
   }
   const thresholdChanged = currentLevel.threshold !== presentation.threshold
   if (achievement.enabled && thresholdChanged) await enqueueAchievementBackfill(achievementId, admin.id)
@@ -311,7 +379,10 @@ export async function deleteAchievementLevelAction(formData: FormData) {
     redirect(levelsPath(achievementId, `&error=${message}`))
   }
   if (!deleted) redirect(levelsPath(achievementId, "&error=invalid"))
-  await deleteAchievementImageBestEffort(deleted.imageObjectKey)
+  await Promise.all([
+    deleteAchievementImageBestEffort(deleted.imageObjectKey),
+    deleteAchievementImageBestEffort(deleted.showcaseBackgroundImageObjectKey),
+  ])
   revalidateAchievementPaths()
   redirect(levelsPath(achievementId, "&updated=1"))
 }

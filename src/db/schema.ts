@@ -35,6 +35,11 @@ import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
 import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog";
 import { EXTERNAL_NOTIFICATION_ROUTE_CODES } from "@/lib/notifications/routes";
 import { normalizedSearchIndexSql } from "@/db/search";
+import {
+  ACHIEVEMENT_RARITIES,
+  DEFAULT_ACHIEVEMENT_RARITY,
+  type AchievementRarity,
+} from "@/lib/achievements/model";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
@@ -1124,6 +1129,8 @@ export const achievementLevels = pgTable(
     name: text("name"),
     description: text("description"),
     imageObjectKey: text("image_object_key"),
+    rarity: text("rarity").$type<AchievementRarity>().default(DEFAULT_ACHIEVEMENT_RARITY).notNull(),
+    showcaseBackgroundImageObjectKey: text("showcase_background_image_object_key"),
     ...timestamps(),
   },
   (table) => [
@@ -1134,6 +1141,10 @@ export const achievementLevels = pgTable(
     check("achievement_levels_threshold_check", sql`${table.threshold} > 0`),
     check("achievement_levels_name_check", sql`${table.name} is null or btrim(${table.name}) <> ''`),
     check("achievement_levels_description_check", sql`${table.description} is null or btrim(${table.description}) <> ''`),
+    check(
+      "achievement_levels_rarity_check",
+      sql`${table.rarity} in (${sql.join(ACHIEVEMENT_RARITIES.map((value) => sql`${value}`), sql`, `)})`,
+    ),
   ],
 );
 
@@ -1171,6 +1182,7 @@ export const achievementSettings = pgTable(
   {
     id: integer("id").primaryKey().default(1),
     lockedImageObjectKey: text("locked_image_object_key"),
+    defaultShowcaseBackgroundImageObjectKey: text("default_showcase_background_image_object_key"),
     updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
@@ -1181,6 +1193,10 @@ export const achievementSettings = pgTable(
     check(
       "achievement_settings_locked_image_object_key_check",
       sql`${table.lockedImageObjectKey} is null or btrim(${table.lockedImageObjectKey}) <> ''`,
+    ),
+    check(
+      "achievement_settings_default_showcase_background_image_object_key_check",
+      sql`${table.defaultShowcaseBackgroundImageObjectKey} is null or btrim(${table.defaultShowcaseBackgroundImageObjectKey}) <> ''`,
     ),
   ],
 );

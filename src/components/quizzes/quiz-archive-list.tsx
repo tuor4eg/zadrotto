@@ -72,7 +72,7 @@ export function QuizArchiveList({ items }: { items: QuizArchiveItem[] }) {
       ) : (
         <QuizEmptyState
           imageSrc="/quiz_archieve_placeholder.webp"
-          title="Здесь пока нет завершенных квизов."
+          title="Здесь пока нет завершенных квизов"
           description="Самое время стать частью истории"
         />
       )}

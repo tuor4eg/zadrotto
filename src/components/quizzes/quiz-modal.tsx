@@ -1,41 +1,37 @@
 "use client";
 
-import { ArrowLeft, CircleHelp, Heart, History, X } from "lucide-react";
-import Image from "next/image";
+import { ArrowLeft, CircleHelp, Heart, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
-import { MediaItemTile } from "@/app/media-item-tile";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { Button } from "@/components/ui/button";
-import type { ActiveQuiz, QuizHistoryEntry } from "@/lib/quizzes/model";
+import type { ActiveQuiz } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 export function QuizModal({
-  history,
   isParticipating,
   unavailableMediaTypeNames,
   onClose,
   quiz,
 }: {
-  history: QuizHistoryEntry | null;
   isParticipating: boolean;
   unavailableMediaTypeNames: string[];
   onClose: () => void;
   quiz: ActiveQuiz | null;
 }) {
-  const [view, setView] = useState<"history" | "quiz" | "rules">("quiz");
+  const [view, setView] = useState<"quiz" | "rules">("quiz");
   const [dialogTop, setDialogTop] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
 
-  function openSecondaryView(nextView: "history" | "rules") {
+  function openRules() {
     if (dialogTop === null) {
       setDialogTop(dialogRef.current?.getBoundingClientRect().top ?? 0);
     }
-    setView(nextView);
+    setView("rules");
   }
 
   useEffect(() => {
@@ -103,17 +99,9 @@ export function QuizModal({
                   type="button"
                   className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
                   aria-label="Открыть правила викторины"
-                  onClick={() => openSecondaryView("rules")}
+                  onClick={openRules}
                 >
                   <CircleHelp className="size-4" />
-                </button>
-                <button
-                  type="button"
-                  className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-                  aria-label="Открыть предыдущий вопрос"
-                  onClick={() => openSecondaryView("history")}
-                >
-                  <History className="size-4" />
                 </button>
               </>
             ) : (
@@ -139,7 +127,7 @@ export function QuizModal({
         </button>
         <div className="pointer-events-none mb-5 px-24 text-center sm:px-32">
           <h2 id="active-quiz-title" className="font-serif text-3xl">
-            {view === "rules" ? "Как играть" : view === "history" ? "Предыдущий вопрос" : "Викторина"}
+            {view === "rules" ? "Как играть" : "Викторина"}
           </h2>
         </div>
         {!quiz ? (
@@ -192,34 +180,6 @@ export function QuizModal({
               </li>
             </ol>
           </div>
-        ) : view === "history" ? (
-          history ? (
-            <div className="mx-auto grid max-w-xl gap-5 text-center">
-              {history.question ? (
-                <p className="whitespace-pre-wrap text-lg">{history.question}</p>
-              ) : null}
-              {history.imageUrl ? (
-                <Image
-                  alt="Изображение к предыдущему вопросу"
-                  className="mx-auto max-h-80 w-full rounded-md object-contain"
-                  height={1200}
-                  src={history.imageUrl}
-                  unoptimized
-                  width={1600}
-                />
-              ) : null}
-              <div className="grid gap-3">
-                <h3 className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
-                  Правильный ответ
-                </h3>
-                <div className="mx-auto w-40 sm:w-48">
-                  <MediaItemTile href={`/media/${history.answer.code}`} item={history.answer} />
-                </div>
-              </div>
-            </div>
-          ) : (
-            <p className="py-10 text-center text-sm text-stone-600">Предыдущих вопросов пока нет.</p>
-          )
         ) : (
           <ActiveQuizPanel
             isParticipating={isParticipating}

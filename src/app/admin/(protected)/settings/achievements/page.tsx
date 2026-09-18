@@ -44,6 +44,19 @@ export default async function AdminSettingsAchievementsPage({ searchParams }: Pa
               variant="locked"
             />
           </div>
+          <div className="grid gap-2">
+            <p className="text-sm font-medium text-stone-800">Стандартный фон витрины</p>
+            <p className="text-sm leading-6 text-stone-500">
+              Используется в верхней витрине, если у уровня ачивки нет собственного фона. Если файл не задан, применяется технический fallback приложения.
+            </p>
+            <AchievementImagePicker
+              fileInputName="defaultShowcaseBackgroundImageFile"
+              initialImageUrl={settings.defaultShowcaseBackgroundImageUrl}
+              inputId="default-showcase-background-image"
+              removeInputName="removeDefaultShowcaseBackgroundImage"
+              variant="showcase-background"
+            />
+          </div>
           <Button type="submit">Сохранить</Button>
         </ImageUploadForm>
       </div>

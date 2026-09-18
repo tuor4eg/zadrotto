@@ -231,17 +231,45 @@ describe("demo profile foundation", () => {
     const catalog = [{
       code: "ratings",
       description: null,
+      mechanic: "rating.authored.count",
       name: "Оценки",
+      params: {},
       levels: [
-        { description: null, imageUrl: null, level: 1, name: "Первая", threshold: 1 },
-        { description: null, imageUrl: "/a.webp", level: 2, name: "Три", threshold: 3 },
+        {
+          description: null,
+          imageUrl: null,
+          level: 1,
+          name: "Первая",
+          rarity: "common" as const,
+          showcaseBackgroundImageUrl: null,
+          threshold: 1,
+        },
+        {
+          description: null,
+          imageUrl: "/a.webp",
+          level: 2,
+          name: "Три",
+          rarity: "common" as const,
+          showcaseBackgroundImageUrl: null,
+          threshold: 3,
+        },
       ],
     }, {
       code: "games",
       description: null,
+      mechanic: "rating.authored.count",
       name: "Игры",
+      params: { mediaType: "game" },
       levels: [
-        { description: null, imageUrl: null, level: 1, name: "Десять игр", threshold: 10 },
+        {
+          description: null,
+          imageUrl: null,
+          level: 1,
+          name: "Десять игр",
+          rarity: "common" as const,
+          showcaseBackgroundImageUrl: null,
+          threshold: 10,
+        },
       ],
     }]
 

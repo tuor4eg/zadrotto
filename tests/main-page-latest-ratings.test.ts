@@ -22,7 +22,8 @@ describe("main page latest ratings", () => {
     assert.match(page, /grid grid-rows-\[auto_minmax\(0,1fr\)\]/);
     assert.match(page, /latestAchievement \? "pb-5"/);
     assert.match(page, /border-t-2 border-stone-700\/70 pt-4/);
-    assert.match(page, /aspect-square h-full max-h-20 min-h-0 shrink/);
+    assert.match(page, /className="size-20 shrink-0[^"\n]*lg:size-\[5\.5rem\]"/);
+    assert.match(page, /className="h-28 w-20 shrink-0[^"\n]*lg:h-32 lg:w-\[5\.5rem\]"/);
     assert.match(page, /href=\{`\/media\/\$\{latestAcquaintance\.code\}`\}/);
     assert.doesNotMatch(page, /\/history|Недавно просмотренное|getRecentlyViewed/);
     assert.equal(existsSync("src/app/history/page.tsx"), false);

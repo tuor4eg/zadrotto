@@ -1,8 +1,11 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
+import { AchievementAwardHistory } from "@/components/achievements/achievement-award-history";
 import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
+import { FeaturedAchievementShowcase } from "@/components/achievements/featured-achievement-showcase";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { getAchievementSettings } from "@/db/queries/achievement-settings";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getPublicUserProfile } from "@/db/queries/friends";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -34,7 +37,10 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
   const isAdmin = headerState.currentAdminUser
   const profile = await getPublicUserProfile(id, current?.id, isAdmin)
   if (!profile) notFound()
-  const items = await getAchievementShowcase(profile.id)
+  const [items, settings] = await Promise.all([
+    getAchievementShowcase(profile.id),
+    getAchievementSettings(),
+  ])
   const basePath = `/users/${profile.id}`
 
   return (
@@ -42,8 +48,17 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <PublicUserHeader currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={`${basePath}/achievements`} />
-        <div className="archive-paper archive-panel flex-1 p-4 sm:p-5">
-          <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
+        <FeaturedAchievementShowcase
+          defaultShowcaseBackgroundImageUrl={settings.defaultShowcaseBackgroundImageUrl}
+          items={items}
+        />
+        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,24rem)]">
+          <div className="archive-paper archive-panel flex h-full min-h-0 flex-col p-4 sm:p-5">
+            <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
+          </div>
+          <div className="min-h-0 lg:h-0 lg:min-h-full">
+            <AchievementAwardHistory items={items} />
+          </div>
         </div>
       </div>
     </main>

@@ -49,27 +49,27 @@ describe("quizzes", () => {
     assert.equal(getQuizState({ enabled: true, startsAt: now, endsAt: new Date(now.getTime() + 1) }, now), "active");
     assert.equal(getQuizState({ enabled: true, startsAt: new Date(now.getTime() - 1), endsAt: now }, now), "finished");
   });
-  it("formats the remaining time with compact units down to seconds", () => {
+  it("formats the remaining time without displaying seconds", () => {
     const now = new Date("2026-08-22T10:00:00.000Z");
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-24T11:02:00.000Z"), now),
-      "Осталось 2 д. 1 ч. 2 м. 0 с.",
+      "Осталось 2 д 1 ч 2 м",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T10:00:01.000Z"), now),
-      "Осталось 1 с.",
+      "Осталось 1 м",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T15:00:00.000Z"), now),
-      "Осталось 5 ч. 0 м. 0 с.",
+      "Осталось 5 ч 0 м",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-23T10:05:00.000Z"), now),
-      "Осталось 1 д. 0 ч. 5 м. 0 с.",
+      "Осталось 1 д 0 ч 5 м",
     );
     assert.equal(
       formatQuizTimeRemaining(now, now),
-      "Осталось 0 с.",
+      "Осталось 0 м",
     );
   });
   it("treats an empty media type selection as any type", () => {
@@ -130,7 +130,7 @@ describe("quizzes", () => {
   });
   it("keeps answer id out of public DTO", () => {
     const source = readFileSync("src/db/queries/quizzes.ts", "utf8");
-    const section = source.slice(source.indexOf("export async function getActiveQuiz"), source.indexOf("export async function getPreviousQuizHistory"));
+    const section = source.slice(source.indexOf("export async function getActiveQuiz"), source.indexOf("export async function isQuizParticipant"));
     assert.doesNotMatch(section, /answerMediaItemId/);
   });
   it("has migration constraints and indexes", () => {
@@ -186,8 +186,6 @@ describe("quizzes", () => {
     assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /Открыть правила викторины/);
-    assert.match(modal, /aria-label="Открыть предыдущий вопрос"[\s\S]*<History/);
-    assert.match(modal, /view === "history" \? "Предыдущий вопрос"/);
     assert.match(modal, /aria-label="Назад к викторине"[\s\S]*<ArrowLeft/);
     assert.match(modal, /left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
     assert.match(modal, /right-2 top-2 z-20[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
@@ -199,11 +197,8 @@ describe("quizzes", () => {
     assert.match(modal, /disabled[\s\S]*Искать ответ в архиве/);
     assert.match(modal, /disabled[\s\S]*Проверить догадку[\s\S]*<CircleHelp/);
     assert.match(modal, /Array\.from\(\{ length: 3 \}/);
-    assert.match(modal, /view === "history"[\s\S]*Правильный ответ/);
-    assert.match(modal, /<MediaItemTile href=\{`\/media\/\$\{history\.answer\.code\}`\} item=\{history\.answer\} \/>/);
-    assert.match(modal, /Предыдущих вопросов пока нет/);
-    assert.match(query, /getPreviousQuizHistory[\s\S]*lte\(quizzes\.endsAt, currentTime\)/);
-    assert.match(query, /orderBy\(desc\(quizzes\.endsAt\), desc\(quizzes\.id\)\)/);
+    assert.doesNotMatch(modal, /Предыдущий вопрос|Открыть предыдущий вопрос/);
+    assert.doesNotMatch(query, /getPreviousQuizHistory/);
   });
   it("persists and exposes atomic quiz attempt state", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
@@ -278,7 +273,7 @@ describe("quizzes", () => {
     assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
-    assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);
+    assert.match(layer, /bottom-\[calc\(max\(0\.5rem,env\(safe-area-inset-bottom\)\)\+0\.5rem\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);
     assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);

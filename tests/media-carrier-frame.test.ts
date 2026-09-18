@@ -235,8 +235,8 @@ describe("media carrier frames", () => {
       {
         assetPath: "/mediaCarriers/video/dvd/dvd.webp",
         aspectRatioClassName: "aspect-[357/490]",
-        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
-        compactViewportClassName: "h-[min(32vh,300px)]",
+        compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
+        compactViewportClassName: "aspect-[357/490] w-full max-w-[min(23vh,219px)]",
         coverAreaClassName: "left-[4.8%] top-[8%] h-[90.8%] w-[90.4%]",
         displayFontClassName: "media-carrier-font-film-dvd",
         fontClassName: "media-carrier-font-film-dvd",
@@ -244,8 +244,8 @@ describe("media carrier frames", () => {
         placeholderVariant: "dvd-label",
         ratingPanelVariant: "dvd-menu",
         renderKind: "cartridge",
-        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
-        viewportClassName: "h-[min(58vh,520px)]",
+        sizeClassName: "w-full max-w-[min(42vh,379px)]",
+        viewportClassName: "aspect-[357/490] w-full max-w-[min(42vh,379px)]",
       },
     );
     assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "vhs" }), true);
@@ -295,14 +295,14 @@ describe("media carrier frames", () => {
       {
         assetPath: "/mediaCarriers/anime/anime.webp",
         aspectRatioClassName: "aspect-[954/1346]",
-        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
-        compactViewportClassName: "h-[min(32vh,300px)]",
+        compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
+        compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
         coverAreaClassName: "left-[9.9%] top-[7.7%] h-[86.5%] w-[86.2%]",
         placeholderVariant: "dvd-label",
         ratingPanelVariant: "anime-manga",
         renderKind: "cartridge",
-        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
-        viewportClassName: "h-[min(58vh,520px)]",
+        sizeClassName: "w-full max-w-[min(41vh,369px)]",
+        viewportClassName: "aspect-[954/1346] w-full max-w-[min(41vh,369px)]",
       },
     );
     assert.equal(hasMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: null }), true);

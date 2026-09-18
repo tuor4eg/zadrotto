@@ -26,7 +26,7 @@ export function AuthorAchievementGallery({ items }: { items: AchievementShowcase
   )
 
   return (
-    <section className="archive-paper archive-panel flex flex-1 flex-col px-2 py-6 sm:px-10 lg:px-14 lg:py-7" aria-label="Список ачивок">
+    <section className="archive-paper archive-panel flex h-full min-h-0 flex-col px-2 py-6 sm:px-10 lg:px-14 lg:py-7" aria-label="Список ачивок">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Статус ачивок">
         {GALLERY_FILTERS.map((item) => {
           const selected = filter === item.id
@@ -53,7 +53,7 @@ export function AuthorAchievementGallery({ items }: { items: AchievementShowcase
       {visibleItems.length === 0 ? (
         <p className="mt-6 text-sm text-stone-600">Нет ачивок в этом статусе.</p>
       ) : (
-        <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="mt-6 grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-2 sm:gap-3">
           {visibleItems.map((item) => (
             <AchievementCard key={item.code} browseAwardedLevels fillWidth item={item} />
           ))}

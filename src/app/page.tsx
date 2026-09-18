@@ -477,7 +477,7 @@ export default async function MainPage() {
                     <Link
                       href="/achievements"
                       aria-label="Открыть мои ачивки"
-                      className="aspect-square h-full max-h-20 min-h-0 shrink rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2 lg:max-h-[5.5rem]"
+                      className="size-20 shrink-0 rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-900 focus-visible:ring-offset-2 lg:size-[5.5rem]"
                     >
                       {authorHeroStatistics.latestAchievement.imageUrl ? (
                         // eslint-disable-next-line @next/next/no-img-element

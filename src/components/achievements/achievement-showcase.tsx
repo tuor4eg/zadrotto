@@ -29,7 +29,7 @@ export function AchievementShowcase({
       {sortedItems.length === 0 ? (
         <p className="text-sm text-stone-600">{emptyText}</p>
       ) : (
-        <div className="grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6">
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(10.5rem,1fr))] gap-3">
           {sortedItems.map((item) => <AchievementCard key={item.code} browseAwardedLevels fillWidth item={item} />)}
         </div>
       )}

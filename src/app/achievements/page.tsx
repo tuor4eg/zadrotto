@@ -1,10 +1,12 @@
 import type { Metadata } from "next"
 import Image from "next/image"
 
-import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
 import { AuthorAchievementHeroStats } from "@/components/achievements/author-achievement-hero-stats"
+import { AuthorAchievementsCatalog } from "@/components/achievements/author-achievements-catalog"
+import { FeaturedAchievementShowcase } from "@/components/achievements/featured-achievement-showcase"
 import { PublicSiteHeader } from "@/components/archive/public-site-header"
 import { DemoAchievementsPage } from "@/components/user-state/demo-achievements-page"
+import { getAchievementSettings } from "@/db/queries/achievement-settings"
 import { getAchievementShowcase } from "@/db/queries/achievements"
 import { getAchievementShowcaseStats } from "@/lib/achievements/showcase"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
@@ -24,7 +26,10 @@ export default async function AchievementsPage() {
     return <DemoAchievementsPage headerProps={headerState.headerProps} />
   }
 
-  const items = await getAchievementShowcase(author.id)
+  const [items, settings] = await Promise.all([
+    getAchievementShowcase(author.id),
+    getAchievementSettings(),
+  ])
   const stats = getAchievementShowcaseStats(items)
 
   return (
@@ -79,7 +84,11 @@ export default async function AchievementsPage() {
           />
           </div>
         </section>
-        <AuthorAchievementGallery items={items} />
+        <FeaturedAchievementShowcase
+          defaultShowcaseBackgroundImageUrl={settings.defaultShowcaseBackgroundImageUrl}
+          items={items}
+        />
+        <AuthorAchievementsCatalog items={items} />
       </div>
     </main>
   )

@@ -10,9 +10,14 @@ import { ImageUploadForm } from "@/components/forms/image-upload-form";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
-import { Input, Label, Textarea } from "@/components/ui/form";
+import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
+import {
+  ACHIEVEMENT_RARITIES,
+  DEFAULT_ACHIEVEMENT_RARITY,
+  type AchievementRarity,
+} from "@/lib/achievements/model";
 import {
   createAchievementLevelAction,
   deleteAchievementLevelAction,
@@ -26,6 +31,8 @@ type AchievementLevelRow = {
   isAwarded: boolean;
   level: number;
   name: string | null;
+  rarity: AchievementRarity;
+  showcaseBackgroundImageUrl: string | null;
   threshold: number;
 };
 
@@ -37,7 +44,16 @@ type LevelFormState = {
   level: number;
   minThreshold: number;
   name: string;
+  rarity: AchievementRarity;
+  showcaseBackgroundImageUrl: string | null;
   threshold: number;
+};
+
+const RARITY_LABELS: Record<AchievementRarity, string> = {
+  common: "Обычная",
+  rare: "Редкая",
+  epic: "Эпическая",
+  legendary: "Легендарная",
 };
 
 function LevelModal({
@@ -55,6 +71,7 @@ function LevelModal({
   const isEdit = formState.id !== undefined;
   const action = isEdit ? updateAchievementLevelAction : createAchievementLevelAction;
   const inputId = `achievement-level-image-${formState.id ?? "new"}`;
+  const showcaseBackgroundInputId = `achievement-level-showcase-background-${formState.id ?? "new"}`;
 
   useEffect(() => {
     const onKeyDown = (event: KeyboardEvent) => {
@@ -76,9 +93,9 @@ function LevelModal({
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
-        className="w-full max-w-lg rounded-lg border border-stone-200 bg-white p-5 shadow-xl"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-y-auto rounded-xl border border-stone-200 bg-white p-6 shadow-xl md:max-h-none md:overflow-visible"
       >
-        <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start justify-between gap-4 border-b border-stone-200 pb-4">
           <div>
             <h2 id={titleId} className="text-lg font-semibold text-stone-950">
               {isEdit ? `Уровень ${formState.level}` : "Новый уровень"}
@@ -90,50 +107,73 @@ function LevelModal({
           </Button>
         </div>
 
-        <ImageUploadForm action={action} className="mt-5 grid gap-4">
+        <ImageUploadForm action={action} className="mt-5 grid gap-5">
           <input type="hidden" name="achievementId" value={achievementId} />
           {isEdit ? <input type="hidden" name="levelId" value={formState.id} /> : null}
-          <div className="grid gap-2">
-            <Label htmlFor="level-threshold">Порог</Label>
-            <Input
-              id="level-threshold"
-              name="threshold"
-              type="number"
-              min={formState.minThreshold}
-              max={isEdit && formState.isAwarded ? formState.threshold : undefined}
-              required
-              defaultValue={formState.threshold}
-            />
-            {isEdit && formState.isAwarded ? (
-              <p className="text-xs text-stone-500">Порог выданного уровня можно только понизить.</p>
-            ) : null}
-            {!isEdit ? (
-              <p className="text-xs text-stone-500">Порог должен быть больше порога предыдущего уровня.</p>
-            ) : null}
+          <div className="grid items-start gap-4 md:grid-cols-2">
+            <div className="grid content-start gap-2 md:col-span-2">
+              <Label htmlFor="level-name">Название уровня</Label>
+              <Input
+                id="level-name"
+                name="levelName"
+                defaultValue={formState.name}
+                placeholder="Использовать название ачивки"
+              />
+            </div>
+            <div className="grid content-start gap-2">
+              <Label htmlFor="level-threshold">Порог</Label>
+              <Input
+                id="level-threshold"
+                name="threshold"
+                type="number"
+                min={formState.minThreshold}
+                max={isEdit && formState.isAwarded ? formState.threshold : undefined}
+                required
+                defaultValue={formState.threshold}
+              />
+              {isEdit && formState.isAwarded ? (
+                <p className="text-xs text-stone-500">Порог выданного уровня можно только понизить.</p>
+              ) : null}
+              {!isEdit ? (
+                <p className="text-xs text-stone-500">Порог должен быть больше порога предыдущего уровня.</p>
+              ) : null}
+            </div>
+            <div className="grid content-start gap-2">
+              <Label htmlFor="level-rarity">Редкость</Label>
+              <Select id="level-rarity" name="rarity" defaultValue={formState.rarity} required>
+                {ACHIEVEMENT_RARITIES.map((rarity) => (
+                  <option key={rarity} value={rarity}>{RARITY_LABELS[rarity]}</option>
+                ))}
+              </Select>
+            </div>
+            <div className="grid content-start gap-2 md:col-span-2">
+              <Label htmlFor="level-description">Описание уровня</Label>
+              <Textarea
+                id="level-description"
+                name="levelDescription"
+                rows={2}
+                defaultValue={formState.description}
+                placeholder="Использовать описание ачивки"
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="level-name">Название уровня</Label>
-            <Input
-              id="level-name"
-              name="levelName"
-              defaultValue={formState.name}
-              placeholder="Использовать название ачивки"
-            />
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="grid h-full content-start gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <Label htmlFor={inputId}>Изображение уровня</Label>
+              <AchievementImagePicker inputId={inputId} initialImageUrl={formState.imageUrl} />
+            </div>
+            <div className="grid h-full content-start gap-3 rounded-lg border border-stone-200 bg-stone-50/70 p-4">
+              <Label htmlFor={showcaseBackgroundInputId}>Фон витрины</Label>
+              <AchievementImagePicker
+                fileInputName="showcaseBackgroundImageFile"
+                inputId={showcaseBackgroundInputId}
+                initialImageUrl={formState.showcaseBackgroundImageUrl}
+                removeInputName="removeShowcaseBackgroundImage"
+                variant="showcase-background"
+              />
+            </div>
           </div>
-          <div className="grid gap-2">
-            <Label htmlFor="level-description">Описание уровня</Label>
-            <Textarea
-              id="level-description"
-              name="levelDescription"
-              defaultValue={formState.description}
-              placeholder="Использовать описание ачивки"
-            />
-          </div>
-          <div className="grid gap-3">
-            <Label htmlFor={inputId}>Изображение уровня</Label>
-            <AchievementImagePicker inputId={inputId} initialImageUrl={formState.imageUrl} />
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
+          <div className="flex flex-wrap justify-end gap-2 border-t border-stone-200 pt-4">
             <Button type="button" variant="outline" onClick={onClose}>Отмена</Button>
             <Button type="submit">{isEdit ? "Сохранить" : "Добавить уровень"}</Button>
           </div>
@@ -233,6 +273,8 @@ export function AchievementLevelsTab({
       level: levels.length + 1,
       minThreshold: lastThreshold + 1,
       name: "",
+      rarity: DEFAULT_ACHIEVEMENT_RARITY,
+      showcaseBackgroundImageUrl: null,
       threshold: lastThreshold + 1,
     });
   };
@@ -247,6 +289,8 @@ export function AchievementLevelsTab({
       level: level.level,
       minThreshold: previous ? previous.threshold + 1 : 1,
       name: level.name ?? "",
+      rarity: level.rarity,
+      showcaseBackgroundImageUrl: level.showcaseBackgroundImageUrl,
       threshold: level.threshold,
     });
   };
@@ -262,7 +306,7 @@ export function AchievementLevelsTab({
 
     {levels.length > 0 ? (
       <>
-        <div className="mt-4 grid gap-3 sm:hidden">
+        <div className="mt-4 grid gap-3 md:grid-cols-2 xl:hidden">
           {levels.map((level) => {
             const resolvedName = level.name?.trim() || achievementName
             const canDelete = !level.isAwarded && levels.length > 1
@@ -272,11 +316,17 @@ export function AchievementLevelsTab({
                   <LevelImage imageUrl={level.imageUrl} placeholder="circle" />
                   <div className="min-w-0">
                     <div className="break-words font-medium text-stone-950">{resolvedName}</div>
-                    <div className="mt-1 text-xs text-stone-500">Уровень {level.level} · порог {level.threshold}</div>
+                    <div className="mt-1 text-xs text-stone-500">
+                      Уровень {level.level} · порог {level.threshold} · {RARITY_LABELS[level.rarity]}
+                    </div>
                     {level.description ? (
                       <p className="mt-2 break-words text-sm text-stone-600">{level.description}</p>
                     ) : null}
                     {level.isAwarded ? <Badge className="mt-2" variant="outline">Выдан</Badge> : null}
+                    <div className="mt-3 flex items-center gap-2 text-xs text-stone-500">
+                      <span>Фон витрины:</span>
+                      <LevelImage imageUrl={level.showcaseBackgroundImageUrl} />
+                    </div>
                   </div>
                 </div>
                 <div className="mt-4 border-t border-stone-100 pt-3">
@@ -292,15 +342,17 @@ export function AchievementLevelsTab({
           })}
         </div>
 
-        <TableWrap className="mt-4 hidden sm:block">
+        <TableWrap className="mt-4 hidden overflow-hidden xl:block">
           <Table className="table-fixed">
             <THead>
               <tr>
                 <TH className="w-16">Уровень</TH>
                 <TH className="w-24">Порог</TH>
+                <TH className="w-28">Редкость</TH>
                 <TH className="w-48">Название</TH>
                 <TH>Описание</TH>
-                <TH className="w-28">Изображение</TH>
+                <TH className="w-28">Значок</TH>
+                <TH className="w-28">Фон</TH>
                 <TH className="w-28 px-2 text-right">Действия</TH>
               </tr>
             </THead>
@@ -312,6 +364,7 @@ export function AchievementLevelsTab({
                   <TR key={level.id}>
                     <TD>{level.level}</TD>
                     <TD>{level.threshold}</TD>
+                    <TD>{RARITY_LABELS[level.rarity]}</TD>
                     <TD className="min-w-0">
                       <div className="truncate font-medium text-stone-950">{resolvedName}</div>
                       {level.isAwarded ? <Badge className="mt-1" variant="outline">Выдан</Badge> : null}
@@ -321,6 +374,9 @@ export function AchievementLevelsTab({
                     </TD>
                     <TD>
                       <LevelImage imageUrl={level.imageUrl} />
+                    </TD>
+                    <TD>
+                      <LevelImage imageUrl={level.showcaseBackgroundImageUrl} />
                     </TD>
                     <TD className="px-2">
                       <LevelRowActions

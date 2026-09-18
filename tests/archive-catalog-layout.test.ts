@@ -21,6 +21,6 @@ describe("archive catalog preview layout", () => {
       source,
       /min-h-0 flex-1 overflow-x-hidden overflow-y-auto \[-ms-overflow-style:none\] \[scrollbar-width:none\] \[&::\-webkit-scrollbar\]:hidden/,
     )
-    assert.match(source, /archive-scrollbar grid min-h-0 flex-1/)
+    assert.match(source, /archive-scrollbar archive-catalog-list-scrollbar grid min-h-0 flex-1/)
   })
 })

@@ -1,10 +1,13 @@
 import type { AchievementShowcaseItem } from "@/components/achievements/achievement-card"
+import type { AchievementRarity } from "@/lib/achievements/model"
 
 export type DemoAchievementCatalogLevel = {
   description: string | null
   imageUrl: string | null
   level: number
   name: string
+  rarity: AchievementRarity
+  showcaseBackgroundImageUrl: string | null
   threshold: number
 }
 
@@ -12,7 +15,9 @@ export type DemoAchievementCatalogItem = {
   code: string
   description: string | null
   levels: DemoAchievementCatalogLevel[]
+  mechanic: string
   name: string
+  params: Record<string, unknown>
 }
 
 export type DemoEarnedAchievementLevel = {
@@ -95,15 +100,21 @@ export function buildDemoAchievementShowcaseItems(
         imageUrl: level.imageUrl,
         level: level.level,
         name: level.name,
+        rarity: level.rarity,
+        showcaseBackgroundImageUrl: level.showcaseBackgroundImageUrl,
       }))
 
     const highest = awardedLevels[awardedLevels.length - 1] ?? null
     const nextLevel = achievement.levels.find((level) => currentValue < level.threshold) ?? null
     const lockedPresentation = achievement.levels[0] ?? null
+    const awardedThreshold = highest
+      ? achievement.levels.find((level) => level.level === highest.level)?.threshold ?? null
+      : null
 
     return {
       awardedAt: highest?.awardedAt ?? null,
       awardedLevels,
+      awardedThreshold,
       code: achievement.code,
       currentValue,
       description: highest?.description
@@ -113,12 +124,18 @@ export function buildDemoAchievementShowcaseItems(
       highestAwardedLevel: highest?.level ?? null,
       imageUrl: highest?.imageUrl ?? null,
       levelCount: achievement.levels.length,
+      mechanic: achievement.mechanic,
       name: highest?.name
         ?? nextLevel?.name
         ?? lockedPresentation?.name
         ?? achievement.name,
       nextLevel: nextLevel?.level ?? null,
       nextThreshold: nextLevel?.threshold ?? null,
+      params: achievement.params,
+      rarity: highest?.rarity ?? lockedPresentation?.rarity ?? "common",
+      showcaseBackgroundImageUrl: highest
+        ? highest.showcaseBackgroundImageUrl
+        : lockedPresentation?.showcaseBackgroundImageUrl ?? null,
     }
   })
 }

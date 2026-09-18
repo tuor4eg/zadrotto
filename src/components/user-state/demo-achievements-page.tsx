@@ -4,8 +4,9 @@ import Image from "next/image"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
 
-import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
 import { AuthorAchievementHeroStats } from "@/components/achievements/author-achievement-hero-stats"
+import { AuthorAchievementsCatalog } from "@/components/achievements/author-achievements-catalog"
+import { FeaturedAchievementShowcase } from "@/components/achievements/featured-achievement-showcase"
 import {
   PublicSiteHeader,
   type PublicSiteHeaderProps,
@@ -19,6 +20,7 @@ import { useDemoProfile } from "@/lib/user-state/use-demo-profile"
 
 type DemoAchievementState = {
   achievements: DemoAchievementCatalogItem[]
+  defaultShowcaseBackgroundImageUrl: string | null
   values: Record<string, number>
 }
 
@@ -59,17 +61,25 @@ export function DemoAchievementsPage({
         if (!response.ok) return
         const data = await response.json() as {
           achievements?: DemoAchievementCatalogItem[]
+          defaultShowcaseBackgroundImageUrl?: string | null
           values?: Record<string, number>
         }
         if (!cancelled) {
           setState({
             achievements: data.achievements ?? [],
+            defaultShowcaseBackgroundImageUrl: data.defaultShowcaseBackgroundImageUrl ?? null,
             values: data.values ?? {},
           })
         }
       })
       .catch(() => {
-        if (!cancelled) setState({ achievements: [], values: {} })
+        if (!cancelled) {
+          setState({
+            achievements: [],
+            defaultShowcaseBackgroundImageUrl: null,
+            values: {},
+          })
+        }
       })
     return () => {
       cancelled = true
@@ -154,7 +164,13 @@ export function DemoAchievementsPage({
             <p className="text-sm text-stone-600">Загружаем ачивки…</p>
           </section>
         ) : (
-          <AuthorAchievementGallery items={items} />
+          <>
+            <FeaturedAchievementShowcase
+              defaultShowcaseBackgroundImageUrl={state.defaultShowcaseBackgroundImageUrl}
+              items={items}
+            />
+            <AuthorAchievementsCatalog items={items} />
+          </>
         )}
       </div>
     </main>

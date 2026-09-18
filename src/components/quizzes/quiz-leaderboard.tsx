@@ -64,12 +64,12 @@ export function QuizLeaderboard({ items }: { items: QuizLeaderboardItem[] }) {
       ) : (
         <QuizEmptyState
           imageSrc="/quiz_win_placeholder.webp"
-          title="Пьедестал пока пустует."
+          title="Пьедестал пока пустует"
           description={
             <>
               Стань одним из первых, кто пройдёт квиз,<br />
               и попади в таблицу лучших!<br />
-              Всё только начинается.
+              Всё только начинается
             </>
           }
         />

@@ -11,22 +11,6 @@ export type ActiveQuiz = {
   attemptLimit: number;
 };
 export type ActiveQuizContext = Pick<ActiveQuiz, "id" | "mediaTypes">;
-export type QuizHistoryEntry = {
-  answer: {
-    averageScore: number | null;
-    code: string;
-    coverThumbUrl: string | null;
-    coverUrl: string | null;
-    id: number;
-    mediaType: MediaType;
-    ratingsCount: number;
-    releaseYear: number | null;
-    title: string;
-  };
-  imageUrl: string | null;
-  question: string | null;
-};
-
 export type QuizParticipantOutcome = "correct" | "exhausted";
 export type QuizParticipantState = {
   quizId: number;
@@ -49,21 +33,19 @@ export type AuthorQuizStatistics = {
 };
 
 export function formatQuizTimeRemaining(endsAt: string | Date, now = new Date()) {
-  const totalSeconds = Math.max(
+  const totalMinutes = Math.ceil(Math.max(
     0,
-    Math.ceil((new Date(endsAt).getTime() - now.getTime()) / 1_000),
-  );
-  const days = Math.floor(totalSeconds / 86_400);
-  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
-  const minutes = Math.floor((totalSeconds % 3_600) / 60);
-  const seconds = totalSeconds % 60;
+    new Date(endsAt).getTime() - now.getTime(),
+  ) / 60_000);
+  const days = Math.floor(totalMinutes / 1_440);
+  const hours = Math.floor((totalMinutes % 1_440) / 60);
+  const minutes = totalMinutes % 60;
   const parts = [
-    `${days} д.`,
-    `${hours} ч.`,
-    `${minutes} м.`,
-    `${seconds} с.`,
+    `${days} д`,
+    `${hours} ч`,
+    `${minutes} м`,
   ];
-  const firstNonZeroPart = [days, hours, minutes, seconds].findIndex((value) => value > 0);
+  const firstNonZeroPart = [days, hours, minutes].findIndex((value) => value > 0);
 
   return `Осталось ${parts.slice(firstNonZeroPart === -1 ? -1 : firstNonZeroPart).join(" ")}`;
 }
@@ -77,10 +59,10 @@ export function formatQuizDuration(totalSeconds: number | null) {
   const minutes = Math.floor((roundedSeconds % 3_600) / 60);
   const seconds = roundedSeconds % 60;
   const parts = [
-    days > 0 ? `${days} д.` : null,
-    hours > 0 || days > 0 ? `${hours} ч.` : null,
-    minutes > 0 || hours > 0 || days > 0 ? `${minutes} м.` : null,
-    `${seconds} с.`,
+    days > 0 ? `${days} д` : null,
+    hours > 0 || days > 0 ? `${hours} ч` : null,
+    minutes > 0 || hours > 0 || days > 0 ? `${minutes} м` : null,
+    `${seconds} с`,
   ];
 
   return parts.filter(Boolean).join(" ");

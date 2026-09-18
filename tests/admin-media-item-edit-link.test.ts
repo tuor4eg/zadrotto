@@ -45,7 +45,7 @@ describe("admin entity edit action", () => {
     assert.match(detailsSource, /headerActions=\{headerActions\}/);
     assert.match(
       detailsSource,
-      /\{breadcrumbSlot\}[\s\S]*headerActions \? <div className="shrink-0">\{headerActions\}<\/div> : null/,
+      /\{breadcrumbSlot\}[\s\S]*headerActions \? <div className="mr-10 shrink-0 sm:mr-0">\{headerActions\}<\/div> : null/,
     );
     assert.doesNotMatch(detailsSource, />Досье</);
   });

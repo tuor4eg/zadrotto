@@ -4,7 +4,12 @@ import Image from "next/image"
 import { BadgeCheck, ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 
-export const ACHIEVEMENT_CARD_IMAGE_PX = 144
+import type { AchievementRarity } from "@/lib/achievements/model"
+import {
+  ACHIEVEMENT_CARD_IMAGE_PX,
+  formatAchievementAwardedAt,
+} from "@/lib/achievements/showcase"
+
 const SWIPE_THRESHOLD_PX = 40
 
 export type AchievementAwardedLevel = {
@@ -13,20 +18,27 @@ export type AchievementAwardedLevel = {
   imageUrl: string | null
   level: number
   name: string
+  rarity: AchievementRarity
+  showcaseBackgroundImageUrl: string | null
 }
 
 export type AchievementShowcaseItem = {
   awardedAt: Date | string | null
   awardedLevels: AchievementAwardedLevel[]
+  awardedThreshold: number | null
   code: string
   currentValue: number
   description: string | null
   highestAwardedLevel: number | null
   imageUrl: string | null
   levelCount: number
+  mechanic: string
   name: string
   nextLevel: number | null
   nextThreshold: number | null
+  params: Record<string, unknown>
+  rarity: AchievementRarity
+  showcaseBackgroundImageUrl: string | null
 }
 
 type AchievementCardSlide = {
@@ -36,19 +48,6 @@ type AchievementCardSlide = {
   level: number | null
   name: string
   showProgress: boolean
-}
-
-function formatAwardedAt(value: Date | string) {
-  const parts = new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "2-digit",
-    timeZone: "Europe/Moscow",
-  }).formatToParts(new Date(value))
-  const day = parts.find((part) => part.type === "day")?.value
-  const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
-  const year = parts.find((part) => part.type === "year")?.value
-  return `${day} ${month} ${year}`
 }
 
 function formatLevel(item: { level: number | null; levelCount: number }) {
@@ -177,7 +176,7 @@ function AchievementCardPanel({
             <BadgeCheck className="size-4 shrink-0 text-teal-700" aria-hidden="true" />
             <p className="text-xs font-medium text-stone-800">Получено</p>
             <p className="font-mono text-[10px] uppercase tracking-wider text-stone-600">
-              {formatAwardedAt(slide.awardedAt)}
+              {formatAchievementAwardedAt(slide.awardedAt)}
             </p>
           </div>
         ) : null}

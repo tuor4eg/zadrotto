@@ -20,7 +20,7 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   const currentQuiz = read("src/app/main/archive-riddle.tsx");
   const noActiveState = read("src/components/quizzes/quiz-no-active-state.tsx");
 
-  assert.match(page, /lg:grid-cols-\[minmax\(0,2fr\)_minmax\(20rem,1fr\)\][\s\S]*<QuizzesHero statistics=\{statistics\} \/>[\s\S]*<ArchiveRiddle/);
+  assert.match(page, /grid gap-3 lg:grid-cols-3[\s\S]*lg:col-span-2[\s\S]*<QuizzesHero statistics=\{statistics\} \/>[\s\S]*<ArchiveRiddle/);
   assert.match(page, /<ArchiveRiddle[\s\S]*quiz=\{activeQuiz\}/);
   assert.match(page, /<ArchiveRiddle[\s\S]*size="large"/);
   assert.match(widget, /min-h-\[320px\][^"\n]*lg:h-\[360px\]/);
@@ -76,12 +76,19 @@ test("public quizzes section contains three equal lower widgets and owns quiz st
   assert.match(statistics, /label: "Общее время"[\s\S]*formatQuizDuration\(statistics\.totalTimeSeconds\)/);
   assert.match(statistics, /statistics\.playedCount === 0/);
   assert.match(statistics, /imageSrc="\/quiz_stat_placeholder\.webp"/);
-  assert.match(statistics, /Пройди первый квиз —[\s\S]*здесь появится твоя статистика\./);
+  assert.match(statistics, /Пройди первый квиз —[\s\S]*здесь появится твоя статистика/);
   assert.match(statistics, /Сколько знаний в твоём инвентаре\?[\s\S]*Скоро узнаем!/);
   assert.equal(existsSync("public/quiz_stat_placeholder.webp"), true);
   assert.ok(statSync("public/quiz_stat_placeholder.webp").size < 100_000);
   assert.match(emptyState, /grid-rows-\[8\.5rem_3\.5rem_minmax\(4rem,auto\)\]/);
   assert.match(emptyState, /relative h-32 w-56/);
+});
+
+test("current quiz and archive widgets use the same column width", () => {
+  const page = read("src/app/quizzes/page.tsx");
+
+  assert.match(page, /grid gap-3 lg:grid-cols-3/);
+  assert.match(page, /lg:col-span-2[\s\S]*<QuizzesHero/);
 });
 
 test("quiz archive renders a compact unlinked list", () => {
@@ -97,7 +104,7 @@ test("quiz archive renders a compact unlinked list", () => {
   assert.match(archive, /item\.winnerName \?\? "Нет победителя"/);
   assert.doesNotMatch(archive, /<Link|href=/);
   assert.match(archive, /imageSrc="\/quiz_archieve_placeholder\.webp"/);
-  assert.match(archive, /Здесь пока нет завершенных квизов\./);
+  assert.match(archive, /Здесь пока нет завершенных квизов/);
   assert.match(archive, /Самое время стать частью истории/);
   assert.equal(existsSync("public/quiz_archieve_placeholder.webp"), true);
   assert.ok(statSync("public/quiz_archieve_placeholder.webp").size < 100_000);
@@ -122,8 +129,8 @@ test("quiz leaderboard ranks authors by a single win count", () => {
   assert.match(leaderboard, /w-36 pb-2 text-right font-normal/);
   assert.match(leaderboard, /whitespace-nowrap py-2 text-right/);
   assert.match(leaderboard, /imageSrc="\/quiz_win_placeholder\.webp"/);
-  assert.match(leaderboard, /Пьедестал пока пустует\./);
-  assert.match(leaderboard, /Стань одним из первых, кто пройдёт квиз,[\s\S]*и попади в таблицу лучших![\s\S]*Всё только начинается\./);
+  assert.match(leaderboard, /Пьедестал пока пустует/);
+  assert.match(leaderboard, /Стань одним из первых, кто пройдёт квиз,[\s\S]*и попади в таблицу лучших![\s\S]*Всё только начинается/);
   assert.equal(existsSync("public/quiz_win_placeholder.webp"), true);
   assert.ok(statSync("public/quiz_win_placeholder.webp").size < 100_000);
 });

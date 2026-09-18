@@ -1,3 +1,31 @@
+export const ACHIEVEMENT_CARD_IMAGE_PX = 144
+
+export function formatAchievementAwardedAt(value: Date | string) {
+  const parts = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "2-digit",
+    timeZone: "Europe/Moscow",
+  }).formatToParts(new Date(value))
+  const day = parts.find((part) => part.type === "day")?.value
+  const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
+  const year = parts.find((part) => part.type === "year")?.value
+  return `${day} ${month} ${year}`
+}
+
+export function formatAchievementHistoryDate(value: Date | string) {
+  const parts = new Intl.DateTimeFormat("ru-RU", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    timeZone: "Europe/Moscow",
+  }).formatToParts(new Date(value))
+  const day = parts.find((part) => part.type === "day")?.value
+  const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
+  const year = parts.find((part) => part.type === "year")?.value
+  return `${day} ${month} ${year}`
+}
+
 export type AchievementGalleryFilter = "all" | "earned" | "completed" | "in-progress" | "locked"
 
 export type AchievementShowcaseStatusFields = {
@@ -98,4 +126,56 @@ export function filterAchievementsByStatus<T extends AchievementShowcaseStatusFi
   if (filter === "in-progress") return items.filter(isAchievementInProgress)
   if (filter === "locked") return items.filter(isAchievementLocked)
   return items
+}
+
+export type AchievementHistoryEntry = {
+  awardedAt: Date | string
+  code: string
+  description: string | null
+  imageUrl: string | null
+  key: string
+  level: number
+  levelCount: number
+  name: string
+}
+
+export function listAchievementHistoryEntries(
+  items: ReadonlyArray<{
+    awardedLevels: ReadonlyArray<{
+      awardedAt: Date | string
+      description: string | null
+      imageUrl: string | null
+      level: number
+      name: string
+    }>
+    code: string
+    levelCount: number
+  }>,
+): AchievementHistoryEntry[] {
+  return items
+    .flatMap((item) => item.awardedLevels.map((level) => ({
+      awardedAt: level.awardedAt,
+      code: item.code,
+      description: level.description,
+      imageUrl: level.imageUrl,
+      key: `${item.code}:${level.level}`,
+      level: level.level,
+      levelCount: item.levelCount,
+      name: level.name,
+    })))
+    .sort((left, right) => {
+      if (left.code === right.code && achievementHistoryDayKey(left.awardedAt) === achievementHistoryDayKey(right.awardedAt)) {
+        return right.level - left.level
+      }
+      return new Date(right.awardedAt).getTime() - new Date(left.awardedAt).getTime()
+    })
+}
+
+function achievementHistoryDayKey(value: Date | string) {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "Europe/Moscow",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(value))
 }

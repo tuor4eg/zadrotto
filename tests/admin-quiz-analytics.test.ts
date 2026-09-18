@@ -28,9 +28,9 @@ describe("admin quiz analytics", () => {
 
   it("formats elapsed time and explicit empty values", () => {
     assert.equal(formatQuizDuration(null), "—");
-    assert.equal(formatQuizDuration(0), "0 с.");
-    assert.equal(formatQuizDuration(65), "1 м. 5 с.");
-    assert.equal(formatQuizDuration(90_061), "1 д. 1 ч. 1 м. 1 с.");
+    assert.equal(formatQuizDuration(0), "0 с");
+    assert.equal(formatQuizDuration(65), "1 м 5 с");
+    assert.equal(formatQuizDuration(90_061), "1 д 1 ч 1 м 1 с");
   });
 
   it("uses a fixed page size and clamps excessive page numbers", () => {

@@ -49,7 +49,7 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
   ] satisfies AdminToast[]
 
-  return <div className="mx-auto max-w-3xl">
+  return <div className={`mx-auto ${tab === "levels" ? "max-w-7xl" : "max-w-3xl"}`}>
     <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
     <PageHeader
       title="Редактирование ачивки"
@@ -111,6 +111,8 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
               isAwarded: level.isAwarded,
               level: level.level,
               name: level.name,
+              rarity: level.rarity,
+              showcaseBackgroundImageUrl: level.showcaseBackgroundImageUrl,
               threshold: level.threshold,
             }))}
           />

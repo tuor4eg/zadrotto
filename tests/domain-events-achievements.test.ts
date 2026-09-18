@@ -209,7 +209,7 @@ describe("achievement consumer", () => {
     assert.match(achievementImageSource, /fit: "contain"/);
     assert.match(achievementImageSource, /alpha: 0/);
     assert.match(achievementAdminActionSource, /uploadAchievementImage[\s\S]*updateAchievementLevel[\s\S]*deleteAchievementImageBestEffort\(currentLevel\.imageObjectKey\)/);
-    assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteAchievementImageBestEffort\(imageResult\.uploadedObjectKey\)/);
+    assert.match(achievementAdminActionSource, /catch \(error\)[\s\S]*deleteUploadedLevelImages\([\s\S]*imageResult\.uploadedObjectKey/);
   });
 
   it("serves only assigned images through production and local paths", () => {
@@ -220,11 +220,11 @@ describe("achievement consumer", () => {
   });
 
   it("uses a styled image picker with preview, validation, and removal", () => {
-    assert.match(achievementImagePickerSource, /className="sr-only"[\s\S]*name="imageFile"/);
+    assert.match(achievementImagePickerSource, /fileInputName = "imageFile"[\s\S]*className="sr-only"[\s\S]*name=\{fileInputName\}/);
     assert.match(achievementImagePickerSource, /buttonVariants\(\{ size: "sm" \}\)[\s\S]*Выбрать файл/);
     assert.match(achievementImagePickerSource, /URL\.createObjectURL\(file\)/);
     assert.match(achievementImagePickerSource, /Удалить изображение/);
-    assert.match(achievementImagePickerSource, /name="removeImage"/);
+    assert.match(achievementImagePickerSource, /removeInputName = "removeImage"[\s\S]*name=\{removeInputName\}/);
   });
 
   it("generates a unique achievement code instead of asking the admin for one", () => {
@@ -294,8 +294,8 @@ describe("achievement consumer", () => {
     )
     assert.match(listSource, /grid gap-3 sm:hidden/)
     assert.match(listSource, /TableWrap className="hidden sm:block"/)
-    assert.match(levelsSource, /mt-4 grid gap-3 sm:hidden/)
-    assert.match(levelsSource, /TableWrap className="mt-4 hidden sm:block"/)
+    assert.match(levelsSource, /mt-4 grid gap-3 md:grid-cols-2 xl:hidden/)
+    assert.match(levelsSource, /TableWrap className="mt-4 hidden overflow-hidden xl:block"/)
     assert.match(levelsSource, /<TH>Описание<\/TH>/)
     assert.match(levelsSource, /\{level\.description \? \(/)
   });
@@ -328,7 +328,8 @@ describe("achievement consumer", () => {
       "utf8",
     )
     const showcaseSource = readFileSync("src/components/achievements/achievement-showcase.tsx", "utf8")
-    assert.match(cardSource, /ACHIEVEMENT_CARD_IMAGE_PX = 144/)
+    const showcaseModelSource = readFileSync("src/lib/achievements/showcase.ts", "utf8")
+    assert.match(showcaseModelSource, /ACHIEVEMENT_CARD_IMAGE_PX = 144/)
     assert.match(cardSource, /flex h-full w-full shrink-0 basis-full flex-col/)
     assert.doesNotMatch(cardSource, /aspectRatio: "2 \/ 1"/)
     assert.doesNotMatch(cardSource, /ACHIEVEMENT_CARD_WIDTH_PX/)
@@ -340,7 +341,7 @@ describe("achievement consumer", () => {
     assert.match(cardSource, /if \(item\.levelCount <= 1\) return null/)
     assert.match(cardSource, /\$\{slide\.name\} \(\$\{level\}\)/)
     assert.match(cardSource, /slide\.awardedAt/)
-    assert.match(cardSource, /formatAwardedAt\(slide\.awardedAt\)/)
+    assert.match(cardSource, /formatAchievementAwardedAt\(slide\.awardedAt\)/)
     assert.match(cardSource, /line-clamp-3/)
     assert.match(cardSource, /browseAwardedLevels/)
     assert.doesNotMatch(cardSource, /onMouseLeave=/)
@@ -354,8 +355,7 @@ describe("achievement consumer", () => {
     assert.match(recentSource, /browseAwardedLevels fillWidth item=\{item\}/)
     assert.match(recentSource, /grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5/)
     assert.match(showcaseSource, /browseAwardedLevels fillWidth item=\{item\}/)
-    assert.match(showcaseSource, /grid gap-3 grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6/)
-    assert.doesNotMatch(showcaseSource, /auto-fill/)
+    assert.match(showcaseSource, /grid-cols-\[repeat\(auto-fill,minmax\(10\.5rem,1fr\)\)\]/)
   })
 
   it("loads production achievement images in the browser instead of the image optimizer", () => {
