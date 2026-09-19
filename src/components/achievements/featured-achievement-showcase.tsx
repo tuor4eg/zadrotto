@@ -83,7 +83,7 @@ export function FeaturedAchievementShowcase({
                     </div>
                   </div>
                   <div className="relative flex h-full flex-col items-center px-5 pb-14 pt-0.5 text-center sm:px-6 sm:pb-14">
-                    <h3 className="line-clamp-2 min-h-[2.5rem] w-full shrink-0 font-serif text-lg leading-tight drop-shadow-sm sm:min-h-[2.75rem] sm:text-xl">
+                    <h3 className="line-clamp-3 min-h-[3rem] w-full shrink-0 font-serif text-sm leading-tight drop-shadow-sm sm:text-base">
                       {title}
                     </h3>
                     <div className="flex min-h-0 w-full flex-1 flex-col items-center">
