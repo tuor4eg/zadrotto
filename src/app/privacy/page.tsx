@@ -1,5 +1,3 @@
-import Link from "next/link";
-
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
@@ -9,18 +7,11 @@ export default async function PrivacyPage() {
   const headerState = await getPublicSiteHeaderState();
 
   return (
-    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <article className="archive-paper archive-panel p-5 sm:p-7">
-          <nav aria-label="Хлебные крошки" className="text-xs text-stone-600">
-            <Link className="underline underline-offset-4 hover:text-stone-950" href="/about">
-              О проекте
-            </Link>
-            <span aria-hidden="true" className="mx-2">/</span>
-            <span aria-current="page">Конфиденциальность</span>
-          </nav>
-          <div className="mt-5 max-w-3xl space-y-6 text-sm leading-7 text-stone-700">
+        <article className="archive-paper archive-panel flex-1 p-5 sm:p-7">
+          <div className="space-y-6 text-sm leading-7 text-stone-700">
             <div>
               <h1 className="font-serif text-4xl leading-tight text-stone-950 sm:text-5xl">
                 Политика конфиденциальности

@@ -233,9 +233,9 @@ function LatestReview({
       ) : null}
 
       <div className="relative z-10 flex w-full flex-1 flex-col">
-        <div className="flex shrink-0 items-center gap-2 md:h-8">
+        <div className="flex shrink-0 items-start gap-2 md:h-8">
           <div className="flex min-w-0 items-center gap-2">
-            <MessageSquareQuote aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
+            <MessageSquareQuote aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
             <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
               Мнение из архива
             </h2>

@@ -1,6 +1,7 @@
 "use client";
 
 import { GoogleAnalytics } from "@next/third-parties/google";
+import { X } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
@@ -101,7 +102,19 @@ export function AnalyticsConsentLayer() {
           className="archive-paper-surface fixed inset-x-3 bottom-[max(0.75rem,env(safe-area-inset-bottom))] z-[110] mx-auto max-w-xl rounded-lg border border-stone-500/60 p-4 text-stone-800 shadow-[0_18px_45px_rgba(28,25,23,0.34)] sm:inset-x-5 sm:p-5"
           role={isSettingsOpen ? "dialog" : "region"}
         >
-          <h2 id="analytics-consent-title" className="font-serif text-xl text-stone-950">
+          {isSettingsOpen && consent !== null ? (
+            <Button
+              aria-label="Закрыть настройки аналитики"
+              className="absolute right-2 top-2 size-9"
+              onClick={() => setIsSettingsOpen(false)}
+              size="icon"
+              type="button"
+              variant="ghost"
+            >
+              <X aria-hidden="true" className="size-5" />
+            </Button>
+          ) : null}
+          <h2 id="analytics-consent-title" className="pr-9 font-serif text-xl text-stone-950">
             Аналитика сайта
           </h2>
           <p className="mt-2 text-sm leading-6 text-stone-600">
@@ -111,16 +124,20 @@ export function AnalyticsConsentLayer() {
               политике конфиденциальности
             </Link>.
           </p>
-          <div className="mt-4 flex flex-wrap justify-end gap-2">
-            {isSettingsOpen && consent !== null ? (
-              <Button type="button" variant="ghost" onClick={() => setIsSettingsOpen(false)}>
-                Закрыть
-              </Button>
-            ) : null}
-            <Button type="button" variant="outline" onClick={() => saveConsent("denied")}>
+          <div className="mt-4 grid grid-cols-2 gap-2">
+            <Button
+              className="w-full px-1 text-[11px] sm:px-4 sm:text-sm"
+              type="button"
+              variant="outline"
+              onClick={() => saveConsent("denied")}
+            >
               Только необходимые
             </Button>
-            <Button type="button" onClick={() => saveConsent("granted")}>
+            <Button
+              className="w-full px-1 text-[11px] sm:px-4 sm:text-sm"
+              type="button"
+              onClick={() => saveConsent("granted")}
+            >
               Разрешить аналитику
             </Button>
           </div>
