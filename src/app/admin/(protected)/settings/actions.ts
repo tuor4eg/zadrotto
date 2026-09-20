@@ -35,7 +35,10 @@ import { isCoverProviderCode } from "@/lib/covers/types";
 import { hashPassword, verifyPassword } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
 import { parseMediaItemTitleAliasLimit } from "@/lib/media/title-aliases";
-import { parseDailyDossierMinAverageScore } from "@/lib/main-page/daily-dossier-settings";
+import {
+  parseDailyDossierMinAverageScore,
+  parseDailyDossierMinRatingsCount,
+} from "@/lib/main-page/daily-dossier-settings";
 import {
   parseRecentlyViewedHistoryLimit,
   parseRecentlyViewedTtlDays,
@@ -184,6 +187,9 @@ export async function updateArchiveSettingsAction(
   const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
     getFormString(formData, "dailyDossierMinAverageScore"),
   );
+  const dailyDossierMinRatingsCount = parseDailyDossierMinRatingsCount(
+    getFormString(formData, "dailyDossierMinRatingsCount"),
+  );
   const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(
     getFormString(formData, "recentlyViewedHistoryLimit"),
   );
@@ -197,7 +203,7 @@ export async function updateArchiveSettingsAction(
     getFormString(formData, "topArchiveMinRatingsCount"),
   );
 
-  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     return { error: "Проверьте ограничения общих настроек.", success: null };
   }
 
@@ -206,6 +212,7 @@ export async function updateArchiveSettingsAction(
       maxTitleAliases: mediaItemTitleAliasLimit,
       maxFranchiseDepth,
       dailyDossierMinAverageScore,
+      dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit,
       recentlyViewedTtlDays,
       topArchiveMinAverageScore,
@@ -221,6 +228,7 @@ export async function updateArchiveSettingsAction(
       message: "Общие настройки обновлены.",
       metadata: {
         dailyDossierMinAverageScore,
+        dailyDossierMinRatingsCount,
         recentlyViewedHistoryLimit,
         recentlyViewedTtlDays,
         topArchiveMinAverageScore,

@@ -58,11 +58,11 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   };
 
   return (
-    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="w-full">
-        <div className="archive-paper archive-panel overflow-hidden">
+        <div className="flex w-full flex-1">
+        <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Все серии
@@ -112,7 +112,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
             selectedLetter={seriesPage.selectedLetter}
           />
         )}
-          <div className="border-t border-stone-400/45 bg-amber-50/20 px-3 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
+          <div className="mt-auto border-t border-stone-400/45 bg-amber-50/20 px-3 py-3 [&>nav]:border-0 [&>nav]:bg-transparent [&>nav]:p-0 [&>nav]:shadow-none sm:px-4">
             <PaginationNav
               basePath="/series"
               itemLabel="серий"

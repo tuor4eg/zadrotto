@@ -55,6 +55,14 @@ describe("public series tree", () => {
 });
 
 describe("public series catalog UI", () => {
+  it("stretches a short catalog to the available viewport height", () => {
+    assert.match(catalogPageSource, /archive-page flex min-h-0 flex-1 flex-col/);
+    assert.match(catalogPageSource, /max-w-\[1480px\] flex-1 flex-col gap-3/);
+    assert.match(catalogPageSource, /archive-paper archive-panel flex w-full flex-col overflow-hidden/);
+    assert.match(catalogPageSource, /mt-auto border-t border-stone-400\/45/);
+    assert.doesNotMatch(catalogPageSource, /archive-page min-h-screen/);
+  });
+
   it("renders the paginated roots as a recursive tree with counts and empty states", () => {
     assert.match(catalogSource, /function SeriesTree\(/);
     assert.match(

@@ -49,15 +49,15 @@ describe("quizzes", () => {
     assert.equal(getQuizState({ enabled: true, startsAt: now, endsAt: new Date(now.getTime() + 1) }, now), "active");
     assert.equal(getQuizState({ enabled: true, startsAt: new Date(now.getTime() - 1), endsAt: now }, now), "finished");
   });
-  it("formats the remaining time without displaying seconds", () => {
+  it("formats the remaining time using the two nearest units", () => {
     const now = new Date("2026-08-22T10:00:00.000Z");
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-24T11:02:00.000Z"), now),
-      "Осталось 2 д 1 ч 2 м",
+      "Осталось 2 д 1 ч",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T10:00:01.000Z"), now),
-      "Осталось 1 м",
+      "Осталось 1 с",
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-22T15:00:00.000Z"), now),
@@ -65,11 +65,15 @@ describe("quizzes", () => {
     );
     assert.equal(
       formatQuizTimeRemaining(new Date("2026-08-23T10:05:00.000Z"), now),
-      "Осталось 1 д 0 ч 5 м",
+      "Осталось 1 д 0 ч",
+    );
+    assert.equal(
+      formatQuizTimeRemaining(new Date("2026-08-22T10:05:07.000Z"), now),
+      "Осталось 5 м 7 с",
     );
     assert.equal(
       formatQuizTimeRemaining(now, now),
-      "Осталось 0 м",
+      "Осталось 0 с",
     );
   });
   it("treats an empty media type selection as any type", () => {
@@ -185,6 +189,7 @@ describe("quizzes", () => {
     assert.match(activeQuizPanel, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
     assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
+    assert.match(modal, /mb-5 px-12 text-center sm:px-32[\s\S]*whitespace-nowrap font-serif text-2xl sm:text-3xl/);
     assert.match(modal, /Открыть правила викторины/);
     assert.match(modal, /aria-label="Назад к викторине"[\s\S]*<ArrowLeft/);
     assert.match(modal, /left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
@@ -285,12 +290,9 @@ describe("quizzes", () => {
     assert.match(archiveRiddle, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
     assert.match(
       archiveRiddle,
-      /archive-riddle-timer-desktop[\s\S]*archive-riddle-timer-mobile/,
+      /archive-riddle-timer ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs/,
     );
-    assert.match(
-      globals,
-      /@media \(min-width: 1024px\) and \(min-aspect-ratio: 1 \/ 1\)[\s\S]*archive-riddle-timer-desktop[\s\S]*display: inline;[\s\S]*archive-riddle-timer-mobile[\s\S]*display: none;/,
-    );
+    assert.doesNotMatch(globals, /archive-riddle-timer-(?:desktop|mobile)/);
     assert.doesNotMatch(archiveRiddle, /<QuizParticipationButton/);
     assert.match(guessButton, /setQuizParticipant/);
     assert.match(guessButton, /data\.correct \|\| data\.participant\?\.outcome === "exhausted"/);

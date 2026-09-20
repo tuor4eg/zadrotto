@@ -259,6 +259,7 @@ function LatestReview({
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
                   {mediaTypeName ?? review.mediaType}
                   {review.releaseYear ? ` · ${review.releaseYear}` : ""}
+                  {review.authorScore !== null ? ` · ${formatScore(review.authorScore)} оценка автора` : ""}
                 </p>
                 <AdaptiveReviewExcerpt text={review.excerpt} />
                 <p className="mt-3 shrink-0 text-xs text-stone-600">— {review.authorName}</p>

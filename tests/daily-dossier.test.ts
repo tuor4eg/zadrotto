@@ -12,7 +12,9 @@ import {
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import {
   DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE,
+  DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT,
   parseDailyDossierMinAverageScore,
+  parseDailyDossierMinRatingsCount,
 } from "@/lib/main-page/daily-dossier-settings";
 
 function item(id: number): MainPageMediaItem {
@@ -66,6 +68,7 @@ describe("daily dossier UTC cache helpers", () => {
     assert.match(source, /eq\(mediaTypes\.enabledByDefault, true\)/);
     assert.match(source, /\.leftJoin\(mediaItemRatingStats, eq\(mediaItemRatingStats\.mediaItemId, mediaItems\.id\)\)/);
     assert.match(source, /minAverageScore > 0[\s\S]*scoreSum}[\s\S]*ratingsCount}[\s\S]*minAverageScore \* 10[\s\S]*: undefined/);
+    assert.match(source, /minRatingsCount > 0[\s\S]*gte\(mediaItemRatingStats\.ratingsCount, minRatingsCount\)[\s\S]*: undefined/);
   });
 
   it("parses the configured whole-score threshold", () => {
@@ -79,12 +82,24 @@ describe("daily dossier UTC cache helpers", () => {
     assert.equal(parseDailyDossierMinAverageScore(null), null);
     assert.equal(parseDailyDossierMinAverageScore(false), null);
     assert.equal(parseDailyDossierMinAverageScore(true), null);
+    assert.equal(DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT, 0);
+    assert.equal(parseDailyDossierMinRatingsCount("0"), 0);
+    assert.equal(parseDailyDossierMinRatingsCount(1000), 1000);
+    assert.equal(parseDailyDossierMinRatingsCount(-1), null);
+    assert.equal(parseDailyDossierMinRatingsCount(1001), null);
+    assert.equal(parseDailyDossierMinRatingsCount(1.5), null);
+    assert.equal(parseDailyDossierMinRatingsCount(""), null);
+    assert.equal(parseDailyDossierMinRatingsCount(false), null);
   });
 
   it("persists and exposes the dossier threshold in general settings", () => {
     const schema = readFileSync("src/db/schema.ts", "utf8");
     const migration = readFileSync(
       "drizzle/0049_daily_dossier_min_average_score.sql",
+      "utf8",
+    );
+    const ratingsCountMigration = readFileSync(
+      "drizzle/0090_daily_dossier_min_ratings_count.sql",
       "utf8",
     );
     const settingsQuery = readFileSync("src/db/queries/archive-settings.ts", "utf8");
@@ -102,10 +117,16 @@ describe("daily dossier UTC cache helpers", () => {
     assert.match(schema, /daily_dossier_min_average_score_check[\s\S]*between 0 and 10/);
     assert.match(migration, /daily_dossier_min_average_score[\s\S]*DEFAULT 6 NOT NULL/);
     assert.match(migration, /BETWEEN 0 AND 10/);
+    assert.match(schema, /dailyDossierMinRatingsCount: integer\("daily_dossier_min_ratings_count"\)\.default\(0\)\.notNull\(\)/);
+    assert.match(schema, /daily_dossier_min_ratings_count_check[\s\S]*between 0 and 1000/);
+    assert.match(ratingsCountMigration, /daily_dossier_min_ratings_count[\s\S]*DEFAULT 0 NOT NULL/);
+    assert.match(ratingsCountMigration, /BETWEEN 0 AND 1000/);
     assert.match(settingsQuery, /parseDailyDossierMinAverageScore/);
-    assert.match(settingsAction, /dailyDossierMinAverageScore[\s\S]*metadata/);
+    assert.match(settingsQuery, /parseDailyDossierMinRatingsCount/);
+    assert.match(settingsAction, /dailyDossierMinAverageScore[\s\S]*dailyDossierMinRatingsCount[\s\S]*metadata/);
     assert.match(settingsForm, /Минимальная средняя оценка «Досье дня»/);
-    assert.match(service, /getArchiveSettings\(\)[\s\S]*settings\.dailyDossierMinAverageScore/);
+    assert.match(settingsForm, /name="dailyDossierMinRatingsCount"[\s\S]*Значение 0 допускает любое количество оценок/);
+    assert.match(service, /getArchiveSettings\(\)[\s\S]*settings\.dailyDossierMinAverageScore[\s\S]*settings\.dailyDossierMinRatingsCount/);
   });
 
   it("reads the persisted winner after losing a SET NX race", async () => {

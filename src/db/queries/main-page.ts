@@ -15,7 +15,10 @@ import {
 } from "@/db/schema";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
-import { parseDailyDossierMinAverageScore } from "@/lib/main-page/daily-dossier-settings";
+import {
+  parseDailyDossierMinAverageScore,
+  parseDailyDossierMinRatingsCount,
+} from "@/lib/main-page/daily-dossier-settings";
 
 export type MainPageMediaItem = {
   averageScore: number | null;
@@ -46,11 +49,13 @@ function createDailyDossierQuery(input: {
   currentAuthorId?: number;
   mediaItemId?: number;
   minAverageScore: number;
+  minRatingsCount: number;
 }) {
   const minAverageScore = parseDailyDossierMinAverageScore(input.minAverageScore);
+  const minRatingsCount = parseDailyDossierMinRatingsCount(input.minRatingsCount);
 
-  if (minAverageScore === null) {
-    throw new Error("Invalid daily dossier minimum average score");
+  if (minAverageScore === null || minRatingsCount === null) {
+    throw new Error("Invalid daily dossier thresholds");
   }
 
   return db
@@ -88,6 +93,9 @@ function createDailyDossierQuery(input: {
       minAverageScore > 0
         ? sql`${mediaItemRatingStats.scoreSum} >= ${mediaItemRatingStats.ratingsCount} * ${minAverageScore * 10}`
         : undefined,
+      minRatingsCount > 0
+        ? gte(mediaItemRatingStats.ratingsCount, minRatingsCount)
+        : undefined,
     ));
 }
 
@@ -104,6 +112,7 @@ function resolveDailyDossierItem(item: MainPageMediaItem | undefined) {
 export async function getRandomDailyDossierCandidate(input: {
   currentAuthorId?: number;
   minAverageScore: number;
+  minRatingsCount: number;
 }) {
   const [{ maxId }] = await db.select({ maxId: sql<number | null>`max(${mediaItems.id})::int` }).from(mediaItems);
   if (!maxId) return null;
@@ -123,12 +132,14 @@ export async function getEligibleDailyDossierById(
     currentAuthorId?: number;
     id: number;
     minAverageScore: number;
+    minRatingsCount: number;
   },
 ) {
   const [item] = await createDailyDossierQuery({
     currentAuthorId: input.currentAuthorId,
     mediaItemId: input.id,
     minAverageScore: input.minAverageScore,
+    minRatingsCount: input.minRatingsCount,
   }).limit(1);
 
   return resolveDailyDossierItem(item);

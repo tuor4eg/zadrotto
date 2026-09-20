@@ -67,6 +67,7 @@ describe("collection surfaces", () => {
     assert.match(renderer, /flushMediaGroup/);
     assert.match(renderer, /whitespace-pre-wrap/);
     assert.match(renderer, /mediaNumber \+= 1/);
+    assert.match(renderer, /className="-mb-4 font-serif text-3xl/);
   });
 
   it("shows published collections as wide image cards on the home page", () => {

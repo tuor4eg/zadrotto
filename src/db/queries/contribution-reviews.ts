@@ -147,6 +147,7 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
   const [review] = await db
     .select({
       authorName: authors.name,
+      authorScore: ratings.score,
       body: contributionReviews.body,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
@@ -160,6 +161,10 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
     .innerJoin(authors, eq(authors.id, contributions.authorId))
     .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
     .where(and(
       eq(contributions.type, "review"),
       eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),

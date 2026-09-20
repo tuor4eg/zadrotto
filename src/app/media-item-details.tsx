@@ -398,63 +398,65 @@ function ArchiveMediaItemDetails({
             <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
           </div>
 
-          <div className="relative order-2 min-w-0 px-6 pb-6 lg:col-start-1 lg:row-start-2">
-            <div
-              className={
-                hasCarrierFrame
-                  ? "mt-6 mx-auto max-w-full sm:max-w-[420px]"
-                  : "mt-6 mx-auto max-w-[360px]"
-              }
-            >
+          <div className="contents lg:relative lg:order-2 lg:col-start-1 lg:row-start-2 lg:block lg:min-w-0 lg:px-6 lg:pb-6">
+            <div className="relative order-2 min-w-0 px-6 pb-6 lg:px-0 lg:pb-0">
               <div
                 className={
                   hasCarrierFrame
-                    ? ""
-                    : "rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
+                    ? "mt-6 mx-auto max-w-full sm:max-w-[420px]"
+                    : "mt-6 mx-auto max-w-[360px]"
                 }
               >
                 <div
                   className={
                     hasCarrierFrame
                       ? ""
-                      : "rounded-sm border border-stone-700 bg-stone-900 p-3"
+                      : "rounded-md border border-stone-400 bg-stone-950 p-2 shadow-2xl shadow-stone-950/25"
                   }
                 >
-                  {!hasCarrierFrame ? (
-                    <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
-                      Archive cover
-                    </div>
-                  ) : null}
                   <div
                     className={
                       hasCarrierFrame
-                        ? `relative max-w-full ${
-                            mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
-                          } overflow-visible rounded-sm`
-                        : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                        ? ""
+                        : "rounded-sm border border-stone-700 bg-stone-900 p-3"
                     }
                   >
-                    {item.coverUrl ? (
-                      <ImageViewer
-                        src={item.coverUrl}
-                        alt={`Обложка: ${item.title}`}
-                        title={item.title}
-                        triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
-                          hasCarrierFrame ? "" : "media-image-lift-trigger"
-                        }`}
-                      >
-                        <ArchiveCover item={item} className="h-full w-full" />
-                      </ImageViewer>
-                    ) : (
-                      <ArchiveCover item={item} className="h-full w-full" />
-                    )}
-                    {!item.coverUrl && !hasCarrierFrame ? (
-                      <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
-                        <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
-                          Нет изображения
-                        </span>
+                    {!hasCarrierFrame ? (
+                      <div className="mb-3 font-mono text-xs uppercase tracking-[0.18em] text-stone-200">
+                        Archive cover
                       </div>
                     ) : null}
+                    <div
+                      className={
+                        hasCarrierFrame
+                          ? `relative max-w-full ${
+                              mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
+                            } overflow-visible rounded-sm`
+                          : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                      }
+                    >
+                      {item.coverUrl ? (
+                        <ImageViewer
+                          src={item.coverUrl}
+                          alt={`Обложка: ${item.title}`}
+                          title={item.title}
+                          triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
+                            hasCarrierFrame ? "" : "media-image-lift-trigger"
+                          }`}
+                        >
+                          <ArchiveCover item={item} className="h-full w-full" />
+                        </ImageViewer>
+                      ) : (
+                        <ArchiveCover item={item} className="h-full w-full" />
+                      )}
+                      {!item.coverUrl && !hasCarrierFrame ? (
+                        <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
+                          <span className="rounded-sm bg-stone-50/60 px-3 py-2 text-center font-mono text-xs font-semibold uppercase tracking-[0.18em] text-stone-900/75 shadow-[0_1px_0_rgba(255,255,255,0.45)]">
+                            Нет изображения
+                          </span>
+                        </div>
+                      ) : null}
+                    </div>
                   </div>
                 </div>
                 <CoverSourceAttribution
@@ -464,13 +466,15 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
             {adjacentShelfSlot ? (
-              <div className="mt-7 w-full max-w-[420px] sm:ml-2">
-                {adjacentShelfSlot}
+              <div className="order-5 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
+                <div className="mt-7 w-full max-w-[420px] sm:ml-2">
+                  {adjacentShelfSlot}
+                </div>
               </div>
             ) : null}
           </div>
 
-          <div className="order-4 flex min-h-[560px] flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:col-start-2 lg:row-start-2">
+          <div className="order-4 flex flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:col-start-2 lg:row-start-2 lg:min-h-[560px]">
             <div>
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
                 {titleActions}

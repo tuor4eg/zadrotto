@@ -161,6 +161,7 @@ export const archiveSettings = pgTable(
     dailyDossierMinAverageScore: integer("daily_dossier_min_average_score")
       .default(6)
       .notNull(),
+    dailyDossierMinRatingsCount: integer("daily_dossier_min_ratings_count").default(0).notNull(),
     recentlyViewedHistoryLimit: integer("recently_viewed_history_limit").default(50).notNull(),
     recentlyViewedTtlDays: integer("recently_viewed_ttl_days").default(90).notNull(),
     topArchiveMinAverageScore: integer("top_archive_min_average_score").default(0).notNull(),
@@ -180,6 +181,10 @@ export const archiveSettings = pgTable(
     check(
       "archive_settings_daily_dossier_min_average_score_check",
       sql`${table.dailyDossierMinAverageScore} between 0 and 10`,
+    ),
+    check(
+      "archive_settings_daily_dossier_min_ratings_count_check",
+      sql`${table.dailyDossierMinRatingsCount} between 0 and 1000`,
     ),
     check("archive_settings_recently_viewed_history_limit_check", sql`${table.recentlyViewedHistoryLimit} between 1 and 500`),
     check("archive_settings_recently_viewed_ttl_days_check", sql`${table.recentlyViewedTtlDays} between 1 and 365`),

@@ -13,6 +13,7 @@ const initialState: UpdateArchiveSettingsState = { error: null, success: null };
 
 export function ArchiveSettingsForm({
   dailyDossierMinAverageScore,
+  dailyDossierMinRatingsCount,
   mediaItemTitleAliasLimit,
   maxFranchiseDepth,
   recentlyViewedHistoryLimit,
@@ -21,6 +22,7 @@ export function ArchiveSettingsForm({
   topArchiveMinRatingsCount,
 }: {
   dailyDossierMinAverageScore: number;
+  dailyDossierMinRatingsCount: number;
   mediaItemTitleAliasLimit: number;
   maxFranchiseDepth: number;
   recentlyViewedHistoryLimit: number;
@@ -53,10 +55,17 @@ export function ArchiveSettingsForm({
 
       <fieldset className="rounded-md border border-stone-200 p-4">
         <legend className="px-1 text-sm font-medium text-stone-900">Досье дня</legend>
-        <div className="grid gap-1.5">
-          <Label className="flex min-h-10 items-end" htmlFor="daily-dossier-min-average-score">Минимальная средняя оценка «Досье дня»</Label>
-          <Input id="daily-dossier-min-average-score" name="dailyDossierMinAverageScore" type="number" min={0} max={10} defaultValue={dailyDossierMinAverageScore} required />
-          <p className="text-xs leading-4 text-stone-500">0–10, ноль разрешает выбирать любые записи.</p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid content-start gap-1.5">
+            <Label className="flex min-h-10 items-end" htmlFor="daily-dossier-min-average-score">Минимальная средняя оценка «Досье дня»</Label>
+            <Input id="daily-dossier-min-average-score" name="dailyDossierMinAverageScore" type="number" min={0} max={10} defaultValue={dailyDossierMinAverageScore} required />
+            <p className="text-xs leading-4 text-stone-500">0–10, ноль отключает порог.</p>
+          </div>
+          <div className="grid content-start gap-1.5">
+            <Label className="flex min-h-10 items-end" htmlFor="daily-dossier-min-ratings-count">Минимальное число оценок</Label>
+            <Input id="daily-dossier-min-ratings-count" name="dailyDossierMinRatingsCount" type="number" min={0} max={1000} defaultValue={dailyDossierMinRatingsCount} required />
+            <p className="text-xs leading-4 text-stone-500">От 0 до 1000. Значение 0 допускает любое количество оценок.</p>
+          </div>
         </div>
       </fieldset>
 

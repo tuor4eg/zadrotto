@@ -12,13 +12,17 @@ const reviewQuery = readFileSync("src/db/queries/contribution-reviews.ts", "utf8
 const mainPage = readFileSync("src/app/page.tsx", "utf8");
 
 describe("public media reviews layout", () => {
-  it("hides an empty review shelf from guests and keeps it below the cover", () => {
+  it("hides an empty review shelf from guests and keeps it below the archive note on mobile", () => {
     assert.match(reviews, /if \(!currentAuthor && reviews\.length === 0\) \{\s*return null/);
     assert.match(mediaPage, /adjacentShelfSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
     const cover = details.indexOf("<ArchiveCover");
     const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
     const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
     assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
+    assert.match(details, /className="contents lg:relative[^"]*lg:block/);
+    assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
+    assert.match(details, /<div className="order-4 flex flex-col[^"]*lg:min-h-\[560px\]"/);
+    assert.doesNotMatch(details, /order-4 flex min-h-\[560px\]/);
     assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:ml-2"/);
     assert.doesNotMatch(details, /className="mx-auto mt-7 w-full max-w-\[420px\]"/);
   });
@@ -48,6 +52,8 @@ describe("public media reviews layout", () => {
 
   it("keeps the latest review cover visible on the main page", () => {
     assert.match(mainPage, /const coverUrl = review\?\.coverThumbUrl \?\? review\?\.coverUrl/);
+    assert.match(mainPage, /review\.releaseYear[\s\S]*review\.authorScore !== null \? ` · \$\{formatScore\(review\.authorScore\)\} оценка автора`/);
+    assert.match(reviewQuery, /getLatestPublishedReviewCard[\s\S]*authorScore: ratings\.score[\s\S]*leftJoin\([\s\S]*ratings\.authorId, contributions\.authorId[\s\S]*ratings\.mediaItemId, mediaItems\.id/);
     assert.match(
       mainPage,
       /aria-labelledby="main-latest-review"[\s\S]*backgroundImage: `url\(\$\{JSON\.stringify\(coverUrl\)\}\)`[\s\S]*position: "absolute"/,

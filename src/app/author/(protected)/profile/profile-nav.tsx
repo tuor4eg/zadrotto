@@ -30,7 +30,7 @@ export function ProfileNav() {
   return (
     <nav
       aria-label="Разделы профиля"
-      className="flex gap-2 overflow-x-auto rounded-md border border-stone-200 bg-white p-2 lg:grid lg:overflow-visible"
+      className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto rounded-md border border-stone-200 bg-white p-2 lg:grid lg:overflow-visible"
     >
       {PROFILE_NAV_ITEMS.map((item) => {
         const Icon = item.icon;

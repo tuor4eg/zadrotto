@@ -78,7 +78,7 @@ export function ArchiveRiddle({
             Загадка архива
           </h2>
           {timeRemaining ? (
-            <span className="archive-riddle-timer-desktop ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs text-stone-600">
+            <span className="archive-riddle-timer ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs text-stone-600">
               {timeRemaining}
             </span>
           ) : null}
@@ -121,9 +121,6 @@ export function ArchiveRiddle({
                 Загадка уже разгадана
               </p>
             ) : null}
-            <span className="archive-riddle-timer-mobile shrink-0 whitespace-nowrap text-left text-[10px] text-stone-600">
-              {timeRemaining}
-            </span>
           </>
         ) : (
           <QuizNoActiveState compact={size === "default"} />

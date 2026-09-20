@@ -8,7 +8,9 @@ import {
 } from "@/lib/media/title-aliases";
 import {
   DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE,
+  DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT,
   parseDailyDossierMinAverageScore,
+  parseDailyDossierMinRatingsCount,
 } from "@/lib/main-page/daily-dossier-settings";
 import {
   DEFAULT_RECENTLY_VIEWED_HISTORY_LIMIT,
@@ -27,6 +29,7 @@ const ARCHIVE_SETTINGS_ID = 1;
 
 export type ArchiveSettingsValue = {
   dailyDossierMinAverageScore: number;
+  dailyDossierMinRatingsCount: number;
   maxTitleAliases: number;
   maxFranchiseDepth: number;
   recentlyViewedHistoryLimit: number;
@@ -41,6 +44,7 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
       maxTitleAliases: archiveSettings.maxTitleAliases,
       maxFranchiseDepth: archiveSettings.maxFranchiseDepth,
       dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
+      dailyDossierMinRatingsCount: archiveSettings.dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
       topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
@@ -54,6 +58,9 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
     dailyDossierMinAverageScore:
       parseDailyDossierMinAverageScore(settings?.dailyDossierMinAverageScore) ??
       DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE,
+    dailyDossierMinRatingsCount:
+      parseDailyDossierMinRatingsCount(settings?.dailyDossierMinRatingsCount) ??
+      DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT,
     maxTitleAliases:
       parseMediaItemTitleAliasLimit(settings?.maxTitleAliases) ??
       DEFAULT_MEDIA_ITEM_TITLE_ALIAS_LIMIT,
@@ -81,12 +88,15 @@ export async function updateArchiveSettings(
   const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
     input.dailyDossierMinAverageScore,
   );
+  const dailyDossierMinRatingsCount = parseDailyDossierMinRatingsCount(
+    input.dailyDossierMinRatingsCount,
+  );
   const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(input.recentlyViewedHistoryLimit);
   const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(input.recentlyViewedTtlDays);
   const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(input.topArchiveMinAverageScore);
   const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(input.topArchiveMinRatingsCount);
 
-  if (maxTitleAliases === null || dailyDossierMinAverageScore === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (maxTitleAliases === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     throw new Error("Invalid archive settings");
   }
   const rows = await db.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
@@ -101,6 +111,7 @@ export async function updateArchiveSettings(
       maxTitleAliases,
       maxFranchiseDepth,
       dailyDossierMinAverageScore,
+      dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit,
       recentlyViewedTtlDays,
       topArchiveMinAverageScore,
@@ -113,6 +124,7 @@ export async function updateArchiveSettings(
         maxTitleAliases,
         maxFranchiseDepth,
         dailyDossierMinAverageScore,
+        dailyDossierMinRatingsCount,
         recentlyViewedHistoryLimit,
         recentlyViewedTtlDays,
         topArchiveMinAverageScore,
@@ -125,6 +137,7 @@ export async function updateArchiveSettings(
       maxTitleAliases: archiveSettings.maxTitleAliases,
       maxFranchiseDepth: archiveSettings.maxFranchiseDepth,
       dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
+      dailyDossierMinRatingsCount: archiveSettings.dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
       topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,

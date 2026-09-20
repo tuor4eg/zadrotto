@@ -33,21 +33,19 @@ export type AuthorQuizStatistics = {
 };
 
 export function formatQuizTimeRemaining(endsAt: string | Date, now = new Date()) {
-  const totalMinutes = Math.ceil(Math.max(
+  const totalSeconds = Math.ceil(Math.max(
     0,
     new Date(endsAt).getTime() - now.getTime(),
-  ) / 60_000);
-  const days = Math.floor(totalMinutes / 1_440);
-  const hours = Math.floor((totalMinutes % 1_440) / 60);
-  const minutes = totalMinutes % 60;
-  const parts = [
-    `${days} д`,
-    `${hours} ч`,
-    `${minutes} м`,
-  ];
-  const firstNonZeroPart = [days, hours, minutes].findIndex((value) => value > 0);
+  ) / 1_000);
+  const days = Math.floor(totalSeconds / 86_400);
+  const hours = Math.floor((totalSeconds % 86_400) / 3_600);
+  const minutes = Math.floor((totalSeconds % 3_600) / 60);
+  const seconds = totalSeconds % 60;
 
-  return `Осталось ${parts.slice(firstNonZeroPart === -1 ? -1 : firstNonZeroPart).join(" ")}`;
+  if (days > 0) return `Осталось ${days} д ${hours} ч`;
+  if (hours > 0) return `Осталось ${hours} ч ${minutes} м`;
+  if (minutes > 0) return `Осталось ${minutes} м ${seconds} с`;
+  return `Осталось ${seconds} с`;
 }
 
 export function formatQuizDuration(totalSeconds: number | null) {

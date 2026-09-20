@@ -1,5 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 
 import {
   formatMediaCarrierTitle,
@@ -8,6 +9,13 @@ import {
 } from "@/lib/media/carrier-frame";
 
 describe("media carrier frames", () => {
+  it("labels streaming film and series covers as watched", () => {
+    const tile = readFileSync("src/app/media-item-tile.tsx", "utf8");
+
+    assert.match(tile, /function StreamingCover[\s\S]*Просмотрено/);
+    assert.doesNotMatch(tile, /Продолжить просмотр/);
+  });
+
   it("resolves NES cartridge frame by media type and carrier code", () => {
     assert.deepEqual(
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "nes" }),

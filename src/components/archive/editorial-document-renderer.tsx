@@ -48,7 +48,7 @@ export function EditorialDocumentRenderer<TMediaBlock extends EditorialDocumentM
     }
     flushMediaGroup(`media-before-${block.id}`);
     sections.push(block.type === "heading"
-      ? <h2 key={block.id} className="font-serif text-3xl leading-tight text-stone-950 sm:text-4xl">{block.content}</h2>
+      ? <h2 key={block.id} className="-mb-4 font-serif text-3xl leading-tight text-stone-950 sm:text-4xl">{block.content}</h2>
       : <div key={block.id} className="whitespace-pre-wrap text-base leading-7 text-stone-700">{block.content}</div>);
   }
   flushMediaGroup("media-end");

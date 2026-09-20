@@ -125,8 +125,8 @@ export function QuizModal({
         >
           <X className="size-4" />
         </button>
-        <div className="pointer-events-none mb-5 px-24 text-center sm:px-32">
-          <h2 id="active-quiz-title" className="font-serif text-3xl">
+        <div className="pointer-events-none mb-5 px-12 text-center sm:px-32">
+          <h2 id="active-quiz-title" className="whitespace-nowrap font-serif text-2xl sm:text-3xl">
             {view === "rules" ? "Как играть" : "Викторина"}
           </h2>
         </div>

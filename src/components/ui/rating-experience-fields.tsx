@@ -29,7 +29,7 @@ const MONTH_OPTIONS = [
 ] as const;
 const MIN_EXPERIENCE_YEAR = 1950;
 const DATE_SELECT_CLASS_NAME =
-  "w-full [&>button]:h-11 [&>button]:w-full [&>button]:min-w-0 [&>button]:justify-between [&>button]:px-3";
+  "w-full [&>button]:h-11 [&>button]:w-full [&>button]:min-w-0 [&>button]:justify-between [&>button]:px-2 [&>button>span:first-child]:hidden";
 
 type RatingExperienceFieldsProps = {
   currentFirstExperiencedAt?: Date | string | null;
@@ -182,10 +182,10 @@ export function RatingExperienceFields({
         <div
           className={`grid gap-2 ${
             selectedExperiencePrecision === "year"
-              ? ""
+              ? "sm:grid-cols-[88px]"
               : selectedExperiencePrecision === "month"
-                ? "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]"
-                : "sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,1fr)]"
+                ? "sm:grid-cols-[88px_minmax(0,1fr)]"
+                : "sm:grid-cols-[88px_minmax(0,1fr)_48px]"
           }`}
         >
           <ArchiveSelect

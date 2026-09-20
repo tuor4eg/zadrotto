@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import {
@@ -10,6 +11,14 @@ import {
 } from "../src/lib/authors/experience-date";
 
 describe("formatFirstExperiencedDate", () => {
+  it("keeps year and day selectors compact so the adjacent labels fit", () => {
+    const fields = readFileSync("src/components/ui/rating-experience-fields.tsx", "utf8");
+
+    assert.match(fields, /sm:grid-cols-\[88px_minmax\(0,1fr\)_48px\]/);
+    assert.match(fields, /\[&>button>span:first-child\]:hidden/);
+    assert.match(fields, /sm:grid-cols-\[minmax\(0,1fr\)_160px\]/);
+  });
+
   it("formats first experience dates by stored precision", () => {
     assert.equal(formatFirstExperiencedDate("1991-01-01", "year"), "1991");
     assert.equal(formatFirstExperiencedDate("1991-03-01", "month"), "март 1991");

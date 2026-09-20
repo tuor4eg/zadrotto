@@ -7,7 +7,10 @@ import {
 } from "@/db/queries/main-page";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getRedisClient } from "@/lib/services/redis";
-import { DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE } from "@/lib/main-page/daily-dossier-settings";
+import {
+  DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE,
+  DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT,
+} from "@/lib/main-page/daily-dossier-settings";
 
 const CACHE_KEY_PREFIX = "main-page:daily-dossier";
 const EXPIRY_BUFFER_SECONDS = 60;
@@ -151,10 +154,12 @@ export async function getDailyDossier(
   now = new Date(),
 ): Promise<MainPageMediaItem | null> {
   let minAverageScore = DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE;
+  let minRatingsCount = DEFAULT_DAILY_DOSSIER_MIN_RATINGS_COUNT;
 
   try {
     const settings = await getArchiveSettings();
     minAverageScore = settings.dailyDossierMinAverageScore;
+    minRatingsCount = settings.dailyDossierMinRatingsCount;
     const client = await getRedisClient();
     return getDailyDossierWithDependencies({
       client,
@@ -162,14 +167,16 @@ export async function getDailyDossier(
         currentAuthorId,
         id,
         minAverageScore,
+        minRatingsCount,
       }),
       getRandomCandidate: () => getRandomDailyDossierCandidate({
         currentAuthorId,
         minAverageScore,
+        minRatingsCount,
       }),
     }, now);
   } catch (error) {
     console.error("Daily dossier cache error", error);
-    return getRandomDailyDossierCandidate({ currentAuthorId, minAverageScore });
+    return getRandomDailyDossierCandidate({ currentAuthorId, minAverageScore, minRatingsCount });
   }
 }

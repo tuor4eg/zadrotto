@@ -24,7 +24,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
   ]);
 
   return (
-    <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+    <main className="archive-page min-h-screen min-w-0 px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <header
@@ -77,7 +77,7 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
         </header>
 
         <section
-          className="archive-paper-surface archive-panel author-content-shell p-5 sm:p-6"
+          className="archive-paper-surface archive-panel author-content-shell min-w-0 p-5 sm:p-6"
           style={{ overflow: "visible" }}
         >
           {children}

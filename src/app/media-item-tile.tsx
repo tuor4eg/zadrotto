@@ -446,7 +446,7 @@ function StreamingCover({
       ? frame.compactSizeClassName ?? frame.sizeClassName
       : frame.sizeClassName;
   const progressLabel =
-    getStreamingProgressLabel(item) ?? frame.streamingProgressLabel ?? "Продолжить просмотр";
+    getStreamingProgressLabel(item) ?? frame.streamingProgressLabel ?? "Просмотрено";
   const topBadgeLabel = getStreamingTopBadgeLabel(item) ?? frame.streamingTopBadgeLabel;
 
   return (
@@ -503,7 +503,7 @@ function StreamingCover({
             </span>
             <span className="min-w-0 flex-1 text-white drop-shadow-[0_1px_4px_rgba(0,0,0,0.5)]">
               <span className="block truncate text-[clamp(0.5rem,2.4vw,0.78rem)] font-semibold leading-tight">
-                Продолжить просмотр
+                Просмотрено
               </span>
               <span className="mt-0.5 block truncate text-[clamp(0.42rem,2vw,0.64rem)] leading-tight text-white/78">
                 {progressLabel}
