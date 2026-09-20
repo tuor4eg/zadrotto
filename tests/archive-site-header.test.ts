@@ -19,6 +19,7 @@ const publicPages = [
   "src/app/users/[id]/page.tsx",
   "src/app/users/[id]/achievements/page.tsx",
   "src/app/about/page.tsx", "src/app/help/page.tsx", "src/app/rules/page.tsx",
+  "src/app/privacy/page.tsx",
 ];
 
 const excludedPages = [
@@ -131,6 +132,7 @@ describe("public site header", () => {
 
   it("mounts one shared footer layer on public routes only", () => {
     assert.match(rootLayoutSource, /<PublicSiteFooterLayer \/>/);
+    assert.match(rootLayoutSource, /<AnalyticsConsentLayer \/>/);
     assert.match(footerLayerSource, /public-site-footer-layer/);
     assert.match(footerLayerSource, /<ArchiveSiteFooter \/>/);
     assert.match(footerLayerSource, /max-w-\[1480px\]/);
@@ -140,6 +142,7 @@ describe("public site header", () => {
       read("src/components/archive/archive-site-footer.tsx"),
       /18\+ · В отдельных статьях, мнениях и описаниях может встречаться ненормативная лексика/,
     );
+    assert.match(read("src/components/archive/archive-site-footer.tsx"), /<AnalyticsSettingsButton \/>/);
     assert.match(
       globalsSource,
       /\.archive-page:has\(\+ \.public-site-footer-layer\) \{\s*flex: 1 0 auto;\s*min-height: 0;/,

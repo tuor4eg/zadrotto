@@ -1,5 +1,7 @@
 import Link from "next/link"
 
+import { AnalyticsSettingsButton } from "@/components/archive/analytics-settings-button"
+
 const FOOTER_LINKS = [
   { href: "/about", label: "О проекте" },
   { href: "/rules", label: "Правила" },
@@ -26,6 +28,9 @@ export function ArchiveSiteFooter() {
             </Link>
           </span>
         ))}
+        <span className="border-l border-stone-400/40 px-1.5 sm:px-3">
+          <AnalyticsSettingsButton />
+        </span>
         <span className="flex items-center border-l border-stone-400/40 px-1.5 sm:px-3">
           <a
             aria-label="Telegram-канал Задротто"

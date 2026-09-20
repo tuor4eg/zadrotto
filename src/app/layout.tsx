@@ -8,6 +8,7 @@ import { ToastSettingsProvider } from "@/components/ui/toast-settings-provider";
 import { ExternalInterfaceLayer } from "@/components/external-interface/external-interface-layer";
 import { PageAvailabilityProvider } from "@/components/external-interface/page-availability";
 import { PublicSiteFooterLayer } from "@/components/archive/public-site-footer-layer";
+import { AnalyticsConsentLayer } from "@/components/archive/analytics-consent-layer";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -36,6 +37,7 @@ export default function RootLayout({
               <ExternalInterfaceLayer>
                 {children}
                 <PublicSiteFooterLayer />
+                <AnalyticsConsentLayer />
                 <Suspense fallback={null}>
                   <AchievementToastHost />
                 </Suspense>
