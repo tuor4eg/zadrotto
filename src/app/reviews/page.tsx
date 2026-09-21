@@ -18,11 +18,13 @@ import {
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
 import { parsePage, parsePageSize } from "@/lib/common/pagination"
+import { parseReviewDraftScope } from "@/lib/forms/review-local-draft"
 
 import { FeaturedReviews } from "./featured-reviews"
 import { MyReviewCatalogRow } from "./my-review-catalog-row"
 import { MyReviewsCatalogControls } from "./my-reviews-catalog-controls"
 import { ReviewCatalogRow } from "./review-catalog-row"
+import { ReviewLocalDraftCleanup } from "./review-local-draft-cleanup"
 import { ReviewsCatalogControls } from "./reviews-catalog-controls"
 import {
   DEFAULT_REVIEW_CATALOG_PAGE_SIZE,
@@ -55,6 +57,7 @@ type ReviewsPageProps = {
     preset?: string
     published?: string
     q?: string
+    reviewDraft?: string
     saved?: string
     score?: string
     status?: string
@@ -141,11 +144,15 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
                 text: "Рецензия отправлена на проверку.",
               }
             : null
+    const reviewDraftScope = parseReviewDraftScope(params.reviewDraft)
 
     return (
       <main className="archive-page flex min-h-screen flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
         <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
           <PublicSiteHeader {...headerState.headerProps} />
+          {reviewDraftScope ? (
+            <ReviewLocalDraftCleanup authorId={currentAuthor.id} scope={reviewDraftScope} />
+          ) : null}
           <div className="flex w-full flex-1">
             <div className="archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden">
               <header className="relative z-20 p-4 pb-3 sm:p-6 sm:pb-4">
@@ -172,7 +179,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
 
                 <Suspense fallback={null}>
                   <ArchiveToasts
-                    clearParams={["deleted", "saved", "published", "submitted"]}
+                    clearParams={["deleted", "saved", "published", "submitted", "reviewDraft"]}
                     messages={toast ? [toast] : []}
                   />
                 </Suspense>

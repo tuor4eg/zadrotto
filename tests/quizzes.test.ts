@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 import { calculateAuthorQuizStatistics, formatQuizTimeRemaining, getQuizState, isQuizMediaTypeAllowed } from "../src/lib/quizzes/model";
-import { formatMoscowDateTimeLocal, getDefaultQuizPeriod, parseMoscowDateTimeLocal } from "../src/lib/quizzes/admin-time";
+import { formatAdminQuizDateTime, formatMoscowDateTimeLocal, getDefaultQuizPeriod, parseMoscowDateTimeLocal } from "../src/lib/quizzes/admin-time";
 
 describe("quizzes", () => {
   it("converts admin quiz dates between Moscow time and UTC", () => {
@@ -15,6 +15,12 @@ describe("quizzes", () => {
       "2026-08-24T12:00",
     );
     assert.equal(Number.isNaN(parseMoscowDateTimeLocal("24.08.2026 12:00").getTime()), true);
+  });
+  it("shows quiz list dates in Moscow time", () => {
+    assert.equal(
+      formatAdminQuizDateTime(new Date("2026-08-24T09:00:00.000Z")),
+      "24 авг. 2026 г., 12:00",
+    );
   });
   it("defaults a new quiz to consecutive Moscow noons", () => {
     assert.deepEqual(getDefaultQuizPeriod(new Date("2026-08-24T08:59:59.000Z")), {
@@ -183,6 +189,8 @@ describe("quizzes", () => {
     assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(modal, /<ActiveQuizPanel/);
     assert.match(modal, /quiz: ActiveQuiz \| null/);
+    assert.match(modal, /onOpenArchive=\{openArchive\}/);
+    assert.match(modal, /if \(pathname !== "\/archive"\) router\.push\("\/archive"\)/);
     assert.match(modal, /!quiz \? \([\s\S]*<QuizNoActiveState \/>/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
@@ -268,6 +276,7 @@ describe("quizzes", () => {
     const guessButton = readFileSync("src/components/quizzes/quiz-guess-button.tsx", "utf8");
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
     const archiveRiddle = readFileSync("src/app/main/archive-riddle.tsx", "utf8");
+    const publicHeader = readFileSync("src/components/archive/public-site-header.tsx", "utf8");
     const globals = readFileSync("src/app/globals.css", "utf8");
 
     assert.match(layout, /<ExternalInterfaceLayer>/);
@@ -282,15 +291,16 @@ describe("quizzes", () => {
     assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);
-    assert.match(archiveRiddle, /useQuizParticipation\(\{ isParticipating \}\)/);
+    assert.match(archiveRiddle, /window\.dispatchEvent\(new Event\(OPEN_QUIZ_MODAL_EVENT\)\)/);
+    assert.match(publicHeader, /window\.addEventListener\(OPEN_QUIZ_MODAL_EVENT, openQuizModal\)/);
     assert.match(archiveRiddle, /if \(!authenticated\)[\s\S]*setLoginOpen\(true\)/);
-    assert.match(archiveRiddle, /onClick=\{canOpenQuiz && !pending \? openQuiz/);
+    assert.match(archiveRiddle, /onClick=\{openQuiz\}/);
     assert.match(archiveRiddle, /<AuthorLoginModal[\s\S]*router\.refresh\(\)/);
     assert.match(archiveRiddle, /onKeyDown=\{handleCardKeyDown\}/);
-    assert.match(archiveRiddle, /onClick=\{\(event\) => event\.stopPropagation\(\)\}/);
+    assert.doesNotMatch(archiveRiddle, /ImageViewer|stopPropagation|cursor-zoom-in/);
     assert.match(
       archiveRiddle,
-      /archive-riddle-timer ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs/,
+      /archive-riddle-timer ml-auto shrink-0 whitespace-nowrap text-right text-xs/,
     );
     assert.doesNotMatch(globals, /archive-riddle-timer-(?:desktop|mobile)/);
     assert.doesNotMatch(archiveRiddle, /<QuizParticipationButton/);

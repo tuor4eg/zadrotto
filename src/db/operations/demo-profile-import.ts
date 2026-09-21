@@ -19,7 +19,14 @@ export async function importDemoProfile(input: {
   const ratingEntries = Object.entries(input.profile.ratings)
   const statusEntries = Object.entries(input.profile.statuses)
   const codes = [...new Set([...ratingEntries.map(([code]) => code), ...statusEntries.map(([code]) => code)])]
-  if (codes.length === 0) return { importedRatings: 0, importedStatuses: 0, skippedConflicts: 0 }
+  if (codes.length === 0) {
+    return {
+      importedRatings: 0,
+      importedStatuses: 0,
+      skippedConflicts: 0,
+      skippedUnavailable: 0,
+    }
+  }
 
   return runInDomainEventTransaction(async (tx, _appendEvent, appendEvents) => {
     const items = await tx.select({ code: mediaItems.code, id: mediaItems.id })
@@ -32,11 +39,14 @@ export async function importDemoProfile(input: {
         getMediaTypeCodeFilterSql(mediaItems.mediaType, input.accessibleMediaTypeCodes),
       ))
     const idByCode = new Map(items.map((item) => [item.code, item.id]))
+    const skippedUnavailable = ratingEntries.filter(([code]) => !idByCode.has(code)).length
+      + statusEntries.filter(([code]) => !idByCode.has(code)).length
     const itemIds = items.map((item) => item.id).sort((left, right) => left - right)
     if (itemIds.length > 0) {
       await tx.execute(sql`
         select pg_advisory_xact_lock(${input.authorId}::integer, locked.media_item_id::integer)
-        from unnest(${itemIds}::integer[]) as locked(media_item_id)
+        from unnest(array[${sql.join(itemIds.map((itemId) => sql`${itemId}`), sql`, `)}]::integer[])
+          as locked(media_item_id)
         order by locked.media_item_id
       `)
     }
@@ -105,7 +115,12 @@ export async function importDemoProfile(input: {
     return {
       importedRatings: insertedRatings.length,
       importedStatuses: insertedStatuses.length,
-      skippedConflicts: ratingEntries.length + statusEntries.length - insertedRatings.length - insertedStatuses.length,
+      skippedConflicts: ratingEntries.length
+        + statusEntries.length
+        - skippedUnavailable
+        - insertedRatings.length
+        - insertedStatuses.length,
+      skippedUnavailable,
     }
   })
 }

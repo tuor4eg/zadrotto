@@ -20,7 +20,7 @@ export function getAuthorErrorMessage(error?: string) {
   }
 
   if (error === "author-has-data") {
-    return "Нельзя удалить автора: у него есть оценки или добавленные записи.";
+    return "Нельзя удалить автора: у него есть оценки, добавленные записи, рецензии или жалобы.";
   }
 
   if (error === "system-author") {

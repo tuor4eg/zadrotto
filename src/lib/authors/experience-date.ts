@@ -60,6 +60,24 @@ export function formatFirstExperiencedInputValue(
   return value.format("YYYY-MM-DD");
 }
 
+export function getInitialFirstExperiencedInputValue(input: {
+  currentFirstExperiencedAt: Date | string | null;
+  currentFirstExperiencedPrecision: FirstExperiencedPrecision;
+  currentYear: number;
+  releaseYear?: number | null;
+}) {
+  const currentValue = formatFirstExperiencedInputValue(
+    input.currentFirstExperiencedAt,
+    input.currentFirstExperiencedPrecision,
+  );
+
+  if (currentValue) {
+    return currentValue;
+  }
+
+  return input.releaseYear === input.currentYear ? String(input.currentYear) : "";
+}
+
 export function isFirstExperiencedPrecision(
   value: string,
 ): value is FirstExperiencedPrecision {

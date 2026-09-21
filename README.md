@@ -96,9 +96,12 @@ AI настраивается в `/admin/tools/ai`:
 
 ```env
 AUTHOR_REGISTRATION_SKIP_EMAIL_VERIFICATION=true
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+TURNSTILE_REGISTRATION_BYPASS=false
 ```
 
-В production эта опция игнорируется. Email credentials и очередь настраиваются в `/admin/tools/email`; для них нужны `EMAIL_OUTBOX_ENCRYPTION_KEY` и `EMAIL_PROVIDER_CREDENTIALS_KEY`. Доставку писем и очистку auth-данных выполняет универсальный jobs worker.
+В production пропуск проверки email игнорируется, а для Turnstile нужно указать реальные ключи виджета. Официальные тестовые ключи выше предназначены только для development и тестов. При длительной недоступности Cloudflare оператор может временно включить server-side флаг `TURNSTILE_REGISTRATION_BYPASS=true`: он отключает Turnstile только для регистрации, не затрагивая rate limits, honeypot и проверку времени заполнения. Состояние обхода показывается в `/admin/tools/services` и отмечается в журнале успешной регистрации. Email credentials и очередь настраиваются в `/admin/tools/email`; для них нужны `EMAIL_OUTBOX_ENCRYPTION_KEY` и `EMAIL_PROVIDER_CREDENTIALS_KEY`. Доставку писем и очистку auth-данных выполняет универсальный jobs worker.
 
 ## Универсальные фоновые задачи
 

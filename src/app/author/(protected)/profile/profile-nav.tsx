@@ -30,7 +30,7 @@ export function ProfileNav() {
   return (
     <nav
       aria-label="Разделы профиля"
-      className="flex w-full min-w-0 max-w-full gap-2 overflow-x-auto rounded-md border border-stone-200 bg-white p-2 lg:grid lg:overflow-visible"
+      className="grid w-full min-w-0 max-w-full grid-cols-3 gap-1 rounded-md border border-stone-200 bg-white p-1 lg:grid-cols-1"
     >
       {PROFILE_NAV_ITEMS.map((item) => {
         const Icon = item.icon;
@@ -44,7 +44,7 @@ export function ProfileNav() {
             href={item.href}
             aria-current={isActive ? "page" : undefined}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium transition-colors",
+              "flex min-w-0 items-center justify-center gap-1 whitespace-nowrap rounded-sm px-1 py-2 text-xs font-medium transition-colors sm:px-2 sm:text-sm lg:justify-start",
               isActive
                 ? "bg-stone-950 text-white"
                 : "text-stone-600 hover:bg-stone-100 hover:text-stone-950",

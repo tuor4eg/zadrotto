@@ -587,6 +587,7 @@ export const bugReports = pgTable(
   },
   (table) => [
     index("bug_reports_status_created_at_idx").on(table.status, table.createdAt),
+    index("bug_reports_author_id_idx").on(table.authorId),
     index("bug_reports_author_confirmed_at_idx")
       .on(table.authorId, table.confirmedAt)
       .where(sql`${table.confirmedAt} is not null`),

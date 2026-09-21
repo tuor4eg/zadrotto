@@ -11,6 +11,12 @@ import {
   REVIEW_BODY_MAX_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
 } from "@/lib/forms/contribution-review"
+import {
+  getReviewLocalDraftKey,
+  readReviewLocalDraft,
+  writeReviewLocalDraft,
+  type ReviewDraftScope,
+} from "@/lib/forms/review-local-draft"
 import type { ContributionStatus } from "@/lib/contributions/model"
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types"
 
@@ -32,6 +38,7 @@ type SelectedMediaItem = {
 }
 
 type PublicReviewFormProps = {
+  authorId: number
   canPublishWithoutReview?: boolean
   contributionId?: number
   mediaItem?: SelectedMediaItem | null
@@ -58,6 +65,7 @@ function formatMediaSearchMeta(
 }
 
 export function PublicReviewForm({
+  authorId,
   canPublishWithoutReview = false,
   contributionId,
   mediaItem = null,
@@ -84,6 +92,10 @@ export function PublicReviewForm({
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
   const [searchError, setSearchError] = useState<string | null>(null)
+  const [title, setTitle] = useState(values?.title ?? "")
+  const [body, setBody] = useState(values?.body ?? "")
+  const [draftReady, setDraftReady] = useState(false)
+  const [restoredDraft, setRestoredDraft] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
   const mediaPickerRef = useRef<HTMLDivElement>(null)
   const isConfirmedSubmitRef = useRef(false)
@@ -95,6 +107,41 @@ export function PublicReviewForm({
     },
   }
   const [state, formAction, isPending] = useActionState(savePublicReviewAction, initialState)
+  const draftScope: ReviewDraftScope = contributionId ? String(contributionId) as `${number}` : "new"
+  const draftKey = getReviewLocalDraftKey(authorId, draftScope)
+
+  useEffect(() => {
+    const draft = readReviewLocalDraft(draftKey)
+    const timeoutId = window.setTimeout(() => {
+      if (draft) {
+        setTitle(draft.title)
+        setBody(draft.body)
+        const restoredMediaItem = mediaItemLocked ? mediaItem : draft.mediaItem ?? mediaItem
+        setSelectedMedia(restoredMediaItem)
+        setMediaQuery(restoredMediaItem?.title ?? "")
+        setRestoredDraft(true)
+      }
+      setDraftReady(true)
+    }, 0)
+    return () => window.clearTimeout(timeoutId)
+  }, [draftKey, mediaItem, mediaItemLocked])
+
+  useEffect(() => {
+    if (!draftReady) return
+    const timeoutId = window.setTimeout(() => {
+      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title })
+    }, 300)
+    return () => window.clearTimeout(timeoutId)
+  }, [body, draftKey, draftReady, selectedMedia, title])
+
+  useEffect(() => {
+    if (!draftReady) return
+    const saveBeforeLeaving = () => {
+      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title })
+    }
+    window.addEventListener("pagehide", saveBeforeLeaving)
+    return () => window.removeEventListener("pagehide", saveBeforeLeaving)
+  }, [body, draftKey, draftReady, selectedMedia, title])
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -328,7 +375,8 @@ export function PublicReviewForm({
           name="title"
           required
           maxLength={REVIEW_TITLE_MAX_LENGTH}
-          defaultValue={state.values.title}
+          value={title}
+          onChange={(event) => setTitle(event.currentTarget.value)}
         />
       </div>
 
@@ -339,9 +387,15 @@ export function PublicReviewForm({
           name="body"
           required
           maxLength={REVIEW_BODY_MAX_LENGTH}
-          defaultValue={state.values.body}
+          value={body}
+          onChange={(event) => setBody(event.currentTarget.value)}
           className="h-[calc(100dvh-30rem)] min-h-64 resize-none overflow-y-auto"
         />
+        <p className="text-xs text-stone-500" role="status">
+          {restoredDraft
+            ? "Восстановлен локальный черновик. Изменения сохраняются в этом браузере."
+            : "Изменения автоматически сохраняются в этом браузере."}
+        </p>
       </div>
 
       <div className="flex flex-wrap justify-end gap-2">

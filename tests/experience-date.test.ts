@@ -6,6 +6,7 @@ import {
   buildFirstExperiencedYearOptions,
   formatFirstExperiencedDate,
   formatFirstExperiencedInputValue,
+  getInitialFirstExperiencedInputValue,
   isFirstExperienceBeforeRelease,
   parseFirstExperiencedInput,
 } from "../src/lib/authors/experience-date";
@@ -14,7 +15,8 @@ describe("formatFirstExperiencedDate", () => {
   it("keeps year and day selectors compact so the adjacent labels fit", () => {
     const fields = readFileSync("src/components/ui/rating-experience-fields.tsx", "utf8");
 
-    assert.match(fields, /sm:grid-cols-\[88px_minmax\(0,1fr\)_48px\]/);
+    assert.match(fields, /sm:grid-cols-\[88px_minmax\(0,1fr\)_64px\]/);
+    assert.match(fields, /"grid-cols-\[minmax\(0,1fr\)_160px\]"/);
     assert.match(fields, /\[&>button>span:first-child\]:hidden/);
     assert.match(fields, /sm:grid-cols-\[minmax\(0,1fr\)_160px\]/);
   });
@@ -35,6 +37,34 @@ describe("formatFirstExperiencedDate", () => {
     assert.equal(formatFirstExperiencedInputValue("1991-03-05", "year"), "1991");
     assert.equal(formatFirstExperiencedInputValue("1991-03-05", "month"), "1991-03");
     assert.equal(formatFirstExperiencedInputValue("1991-03-05", "day"), "1991-03-05");
+  });
+
+  it("defaults acquaintance year only for records released this year", () => {
+    assert.equal(getInitialFirstExperiencedInputValue({
+      currentFirstExperiencedAt: null,
+      currentFirstExperiencedPrecision: "year",
+      currentYear: 2026,
+      releaseYear: 2026,
+    }), "2026");
+    assert.equal(getInitialFirstExperiencedInputValue({
+      currentFirstExperiencedAt: null,
+      currentFirstExperiencedPrecision: "year",
+      currentYear: 2026,
+      releaseYear: 2020,
+    }), "");
+    assert.equal(getInitialFirstExperiencedInputValue({
+      currentFirstExperiencedAt: "2021-01-01",
+      currentFirstExperiencedPrecision: "year",
+      currentYear: 2026,
+      releaseYear: 2026,
+    }), "2021");
+  });
+
+  it("offers an explicit unspecified acquaintance year", () => {
+    const fields = readFileSync("src/components/ui/rating-experience-fields.tsx", "utf8");
+
+    assert.match(fields, /\{ label: "Не указан", value: "" \}/);
+    assert.match(fields, /const submittedExperienceValue = selectedExperienceValue/);
   });
 
   it("parses precision-specific form inputs to stored dates", () => {

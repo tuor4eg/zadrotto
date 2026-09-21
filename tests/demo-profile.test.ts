@@ -20,6 +20,7 @@ import {
   clearDemoProfileIfSnapshot,
   writeDemoProfile,
 } from "../src/lib/user-state/demo-storage"
+import { presentDemoImportResult } from "../src/lib/user-state/demo-import-result"
 import {
   buildHomeResearchSnapshotFromDemo,
   getHomeResearchMessage,
@@ -31,8 +32,11 @@ describe("demo profile foundation", () => {
     const importSource = readFileSync("src/db/operations/demo-profile-import.ts", "utf8")
 
     assert.match(actionSource, /await importDemoProfile\(\{/)
+    assert.match(actionSource, /catch \(error\)[\s\S]*Failed to import demo profile[\s\S]*ratingsCount/)
     assert.match(importSource, /runInDomainEventTransaction/)
     assert.match(importSource, /pg_advisory_xact_lock/)
+    assert.match(importSource, /unnest\(array\[\$\{sql\.join\(itemIds\.map/)
+    assert.doesNotMatch(importSource, /unnest\(\$\{itemIds\}::integer\[\]\)/)
     assert.match(importSource, /existingRatings[\s\S]*existingStatuses[\s\S]*const occupied = new Set/)
     assert.match(importSource, /insert\(ratings\)[\s\S]*onConflictDoNothing/)
     assert.match(importSource, /insert\(authorMediaExperiences\)[\s\S]*onConflictDoNothing/)
@@ -46,10 +50,39 @@ describe("demo profile foundation", () => {
     assert.match(bridgeSource, /IMPORT_RETRY_DELAYS_MS = \[1_000, 3_000\]/)
     assert.match(bridgeSource, /if \(result\.ok\)[\s\S]*clearDemoProfileIfSnapshot\(snapshot\)[\s\S]*lastAuthorRef\.current = authorId/)
     assert.match(bridgeSource, /setTimeout\(\(\) => void importWithRetry\(attempt \+ 1\), delay\)/)
+    assert.match(bridgeSource, /text: result\.error/)
     assert.match(bridgeSource, /IMPORT_LONG_RETRY_MAX_MS = 15 \* 60_000/)
     assert.match(bridgeSource, /clearDemoProfileIfSnapshot\(snapshot\)/)
     assert.match(bridgeSource, /setTimeout\(\(\) => void importWithRetry\(0\)/)
     assert.doesNotMatch(bridgeSource, /lastAuthorRef\.current = authorId\s*\n\s*const profile/)
+  })
+
+  it("reports the import result and preserves recoverable local history", () => {
+    const bridgeSource = readFileSync("src/components/user-state/demo-profile-import-bridge.tsx", "utf8")
+
+    assert.match(bridgeSource, /<Suspense fallback=\{null\}>[\s\S]*<ArchiveToasts/)
+    assert.match(bridgeSource, /if \(result\.ok\)[\s\S]*router\.refresh\(\)/)
+    assert.deepEqual(presentDemoImportResult({
+      importedRatings: 0,
+      importedStatuses: 0,
+      skippedConflicts: 0,
+      skippedUnavailable: 2,
+    }), {
+      clearLocalProfile: false,
+      text: "Не удалось перенести: 2. Локальная история сохранена.",
+      tone: "error",
+    })
+
+    assert.deepEqual(presentDemoImportResult({
+      importedRatings: 2,
+      importedStatuses: 1,
+      skippedConflicts: 1,
+      skippedUnavailable: 0,
+    }), {
+      clearLocalProfile: true,
+      text: "История перенесена в профиль: 3. Уже сохранено в аккаунте: 1.",
+      tone: "success",
+    })
   })
 
   it("does not clear a newer cross-tab profile after an older snapshot imports", () => {

@@ -39,7 +39,6 @@ export default async function QuizzesPage() {
           <ArchiveRiddle
             authenticated
             isCompleted={activeQuizParticipant?.completed === true}
-            isParticipating={activeQuizParticipant?.quizId === activeQuiz?.id}
             quiz={activeQuiz}
             size="large"
           />

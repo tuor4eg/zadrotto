@@ -6,7 +6,10 @@ import {
   authorAccessProfiles,
   authorAccessTokens,
   authorEmails,
+  authorMediaExperiences,
   authors,
+  bugReports,
+  contributions,
   mediaItems,
   ratings,
 } from "@/db/schema";
@@ -21,12 +24,16 @@ export type AuthorActivityFilter = "active" | "blocked";
 const authorHasUsageSql = sql<boolean>`(
   exists(select 1 from ${ratings} where ${ratings.authorId} = ${authors.id})
   or exists(select 1 from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id})
+  or exists(select 1 from ${contributions} where ${contributions.authorId} = ${authors.id})
+  or exists(select 1 from ${bugReports} where ${bugReports.authorId} = ${authors.id})
 )`;
 
 function authorUsageCountByIdSql(authorId: number) {
   return sql<number>`(
     (select count(*) from ${ratings} where ${ratings.authorId} = ${authorId}) +
-    (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId})
+    (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId}) +
+    (select count(*) from ${contributions} where ${contributions.authorId} = ${authorId}) +
+    (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId})
   )::int`;
 }
 
@@ -319,6 +326,7 @@ export async function deleteAuthorIfUnused(id: number): Promise<DeleteAuthorResu
 
   const author = await db.transaction(async (tx) => {
     await tx.delete(authorAccessTokens).where(eq(authorAccessTokens.authorId, id));
+    await tx.delete(authorMediaExperiences).where(eq(authorMediaExperiences.authorId, id));
 
     const [deletedAuthor] = await tx
       .delete(authors)

@@ -338,7 +338,8 @@ describe("author auth persistence contracts", () => {
     assert.match(profileLayout, /author-dashboard min-w-0/);
     assert.match(profileLayout, /grid min-w-0 gap-6/);
     assert.match(profileLayout, /aside className="min-w-0/);
-    assert.match(profileNavigation, /flex w-full min-w-0 max-w-full gap-2 overflow-x-auto/);
+    assert.match(profileNavigation, /grid w-full min-w-0 max-w-full grid-cols-3 gap-1/);
+    assert.doesNotMatch(profileNavigation, /overflow-x-auto/);
     assert.match(profileNavigation, /href: "\/author\/profile"[\s\S]*label: "Общие"/);
     assert.match(profileNavigation, /href: "\/author\/profile\/interests"[\s\S]*label: "Интересы"/);
     assert.match(profileNavigation, /href: "\/author\/profile\/sessions"[\s\S]*label: "Сессии"/);

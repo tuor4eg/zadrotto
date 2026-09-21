@@ -6,6 +6,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import { getAdminQuizzes } from "@/db/queries/quizzes";
+import { formatAdminQuizDateTime } from "@/lib/quizzes/admin-time";
 
 import { PageHeader } from "../admin-ui";
 import { deleteQuizAction, toggleQuizAction } from "./actions";
@@ -51,7 +52,7 @@ export default async function QuizzesPage() {
                 <TD>{item.answerTitle}</TD>
                 <TD>{item.attemptLimit}</TD>
                 <TD className="text-xs">
-                  {item.startsAt.toLocaleString("ru-RU")} — {item.endsAt.toLocaleString("ru-RU")}
+                  {formatAdminQuizDateTime(item.startsAt)} — {formatAdminQuizDateTime(item.endsAt)}
                 </TD>
                 <TD>
                   <form action={toggleQuizAction}>

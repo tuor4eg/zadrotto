@@ -168,5 +168,6 @@ export async function savePublicReviewAction(
   const toastParam =
     status === "draft" ? "saved" : status === "published" ? "published" : "submitted"
 
-  redirect(`/reviews?view=mine&${toastParam}=1`)
+  const reviewDraftScope = contributionId ? String(contributionId) : "new"
+  redirect(`/reviews?view=mine&${toastParam}=1&reviewDraft=${reviewDraftScope}`)
 }

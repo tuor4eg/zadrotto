@@ -39,6 +39,8 @@ describe("admin authors usage query", () => {
       querySource,
       /exists\(select 1 from \$\{mediaItems\} where \$\{mediaItems\.createdByAuthorId\} = \$\{authors\.id\}\)/,
     );
+    assert.match(querySource, /exists\(select 1 from \$\{contributions\} where \$\{contributions\.authorId\} = \$\{authors\.id\}\)/);
+    assert.match(querySource, /exists\(select 1 from \$\{bugReports\} where \$\{bugReports\.authorId\} = \$\{authors\.id\}\)/);
     assert.doesNotMatch(getAuthorsSource, /(?:left|inner)Join\((?:ratings|mediaItems)/);
     assert.doesNotMatch(getAuthorsSource, /count\(distinct|\.groupBy\(/);
   });
@@ -64,6 +66,8 @@ describe("admin authors usage query", () => {
     );
 
     assert.match(deleteSource, /count: authorUsageCountByIdSql\(id\)/);
+    assert.match(querySource, /select count\(\*\) from \$\{contributions\} where \$\{contributions\.authorId\} = \$\{authorId\}/);
+    assert.match(querySource, /select count\(\*\) from \$\{bugReports\} where \$\{bugReports\.authorId\} = \$\{authorId\}/);
     assert.match(deleteSource, /if \(usage\.count > 0\)[\s\S]*status: "has-data"/);
     assert.match(
       deleteSource,
@@ -71,7 +75,7 @@ describe("admin authors usage query", () => {
     );
     assert.match(
       deleteSource,
-      /db\.transaction[\s\S]*tx\.delete\(authorAccessTokens\)[\s\S]*tx[\s\S]*\.delete\(authors\)/,
+      /db\.transaction[\s\S]*tx\.delete\(authorAccessTokens\)[\s\S]*tx\.delete\(authorMediaExperiences\)[\s\S]*tx[\s\S]*\.delete\(authors\)/,
     );
   });
 

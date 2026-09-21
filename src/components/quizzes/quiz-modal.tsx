@@ -1,6 +1,7 @@
 "use client";
 
 import { ArrowLeft, CircleHelp, Heart, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -22,10 +23,17 @@ export function QuizModal({
   onClose: () => void;
   quiz: ActiveQuiz | null;
 }) {
+  const pathname = usePathname();
+  const router = useRouter();
   const [view, setView] = useState<"quiz" | "rules">("quiz");
   const [dialogTop, setDialogTop] = useState<number | null>(null);
   const dialogRef = useRef<HTMLDivElement>(null);
   const previouslyFocusedElementRef = useRef<HTMLElement | null>(null);
+
+  function openArchive() {
+    onClose();
+    if (pathname !== "/archive") router.push("/archive");
+  }
 
   function openRules() {
     if (dialogTop === null) {
@@ -183,7 +191,7 @@ export function QuizModal({
         ) : (
           <ActiveQuizPanel
             isParticipating={isParticipating}
-            onOpenArchive={onClose}
+            onOpenArchive={openArchive}
             quiz={quiz}
             unavailableMediaTypeNames={unavailableMediaTypeNames}
           />

@@ -311,7 +311,6 @@ export default async function MainPage() {
   const activeQuizParticipant = activeQuiz && author
     ? await getActiveQuizParticipantState(author.id)
     : null;
-  const isActiveQuizParticipant = activeQuizParticipant?.quizId === activeQuiz?.id;
   const authorHeroStatistics = author
     ? await Promise.all([
         getAuthorDigitalProfile(author.id, enabledMediaTypeCodes),
@@ -513,7 +512,6 @@ export default async function MainPage() {
           <ArchiveRiddle
             authenticated={Boolean(author)}
             isCompleted={activeQuizParticipant?.completed === true}
-            isParticipating={isActiveQuizParticipant}
             quiz={activeQuiz}
           />
           <LatestReview mediaTypeName={latestReviewMediaTypeName} review={latestReview} />

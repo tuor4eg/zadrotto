@@ -9,6 +9,8 @@ import {
   isAuthorEmailVerificationBypassed,
   isAuthorRegistrationEnabled,
 } from "@/lib/auth/features";
+import { isTurnstileRegistrationBypassed } from "@/lib/auth/registration-turnstile";
+import { getTurnstileSiteKey, isTurnstileConfigured } from "@/lib/auth/turnstile";
 import { AuthorRegistrationForm } from "./author-registration-form";
 
 export const dynamic = "force-dynamic";
@@ -18,16 +20,22 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   const isEmailDeliveryConfigured = bypassEmailVerification
     || await isAuthorEmailDeliveryConfigured();
+  const turnstileBypassed = isTurnstileRegistrationBypassed();
+  const turnstileConfigured = isTurnstileConfigured();
+  const isRegistrationAvailable = isEmailDeliveryConfigured
+    && (turnstileBypassed || turnstileConfigured);
   const query = await searchParams;
   return (
     <main className="archive-page min-h-screen px-4 py-8 text-stone-950">
       <Card className="archive-paper-surface mx-auto max-w-lg border-stone-500/40">
         <CardHeader><CardTitle className="font-serif text-3xl">Регистрация автора</CardTitle></CardHeader>
         <CardContent>
-          {!isEmailDeliveryConfigured ? (
+          {!isRegistrationAvailable ? (
             <div className="grid gap-4">
               <Alert variant="destructive">
-                Регистрация временно недоступна: отправка писем ещё не настроена. Попробуй позже.
+                {!isEmailDeliveryConfigured
+                  ? "Регистрация временно недоступна: отправка писем ещё не настроена. Попробуй позже."
+                  : "Регистрация временно недоступна. Попробуй позже."}
               </Alert>
               <Link className="text-sm underline underline-offset-4" href="/author/login">
                 Вернуться ко входу
@@ -46,7 +54,10 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
               <Link className={buttonVariants()} href="/">На сайт</Link>
             </div>
           ) : (
-            <AuthorRegistrationForm />
+            <AuthorRegistrationForm
+              turnstileRequired={!turnstileBypassed}
+              turnstileSiteKey={turnstileBypassed ? null : getTurnstileSiteKey()}
+            />
           )}
         </CardContent>
       </Card>

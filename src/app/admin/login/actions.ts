@@ -11,7 +11,7 @@ import {
   normalizeAuthIdentitySubject,
 } from "@/lib/auth/rate-limits";
 import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
-import { verifyPassword } from "@/lib/auth/password";
+import { verifyPasswordOrDummy } from "@/lib/auth/password";
 import { logActivity } from "@/lib/activity-logs/server";
 
 function getFormString(formData: FormData, key: string) {
@@ -59,8 +59,7 @@ export async function loginAdmin(formData: FormData) {
     redirect(`/admin/login?error=${getAdminFormErrorCode(error)}`);
   }
 
-  const isValidPassword =
-    adminUser && password ? await verifyPassword(password, adminUser.passwordHash) : false;
+  const isValidPassword = await verifyPasswordOrDummy(password, adminUser?.passwordHash);
 
   if (!adminUser || !isValidPassword) {
     await logActivity({

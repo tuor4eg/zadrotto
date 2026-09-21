@@ -104,6 +104,7 @@ export default async function NewReviewPage({ searchParams }: NewReviewPageProps
 
             <div className="mt-5">
               <PublicReviewForm
+                authorId={author.id}
                 canPublishWithoutReview={author.canPublishMediaWithoutReview}
                 mediaItem={initialMediaItem}
                 mediaItemLocked={false}

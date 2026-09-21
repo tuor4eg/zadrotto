@@ -174,7 +174,7 @@ function AuthorActions({
           disabled={!canDeleteAuthor}
           fields={[{ name: "authorId", value: author.id }]}
           title="Удалить автора?"
-          description={`Автор «${author.name}» будет полностью удален вместе с токенами доступа. Это возможно только если у него нет оценок и добавленных записей.`}
+          description={`Автор «${author.name}» будет удален вместе с токенами доступа и датами первого знакомства. Удаление доступно, если у него нет оценок, добавленных записей, рецензий и жалоб.`}
           triggerLabel="Удалить"
           triggerAriaLabel={`Удалить автора ${author.name}`}
           triggerIcon={<Trash2 />}

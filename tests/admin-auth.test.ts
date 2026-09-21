@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { createHmac } from "node:crypto";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
 import { createAdminSessionToken, verifyAdminSessionToken } from "../src/lib/auth/admin-session";
@@ -52,6 +53,19 @@ describe("password hashing", () => {
     const passwordHash = await hashPassword("admin-password");
 
     assert.equal(passwordHash.includes("admin-password"), false);
+  });
+});
+
+describe("admin login", () => {
+  it("always performs password verification for unknown logins", () => {
+    const source = readFileSync("src/app/admin/login/actions.ts", "utf8");
+
+    assert.match(
+      source,
+      /const isValidPassword = await verifyPasswordOrDummy\(password, adminUser\?\.passwordHash\)/,
+    );
+    assert.match(source, /if \(!adminUser \|\| !isValidPassword\)/);
+    assert.doesNotMatch(source, /adminUser && password \? await verifyPassword/);
   });
 });
 

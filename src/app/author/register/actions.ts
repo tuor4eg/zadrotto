@@ -15,6 +15,8 @@ import {
 } from "@/lib/auth/features";
 import { checkAuthorAuthMutationRateLimit } from "@/lib/auth/mutation-rate-limit";
 import { hashPassword, verifyPasswordOrDummy } from "@/lib/auth/password";
+import { isTurnstileRegistrationBypassed } from "@/lib/auth/registration-turnstile";
+import { isTurnstileConfigured, verifyTurnstileToken } from "@/lib/auth/turnstile";
 import { logActivity } from "@/lib/activity-logs/server";
 import { getUniqueViolationConstraint } from "@/lib/common/app-error-messages";
 
@@ -24,7 +26,7 @@ function read(formData: FormData, key: string) {
 }
 
 export type AuthorRegistrationState = {
-  error: "email-taken" | "invalid" | "login-taken" | "unavailable";
+  error: "email-taken" | "invalid" | "login-taken" | "turnstile" | "unavailable";
 } | null;
 
 export async function registerAuthorAction(
@@ -42,6 +44,7 @@ export async function registerAuthorAction(
   const password = read(formData, "password");
   const confirmation = read(formData, "passwordConfirmation");
   const honeypot = read(formData, "website");
+  const turnstileToken = read(formData, "turnstileToken");
   const formStartedAt = Number(read(formData, "formStartedAt"));
   const fillTime = Date.now() - formStartedAt;
   const rateLimit = await checkAuthorAuthMutationRateLimit("author-register", normalizeAuthorEmail(email));
@@ -50,6 +53,14 @@ export async function registerAuthorAction(
     || !name || !isValidAuthorLogin(login) || !isValidAuthorEmail(email)
     || password !== confirmation || !validateAuthorPassword(password).ok) {
     return { error: "invalid" };
+  }
+  const turnstileBypassed = isTurnstileRegistrationBypassed();
+  if (!turnstileBypassed) {
+    if (!isTurnstileConfigured()) return { error: "turnstile" };
+    const turnstile = await verifyTurnstileToken(turnstileToken, {
+      expectedAction: "author_register",
+    });
+    if (!turnstile.ok) return { error: "turnstile" };
   }
   const normalizedLogin = normalizeAuthorLogin(login);
   const normalizedEmail = normalizeAuthorEmail(email);
@@ -106,6 +117,8 @@ export async function registerAuthorAction(
       entityId: registeredAuthorId,
       message: correctedPendingEmail
         ? "Автор исправил неподтверждённый email регистрации."
+        : turnstileBypassed
+        ? "Автор зарегистрирован при включённом аварийном обходе Turnstile."
         : bypassEmailVerification
         ? "Автор зарегистрирован без подтверждения email."
         : "Отправлена заявка на регистрацию автора.",
@@ -113,7 +126,9 @@ export async function registerAuthorAction(
         source: "public-registration",
         emailVerificationBypassed: bypassEmailVerification,
         correctedPendingEmail,
+        turnstileBypassed,
       },
+      severity: turnstileBypassed ? "warning" : undefined,
     });
   }
   redirect(bypassEmailVerification

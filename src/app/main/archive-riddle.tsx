@@ -8,14 +8,12 @@ import { createPortal } from "react-dom";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
-import { useQuizParticipation } from "@/components/quizzes/quiz-participation-button";
-import { ImageViewer } from "@/components/ui/image-viewer";
+import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
 type ArchiveRiddleProps = {
   authenticated: boolean;
   isCompleted: boolean;
-  isParticipating: boolean;
   quiz: ActiveQuiz | null;
   size?: "default" | "large";
 };
@@ -23,7 +21,6 @@ type ArchiveRiddleProps = {
 export function ArchiveRiddle({
   authenticated,
   isCompleted,
-  isParticipating,
   quiz,
   size = "default",
 }: ArchiveRiddleProps) {
@@ -34,19 +31,18 @@ export function ArchiveRiddle({
   const isLocallyCompleted = Boolean(
     quizParticipant && quizParticipant.quizId === quiz?.id && quizParticipant.completed,
   );
-  const canOpenQuiz = Boolean(quiz && !isCompleted && !isLocallyCompleted);
-  const { error, openArchive, pending } = useQuizParticipation({ isParticipating });
+  const quizCompleted = isCompleted || isLocallyCompleted;
 
   function openQuiz() {
     if (!authenticated) {
       setLoginOpen(true);
       return;
     }
-    void openArchive();
+    window.dispatchEvent(new Event(OPEN_QUIZ_MODAL_EVENT));
   }
 
   function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
-    if (!canOpenQuiz || pending || (event.key !== "Enter" && event.key !== " ")) return;
+    if (event.key !== "Enter" && event.key !== " ") return;
 
     event.preventDefault();
     openQuiz();
@@ -64,21 +60,20 @@ export function ArchiveRiddle({
   return (
     <>
       <section
-      className={`archive-paper archive-panel relative flex min-h-[280px] flex-col overflow-hidden p-3 sm:p-4 lg:min-h-0 ${size === "large" ? "lg:h-[360px]" : "lg:h-[280px]"} ${canOpenQuiz ? "cursor-pointer focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950" : ""}`}
+      className={`archive-paper archive-panel relative flex min-h-[280px] cursor-pointer flex-col overflow-hidden p-3 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950 sm:p-4 lg:min-h-0 ${size === "large" ? "lg:h-[360px]" : "lg:h-[280px]"}`}
       aria-labelledby="main-archive-riddle"
-      aria-disabled={canOpenQuiz ? undefined : true}
-      onClick={canOpenQuiz && !pending ? openQuiz : undefined}
+      onClick={openQuiz}
       onKeyDown={handleCardKeyDown}
-      role={canOpenQuiz ? "button" : undefined}
-      tabIndex={canOpenQuiz ? 0 : undefined}
+      role="button"
+      tabIndex={0}
     >
-      <div className="flex flex-wrap shrink-0 items-start gap-x-2 gap-y-1 sm:h-8 sm:flex-nowrap">
-          <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
+      <div className="flex flex-wrap shrink-0 items-center gap-x-2 gap-y-1 sm:h-8 sm:flex-nowrap">
+          <CircleHelp aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
           <h2 id="main-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
             Загадка архива
           </h2>
           {timeRemaining ? (
-            <span className="archive-riddle-timer ml-auto shrink-0 whitespace-nowrap pt-1 text-right text-xs text-stone-600">
+            <span className="archive-riddle-timer ml-auto shrink-0 whitespace-nowrap text-right text-xs text-stone-600">
               {timeRemaining}
             </span>
           ) : null}
@@ -89,34 +84,21 @@ export function ArchiveRiddle({
             <p className="mt-1 shrink-0 text-center whitespace-pre-wrap font-serif text-xl leading-7 text-stone-900">
               {quiz.question?.trim() || "Ответ спрятан среди записей архива."}
             </p>
-            <div
-              className="relative z-10 flex min-h-0 flex-1 items-center justify-center py-2"
-            >
+            <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">
               {quiz.imageUrl ? (
                 <div
                   className={`flex max-w-[90%] items-center justify-center ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
-                  onClick={(event) => event.stopPropagation()}
-                  onKeyDown={(event) => event.stopPropagation()}
                 >
-                  <ImageViewer
-                    src={quiz.imageUrl}
-                    alt="Кадр из загадки"
-                    title="Кадр из загадки"
-                    triggerClassName={`block max-w-full cursor-zoom-in rounded-md ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
-                  >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={quiz.imageUrl}
                       alt="Кадр из загадки"
                       className={`max-w-full rounded-md object-contain ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
                     />
-                  </ImageViewer>
                 </div>
               ) : null}
             </div>
-            {error ? (
-              <p className="mt-auto text-center text-sm text-red-700" role="alert">{error}</p>
-            ) : !canOpenQuiz ? (
+            {quizCompleted ? (
               <p className="mt-auto font-mono text-[10px] uppercase tracking-wider text-stone-500">
                 Загадка уже разгадана
               </p>

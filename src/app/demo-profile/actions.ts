@@ -11,6 +11,7 @@ export type ImportDemoProfileResult = {
   importedRatings: number
   importedStatuses: number
   skippedConflicts: number
+  skippedUnavailable: number
   ok: true
 } | {
   error: string
@@ -30,20 +31,33 @@ export async function importDemoProfileAction(
     return { ok: false, error: "Demo-профиль не найден или уже импортирован." }
   }
 
-  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id)
-  const result = await importDemoProfile({
-    accessibleMediaTypeCodes,
-    authorId: author.id,
-    profile,
-  })
+  try {
+    const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id)
+    const result = await importDemoProfile({
+      accessibleMediaTypeCodes,
+      authorId: author.id,
+      profile,
+    })
 
-  revalidatePath("/")
-  revalidatePath("/archive")
-  revalidatePath("/author")
-  revalidatePath("/achievements")
+    revalidatePath("/")
+    revalidatePath("/archive")
+    revalidatePath("/author")
+    revalidatePath("/achievements")
 
-  return {
-    ok: true,
-    ...result,
+    return {
+      ok: true,
+      ...result,
+    }
+  } catch (error) {
+    console.error("Failed to import demo profile", {
+      authorId: author.id,
+      error,
+      ratingsCount: Object.keys(profile.ratings).length,
+      statusesCount: Object.keys(profile.statuses).length,
+    })
+    return {
+      ok: false,
+      error: "Не удалось перенести локальную историю. Она сохранена в этом браузере; повторим автоматически.",
+    }
   }
 }

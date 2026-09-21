@@ -1,9 +1,12 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { Suspense, useEffect, useRef, useState } from "react"
+import { useRouter } from "next/navigation"
 
 import { importDemoProfileAction } from "@/app/demo-profile/actions"
+import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts"
 import { USER_HUD_REFRESH_EVENT } from "@/lib/onboarding/model"
+import { presentDemoImportResult } from "@/lib/user-state/demo-import-result"
 import {
   clearDemoProfileIfSnapshot,
   readDemoProfile,
@@ -32,9 +35,11 @@ export function DemoProfileImportBridge({
   authenticated: boolean
   authorId: number | null
 }) {
+  const router = useRouter()
   const importingRef = useRef(false)
   const lastAuthorRef = useRef<number | null>(null)
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const [toast, setToast] = useState<ArchiveToast | null>(null)
 
   useEffect(() => {
     let cancelled = false
@@ -62,6 +67,20 @@ export function DemoProfileImportBridge({
         const result = await importDemoProfileAction(profile)
         if (cancelled) return
         if (result.ok) {
+          const presentation = presentDemoImportResult(result)
+          if (presentation.text) {
+            setToast({
+              id: `demo-import-${authorId}-${Date.now()}`,
+              text: presentation.text,
+              tone: presentation.tone,
+            })
+          }
+          router.refresh()
+          if (!presentation.clearLocalProfile) {
+            lastAuthorRef.current = authorId
+            window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT))
+            return
+          }
           if (clearDemoProfileIfSnapshot(snapshot)) {
             lastAuthorRef.current = authorId
             window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT))
@@ -70,8 +89,17 @@ export function DemoProfileImportBridge({
           retryTimeoutRef.current = setTimeout(() => void importWithRetry(0), IMPORT_RETRY_DELAYS_MS[0])
           return
         }
+        setToast({
+          id: `demo-import-error-${authorId}`,
+          text: result.error,
+          tone: "error",
+        })
       } catch {
-        // Preserve the local profile and retry below.
+        setToast({
+          id: `demo-import-error-${authorId}`,
+          text: "Не удалось перенести локальную историю. Она сохранена в этом браузере; повторим автоматически.",
+          tone: "error",
+        })
       } finally {
         importingRef.current = false
       }
@@ -89,7 +117,11 @@ export function DemoProfileImportBridge({
       retryTimeoutRef.current = null
       importingRef.current = false
     }
-  }, [authenticated, authorId])
+  }, [authenticated, authorId, router])
 
-  return null
+  return (
+    <Suspense fallback={null}>
+      <ArchiveToasts messages={toast ? [toast] : []} />
+    </Suspense>
+  )
 }

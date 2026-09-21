@@ -1,6 +1,15 @@
 const MOSCOW_UTC_OFFSET_HOURS = 3;
 const MOSCOW_NOON_UTC_HOUR = 12 - MOSCOW_UTC_OFFSET_HOURS;
 const DATE_TIME_LOCAL_PATTERN = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;
+const adminQuizDateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
+  dateStyle: "medium",
+  timeStyle: "short",
+  timeZone: "Europe/Moscow",
+});
+
+export function formatAdminQuizDateTime(value: Date) {
+  return adminQuizDateTimeFormatter.format(value);
+}
 
 export function getDefaultQuizPeriod(now = new Date()) {
   const moscowNow = new Date(now.getTime() + MOSCOW_UTC_OFFSET_HOURS * 60 * 60_000);

@@ -1,4 +1,4 @@
-export type ServiceHealthStatus = "healthy" | "unhealthy" | "not_configured";
+export type ServiceHealthStatus = "degraded" | "healthy" | "unhealthy" | "not_configured";
 
 export type ServiceHealthCheck = {
   code: string;

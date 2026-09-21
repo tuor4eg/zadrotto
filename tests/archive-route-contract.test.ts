@@ -59,6 +59,7 @@ describe("archive route split", () => {
       mediaItemDetails,
       /archive-paper archive-panel archive-panel-overflow-visible[^"]*flex-1/,
     );
+    assert.match(mediaItemDetails, /lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
   });
 
   it("submits the main-page search to the archive only on form submission", () => {

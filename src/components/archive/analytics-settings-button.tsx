@@ -9,7 +9,7 @@ export function AnalyticsSettingsButton() {
       type="button"
       onClick={() => window.dispatchEvent(new Event(OPEN_ANALYTICS_SETTINGS_EVENT))}
     >
-      Cookies
+      COOKIES
     </button>
   );
 }

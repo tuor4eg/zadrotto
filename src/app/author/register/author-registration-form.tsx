@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState, useCallback, useState } from "react";
 
 import { AuthorToasts } from "@/app/author/(protected)/author-toasts";
 import { PasswordField, PasswordInput } from "@/components/auth/password-field";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import {
@@ -24,16 +25,28 @@ const ERROR_MESSAGES: Record<
   "email-taken": "Этот email уже используется другим аккаунтом.",
   "login-taken": "Этот логин уже занят.",
   invalid: "Проверь имя, логин, email и пароль.",
+  turnstile: "Не удалось подтвердить запрос. Пройди проверку ещё раз.",
   unavailable: "Регистрация временно недоступна. Попробуй позже.",
 };
 
-export function AuthorRegistrationForm() {
+export function AuthorRegistrationForm({
+  turnstileRequired,
+  turnstileSiteKey,
+}: {
+  turnstileRequired: boolean;
+  turnstileSiteKey: string | null;
+}) {
   const [state, formAction, isPending] = useActionState(registerAuthorAction, null);
   const [name, setName] = useState("");
   const [login, setLogin] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [passwordConfirmation, setPasswordConfirmation] = useState("");
+  const [isTurnstileVerified, setIsTurnstileVerified] = useState(!turnstileRequired);
+
+  const handleTurnstileVerifiedChange = useCallback((verified: boolean) => {
+    setIsTurnstileVerified(verified);
+  }, []);
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -82,7 +95,16 @@ export function AuthorRegistrationForm() {
           required
         />
       </div>
-      <Button type="submit" disabled={isPending}>
+      {turnstileRequired && turnstileSiteKey ? (
+        <TurnstileWidget
+          action="author_register"
+          fieldName="turnstileToken"
+          onVerifiedChange={handleTurnstileVerifiedChange}
+          resetKey={state}
+          siteKey={turnstileSiteKey}
+        />
+      ) : null}
+      <Button type="submit" disabled={isPending || !isTurnstileVerified}>
         {isPending ? "Регистрируем…" : "Регистрация"}
       </Button>
     </form>

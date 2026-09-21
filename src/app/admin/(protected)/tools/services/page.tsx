@@ -2,6 +2,7 @@ import { ServerCog } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
+import { checkRegistrationTurnstileHealth } from "@/lib/auth/registration-turnstile";
 import { checkMinioHealth } from "@/lib/services/minio";
 import { checkPostgresHealth } from "@/lib/services/postgres";
 import { checkRedisHealth } from "@/lib/services/redis";
@@ -9,6 +10,7 @@ import type { ServiceHealthCheck, ServiceHealthStatus } from "@/lib/services/hea
 import { SettingsSectionHeader } from "../../settings/settings-section-header";
 
 const STATUS_LABELS: Record<ServiceHealthStatus, string> = {
+  degraded: "Ослаблен",
   healthy: "Работает",
   not_configured: "Не настроен",
   unhealthy: "Недоступен",
@@ -18,6 +20,7 @@ const STATUS_BADGE_VARIANTS: Record<
   ServiceHealthStatus,
   React.ComponentProps<typeof Badge>["variant"]
 > = {
+  degraded: "warning",
   healthy: "positive",
   not_configured: "warning",
   unhealthy: "destructive",
@@ -28,6 +31,7 @@ async function getServiceHealthChecks() {
     checkPostgresHealth(),
     checkRedisHealth(),
     checkMinioHealth(),
+    checkRegistrationTurnstileHealth(),
   ]);
 
   return healthChecks.map((result, index): ServiceHealthCheck => {
@@ -39,6 +43,7 @@ async function getServiceHealthChecks() {
       { code: "postgres", name: "PostgreSQL" },
       { code: "redis", name: "Redis" },
       { code: "minio", name: "MinIO / S3" },
+      { code: "turnstile-registration", name: "Turnstile регистрации" },
     ] as const;
     const fallbackService = fallbackServices[index];
 

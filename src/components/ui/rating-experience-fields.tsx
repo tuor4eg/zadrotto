@@ -10,7 +10,7 @@ import {
 } from "@/lib/authors/media-experiences";
 import {
   buildFirstExperiencedYearOptions,
-  formatFirstExperiencedInputValue,
+  getInitialFirstExperiencedInputValue,
 } from "@/lib/authors/experience-date";
 
 const MONTH_OPTIONS = [
@@ -91,26 +91,23 @@ export function RatingExperienceFields({
   variant = "default",
   onDirtyChange,
 }: RatingExperienceFieldsProps) {
+  const currentYear = new Date().getFullYear();
   const initialExperiencePrecision = currentFirstExperiencedPrecision ?? "year";
-  const initialExperienceValue = formatFirstExperiencedInputValue(
+  const initialExperienceValue = getInitialFirstExperiencedInputValue({
     currentFirstExperiencedAt,
-    initialExperiencePrecision,
-  );
+    currentFirstExperiencedPrecision: initialExperiencePrecision,
+    currentYear,
+    releaseYear,
+  });
   const [selectedExperiencePrecision, setSelectedExperiencePrecision] =
     useState<FirstExperiencedPrecision>(initialExperiencePrecision);
   const [selectedExperienceValue, setSelectedExperienceValue] = useState(initialExperienceValue);
-  const currentYear = new Date().getFullYear();
   const experienceParts = getExperienceParts(selectedExperienceValue);
   const visibleExperienceParts = {
     ...experienceParts,
     year: experienceParts.year || String(currentYear),
   };
-  const submittedExperienceValue =
-    selectedExperienceValue ||
-    buildExperienceValue({
-      ...visibleExperienceParts,
-      precision: selectedExperiencePrecision,
-    });
+  const submittedExperienceValue = selectedExperienceValue;
   const hasUnsavedExperience =
     selectedExperiencePrecision !== initialExperiencePrecision ||
     selectedExperienceValue !== initialExperienceValue;
@@ -120,7 +117,10 @@ export function RatingExperienceFields({
     releaseYear,
     selectedYear: experienceParts.year,
   });
-  const yearSelectOptions = visibleYearOptions.map((year) => ({ label: year, value: year }));
+  const yearSelectOptions = [
+    { label: "Не указан", value: "" },
+    ...visibleYearOptions.map((year) => ({ label: year, value: year })),
+  ];
   const monthDayCount = getDaysInMonth(
     visibleExperienceParts.year,
     visibleExperienceParts.month,
@@ -145,6 +145,11 @@ export function RatingExperienceFields({
   }, [hasUnsavedExperience, onDirtyChange]);
 
   function updateExperienceValue(nextParts: Partial<typeof experienceParts>) {
+    if (nextParts.year === "") {
+      setSelectedExperienceValue("");
+      return;
+    }
+
     const mergedParts = { ...visibleExperienceParts, ...nextParts };
     const normalizedDay = String(
       Math.min(Number(mergedParts.day), getDaysInMonth(mergedParts.year, mergedParts.month)),
@@ -178,14 +183,14 @@ export function RatingExperienceFields({
       >
         Первое знакомство
       </span>
-      <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_160px]">
+      <div className={`grid gap-2 ${selectedExperiencePrecision === "year" ? "grid-cols-[minmax(0,1fr)_160px]" : "sm:grid-cols-[minmax(0,1fr)_160px]"}`}>
         <div
           className={`grid gap-2 ${
             selectedExperiencePrecision === "year"
-              ? "sm:grid-cols-[88px]"
+              ? "grid-cols-1"
               : selectedExperiencePrecision === "month"
                 ? "sm:grid-cols-[88px_minmax(0,1fr)]"
-                : "sm:grid-cols-[88px_minmax(0,1fr)_48px]"
+                : "sm:grid-cols-[88px_minmax(0,1fr)_64px]"
           }`}
         >
           <ArchiveSelect
@@ -193,7 +198,7 @@ export function RatingExperienceFields({
             className={DATE_SELECT_CLASS_NAME}
             compact={false}
             options={yearSelectOptions}
-            value={visibleExperienceParts.year}
+            value={experienceParts.year}
             onChange={(year) => updateExperienceValue({ year })}
           />
           {selectedExperiencePrecision !== "year" ? (
@@ -225,12 +230,14 @@ export function RatingExperienceFields({
           value={selectedExperiencePrecision}
           onChange={(nextPrecision) => {
             setSelectedExperiencePrecision(nextPrecision);
-            setSelectedExperienceValue(
-              buildExperienceValue({
-                ...visibleExperienceParts,
-                precision: nextPrecision,
-              }),
-            );
+            if (selectedExperienceValue) {
+              setSelectedExperienceValue(
+                buildExperienceValue({
+                  ...visibleExperienceParts,
+                  precision: nextPrecision,
+                }),
+              );
+            }
           }}
         />
       </div>

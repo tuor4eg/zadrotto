@@ -110,6 +110,7 @@ export default async function EditReviewPage({
             <div className="mt-5">
               {isEditable ? (
                 <PublicReviewForm
+                  authorId={author.id}
                   canPublishWithoutReview={author.canPublishMediaWithoutReview}
                   contributionId={review.id}
                   mediaItem={{ id: review.mediaItemId, title: review.mediaItemTitle }}

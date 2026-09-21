@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizModal } from "@/components/quizzes/quiz-modal";
+import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import type { ActiveQuiz } from "@/lib/quizzes/model";
@@ -66,6 +67,12 @@ export function PublicSiteHeader({
     quizParticipant?.quizId === quiz?.quiz.id && quizParticipant?.completed,
   );
   const visibleQuiz = quiz && !isQuizCompleted ? quiz : null;
+
+  useEffect(() => {
+    const openQuizModal = () => setIsQuizOpen(true);
+    window.addEventListener(OPEN_QUIZ_MODAL_EVENT, openQuizModal);
+    return () => window.removeEventListener(OPEN_QUIZ_MODAL_EVENT, openQuizModal);
+  }, []);
 
   useEffect(() => {
     if (!isMenuOpen) return;
