@@ -20,6 +20,12 @@ import { setAuthorSessionCookie } from "@/lib/auth/author-auth";
 import { normalizeAuthorLogin } from "@/lib/auth/author-account";
 import { hashOpaqueToken } from "@/lib/auth/opaque-token";
 import { verifyPasswordOrDummy } from "@/lib/auth/password";
+import {
+  clearAuthorLoginChallenge,
+  getAuthorLoginChallengeState,
+  recordAuthorLoginFailure,
+} from "@/lib/auth/login-turnstile-challenge";
+import { getTurnstileSiteKey, verifyTurnstileToken } from "@/lib/auth/turnstile";
 import { logActivity } from "@/lib/activity-logs/server";
 
 function getFormString(formData: FormData, key: string) {
@@ -43,26 +49,44 @@ export type AuthorLoginState =
   | { ok: true; onboarding?: boolean }
   | null;
 
-type AuthorLoginResult = Exclude<AuthorLoginState, null>;
+export type AuthorPasswordLoginState =
+  | {
+      ok: false;
+      error: "invalid" | "rate-limit" | "rate-limit-unavailable" | "turnstile";
+      challengeRequired?: boolean;
+      turnstileSiteKey?: string;
+    }
+  | { ok: true; onboarding?: boolean }
+  | null;
 
-async function checkAuthorLoginRateLimit(scope: "author-password" | "author-access-token", identitySubject: string | null) {
+type AuthorLoginResult = Exclude<AuthorLoginState, null>;
+type AuthorPasswordLoginResult = Exclude<AuthorPasswordLoginState, null>;
+
+async function checkAuthorLoginRateLimit(
+  scope: "author-password" | "author-access-token",
+  identitySubject: string | null,
+  ipAddress?: string,
+) {
   return checkAuthRateLimit({
     scope,
-    ipAddress: await getAuthRequestIpAddress(),
+    ipAddress: ipAddress ?? await getAuthRequestIpAddress(),
     identitySubject,
     limits: AUTHOR_AUTH_RATE_LIMITS,
   });
 }
 
 export async function loginAuthorWithPasswordInline(
-  _previousState: AuthorLoginState,
+  _previousState: AuthorPasswordLoginState,
   formData: FormData,
-): Promise<AuthorLoginResult> {
+): Promise<AuthorPasswordLoginResult> {
   const identity = normalizeAuthorLogin(getFormString(formData, "identity"));
   const password = getFormString(formData, "password");
+  const turnstileToken = getFormString(formData, "turnstileToken");
+  const ipAddress = await getAuthRequestIpAddress();
   const rateLimit = await checkAuthorLoginRateLimit(
     "author-password",
     identity ? hashOpaqueToken(identity) : null,
+    ipAddress,
   );
 
   if (!rateLimit.ok) {
@@ -70,6 +94,38 @@ export async function loginAuthorWithPasswordInline(
       ok: false,
       error: rateLimit.reason === "limited" ? "rate-limit" : "rate-limit-unavailable",
     };
+  }
+
+  const challengeSubject = { ipAddress, normalizedLogin: identity };
+  const challengeState = await getAuthorLoginChallengeState(challengeSubject);
+  if (!challengeState.ok) return { ok: false, error: "rate-limit-unavailable" };
+
+  if (challengeState.challengeRequired) {
+    const siteKey = getTurnstileSiteKey();
+    if (!siteKey) return { ok: false, error: "rate-limit-unavailable" };
+
+    const turnstile = await verifyTurnstileToken(turnstileToken, {
+      expectedAction: "author_login",
+    });
+    if (!turnstile.ok) {
+      await logActivity({
+        action: "author.login.failed",
+        actorType: "author",
+        status: "failure",
+        message: "Неудачная попытка входа автора.",
+        metadata: {
+          authMethod: "password",
+          challengeRequired: true,
+          credentialProvided: Boolean(identity && password),
+        },
+      });
+      return {
+        ok: false,
+        error: "turnstile",
+        challengeRequired: true,
+        turnstileSiteKey: siteKey,
+      };
+    }
   }
 
   const account = identity ? await getActiveAuthorAccountByLoginOrEmail(identity) : null;
@@ -83,8 +139,24 @@ export async function loginAuthorWithPasswordInline(
       message: "Неудачная попытка входа автора.",
       metadata: { authMethod: "password", credentialProvided: Boolean(identity && password) },
     });
-    return { ok: false, error: "invalid" };
+    const nextChallengeState = await recordAuthorLoginFailure(challengeSubject);
+    if (!nextChallengeState.ok) return { ok: false, error: "rate-limit-unavailable" };
+
+    const siteKey = nextChallengeState.challengeRequired ? getTurnstileSiteKey() : null;
+    if (nextChallengeState.challengeRequired && !siteKey) {
+      return { ok: false, error: "rate-limit-unavailable" };
+    }
+
+    return {
+      ok: false,
+      error: "invalid",
+      challengeRequired: nextChallengeState.challengeRequired || undefined,
+      turnstileSiteKey: siteKey ?? undefined,
+    };
   }
+
+  const challengeCleared = await clearAuthorLoginChallenge(challengeSubject);
+  if (!challengeCleared.ok) return { ok: false, error: "rate-limit-unavailable" };
 
   await setAuthorSessionCookie(account.authorId, "password");
   await logActivity({

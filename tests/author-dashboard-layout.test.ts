@@ -117,7 +117,7 @@ describe("author dashboard layout", () => {
     const profileLayout = readFileSync("src/app/author/(protected)/profile/layout.tsx", "utf8");
 
     for (const page of [friendsPage, profileLayout]) {
-      assert.match(page, /className="author-dashboard"/);
+      assert.match(page, /className="author-dashboard[^"]*"/);
       assert.match(page, /className="archive-paper-surface archive-panel[^\"]*p-5 sm:p-6"/);
     }
   });

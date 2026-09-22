@@ -5,23 +5,25 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 
 import { PasswordInput } from "@/components/auth/password-field";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { ArchiveToasts } from "@/components/ui/archive-toasts";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { USER_HUD_REFRESH_EVENT } from "@/lib/onboarding/model";
 import {
   loginAuthorWithPasswordInline,
-  type AuthorLoginState,
+  type AuthorPasswordLoginState,
 } from "./actions";
 
 const ERROR_MESSAGES = {
   invalid: "Не удалось войти. Проверь введённые данные.",
   "rate-limit": "Слишком много попыток входа. Попробуй позже.",
   "rate-limit-unavailable": "Вход временно недоступен. Попробуй позже.",
+  turnstile: "Не удалось подтвердить запрос. Пройди проверку ещё раз.",
 } as const;
 
 type AuthorLoginFormProps = {
-  initialError?: Exclude<AuthorLoginState, null | { ok: true }>["error"] | null;
+  initialError?: Exclude<AuthorPasswordLoginState, null | { ok: true }>["error"] | null;
   onSuccess?: () => void;
   redirectOnSuccess?: boolean;
 };
@@ -34,7 +36,11 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
   );
   const [identity, setIdentity] = useState("");
   const [password, setPassword] = useState("");
+  const [turnstileVerified, setTurnstileVerified] = useState(false);
   const state = passwordState;
+  const challengeRequired = Boolean(
+    state && !state.ok && state.challengeRequired && state.turnstileSiteKey,
+  );
 
   useEffect(() => {
     if (!state?.ok) return;
@@ -78,7 +84,19 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
             required
           />
         </div>
-        <Button type="submit" disabled={isPasswordPending}>
+        {challengeRequired && state && !state.ok && state.turnstileSiteKey ? (
+          <TurnstileWidget
+            action="author_login"
+            fieldName="turnstileToken"
+            onVerifiedChange={setTurnstileVerified}
+            resetKey={state}
+            siteKey={state.turnstileSiteKey}
+          />
+        ) : null}
+        <Button
+          type="submit"
+          disabled={isPasswordPending || (challengeRequired && !turnstileVerified)}
+        >
           {isPasswordPending ? "Входим…" : "Войти"}
         </Button>
         <div className="flex flex-wrap justify-between gap-2 text-sm">

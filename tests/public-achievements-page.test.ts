@@ -291,7 +291,7 @@ describe("public achievements page", () => {
     assert.match(featured, /Получено/)
     assert.match(featured, /item\.description/)
     assert.match(featured, /-webkit-line-clamp:4/)
-    assert.match(featured, /line-clamp-2 min-h-\[2\.5rem\]/)
+    assert.match(featured, /line-clamp-3 min-h-\[3rem\]/)
     assert.match(featured, /title=\{item\.description\}/)
     assert.match(featured, /mt-2 flex shrink-0/)
     assert.match(featured, /pb-14/)

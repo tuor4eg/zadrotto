@@ -162,7 +162,7 @@ describe("author auth persistence contracts", () => {
     const passwordLogin = functionSource(loginActions, "loginAuthorWithPasswordInline", "loginAuthorInline");
     assert.match(passwordLogin, /verifyPasswordOrDummy\(password, account\?\.passwordHash\)/);
     assert.match(passwordLogin, /if \(!account \|\| !passwordMatches\)/);
-    assert.match(passwordLogin, /return \{ ok: false, error: "invalid" \}/);
+    assert.match(passwordLogin, /return \{[\s\S]*error: "invalid"/);
     assert.doesNotMatch(passwordLogin, /not-found|wrong-password|pending_approval|rejected/);
   });
 
