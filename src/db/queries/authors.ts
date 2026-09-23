@@ -148,6 +148,14 @@ export async function getAdminAuthorProfileById(id: number) {
         where ${mediaItems.createdByAuthorId} = ${authors.id}
           and ${mediaItems.publicationStatus} = 'published'
       )::int`,
+      ratingsCount: sql<number>`(
+        select count(*) from ${ratings} where ${ratings.authorId} = ${authors.id}
+      )::int`,
+      reviewsCount: sql<number>`(
+        select count(*) from ${contributions}
+        where ${contributions.authorId} = ${authors.id}
+          and ${contributions.type} = 'review'
+      )::int`,
     })
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))

@@ -9,6 +9,7 @@ import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
+import { QuizWinner } from "@/components/quizzes/quiz-winner";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
 type ArchiveRiddleProps = {
@@ -56,6 +57,9 @@ export function ArchiveRiddle({
   }, [quiz]);
 
   const timeRemaining = quiz ? formatQuizTimeRemaining(quiz.endsAt, now) : null;
+  const imageMaxHeightClassName = size === "large"
+    ? quiz?.winner ? "max-h-[210px]" : "max-h-[250px]"
+    : quiz?.winner ? "max-h-[135px]" : "max-h-[170px]";
 
   return (
     <>
@@ -87,18 +91,22 @@ export function ArchiveRiddle({
             <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">
               {quiz.imageUrl ? (
                 <div
-                  className={`flex max-w-[90%] items-center justify-center ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
+                  className={`flex max-w-[90%] items-center justify-center ${imageMaxHeightClassName}`}
                 >
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
                       src={quiz.imageUrl}
                       alt="Кадр из загадки"
-                      className={`max-w-full rounded-md object-contain ${size === "large" ? "max-h-[250px]" : "max-h-[170px]"}`}
+                      className={`max-w-full rounded-md object-contain ${imageMaxHeightClassName}`}
                     />
                 </div>
               ) : null}
             </div>
-            {quizCompleted ? (
+            {quiz.winner ? (
+              <div className="absolute inset-x-3 bottom-2 flex justify-center border-t border-stone-400/25 pt-2 sm:inset-x-4 sm:bottom-3">
+                <QuizWinner winner={quiz.winner} />
+              </div>
+            ) : quizCompleted ? (
               <p className="mt-auto font-mono text-[10px] uppercase tracking-wider text-stone-500">
                 Загадка уже разгадана
               </p>

@@ -4,15 +4,16 @@ import { describe, it } from "node:test";
 
 const detailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
 const previewSource = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
+const summarySource = readFileSync("src/lib/media/media-item-summary.ts", "utf8");
 
 describe("saved Roblox media details", () => {
   it("adds saved creation year, genre, category, and creator to the Roblox metadata line", () => {
-    assert.match(detailsSource, /item\.mediaType !== "roblox"/);
-    assert.match(detailsSource, /getDateFactYear\(item\.metadataFacts, "createdAt"\)/);
-    assert.match(detailsSource, /getStringFact\(item\.metadataFacts, "genre"\)/);
-    assert.match(detailsSource, /getStringFact\(item\.metadataFacts, "genreLevel1"\)/);
-    assert.match(detailsSource, /getStringFact\(item\.metadataFacts, "creatorName"\)/);
-    assert.match(detailsSource, /\.\.\.robloxDetailLabels/);
+    assert.match(detailsSource, /getArchiveMediaItemInfoLabels/);
+    assert.match(summarySource, /item\.mediaType === "roblox"/);
+    assert.match(summarySource, /getDateFactYear\(item\.metadataFacts, "createdAt"\)/);
+    assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genre"\)/);
+    assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genreLevel1"\)/);
+    assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "creatorName"\)/);
   });
 
   it("shows the Roblox creation year in the catalog preview without setting releaseYear", () => {

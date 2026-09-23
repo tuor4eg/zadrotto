@@ -8,6 +8,7 @@ import { createPortal } from "react-dom"
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal"
 import { ArchiveCover } from "@/app/media-item-tile"
+import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup"
 import { formatScore } from "@/lib/ratings/score"
 
 export type MediaItemReview = {
@@ -103,7 +104,7 @@ function ReviewQuotePreview({
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLParagraphElement>(null)
-  const normalizedBody = body.trim()
+  const normalizedBody = inlineMarkupToPlainText(body).trim()
   const fullText = `«${normalizedBody}»`
   const [previewText, setPreviewText] = useState(fullText)
 
@@ -239,11 +240,13 @@ export function MediaItemReviewCard({
   compact = false,
   index = 0,
   review,
+  showMediaItemTitle = false,
   variant = "paper",
 }: {
   compact?: boolean
   index?: number
   review: MediaItemReview
+  showMediaItemTitle?: boolean
   variant?: "paper" | "cover"
 }) {
   if (variant === "cover") {
@@ -274,6 +277,15 @@ export function MediaItemReviewCard({
         }`}
         aria-hidden="true"
       />
+      {showMediaItemTitle && review.mediaItemTitle ? (
+        <div
+          className={`relative z-10 mb-1.5 line-clamp-2 shrink-0 font-serif font-semibold text-stone-950 ${
+            compact ? "text-[9px] leading-3" : "text-xs leading-4 sm:text-sm"
+          }`}
+        >
+          {review.mediaItemTitle}
+        </div>
+      ) : null}
       <ReviewQuotePreview body={review.body} />
       <div className="relative z-10 mt-1 shrink-0">
         <div
@@ -379,7 +391,7 @@ export function MediaItemReviews({
   return (
     <section aria-labelledby="reviews-heading">
       <h2 id="reviews-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-        Мнения
+        Рецензии
       </h2>
 
       <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 px-1 py-3">

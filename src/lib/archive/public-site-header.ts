@@ -44,9 +44,11 @@ export async function getPublicSiteHeaderState(
         ? { avatarObjectKey: author.avatarObjectKey, name: author.name }
         : null,
       currentAdminUser: Boolean(adminUser),
-      quiz: activeQuiz && !activeQuizParticipant?.completed
+      quiz: activeQuiz
         ? {
-            isParticipating: activeQuizParticipant?.quizId === activeQuiz.id,
+            participant: activeQuizParticipant?.quizId === activeQuiz.id
+              ? activeQuizParticipant
+              : null,
             quiz: activeQuiz,
             unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
           }

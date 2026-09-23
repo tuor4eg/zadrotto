@@ -175,6 +175,7 @@ describe("quizzes", () => {
     const participationRoute = readFileSync("src/app/api/quizzes/active/participation/route.ts", "utf8");
     const guessRoute = readFileSync("src/app/quiz/guess/route.ts", "utf8");
     const modal = readFileSync("src/components/quizzes/quiz-modal.tsx", "utf8");
+    const publicHeader = readFileSync("src/components/archive/public-site-header.tsx", "utf8");
 
     assert.match(query, /insert\(quizParticipants\)[\s\S]*onConflictDoNothing\(\)/);
     assert.match(participationRoute, /joinActiveQuiz\(author\.id\)/);
@@ -196,6 +197,16 @@ describe("quizzes", () => {
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
     assert.match(activeQuizPanel, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
     assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
+    assert.match(activeQuizPanel, /participant\?\.completed[\s\S]*Ура, вы уже ответили на этот вопрос!/);
+    assert.match(activeQuizPanel, /participant\.outcome === "correct"[\s\S]*Вы исчерпали попытки, повезёт в следующий раз/);
+    assert.match(publicHeader, /participant=\{currentQuizParticipant\}/);
+    assert.doesNotMatch(publicHeader, /visibleQuiz|isQuizCompleted/);
+    assert.match(activeQuizPanel, /quiz\.winner[\s\S]*<QuizWinner winner=\{quiz\.winner\}/);
+    assert.match(query, /getActiveQuiz[\s\S]*eq\(quizParticipants\.isWinner, true\)[\s\S]*winner: winner \?\? null/);
+    const quizWinner = readFileSync("src/components/quizzes/quiz-winner.tsx", "utf8");
+    assert.match(quizWinner, /Есть победитель!/);
+    assert.match(quizWinner, /items-center justify-center[^"]*text-center/);
+    assert.match(quizWinner, /<Avatar name=\{winner\.name\} objectKey=\{winner\.avatarObjectKey\}/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /mb-5 px-12 text-center sm:px-32[\s\S]*whitespace-nowrap font-serif text-2xl sm:text-3xl/);
     assert.match(modal, /Открыть правила викторины/);

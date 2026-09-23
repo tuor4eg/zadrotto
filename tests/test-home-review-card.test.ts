@@ -15,4 +15,11 @@ describe("home review card", () => {
     assert.match(excerpt, /WebkitLineClamp: lineCount/);
     assert.doesNotMatch(queries, /normalizedBody\.slice/);
   });
+
+  it("selects the home-page review by creation date rather than update date", () => {
+    assert.match(
+      queries,
+      /getLatestPublishedReviewCard[\s\S]*\.orderBy\(desc\(contributions\.createdAt\), desc\(contributions\.id\)\)/,
+    );
+  });
 });

@@ -1500,7 +1500,7 @@ export function DosTerminalRatingContent({
         <RatingStars score={score} variant="terminal" />
       </span>
       <span
-        className={`relative z-10 block min-h-4 text-center text-[10px] uppercase leading-4 ${
+        className={`relative z-10 flex h-8 shrink-0 items-center justify-center text-center text-[10px] uppercase leading-4 ${
           detailText ? "opacity-85" : "opacity-0"
         }`}
       >

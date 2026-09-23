@@ -1,4 +1,9 @@
-import { formatAuthorsFact, formatFactList, getStringListFact } from "@/lib/media/metadata-facts";
+import {
+  formatAuthorsFact,
+  formatFactList,
+  getDateFactYear,
+  getStringListFact,
+} from "@/lib/media/metadata-facts";
 
 type MediaItemSummaryInput = {
   mediaType: string;
@@ -23,6 +28,22 @@ function getNonEmptyStringFact(
   const value = facts?.[key];
 
   return typeof value === "string" && value.trim() !== "" ? value.trim() : null;
+}
+
+export function getArchiveMediaItemInfoLabels(item: MediaItemSummaryInput) {
+  const [, year, ...details] = getMediaItemSummaryParts(item);
+  const robloxDetails = item.mediaType === "roblox"
+    ? [
+        getDateFactYear(item.metadataFacts, "createdAt"),
+        getNonEmptyStringFact(item.metadataFacts, "genre"),
+        getNonEmptyStringFact(item.metadataFacts, "genreLevel1"),
+        getNonEmptyStringFact(item.metadataFacts, "creatorName"),
+      ].filter((value): value is string => Boolean(value))
+    : [];
+
+  return [year, ...details, ...robloxDetails].filter(
+    (value): value is string => Boolean(value),
+  );
 }
 
 function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {

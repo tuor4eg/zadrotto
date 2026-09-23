@@ -271,13 +271,21 @@ describe("media type visibility query boundaries", () => {
       [mediaItemsQuery, "getAuthorMediaItems"],
       [mediaItemsQuery, "getAuthorPublishedMediaItemCount"],
       [reviewsQuery, "getAuthorReviewSummary"],
-      [reviewsQuery, "searchPublishedMediaItemsForReview"],
       [ratingsQuery, "getAuthorRatingSummary"],
     ]) {
       const functionSource = getExportedFunctionSource(source, functionName);
       assert.match(functionSource, /enabledMediaTypeCodes/);
       assert.match(functionSource, /getMediaTypeCodeFilterSql/);
     }
+
+    const reviewSearchSource = getExportedFunctionSource(
+      reviewsQuery,
+      "searchPublishedMediaItemsForReview",
+    );
+    const sharedSearchSource = read("src/db/queries/inline-mention-media-items.ts");
+    assert.match(reviewSearchSource, /enabledMediaTypeCodes/);
+    assert.match(reviewSearchSource, /accessibleMediaTypeCodes: enabledMediaTypeCodes/);
+    assert.match(sharedSearchSource, /getMediaTypeCodeFilterSql/);
 
     const authorMediaPage = read("src/app/author/(protected)/media/page.tsx");
     assert.match(authorMediaPage, /getEffectiveMediaTypeOptions\(author\.id\)/);

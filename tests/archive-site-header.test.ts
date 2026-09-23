@@ -57,7 +57,7 @@ describe("public site header", () => {
     assert.match(headerSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.match(headerSource, /<QuizModal/);
     assert.match(headerSource, /\{author \? \([\s\S]*aria-label="Открыть текущую викторину"/);
-    assert.match(headerSource, /quiz=\{visibleQuiz\?\.quiz \?\? null\}/);
+    assert.match(headerSource, /participant=\{currentQuizParticipant\}[\s\S]*quiz=\{quiz\?\.quiz \?\? null\}/);
     assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущую викторину[\s\S]*href="\/author\/profile"/);
     assert.match(
       headerSource,
@@ -88,7 +88,7 @@ describe("public site header", () => {
     assert.match(headerStateSource, /getSubmittedModerationRequestCountForAdmin\(\)/);
     assert.match(headerStateSource, /getActiveQuiz\(\)/);
     assert.match(headerStateSource, /getActiveQuizParticipantState\(author\.id\)/);
-    assert.match(headerStateSource, /activeQuiz && !activeQuizParticipant\?\.completed/);
+    assert.match(headerStateSource, /quiz: activeQuiz[\s\S]*participant: activeQuizParticipant\?\.quizId === activeQuiz\.id/);
     assert.match(headerStateSource, /adminUser\s*\?\s*await getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*0/);
     assert.match(headerStateSource, /headerProps:[\s\S]*avatarObjectKey: author\.avatarObjectKey, name: author\.name/);
     assert.match(archivePageSource, /<PublicSiteHeader[\s\S]*quiz=\{headerState\.headerProps\.quiz\}/);

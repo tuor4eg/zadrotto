@@ -13,7 +13,7 @@ import { QuizModal } from "@/components/quizzes/quiz-modal";
 import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
-import type { ActiveQuiz } from "@/lib/quizzes/model";
+import type { ActiveQuiz, QuizParticipantState } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
@@ -26,7 +26,7 @@ export type PublicSiteHeaderProps = {
   controls?: ReactNode;
   currentAdminUser: boolean;
   quiz?: {
-    isParticipating: boolean;
+    participant: QuizParticipantState | null;
     quiz: ActiveQuiz;
     unavailableMediaTypeNames: string[];
   } | null;
@@ -63,10 +63,9 @@ export function PublicSiteHeader({
     ...(author ? [QUIZZES_MENU_ITEM] : []),
     ...(showAchievements ? [{ href: "/achievements", label: "Ачивки" } as const] : []),
   ];
-  const isQuizCompleted = Boolean(
-    quizParticipant?.quizId === quiz?.quiz.id && quizParticipant?.completed,
-  );
-  const visibleQuiz = quiz && !isQuizCompleted ? quiz : null;
+  const currentQuizParticipant = quizParticipant?.quizId === quiz?.quiz.id
+    ? quizParticipant
+    : quiz?.participant ?? null;
 
   useEffect(() => {
     const openQuizModal = () => setIsQuizOpen(true);
@@ -279,10 +278,10 @@ export function PublicSiteHeader({
         : null}
       {isQuizOpen ? (
         <QuizModal
-          isParticipating={visibleQuiz?.isParticipating ?? false}
           onClose={() => setIsQuizOpen(false)}
-          quiz={visibleQuiz?.quiz ?? null}
-          unavailableMediaTypeNames={visibleQuiz?.unavailableMediaTypeNames ?? []}
+          participant={currentQuizParticipant}
+          quiz={quiz?.quiz ?? null}
+          unavailableMediaTypeNames={quiz?.unavailableMediaTypeNames ?? []}
         />
       ) : null}
     </>

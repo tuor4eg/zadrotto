@@ -77,6 +77,29 @@ function formatDate(value: Date | null) {
   }).format(value);
 }
 
+function ReviewTitleLink({
+  review,
+  className,
+}: {
+  review: Awaited<ReturnType<typeof getAdminContributionReviews>>[number];
+  className: string;
+}) {
+  if (review.status !== "published") {
+    return <h3 className={className}>{review.reviewTitle}</h3>;
+  }
+
+  return (
+    <h3 className={className}>
+      <Link
+        href={`/reviews/${review.id}`}
+        className="underline decoration-stone-400 underline-offset-2 transition-colors hover:text-stone-600 hover:decoration-stone-600"
+      >
+        {review.reviewTitle}
+      </Link>
+    </h3>
+  );
+}
+
 function ReviewMaterialActions({
   redirectTo,
   review,
@@ -235,9 +258,10 @@ export default async function AdminMaterialReviewsPage({
                   >
                     {review.mediaItemTitle}
                   </Link>
-                  <h3 className="mt-1 break-words font-semibold leading-5 text-stone-950">
-                    {review.reviewTitle}
-                  </h3>
+                  <ReviewTitleLink
+                    review={review}
+                    className="mt-1 break-words font-semibold leading-5 text-stone-950"
+                  />
                 </div>
 
                 <div className="mt-3 border-t border-stone-100 pt-3">
@@ -285,9 +309,10 @@ export default async function AdminMaterialReviewsPage({
                       >
                         {review.mediaItemTitle}
                       </Link>
-                      <h3 className="mt-1 truncate font-semibold leading-5 text-stone-950">
-                        {review.reviewTitle}
-                      </h3>
+                      <ReviewTitleLink
+                        review={review}
+                        className="mt-1 truncate font-semibold leading-5 text-stone-950"
+                      />
                     </TD>
                     <TD className="min-w-0 overflow-hidden">
                       <Link

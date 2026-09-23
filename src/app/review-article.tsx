@@ -1,23 +1,25 @@
 "use client";
 
-import { ArrowLeft, ArrowRight, Pencil, Share2 } from "lucide-react";
+import { Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
-import { Fragment, useState } from "react";
+import { useState } from "react";
 
-import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
-import { ReviewAuthorStars, type MediaItemReview } from "@/app/media-item-reviews";
+import type { MediaItemReview } from "@/app/media-item-reviews";
+import { ReviewPolaroidRow } from "@/app/reviews/review-polaroid-row";
+import { InlineMentionText } from "@/components/inline-mentions/inline-mention-text";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { Avatar } from "@/components/ui/avatar";
-import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import type { MediaType } from "@/lib/media/types";
+import type { InlineNode, ResolvedInlineEntity } from "@/lib/inline-mentions/markup";
 import { formatScore } from "@/lib/ratings/score";
 
 type ReviewArticleProps = {
   canEdit: boolean;
-  mediaItemMeta: string[];
-  mediaItemTypeLabel: string;
-  nextReviewId: number | null;
-  previousReviewId: number | null;
+  inlineNodes: InlineNode[];
+  mediaItemIdentity: React.ReactNode;
+  otherAuthorReviews: MediaItemReview[];
+  otherMediaItemReviews: MediaItemReview[];
+  resolvedInlineEntities: ResolvedInlineEntity[];
   review: MediaItemReview & {
     mediaItemCarrierCode: string | null;
     mediaItemCode: string;
@@ -67,20 +69,15 @@ async function copyUrl(url: string) {
 
 export function ReviewArticle({
   canEdit,
-  mediaItemMeta,
-  mediaItemTypeLabel,
-  nextReviewId,
-  previousReviewId,
+  inlineNodes,
+  mediaItemIdentity,
+  otherAuthorReviews,
+  otherMediaItemReviews,
+  resolvedInlineEntities,
   review,
 }: ReviewArticleProps) {
   const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([]);
   const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
-  const mediaCarrierFrame = getMediaCarrierFrame({
-    mediaCarrierCode: review.mediaItemCarrierCode,
-    mediaType: review.mediaItemMediaType,
-  });
-  const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
-  const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
 
   async function shareReview() {
     const shareData = {
@@ -120,32 +117,7 @@ export function ReviewArticle({
           className="pointer-events-none absolute right-[22px] -top-[13px] z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-7 sm:top-0 sm:h-28 lg:right-8 lg:top-[-12px] lg:h-32"
         />
         <article className="archive-paper archive-panel relative flex flex-1 flex-col px-6 pb-3 pt-11 sm:px-10 sm:pb-5 sm:pt-12">
-        <header className="relative">
-          <nav aria-label="Хлебные крошки" className={`${labelFontClassName} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
-            <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
-              <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/archive?type=${encodeURIComponent(review.mediaItemMediaType)}`}>{mediaItemTypeLabel}</Link></li>
-              <li aria-hidden="true" className="text-stone-400">/</li>
-              <li><Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>{review.mediaItemTitle}</Link></li>
-              <li aria-hidden="true" className="text-stone-400">/</li>
-              <li aria-current="page" className="min-w-0 truncate text-stone-800">Рецензия</li>
-            </ol>
-          </nav>
-
-          <div className="mt-3 max-w-[880px] pr-16 sm:pr-24">
-            <div className={mediaCarrierFrame ? `${displayFontClassName} text-xl leading-[1.5] text-stone-950 sm:text-3xl` : "font-serif text-3xl leading-none text-stone-950 sm:text-5xl"}>
-              <MediaCarrierDisplayTitle title={review.mediaItemTitle} frame={mediaCarrierFrame} />
-            </div>
-          </div>
-
-          <div className={`${labelFontClassName} mt-3 text-xs leading-6 text-stone-800`}>
-            {mediaItemMeta.map((label, index) => (
-              <Fragment key={`${label}-${index}`}>
-                {index > 0 ? <span className="mx-1.5">•</span> : null}
-                <span>{label}</span>
-              </Fragment>
-            ))}
-          </div>
-        </header>
+        {mediaItemIdentity}
 
         <section className="relative mt-5 flex flex-1 flex-col">
           <div className="relative -mx-6 flex flex-1 flex-col sm:mx-0">
@@ -181,9 +153,18 @@ export function ReviewArticle({
               </Link>
               {publishedAt ? <span>{publishedAt}</span> : null}
             </div>
-            <div className="mt-4 flex justify-start"><ReviewAuthorStars score={review.authorScore} /></div>
+            <div className="archive-typewriter-text mt-4 text-sm font-semibold text-stone-700">
+              {review.authorScore === null
+                ? "Оценка автора не указана"
+                : `Оценка автора: ${formatScore(review.authorScore)}/10`}
+            </div>
             <div className="mt-8 w-full">
-              <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">{review.body}</p>
+              <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">
+                <InlineMentionText
+                  nodes={inlineNodes}
+                  resolvedEntities={resolvedInlineEntities}
+                />
+              </p>
             </div>
             </div>
             {review.authorScore !== null ? (
@@ -194,27 +175,34 @@ export function ReviewArticle({
               </div>
             ) : null}
           </div>
-          {previousReviewId || nextReviewId ? (
-            <nav aria-label="Навигация по рецензиям" className="flex shrink-0 items-center gap-3 px-1 pb-1 pt-4">
-              {previousReviewId ? (
-                <Link
-                  href={`/reviews/${previousReviewId}`}
-                  className="archive-control-surface inline-flex h-9 items-center gap-2 rounded-md border border-stone-300/80 px-3 font-mono text-xs font-semibold uppercase tracking-[0.08em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-                >
-                  <ArrowLeft className="size-4" aria-hidden="true" />
-                  Предыдущая рецензия
+          {otherMediaItemReviews.length > 0 ? (
+            <section aria-labelledby="more-media-reviews" className="mt-8 border-t border-stone-300/70 pt-6">
+              <h2 id="more-media-reviews" className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
+                Еще рецензии на{" "}
+                <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>
+                  {review.mediaItemTitle}
                 </Link>
-              ) : null}
-              {nextReviewId ? (
-                <Link
-                  href={`/reviews/${nextReviewId}`}
-                  className="archive-control-surface ml-auto inline-flex h-9 items-center gap-2 rounded-md border border-stone-300/80 px-3 text-right font-mono text-xs font-semibold uppercase tracking-[0.08em] text-stone-700 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] transition-colors hover:border-stone-700 hover:bg-stone-50 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-                >
-                  Следующая рецензия
-                  <ArrowRight className="size-4" aria-hidden="true" />
+              </h2>
+              <div className="mt-4"><ReviewPolaroidRow mobileScrollable reviews={otherMediaItemReviews} variant="paper" /></div>
+            </section>
+          ) : null}
+          {otherAuthorReviews.length > 0 ? (
+            <section aria-labelledby="more-author-reviews" className="mt-8 border-t border-stone-300/70 pt-6">
+              <h2 id="more-author-reviews" className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
+                Еще рецензии автора{" "}
+                <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/reviews?author=${review.authorId}`}>
+                  {review.authorName}
                 </Link>
-              ) : null}
-            </nav>
+              </h2>
+              <div className="mt-4">
+                <ReviewPolaroidRow
+                  mobileScrollable
+                  reviews={otherAuthorReviews}
+                  showMediaItemTitle
+                  variant="paper"
+                />
+              </div>
+            </section>
           ) : null}
         </section>
         </article>

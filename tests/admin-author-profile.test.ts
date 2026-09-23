@@ -36,4 +36,11 @@ describe("admin author profile", () => {
     );
     assert.match(listPage, /!author\.isSystem && !author\.blockedAt/);
   });
+
+  it("links rating and review totals to the corresponding author lists", () => {
+    assert.match(query, /ratingsCount: sql<number>[\s\S]*ratings\.authorId[\s\S]*authors\.id/);
+    assert.match(query, /reviewsCount: sql<number>[\s\S]*contributions\.authorId[\s\S]*contributions\.type[\s\S]*'review'/);
+    assert.match(page, /href=\{`\/archive\?ratedBy=\$\{author\.id\}&sort=my_rating_date`\}[\s\S]*label="Оценок"[\s\S]*author\.ratingsCount/);
+    assert.match(page, /href=\{`\/admin\/materials\/reviews\?author=\$\{author\.id\}`\}[\s\S]*label="Рецензий"[\s\S]*author\.reviewsCount/);
+  });
 });

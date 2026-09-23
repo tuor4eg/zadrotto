@@ -103,10 +103,12 @@ describe("public reviews catalog page", () => {
     assert.match(page, /FeaturedReviews/)
     assert.match(page, /FEATURED_REVIEWS_FETCH_LIMIT/)
     const featured = read("src/app/reviews/featured-reviews.tsx")
-    assert.match(featured, /MediaItemReviewCard key=\{review\.id\}[\s\S]*variant="cover"/)
-    assert.doesNotMatch(featured, /compact/)
-    assert.match(featured, /FEATURED_CARD_WIDTH = 240/)
-    assert.match(featured, /reviews\.slice\(0, columnCount\)/)
+    const polaroidRow = read("src/app/reviews/review-polaroid-row.tsx")
+    assert.match(featured, /<ReviewPolaroidRow reviews=\{reviews\} variant="cover" \/>/)
+    assert.match(polaroidRow, /<MediaItemReviewCard[\s\S]*key=\{review\.id\}[\s\S]*variant=\{variant\}/)
+    assert.doesNotMatch(polaroidRow, /compact/)
+    assert.match(polaroidRow, /COVER_REVIEW_CARD_WIDTH = 240/)
+    assert.match(polaroidRow, /reviews\.slice\(0, visibleCardCount\)/)
     assert.match(mediaReviews, /export function MediaItemReviewCard/)
     assert.match(mediaReviews, /variant === "cover"/)
     assert.match(mediaReviews, /ArchiveCover[\s\S]*carrierFrame=\{false\}/)
@@ -132,7 +134,7 @@ describe("public reviews catalog page", () => {
     const article = read("src/app/review-article.tsx")
     assert.match(
       article,
-      /<p className="media-carrier-font-streaming whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-8 text-stone-800 sm:text-base sm:leading-9">\{review\.body\}<\/p>/,
+      /<p className="media-carrier-font-streaming whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-8 text-stone-800 sm:text-base sm:leading-9">[\s\S]*<InlineMentionText/,
     )
   })
 

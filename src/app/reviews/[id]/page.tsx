@@ -2,17 +2,29 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
 import { ReviewArticle } from "@/app/review-article";
+import { MediaItemFranchiseSuggestionDialog } from "@/app/media-item-franchise-suggestion-dialog";
+import { ArchiveMediaItemIdentity } from "@/components/archive/archive-media-item-identity";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import {
   getPublishedReviewById,
-  getPublishedReviewNavigation,
+  getOtherPublishedReviewCardsByAuthor,
+  getOtherPublishedReviewCardsForMediaItem,
 } from "@/db/queries/contribution-reviews";
-import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions } from "@/db/queries/media-types";
+import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
+import { getMediaItemByCode } from "@/db/queries/media-items";
+import {
+  getAccessibleMediaTypeCodes,
+  getAllMediaTypeOptions,
+  getEnabledMediaTypeCodes,
+} from "@/db/queries/media-types";
+import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
+import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
-import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
-import { getMediaTypeLabel } from "@/lib/media/types";
+import { inlineMarkupToPlainText, parseInlineMarkup } from "@/lib/inline-mentions/markup";
+import { resolveInlineEntities } from "@/lib/inline-mentions/server";
+import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 
 export const dynamic = "force-dynamic";
 
@@ -25,13 +37,13 @@ function parseId(value: string) {
 
 async function getReview(idValue: string, currentAuthor: Awaited<ReturnType<typeof getCurrentAuthor>>) {
   const id = parseId(idValue);
-  if (!id) return { currentAuthor: null, review: null };
+  if (!id) return { accessibleMediaTypeCodes: [], currentAuthor: null, review: null };
   const [accessibleMediaTypeCodes, mediaTypes] = await Promise.all([
     getAccessibleMediaTypeCodes(currentAuthor?.id),
     getAllMediaTypeOptions(),
   ]);
   const review = await getPublishedReviewById(id, accessibleMediaTypeCodes);
-  return { currentAuthor, mediaTypes, review };
+  return { accessibleMediaTypeCodes, currentAuthor, mediaTypes, review };
 }
 
 export async function generateMetadata({ params }: ReviewPageProps): Promise<Metadata> {
@@ -40,15 +52,70 @@ export async function generateMetadata({ params }: ReviewPageProps): Promise<Met
   if (!review) return {};
   return {
     title: `${review.title} — рецензия на «${review.mediaItemTitle}»`,
-    description: review.body.replace(/\s+/g, " ").trim().slice(0, 180),
+    description: inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim().slice(0, 180),
   };
 }
 
 export default async function ReviewPage({ params }: ReviewPageProps) {
   const headerState = await getPublicSiteHeaderState();
-  const { currentAuthor, mediaTypes, review } = await getReview((await params).id, headerState.author);
+  const { accessibleMediaTypeCodes, currentAuthor, mediaTypes, review } = await getReview((await params).id, headerState.author);
   if (!review) notFound();
-  const reviewNavigation = await getPublishedReviewNavigation(review.mediaItemId, review.id);
+  const [item, enabledMediaTypeCodes] = await Promise.all([
+    getMediaItemByCode(review.mediaItemCode, accessibleMediaTypeCodes, currentAuthor?.id),
+    getEnabledMediaTypeCodes(currentAuthor?.id),
+  ]);
+  if (!item) notFound();
+  const inlineNodes = parseInlineMarkup(review.body);
+  const [
+    resolvedInlineEntities,
+    otherMediaItemReviews,
+    otherAuthorReviews,
+    publishedFranchises,
+    canSuggestFranchises,
+  ] = await Promise.all([
+    resolveInlineEntities(inlineNodes, { accessibleMediaTypeCodes }),
+    getOtherPublishedReviewCardsForMediaItem({
+      excludeReviewId: review.id,
+      limit: 5,
+      mediaItemId: review.mediaItemId,
+    }),
+    getOtherPublishedReviewCardsByAuthor({
+      accessibleMediaTypeCodes: enabledMediaTypeCodes,
+      authorId: review.authorId,
+      excludeReviewId: review.id,
+      limit: 5,
+    }),
+    currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
+    currentAuthor
+      ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
+      : Promise.resolve(false),
+  ]);
+
+  const franchiseActions = currentAuthor ? (
+    <MediaItemFranchiseSuggestionDialog
+      assignedFranchises={item.franchises}
+      canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
+      canSuggestFranchises={canSuggestFranchises}
+      franchises={mapFranchiseSuggestionOptions(
+        publishedFranchises,
+        item.franchiseLinkStatuses,
+      )}
+      mediaItemCode={item.code}
+      mediaItemId={item.id}
+      triggerTooltipPortal
+      franchiseSuggestionInput={{
+        title: item.title,
+        originalTitle: item.originalTitle,
+        aliases: item.aliases,
+        description: item.description,
+        mediaType: item.mediaType,
+        mediaTypeLabel: mediaTypes.find(({ code }) => code === item.mediaType)?.name ?? item.mediaType,
+        releaseYear: item.releaseYear,
+        mediaCarrier: item.mediaCarrierName,
+        metadata: item.metadataFacts ?? {},
+      }}
+    />
+  ) : null;
 
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -58,15 +125,18 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <ReviewArticle
           canEdit={currentAuthor?.code === review.authorCode}
-          mediaItemTypeLabel={getMediaTypeLabel(review.mediaItemMediaType, mediaTypes)}
-          mediaItemMeta={getMediaItemSummaryParts({
-            mediaType: review.mediaItemMediaType,
-            mediaTypeLabel: getMediaTypeLabel(review.mediaItemMediaType, mediaTypes),
-            metadataFacts: review.mediaItemMetadataFacts,
-            releaseYear: review.mediaItemReleaseYear,
-          })}
-          nextReviewId={reviewNavigation.nextReviewId}
-          previousReviewId={reviewNavigation.previousReviewId}
+          inlineNodes={inlineNodes}
+          mediaItemIdentity={
+            <ArchiveMediaItemIdentity
+              franchiseActions={franchiseActions}
+              item={item}
+              mediaTypes={mediaTypes}
+              showFranchiseSection={Boolean(currentAuthor)}
+            />
+          }
+          otherAuthorReviews={otherAuthorReviews}
+          otherMediaItemReviews={otherMediaItemReviews}
+          resolvedInlineEntities={resolvedInlineEntities}
           review={review}
         />
         </div>

@@ -56,8 +56,7 @@ export async function getLatestArchiveFeed(
         authorName: authors.name,
         coverThumbUrl: mediaItems.coverThumbUrl,
         coverUrl: mediaItems.coverUrl,
-        createdAt: sql<Date>`coalesce(${contributions.reviewedAt}, ${contributions.updatedAt})`
-          .mapWith(contributions.updatedAt),
+        createdAt: contributions.createdAt,
         id: contributions.id,
         mediaItemCode: mediaItems.code,
         mediaItemTitle: mediaItems.title,
@@ -73,10 +72,7 @@ export async function getLatestArchiveFeed(
         eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         inArray(mediaItems.mediaType, [...enabledMediaTypeCodes]),
       ))
-      .orderBy(
-        desc(sql`coalesce(${contributions.reviewedAt}, ${contributions.updatedAt})`),
-        desc(contributions.id),
-      )
+      .orderBy(desc(contributions.createdAt), desc(contributions.id))
       .limit(ARCHIVE_FEED_SIZE),
     db
       .select({

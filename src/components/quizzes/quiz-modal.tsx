@@ -9,18 +9,18 @@ import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
 import { Button } from "@/components/ui/button";
-import type { ActiveQuiz } from "@/lib/quizzes/model";
+import type { ActiveQuiz, QuizParticipantState } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 export function QuizModal({
-  isParticipating,
   unavailableMediaTypeNames,
   onClose,
+  participant,
   quiz,
 }: {
-  isParticipating: boolean;
   unavailableMediaTypeNames: string[];
   onClose: () => void;
+  participant: QuizParticipantState | null;
   quiz: ActiveQuiz | null;
 }) {
   const pathname = usePathname();
@@ -190,8 +190,8 @@ export function QuizModal({
           </div>
         ) : (
           <ActiveQuizPanel
-            isParticipating={isParticipating}
             onOpenArchive={openArchive}
+            participant={participant}
             quiz={quiz}
             unavailableMediaTypeNames={unavailableMediaTypeNames}
           />

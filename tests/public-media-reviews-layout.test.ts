@@ -7,6 +7,8 @@ const reviews = readFileSync("src/app/media-item-reviews.tsx", "utf8");
 const mediaPage = readFileSync("src/app/media/[code]/page.tsx", "utf8");
 const reviewArticle = readFileSync("src/app/review-article.tsx", "utf8");
 const reviewPage = readFileSync("src/app/reviews/[id]/page.tsx", "utf8");
+const reviewPolaroidRow = readFileSync("src/app/reviews/review-polaroid-row.tsx", "utf8");
+const mediaIdentity = readFileSync("src/components/archive/archive-media-item-identity.tsx", "utf8");
 const globals = readFileSync("src/app/globals.css", "utf8");
 const reviewQuery = readFileSync("src/db/queries/contribution-reviews.ts", "utf8");
 const mainPage = readFileSync("src/app/page.tsx", "utf8");
@@ -40,7 +42,7 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviews, /useSearchParams|MediaItemReviewLayer/);
     assert.doesNotMatch(mediaPage, /MediaItemReviewLayer/);
     assert.match(mediaPage, /legacyReviewId[\s\S]*redirect\(`\/reviews\/\$\{legacyReviewId\}`\)/);
-    assert.match(reviewPage, /<ReviewArticle[\s\S]*mediaItemMeta=\{getMediaItemSummaryParts/);
+    assert.match(reviewPage, /<ReviewArticle[\s\S]*mediaItemIdentity=\{/);
   });
 
   it("opens author login modal from the guest review action instead of the login page", () => {
@@ -73,14 +75,17 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviewArticle, /min-h-\[calc\(100dvh/);
     assert.match(globals, /\.archive-panel\.archive-panel-overflow-visible \{\s*overflow: visible;/);
     assert.doesNotMatch(reviewArticle, />Досье</);
-    assert.match(reviewArticle, /aria-label="Хлебные крошки"[\s\S]*mt-3 max-w-\[880px\][\s\S]*<MediaCarrierDisplayTitle title=\{review\.mediaItemTitle\}/);
-    assert.match(reviewArticle, /mediaItemMeta\.map/);
+    assert.match(mediaIdentity, /aria-label="Хлебные крошки"[\s\S]*<MediaCarrierDisplayTitle title=\{item\.title\}/);
+    assert.match(mediaIdentity, /item\.originalTitle[\s\S]*item\.aliases/);
+    assert.match(mediaIdentity, /<MediaItemFranchiseLinks[\s\S]*franchiseActions/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
     assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
-    assert.match(reviewArticle, /<div className="mt-8 w-full">[\s\S]*\{review\.body\}/);
+    assert.match(reviewArticle, /<div className="mt-8 w-full">[\s\S]*<InlineMentionText/);
     assert.doesNotMatch(reviewArticle, /mt-8 max-w-4xl/);
     assert.doesNotMatch(reviewArticle, /border-t border-stone-400\/30/);
     assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);
+    assert.match(reviewArticle, /Оценка автора: \$\{formatScore\(review\.authorScore\)\}\/10/);
+    assert.doesNotMatch(reviewArticle, /<ReviewAuthorStars score=\{review\.authorScore\}/);
     assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
     assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);
     const reviewPaperStyles = globals.match(/\.archive-review-paper \{([\s\S]*?)\n\}/)?.[1] ?? "";
@@ -105,10 +110,20 @@ describe("public media reviews layout", () => {
     assert.match(reviewArticle, /href=\{`\/media\/\$\{review\.mediaItemCode\}`\}/);
   });
 
-  it("links adjacent reviews without controls beyond the first and last review", () => {
-    assert.match(reviewQuery, /getPublishedReviewNavigation[\s\S]*findIndex[\s\S]*previousReviewId: currentIndex > 0[\s\S]*nextReviewId:/);
-    assert.match(reviewArticle, /previousReviewId \?[\s\S]*Предыдущая рецензия/);
-    assert.match(reviewArticle, /nextReviewId \?[\s\S]*Следующая рецензия/);
-    assert.match(reviewPage, /nextReviewId=\{reviewNavigation\.nextReviewId\}[\s\S]*previousReviewId=\{reviewNavigation\.previousReviewId\}/);
+  it("replaces adjacent navigation with responsive related review rows", () => {
+    assert.doesNotMatch(reviewQuery, /getPublishedReviewNavigation/);
+    assert.doesNotMatch(reviewArticle, /Предыдущая рецензия|Следующая рецензия/);
+    assert.match(reviewQuery, /getOtherPublishedReviewCardsForMediaItem[\s\S]*contributions\.primaryMediaItemId[\s\S]*orderBy\(sql`random\(\)`\)/);
+    assert.match(reviewQuery, /getOtherPublishedReviewCardsByAuthor[\s\S]*contributions\.authorId[\s\S]*accessibleMediaTypeCodes/);
+    assert.equal(reviewQuery.match(/\.orderBy\(sql`random\(\)`\)/g)?.length, 2);
+    assert.match(reviewArticle, /Еще рецензии на[\s\S]*<ReviewPolaroidRow mobileScrollable reviews=\{otherMediaItemReviews\} variant="paper"/);
+    assert.match(reviewArticle, /Еще рецензии автора[\s\S]*<ReviewPolaroidRow[\s\S]*mobileScrollable[\s\S]*reviews=\{otherAuthorReviews\}[\s\S]*showMediaItemTitle[\s\S]*variant="paper"/);
+    assert.match(reviewArticle, /Еще рецензии автора[\s\S]*href=\{`\/reviews\?author=\$\{review\.authorId\}`\}/);
+    assert.match(reviewPolaroidRow, /auto-cols-\[calc\(\(100%_-_0\.75rem\)\/2\)\][\s\S]*overflow-x-auto[\s\S]*\[scrollbar-width:none\]/);
+    assert.match(reviewPolaroidRow, /reviews\.slice\(0, mobileScrollable \? 5 : visibleCardCount\)/);
+    assert.match(reviewPolaroidRow, /PAPER_REVIEW_CARD_WIDTH = 200/);
+    assert.equal(reviewPage.match(/limit: 5/g)?.length, 2);
+    assert.match(reviews, /showMediaItemTitle && review\.mediaItemTitle[\s\S]*\{review\.mediaItemTitle\}/);
+    assert.match(reviewPage, /getMediaItemByCode[\s\S]*MediaItemFranchiseSuggestionDialog[\s\S]*triggerTooltipPortal/);
   });
 });

@@ -1,6 +1,7 @@
-import { and, asc, desc, eq, exists, gte, inArray, isNull, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { searchPublishedMediaItems } from "@/db/queries/inline-mention-media-items";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { containsNormalizedSearchSql } from "@/db/search";
 import {
@@ -10,7 +11,6 @@ import {
   contributions,
   mediaCarriers,
   mediaItemMetadata,
-  mediaItemTitleAliases,
   mediaItems,
   ratings,
 } from "@/db/schema";
@@ -21,6 +21,7 @@ import {
 } from "@/lib/contributions/model";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
@@ -117,26 +118,99 @@ export async function getPublishedReviewById(
   return review ?? null;
 }
 
-export async function getPublishedReviewNavigation(mediaItemId: number, reviewId: number) {
-  const reviews = await db
-    .select({ id: contributions.id })
-    .from(contributionMediaItems)
-    .innerJoin(contributions, eq(contributions.id, contributionMediaItems.contributionId))
+const publishedReviewCardSelection = {
+  id: contributions.id,
+  authorId: authors.id,
+  authorName: authors.name,
+  authorCode: authors.code,
+  authorAvatarObjectKey: authors.avatarObjectKey,
+  authorScore: ratings.score,
+  title: contributionReviews.title,
+  body: contributionReviews.body,
+  mediaItemTitle: mediaItems.title,
+  mediaType: mediaItems.mediaType,
+  mediaItemCarrierCode: mediaCarriers.code,
+  mediaItemReleaseYear: mediaItems.releaseYear,
+  coverThumbUrl: mediaItems.coverThumbUrl,
+  coverUrl: mediaItems.coverUrl,
+  publishedAt: contributions.reviewedAt,
+  updatedAt: contributions.updatedAt,
+};
+
+function mapPublishedReviewCards<
+  T extends { coverThumbUrl: string | null; coverUrl: string | null },
+>(rows: T[]) {
+  return rows.map((review) => ({
+    ...review,
+    coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
+    coverUrl: resolveCoverUrl(review.coverUrl),
+  }));
+}
+
+export async function getOtherPublishedReviewCardsForMediaItem(input: {
+  excludeReviewId: number;
+  limit?: number;
+  mediaItemId: number;
+}) {
+  const limit = Math.max(0, input.limit ?? 8);
+  if (limit === 0) return [];
+
+  const rows = await db
+    .select(publishedReviewCardSelection)
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
     .where(and(
-      eq(contributionMediaItems.mediaItemId, mediaItemId),
+      eq(contributions.primaryMediaItemId, input.mediaItemId),
+      ne(contributions.id, input.excludeReviewId),
       eq(contributions.type, "review"),
       eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     ))
-    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id));
-  const currentIndex = reviews.findIndex((review) => review.id === reviewId);
+    .orderBy(sql`random()`)
+    .limit(limit);
 
-  return {
-    previousReviewId: currentIndex > 0 ? reviews[currentIndex - 1].id : null,
-    nextReviewId:
-      currentIndex >= 0 && currentIndex < reviews.length - 1
-        ? reviews[currentIndex + 1].id
-        : null,
-  };
+  return mapPublishedReviewCards(rows);
+}
+
+export async function getOtherPublishedReviewCardsByAuthor(input: {
+  accessibleMediaTypeCodes: readonly string[];
+  authorId: number;
+  excludeReviewId: number;
+  limit?: number;
+}) {
+  const limit = Math.max(0, input.limit ?? 8);
+  if (input.accessibleMediaTypeCodes.length === 0 || limit === 0) return [];
+
+  const rows = await db
+    .select(publishedReviewCardSelection)
+    .from(contributions)
+    .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
+    .innerJoin(authors, eq(authors.id, contributions.authorId))
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(
+      ratings,
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+    )
+    .where(and(
+      eq(contributions.authorId, input.authorId),
+      ne(contributions.id, input.excludeReviewId),
+      eq(contributions.type, "review"),
+      eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      inArray(mediaItems.mediaType, [...input.accessibleMediaTypeCodes]),
+    ))
+    .orderBy(sql`random()`)
+    .limit(limit);
+
+  return mapPublishedReviewCards(rows);
 }
 
 export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: readonly string[]) {
@@ -171,14 +245,14 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
       eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
       inArray(mediaItems.mediaType, [...accessibleMediaTypeCodes]),
     ))
-    .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
+    .orderBy(desc(contributions.createdAt), desc(contributions.id))
     .limit(1);
 
   if (!review) {
     return null;
   }
 
-  const normalizedBody = review.body.replace(/\s+/g, " ").trim();
+  const normalizedBody = inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim();
 
   return {
     ...review,
@@ -691,73 +765,12 @@ export async function searchPublishedMediaItemsForReview(
   enabledMediaTypeCodes: readonly string[],
   options?: { authorId?: number },
 ) {
-  const normalizedQuery = normalizeSearchText(query)
-
-  if (!normalizedQuery || enabledMediaTypeCodes.length === 0) {
-    return []
-  }
-
-  const condition = and(
-    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-    getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
-    or(
-      containsNormalizedSearchSql(mediaItems.title, normalizedQuery),
-      containsNormalizedSearchSql(mediaItems.originalTitle, normalizedQuery),
-      containsNormalizedSearchSql(mediaItems.code, normalizedQuery),
-      exists(
-        db
-          .select({ id: mediaItemTitleAliases.id })
-          .from(mediaItemTitleAliases)
-          .where(
-            and(
-              eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-              containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedQuery),
-            ),
-          ),
-      ),
-    ),
-  )
-
-  if (options?.authorId) {
-    const rows = await db
-      .select({
-        id: mediaItems.id,
-        code: mediaItems.code,
-        title: mediaItems.title,
-        originalTitle: mediaItems.originalTitle,
-        mediaType: mediaItems.mediaType,
-        releaseYear: mediaItems.releaseYear,
-        existingReviewId: contributions.id,
-      })
-      .from(mediaItems)
-      .leftJoin(
-        contributions,
-        and(
-          eq(contributions.primaryMediaItemId, mediaItems.id),
-          eq(contributions.authorId, options.authorId),
-          eq(contributions.type, "review"),
-        ),
-      )
-      .where(condition)
-      .orderBy(desc(mediaItems.updatedAt), desc(mediaItems.id))
-      .limit(30)
-
-    return rows
-  }
-
-  return db
-    .select({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      mediaType: mediaItems.mediaType,
-      releaseYear: mediaItems.releaseYear,
-    })
-    .from(mediaItems)
-    .where(condition)
-    .orderBy(desc(mediaItems.updatedAt), desc(mediaItems.id))
-    .limit(30)
+  return searchPublishedMediaItems({
+    query,
+    accessibleMediaTypeCodes: enabledMediaTypeCodes,
+    authorId: options?.authorId,
+    limit: 30,
+  })
 }
 
 export async function getPublishedMediaItemForReview(

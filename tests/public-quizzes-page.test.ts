@@ -24,9 +24,13 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   assert.match(page, /<ArchiveRiddle[\s\S]*quiz=\{activeQuiz\}/);
   assert.match(page, /<ArchiveRiddle[\s\S]*size="large"/);
   assert.match(widget, /min-h-\[320px\][^"\n]*lg:h-\[360px\]/);
-  assert.match(currentQuiz, /size === "large" \? "max-h-\[250px\]" : "max-h-\[170px\]"/);
+  assert.match(currentQuiz, /className=\{`max-w-full rounded-md object-contain \$\{imageMaxHeightClassName\}`\}/);
   assert.match(currentQuiz, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
   assert.match(currentQuiz, /<QuizNoActiveState compact=\{size === "default"\} \/>/);
+  assert.match(currentQuiz, /quiz\.winner[\s\S]*<QuizWinner winner=\{quiz\.winner\}/);
+  assert.match(currentQuiz, /quiz\?\.winner \? "max-h-\[210px\]" : "max-h-\[250px\]"/);
+  assert.match(currentQuiz, /quiz\?\.winner \? "max-h-\[135px\]" : "max-h-\[170px\]"/);
+  assert.match(currentQuiz, /absolute inset-x-3 bottom-2 flex justify-center/);
   assert.match(noActiveState, /src="\/quiz_no_active_placeholder\.webp"/);
   assert.match(noActiveState, /Новый квиз уже готовится\./);
   assert.match(noActiveState, /Загляни чуть позже — хорошие вопросы всегда возвращаются\./);
@@ -116,11 +120,10 @@ test("quiz leaderboard ranks authors by a single win count", () => {
 
   assert.match(query, /getQuizLeaderboard[\s\S]*isNotNull\(quizParticipants\.completedAt\)/);
   assert.match(query, /winnerCount: sql<number>`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\)::int`/);
-  assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from/);
-  assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\)::float`/);
+  assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.isWinner\} = true\)::float`/);
   assert.match(query, /groupBy\(authors\.id, authors\.name, authors\.avatarObjectKey\)/);
   assert.match(query, /having\(sql`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\) > 0`\)/);
-  assert.match(query, /orderBy\([\s\S]*desc\(sql`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\)`\),[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
+  assert.match(query, /orderBy\([\s\S]*desc\(sql`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\)`\),[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.isWinner\} = true\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
   assert.match(query, /limit\(limit\)/);
   assert.match(leaderboard, />\s*#\s*<[\s\S]*Пользователь[\s\S]*Результат[\s\S]*Время/);
   assert.match(leaderboard, /href=\{`\/users\/\$\{item\.authorId\}`\}/);

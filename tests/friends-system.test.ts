@@ -88,14 +88,15 @@ test("friends journal exposes ratings through the shared archive", () => {
   assert.match(queries, /groupBy\(mediaItems\.releaseYear, mediaItems\.mediaType\)/);
   assert.match(profilePage, /label: "Побед в квизах"/);
   assert.match(profileHeader, /statistics\.map/);
-  assert.match(profileHeader, /sm:grid-cols-5/);
+  assert.match(profileHeader, /grid-cols-3 lg:flex-1 lg:grid-cols-5/);
   assert.match(profilePage, /reviewsHref=\{`\/reviews\?author=\$\{profile\.id\}`\}/);
   assert.doesNotMatch(authorStatistics, /adminNote|draft|submitted|rejected/);
   assert.match(profilePage, /getPublicUserProfile\(id, current\?\.id, isAdmin\)/);
   assert.match(archivePage, /Boolean\(currentAdminUser\)/);
   assert.match(profileHeader, /currentAuthor \? \([\s\S]*<FriendshipControls[\s\S]*currentAdmin \? null/);
-  assert.match(profileHeader, /className="ml-auto shrink-0"[\s\S]*<FriendshipControls/);
-  assert.match(profileHeader, /<dl className="grid min-w-0 flex-1 grid-cols-2 sm:grid-cols-5">[\s\S]*<FriendshipControls/);
+  assert.match(profileHeader, /flex flex-col items-stretch[\s\S]*lg:flex-row lg:items-center/);
+  assert.match(profileHeader, /<Avatar[\s\S]*<h1[\s\S]*<FriendshipControls[\s\S]*<dl className="grid min-w-0 grid-cols-3 lg:flex-1 lg:grid-cols-5">/);
+  assert.match(profileHeader, /index % 3 !== 0/);
 });
 
 test("friends UI contains all MVP lists, actions, setting, and pagination", () => {

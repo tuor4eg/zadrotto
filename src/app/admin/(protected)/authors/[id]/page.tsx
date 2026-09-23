@@ -47,7 +47,7 @@ function formatDateTime(value: Date | string | null | undefined) {
   }).format(date);
 }
 
-function StatCard({ label, value }: { label: string; value: React.ReactNode }) {
+function StatCard({ href, label, value }: { href?: string; label: string; value: React.ReactNode }) {
   return (
     <Card>
       <CardContent className="p-5">
@@ -55,7 +55,14 @@ function StatCard({ label, value }: { label: string; value: React.ReactNode }) {
           {label}
         </div>
         <div className="mt-2 text-2xl font-semibold tabular-nums text-stone-950">
-          {value}
+          {href ? (
+            <Link
+              href={href}
+              className="underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-600 hover:decoration-stone-500"
+            >
+              {value}
+            </Link>
+          ) : value}
         </div>
       </CardContent>
     </Card>
@@ -175,9 +182,19 @@ export default async function AdminAuthorPage({ params }: AdminAuthorPageProps) 
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <StatCard label="Создано записей" value={author.createdMediaItemsCount} />
         <StatCard label="Опубликовано" value={author.publishedMediaItemsCount} />
+        <StatCard
+          href={`/archive?ratedBy=${author.id}&sort=my_rating_date`}
+          label="Оценок"
+          value={author.ratingsCount}
+        />
+        <StatCard
+          href={`/admin/materials/reviews?author=${author.id}`}
+          label="Рецензий"
+          value={author.reviewsCount}
+        />
       </div>
     </div>
   );

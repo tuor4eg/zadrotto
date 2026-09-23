@@ -10,8 +10,7 @@ import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchi
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
-import { getMediaItemSummaryParts } from "@/lib/media/media-item-summary";
-import { getDateFactYear } from "@/lib/media/metadata-facts";
+import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
@@ -78,22 +77,6 @@ type MediaItemDetailsProps = {
   relatedFranchiseSections?: RelatedFranchiseSection[];
 };
 
-function getStringFact(facts: Record<string, unknown> | null | undefined, key: string) {
-  const value = facts?.[key];
-  return typeof value === "string" && value.trim() ? value.trim() : null;
-}
-
-function getRobloxDetailLabels(item: MediaItemDetailsItem) {
-  if (item.mediaType !== "roblox") return [];
-
-  return [
-    getDateFactYear(item.metadataFacts, "createdAt"),
-    getStringFact(item.metadataFacts, "genre"),
-    getStringFact(item.metadataFacts, "genreLevel1"),
-    getStringFact(item.metadataFacts, "creatorName"),
-  ].filter((value): value is string => Boolean(value));
-}
-
 function FranchiseRelatedTitle({
   franchise,
   linkClassName,
@@ -134,8 +117,7 @@ export function MediaItemDetails({
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
-  const robloxDetailLabels = getRobloxDetailLabels(item);
-  const [, detailsYearLabel, ...detailsMetaLabels] = getMediaItemSummaryParts({
+  const [detailsYearLabel, ...detailsMetaLabels] = getArchiveMediaItemInfoLabels({
     ...item,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
@@ -221,9 +203,6 @@ export function MediaItemDetails({
                 {detailsYearLabel ? <span className="mr-2">{detailsYearLabel}</span> : null}
                 {detailsMetaLabels.map((label) => (
                   <span key={label} className="mr-2">{label}</span>
-                ))}
-                {robloxDetailLabels.map((label, index) => (
-                  <span key={`${label}-${index}`} className="mr-2">{label}</span>
                 ))}
                 {meta}
               </div>
@@ -350,20 +329,14 @@ function ArchiveMediaItemDetails({
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
   relatedFranchiseSections: RelatedFranchiseSection[];
 }) {
-  const robloxDetailLabels = getRobloxDetailLabels(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
   const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
-  const [, detailsYearLabel, ...detailsMetaLabels] = getMediaItemSummaryParts({
+  const archiveInfoLabels = getArchiveMediaItemInfoLabels({
     ...item,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
-  const archiveInfoLabels = [
-    ...(detailsYearLabel ? [detailsYearLabel] : []),
-    ...detailsMetaLabels,
-    ...robloxDetailLabels,
-  ];
 
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">

@@ -5,8 +5,9 @@ import { useRouter } from "next/navigation"
 import { Loader2, Search } from "lucide-react"
 
 import { ArchiveToasts } from "@/components/ui/archive-toasts"
+import { MentionTextarea } from "@/components/inline-mentions/mention-textarea"
 import { Button } from "@/components/ui/button"
-import { Input, Label, Textarea } from "@/components/ui/form"
+import { Input, Label } from "@/components/ui/form"
 import {
   REVIEW_BODY_MAX_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
@@ -382,13 +383,17 @@ export function PublicReviewForm({
 
       <div className="grid gap-2">
         <Label htmlFor="body">Текст</Label>
-        <Textarea
+        <p className="text-xs leading-5 text-stone-500">
+          Чтобы вставить ссылку на запись, введи <span className="font-mono text-stone-700">@</span>
+          и начни печатать её название, затем выбери запись из списка.
+        </p>
+        <MentionTextarea
           id="body"
           name="body"
           required
           maxLength={REVIEW_BODY_MAX_LENGTH}
           value={body}
-          onChange={(event) => setBody(event.currentTarget.value)}
+          onValueChange={setBody}
           className="h-[calc(100dvh-30rem)] min-h-64 resize-none overflow-y-auto"
         />
         <p className="text-xs text-stone-500" role="status">

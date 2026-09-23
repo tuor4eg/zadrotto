@@ -213,8 +213,30 @@ export async function setQuizEnabled(id: number, enabled: boolean) { const [row]
 export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
   const currentTime = now ?? sql`now()`;
   const [quiz] = await db.select().from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
-  if (!quiz) return null; const types = await mediaTypesForQuizIds([quiz.id]);
-  return { id: quiz.id, question: quiz.question, imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), mediaTypes: types.get(quiz.id) ?? [], startsAt: quiz.startsAt.toISOString(), endsAt: quiz.endsAt.toISOString(), attemptLimit: quiz.attemptLimit };
+  if (!quiz) return null;
+  const [types, [winner]] = await Promise.all([
+    mediaTypesForQuizIds([quiz.id]),
+    db
+      .select({
+        avatarObjectKey: authors.avatarObjectKey,
+        id: authors.id,
+        name: authors.name,
+      })
+      .from(quizParticipants)
+      .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
+      .where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.isWinner, true)))
+      .limit(1),
+  ]);
+  return {
+    id: quiz.id,
+    question: quiz.question,
+    imageUrl: resolveQuizImageUrl(quiz.imageObjectKey),
+    mediaTypes: types.get(quiz.id) ?? [],
+    startsAt: quiz.startsAt.toISOString(),
+    endsAt: quiz.endsAt.toISOString(),
+    attemptLimit: quiz.attemptLimit,
+    winner: winner ?? null,
+  };
 }
 export async function isQuizParticipant(quizId: number, authorId: number) {
   const [participant] = await db
@@ -275,7 +297,7 @@ export async function getQuizLeaderboard(limit = 5) {
       authorId: authors.id,
       authorName: authors.name,
       winnerCount: sql<number>`count(*) filter (where ${quizParticipants.isWinner} = true)::int`,
-      totalTimeSeconds: sql<number>`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt})))::float`,
+      totalTimeSeconds: sql<number>`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.isWinner} = true)::float`,
     })
     .from(quizParticipants)
     .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
@@ -285,7 +307,7 @@ export async function getQuizLeaderboard(limit = 5) {
     .having(sql`count(*) filter (where ${quizParticipants.isWinner} = true) > 0`)
     .orderBy(
       desc(sql`count(*) filter (where ${quizParticipants.isWinner} = true)`),
-      asc(sql`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt})))`),
+      asc(sql`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.isWinner} = true)`),
       asc(authors.name),
       asc(authors.id),
     )

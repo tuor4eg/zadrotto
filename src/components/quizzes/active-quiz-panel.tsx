@@ -5,18 +5,23 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { QuizParticipationButton } from "@/components/quizzes/quiz-participation-button";
+import { QuizWinner } from "@/components/quizzes/quiz-winner";
 import { Button, buttonVariants } from "@/components/ui/button";
-import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
+import {
+  formatQuizTimeRemaining,
+  type ActiveQuiz,
+  type QuizParticipantState,
+} from "@/lib/quizzes/model";
 
 export function ActiveQuizPanel({
-  isParticipating,
   unavailableMediaTypeNames,
   onOpenArchive,
+  participant,
   quiz,
 }: {
-  isParticipating: boolean;
   unavailableMediaTypeNames: string[];
   onOpenArchive?: () => void;
+  participant: QuizParticipantState | null;
   quiz: ActiveQuiz;
 }) {
   const [now, setNow] = useState(() => new Date());
@@ -42,7 +47,13 @@ export function ActiveQuizPanel({
         />
       ) : null}
       <div className="mt-auto">
-        {unavailableMediaTypeNames.length > 0 ? (
+        {participant?.completed ? (
+          <p className="font-serif text-base font-semibold text-stone-700 sm:text-lg">
+            {participant.outcome === "correct"
+              ? "Ура, вы уже ответили на этот вопрос!"
+              : "Вы исчерпали попытки, повезёт в следующий раз"}
+          </p>
+        ) : unavailableMediaTypeNames.length > 0 ? (
           <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
             <p>
               Эта викторина касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.
@@ -60,9 +71,14 @@ export function ActiveQuizPanel({
             </div>
           </div>
         ) : (
-          <QuizParticipationButton isParticipating={isParticipating} onOpenArchive={onOpenArchive} />
+          <QuizParticipationButton isParticipating={participant !== null} onOpenArchive={onOpenArchive} />
         )}
       </div>
+      {quiz.winner ? (
+        <div className="border-t border-stone-400/25 pt-3">
+          <QuizWinner winner={quiz.winner} />
+        </div>
+      ) : null}
       <p className="absolute -bottom-3 -right-3 text-right text-xs text-stone-600 sm:-bottom-6 sm:-right-6">
         {formatQuizTimeRemaining(quiz.endsAt, now)}
       </p>

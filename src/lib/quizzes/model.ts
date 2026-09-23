@@ -9,6 +9,11 @@ export type ActiveQuiz = {
   startsAt: string;
   endsAt: string;
   attemptLimit: number;
+  winner: {
+    avatarObjectKey: string | null;
+    id: number;
+    name: string;
+  } | null;
 };
 export type ActiveQuizContext = Pick<ActiveQuiz, "id" | "mediaTypes">;
 export type QuizParticipantOutcome = "correct" | "exhausted";
