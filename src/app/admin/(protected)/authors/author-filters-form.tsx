@@ -4,7 +4,7 @@ import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Select } from "@/components/ui/form";
-import type { AuthorActivityFilter } from "@/db/queries/authors";
+import type { AuthorActivityFilter, AuthorSort } from "@/db/queries/authors";
 
 type AuthorFiltersFormProps = {
   accessProfileFilter: number | null;
@@ -13,6 +13,7 @@ type AuthorFiltersFormProps = {
     name: string;
   }>;
   activityFilter: AuthorActivityFilter | "all";
+  sort: AuthorSort;
 };
 
 function updateFilterParam(
@@ -33,6 +34,7 @@ export function AuthorFiltersForm({
   accessProfileFilter,
   accessProfiles,
   activityFilter,
+  sort,
 }: AuthorFiltersFormProps) {
   const pathname = usePathname();
   const router = useRouter();
@@ -43,12 +45,14 @@ export function AuthorFiltersForm({
     (nextFilters: {
       activity?: AuthorActivityFilter | "all";
       profile?: number | null;
+      sort?: AuthorSort;
     }) => {
       const nextSearchParams = new URLSearchParams(searchParams.toString());
 
       nextSearchParams.delete("created");
       nextSearchParams.delete("error");
       nextSearchParams.delete("updated");
+      nextSearchParams.delete("page");
 
       if (nextFilters.activity !== undefined) {
         updateFilterParam(nextSearchParams, "activity", nextFilters.activity, "all");
@@ -61,6 +65,10 @@ export function AuthorFiltersForm({
           nextFilters.profile ? String(nextFilters.profile) : "",
           "",
         );
+      }
+
+      if (nextFilters.sort !== undefined) {
+        updateFilterParam(nextSearchParams, "sort", nextFilters.sort, "name");
       }
 
       const queryString = nextSearchParams.toString();
@@ -83,7 +91,7 @@ export function AuthorFiltersForm({
   }
 
   return (
-    <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-[minmax(0,220px)_minmax(0,260px)_auto]">
+    <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,220px)_minmax(0,260px)_minmax(0,240px)_auto]">
       <Select
         value={activityFilter}
         onChange={(event) =>
@@ -113,6 +121,18 @@ export function AuthorFiltersForm({
             {profile.name}
           </option>
         ))}
+      </Select>
+
+      <Select
+        value={sort}
+        onChange={(event) => replaceFilters({ sort: event.target.value as AuthorSort })}
+        aria-label="Сортировка авторов"
+      >
+        <option value="name">По имени</option>
+        <option value="created">По созданию</option>
+        <option value="activity">По последней активности</option>
+        <option value="ratings">По числу оценок</option>
+        <option value="reviews">По числу рецензий</option>
       </Select>
 
       <button

@@ -215,4 +215,12 @@ describe("achievement level rarity and showcase background", () => {
     }], { ratings: 2 }, "2026-01-01T00:00:00.000Z")
     assert.equal(awardedWithoutBackground?.showcaseBackgroundImageUrl, null)
   })
+
+  it("requires admin authorization to delete an achievement level", () => {
+    const actions = read("src/app/admin/(protected)/achievements/actions.ts")
+    assert.match(
+      actions,
+      /export async function deleteAchievementLevelAction\(formData: FormData\) \{\s*await requireAdminUser\(\)/,
+    )
+  })
 })

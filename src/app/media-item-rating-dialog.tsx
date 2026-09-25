@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { Check, X } from "lucide-react";
+import { X } from "lucide-react";
 
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
@@ -399,38 +399,21 @@ export function MediaItemRatingModal({
     <div
       aria-labelledby="rating-dialog-title"
       aria-modal="true"
-      className="fixed inset-0 z-50 grid place-items-center bg-stone-950/45 p-4"
+      className="fixed inset-0 z-50 grid items-start justify-items-center overflow-y-auto bg-stone-950/45 p-4"
       role="dialog"
     >
       <div
-        className="archive-paper archive-panel w-full max-w-xl p-5 shadow-2xl"
+        className="rating-dialog-roboto archive-paper archive-panel relative top-[max(1rem,calc(50dvh-250px))] w-full max-w-xl p-5 shadow-2xl sm:top-[max(1rem,calc(50dvh-230px))]"
         style={{ overflow: "visible" }}
       >
         <div className="flex items-start justify-between gap-4">
-          <div>
-            <div
-              id="rating-dialog-title"
-              className="font-serif text-3xl leading-none text-stone-950"
-            >
-              Ваша оценка
-            </div>
-            <div className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">
-              {title}
-            </div>
-          </div>
+          <h2
+            id="rating-dialog-title"
+            className="min-w-0 break-words text-xl font-normal uppercase leading-tight text-stone-950 sm:text-2xl"
+          >
+            {title}
+          </h2>
           <div className="flex shrink-0 items-center gap-2">
-            <ArchiveTooltip label="Сохранить" side="bottom">
-              <button
-                type="submit"
-                form={formId}
-                name="intent"
-                value="save"
-                className="grid size-9 place-items-center rounded-md border border-emerald-950/20 bg-emerald-50/80 text-emerald-950 transition-colors hover:border-emerald-700 hover:bg-emerald-100"
-                aria-label="Сохранить"
-              >
-                <Check className="size-4" />
-              </button>
-            </ArchiveTooltip>
             <ArchiveTooltip label="Закрыть" side="bottom">
               <button
                 type="button"
@@ -458,6 +441,7 @@ export function MediaItemRatingModal({
             showLabel={false}
             showExperienceFields
             formId={formId}
+            ratingDialogLayout
             onSaved={onClose}
           />
         </div>

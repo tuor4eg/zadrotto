@@ -156,12 +156,6 @@ export const RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: "border-emerald-950/20 bg-emerald-50/80 text-emerald-950 hover:border-emerald-700",
 };
 
-export const SELECTED_RATING_BUTTON_TONE_CLASS_NAMES: Record<RatingTone, string> = {
-  bad: "border-red-700 bg-red-700 text-red-50",
-  medium: "border-stone-950 bg-stone-950 text-stone-50",
-  good: "border-emerald-700 bg-emerald-700 text-emerald-50",
-};
-
 export const RATING_BAR_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: "bg-red-700/75",
   medium: "bg-stone-700/75",

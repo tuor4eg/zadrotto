@@ -76,6 +76,21 @@ describe("public media reviews layout", () => {
     assert.match(globals, /\.archive-panel\.archive-panel-overflow-visible \{\s*overflow: visible;/);
     assert.doesNotMatch(reviewArticle, />Досье</);
     assert.match(mediaIdentity, /aria-label="Хлебные крошки"[\s\S]*<MediaCarrierDisplayTitle title=\{item\.title\}/);
+    assert.match(mediaIdentity, /ArchiveMediaItemIdentityLayout[\s\S]*coverUrl=\{coverUrl\}[\s\S]*viewerCoverUrl=\{viewerCoverUrl\}/);
+    assert.match(mediaIdentity, /item\.coverThumbUrl \?\? item\.coverUrl/);
+    assert.doesNotMatch(mediaIdentity, /aspect-\[2\/3\]|<ArchiveCover|h-0 min-h-full|max-h-\[9\.5rem\]/);
+    const identityLayout = readFileSync(
+      "src/components/archive/archive-media-item-identity-layout.tsx",
+      "utf8",
+    );
+    assert.match(identityLayout, /ResizeObserver\(updateHeight\)/);
+    assert.match(identityLayout, /ImageViewer[\s\S]*cursor-zoom-in/);
+    assert.match(identityLayout, /overflow-hidden rounded-md/);
+    assert.match(identityLayout, /grid-cols-\[auto_minmax\(0,1fr\)\]/);
+    assert.match(identityLayout, /breadcrumb[\s\S]*col-span-2[\s\S]*bodyRef[\s\S]*row-start-2[\s\S]*footer[\s\S]*col-span-2 row-start-3/);
+    assert.match(identityLayout, /h-\[var\(--identity-cover-height\)\][^"\n]*w-fit[^"\n]*max-w-\[40vw\]/);
+    assert.match(identityLayout, /h-full w-auto max-w-full object-contain object-left/);
+    assert.doesNotMatch(identityLayout, /from "next\/link"|href=\{href\}/);
     assert.match(mediaIdentity, /item\.originalTitle[\s\S]*item\.aliases/);
     assert.match(mediaIdentity, /<MediaItemFranchiseLinks[\s\S]*franchiseActions/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
@@ -84,7 +99,7 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviewArticle, /mt-8 max-w-4xl/);
     assert.doesNotMatch(reviewArticle, /border-t border-stone-400\/30/);
     assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);
-    assert.match(reviewArticle, /Оценка автора: \$\{formatScore\(review\.authorScore\)\}\/10/);
+    assert.doesNotMatch(reviewArticle, /Оценка автора: \$\{formatScore\(review\.authorScore\)\}\/10/);
     assert.doesNotMatch(reviewArticle, /<ReviewAuthorStars score=\{review\.authorScore\}/);
     assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
     assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);

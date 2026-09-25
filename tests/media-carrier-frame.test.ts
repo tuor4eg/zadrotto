@@ -6,9 +6,25 @@ import {
   formatMediaCarrierTitle,
   getMediaCarrierFrame,
   hasMediaCarrierFrame,
+  MEDIA_IDENTITY_FONT_CLASS_NAME,
 } from "@/lib/media/carrier-frame";
 
 describe("media carrier frames", () => {
+  it("uses the Steam font for identity text while preserving rating panel fonts", () => {
+    const details = readFileSync("src/app/media-item-details.tsx", "utf8");
+    const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
+    const reviewIdentity = readFileSync("src/components/archive/archive-media-item-identity.tsx", "utf8");
+
+    assert.equal(MEDIA_IDENTITY_FONT_CLASS_NAME, "media-carrier-font-pc-steam");
+    assert.match(details, /MEDIA_IDENTITY_FONT_CLASS_NAME[\s\S]*MediaCarrierDisplayTitle/);
+    assert.match(details, /displayFontClassName=\{ratingDisplayFontClassName\}/);
+    assert.match(details, /labelFontClassName=\{ratingLabelFontClassName\}/);
+    assert.match(preview, /MEDIA_IDENTITY_FONT_CLASS_NAME[\s\S]*MediaCarrierDisplayTitle/);
+    assert.match(preview, /panelDisplayClassName=\{ratingDisplayFontClassName\}/);
+    assert.match(preview, /panelLabelClassName=\{ratingLabelFontClassName\}/);
+    assert.match(reviewIdentity, /MEDIA_IDENTITY_FONT_CLASS_NAME[\s\S]*MediaCarrierDisplayTitle/);
+  });
+
   it("labels streaming film and series covers as watched", () => {
     const tile = readFileSync("src/app/media-item-tile.tsx", "utf8");
 
@@ -29,6 +45,23 @@ describe("media carrier frames", () => {
         placeholderVariant: "eight-bit-label",
         ratingPanelVariant: "nes-hearts",
         renderKind: "cartridge",
+      },
+    );
+  });
+
+  it("resolves mobile phone frame by media type and carrier code", () => {
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "mobile" }),
+      {
+        assetPath: "/mediaCarriers/game/mobile/phone.png",
+        aspectRatioClassName: "aspect-[133/260]",
+        compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+        compactViewportClassName: "h-[min(32vh,300px)]",
+        coverAreaClassName: "left-[7.8%] top-[3.2%] h-[93.6%] w-[84.8%]",
+        placeholderVariant: "dvd-label",
+        renderKind: "cartridge",
+        sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+        viewportClassName: "h-[min(58vh,520px)]",
       },
     );
   });

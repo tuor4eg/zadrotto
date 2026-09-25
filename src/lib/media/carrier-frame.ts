@@ -51,6 +51,8 @@ const SERIES_MODERN_TV_RELEASE_YEAR_FROM = SERIES_TV_RELEASE_YEAR_TO + 1;
 const SERIES_MODERN_TV_RELEASE_YEAR_TO = 2012;
 const SERIES_STREAMING_RELEASE_YEAR_FROM = 2013;
 
+export const MEDIA_IDENTITY_FONT_CLASS_NAME = "media-carrier-font-pc-steam";
+
 export type MediaCarrierFrame = {
   assetPath: string;
   aspectRatioClassName: string;
@@ -150,6 +152,17 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     placeholderVariant: "eight-bit-label",
     ratingPanelVariant: "nes-hearts",
     renderKind: "cartridge",
+  },
+  "game/mobile": {
+    assetPath: "/mediaCarriers/game/mobile/phone.png",
+    aspectRatioClassName: "aspect-[133/260]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[7.8%] top-[3.2%] h-[93.6%] w-[84.8%]",
+    placeholderVariant: "dvd-label",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
   },
   "game/pc": {
     assetPath: "/mediaCarriers/game/pc/dos/disk35.webp",

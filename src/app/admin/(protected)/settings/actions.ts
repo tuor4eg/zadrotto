@@ -339,6 +339,7 @@ export async function updateCoverSettingsAction(
     candidateLimit: getFormString(formData, "candidateLimit"),
     tmdbResultScanLimit: getFormString(formData, "tmdbResultScanLimit"),
     coverMaxMegabytes: getFormString(formData, "coverMaxMegabytes"),
+    providerRequestTimeoutSeconds: getFormString(formData, "providerRequestTimeoutSeconds"),
   });
 
   if (!settings.ok) {
@@ -382,6 +383,7 @@ export async function updateCoverSettingsAction(
       candidateLimit: settings.value.candidateLimit,
       tmdbResultScanLimit: settings.value.tmdbResultScanLimit,
       coverMaxBytes: settings.value.coverMaxBytes,
+      providerRequestTimeoutMs: settings.value.providerRequestTimeoutMs,
       providerRateLimitsCount: providerRateLimits.value.length,
     },
   });

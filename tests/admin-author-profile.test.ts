@@ -43,4 +43,18 @@ describe("admin author profile", () => {
     assert.match(page, /href=\{`\/archive\?ratedBy=\$\{author\.id\}&sort=my_rating_date`\}[\s\S]*label="Оценок"[\s\S]*author\.ratingsCount/);
     assert.match(page, /href=\{`\/admin\/materials\/reviews\?author=\$\{author\.id\}`\}[\s\S]*label="Рецензий"[\s\S]*author\.reviewsCount/);
   });
+
+  it("uses one last-activity definition for the profile and author list", () => {
+    assert.match(query, /function authorLastActivityAtSql/);
+    assert.match(query, /max\(\$\{mediaItems\.updatedAt\}\)/);
+    assert.match(query, /max\(\$\{ratings\.updatedAt\}\)/);
+    assert.match(query, /max\(\$\{contributions\.updatedAt\}\)[\s\S]*contributions\.type[\s\S]*'review'/);
+    assert.match(query, /max\(\$\{authorSessions\.lastSeenAt\}\)/);
+    assert.match(query, /\)::timestamptz`\.mapWith\(createdAt\)/);
+    assert.equal(
+      (query.match(/authorLastActivityAtSql\(authors\.id, authors\.createdAt\)/g) ?? []).length,
+      2,
+    );
+    assert.match(listPage, /Последняя активность[\s\S]*author\.lastActivityAt/);
+  });
 });

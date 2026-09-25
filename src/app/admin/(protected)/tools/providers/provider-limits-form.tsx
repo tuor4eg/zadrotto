@@ -13,6 +13,7 @@ import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 import {
   COVER_SETTINGS_FORM_LIMITS,
   formatCoverMaxMegabytes,
+  formatProviderRequestTimeoutSeconds,
 } from "@/lib/forms/cover-settings";
 import type { ProviderCoverSearchRateLimitUsage } from "@/lib/covers/rate-limits";
 import { AdminToasts, type AdminToast } from "../../admin-toasts";
@@ -60,6 +61,20 @@ export function ProviderLimitsForm({
           <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">
             Внешние запросы
           </legend>
+          <div className="grid gap-4 sm:grid-cols-3">
+            <NumberField
+              id="provider-request-timeout-seconds"
+              label="Таймаут запросов к внешним каталогам, сек"
+              name="providerRequestTimeoutSeconds"
+              min={COVER_SETTINGS_FORM_LIMITS.providerRequestTimeoutSeconds.min}
+              max={COVER_SETTINGS_FORM_LIMITS.providerRequestTimeoutSeconds.max}
+              defaultValue={formatProviderRequestTimeoutSeconds(
+                settings.providerRequestTimeoutMs,
+              )}
+              disabled={isPending}
+              description="Максимальное время ожидания ответа от внешнего каталога. При превышении запрос прерывается и провайдер считается временно недоступным."
+            />
+          </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {providerRateLimits.map((providerLimit) => (
               <NumberField

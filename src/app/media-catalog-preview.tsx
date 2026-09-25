@@ -18,7 +18,7 @@ import { ImageViewer } from "@/components/ui/image-viewer";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { cn } from "@/lib/common/utils";
-import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatAuthorsFact, getDateFactYear } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
@@ -66,8 +66,8 @@ export function MediaCatalogPreview({
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
-  const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
-  const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
+  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
   const firstFranchiseCode = item.franchises[0]?.code ?? null;
   const yearLabel = item.releaseYear
     ? String(item.releaseYear)
@@ -160,19 +160,19 @@ export function MediaCatalogPreview({
           pageUrl={item.coverSourcePageUrl}
         />
 
-        <div className={`mt-3 ${displayFontClassName} text-2xl leading-tight text-stone-950`}>
+        <div className={`mt-3 ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-2xl leading-tight text-stone-950`}>
           <MediaCarrierDisplayTitle
             title={item.title}
             frame={mediaCarrierFrame}
           />
         </div>
         {item.originalTitle && item.originalTitle !== item.title ? (
-          <div className={`mt-2 ${labelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
+          <div className={`mt-2 ${ratingLabelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
             {item.originalTitle}
           </div>
         ) : null}
 
-        <div className={`mt-3 min-w-0 ${labelFontClassName} text-xs leading-5 text-stone-800`}>
+        <div className={`mt-3 min-w-0 ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs leading-5 text-stone-800`}>
           {metaItems.map((metaItem, index) => (
             <Fragment key={`${metaItem}-${index}`}>
               {index > 0 ? <span className="mx-1.5">•</span> : null}
@@ -211,9 +211,9 @@ export function MediaCatalogPreview({
         <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">
           <ArchiveRatingPanel
             compact
-            displayFontClassName={displayFontClassName}
+            displayFontClassName={ratingDisplayFontClassName}
             label="Оценка архива"
-            labelFontClassName={labelFontClassName}
+            labelFontClassName={ratingLabelFontClassName}
             ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
             ratingsCount={item.ratingsCount}
             score={item.averageScore}
@@ -229,15 +229,15 @@ export function MediaCatalogPreview({
             }
             currentAuthorScore={item.currentAuthorScore}
             releaseYear={item.releaseYear}
-            panelDisplayClassName={displayFontClassName}
-            panelLabelClassName={labelFontClassName}
+            panelDisplayClassName={ratingDisplayFontClassName}
+            panelLabelClassName={ratingLabelFontClassName}
             panelVariant={mediaCarrierFrame?.ratingPanelVariant}
             size="compact"
           />
         </div>
         <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
           <div className="flex items-center gap-2">
-            <div className={`${labelFontClassName} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
+            <div className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
               Серии
             </div>
             {item.franchises.length === 0 ? franchiseAction : null}

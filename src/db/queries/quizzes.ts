@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, lt, lte, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { authors, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } from "@/db/schema";
@@ -32,10 +32,68 @@ async function answeredQuizIds(ids: number[]) {
   ));
   return new Set(rows.map((row) => row.quizId));
 }
-export async function getAdminQuizzes() {
-  const rows = await db.select({ quiz: quizzes, answerTitle: mediaItems.title, answerMediaType: mediaItems.mediaType }).from(quizzes).innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId)).orderBy(asc(quizzes.startsAt));
+export type AdminQuizStateFilter = "scheduled" | "active" | "finished" | "disabled";
+export type AdminQuizWinnerFilter = "yes" | "no";
+export const ADMIN_QUIZZES_PAGE_SIZE = 25;
+
+export async function getAdminQuizzes(input: {
+  page?: number;
+  searchQuery?: string;
+  state?: AdminQuizStateFilter;
+  winner?: AdminQuizWinnerFilter;
+} = {}) {
+  const now = new Date();
+  const searchQuery = input.searchQuery?.trim() ?? "";
+  const filters: SQL[] = [];
+  if (searchQuery) filters.push(or(
+    containsNormalizedSearchSql(quizzes.question, searchQuery),
+    containsNormalizedSearchSql(mediaItems.title, searchQuery),
+  )!);
+  if (input.state === "disabled") filters.push(eq(quizzes.enabled, false));
+  if (input.state === "scheduled") filters.push(and(eq(quizzes.enabled, true), gt(quizzes.startsAt, now))!);
+  if (input.state === "active") filters.push(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, now), gt(quizzes.endsAt, now))!);
+  if (input.state === "finished") filters.push(and(eq(quizzes.enabled, true), lte(quizzes.endsAt, now))!);
+  if (input.winner === "yes") filters.push(sql`exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.is_winner = true)`);
+  if (input.winner === "no") filters.push(sql`not exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.is_winner = true)`);
+  const where = filters.length ? and(...filters) : undefined;
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(quizzes)
+    .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
+    .where(where);
+  const totalPages = getTotalPages(totalCount, ADMIN_QUIZZES_PAGE_SIZE);
+  const page = clampPage(input.page ?? 1, totalPages);
+  const rows = await db
+    .select({
+      quiz: quizzes,
+      answerTitle: mediaItems.title,
+      answerMediaType: mediaItems.mediaType,
+      hasEarlierAnswer: sql<boolean>`exists (
+        select 1 from quizzes earlier
+        where earlier.answer_media_item_id = ${quizzes.answerMediaItemId}
+          and (earlier.starts_at < ${quizzes.startsAt} or (earlier.starts_at = ${quizzes.startsAt} and earlier.id < ${quizzes.id}))
+      )`,
+      winnerName: sql<string | null>`(
+        select a.name from quiz_participants qp
+        inner join authors a on a.id = qp.author_id
+        where qp.quiz_id = ${quizzes.id} and qp.is_winner = true
+        limit 1
+      )`,
+    })
+    .from(quizzes)
+    .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
+    .where(where)
+    .orderBy(asc(quizzes.startsAt), asc(quizzes.id))
+    .limit(ADMIN_QUIZZES_PAGE_SIZE)
+    .offset(getOffset(page, ADMIN_QUIZZES_PAGE_SIZE));
   const ids = rows.map(({ quiz }) => quiz.id); const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds(ids), participantQuizIds(ids), answeredQuizIds(ids)]);
-  return rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasAnswers: answeredIds.has(quiz.id), hasParticipants: participantIds.has(quiz.id), imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz) }));
+  return {
+    items: rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasAnswers: answeredIds.has(quiz.id), hasParticipants: participantIds.has(quiz.id), imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz, now) })),
+    page,
+    pageSize: ADMIN_QUIZZES_PAGE_SIZE,
+    totalCount,
+    totalPages,
+  };
 }
 export async function getAdminQuizById(id: number) {
   const [row] = await db.select({ quiz: quizzes, answerTitle: mediaItems.title, answerMediaType: mediaItems.mediaType }).from(quizzes).innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId)).where(eq(quizzes.id, id)).limit(1);

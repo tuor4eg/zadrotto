@@ -27,6 +27,7 @@ export async function createMetadataProviderJobContext(
   const options = {
     candidateLimit: coverSettings.candidateLimit,
     tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
+    requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
     providerCredentials,
     beforeProviderSearch: wrapProviderSearchWithReserve(
       limiter.canSearchProvider,

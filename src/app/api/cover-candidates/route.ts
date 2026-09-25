@@ -109,6 +109,7 @@ export async function POST(request: Request) {
     {
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
+      requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
       providerCredentials,
       beforeProviderSearch: providerRateLimiter.canSearchProvider,
     },

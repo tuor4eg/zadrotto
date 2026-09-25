@@ -7,12 +7,14 @@ import {
   authorAccessTokens,
   authorEmails,
   authorMediaExperiences,
+  authorSessions,
   authors,
   bugReports,
   contributions,
   mediaItems,
   ratings,
 } from "@/db/schema";
+import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 
 export type DeleteAuthorResult =
   | { status: "deleted"; avatarObjectKey: string | null }
@@ -20,6 +22,9 @@ export type DeleteAuthorResult =
   | { status: "last-system-author" }
   | { status: "not-found" };
 export type AuthorActivityFilter = "active" | "blocked";
+export type AuthorSort = "name" | "created" | "activity" | "ratings" | "reviews";
+
+export const ADMIN_AUTHORS_PAGE_SIZE = 25;
 
 const authorHasUsageSql = sql<boolean>`(
   exists(select 1 from ${ratings} where ${ratings.authorId} = ${authors.id})
@@ -37,9 +42,56 @@ function authorUsageCountByIdSql(authorId: number) {
   )::int`;
 }
 
-export async function getAuthors(input?: {
+function authorRatingsCountSql(authorId: typeof authors.id) {
+  return sql<number>`(
+    select count(*) from ${ratings} where ${ratings.authorId} = ${authorId}
+  )::int`;
+}
+
+function authorReviewsCountSql(authorId: typeof authors.id) {
+  return sql<number>`(
+    select count(*) from ${contributions}
+    where ${contributions.authorId} = ${authorId}
+      and ${contributions.type} = 'review'
+  )::int`;
+}
+
+function authorLastActivityAtSql(
+  authorId: typeof authors.id,
+  createdAt: typeof authors.createdAt,
+) {
+  return sql<Date>`greatest(
+    ${createdAt},
+    coalesce(
+      (select max(${mediaItems.updatedAt}) from ${mediaItems}
+       where ${mediaItems.createdByAuthorId} = ${authorId}),
+      ${createdAt}
+    ),
+    coalesce(
+      (select max(${ratings.updatedAt}) from ${ratings}
+       where ${ratings.authorId} = ${authorId}),
+      ${createdAt}
+    ),
+    coalesce(
+      (select max(${contributions.updatedAt}) from ${contributions}
+       where ${contributions.authorId} = ${authorId}
+         and ${contributions.type} = 'review'),
+      ${createdAt}
+    ),
+    coalesce(
+      (select max(${authorSessions.lastSeenAt}) from ${authorSessions}
+       where ${authorSessions.authorId} = ${authorId}),
+      ${createdAt}
+    )
+  )::timestamptz`.mapWith(createdAt);
+}
+
+export async function getAuthors(input: {
   accessProfileId?: number | null;
   activity?: AuthorActivityFilter | "all";
+  page: number;
+  pageSize?: number;
+  sort: AuthorSort;
 }) {
   const activityCondition =
     input?.activity === "active"
@@ -50,8 +102,27 @@ export async function getAuthors(input?: {
   const accessProfileCondition = input?.accessProfileId
     ? eq(authors.accessProfileId, input.accessProfileId)
     : undefined;
+  const where = and(activityCondition, accessProfileCondition);
+  const pageSize = input.pageSize ?? ADMIN_AUTHORS_PAGE_SIZE;
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(authors)
+    .where(where);
+  const totalPages = getTotalPages(totalCount, pageSize);
+  const page = clampPage(input.page, totalPages);
+  const lastActivityAt = authorLastActivityAtSql(authors.id, authors.createdAt)
+    .as("last_activity_at");
+  const ratingsCount = authorRatingsCountSql(authors.id).as("ratings_count");
+  const reviewsCount = authorReviewsCountSql(authors.id).as("reviews_count");
+  const sortOrder = {
+    name: [asc(authors.name), asc(authors.code)],
+    created: [desc(authors.createdAt), asc(authors.id)],
+    activity: [desc(lastActivityAt), asc(authors.id)],
+    ratings: [desc(ratingsCount), asc(authors.name), asc(authors.id)],
+    reviews: [desc(reviewsCount), asc(authors.name), asc(authors.id)],
+  }[input.sort];
 
-  return db
+  const items = await db
     .select({
       id: authors.id,
       code: authors.code,
@@ -63,12 +134,28 @@ export async function getAuthors(input?: {
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
+      lastActivityAt,
+      ratingsCount,
+      reviewsCount,
       hasUsage: authorHasUsageSql,
     })
     .from(authors)
     .innerJoin(authorAccessProfiles, eq(authorAccessProfiles.id, authors.accessProfileId))
-    .where(and(activityCondition, accessProfileCondition))
-    .orderBy(desc(authors.isSystem), asc(authors.name), asc(authors.code));
+    .where(where)
+    .orderBy(...sortOrder)
+    .limit(pageSize)
+    .offset(getOffset(page, pageSize));
+
+  return { items, page, pageSize, totalCount, totalPages };
+}
+
+export async function getSystemAuthorsCount() {
+  const [{ count }] = await db
+    .select({ count: sql<number>`count(*)::int` })
+    .from(authors)
+    .where(eq(authors.isSystem, true));
+
+  return count;
 }
 
 export async function getAuthorOptions() {
@@ -129,17 +216,7 @@ export async function getAdminAuthorProfileById(id: number) {
       accessProfileName: authorAccessProfiles.name,
       createdAt: authors.createdAt,
       blockedAt: authors.blockedAt,
-      lastActivityAt: sql<Date>`greatest(
-        ${authors.createdAt},
-        coalesce(
-          (select max(${mediaItems.updatedAt}) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id}),
-          ${authors.createdAt}
-        ),
-        coalesce(
-          (select max(${ratings.updatedAt}) from ${ratings} where ${ratings.authorId} = ${authors.id}),
-          ${authors.createdAt}
-        )
-      )::timestamptz`,
+      lastActivityAt: authorLastActivityAtSql(authors.id, authors.createdAt),
       createdMediaItemsCount: sql<number>`(
         select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id}
       )::int`,

@@ -645,6 +645,13 @@
       "when": 1789905600001,
       "tag": "0091_bug_reports_author_id_idx",
       "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1789992000000,
+      "tag": "0092_cover_provider_request_timeout",
+      "breakpoints": true
     }
   ]
 }

@@ -35,13 +35,13 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
         aside={<Badge variant="warning">{franchises.length} на проверке</Badge>}
       />
       {franchises.length === 0 ? <EmptyState>Заявок на проверку серий сейчас нет.</EmptyState> : (
-        <TableWrap>
-          <Table className="table-fixed">
-            <THead><tr><TH>Серия</TH><TH className="w-44">Автор</TH><TH className="w-28 px-2 text-right">Действия</TH></tr></THead>
-            <TBody>
+        <TableWrap className="border-0 bg-transparent md:border md:bg-white">
+          <Table className="block md:table md:table-fixed">
+            <THead className="hidden md:table-header-group"><tr><TH>Серия</TH><TH className="w-44">Автор</TH><TH className="w-28 px-2 text-right">Действия</TH></tr></THead>
+            <TBody className="grid gap-3 md:table-row-group">
               {franchises.map((franchise) => (
-                <TR key={`${franchise.kind}-${franchise.id}-${franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : ""}`}>
-                  <TD className="min-w-0 overflow-hidden">
+                <TR className="grid grid-cols-[minmax(0,1fr)_auto] rounded-lg border border-stone-200 bg-white shadow-sm md:table-row md:rounded-none md:border-0 md:shadow-none" key={`${franchise.kind}-${franchise.id}-${franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : ""}`}>
+                  <TD className="col-span-2 min-w-0 overflow-hidden border-b border-stone-100 md:table-cell md:border-b-0">
                     <div className="flex items-start gap-3">
                       {franchise.kind === "link" || franchise.kind === "removal" ? (
                         <div className={franchise.kind === "removal" ? "grid size-10 shrink-0 place-items-center rounded-md border border-red-200 bg-red-50 text-red-700" : "grid size-10 shrink-0 place-items-center rounded-md border border-emerald-200 bg-emerald-50 text-emerald-700"} aria-hidden="true">
@@ -89,8 +89,8 @@ export default async function AdminFranchiseReviewPage({ searchParams }: AdminFr
                       </div>
                     </div>
                   </TD>
-                  <TD><div className="truncate text-sm text-stone-700">{franchise.authorName}</div></TD>
-                  <TD className="px-2"><div className="flex justify-end gap-1.5">
+                  <TD><div className="text-xs text-stone-500 md:hidden">Автор</div><div className="truncate text-sm text-stone-700">{franchise.authorName}</div></TD>
+                  <TD className="px-4 md:px-2"><div className="flex justify-end gap-1.5">
                     <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" || franchise.kind === "removal" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}{franchise.kind === "removal" ? <input type="hidden" name="kind" value="removal" /> : null}<input type="hidden" name="decision" value="published" /><Button type="submit" variant="positive" size="icon" aria-label={`Одобрить заявку ${franchise.title}`}><Check /></Button></form>
                     <form action={reviewFranchiseAction}><input type="hidden" name="franchiseId" value={franchise.kind === "link" || franchise.kind === "removal" ? franchise.franchiseId : franchise.id} />{franchise.kind === "link" || franchise.kind === "removal" ? <input type="hidden" name="mediaItemId" value={franchise.id} /> : null}{franchise.kind === "removal" ? <input type="hidden" name="kind" value="removal" /> : null}<input type="hidden" name="decision" value="rejected" /><Button type="submit" variant="destructive" size="icon" aria-label={`Отклонить заявку ${franchise.title}`}><X /></Button></form>
                   </div></TD>

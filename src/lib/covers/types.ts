@@ -102,6 +102,7 @@ export type MediaTitleMetadata = {
 export type ProviderSearchOptions = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
+  requestTimeoutMs?: number;
   providerCredentials?: Partial<Record<MediaProviderCode, Record<string, string>>>;
   beforeProviderSearch?: (
     providerCode: MediaProviderCode,

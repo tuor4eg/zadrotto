@@ -11,7 +11,9 @@ import {
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
   DEFAULT_COVER_MAX_BYTES,
+  DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
+  resolveProviderRequestTimeoutMs,
 } from "@/lib/covers/config";
 import {
   decryptCoverProviderCredentials,
@@ -34,6 +36,7 @@ export type CoverSettingsValue = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   coverMaxBytes: number;
+  providerRequestTimeoutMs: number;
 };
 
 export type CoverProviderSettingsValue = {
@@ -66,6 +69,7 @@ export const DEFAULT_COVER_SETTINGS = {
   candidateLimit: DEFAULT_COVER_CANDIDATE_LIMIT,
   tmdbResultScanLimit: DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
   coverMaxBytes: DEFAULT_COVER_MAX_BYTES,
+  providerRequestTimeoutMs: DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
 } satisfies CoverSettingsValue;
 
 const COVER_SETTINGS_ID = 1;
@@ -132,6 +136,9 @@ function normalizeCoverSettings(row: CoverSettingsValue | null): CoverSettingsVa
     tmdbResultScanLimit:
       row?.tmdbResultScanLimit ?? DEFAULT_COVER_SETTINGS.tmdbResultScanLimit,
     coverMaxBytes: row?.coverMaxBytes ?? DEFAULT_COVER_SETTINGS.coverMaxBytes,
+    providerRequestTimeoutMs: resolveProviderRequestTimeoutMs(
+      row?.providerRequestTimeoutMs ?? DEFAULT_COVER_SETTINGS.providerRequestTimeoutMs,
+    ),
   };
 }
 
@@ -150,6 +157,7 @@ export async function getCoverSettings(): Promise<CoverSettingsValue> {
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
       coverMaxBytes: coverSettings.coverMaxBytes,
+      providerRequestTimeoutMs: coverSettings.providerRequestTimeoutMs,
     })
     .from(coverSettings)
     .where(eq(coverSettings.id, COVER_SETTINGS_ID))
@@ -161,6 +169,9 @@ export async function getCoverSettings(): Promise<CoverSettingsValue> {
 export async function updateCoverSettings(
   input: CoverSettingsValue,
 ): Promise<CoverSettingsValue> {
+  const providerRequestTimeoutMs = resolveProviderRequestTimeoutMs(
+    input.providerRequestTimeoutMs,
+  );
   const [settings] = await db
     .insert(coverSettings)
     .values({
@@ -168,6 +179,7 @@ export async function updateCoverSettings(
       candidateLimit: input.candidateLimit,
       tmdbResultScanLimit: input.tmdbResultScanLimit,
       coverMaxBytes: input.coverMaxBytes,
+      providerRequestTimeoutMs,
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
@@ -176,6 +188,7 @@ export async function updateCoverSettings(
         candidateLimit: input.candidateLimit,
         tmdbResultScanLimit: input.tmdbResultScanLimit,
         coverMaxBytes: input.coverMaxBytes,
+        providerRequestTimeoutMs,
         updatedAt: new Date(),
       },
     })
@@ -183,6 +196,7 @@ export async function updateCoverSettings(
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
       coverMaxBytes: coverSettings.coverMaxBytes,
+      providerRequestTimeoutMs: coverSettings.providerRequestTimeoutMs,
     });
 
   return normalizeCoverSettings(settings ?? null);

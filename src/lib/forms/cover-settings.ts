@@ -1,7 +1,10 @@
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
   DEFAULT_COVER_MAX_BYTES,
+  DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
+  MAX_PROVIDER_REQUEST_TIMEOUT_MS,
+  MIN_PROVIDER_REQUEST_TIMEOUT_MS,
 } from "@/lib/covers/config";
 import {
   getCoverProviderDefaultSettings,
@@ -23,11 +26,15 @@ const PROVIDER_PRIORITY_MIN = 1;
 const PROVIDER_PRIORITY_MAX = 999;
 const PROVIDER_DAILY_LIMIT_MIN = 1;
 const PROVIDER_DAILY_LIMIT_MAX = 100000;
+const PROVIDER_REQUEST_TIMEOUT_SECONDS_MIN = MIN_PROVIDER_REQUEST_TIMEOUT_MS / 1000;
+const PROVIDER_REQUEST_TIMEOUT_SECONDS_MAX = MAX_PROVIDER_REQUEST_TIMEOUT_MS / 1000;
+const PROVIDER_REQUEST_TIMEOUT_SECONDS_DEFAULT = DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS / 1000;
 
 export type CoverSettingsFormInput = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   coverMaxBytes: number;
+  providerRequestTimeoutMs: number;
 };
 
 export type CoverProviderSettingsFormInput = {
@@ -73,10 +80,15 @@ export function formatCoverMaxMegabytes(maxCoverBytes: number) {
   return String(Math.max(1, Math.floor(maxCoverBytes / BYTES_IN_MEGABYTE)));
 }
 
+export function formatProviderRequestTimeoutSeconds(timeoutMs: number) {
+  return String(Math.max(1, Math.round(timeoutMs / 1000)));
+}
+
 export function parseCoverSettingsFormInput(input: {
   candidateLimit: string;
   tmdbResultScanLimit: string;
   coverMaxMegabytes: string;
+  providerRequestTimeoutSeconds: string;
 }) {
   const candidateLimit = parseBoundedInteger({
     value: input.candidateLimit,
@@ -93,14 +105,25 @@ export function parseCoverSettingsFormInput(input: {
     min: COVER_MAX_MEGABYTES_MIN,
     max: COVER_MAX_MEGABYTES_MAX,
   });
+  const providerRequestTimeoutSeconds = parseBoundedInteger({
+    value: input.providerRequestTimeoutSeconds,
+    min: PROVIDER_REQUEST_TIMEOUT_SECONDS_MIN,
+    max: PROVIDER_REQUEST_TIMEOUT_SECONDS_MAX,
+  });
 
-  if (!candidateLimit.ok || !tmdbResultScanLimit.ok || !coverMaxMegabytes.ok) {
+  if (
+    !candidateLimit.ok ||
+    !tmdbResultScanLimit.ok ||
+    !coverMaxMegabytes.ok ||
+    !providerRequestTimeoutSeconds.ok
+  ) {
     return { ok: false as const, error: "invalid-limit" as const };
   }
 
   const coverMaxBytes = coverMaxMegabytes.value * BYTES_IN_MEGABYTE;
+  const providerRequestTimeoutMs = providerRequestTimeoutSeconds.value * 1000;
 
-  if (!Number.isSafeInteger(coverMaxBytes)) {
+  if (!Number.isSafeInteger(coverMaxBytes) || !Number.isSafeInteger(providerRequestTimeoutMs)) {
     return { ok: false as const, error: "invalid-limit" as const };
   }
 
@@ -110,6 +133,7 @@ export function parseCoverSettingsFormInput(input: {
       candidateLimit: candidateLimit.value,
       tmdbResultScanLimit: tmdbResultScanLimit.value,
       coverMaxBytes,
+      providerRequestTimeoutMs,
     } satisfies CoverSettingsFormInput,
   };
 }
@@ -214,6 +238,11 @@ export const COVER_SETTINGS_FORM_LIMITS = {
     min: COVER_MAX_MEGABYTES_MIN,
     max: COVER_MAX_MEGABYTES_MAX,
     defaultValue: DEFAULT_COVER_MAX_BYTES / BYTES_IN_MEGABYTE,
+  },
+  providerRequestTimeoutSeconds: {
+    min: PROVIDER_REQUEST_TIMEOUT_SECONDS_MIN,
+    max: PROVIDER_REQUEST_TIMEOUT_SECONDS_MAX,
+    defaultValue: PROVIDER_REQUEST_TIMEOUT_SECONDS_DEFAULT,
   },
   providerSearchesPerDay: {
     min: PROVIDER_DAILY_LIMIT_MIN,

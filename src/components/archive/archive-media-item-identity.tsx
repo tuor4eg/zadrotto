@@ -2,9 +2,10 @@ import { Fragment } from "react"
 import Link from "next/link"
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title"
+import { ArchiveMediaItemIdentityLayout } from "@/components/archive/archive-media-item-identity-layout"
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links"
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items"
-import { getMediaCarrierFrame } from "@/lib/media/carrier-frame"
+import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame"
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary"
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types"
 
@@ -13,6 +14,8 @@ type ArchiveMediaItemIdentityProps = {
   item: {
     aliases?: string[]
     code: string
+    coverThumbUrl?: string | null
+    coverUrl?: string | null
     franchises: MediaItemFranchiseLink[]
     mediaCarrierCode?: string | null
     mediaType: MediaType
@@ -32,8 +35,7 @@ export function ArchiveMediaItemIdentity({
   showFranchiseSection = false,
 }: ArchiveMediaItemIdentityProps) {
   const mediaCarrierFrame = getMediaCarrierFrame(item)
-  const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif"
-  const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono"
+  const carrierLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono"
   const mediaTypeLabel = getMediaTypeLabel(item.mediaType, mediaTypes)
   const infoLabels = getArchiveMediaItemInfoLabels({
     mediaType: item.mediaType,
@@ -41,10 +43,16 @@ export function ArchiveMediaItemIdentity({
     metadataFacts: item.metadataFacts,
     releaseYear: item.releaseYear,
   })
+  const coverUrl = item.coverThumbUrl ?? item.coverUrl ?? null
+  const viewerCoverUrl = item.coverUrl ?? item.coverThumbUrl ?? null
 
   return (
-    <header className="relative">
-      <nav aria-label="Хлебные крошки" className={`${labelFontClassName} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
+    <ArchiveMediaItemIdentityLayout
+      coverUrl={coverUrl}
+      title={item.title}
+      viewerCoverUrl={viewerCoverUrl}
+      breadcrumb={
+        <nav aria-label="Хлебные крошки" className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
         <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
           <li>
             <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/archive?type=${encodeURIComponent(item.mediaType)}`}>
@@ -61,42 +69,13 @@ export function ArchiveMediaItemIdentity({
           <li aria-current="page" className="min-w-0 truncate text-stone-800">Рецензии</li>
         </ol>
       </nav>
-
-      <div className="mt-3 max-w-[980px] pr-16 sm:pr-24">
-        <Link
-          href={`/media/${item.code}`}
-          className={mediaCarrierFrame
-            ? `${displayFontClassName} text-xl leading-[1.5] text-stone-950 hover:text-stone-700 sm:text-3xl`
-            : "font-serif text-3xl leading-none text-stone-950 hover:text-stone-700 sm:text-5xl"}
-        >
-          <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
-        </Link>
-        {item.originalTitle && item.originalTitle !== item.title ? (
-          <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
-            {item.originalTitle}
-          </div>
-        ) : null}
-        {(item.aliases?.length ?? 0) > 0 ? (
-          <div className={`mt-2 ${labelFontClassName} text-xs leading-5 text-stone-600`}>
-            Также известно как: {item.aliases?.join(", ")}
-          </div>
-        ) : null}
-      </div>
-
-      <div className={`${labelFontClassName} mt-4 text-xs leading-6 text-stone-800`}>
-        {infoLabels.map((label, index) => (
-          <Fragment key={`${label}-${index}`}>
-            {index > 0 ? <span className="mx-1.5">•</span> : null}
-            <span>{label}</span>
-          </Fragment>
-        ))}
-      </div>
-
-      {(item.franchises.length > 0 || showFranchiseSection) ? (
-        <dl className="mt-7 text-sm leading-6 text-stone-800">
+      }
+      footer={
+        (item.franchises.length > 0 || showFranchiseSection) ? (
+        <dl className="text-sm sm:mt-7 leading-6 text-stone-800">
           <div>
             <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
-              <span className={labelFontClassName}>Серия</span>
+              <span className={MEDIA_IDENTITY_FONT_CLASS_NAME}>Серия</span>
               {item.franchises.length === 0 ? franchiseActions : null}
             </dt>
             <dd className="mt-1">
@@ -109,7 +88,40 @@ export function ArchiveMediaItemIdentity({
             </dd>
           </div>
         </dl>
-      ) : null}
-    </header>
+      ) : null
+      }
+    >
+
+      <div className="max-w-[980px] sm:mt-3 sm:pr-24">
+        <Link
+          href={`/media/${item.code}`}
+          className={mediaCarrierFrame
+            ? `${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xl leading-[1.5] text-stone-950 hover:text-stone-700 sm:text-3xl`
+            : `${MEDIA_IDENTITY_FONT_CLASS_NAME} text-3xl leading-none text-stone-950 hover:text-stone-700 sm:text-5xl`}
+        >
+          <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
+        </Link>
+        {item.originalTitle && item.originalTitle !== item.title ? (
+          <div className={`mt-3 ${carrierLabelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
+            {item.originalTitle}
+          </div>
+        ) : null}
+        {(item.aliases?.length ?? 0) > 0 ? (
+          <div className={`mt-2 ${carrierLabelFontClassName} text-xs leading-5 text-stone-600`}>
+            Также известно как: {item.aliases?.join(", ")}
+          </div>
+        ) : null}
+      </div>
+
+      <div className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} mt-4 text-xs leading-6 text-stone-800`}>
+        {infoLabels.map((label, index) => (
+          <Fragment key={`${label}-${index}`}>
+            {index > 0 ? <span className="mx-1.5">•</span> : null}
+            <span>{label}</span>
+          </Fragment>
+        ))}
+      </div>
+
+    </ArchiveMediaItemIdentityLayout>
   )
 }

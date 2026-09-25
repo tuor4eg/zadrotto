@@ -1,8 +1,10 @@
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   fetchSearchJson,
+  getActiveProviderRequestTimeoutMs,
   getFirstYear,
   normalizeSearchQuery,
+  withProviderTimeout,
 } from "@/lib/covers/providers/shared";
 
 type TwitchTokenResponse = {
@@ -108,6 +110,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
         Authorization: `Bearer ${accessToken}`,
       },
       body,
+      signal: withProviderTimeout(getActiveProviderRequestTimeoutMs()),
     });
 
     if (!response.ok) {

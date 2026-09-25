@@ -7,8 +7,16 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
 import { Tooltip } from "@/components/ui/tooltip";
 import { Avatar } from "@/components/ui/avatar";
+import { PaginationNav } from "@/components/pagination-nav";
 import { getAuthorAccessProfiles } from "@/db/queries/author-access-profiles";
-import { getAuthors, type AuthorActivityFilter } from "@/db/queries/authors";
+import {
+  ADMIN_AUTHORS_PAGE_SIZE,
+  getAuthors,
+  getSystemAuthorsCount,
+  type AuthorActivityFilter,
+  type AuthorSort,
+} from "@/db/queries/authors";
+import { parsePage } from "@/lib/common/pagination";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
 import { blockAuthorAction, deleteAuthorAction, unblockAuthorAction } from "./actions";
@@ -20,14 +28,17 @@ type AdminAuthorsPageProps = {
     activity?: string;
     created?: string;
     error?: string;
+    page?: string;
     profile?: string;
+    sort?: string;
     updated?: string;
   }>;
 };
 
-type AdminAuthor = Awaited<ReturnType<typeof getAuthors>>[number];
+type AdminAuthor = Awaited<ReturnType<typeof getAuthors>>["items"][number];
 
 const AUTHOR_ACTIVITY_FILTERS = ["active", "blocked"] as const;
+const AUTHOR_SORTS = ["name", "created", "activity", "ratings", "reviews"] as const;
 
 function formatCreatedAt(createdAt: Date) {
   return new Intl.DateTimeFormat("ru-RU", {
@@ -64,6 +75,10 @@ function parseAuthorActivityFilter(value?: string): AuthorActivityFilter | "all"
   return AUTHOR_ACTIVITY_FILTERS.some((filter) => filter === value)
     ? (value as AuthorActivityFilter)
     : "all";
+}
+
+function parseAuthorSort(value?: string): AuthorSort {
+  return AUTHOR_SORTS.some((sort) => sort === value) ? (value as AuthorSort) : "name";
 }
 
 function parseAuthorAccessProfileFilter(
@@ -187,23 +202,24 @@ function AuthorActions({
 }
 
 export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPageProps) {
-  const [params, accessProfiles, allAuthors] = await Promise.all([
+  const [params, accessProfiles, systemAuthorsCount] = await Promise.all([
     searchParams,
     getAuthorAccessProfiles(),
-    getAuthors(),
+    getSystemAuthorsCount(),
   ]);
   const activityFilter = parseAuthorActivityFilter(params.activity);
   const accessProfileFilter = parseAuthorAccessProfileFilter(params.profile, accessProfiles);
+  const sort = parseAuthorSort(params.sort);
   const hasActiveFilters = activityFilter !== "all" || accessProfileFilter !== null;
-  const authors = hasActiveFilters
-    ? await getAuthors({
-        accessProfileId: accessProfileFilter,
-        activity: activityFilter,
-      })
-    : allAuthors;
+  const authorsResult = await getAuthors({
+    accessProfileId: accessProfileFilter,
+    activity: activityFilter,
+    page: parsePage(params.page),
+    sort,
+  });
+  const authors = authorsResult.items;
   const errorMessage = getAuthorErrorMessage(params.error);
   const successMessage = getSuccessMessage(params);
-  const systemAuthorsCount = allAuthors.filter((author) => author.isSystem).length;
   const toastMessages = [
     ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
     ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
@@ -231,6 +247,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
         accessProfileFilter={accessProfileFilter}
         accessProfiles={accessProfiles}
         activityFilter={activityFilter}
+        sort={sort}
       />
 
       {authors.length === 0 ? (
@@ -277,6 +294,15 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                       </div>
                     </div>
 
+                    <div>
+                      <div className="mb-1 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">
+                        Последняя активность
+                      </div>
+                      <div className="text-xs tabular-nums text-stone-500">
+                        {formatCreatedAt(author.lastActivityAt)}
+                      </div>
+                    </div>
+
                     <AuthorActions
                       author={author}
                       canDeleteAuthor={canDeleteAuthor}
@@ -295,6 +321,7 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                   <TH>Автор</TH>
                   <TH className="w-60">Профиль</TH>
                   <TH className="w-48">Создан</TH>
+                  <TH className="w-48">Последняя активность</TH>
                   <TH className="w-64 px-2 text-right">Действия</TH>
                 </tr>
               </THead>
@@ -327,6 +354,9 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
                       <TD className="text-xs tabular-nums text-stone-500">
                         {formatCreatedAt(author.createdAt)}
                       </TD>
+                      <TD className="text-xs tabular-nums text-stone-500">
+                        {formatCreatedAt(author.lastActivityAt)}
+                      </TD>
                       <TD className="px-2">
                         <AuthorActions
                           author={author}
@@ -343,7 +373,22 @@ export default async function AdminAuthorsPage({ searchParams }: AdminAuthorsPag
         </>
       )}
 
-      <Badge variant="outline">{authors.length} всего</Badge>
+      <PaginationNav
+        basePath="/admin/authors"
+        itemLabel="авторов"
+        page={authorsResult.page}
+        pageSize={ADMIN_AUTHORS_PAGE_SIZE}
+        searchParams={{
+          activity: activityFilter === "all" ? undefined : activityFilter,
+          profile: accessProfileFilter ? String(accessProfileFilter) : undefined,
+          sort: sort === "name" ? undefined : sort,
+        }}
+        totalCount={authorsResult.totalCount}
+        totalPages={authorsResult.totalPages}
+        variant="admin"
+      />
+
+      <Badge variant="outline">{authorsResult.totalCount} всего</Badge>
     </div>
   );
 }

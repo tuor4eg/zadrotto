@@ -1,7 +1,9 @@
 import { normalizeCoverCandidates } from "@/lib/covers/candidates";
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
+  DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
+  resolveProviderRequestTimeoutMs,
 } from "@/lib/covers/config";
 import {
   getCoverProviderDefaultSettings,
@@ -14,6 +16,7 @@ import {
   type ProviderRequestError,
 } from "@/lib/covers/provider-errors";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
+import { runWithProviderRequestTimeout } from "@/lib/covers/provider-request-timeout";
 import type {
   CoverCandidate,
   CoverProviderCode,
@@ -43,6 +46,7 @@ export type CoverProviderRuntimeSetting = {
 const DEFAULT_COVER_SEARCH_OPTIONS = {
   candidateLimit: DEFAULT_COVER_CANDIDATE_LIMIT,
   tmdbResultScanLimit: DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
+  requestTimeoutMs: DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
 } satisfies CoverSearchOptions;
 
 const DEFAULT_PROVIDER_SETTINGS = getCoverProviderDefaultSettings();
@@ -69,6 +73,20 @@ function getProviderExecutionError(error: unknown): ProviderSearchError {
   }
 
   return "provider-unavailable";
+}
+
+function withProviderRequestTimeout<T>(
+  options: ProviderSearchOptions,
+  operation: () => Promise<T>,
+): Promise<T> {
+  return Promise.resolve(
+    runWithProviderRequestTimeout(
+      resolveProviderRequestTimeoutMs(
+        options.requestTimeoutMs ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+      ),
+      operation,
+    ),
+  );
 }
 
 async function canSearchProvider(
@@ -252,7 +270,9 @@ export async function searchCoverCandidates(
     if (provider?.getCoverCandidatesByTitleSource && canSearch) {
       try {
         exactCandidates = normalizeCoverCandidates(
-          await provider.getCoverCandidatesByTitleSource(input, options),
+          await withProviderRequestTimeout(options, () =>
+            provider.getCoverCandidatesByTitleSource!(input, options),
+          ),
         ).slice(0, options.candidateLimit);
       } catch (error) {
         errors.push(getProviderExecutionError(error));
@@ -284,12 +304,14 @@ export async function searchCoverCandidates(
       }
 
       try {
-        const fallbackCandidates = await fallbackProvider.searchCoverCandidates(
-          input,
-          {
-            ...options,
-            candidateLimit: options.candidateLimit - candidates.length,
-          },
+        const fallbackCandidates = await withProviderRequestTimeout(options, () =>
+          fallbackProvider.searchCoverCandidates!(
+            input,
+            {
+              ...options,
+              candidateLimit: options.candidateLimit - candidates.length,
+            },
+          ),
         );
 
         candidates = normalizeCoverCandidates([...candidates, ...fallbackCandidates]).slice(
@@ -332,13 +354,15 @@ export async function searchCoverCandidates(
         }
 
         return {
-          candidates: await searchCoverCandidates(
-            {
-              ...input,
-              title: normalizedTitle,
-              originalTitle: normalizedOriginalTitle,
-            },
-            options,
+          candidates: await withProviderRequestTimeout(options, () =>
+            searchCoverCandidates(
+              {
+                ...input,
+                title: normalizedTitle,
+                originalTitle: normalizedOriginalTitle,
+              },
+              options,
+            ),
           ),
           error: null,
         };
@@ -424,7 +448,9 @@ export async function searchTitleCandidates(
         }
 
         return {
-          candidates: await provider.searchTitleCandidates({ ...input, query }, options),
+          candidates: await withProviderRequestTimeout(options, () =>
+            provider.searchTitleCandidates!({ ...input, query }, options),
+          ),
           error: null,
         };
       }),
@@ -462,7 +488,9 @@ export async function searchTitleCandidates(
 
     try {
       const candidates = normalizeTitleCandidates(
-        await provider.searchTitleCandidates({ ...input, query }, options),
+        await withProviderRequestTimeout(options, () =>
+          provider.searchTitleCandidates!({ ...input, query }, options),
+        ),
       );
 
       if (candidates.length > 0) {
@@ -539,7 +567,11 @@ export async function getTitleMetadata(
 
   try {
     return {
-      metadata: normalizeTitleMetadata(await provider.getTitleMetadata(input, options)),
+      metadata: normalizeTitleMetadata(
+        await withProviderRequestTimeout(options, () =>
+          provider.getTitleMetadata!(input, options),
+        ),
+      ),
       error: null,
     };
   } catch (error) {

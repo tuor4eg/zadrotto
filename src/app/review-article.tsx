@@ -34,7 +34,7 @@ function formatDate(value: Date | string | null) {
   if (Number.isNaN(date.getTime())) return null;
 
   return new Intl.DateTimeFormat("ru-RU", {
-    day: "2-digit",
+    day: "numeric",
     month: "long",
     timeZone: "Europe/Moscow",
     year: "numeric",
@@ -152,11 +152,6 @@ export function ReviewArticle({
                 <span className="underline decoration-stone-400/60 underline-offset-2 group-hover:decoration-stone-950">{review.authorName}</span>
               </Link>
               {publishedAt ? <span>{publishedAt}</span> : null}
-            </div>
-            <div className="archive-typewriter-text mt-4 text-sm font-semibold text-stone-700">
-              {review.authorScore === null
-                ? "Оценка автора не указана"
-                : `Оценка автора: ${formatScore(review.authorScore)}/10`}
             </div>
             <div className="mt-8 w-full">
               <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">

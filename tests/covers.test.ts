@@ -2095,6 +2095,7 @@ describe("cover settings form", () => {
         candidateLimit: "12",
         tmdbResultScanLimit: "4",
         coverMaxMegabytes: "7",
+        providerRequestTimeoutSeconds: "20",
       }),
       {
         ok: true,
@@ -2102,6 +2103,7 @@ describe("cover settings form", () => {
           candidateLimit: 12,
           tmdbResultScanLimit: 4,
           coverMaxBytes: 7 * 1024 * 1024,
+          providerRequestTimeoutMs: 20_000,
         },
       },
     );
@@ -2113,6 +2115,31 @@ describe("cover settings form", () => {
         candidateLimit: "0",
         tmdbResultScanLimit: "4",
         coverMaxMegabytes: "7",
+        providerRequestTimeoutSeconds: "20",
+      }),
+      { ok: false, error: "invalid-limit" },
+    );
+  });
+
+  it("rejects provider request timeout below the minimum", () => {
+    assert.deepEqual(
+      parseCoverSettingsFormInput({
+        candidateLimit: "8",
+        tmdbResultScanLimit: "3",
+        coverMaxMegabytes: "5",
+        providerRequestTimeoutSeconds: "0",
+      }),
+      { ok: false, error: "invalid-limit" },
+    );
+  });
+
+  it("rejects provider request timeout above the maximum", () => {
+    assert.deepEqual(
+      parseCoverSettingsFormInput({
+        candidateLimit: "8",
+        tmdbResultScanLimit: "3",
+        coverMaxMegabytes: "5",
+        providerRequestTimeoutSeconds: "121",
       }),
       { ok: false, error: "invalid-limit" },
     );

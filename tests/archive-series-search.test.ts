@@ -43,6 +43,8 @@ describe("archive series search", () => {
     );
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
     assert.match(archivePage, /const catalogSearchQuery = selectedSeries \? "" : searchQuery/);
+    assert.match(archivePage, /const parsedSort = selectedSeries[\s\S]*\? "release_year"/);
+    assert.match(archivePage, /const sortDirection = selectedSeries[\s\S]*\? "asc"/);
     assert.match(seriesContext, /aria-label="Сбросить выбранную серию"/);
     assert.match(seriesContext, /className="grid size-9 shrink-0 place-items-center[^"\n]*" href=\{clearHref\}/);
     assert.match(seriesContext, /relative z-\[60\][^"\n]*overflow-visible/);

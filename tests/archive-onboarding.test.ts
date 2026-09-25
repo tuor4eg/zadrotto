@@ -390,4 +390,10 @@ describe("archive onboarding HUD wiring", () => {
     assert.match(ratingDialogSource, /<RatingCoachAnchor>/)
     assert.match(layerSource, /isArchiveOnboardingPath|useArchiveOnboarding/)
   })
+
+  it("requires confirmation before deleting a rating from the rating dialog", () => {
+    assert.match(ratingFormSource, /if \(isSelected\) \{[\s\S]*setIsScoreCleared\(true\)/)
+    assert.match(ratingFormSource, /value=\{shouldDeleteScore \? "delete" : "save"\}/)
+    assert.match(ratingFormSource, /shouldDeleteScore[\s\S]*"Удалить оценку"/)
+  })
 })

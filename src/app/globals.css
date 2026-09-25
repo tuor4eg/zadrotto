@@ -96,6 +96,11 @@
   src: url("/fonts/roboto-condensed-bold.ttf") format("truetype");
 }
 
+.rating-dialog-roboto,
+.rating-dialog-roboto * {
+  font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif !important;
+}
+
 @font-face {
   font-family: "Alumni Sans";
   font-style: normal;
@@ -182,7 +187,7 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --font-mono: Arial, Helvetica, sans-serif;
 }
 
 @media (prefers-color-scheme: dark) {

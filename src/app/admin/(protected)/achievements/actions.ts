@@ -359,6 +359,7 @@ export async function updateAchievementLevelAction(formData: FormData) {
 }
 
 export async function deleteAchievementLevelAction(formData: FormData) {
+  await requireAdminUser();
   const achievementId = Number(formData.get("achievementId"));
   const levelId = Number(formData.get("levelId"));
   if (!Number.isSafeInteger(achievementId) || achievementId <= 0 || !Number.isSafeInteger(levelId) || levelId <= 0) {

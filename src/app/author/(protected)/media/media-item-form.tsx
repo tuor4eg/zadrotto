@@ -1141,11 +1141,10 @@ export function MediaItemForm({
                 ) : null}
                 <div className="flex flex-wrap items-center gap-2">
                   <RatingScoreButtons
+                    progressive
                     selectedScore={initialRatingScore}
                     variant="archive"
-                    onScoreClick={(score, { isSelected }) => {
-                      setInitialRatingScore(isSelected ? null : score);
-                    }}
+                    onScoreClick={setInitialRatingScore}
                   />
                 </div>
                 <RatingExperienceFields releaseYear={selectedReleaseYear} variant="archive" />

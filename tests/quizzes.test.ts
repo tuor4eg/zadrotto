@@ -123,6 +123,23 @@ describe("quizzes", () => {
     assert.match(page, /Запись с правильным ответом и уже выданные ачивки останутся/);
     assert.match(page, /confirmLabel="Удалить квиз и результаты"/);
   });
+  it("supports searching, filtering and paginating the admin quiz list", () => {
+    const page = readFileSync("src/app/admin/(protected)/quizzes/page.tsx", "utf8");
+    const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
+
+    assert.match(page, /name="q"[\s\S]*name="state"[\s\S]*name="winner"/);
+    assert.match(page, /<TH>Победитель<\/TH>/);
+    assert.match(page, /Ответ уже встречался/);
+    assert.match(page, /<PaginationNav[\s\S]*basePath="\/admin\/quizzes"/);
+    assert.match(page, /className="grid gap-3 md:hidden"/);
+    assert.match(page, /<TableWrap className="hidden md:block">/);
+    assert.match(query, /containsNormalizedSearchSql\(quizzes\.question, searchQuery\)/);
+    assert.match(query, /containsNormalizedSearchSql\(mediaItems\.title, searchQuery\)/);
+    assert.match(query, /qp\.is_winner = true/);
+    assert.match(query, /earlier\.answer_media_item_id/);
+    assert.match(query, /orderBy\(asc\(quizzes\.startsAt\), asc\(quizzes\.id\)\)/);
+    assert.match(query, /limit\(ADMIN_QUIZZES_PAGE_SIZE\)[\s\S]*offset\(getOffset\(page, ADMIN_QUIZZES_PAGE_SIZE\)\)/);
+  });
   it("searches quiz answers by selected media types and shows Russian type names", () => {
     const picker = readFileSync("src/components/quizzes/quiz-answer-picker.tsx", "utf8");
     const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");

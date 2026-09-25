@@ -142,6 +142,7 @@ export const coverSettings = pgTable(
     candidateLimit: integer("candidate_limit").default(8).notNull(),
     tmdbResultScanLimit: integer("tmdb_result_scan_limit").default(3).notNull(),
     coverMaxBytes: integer("cover_max_bytes").default(5242880).notNull(),
+    providerRequestTimeoutMs: integer("provider_request_timeout_ms").default(15000).notNull(),
     ...timestamps(),
   },
   (table) => [
@@ -149,6 +150,10 @@ export const coverSettings = pgTable(
     check("cover_settings_candidate_limit_check", sql`${table.candidateLimit} >= 1`),
     check("cover_settings_tmdb_scan_limit_check", sql`${table.tmdbResultScanLimit} >= 1`),
     check("cover_settings_cover_max_bytes_check", sql`${table.coverMaxBytes} >= 1`),
+    check(
+      "cover_settings_provider_request_timeout_ms_check",
+      sql`${table.providerRequestTimeoutMs} between 1000 and 120000`,
+    ),
   ],
 );
 

@@ -90,4 +90,15 @@ describe("admin authors usage query", () => {
     assert.match(optionsSource, /id: authors\.id,[\s\S]*name: authors\.name,[\s\S]*isSystem: authors\.isSystem/);
     assert.match(tokenFormSource, /name="authorId"[\s\S]*authors\.map\(\(author\)/);
   });
+
+  it("paginates and sorts the author list on the server", () => {
+    const getAuthorsSource = getFunctionSource("getAuthors", "getSystemAuthorsCount");
+
+    assert.match(getAuthorsSource, /count\(\*\)::int/);
+    assert.match(getAuthorsSource, /sortOrder[\s\S]*name:[\s\S]*created:[\s\S]*activity:[\s\S]*ratings:[\s\S]*reviews:/);
+    assert.match(getAuthorsSource, /\.limit\(pageSize\)[\s\S]*\.offset\(getOffset\(page, pageSize\)\)/);
+    assert.match(authorsPageSource, /<PaginationNav[\s\S]*basePath="\/admin\/authors"/);
+    assert.match(authorsPageSource, /parsePage\(params\.page\)/);
+    assert.match(authorsPageSource, /sort: sort === "name" \? undefined : sort/);
+  });
 });

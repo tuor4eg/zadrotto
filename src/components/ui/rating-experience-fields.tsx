@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { ChevronDown } from "lucide-react";
 
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import {
@@ -102,6 +103,7 @@ export function RatingExperienceFields({
   const [selectedExperiencePrecision, setSelectedExperiencePrecision] =
     useState<FirstExperiencedPrecision>(initialExperiencePrecision);
   const [selectedExperienceValue, setSelectedExperienceValue] = useState(initialExperienceValue);
+  const [isExpanded, setIsExpanded] = useState(false);
   const experienceParts = getExperienceParts(selectedExperienceValue);
   const visibleExperienceParts = {
     ...experienceParts,
@@ -135,11 +137,6 @@ export function RatingExperienceFields({
 
     return { label: String(index + 1), value };
   });
-  const precisionSelectOptions = FIRST_EXPERIENCED_PRECISIONS.map((precision) => ({
-    label: FIRST_EXPERIENCED_PRECISION_LABELS[precision],
-    value: precision,
-  }));
-
   useEffect(() => {
     onDirtyChange?.(hasUnsavedExperience);
   }, [hasUnsavedExperience, onDirtyChange]);
@@ -164,6 +161,18 @@ export function RatingExperienceFields({
     );
   }
 
+  function updateExperiencePrecision(nextPrecision: FirstExperiencedPrecision) {
+    setSelectedExperiencePrecision(nextPrecision);
+    if (selectedExperienceValue) {
+      setSelectedExperienceValue(
+        buildExperienceValue({
+          ...visibleExperienceParts,
+          precision: nextPrecision,
+        }),
+      );
+    }
+  }
+
   return (
     <div
       className={`grid gap-3 border-t pt-4 ${
@@ -176,23 +185,64 @@ export function RatingExperienceFields({
         name={precisionInputName}
         value={selectedExperiencePrecision}
       />
-      <span
-        className={`block text-[10px] font-semibold uppercase tracking-[0.16em] ${
-          variant === "archive" ? "text-stone-500" : "text-zinc-400"
+      <button
+        type="button"
+        aria-expanded={isExpanded}
+        className={`flex w-full items-center justify-between gap-3 text-left text-[10px] font-semibold uppercase tracking-[0.16em] transition-colors ${
+          variant === "archive"
+            ? "text-stone-500 hover:text-stone-950"
+            : "text-zinc-400 hover:text-zinc-950"
+        }`}
+        onClick={() => setIsExpanded((expanded) => !expanded)}
+      >
+        <span>Первое знакомство</span>
+        <ChevronDown
+          aria-hidden="true"
+          className={`size-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
+        />
+      </button>
+      {isExpanded ? (
+        <div className="grid gap-3">
+      <div
+        aria-label="Точность даты знакомства"
+        className={`grid grid-cols-3 overflow-hidden rounded-md border ${
+          variant === "archive" ? "border-stone-300/80" : "border-zinc-300"
+        }`}
+        role="group"
+      >
+        {FIRST_EXPERIENCED_PRECISIONS.map((precision) => {
+          const isSelected = selectedExperiencePrecision === precision;
+
+          return (
+            <button
+              key={precision}
+              type="button"
+              aria-pressed={isSelected}
+              className={`h-9 border-r px-2 text-[10px] font-semibold uppercase tracking-[0.08em] transition-colors last:border-r-0 ${
+                isSelected
+                  ? variant === "archive"
+                    ? "border-stone-700 bg-stone-700 text-stone-50"
+                    : "border-zinc-800 bg-zinc-800 text-white"
+                  : variant === "archive"
+                    ? "border-stone-300/80 bg-stone-50/80 text-stone-600 hover:bg-stone-100"
+                    : "border-zinc-300 bg-white text-zinc-600 hover:bg-zinc-100"
+              }`}
+              onClick={() => updateExperiencePrecision(precision)}
+            >
+              {FIRST_EXPERIENCED_PRECISION_LABELS[precision]}
+            </button>
+          );
+        })}
+      </div>
+      <div
+        className={`grid gap-2 ${
+          selectedExperiencePrecision === "year"
+            ? "grid-cols-1"
+            : selectedExperiencePrecision === "month"
+              ? "sm:grid-cols-2"
+              : "sm:grid-cols-3"
         }`}
       >
-        Первое знакомство
-      </span>
-      <div className={`grid gap-2 ${selectedExperiencePrecision === "year" ? "grid-cols-[minmax(0,1fr)_160px]" : "sm:grid-cols-[minmax(0,1fr)_160px]"}`}>
-        <div
-          className={`grid gap-2 ${
-            selectedExperiencePrecision === "year"
-              ? "grid-cols-1"
-              : selectedExperiencePrecision === "month"
-                ? "sm:grid-cols-[88px_minmax(0,1fr)]"
-                : "sm:grid-cols-[88px_minmax(0,1fr)_64px]"
-          }`}
-        >
           <ArchiveSelect
             ariaLabel="Год знакомства"
             className={DATE_SELECT_CLASS_NAME}
@@ -221,26 +271,9 @@ export function RatingExperienceFields({
               onChange={(day) => updateExperienceValue({ day })}
             />
           ) : null}
-        </div>
-        <ArchiveSelect
-          ariaLabel="Точность даты знакомства"
-          className={DATE_SELECT_CLASS_NAME}
-          compact={false}
-          options={precisionSelectOptions}
-          value={selectedExperiencePrecision}
-          onChange={(nextPrecision) => {
-            setSelectedExperiencePrecision(nextPrecision);
-            if (selectedExperienceValue) {
-              setSelectedExperienceValue(
-                buildExperienceValue({
-                  ...visibleExperienceParts,
-                  precision: nextPrecision,
-                }),
-              );
-            }
-          }}
-        />
       </div>
+        </div>
+      ) : null}
     </div>
   );
 }

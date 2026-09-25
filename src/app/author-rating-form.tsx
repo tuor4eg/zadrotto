@@ -36,6 +36,7 @@ type AuthorRatingFormProps = {
   onSaved?: () => void;
   onScoreChange?: (hasUnsaved: boolean) => void;
   formId?: string;
+  ratingDialogLayout?: boolean;
 };
 
 const initialState: SaveAuthorRatingState = {
@@ -64,6 +65,7 @@ export function AuthorRatingForm({
   onSaved,
   onScoreChange,
   formId,
+  ratingDialogLayout = false,
 }: AuthorRatingFormProps) {
   const demoProfile = useDemoProfile();
   const hasRealAuthor = Boolean(currentAuthor && currentAuthor.code !== "demo");
@@ -84,15 +86,38 @@ export function AuthorRatingForm({
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoPending, startDemoTransition] = useTransition();
   const [selectedScore, setSelectedScore] = useState<number | null>(null);
+  const [isScoreCleared, setIsScoreCleared] = useState(false);
   const [hasUnsavedExperience, setHasUnsavedExperience] = useState(false);
   const autoSubmitScoreInputRef = useRef<HTMLInputElement>(null);
   const wasPendingRef = useRef(false);
   const pending = isDemo ? demoPending : isPending;
   const visibleSelectedScore =
-    selectedScore ?? (effectiveScore !== null && effectiveScore % 10 === 0
-      ? effectiveScore
-      : null);
-  const hasUnsavedScore = selectedScore !== null && selectedScore !== effectiveScore;
+    isScoreCleared
+      ? null
+      : selectedScore ?? (effectiveScore !== null && effectiveScore % 10 === 0
+        ? effectiveScore
+        : null);
+  const shouldDeleteScore = isScoreCleared && effectiveScore !== null;
+  const hasUnsavedScore = shouldDeleteScore
+    || (selectedScore !== null && selectedScore !== effectiveScore);
+  const selectedScoreToneClassName =
+    visibleSelectedScore === null
+      ? "border-stone-300/70 bg-stone-200/60 text-stone-500"
+      : visibleSelectedScore <= 40
+        ? "border-red-900/10 bg-red-100/70 text-red-800"
+        : visibleSelectedScore >= 80
+          ? "border-emerald-900/10 bg-emerald-100/70 text-emerald-800"
+          : "border-stone-900/10 bg-stone-200/70 text-stone-700";
+  const selectedScoreButtonClassName =
+    shouldDeleteScore
+      ? "border-red-700 bg-red-700 text-white hover:border-red-900 hover:bg-red-900"
+      : visibleSelectedScore === null
+      ? "border-stone-300 bg-stone-200 text-stone-500"
+      : visibleSelectedScore <= 40
+        ? "border-red-700 bg-red-700 text-white hover:bg-red-800"
+        : visibleSelectedScore >= 80
+          ? "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800"
+          : "border-stone-700 bg-stone-700 text-white hover:bg-stone-800";
 
   useEffect(() => {
     onScoreChange?.(hasUnsavedScore);
@@ -156,6 +181,7 @@ export function AuthorRatingForm({
           return;
         }
         setSelectedScore(null);
+        setIsScoreCleared(false);
         onSaved?.();
         window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RATING_SAVED_EVENT));
       } catch (error) {
@@ -218,9 +244,11 @@ export function AuthorRatingForm({
         } : undefined}
         lang="ru-RU"
         className={`relative ${
-          variant === "archive"
-            ? "rounded-md border border-stone-300/80 bg-stone-50/50"
-            : "border border-zinc-200"
+          ratingDialogLayout
+            ? ""
+            : variant === "archive"
+              ? "rounded-md border border-stone-300/80 bg-stone-50/50"
+              : "border border-zinc-200"
         } ${compact ? "p-2" : "p-3"}`}
       >
       <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
@@ -229,7 +257,7 @@ export function AuthorRatingForm({
         <input ref={autoSubmitScoreInputRef} type="hidden" name="score" />
       ) : selectedScore !== null ? (
         <input type="hidden" name="score" value={selectedScore / 10} />
-      ) : showExperienceFields && effectiveScore !== null ? (
+      ) : !isScoreCleared && showExperienceFields && effectiveScore !== null ? (
         <input type="hidden" name="score" value={effectiveScore / 10} />
       ) : null}
 
@@ -246,14 +274,32 @@ export function AuthorRatingForm({
           </div>
         ) : null}
 
+        {ratingDialogLayout ? (
+          <div className="flex flex-col items-center text-center" aria-live="polite">
+            <div
+              className={`grid size-24 place-items-center rounded-full border text-6xl font-semibold tabular-nums transition-colors ${selectedScoreToneClassName}`}
+            >
+              {visibleSelectedScore === null ? "?" : visibleSelectedScore / 10}
+            </div>
+            <p className="mt-3 font-serif text-lg text-stone-900">
+              {visibleSelectedScore === null ? "Выберите оценку" : "Ваша оценка"}
+            </p>
+          </div>
+        ) : null}
+
         <div className="flex flex-wrap items-center gap-2">
           <RatingScoreButtons
             compact={compact}
             disabled={pending}
             selectedScore={visibleSelectedScore}
             variant={variant}
+            progressive={ratingDialogLayout}
             getButtonProps={(score, { isSelected }) => {
               const isSavedSelectedScore = isSelected && effectiveScore === score;
+
+              if (ratingDialogLayout) {
+                return { type: "button" };
+              }
 
               return {
                 type: autoSubmitOnSelect || isSavedSelectedScore ? "submit" : "button",
@@ -265,6 +311,18 @@ export function AuthorRatingForm({
               };
             }}
             onScoreClick={(score, { isSelected }) => {
+              if (ratingDialogLayout) {
+                if (isSelected) {
+                  setSelectedScore(null);
+                  setIsScoreCleared(true);
+                  return;
+                }
+
+                setSelectedScore(score);
+                setIsScoreCleared(false);
+                return;
+              }
+
               if (autoSubmitOnSelect && autoSubmitScoreInputRef.current) {
                 autoSubmitScoreInputRef.current.value = String(score / 10);
                 return;
@@ -306,6 +364,24 @@ export function AuthorRatingForm({
             variant={variant}
             onDirtyChange={setHasUnsavedExperience}
           />
+        ) : null}
+
+        {ratingDialogLayout ? (
+          <button
+            type="submit"
+            name="intent"
+            value={shouldDeleteScore ? "delete" : "save"}
+            disabled={pending || (visibleSelectedScore === null && !shouldDeleteScore)}
+            className={`flex h-11 w-full items-center justify-center rounded-md border px-4 text-sm font-semibold transition-colors disabled:border-stone-300 disabled:bg-stone-200 disabled:text-stone-500 ${selectedScoreButtonClassName}`}
+          >
+            {pending
+              ? "Сохраняем…"
+              : shouldDeleteScore
+                ? "Удалить оценку"
+                : visibleSelectedScore === null
+                ? "Поставить оценку"
+                : `Поставить ${visibleSelectedScore / 10}`}
+          </button>
         ) : null}
 
         {(hasUnsavedScore || hasUnsavedExperience) && inlineSaveButton ? (

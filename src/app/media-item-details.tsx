@@ -9,7 +9,7 @@ import { CoverSourceAttribution } from "@/components/archive/cover-source-attrib
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
-import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
+import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -331,8 +331,8 @@ function ArchiveMediaItemDetails({
 }) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
-  const labelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
-  const displayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
+  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
   const archiveInfoLabels = getArchiveMediaItemInfoLabels({
     ...item,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
@@ -354,7 +354,7 @@ function ArchiveMediaItemDetails({
 
           <div className="relative order-1 min-w-0 px-6 pt-3 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0">
             <div
-              className={`${labelFontClassName} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
+              className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
             >
               {breadcrumbSlot}
               {headerActions ? <div className="mr-10 shrink-0 sm:mr-0">{headerActions}</div> : null}
@@ -364,8 +364,8 @@ function ArchiveMediaItemDetails({
           <div
             className={
               mediaCarrierFrame
-                ? `${displayFontClassName} order-3 min-w-0 px-6 text-2xl leading-[1.55] text-stone-950 sm:px-8 sm:text-4xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
-                : "order-3 min-w-0 px-6 font-serif text-4xl leading-none text-stone-950 sm:px-8 sm:text-6xl lg:col-start-2 lg:row-start-1 lg:self-baseline"
+                ? `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-2xl leading-[1.55] text-stone-950 sm:px-8 sm:text-4xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
+                : `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-4xl leading-none text-stone-950 sm:px-8 sm:text-6xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
             }
           >
             <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
@@ -452,18 +452,18 @@ function ArchiveMediaItemDetails({
               <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
                 {titleActions}
                 {item.originalTitle && item.originalTitle !== item.title ? (
-                  <div className={`mt-3 ${labelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
+                  <div className={`mt-3 ${ratingLabelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
                     {item.originalTitle}
                   </div>
                 ) : null}
                 {(item.aliases?.length ?? 0) > 0 ? (
-                  <div className={`mt-2 ${labelFontClassName} text-xs leading-5 text-stone-600`}>
+                  <div className={`mt-2 ${ratingLabelFontClassName} text-xs leading-5 text-stone-600`}>
                     Также известно как: {item.aliases?.join(", ")}
                   </div>
                 ) : null}
               </div>
 
-              <div className={`mt-5 ${labelFontClassName} text-xs leading-6 text-stone-800`}>
+              <div className={`mt-5 ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs leading-6 text-stone-800`}>
                 {archiveInfoLabels.map((label, index) => (
                   <Fragment key={`${label}-${index}`}>
                     {index > 0 ? <span className="mx-1.5">•</span> : null}
@@ -478,7 +478,7 @@ function ArchiveMediaItemDetails({
                 <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
                   <div>
                     <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
-                      <span className={labelFontClassName}>Серия</span>
+                      <span className={MEDIA_IDENTITY_FONT_CLASS_NAME}>Серия</span>
                       {item.franchises.length === 0 ? franchiseActions : null}
                     </dt>
                     <dd className="mt-1">
@@ -497,9 +497,9 @@ function ArchiveMediaItemDetails({
                 <div className="h-full min-w-0">
                   <ArchiveRatingPanel
                     compact
-                    displayFontClassName={displayFontClassName}
+                    displayFontClassName={ratingDisplayFontClassName}
                     label="Оценка архива"
-                    labelFontClassName={labelFontClassName}
+                    labelFontClassName={ratingLabelFontClassName}
                     ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
                     ratingsCount={item.ratingsCount}
                     score={item.averageScore}
@@ -526,9 +526,9 @@ function ArchiveMediaItemDetails({
               <div className="mx-auto mt-6 hidden w-full min-w-0 max-w-[584px] gap-3 sm:grid sm:grid-cols-2">
                 <div className="min-w-0">
                   <ArchiveRatingPanel
-                    displayFontClassName={displayFontClassName}
+                    displayFontClassName={ratingDisplayFontClassName}
                     label="Оценка архива"
-                    labelFontClassName={labelFontClassName}
+                    labelFontClassName={ratingLabelFontClassName}
                     ratingPanelVariant={mediaCarrierFrame?.ratingPanelVariant}
                     ratingsCount={item.ratingsCount}
                     score={item.averageScore}

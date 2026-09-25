@@ -124,13 +124,17 @@ export default async function Home({ searchParams }: HomeProps) {
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
   const urlAuthorRatingFilter = parseAuthorRatingFilter(params.mine ?? null);
-  const parsedSort = parseCatalogSort(params.sort ?? null);
+  const parsedSort = selectedSeries
+    ? "release_year"
+    : parseCatalogSort(params.sort ?? null);
   const sort = (
     !hasRatingSubject && isAuthorOnlyCatalogSort(parsedSort)
   ) || (
     ratedByAuthorId && parsedSort === "my_first_experience_year"
   ) ? "title" : parsedSort;
-  const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
+  const sortDirection = selectedSeries
+    ? "asc"
+    : parseCatalogSortDirection(params.dir ?? null, sort);
   const yearFilter = parseCatalogYear(params.year ?? null);
   const parsedYearMode = parseCatalogYearMode(params.yearMode ?? null);
   const yearMode = (

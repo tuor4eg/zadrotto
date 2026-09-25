@@ -1,4 +1,14 @@
+import {
+  DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+  resolveProviderRequestTimeoutMs,
+} from "@/lib/covers/config";
 import type { CoverSearchInput, TitleSearchInput } from "@/lib/covers/types";
+
+let activeTimeoutResolver: (() => number) | null = null;
+
+export function bindProviderRequestTimeoutResolver(resolver: () => number) {
+  activeTimeoutResolver = resolver;
+}
 
 export function normalizeSearchQuery(input: CoverSearchInput | TitleSearchInput) {
   if ("query" in input) {
@@ -26,14 +36,41 @@ export function buildUrl(baseUrl: string, params: Record<string, string | number
   return url;
 }
 
-export async function fetchJson<T>(url: URL, init?: RequestInit) {
-  const response = await fetch(url, {
-    ...init,
+export function getActiveProviderRequestTimeoutMs() {
+  return resolveProviderRequestTimeoutMs(
+    activeTimeoutResolver?.() ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+  );
+}
+
+export function withProviderTimeout(
+  timeoutMs: number,
+  signal?: AbortSignal | null,
+): AbortSignal {
+  const timeoutSignal = AbortSignal.timeout(resolveProviderRequestTimeoutMs(timeoutMs));
+
+  if (!signal) {
+    return timeoutSignal;
+  }
+
+  return AbortSignal.any([timeoutSignal, signal]);
+}
+
+function buildProviderFetchInit(init?: RequestInit): RequestInit {
+  const timeoutMs = getActiveProviderRequestTimeoutMs();
+  const { signal: callerSignal, ...rest } = init ?? {};
+
+  return {
+    ...rest,
+    signal: withProviderTimeout(timeoutMs, callerSignal),
     headers: {
       accept: "application/json",
       ...init?.headers,
     },
-  });
+  };
+}
+
+export async function fetchJson<T>(url: URL, init?: RequestInit) {
+  const response = await fetch(url, buildProviderFetchInit(init));
 
   if (!response.ok) {
     return null;
@@ -78,13 +115,7 @@ function getProviderErrorMessage(value: unknown): string | null {
 }
 
 export async function fetchSearchJson<T>(url: URL, init?: RequestInit) {
-  const response = await fetch(url, {
-    ...init,
-    headers: {
-      accept: "application/json",
-      ...init?.headers,
-    },
-  });
+  const response = await fetch(url, buildProviderFetchInit(init));
 
   if (!response.ok) {
     const payload = await response.json().catch(() => null) as unknown;
