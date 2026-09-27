@@ -37,6 +37,7 @@ import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 type MediaItemRatingDialogProps = {
   mediaItemCode: string;
+  openRequestKey?: number | null;
   franchiseCode?: string | null;
   title: string;
   currentAuthor: {
@@ -452,6 +453,7 @@ export function MediaItemRatingModal({
 
 export function MediaItemRatingDialog({
   mediaItemCode,
+  openRequestKey,
   franchiseCode,
   title,
   currentAuthor,
@@ -465,9 +467,6 @@ export function MediaItemRatingDialog({
   size = "card",
 }: MediaItemRatingDialogProps) {
   const router = useRouter();
-  const [isOpen, setIsOpen] = useState(false);
-  const [isLoginOpen, setIsLoginOpen] = useState(false);
-  const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
   const demoProfile = useDemoProfile();
   const hasRealAuthor = Boolean(currentAuthor && currentAuthor.code !== "demo");
   const isDemo = Boolean(
@@ -482,7 +481,11 @@ export function MediaItemRatingDialog({
     ? currentAuthorFirstExperiencedPrecision
     : demoOverlay.firstExperiencedPrecision;
   const canRate = Boolean(hasRealAuthor || isDemo);
+  const [isOpen, setIsOpen] = useState(() => openRequestKey != null && canRate);
+  const [isLoginOpen, setIsLoginOpen] = useState(() => openRequestKey != null && !canRate);
+  const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
   const isRatingOpen = isOpen || Boolean(hasRealAuthor && openRatingAfterLogin);
+
 
   return (
     <>

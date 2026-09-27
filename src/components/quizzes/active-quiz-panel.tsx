@@ -24,11 +24,16 @@ export function ActiveQuizPanel({
   participant: QuizParticipantState | null;
   quiz: ActiveQuiz;
 }) {
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
 
   useEffect(() => {
+    const initialTimeout = window.setTimeout(() => setNow(new Date()), 0);
     const interval = window.setInterval(() => setNow(new Date()), 1_000);
-    return () => window.clearInterval(interval);
+
+    return () => {
+      window.clearTimeout(initialTimeout);
+      window.clearInterval(interval);
+    };
   }, []);
 
   return (
@@ -80,7 +85,7 @@ export function ActiveQuizPanel({
         </div>
       ) : null}
       <p className="absolute -bottom-3 -right-3 text-right text-xs text-stone-600 sm:-bottom-6 sm:-right-6">
-        {formatQuizTimeRemaining(quiz.endsAt, now)}
+        {now ? formatQuizTimeRemaining(quiz.endsAt, now) : null}
       </p>
     </div>
   );

@@ -357,7 +357,17 @@ body:has(.public-site-footer-layer) {
   background-size: 9px 9px, 13px 13px, auto;
 }
 
-.archive-catalog-list-panel {
+.archive-textured-block.archive-catalog-list-panel {
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.archive-catalog-list-panel-background {
+  border: 1px solid rgb(var(--archive-paper-edge) / 22%);
+  border-top: 0;
+  border-radius: 8px;
+  box-shadow: 0 8px 20px rgb(var(--archive-shadow) / 12%);
   background:
     radial-gradient(circle at 20% 15%, rgb(var(--archive-paper-grain-primary) / 8%) 0 1px, transparent 1px),
     radial-gradient(circle at 70% 45%, rgb(var(--archive-paper-grain-secondary) / 7%) 0 1px, transparent 1px),

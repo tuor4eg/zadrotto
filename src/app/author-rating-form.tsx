@@ -12,6 +12,7 @@ import {
 } from "@/lib/authors/experience-date";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { ARCHIVE_ONBOARDING_RATING_SAVED_EVENT } from "@/lib/onboarding/model";
+import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 import { deleteDemoRating, upsertDemoRating } from "@/lib/user-state/demo-actions";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
@@ -103,21 +104,13 @@ export function AuthorRatingForm({
   const selectedScoreToneClassName =
     visibleSelectedScore === null
       ? "border-stone-300/70 bg-stone-200/60 text-stone-500"
-      : visibleSelectedScore <= 40
-        ? "border-red-900/10 bg-red-100/70 text-red-800"
-        : visibleSelectedScore >= 80
-          ? "border-emerald-900/10 bg-emerald-100/70 text-emerald-800"
-          : "border-stone-900/10 bg-stone-200/70 text-stone-700";
+      : AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(visibleSelectedScore)];
   const selectedScoreButtonClassName =
     shouldDeleteScore
       ? "border-red-700 bg-red-700 text-white hover:border-red-900 hover:bg-red-900"
       : visibleSelectedScore === null
       ? "border-stone-300 bg-stone-200 text-stone-500"
-      : visibleSelectedScore <= 40
-        ? "border-red-700 bg-red-700 text-white hover:bg-red-800"
-        : visibleSelectedScore >= 80
-          ? "border-emerald-700 bg-emerald-700 text-white hover:bg-emerald-800"
-          : "border-stone-700 bg-stone-700 text-white hover:bg-stone-800";
+      : `${AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(visibleSelectedScore)]} hover:brightness-110`;
 
   useEffect(() => {
     onScoreChange?.(hasUnsavedScore);

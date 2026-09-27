@@ -38,7 +38,7 @@ describe("public site header", () => {
     assert.match(headerSource, /id="public-header-mobile-menu"[\s\S]*MENU_ITEMS/);
     assert.match(headerSource, /document\.addEventListener\("pointerdown", handlePointerDown\)/);
     assert.match(headerSource, /!menuButtonRef\.current\?\.contains\(target\) && !menuRef\.current\?\.contains\(target\)/);
-    assert.match(headerSource, />\s*Задротто\s*</);
+    assert.match(headerSource, />\s*Гикотека\s*</);
     for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "Подборки"], ["/reviews", "Рецензии"]]) {
       assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));
     }

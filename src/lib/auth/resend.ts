@@ -54,7 +54,7 @@ export async function sendEmailWithResend(input: {
         Authorization: `Bearer ${input.config.apiKey}`,
         "Content-Type": "application/json",
         "Idempotency-Key": idempotencyKey,
-        "User-Agent": "zadrotto-author-email/1.0",
+        "User-Agent": "geekoteka-author-email/1.0",
       },
       body: requestBody,
     });

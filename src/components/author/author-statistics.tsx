@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import type { MediaTypeOption } from "@/lib/media/types";
 import { getMediaTypeLabel, sortMediaTypesByCount } from "@/lib/media/types";
 import { RATING_SCORE_VALUES, formatScore } from "@/lib/ratings/score";
-import { RATING_BAR_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
+import { LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 
 export type AuthorStatisticsRatingSummary = {
   averageScore: number | null;
@@ -77,7 +77,7 @@ export function AuthorStatistics({
           <div className="relative grid min-h-32 flex-1 grid-cols-10 items-end gap-1 border-b border-stone-400/50 sm:gap-1.5">
             {scoreDistributionValues.map((score) => {
               const count = distributionByScore.get(score) ?? 0;
-              const toneClassName = RATING_BAR_TONE_CLASS_NAMES[getRatingTone(score)];
+              const toneClassName = `${LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)]} bg-[var(--rating-on-light)]`;
               const barHeightPercent = count > 0 ? Math.max(2, (count / maxScoreDistributionCount) * 88) : 0;
               return <span key={score} className="relative h-full min-w-0"><span className="absolute inset-x-0 text-center font-mono text-[10px] font-semibold leading-none tabular-nums text-stone-700" style={{ bottom: `calc(${barHeightPercent}% + 0.125rem)` }}>{count}</span><span className={`absolute bottom-0 left-1/2 block w-full max-w-6 -translate-x-1/2 rounded-t-sm ${count > 0 ? toneClassName : "bg-transparent"}`} style={{ height: `${barHeightPercent}%` }} /></span>;
             })}

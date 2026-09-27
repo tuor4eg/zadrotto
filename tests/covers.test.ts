@@ -2439,7 +2439,7 @@ describe("cover provider credential validation", () => {
 
     assert.equal(requests.length, 1);
     assert.equal(requests[0].url.includes("api_key=comic-key"), true);
-    assert.equal(requests[0].userAgent, "zadrotto/1.0 comic archive");
+    assert.equal(requests[0].userAgent, "geekoteka/1.0 comic archive");
   });
 
   it("treats failed validation requests as provider unavailability", async () => {

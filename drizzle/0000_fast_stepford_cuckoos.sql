@@ -189,7 +189,7 @@ INSERT INTO "media_items" (
 	),
 	(
 		'zadrotto-demo-disc',
-		'Zadrotto Demo Disc',
+		'Geekoteka Demo Disc',
 		NULL,
 		'Воображаемый демо-диск архива: место для будущих проб, находок и странных связей.',
 		'other',

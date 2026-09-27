@@ -264,9 +264,8 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "film/vhs": {
     assetPath: "/mediaCarriers/video/vhs/vhs.webp",
-    aspectRatioClassName: "aspect-[767/1463]",
-    coverAreaClassName: "left-[24.8%] top-[30.4%] h-[38.2%] w-[51.6%]",
-    coverLayer: "above-frame",
+    aspectRatioClassName: "aspect-[993/1529]",
+    coverAreaClassName: "left-[6%] top-[7%] h-[85%] w-[69%]",
     displayFontClassName: "media-carrier-font-vhs",
     fontClassName: "media-carrier-font-vhs",
     labelFontClassName: "media-carrier-font-vhs",

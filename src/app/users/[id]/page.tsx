@@ -111,7 +111,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
             tileGridVariant="topCompact"
           />
           <HomeAuthorStatistics mediaTypes={mediaTypes} ratingSummary={statistics.ratingSummary} title="Интересы по годам" />
-      </section> : <p className="archive-paper-surface archive-panel p-5 text-stone-600 sm:p-7">Журнал пользователя доступен только его друзьям.</p>}
+      </section> : <p className="archive-paper-surface archive-panel p-5 text-stone-600 sm:p-7">Архив пользователя доступен только его друзьям.</p>}
 
       <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} />
     </div>

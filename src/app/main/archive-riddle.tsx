@@ -28,7 +28,7 @@ export function ArchiveRiddle({
   const router = useRouter();
   const { quizParticipant } = useExternalInterface();
   const [loginOpen, setLoginOpen] = useState(false);
-  const [now, setNow] = useState(() => new Date());
+  const [now, setNow] = useState<Date | null>(null);
   const isLocallyCompleted = Boolean(
     quizParticipant && quizParticipant.quizId === quiz?.id && quizParticipant.completed,
   );
@@ -52,11 +52,16 @@ export function ArchiveRiddle({
   useEffect(() => {
     if (!quiz) return;
 
+    const initialTimeout = window.setTimeout(() => setNow(new Date()), 0);
     const interval = window.setInterval(() => setNow(new Date()), 1_000);
-    return () => window.clearInterval(interval);
+
+    return () => {
+      window.clearTimeout(initialTimeout);
+      window.clearInterval(interval);
+    };
   }, [quiz]);
 
-  const timeRemaining = quiz ? formatQuizTimeRemaining(quiz.endsAt, now) : null;
+  const timeRemaining = quiz && now ? formatQuizTimeRemaining(quiz.endsAt, now) : null;
   const imageMaxHeightClassName = size === "large"
     ? quiz?.winner ? "max-h-[210px]" : "max-h-[250px]"
     : quiz?.winner ? "max-h-[135px]" : "max-h-[170px]";

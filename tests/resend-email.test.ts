@@ -71,7 +71,7 @@ describe("Resend author email", () => {
       assert.equal(headers?.get("Content-Type"), "application/json");
       assert.match(headers?.get("Idempotency-Key") ?? "", /^author-email-outbox-7-[a-f0-9]{16}$/);
       assert.ok((headers?.get("Idempotency-Key")?.length ?? 0) <= 256);
-      assert.equal(headers?.get("User-Agent"), "zadrotto-author-email/1.0");
+      assert.equal(headers?.get("User-Agent"), "geekoteka-author-email/1.0");
       assert.deepEqual(requestBody?.to, ["to@example.com"]);
       assert.equal(requestBody?.from, "Archive <mail@example.com>");
 

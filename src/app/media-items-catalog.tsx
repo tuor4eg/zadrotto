@@ -20,6 +20,7 @@ import { MediaItemTile } from "@/app/media-item-tile";
 import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { ArchiveCatalogLayout } from "@/components/archive/archive-catalog-layout";
 import { PaginationNav } from "@/components/pagination-nav";
+import { startRouteTransitionProgress } from "@/components/ui/route-transition-progress";
 import type { CatalogMediaItem } from "@/db/queries/media-items";
 import type { SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import type { ActiveQuizContext } from "@/lib/quizzes/model";
@@ -119,6 +120,7 @@ export function MediaItemsCatalog({
     );
   }, [authorRatingFilter, demoProfile, isDemo, items, ratedByAuthorId]);
   const [selectedId, setSelectedId] = useState(visibleItems[0]?.id);
+  const [ratingOpenRequest, setRatingOpenRequest] = useState<{ itemId: number; key: number } | null>(null);
   const [, startTransition] = useTransition();
   const availableMediaTypes = useMemo(
     () =>
@@ -178,6 +180,7 @@ export function MediaItemsCatalog({
         return;
       }
 
+      startRouteTransitionProgress();
       startTransition(() => {
         router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
       });
@@ -244,6 +247,7 @@ export function MediaItemsCatalog({
             }
             : null}
           mediaTypes={mediaTypes}
+          ratingOpenRequestKey={ratingOpenRequest?.itemId === selectedItem?.id ? ratingOpenRequest.key : null}
           activeQuiz={activeQuiz}
         />
       }
@@ -290,6 +294,11 @@ export function MediaItemsCatalog({
             : undefined,
           onSelect: () => {
             setSelectedId(item.id);
+            window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT));
+          },
+          onRatingClick: () => {
+            setSelectedId(item.id);
+            setRatingOpenRequest((current) => ({ itemId: item.id, key: (current?.key ?? 0) + 1 }));
             window.dispatchEvent(new Event(ARCHIVE_ONBOARDING_RECORD_FOCUSED_EVENT));
           },
           selected: selectedItem?.id === item.id,

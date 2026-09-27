@@ -102,7 +102,7 @@ export function PublicSiteHeader({
               priority
             />
             <span className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-100">
-              Задротто
+              Гикотека
             </span>
           </Link>
 

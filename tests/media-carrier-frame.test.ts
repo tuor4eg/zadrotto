@@ -256,11 +256,10 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs" }),
       {
         assetPath: "/mediaCarriers/video/vhs/vhs.webp",
-        aspectRatioClassName: "aspect-[767/1463]",
+        aspectRatioClassName: "aspect-[993/1529]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
-        coverAreaClassName: "left-[24.8%] top-[30.4%] h-[38.2%] w-[51.6%]",
-        coverLayer: "above-frame",
+        coverAreaClassName: "left-[6%] top-[7%] h-[85%] w-[69%]",
         displayFontClassName: "media-carrier-font-vhs",
         fontClassName: "media-carrier-font-vhs",
         labelFontClassName: "media-carrier-font-vhs",

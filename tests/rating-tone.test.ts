@@ -19,7 +19,7 @@ describe("getRatingTone", () => {
     assert.equal(getRatingTone(100), "good");
   });
 
-  it("keeps an empty rating neutral", () => {
-    assert.equal(getRatingTone(null), "medium");
+  it("uses a separate neutral tone for an empty rating", () => {
+    assert.equal(getRatingTone(null), "empty");
   });
 });

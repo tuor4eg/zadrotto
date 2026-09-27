@@ -107,7 +107,7 @@ async function validateComicVineCredentials(credentials: Record<string, string>)
   });
   const response = await fetchWithValidationTimeout(url, {
     headers: {
-      "User-Agent": "zadrotto/1.0 comic archive",
+      "User-Agent": "geekoteka/1.0 comic archive",
     },
   });
 

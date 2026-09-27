@@ -30,10 +30,11 @@ describe("simple catalog layout", () => {
     assert.match(layoutSource, /xl:sticky xl:top-4/)
     assert.doesNotMatch(layoutSource, /archive-(?:paper|panel|stack)/);
     assert.match(catalogSource, /archive-textured-block p-6/);
-    assert.match(layoutSource, /archive-catalog-list-panel archive-textured-block/);
+    assert.match(layoutSource, /archive-catalog-list-panel archive-textured-block[^"\n]*pt-0[^"\n]*sm:pt-0/);
+    assert.match(layoutSource, /archive-catalog-list-panel-background[^\n]*top-10[^\n]*lg:top-12/);
     assert.match(
       globalsSource,
-      /\.archive-catalog-list-panel\s*\{[\s\S]*linear-gradient\(180deg,[\s\S]*archive-paper-start[\s\S]*archive-paper-end/,
+      /\.archive-catalog-list-panel-background\s*\{[\s\S]*linear-gradient\(180deg,[\s\S]*archive-paper-start[\s\S]*archive-paper-end/,
     );
   });
 
@@ -66,8 +67,7 @@ describe("simple catalog layout", () => {
     assert.match(tabsSource, /archive-media-type-tab-inactive/);
     assert.match(tabsSource, /archive-media-type-tab group/);
     assert.match(tabsSource, /selectedIndex/);
-    assert.match(tabsSource, /role="tooltip"/);
-    assert.match(tabsSource, /archive-paper-surface/);
+    assert.doesNotMatch(tabsSource, /role="tooltip"|archive-paper-surface/);
   });
 
   it("highlights the active tab by color without a raised top label", () => {
@@ -114,10 +114,6 @@ describe("simple catalog layout", () => {
     );
     assert.match(tabsSource, /isSelected[\s\S]*archive-media-type-tab-active/);
     assert.match(
-      tabsSource,
-      /const hasOverlap = index > 0 && !isSelected && index !== selectedIndex \+ 1/,
-    );
-    assert.match(
       globalsSource,
       /\.archive-media-type-tab-inactive::after\s*\{[\s\S]*right: -10px;[\s\S]*width: 22px;[\s\S]*filter: blur\(8px\)/,
     );
@@ -125,10 +121,8 @@ describe("simple catalog layout", () => {
       globalsSource.match(/\.archive-media-type-tab-inactive\s*\{[\s\S]*?\n\}/)?.[0] ?? "",
       /box-shadow/,
     );
-    assert.match(
-      tabsSource,
-      /"--tab-mobile-overlap": hasOverlap[\s\S]*"--tab-overlap": hasOverlap/,
-    );
+    assert.doesNotMatch(tabsSource, /tab-mobile-overlap|mobileOverlap|hasOverlap/);
+    assert.match(tabsSource, /focus-visible:z-\[80\] ml-0 lg:w-auto/);
     const activeTabBranch = tabsSource.match(
       /\? "archive-media-type-tab-active[^\n]+/,
     )?.[0] ?? "";

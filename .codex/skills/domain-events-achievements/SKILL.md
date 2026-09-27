@@ -1,6 +1,6 @@
 ---
 name: domain-events-achievements
-description: Проектирование, реализация и ревью доменных событий, transactional outbox, event consumers и ачивок в zadrotto. Использовать при добавлении или изменении механики или витрины ачивок, domain event type или producer, consumer, dispatcher/recovery, achievement backfill, выдачи и toast-уведомлений. Не использовать для обычных jobs, не связанных с событиями или ачивками.
+description: Проектирование, реализация и ревью доменных событий, transactional outbox, event consumers и ачивок в «Гикотеке». Использовать при добавлении или изменении механики или витрины ачивок, domain event type или producer, consumer, dispatcher/recovery, achievement backfill, выдачи и toast-уведомлений. Не использовать для обычных jobs, не связанных с событиями или ачивками.
 ---
 
 # Доменные события и ачивки

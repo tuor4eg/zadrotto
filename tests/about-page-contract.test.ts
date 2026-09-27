@@ -156,7 +156,7 @@ describe("footer contact contracts", () => {
   it("links directly to the public Telegram channel", () => {
     assert.doesNotMatch(footerSource, /\/feedback|Обратная связь/);
     assert.match(footerSource, /href="https:\/\/t\.me\/zadrotto"/);
-    assert.match(footerSource, /aria-label="Telegram-канал Задротто"/);
+    assert.match(footerSource, /aria-label="Telegram-канал Гикотека"/);
     assert.match(footerSource, /className="flex items-center border-l border-stone-400\/40 px-1\.5 sm:px-3"/);
     assert.match(footerSource, /target="_blank"/);
     assert.match(footerSource, /rel="noreferrer"/);

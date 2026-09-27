@@ -1,7 +1,7 @@
 import type { TelegramTransportConfig } from "@/lib/notifications/transports/telegram"
 
 export const TELEGRAM_API_TIMEOUT_MS = 10_000
-const TELEGRAM_TEST_MESSAGE = "Тестовое сообщение из админки zadrotto."
+const TELEGRAM_TEST_MESSAGE = "Тестовое сообщение из админки «Гикотека»."
 
 export type TelegramSendResult =
   | { ok: true }
@@ -42,7 +42,7 @@ export async function sendTelegramMessage(input: {
       signal: controller.signal,
       headers: {
         "Content-Type": "application/json",
-        "User-Agent": "zadrotto-notification-transport/1.0",
+        "User-Agent": "geekoteka-notification-transport/1.0",
       },
       body: JSON.stringify({
         chat_id: input.chatId,

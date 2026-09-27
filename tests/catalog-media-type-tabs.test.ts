@@ -52,6 +52,16 @@ describe("catalog media type tabs", () => {
     );
   });
 
+  it("sizes desktop tabs from the longest label and count with minimal overlap", () => {
+    assert.match(tabsSource, /longestTabValueLength = Math.max/);
+    assert.match(tabsSource, /\[tab\.label, tab\.count\]\.join\(" "\)\.length/);
+    assert.match(tabsSource, /--archive-media-type-tab-width/);
+    assert.match(tabsSource, /lg:w-auto lg:min-w-\[var\(--archive-media-type-tab-width\)\] lg:flex-1 lg:basis-\[var\(--archive-media-type-tab-width\)\]/);
+    assert.match(tabsSource, /whitespace-nowrap lg:w-full/);
+    assert.match(tabsSource, /index > 0 && "lg:-ml-4"/);
+    assert.doesNotMatch(tabsSource, /lg:inline-grid|lg:grow|lg:max-w-\[220px\]|lg:px-6/);
+  });
+
   it("mirrors the separating shadow for tabs before the selected tab", () => {
     assert.match(tabsSource, /index < selectedIndex && "archive-media-type-tab-before-active"/);
     assert.match(

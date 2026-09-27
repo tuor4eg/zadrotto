@@ -63,7 +63,7 @@ function isComicVineOk<T>(
 
 function getComicVineHeaders() {
   return {
-    "User-Agent": "zadrotto/1.0 comic archive",
+    "User-Agent": "geekoteka/1.0 comic archive",
   };
 }
 

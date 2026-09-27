@@ -15,7 +15,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: getSiteOrigin(),
-  title: 'Журнал "Задротто"',
+  title: "Гикотека",
   description: "Архив культурных записей и оценок.",
 };
 

@@ -211,6 +211,9 @@ describe("quizzes", () => {
     assert.match(modal, /if \(pathname !== "\/archive"\) router\.push\("\/archive"\)/);
     assert.match(modal, /!quiz \? \([\s\S]*<QuizNoActiveState \/>/);
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
+    const archiveRiddle = readFileSync("src/app/main/archive-riddle.tsx", "utf8");
+    assert.match(activeQuizPanel, /useState<Date \| null>\(null\)/);
+    assert.match(archiveRiddle, /useState<Date \| null>\(null\)/);
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
     assert.match(activeQuizPanel, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
     assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
@@ -315,7 +318,9 @@ describe("quizzes", () => {
     assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
-    assert.match(layer, /bottom-\[calc\(max\(0\.5rem,env\(safe-area-inset-bottom\)\)\+0\.5rem\)\][\s\S]*sm:top-\[max\(0\.75rem,env\(safe-area-inset-top\)\)\]/);
+    assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\]/);
+    assert.match(layer, /sm:bottom-\[max\(1\.75rem,env\(safe-area-inset-bottom\)\)\]/);
+    assert.match(layer, /min-\[1800px\]:contents[\s\S]*min-\[1800px\]:fixed[\s\S]*min-\[1800px\]:top-\[calc\(env\(safe-area-inset-top\)\+1\.25rem\)\]/);
     assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);

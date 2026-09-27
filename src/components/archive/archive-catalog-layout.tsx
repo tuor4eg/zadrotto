@@ -18,12 +18,16 @@ export function ArchiveCatalogLayout({
 }: ArchiveCatalogLayoutProps) {
   return (
     <section className="grid min-h-0 flex-1 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(290px,0.28fr)]">
-      <div className="archive-catalog-list-panel archive-textured-block flex min-h-0 min-w-0 flex-col p-2 sm:p-4">
+      <div className="archive-catalog-list-panel archive-textured-block flex min-h-0 isolate min-w-0 flex-col bg-transparent p-2 pt-0 sm:p-4 sm:pt-0">
+        <div
+          aria-hidden="true"
+          className="archive-catalog-list-panel-background pointer-events-none absolute inset-x-0 bottom-0 top-10 -z-10 lg:top-12"
+        />
         {toolbar}
 
         <div
           className={`archive-scrollbar archive-catalog-list-scrollbar grid min-h-0 flex-1 grid-cols-3 content-start gap-1.5 overflow-y-auto px-0 sm:gap-2.5 md:grid-cols-4 xl:grid-cols-6 ${
-            toolbar ? "mt-2" : ""
+            toolbar ? "mt-3" : ""
           }`}
         >
           {children}

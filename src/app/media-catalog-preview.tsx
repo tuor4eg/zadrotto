@@ -38,6 +38,7 @@ type MediaCatalogPreviewProps = {
   franchises: SearchableFranchiseOption[];
   item: CatalogMediaItem | null;
   mediaTypes: MediaTypeOption[];
+  ratingOpenRequestKey?: number | null;
   activeQuiz: ActiveQuizContext | null;
 };
 
@@ -50,6 +51,7 @@ export function MediaCatalogPreview({
   franchises,
   item,
   mediaTypes,
+  ratingOpenRequestKey,
 }: MediaCatalogPreviewProps) {
   const demoProfile = useDemoProfile();
   const isDemo = Boolean(
@@ -219,6 +221,7 @@ export function MediaCatalogPreview({
             score={item.averageScore}
           />
           <MediaItemRatingDialog
+            key={ratingOpenRequestKey ?? "rating-panel"}
             mediaItemCode={item.code}
             franchiseCode={firstFranchiseCode}
             title={item.title}
@@ -232,6 +235,7 @@ export function MediaCatalogPreview({
             panelDisplayClassName={ratingDisplayFontClassName}
             panelLabelClassName={ratingLabelFontClassName}
             panelVariant={mediaCarrierFrame?.ratingPanelVariant}
+            openRequestKey={ratingOpenRequestKey}
             size="compact"
           />
         </div>

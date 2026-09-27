@@ -1,6 +1,6 @@
 ---
 name: media-carrier-skins
-description: Use whenever creating, editing, fixing, or reviewing visual skins for media carriers, cover placeholders, carrier-specific fonts, cover geometry, hover effects, rating panel styling, or archive media presentation tied to a carrier/media type.
+description: Use whenever creating, editing, fixing, or reviewing visual skins for media carriers, cover placeholders, carrier-specific fonts, cover geometry, hover effects, rating styling or colors anywhere in the UI, or archive media presentation tied to a carrier/media type.
 ---
 
 # Media Carrier Skins
@@ -14,6 +14,10 @@ Unify carrier visuals through `getMediaCarrierFrame` and `MediaCarrierFrame` in 
 3. Add a `renderKind` only when existing generic renderers cannot express the skin. Cards, previews and details must consume the same frame.
 4. Keep rating styling in shared rating components. Derive colors through `getRatingTone(score)` and maps from `src/lib/ratings/tone.ts`.
 5. Preserve the general-list opt-out when `ArchiveCover` receives `carrierFrame={false}`.
+
+## Rating color invariant
+
+Never define a new color in a component for anything that represents a rating: numbers, text, icons, borders, backgrounds, glows, controls, charts, legends, or empty states. Always take rating colors from the existing dictionaries in `src/lib/ratings/tone.ts`. For a light surface, reuse the existing light-surface dictionary and its CSS variables, including when the rendered property is a background rather than text. Add or change a dictionary color only when the user explicitly asks to change the shared rating palette.
 
 Primary consumers are `src/app/media-item-tile.tsx`, `media-item-details.tsx` and `media-catalog-preview.tsx`. Prefer existing patterns and assets.
 

@@ -6,7 +6,7 @@ import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointer
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import type { MediaTypeOption } from "@/lib/media/types";
 import { formatScore, RATING_SCORE_VALUES } from "@/lib/ratings/score";
-import { getRatingTone, RATING_BAR_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
+import { getRatingTone, LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 export type HomeAuthorStatisticsData = {
   releaseYearDistribution: { count: number; year: number }[];
@@ -223,7 +223,7 @@ function ScoreDistributionBars({
         {scores.map((score) => {
           const count = distributionByScore.get(score) ?? 0;
           const heightPercent = count > 0 ? Math.max(3, (count / maximumCount) * 86) : 0;
-          const toneClassName = RATING_BAR_TONE_CLASS_NAMES[getRatingTone(score)];
+          const toneClassName = `${LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)]} bg-[var(--rating-on-light)]`;
 
           return (
             <span key={score} className="relative h-full min-w-0">

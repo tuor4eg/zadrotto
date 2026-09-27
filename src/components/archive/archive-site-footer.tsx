@@ -33,7 +33,7 @@ export function ArchiveSiteFooter() {
         </span>
         <span className="flex items-center border-l border-stone-400/40 px-1.5 sm:px-3">
           <a
-            aria-label="Telegram-канал Задротто"
+            aria-label="Telegram-канал Гикотека"
             className="inline-flex text-stone-600 transition-colors hover:text-stone-950"
             href="https://t.me/zadrotto"
             rel="noreferrer"

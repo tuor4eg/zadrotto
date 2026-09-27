@@ -29,6 +29,7 @@ import {
 
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { startRouteTransitionProgress } from "@/components/ui/route-transition-progress";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import type {
   AuthorRatingFilter,
@@ -289,6 +290,7 @@ export function CatalogHeaderControls({
         return;
       }
 
+      startRouteTransitionProgress();
       startTransition(() => {
         router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false });
       });
@@ -301,6 +303,7 @@ export function CatalogHeaderControls({
       const currentUrlQuery = searchParams.get("q")?.trim() ?? "";
 
       if (normalizedQuery === currentUrlQuery && normalizedQuery !== searchQuery) {
+        startRouteTransitionProgress();
         startTransition(() => {
           router.refresh();
         });

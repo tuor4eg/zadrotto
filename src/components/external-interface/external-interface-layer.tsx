@@ -241,14 +241,13 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
       ) : null}
       {showHudStack ? (
         <div
-          className="pointer-events-none fixed right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:contents"
-          style={{ bottom: showTools && showOnboardingCard
-            ? "calc(max(0.5rem, env(safe-area-inset-bottom)) + 4rem)"
-            : "calc(max(0.5rem, env(safe-area-inset-bottom)) + 0.5rem)" }}
+          className={showTools && showOnboardingCard
+            ? "pointer-events-none fixed bottom-[calc(max(1rem,env(safe-area-inset-bottom))+3.5rem)] right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:bottom-[calc(max(1rem,env(safe-area-inset-bottom))+4.25rem)] min-[1800px]:contents"
+            : "pointer-events-none fixed bottom-[max(1rem,env(safe-area-inset-bottom))] right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex max-w-[calc(100vw-2rem)] flex-col items-end gap-2 sm:bottom-[max(1.75rem,env(safe-area-inset-bottom))] min-[1800px]:contents"}
         >
           {showTools ? (
             <aside
-              className="fixed bottom-[calc(max(0.5rem,env(safe-area-inset-bottom))+0.5rem)] right-[max(0.75rem,env(safe-area-inset-right))] z-[70] flex items-center gap-2 sm:bottom-auto sm:right-[max(1rem,env(safe-area-inset-right))] sm:top-[max(0.75rem,env(safe-area-inset-top))]"
+              className="flex items-center gap-2 min-[1800px]:fixed min-[1800px]:right-[max(1rem,env(safe-area-inset-right))] min-[1800px]:top-[calc(env(safe-area-inset-top)+1.25rem)] min-[1800px]:z-[70]"
               aria-label="Пользовательские инструменты"
             >
               {visibleParticipant ? (

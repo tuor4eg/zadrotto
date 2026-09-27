@@ -27,6 +27,8 @@ import {
   AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
   AUTHOR_WIN9X_RATING_TONE_CLASS_NAMES,
   getRatingTone,
+  LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES,
+  RATING_TEXT_TONE_CLASS_NAMES,
 } from "@/lib/ratings/tone";
 
 type RatingStarsProps = {
@@ -896,11 +898,7 @@ export function SteamAchievementRatingContent({
 }: SteamAchievementRatingContentProps) {
   const hasValueOverride = value !== undefined;
   const detailText = detail ?? "";
-  const steamToneClassName = {
-    bad: "border-red-500/70 text-red-400",
-    medium: "border-stone-400/70 text-stone-300",
-    good: "border-emerald-400/70 text-emerald-400",
-  }[getRatingTone(score)];
+  const steamToneClassName = `${RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)]} border-[color:var(--rating-border)]`;
 
   return (
     <span
@@ -1004,6 +1002,7 @@ function getStreamingRatingCaption(score: number | null) {
   }
 
   return {
+    empty: "Нет оценки",
     bad: "Слабо",
     medium: "Нормально",
     good: "Отлично",
@@ -1151,12 +1150,12 @@ function FilmStripPerforations({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function FilmStripRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
+function FilmStripRatingStars({ compact = false, score, toneClassName }: { compact?: boolean; score: number | null; toneClassName: string }) {
   const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
 
   return (
     <span
-      className={`inline-flex items-center justify-center text-[#1b1712] ${
+      className={`inline-flex items-center justify-center ${toneClassName} ${
         compact ? "gap-0.5 text-base" : "gap-1.5 text-3xl"
       }`}
       aria-hidden="true"
@@ -1178,6 +1177,7 @@ export function FilmStripRatingContent({
 }: FilmStripRatingContentProps) {
   const hasValueOverride = value !== undefined;
   const detailText = detail ?? "";
+  const ratingToneClassName = LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
 
   return (
     <span
@@ -1210,7 +1210,7 @@ export function FilmStripRatingContent({
             <span aria-hidden="true" className="h-px flex-1 bg-[#7a5132]/36" />
           </span>
           <span
-            className={`media-carrier-font-film-reel block max-w-full leading-none tabular-nums text-[#4a1309] ${
+            className={`media-carrier-font-film-reel block max-w-full leading-none tabular-nums ${ratingToneClassName} ${
               hasValueOverride
                 ? compact
                   ? "text-[1.85rem]"
@@ -1223,7 +1223,7 @@ export function FilmStripRatingContent({
             {value ?? formatScore(score)}
           </span>
           {!hasValueOverride ? (
-            <FilmStripRatingStars compact={compact} score={score} />
+            <FilmStripRatingStars compact={compact} score={score} toneClassName={ratingToneClassName} />
           ) : (
             <span
               className={`media-carrier-font-film-reel-label uppercase text-[#6d3d24] ${
@@ -1537,6 +1537,7 @@ export function NesRatingPanelContent({
   value?: string;
 }) {
   const hasValueOverride = value !== undefined;
+  const ratingToneClassName = RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
 
   return (
     <>
@@ -1553,7 +1554,7 @@ export function NesRatingPanelContent({
             ? `mt-2 block ${labelFontClassName} ${
                 compact ? "text-xs" : "text-sm"
               } uppercase text-red-900`
-            : `block ${displayFontClassName} ${
+            : `block ${displayFontClassName} ${ratingToneClassName} ${
                 compact ? "mt-1 text-3xl leading-none" : "mt-2 text-5xl"
               } tabular-nums`
         }
@@ -1608,6 +1609,7 @@ export function VhsRatingPanelContent({
   const backgroundPath =
     tone === "author" ? VHS_AUTHOR_RATING_BACKGROUND_PATH : VHS_ARCHIVE_RATING_BACKGROUND_PATH;
   const hasValueOverride = value !== undefined;
+  const ratingToneClassName = RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
 
   return (
     <span
@@ -1633,12 +1635,12 @@ export function VhsRatingPanelContent({
         <span
           className={`media-carrier-font-vhs block ${
             compact ? "text-4xl" : "text-6xl"
-          } leading-none tabular-nums text-stone-50`}
+          } leading-none tabular-nums ${ratingToneClassName}`}
         >
           {value ?? formatScore(score)}
         </span>
         {!compact && !hasValueOverride ? (
-          <span className="block text-stone-50">
+          <span className={`block ${ratingToneClassName}`}>
             <RatingStars score={score} />
           </span>
         ) : null}
@@ -1787,6 +1789,7 @@ export function TvGuideRatingContent({
 }: TvGuideRatingContentProps) {
   const hasValueOverride = value !== undefined;
   const detailText = detail ?? "";
+  const ratingToneClassName = LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
   const cardClassName = `media-carrier-font-tv-guide relative mx-auto block h-full w-full overflow-hidden bg-[#e3d2ad] text-black shadow-[0_8px_16px_rgba(28,25,23,0.12)] ${
     compact ? "min-h-[6.25rem] max-w-[14rem] p-2" : "min-h-[10.5rem] max-w-[18rem] p-3"
   }`;
@@ -1805,14 +1808,14 @@ export function TvGuideRatingContent({
           </span>
           <span className="flex min-w-0 flex-1 flex-col items-center justify-center text-center">
             <span
-              className={`block max-w-full font-bold italic leading-none tabular-nums ${
+              className={`block max-w-full font-bold italic leading-none tabular-nums ${ratingToneClassName} ${
                 hasValueOverride ? "text-lg" : "text-5xl"
               }`}
             >
               {value ?? formatScore(score)}
             </span>
             {!hasValueOverride ? (
-              <span className="mt-2">
+              <span className={`mt-2 ${ratingToneClassName}`}>
                 <TvGuideRatingStars compact score={score} />
               </span>
             ) : (
@@ -1841,14 +1844,14 @@ export function TvGuideRatingContent({
           <span className="border-r border-black pt-1 text-left text-xs font-bold">22:00</span>
           <span className="flex min-w-0 flex-col items-center justify-center px-2 text-center">
             <span
-              className={`block max-w-full font-bold italic leading-none tabular-nums ${
+              className={`block max-w-full font-bold italic leading-none tabular-nums ${ratingToneClassName} ${
                 hasValueOverride ? "text-2xl" : "text-7xl"
               }`}
             >
               {value ?? formatScore(score)}
             </span>
             {!hasValueOverride ? (
-              <span className="mt-3">
+              <span className={`mt-3 ${ratingToneClassName}`}>
                 <TvGuideRatingStars score={score} />
               </span>
             ) : (

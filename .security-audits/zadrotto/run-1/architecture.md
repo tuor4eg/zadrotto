@@ -2,7 +2,7 @@
 
 ## Application and baseline
 
-Zadrotto is a self-hosted Next.js 16 / React 19 editorial archive with public catalogues,
+Geekoteka is a self-hosted Next.js 16 / React 19 editorial archive with public catalogues,
 local demo state, authenticated author accounts, a separate administrator panel, PostgreSQL,
 Redis rate limits, S3-compatible image storage, background jobs, and external metadata, email,
 Telegram and AI providers (`PROJECT_CONTEXT.md`, `README.md`, `package.json`). Its closest security

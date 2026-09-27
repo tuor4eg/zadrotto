@@ -112,6 +112,13 @@ describe("public media related series", () => {
     );
   });
 
+  it("keeps related records to one responsive row", () => {
+    assert.match(details, /\[&>\*:nth-child\(n\+4\)\]:hidden/);
+    assert.match(details, /md:\[&>\*:nth-child\(n\+4\)\]:block/);
+    assert.match(details, /md:\[&>\*:nth-child\(n\+5\)\]:hidden/);
+    assert.match(details, /xl:\[&>\*:nth-child\(n\+5\)\]:block/);
+  });
+
   it("fills one related row at the public dossier width without stretching tiles", () => {
     assert.equal(getRelatedSeriesColumnCount(1416), 7);
     assert.equal(RELATED_SERIES_ROW_LIMIT, 7);

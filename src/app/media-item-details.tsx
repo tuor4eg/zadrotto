@@ -574,15 +574,13 @@ function ArchiveMediaItemDetails({
                       />
                     </div>
                     {section.items.length > 0 ? (
-                      <div className="mt-4 grid grid-cols-3 content-start gap-2.5 md:grid-cols-4 xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))]">
+                      <div className="mt-4 grid grid-cols-3 content-start gap-2.5 [&>*:nth-child(n+4)]:hidden md:grid-cols-4 md:[&>*:nth-child(n+4)]:block md:[&>*:nth-child(n+5)]:hidden xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] xl:[&>*:nth-child(n+5)]:block">
                         {section.items.map((relatedItem) => (
                           <MediaItemTile
                             key={relatedItem.id}
                             currentAuthorScore={relatedItem.currentAuthorScore}
                             item={relatedItem}
                             href={`/media/${relatedItem.code}`}
-                            mediaTypes={mediaTypes}
-                            showMediaTypeLabel
                           />
                         ))}
                       </div>

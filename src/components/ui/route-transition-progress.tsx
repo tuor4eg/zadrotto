@@ -5,6 +5,11 @@ import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 
 const ROUTE_PROGRESS_TIMEOUT_MS = 15_000;
+export const ROUTE_TRANSITION_START_EVENT = "route-transition-start";
+
+export function startRouteTransitionProgress() {
+  window.dispatchEvent(new Event(ROUTE_TRANSITION_START_EVENT));
+}
 
 function isNavigatingAnchor(anchor: HTMLAnchorElement, event: MouseEvent) {
   if (
@@ -64,12 +69,28 @@ export function RouteTransitionProgress() {
       startProgress();
     }
 
+    function handleSubmit(event: SubmitEvent) {
+      const form = event.target;
+
+      if (
+        form instanceof HTMLFormElement &&
+        form.method.toLowerCase() === "get" &&
+        form.target !== "_blank"
+      ) {
+        startProgress();
+      }
+    }
+
     document.addEventListener("click", handleClick, { capture: true });
+    document.addEventListener("submit", handleSubmit, { capture: true });
     window.addEventListener("popstate", handlePopState);
+    window.addEventListener(ROUTE_TRANSITION_START_EVENT, startProgress);
 
     return () => {
       document.removeEventListener("click", handleClick, { capture: true });
+      document.removeEventListener("submit", handleSubmit, { capture: true });
       window.removeEventListener("popstate", handlePopState);
+      window.removeEventListener(ROUTE_TRANSITION_START_EVENT, startProgress);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
   }, []);
