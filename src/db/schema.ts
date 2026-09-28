@@ -34,6 +34,7 @@ import { PUBLISHED_PUBLICATION_STATUS, PUBLICATION_STATUSES } from "@/lib/media/
 import { JOB_RUN_SOURCES, JOB_RUN_STATUSES } from "@/lib/jobs/model";
 import { TELEGRAM_TRANSPORT_CODE } from "@/lib/notifications/transports/catalog";
 import { EXTERNAL_NOTIFICATION_ROUTE_CODES } from "@/lib/notifications/routes";
+import { REVIEW_REACTION_TYPES } from "@/lib/reviews/reactions";
 import { normalizedSearchIndexSql } from "@/db/search";
 import {
   ACHIEVEMENT_RARITIES,
@@ -1676,6 +1677,31 @@ export const contributionReviews = pgTable("contribution_reviews", {
   body: text("body").notNull(),
 });
 
+export const reviewReactions = pgTable(
+  "review_reactions",
+  {
+    reviewId: integer("review_id")
+      .notNull()
+      .references(() => contributionReviews.contributionId, { onDelete: "cascade" }),
+    userId: integer("user_id")
+      .notNull()
+      .references(() => authors.id, { onDelete: "cascade" }),
+    type: text("type").notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    primaryKey({
+      columns: [table.reviewId, table.type, table.userId],
+      name: "review_reactions_pk",
+    }),
+    index("review_reactions_user_id_idx").on(table.userId),
+    check(
+      "review_reactions_type_check",
+      sql`${table.type} in (${sql.raw(REVIEW_REACTION_TYPES.map((type) => `'${type}'`).join(", "))})`,
+    ),
+  ],
+);
+
 export const contributionMediaItems = pgTable(
   "contribution_media_items",
   {
@@ -1736,6 +1762,8 @@ export type Contribution = typeof contributions.$inferSelect;
 export type NewContribution = typeof contributions.$inferInsert;
 export type ContributionReview = typeof contributionReviews.$inferSelect;
 export type NewContributionReview = typeof contributionReviews.$inferInsert;
+export type ReviewReaction = typeof reviewReactions.$inferSelect;
+export type NewReviewReaction = typeof reviewReactions.$inferInsert;
 export type ContributionMediaItem = typeof contributionMediaItems.$inferSelect;
 export type NewContributionMediaItem = typeof contributionMediaItems.$inferInsert;
 export type Notification = typeof notifications.$inferSelect;

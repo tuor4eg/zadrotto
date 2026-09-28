@@ -21,7 +21,9 @@ export function ArchiveCatalogLayout({
       <div className="archive-catalog-list-panel archive-textured-block flex min-h-0 isolate min-w-0 flex-col bg-transparent p-2 pt-0 sm:p-4 sm:pt-0">
         <div
           aria-hidden="true"
-          className="archive-catalog-list-panel-background pointer-events-none absolute inset-x-0 bottom-0 top-10 -z-10 lg:top-12"
+          className={`archive-catalog-list-panel-background pointer-events-none absolute inset-x-0 bottom-0 -z-10 ${
+            toolbar ? "top-10 lg:top-12" : "top-0"
+          }`}
         />
         {toolbar}
 

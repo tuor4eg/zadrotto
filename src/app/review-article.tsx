@@ -1,10 +1,13 @@
 "use client";
 
-import { Pencil, Share2 } from "lucide-react";
+import { Heart, LoaderCircle, Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
+import { createPortal } from "react-dom";
+import { useRouter } from "next/navigation";
 
 import type { MediaItemReview } from "@/app/media-item-reviews";
+import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { ReviewPolaroidRow } from "@/app/reviews/review-polaroid-row";
 import { InlineMentionText } from "@/components/inline-mentions/inline-mention-text";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
@@ -12,8 +15,10 @@ import { Avatar } from "@/components/ui/avatar";
 import type { MediaType } from "@/lib/media/types";
 import type { InlineNode, ResolvedInlineEntity } from "@/lib/inline-mentions/markup";
 import { formatScore } from "@/lib/ratings/score";
+import type { ReviewReactionSummary } from "@/lib/reviews/reactions";
 
 type ReviewArticleProps = {
+  authenticated: boolean;
   canEdit: boolean;
   inlineNodes: InlineNode[];
   mediaItemIdentity: React.ReactNode;
@@ -25,6 +30,7 @@ type ReviewArticleProps = {
     mediaItemCode: string;
     mediaItemMediaType: MediaType;
     mediaItemTitle: string;
+    reactions: ReviewReactionSummary;
   };
 };
 
@@ -68,6 +74,7 @@ async function copyUrl(url: string) {
 }
 
 export function ReviewArticle({
+  authenticated,
   canEdit,
   inlineNodes,
   mediaItemIdentity,
@@ -76,7 +83,11 @@ export function ReviewArticle({
   resolvedInlineEntities,
   review,
 }: ReviewArticleProps) {
+  const router = useRouter();
   const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([]);
+  const [loginOpen, setLoginOpen] = useState(false);
+  const [reactionPending, setReactionPending] = useState(false);
+  const [reactions, setReactions] = useState(review.reactions);
   const publishedAt = formatDate(review.publishedAt ?? review.updatedAt);
 
   async function shareReview() {
@@ -103,6 +114,40 @@ export function ReviewArticle({
       text: copied ? "Ссылка на рецензию скопирована" : "Не удалось скопировать ссылку",
       tone: copied ? "success" : "error",
     }]);
+  }
+
+  async function toggleLike() {
+    if (canEdit || reactionPending) return;
+
+    if (!authenticated) {
+      setLoginOpen(true);
+      return;
+    }
+
+    setReactionPending(true);
+
+    try {
+      const method = reactions.like.reactedByCurrentUser ? "DELETE" : "PUT";
+      const response = await fetch(`/api/reviews/${review.id}/reactions/like`, { method });
+      const payload = await response.json() as {
+        error?: string;
+        reactions?: ReviewReactionSummary;
+      };
+
+      if (!response.ok || !payload.reactions) {
+        throw new Error(payload.error ?? "Не удалось изменить реакцию.");
+      }
+
+      setReactions(payload.reactions);
+    } catch (error) {
+      setToastMessages([{
+        id: `review-reaction-${Date.now()}`,
+        text: error instanceof Error ? error.message : "Не удалось изменить реакцию.",
+        tone: "error",
+      }]);
+    } finally {
+      setReactionPending(false);
+    }
   }
 
   return (
@@ -161,6 +206,44 @@ export function ReviewArticle({
                 />
               </p>
             </div>
+              <div className="absolute bottom-5 left-6 z-20 sm:bottom-6 sm:left-10">
+                {canEdit ? (
+                  <span
+                    className="inline-flex h-9 items-center gap-2 rounded-full bg-stone-100/70 px-3 font-mono text-xs tabular-nums text-stone-600"
+                    aria-label={`Лайков: ${reactions.like.count}`}
+                  >
+                    <Heart aria-hidden="true" className="size-4" />
+                    {reactions.like.count}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={toggleLike}
+                    disabled={reactionPending}
+                    aria-pressed={authenticated ? reactions.like.reactedByCurrentUser : undefined}
+                    aria-label={authenticated
+                      ? reactions.like.reactedByCurrentUser
+                        ? "Убрать лайк"
+                        : "Поставить лайк"
+                      : "Войти, чтобы поставить лайк"}
+                    className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 font-mono text-xs tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-900 disabled:cursor-wait disabled:opacity-65 ${
+                      reactions.like.reactedByCurrentUser
+                        ? "border-red-900/35 bg-red-900/10 text-red-950"
+                        : "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-red-900/50 hover:text-red-950"
+                    }`}
+                  >
+                    {reactionPending ? (
+                      <LoaderCircle aria-hidden="true" className="size-4 animate-spin" />
+                    ) : (
+                      <Heart
+                        aria-hidden="true"
+                        className={`size-4 ${reactions.like.reactedByCurrentUser ? "fill-current" : ""}`}
+                      />
+                    )}
+                    {reactions.like.count}
+                  </button>
+                )}
+              </div>
             </div>
             {review.authorScore !== null ? (
               <div className="absolute bottom-4 right-3 z-20 w-48 rotate-[0.8deg] border border-stone-400/20 bg-[#ead8b5] px-4 pb-3 pt-4 text-stone-800 shadow-[0_5px_10px_rgba(68,64,60,0.2)] sm:bottom-6 sm:right-5">
@@ -202,6 +285,18 @@ export function ReviewArticle({
         </section>
         </article>
       </div>
+      {loginOpen
+        ? createPortal(
+            <AuthorLoginModal
+              onClose={() => setLoginOpen(false)}
+              onSuccess={() => {
+                setLoginOpen(false);
+                router.refresh();
+              }}
+            />,
+            document.body,
+          )
+        : null}
     </>
   );
 }

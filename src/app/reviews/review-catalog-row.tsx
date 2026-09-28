@@ -1,4 +1,5 @@
 import Link from "next/link"
+import { Heart } from "lucide-react"
 
 import { ArchiveCover } from "@/app/media-item-tile"
 import { Avatar } from "@/components/ui/avatar"
@@ -23,6 +24,7 @@ export type ReviewCatalogRowItem = {
   coverUrl: string | null
   publishedAt: Date | string | null
   updatedAt: Date | string
+  reactionCounts: { like: number }
 }
 
 export function ReviewCatalogRow({
@@ -39,7 +41,7 @@ export function ReviewCatalogRow({
   return (
     <Link
       href={`/reviews/${item.id}`}
-      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_2.25rem] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_2.75rem] sm:gap-x-4 sm:px-3"
+      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(5.5rem,auto)] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_minmax(5.75rem,auto)] sm:gap-x-4 sm:px-3"
       aria-label={`Рецензия «${item.title}» на «${item.mediaItemTitle}», автор ${item.authorName}`}
     >
       <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:w-12">
@@ -100,15 +102,24 @@ export function ReviewCatalogRow({
         </span>
       </span>
 
-      <span
-        className={`col-start-3 row-start-1 inline-flex size-9 shrink-0 items-center justify-center justify-self-end rounded-md border font-mono text-sm tabular-nums shadow-sm sm:col-auto sm:row-auto sm:size-10 sm:text-base ${ratingToneClassName}`}
-        aria-label={
-          item.authorScore === null
-            ? "Оценка автора не указана"
-            : `Оценка автора: ${formatScore(item.authorScore)}`
-        }
-      >
-        {formatScore(item.authorScore)}
+      <span className="col-start-3 row-start-1 inline-flex items-center justify-self-end gap-1.5 sm:col-auto sm:row-auto">
+        <span
+          className="inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-md px-1.5 font-mono text-xs tabular-nums text-red-950 sm:h-10"
+          aria-label={`Лайков: ${item.reactionCounts.like}`}
+        >
+          <Heart aria-hidden="true" className="size-3.5" />
+          {item.reactionCounts.like}
+        </span>
+        <span
+          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-md border font-mono text-sm tabular-nums shadow-sm sm:size-10 sm:text-base ${ratingToneClassName}`}
+          aria-label={
+            item.authorScore === null
+              ? "Оценка автора не указана"
+              : `Оценка автора: ${formatScore(item.authorScore)}`
+          }
+        >
+          {formatScore(item.authorScore)}
+        </span>
       </span>
     </Link>
   )

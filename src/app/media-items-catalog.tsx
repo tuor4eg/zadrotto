@@ -247,14 +247,18 @@ export function MediaItemsCatalog({
             }
             : null}
           mediaTypes={mediaTypes}
-          ratingOpenRequestKey={ratingOpenRequest?.itemId === selectedItem?.id ? ratingOpenRequest.key : null}
+          ratingOpenRequestKey={
+            ratingOpenRequest && selectedItem && ratingOpenRequest.itemId === selectedItem.id
+              ? ratingOpenRequest.key
+              : null
+          }
           activeQuiz={activeQuiz}
         />
       }
       previewKey={selectedItem?.id ?? null}
     >
       {visibleItems.length === 0 ? (
-        <div className="col-span-full rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
+        <div className="col-span-full mt-3 rounded-md border border-stone-300/80 bg-stone-50/60 p-5 text-sm text-stone-600">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
               {mediaTypeFilter === "all"

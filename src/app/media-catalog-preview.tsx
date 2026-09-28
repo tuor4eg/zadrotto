@@ -210,7 +210,7 @@ export function MediaCatalogPreview({
           ) : null}
         </div>
 
-        <div className="mt-3 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-3">
+        <div className="mt-2 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-2">
           <ArchiveRatingPanel
             compact
             displayFontClassName={ratingDisplayFontClassName}

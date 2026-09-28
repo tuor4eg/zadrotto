@@ -3,6 +3,10 @@ import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-
 import { db } from "@/db";
 import { searchPublishedMediaItems } from "@/db/queries/inline-mention-media-items";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
+import {
+  currentUserReviewReactionExistsSql,
+  reviewReactionCountSql,
+} from "@/db/queries/review-reactions";
 import { containsNormalizedSearchSql } from "@/db/search";
 import {
   authors,
@@ -23,6 +27,7 @@ import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup";
 import { resolveCoverUrl } from "@/lib/services/minio";
+import type { ReviewReactionCounts, ReviewReactionSummary } from "@/lib/reviews/reactions";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 
@@ -73,6 +78,7 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
 export async function getPublishedReviewById(
   reviewId: number,
   accessibleMediaTypeCodes: readonly string[],
+  currentUserId: number | null = null,
 ) {
   if (accessibleMediaTypeCodes.length === 0) return null;
 
@@ -95,6 +101,12 @@ export async function getPublishedReviewById(
       mediaItemReleaseYear: mediaItems.releaseYear,
       mediaItemCarrierCode: mediaCarriers.code,
       mediaItemMetadataFacts: mediaItemMetadata.facts,
+      likeCount: reviewReactionCountSql(contributions.id, "like"),
+      likedByCurrentUser: currentUserReviewReactionExistsSql(
+        contributions.id,
+        currentUserId,
+        "like",
+      ),
     })
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
@@ -115,7 +127,17 @@ export async function getPublishedReviewById(
     ))
     .limit(1);
 
-  return review ?? null;
+  if (!review) return null;
+
+  const { likeCount, likedByCurrentUser, ...reviewDetails } = review;
+  const reactions: ReviewReactionSummary = {
+    like: {
+      count: likeCount,
+      reactedByCurrentUser: likedByCurrentUser,
+    },
+  };
+
+  return { ...reviewDetails, reactions };
 }
 
 const publishedReviewCardSelection = {
@@ -356,6 +378,7 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
       title: contributionReviews.title,
       publishedAt: contributions.reviewedAt,
       updatedAt: contributions.updatedAt,
+      likeCount: reviewReactionCountSql(contributions.id, "like"),
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
       mediaType: mediaItems.mediaType,
@@ -379,8 +402,9 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
     .offset(getOffset(page, filters.pageSize))
 
   return {
-    items: items.map((item) => ({
+    items: items.map(({ likeCount, ...item }) => ({
       ...item,
+      reactionCounts: { like: likeCount } satisfies ReviewReactionCounts,
       coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       coverUrl: resolveCoverUrl(item.coverUrl),
     })),

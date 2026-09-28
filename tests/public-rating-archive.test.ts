@@ -60,7 +60,7 @@ describe("public rating archive", () => {
     assert.match(mediaTile, /profileRating\?\./);
     assert.match(mediaTile, /formatScore\(comparisonScore\)/);
     assert.match(mediaTile, /formatScore\(profileRating\.score\)/);
-    assert.match(mediaTile, /comparisonRatingToneClassName =\s*AVERAGE_RATING_TONE_CLASS_NAMES/);
+    assert.match(mediaTile, /ratingPillToneClassName =\s*RATING_PILL_TONE_CLASS_NAMES/);
   });
 
   it("preserves archive filters and enables owner-based rating controls", () => {

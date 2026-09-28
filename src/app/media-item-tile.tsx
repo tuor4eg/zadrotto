@@ -9,9 +9,8 @@ import {
 } from "@/lib/media/types";
 import { formatScore } from "@/lib/ratings/score";
 import {
-  AVERAGE_RATING_TONE_CLASS_NAMES,
   AUTHOR_RATING_TONE_CLASS_NAMES,
-  EMPTY_RATING_TONE_CLASS_NAME,
+  RATING_PILL_TONE_CLASS_NAMES,
   getRatingTone,
 } from "@/lib/ratings/tone";
 
@@ -667,17 +666,14 @@ export function MediaItemTile({
     : item.averageScore;
   const displayedAuthorScore = profileRating?.score ?? currentAuthorScore ?? null;
   const ratingPillScore = comparisonScore ?? displayedAuthorScore;
-  const comparisonRatingToneClassName =
-    AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(ratingPillScore)];
-  const ratingPillToneClassName = ratingPillScore === null
-    ? EMPTY_RATING_TONE_CLASS_NAME
-    : comparisonRatingToneClassName;
+  const ratingPillToneClassName =
+    RATING_PILL_TONE_CLASS_NAMES[getRatingTone(ratingPillScore)];
   const authorRatingToneClassName =
     AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(displayedAuthorScore)];
   const ratingPillRightClassName = profileRating || shouldShowAuthorScore
     ? "right-2 sm:right-2.5"
     : "right-1.5 sm:right-2";
-  const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full border-[1.5px] pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] shadow-[0_0_5px_var(--rating-glow),0_0_12px_color-mix(in_srgb,var(--rating-glow)_45%,transparent),inset_0_0_6px_rgba(255,255,255,0.06)] sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
+  const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] shadow-[0_0_5px_var(--rating-glow),0_0_12px_color-mix(in_srgb,var(--rating-glow)_45%,transparent),inset_0_0_6px_rgba(255,255,255,0.06)] sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
   const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
   const tileCoverItem = {
     ...item,
@@ -718,8 +714,8 @@ export function MediaItemTile({
           <span className="inline-flex h-full items-center text-[13px] leading-[13px] text-stone-50 sm:text-[15px] sm:leading-[15px]">
             {formatScore(comparisonScore)}
           </span>
-          <span className={`-my-px -mr-1 inline-flex size-[1.875rem] items-center justify-center rounded-full border-2 bg-stone-950/35 text-center shadow-[0_0_5px_var(--rating-glow),0_0_10px_var(--rating-glow),inset_0_0_5px_rgba(255,255,255,0.10)] sm:-mr-1.5 sm:size-[2.125rem] ${authorRatingToneClassName}`}>
-            <span className="min-w-3.5 text-center text-sm leading-[13px] sm:min-w-4 sm:translate-y-px sm:text-base sm:leading-[15px]">
+          <span className={`-my-px -mr-1 inline-flex size-[2.125rem] items-center justify-center rounded-full border-2 bg-stone-950/35 text-center shadow-[0_0_5px_var(--rating-glow),0_0_10px_var(--rating-glow),inset_0_0_5px_rgba(255,255,255,0.10)] sm:-mr-1.5 sm:size-[2.375rem] ${authorRatingToneClassName}`}>
+            <span className="min-w-4 text-center text-base leading-[15px] sm:min-w-[1.125rem] sm:translate-y-px sm:text-lg sm:leading-[17px]">
               {formatScore(profileRating.score)}
             </span>
           </span>
@@ -736,9 +732,9 @@ export function MediaItemTile({
         ) : null}
         {shouldShowAuthorScore ? (
           <span
-            className={`-my-px -mr-1 inline-flex size-[1.875rem] items-center justify-center rounded-full border-2 bg-stone-950/35 text-center shadow-[0_0_5px_var(--rating-glow),0_0_10px_var(--rating-glow),inset_0_0_5px_rgba(255,255,255,0.10)] sm:-mr-1.5 sm:size-[2.125rem] ${authorRatingToneClassName}`}
+            className={`-my-px -mr-1 inline-flex size-[2.125rem] items-center justify-center rounded-full border-2 bg-stone-950/35 text-center shadow-[0_0_5px_var(--rating-glow),0_0_10px_var(--rating-glow),inset_0_0_5px_rgba(255,255,255,0.10)] sm:-mr-1.5 sm:size-[2.375rem] ${authorRatingToneClassName}`}
           >
-            <span className="min-w-3.5 text-center text-sm leading-[13px] sm:min-w-4 sm:translate-y-px sm:text-base sm:leading-[15px]">
+            <span className="min-w-4 text-center text-base leading-[15px] sm:min-w-[1.125rem] sm:translate-y-px sm:text-lg sm:leading-[17px]">
               {formatScore(currentAuthorScore)}
             </span>
           </span>

@@ -1,10 +1,10 @@
 export type RatingTone = "empty" | "bad" | "medium" | "good";
 
 const RATING_TONE_CSS_VARIABLE_CLASS_NAMES: Record<RatingTone, string> = {
-  empty: "[--rating-main:#D6D3D1] [--rating-border:rgba(245,245,244,0.9)] [--rating-glow:rgba(245,245,244,0.32)] [--rating-background:rgba(28,25,23,0.84)]",
-  bad: "[--rating-main:#FF454F] [--rating-border:rgba(255,69,79,0.95)] [--rating-glow:rgba(255,69,79,0.45)] [--rating-background:rgba(65,8,13,0.86)]",
-  medium: "[--rating-main:#FFC21C] [--rating-border:rgba(255,194,28,0.95)] [--rating-glow:rgba(255,194,28,0.42)] [--rating-background:rgba(61,43,5,0.86)]",
-  good: "[--rating-main:#34F5A5] [--rating-border:rgba(52,245,165,0.95)] [--rating-glow:rgba(52,245,165,0.42)] [--rating-background:rgba(5,48,37,0.86)]",
+  empty: "[--rating-main:#D6D3D1] [--rating-border:rgba(245,245,244,0.9)] [--rating-author-border:rgba(214,211,209,0.50)] [--rating-glow:rgba(245,245,244,0.32)] [--rating-background:rgba(28,25,23,0.84)] [--rating-pill-background:rgba(28,25,23,0.50)]",
+  bad: "[--rating-main:#FF454F] [--rating-border:rgba(255,69,79,0.95)] [--rating-author-border:rgba(255,69,79,0.50)] [--rating-glow:rgba(255,69,79,0.45)] [--rating-background:rgba(65,8,13,0.86)] [--rating-pill-background:rgba(65,8,13,0.50)]",
+  medium: "[--rating-main:#FFC21C] [--rating-border:rgba(255,194,28,0.95)] [--rating-author-border:rgba(255,194,28,0.50)] [--rating-glow:rgba(255,194,28,0.42)] [--rating-background:rgba(61,43,5,0.86)] [--rating-pill-background:rgba(61,43,5,0.50)]",
+  good: "[--rating-main:#34F5A5] [--rating-border:rgba(52,245,165,0.95)] [--rating-author-border:rgba(52,245,165,0.50)] [--rating-glow:rgba(52,245,165,0.42)] [--rating-background:rgba(5,48,37,0.86)] [--rating-pill-background:rgba(5,48,37,0.50)]",
 };
 
 export const EMPTY_RATING_TONE_CLASS_NAME =
@@ -15,6 +15,13 @@ export const AVERAGE_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
   medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
   good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
+};
+
+export const RATING_PILL_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  empty: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.empty} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
+  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
+  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
+  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
 };
 
 export const AVERAGE_RATING_TEXT_TONE_CLASS_NAMES: Record<RatingTone, string> = {
@@ -34,10 +41,10 @@ export const LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES: Record<RatingTone, stri
 };
 
 export const AUTHOR_RATING_TONE_CLASS_NAMES: Record<RatingTone, string> = {
-  empty: EMPTY_RATING_TONE_CLASS_NAME,
-  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
-  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
-  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} border-[color:var(--rating-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
+  empty: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.empty} border-[color:var(--rating-author-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
+  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} border-[color:var(--rating-author-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
+  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} border-[color:var(--rating-author-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
+  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} border-[color:var(--rating-author-border)] bg-[var(--rating-background)] text-[var(--rating-main)]`,
 };
 
 export const AVERAGE_ANIME_RATING_TONE_CLASS_NAMES = LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES;
@@ -96,7 +103,7 @@ export function getRatingTone(score: number | null): RatingTone {
     return "empty";
   }
 
-  if (score <= 40) {
+  if (score < 50) {
     return "bad";
   }
 

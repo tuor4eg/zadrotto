@@ -42,7 +42,11 @@ async function getReview(idValue: string, currentAuthor: Awaited<ReturnType<type
     getAccessibleMediaTypeCodes(currentAuthor?.id),
     getAllMediaTypeOptions(),
   ]);
-  const review = await getPublishedReviewById(id, accessibleMediaTypeCodes);
+  const review = await getPublishedReviewById(
+    id,
+    accessibleMediaTypeCodes,
+    currentAuthor?.id ?? null,
+  );
   return { accessibleMediaTypeCodes, currentAuthor, mediaTypes, review };
 }
 
@@ -124,6 +128,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <ReviewArticle
+          key={currentAuthor?.id ?? "guest"}
+          authenticated={Boolean(currentAuthor)}
           canEdit={currentAuthor?.code === review.authorCode}
           inlineNodes={inlineNodes}
           mediaItemIdentity={

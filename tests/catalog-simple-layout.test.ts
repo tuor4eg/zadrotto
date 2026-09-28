@@ -31,7 +31,8 @@ describe("simple catalog layout", () => {
     assert.doesNotMatch(layoutSource, /archive-(?:paper|panel|stack)/);
     assert.match(catalogSource, /archive-textured-block p-6/);
     assert.match(layoutSource, /archive-catalog-list-panel archive-textured-block[^"\n]*pt-0[^"\n]*sm:pt-0/);
-    assert.match(layoutSource, /archive-catalog-list-panel-background[^\n]*top-10[^\n]*lg:top-12/);
+    assert.match(layoutSource, /toolbar \? "top-10 lg:top-12" : "top-0"/);
+    assert.match(catalogSource, /className="col-span-full mt-3 rounded-md/);
     assert.match(
       globalsSource,
       /\.archive-catalog-list-panel-background\s*\{[\s\S]*linear-gradient\(180deg,[\s\S]*archive-paper-start[\s\S]*archive-paper-end/,
@@ -148,6 +149,17 @@ describe("simple catalog layout", () => {
     assert.match(previewSource, /<MediaItemFranchiseSuggestionDialog/);
     assert.match(previewSource, /<span className="break-words">\{metaItem\}<\/span>/);
     assert.doesNotMatch(previewSource, /min-w-0 truncate/);
+  });
+
+  it("keeps an empty search result from reading a missing rating request", () => {
+    assert.match(
+      catalogSource,
+      /ratingOpenRequest && selectedItem && ratingOpenRequest\.itemId === selectedItem\.id/,
+    );
+    assert.doesNotMatch(
+      catalogSource,
+      /ratingOpenRequest\?\.itemId === selectedItem\?\.id \? ratingOpenRequest\.key/,
+    );
   });
 
   it("uses a plain local filter popup", () => {
