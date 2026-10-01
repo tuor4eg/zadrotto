@@ -28,6 +28,7 @@ import { EmptyState, PageHeader } from "../admin-ui";
 import { deleteAdminMediaItemAction } from "./actions";
 import { AdminMediaFiltersForm } from "./media-filters-form";
 import { getAdminMediaErrorMessage } from "./messages";
+import { ExportDialog } from "../exports/export-dialog";
 
 type AdminMediaPageProps = {
   searchParams: Promise<{
@@ -298,6 +299,18 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
         aside={
           <>
             <Badge variant="outline">{totalItemsCount} всего</Badge>
+            <ExportDialog
+              entityType="media_items"
+              filters={{
+                ...(authorFilter ? { authorId: authorFilter } : {}),
+                ...(mediaCarrierFilter ? { mediaCarrierId: mediaCarrierFilter } : {}),
+                ...(metadataFilter ? { metadata: metadataFilter } : {}),
+                ...(searchQuery ? { q: searchQuery } : {}),
+                ...(mediaTypeFilter !== "all" ? { mediaType: mediaTypeFilter } : {}),
+              }}
+              sort={sort}
+              totalCount={mediaResult.totalCount}
+            />
             <Link
               href="/admin/media/new"
               className={buttonVariants()}

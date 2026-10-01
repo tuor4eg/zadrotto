@@ -24,6 +24,7 @@ export default async function NotificationRoutingPage({ searchParams }: Props) {
       </div>
       <NotificationTransportRoutesForm
         telegramEnabledByRoute={{
+          auto_moderation_approved: routes.auto_moderation_approved.telegram,
           bug_report_created: routes.bug_report_created.telegram,
           submission_created: routes.submission_created.telegram,
         }}

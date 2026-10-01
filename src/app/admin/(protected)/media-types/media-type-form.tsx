@@ -41,18 +41,24 @@ export function MediaTypeForm({
       {values?.id ? <input type="hidden" name="mediaTypeId" value={values.id} /> : null}
 
       <div className="grid gap-4">
-        {values?.code ? (
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="media-type-code">Код</Label>
-            <Input
-              id="media-type-code"
-              type="text"
-              value={values.code}
-              readOnly
-              className="font-mono"
-            />
-          </div>
-        ) : null}
+        <div className="flex flex-col gap-2">
+          <Label htmlFor="media-type-code">Код</Label>
+          <Input
+            id="media-type-code"
+            name={values?.code ? undefined : "code"}
+            type="text"
+            value={values?.code}
+            defaultValue={values?.code ? undefined : ""}
+            readOnly={Boolean(values?.code)}
+            placeholder="Оставь пустым для генерации из названия"
+            className="font-mono"
+          />
+          <p className="text-xs leading-5 text-stone-500">
+            {values?.code
+              ? "Код задаётся при создании и не редактируется."
+              : "Например: podcast. Если не заполнить, код создастся из названия."}
+          </p>
+        </div>
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="media-type-name">Название</Label>

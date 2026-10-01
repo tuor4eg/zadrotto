@@ -8,6 +8,7 @@ export const DOMAIN_EVENT_TYPES = [
   "media.published",
   "media.submitted",
   "media.approved",
+  "automoderation.approved",
   "media-franchise.published",
   "media-franchise.submitted",
   "media-franchise.approved",
@@ -38,8 +39,14 @@ export type DomainEventPayloads = {
     quizId: number;
   };
   "media.published": { mediaItemId: number };
-  "media.submitted": { authorId: number; mediaItemId: number };
+  "media.submitted": { authorId: number; mediaItemId: number; moderationRevision: number };
   "media.approved": { authorId: number; mediaItemId: number };
+  "automoderation.approved": {
+    authorId: number;
+    checkId: number;
+    subjectKey: string;
+    subjectType: "media-item";
+  };
   "media-franchise.published": { franchiseId: number; mediaItemId: number };
   "media-franchise.submitted": { authorId: number; franchiseId: number; mediaItemId: number };
   "media-franchise.approved": { authorId: number; franchiseId: number; mediaItemId: number };

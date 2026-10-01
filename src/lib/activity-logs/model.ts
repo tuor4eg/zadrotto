@@ -29,6 +29,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   "job",
   "job-run",
   "bug-report",
+  "data-export",
 ] as const;
 
 export const ACTIVITY_ACTIONS = [
@@ -83,6 +84,8 @@ export const ACTIVITY_ACTIONS = [
   "media.editorial-summary-lock-changed",
   "media-review.approved",
   "media-review.rejected",
+  "media-auto-moderation.approved",
+  "media-auto-moderation.review-required",
   "review.approved",
   "review.rejected",
   "review.hidden",
@@ -143,6 +146,13 @@ export const ACTIVITY_ACTIONS = [
   "bug-report.confirmed",
   "bug-report.fixed",
   "bug-report.rejected",
+  "data-export.created",
+  "data-export.ready",
+  "data-export.failed",
+  "data-export.downloaded",
+  "data-export.expired",
+  "data-export.retry-requested",
+  "data-export.cancelled",
 ] as const;
 
 export type ActivityActorType = (typeof ACTIVITY_ACTOR_TYPES)[number];
@@ -195,6 +205,7 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   job: "Фоновая задача",
   "job-run": "Запуск фоновой задачи",
   "bug-report": "Багрепорт",
+  "data-export": "Экспорт данных",
 } satisfies Record<ActivityEntityType, string>;
 
 export const ACTIVITY_ACTION_LABELS = {
@@ -248,6 +259,8 @@ export const ACTIVITY_ACTION_LABELS = {
   "media.editorial-summary-lock-changed": "Защита справки изменена",
   "media-review.approved": "Заявка записи одобрена",
   "media-review.rejected": "Заявка записи отклонена",
+  "media-auto-moderation.approved": "Запись одобрена автоматически",
+  "media-auto-moderation.review-required": "Запись оставлена на ручную модерацию",
   "review.approved": "Рецензия одобрена",
   "review.rejected": "Рецензия отклонена",
   "review.hidden": "Рецензия скрыта",
@@ -309,6 +322,13 @@ export const ACTIVITY_ACTION_LABELS = {
   "bug-report.confirmed": "Баг подтверждён",
   "bug-report.fixed": "Баг исправлен",
   "bug-report.rejected": "Багрепорт отклонён",
+  "data-export.created": "Экспорт создан",
+  "data-export.ready": "Экспорт готов",
+  "data-export.failed": "Экспорт завершился ошибкой",
+  "data-export.downloaded": "Экспорт скачан",
+  "data-export.expired": "Срок экспорта истёк",
+  "data-export.retry-requested": "Повтор экспорта запрошен",
+  "data-export.cancelled": "Экспорт отменён",
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([

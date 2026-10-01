@@ -202,6 +202,7 @@ describe("bug report notifications", () => {
     }), "/admin/bug-reports/42");
     assert.equal(getExternalNotificationRoute("bug-report.created")?.code, "bug_report_created");
     assert.deepEqual(parseExternalNotificationRouteForm(new FormData()), {
+      auto_moderation_approved: [],
       bug_report_created: [],
       submission_created: [],
     });

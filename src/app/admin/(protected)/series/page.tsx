@@ -17,6 +17,7 @@ import { PageHeader, EmptyState } from "../admin-ui";
 import { deleteFranchiseAction } from "./actions";
 import { AdminFranchiseFiltersForm } from "./franchise-filters-form";
 import { getFranchiseErrorMessage } from "./messages";
+import { ExportDialog } from "../exports/export-dialog";
 
 type AdminFranchisesPageProps = {
   searchParams: Promise<{
@@ -114,6 +115,7 @@ export default async function AdminFranchisesPage({
         aside={
           <>
             <Badge variant="outline">{franchisesResult.totalCount} всего</Badge>
+            <ExportDialog entityType="series" filters={searchQuery ? { q: searchQuery } : {}} sort="title" totalCount={franchisesResult.totalCount} />
             <Link
               href="/admin/series/new"
               className={buttonVariants({ variant: "default" })}

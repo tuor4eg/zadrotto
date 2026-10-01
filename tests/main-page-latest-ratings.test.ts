@@ -6,8 +6,12 @@ const query = readFileSync("src/db/queries/ratings.ts", "utf8");
 const page = readFileSync("src/app/page.tsx", "utf8");
 
 describe("main page latest ratings", () => {
-  it("selects only the current author's latest ratings with stable ordering", () => {
+  it("selects only the current author's latest ratings for published records with stable ordering", () => {
     assert.match(query, /latestRatings[\s\S]*eq\(ratings\.authorId, authorId\)/);
+    assert.match(
+      query,
+      /mediaItemTitle: mediaItems\.title,[\s\S]*eq\(mediaItems\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)[\s\S]*orderBy\(desc\(ratings\.updatedAt\), desc\(ratings\.id\)\)/,
+    );
     assert.match(
       query,
       /latestRatings[\s\S]*orderBy\(desc\(ratings\.updatedAt\), desc\(ratings\.id\)\)[\s\S]*limit\(5\)/,
@@ -25,6 +29,8 @@ describe("main page latest ratings", () => {
     assert.match(page, /className="size-20 shrink-0[^"\n]*lg:size-\[5\.5rem\]"/);
     assert.match(page, /className="h-28 w-20 shrink-0[^"\n]*lg:h-32 lg:w-\[5\.5rem\]"/);
     assert.match(page, /href=\{`\/media\/\$\{latestAcquaintance\.code\}`\}/);
+    assert.match(page, /line-clamp-2 \[overflow-wrap:anywhere\] font-serif[^>]*title=\{latestAcquaintance\.title\}/);
+    assert.match(page, /line-clamp-2 min-w-0 flex-1 \[overflow-wrap:anywhere\] font-serif[^>]*title=\{authorHeroStatistics\.latestAchievement\.name\}/);
     assert.doesNotMatch(page, /\/history|Недавно просмотренное|getRecentlyViewed/);
     assert.equal(existsSync("src/app/history/page.tsx"), false);
     assert.equal(existsSync("src/app/history/viewed-at.tsx"), false);

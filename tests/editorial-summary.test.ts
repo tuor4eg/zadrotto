@@ -46,6 +46,13 @@ test("production jobs worker receives AI credentials and Redis for summary gener
   assert.match(worker, /REDIS_URL: \$\{REDIS_URL:-redis:\/\/redis:6379\}/);
 });
 
+test("editorial summary prompt preserves a good source description", () => {
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /если оно уже является ясной, достоверной русскоязычной справкой/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /сохрани его без изменений — верни usable=false/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Редакционная инструкция задаёт только тон и стиль/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /не может отменить правило сохранения качественного исходного описания/);
+});
+
 test("batch generation is spaced across scheduled slots", () => {
   const now = new Date("2026-09-13T12:00:00.000Z");
   const first = nextEditorialSummaryAvailableAt(null, now);
@@ -70,7 +77,7 @@ test("context selects relevant metadata and hash changes with source or prompt",
 });
 
 test("editorial prompt controls the tone while system prompt keeps factual constraints", () => {
-  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Тон и стиль задаёт редакционная инструкция/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Редакционная инструкция задаёт только тон и стиль/);
   assert.doesNotMatch(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Стиль нейтральный/);
   assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Не выдумывай факты/);
   assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Недостаток материала для желаемой длины сам по себе не причина для отказа/);

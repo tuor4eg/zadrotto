@@ -68,5 +68,7 @@ describe("top archive settings", () => {
     assert.match(action, /metadata:[\s\S]*topArchiveMinAverageScore[\s\S]*topArchiveMinRatingsCount/);
     assert.match(form, /Минимальная средняя оценка «Топа архива»/);
     assert.match(form, /Значение 0 отключает ограничение и допускает записи без оценок/);
+    assert.match(form, /<AdminToasts messages=\{toastMessages\}/);
+    assert.doesNotMatch(form, /state\.(?:error|success) \? <p/);
   });
 });

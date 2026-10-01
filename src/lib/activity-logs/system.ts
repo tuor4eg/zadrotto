@@ -4,6 +4,7 @@ import { createActivityLog } from "@/db/queries/activity-logs";
 import {
   sanitizeActivityLogMetadata,
   type ActivityAction,
+  type ActivityEntityType,
   type ActivitySeverity,
   type ActivityStatus,
 } from "./model";
@@ -11,6 +12,7 @@ import {
 export async function logSystemActivity(input: {
   action: ActivityAction;
   entityId?: number | null;
+  entityType?: ActivityEntityType;
   entityLabel?: string | null;
   message: string;
   metadata?: Record<string, unknown> | null;
@@ -23,7 +25,7 @@ export async function logSystemActivity(input: {
       actorType: "system",
       adminUserId: null,
       authorId: null,
-      entityType: "media-item",
+      entityType: input.entityType ?? "media-item",
       entityId: input.entityId ?? null,
       entityLabel: input.entityLabel ?? null,
       status: input.status ?? "success",

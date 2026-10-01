@@ -3,7 +3,9 @@
 import { useActionState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label } from "@/components/ui/form";
+import { Input, Label, Select } from "@/components/ui/form";
+import type { AutomoderationMode } from "@/lib/automoderation/model";
+import { AdminToasts, type AdminToast } from "../../admin-toasts";
 import {
   updateArchiveSettingsAction,
   type UpdateArchiveSettingsState,
@@ -12,6 +14,8 @@ import {
 const initialState: UpdateArchiveSettingsState = { error: null, success: null };
 
 export function ArchiveSettingsForm({
+  exportRetentionDays,
+  mediaAutoModerationMode,
   dailyDossierMinAverageScore,
   dailyDossierMinRatingsCount,
   mediaItemTitleAliasLimit,
@@ -21,6 +25,8 @@ export function ArchiveSettingsForm({
   topArchiveMinAverageScore,
   topArchiveMinRatingsCount,
 }: {
+  exportRetentionDays: number;
+  mediaAutoModerationMode: AutomoderationMode;
   dailyDossierMinAverageScore: number;
   dailyDossierMinRatingsCount: number;
   mediaItemTitleAliasLimit: number;
@@ -34,9 +40,27 @@ export function ArchiveSettingsForm({
     updateArchiveSettingsAction,
     initialState,
   );
+  const toastMessages = [
+    ...(state.success ? [{ id: "archive-settings-success", tone: "success" as const, text: state.success }] : []),
+    ...(state.error ? [{ id: "archive-settings-error", tone: "error" as const, text: state.error }] : []),
+  ] satisfies AdminToast[];
 
   return (
     <form action={formAction} className="grid max-w-4xl gap-3 lg:grid-cols-2">
+      <AdminToasts messages={toastMessages} />
+      <fieldset className="rounded-md border border-stone-200 p-4">
+        <legend className="px-1 text-sm font-medium text-stone-900">Автомодерация записей</legend>
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor="media-auto-moderation-mode">Режим</Label>
+          <Select id="media-auto-moderation-mode" name="mediaAutoModerationMode" defaultValue={mediaAutoModerationMode}>
+            <option value="off">Выключена</option>
+            <option value="shadow">Теневая проверка</option>
+            <option value="enforce">Автоматическая публикация</option>
+          </Select>
+          <p className="text-xs leading-4 text-stone-500">Теневой режим сохраняет решение, но оставляет заявку администратору.</p>
+        </div>
+      </fieldset>
+
       <fieldset className="rounded-md border border-stone-200 p-4">
         <legend className="px-1 text-sm font-medium text-stone-900">Топ архива</legend>
         <div className="grid gap-3 sm:grid-cols-2">
@@ -101,9 +125,16 @@ export function ArchiveSettingsForm({
         </div>
       </fieldset>
 
+      <fieldset className="rounded-md border border-stone-200 p-4">
+        <legend className="px-1 text-sm font-medium text-stone-900">Экспорты</legend>
+        <div className="grid content-start gap-1.5">
+          <Label htmlFor="export-retention-days">Срок хранения файлов, дней</Label>
+          <Input id="export-retention-days" name="exportRetentionDays" type="number" min={1} max={90} defaultValue={exportRetentionDays} required />
+          <p className="text-xs leading-4 text-stone-500">От 1 до 90 дней после создания выгрузки.</p>
+        </div>
+      </fieldset>
+
       <div className="lg:col-span-2">
-        {state.error ? <p className="mb-2 text-sm text-red-700">{state.error}</p> : null}
-        {state.success ? <p className="mb-2 text-sm text-emerald-700">{state.success}</p> : null}
         <Button type="submit" disabled={isPending}>Сохранить</Button>
       </div>
     </form>

@@ -16,7 +16,7 @@ export function getMediaTypeErrorMessage(error?: string) {
   }
 
   if (error === "duplicate-code") {
-    return "Тип с таким названием уже существует.";
+    return "Тип с таким кодом уже существует.";
   }
 
   if (error === "type-has-media") {

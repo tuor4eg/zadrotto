@@ -659,6 +659,20 @@
       "when": 1790501061421,
       "tag": "0093_review_reactions",
       "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1790587461421,
+      "tag": "0094_admin_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1790673861421,
+      "tag": "0095_media_automoderation",
+      "breakpoints": true
     }
   ]
 }

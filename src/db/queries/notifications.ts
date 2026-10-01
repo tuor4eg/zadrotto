@@ -156,7 +156,7 @@ export async function listRecipientNotifications(input: {
 
   for (const row of rows) {
     if (!isNotificationType(row.type)) continue
-    if (row.type === "media.submitted" || row.type === "media.approved") {
+    if (row.type === "media.submitted" || row.type === "media.approved" || row.type === "automoderation.approved") {
       const mediaItemId = parsePositiveInt(row.entityId)
       if (mediaItemId) mediaItemIds.add(mediaItemId)
       continue

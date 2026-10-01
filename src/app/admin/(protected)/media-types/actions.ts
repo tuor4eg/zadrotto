@@ -95,10 +95,12 @@ export async function createMediaTypeAction(formData: FormData) {
     redirect(`/admin/media-types/new?error=${input.error}`);
   }
 
+  const requestedCode = getFormString(formData, "code");
+
   try {
     await createMediaType({
       ...input.value,
-      code: slugifyCodePart(input.value.name),
+      code: slugifyCodePart(requestedCode || input.value.name),
     });
   } catch (error) {
     if (isUniqueViolation(error)) {

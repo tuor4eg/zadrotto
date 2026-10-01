@@ -5,6 +5,7 @@ import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { authorMediaStatuses, mediaItems, ratings } from "@/db/schema";
 import { lockAuthorMediaState } from "@/db/queries/author-media-statuses";
 import { runInDomainEventTransaction } from "@/db/transaction";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
 function getCurrentMoscowYear() {
   return Number(
@@ -158,6 +159,7 @@ export async function getAuthorRatingSummary(
       .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId))
       .where(and(
         eq(ratings.authorId, authorId),
+        eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
         getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       ))
       .orderBy(desc(ratings.updatedAt), desc(ratings.id))

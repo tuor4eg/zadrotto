@@ -24,6 +24,10 @@ import {
   upsertMediaItemMetadata,
 } from "@/db/queries/media-item-metadata";
 import {
+  deleteMediaItemProviderSnapshot,
+  upsertMediaItemProviderSnapshot,
+} from "@/db/queries/media-item-provider-snapshots";
+import {
   getAccessibleMediaTypeCodes,
 } from "@/db/queries/media-types";
 import { upsertAuthorRating } from "@/db/queries/ratings";
@@ -380,7 +384,10 @@ async function saveMediaItemMetadataMutation(
   }
 
   if (mutation.type === "delete") {
-    await deleteMediaItemMetadata(mediaItemId);
+    await Promise.all([
+      deleteMediaItemMetadata(mediaItemId),
+      deleteMediaItemProviderSnapshot(mediaItemId),
+    ]);
     return;
   }
 
@@ -391,6 +398,10 @@ async function saveMediaItemMetadataMutation(
     sourceExternalId: mutation.sourceExternalId,
     sourceUrl: mutation.sourceUrl,
     fetchedAt: mutation.fetchedAt,
+  });
+  await upsertMediaItemProviderSnapshot({
+    mediaItemId,
+    ...mutation.providerSnapshot,
   });
 }
 

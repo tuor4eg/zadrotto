@@ -377,7 +377,7 @@ export default async function MainPage() {
     <main className="archive-page min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className={hasLatestActivity ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_17rem]" : undefined}>
+        <div className={hasLatestActivity ? "grid gap-3 lg:grid-cols-[minmax(0,1fr)_17.75rem]" : undefined}>
           <section
             className="archive-paper archive-panel flex items-center overflow-hidden px-4 py-6 sm:px-5 lg:py-7"
             aria-labelledby="main-intro-title"
@@ -448,7 +448,7 @@ export default async function MainPage() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
                     Последняя оценка
                   </p>
-                  <Link href={`/media/${latestAcquaintance.code}`} className="mt-2 flex items-center gap-4">
+                  <Link href={`/media/${latestAcquaintance.code}`} className="mt-2 flex w-full min-w-0 items-center gap-4">
                     {latestAcquaintance.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -457,8 +457,8 @@ export default async function MainPage() {
                         className="h-28 w-20 shrink-0 rounded object-cover shadow-lg lg:h-32 lg:w-[5.5rem]"
                       />
                     ) : null}
-                    <span className="min-w-0">
-                      <span className="line-clamp-2 font-serif text-xl leading-tight">
+                    <span className="min-w-0 flex-1">
+                      <span className="line-clamp-2 [overflow-wrap:anywhere] font-serif text-xl leading-tight" title={latestAcquaintance.title}>
                         {latestAcquaintance.title}
                       </span>
                       <span className="mt-1 block text-sm text-stone-600">
@@ -473,7 +473,7 @@ export default async function MainPage() {
                   <p className="font-mono text-[10px] uppercase tracking-[0.14em] text-stone-600">
                     Новое достижение
                   </p>
-                  <div className="mt-2 flex min-h-0 flex-1 items-center gap-4">
+                  <div className="mt-2 flex min-h-0 w-full min-w-0 flex-1 items-center gap-4">
                     <Link
                       href="/achievements"
                       aria-label="Открыть мои ачивки"
@@ -492,7 +492,7 @@ export default async function MainPage() {
                         </span>
                       )}
                     </Link>
-                    <span className="line-clamp-2 font-serif text-xl leading-tight">
+                    <span className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] font-serif text-xl leading-tight" title={authorHeroStatistics.latestAchievement.name}>
                       {authorHeroStatistics.latestAchievement.name}
                     </span>
                   </div>

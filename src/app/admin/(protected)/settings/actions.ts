@@ -16,6 +16,7 @@ import {
   updateCoverSettings,
 } from "@/db/queries/cover-settings";
 import { updateArchiveSettings } from "@/db/queries/archive-settings";
+import { isAutomoderationMode } from "@/lib/automoderation/model";
 import { requireAdminUser, setAdminSessionCookie } from "@/lib/auth/admin-auth";
 import {
   ADMIN_PASSWORD_CHANGE_ERROR_MESSAGES,
@@ -202,13 +203,17 @@ export async function updateArchiveSettingsAction(
   const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(
     getFormString(formData, "topArchiveMinRatingsCount"),
   );
+  const exportRetentionDays = Number(getFormString(formData, "exportRetentionDays"));
+  const mediaAutoModerationMode = getFormString(formData, "mediaAutoModerationMode");
 
-  if (mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (!isAutomoderationMode(mediaAutoModerationMode) || mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     return { error: "Проверьте ограничения общих настроек.", success: null };
   }
 
   try {
     await updateArchiveSettings({
+      exportRetentionDays,
+      mediaAutoModerationMode,
       maxTitleAliases: mediaItemTitleAliasLimit,
       maxFranchiseDepth,
       dailyDossierMinAverageScore,
@@ -227,6 +232,8 @@ export async function updateArchiveSettingsAction(
       entityId: 1,
       message: "Общие настройки обновлены.",
       metadata: {
+        exportRetentionDays,
+        mediaAutoModerationMode,
         dailyDossierMinAverageScore,
         dailyDossierMinRatingsCount,
         recentlyViewedHistoryLimit,

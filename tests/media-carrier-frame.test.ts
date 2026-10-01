@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 
 import {
   formatMediaCarrierTitle,
@@ -64,6 +64,28 @@ describe("media carrier frames", () => {
         viewportClassName: "h-[min(58vh,520px)]",
       },
     );
+  });
+
+  it("uses the compressed board game frame with or without an explicit carrier", () => {
+    const expectedFrame = {
+      assetPath: "/mediaCarriers/boardgames/boardgame.webp",
+      aspectRatioClassName: "aspect-[683/1024]",
+      compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+      compactViewportClassName: "h-[min(32vh,300px)]",
+      coverAreaClassName: "left-[15.5%] top-[6%] h-[56.2%] w-[69.2%]",
+      placeholderVariant: "dvd-label",
+      renderKind: "cartridge",
+      sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+      viewportClassName: "h-[min(58vh,520px)]",
+    };
+
+    assert.deepEqual(getMediaCarrierFrame({ mediaType: "boardgame" }), expectedFrame);
+    assert.deepEqual(
+      getMediaCarrierFrame({ mediaType: "boardgame", mediaCarrierCode: "boardgame" }),
+      expectedFrame,
+    );
+    assert.equal(existsSync("public/mediaCarriers/boardgames/boardgame.webp"), true);
+    assert.ok(statSync("public/mediaCarriers/boardgames/boardgame.webp").size < 150_000);
   });
 
   it("resolves Sega and SNES cartridge frames", () => {

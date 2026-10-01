@@ -12,11 +12,14 @@ import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
 import { generateEditorialSummary, sweepEditorialSummaries } from "@/lib/media/editorial-summary-jobs";
 import { EDITORIAL_SUMMARY_GENERATE_TYPE, EDITORIAL_SUMMARY_SWEEP_TYPE } from "@/lib/media/editorial-summary";
+import { cleanupAdminExports, generateAdminExport } from "@/lib/admin-exports/generate";
 import {
   reconcileMediaItemRatingStatsBatch,
   type RatingStatsReconciliationPayload,
 } from "@/db/queries/media-item-rating-stats";
 import { createJobHandlerRegistry } from "./registry";
+import { processAutomoderationCheck } from "@/lib/automoderation/process";
+import { MEDIA_AUTOMODERATION_JOB_TYPE } from "@/lib/automoderation/model";
 import { JobError, type JobHandlerDefinition } from "./types";
 
 function parseEmptyPayload(value: unknown) {
@@ -56,6 +59,24 @@ const jobHistoryCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   async execute() {
     await cleanupJobRunHistory();
   },
+};
+
+function parseAdminExportPayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+  const source = value as Record<string, unknown>;
+  if (Object.keys(source).length !== 1 || typeof source.exportId !== "string" || !/^[0-9a-f-]{36}$/i.test(source.exportId)) throw new JobError("invalid-payload", "Некорректный ID экспорта.", { retryable: false });
+  return { exportId: source.exportId };
+}
+
+const adminExportGenerateHandler: JobHandlerDefinition<{ exportId: string }> = {
+  type: "admin.export-generate", label: "Экспорт записей и серий", schedulable: false,
+  defaultMaxAttempts: 3, defaultTimeoutSeconds: 3600, parsePayload: parseAdminExportPayload,
+  async execute({ payload }) { await generateAdminExport(payload.exportId); },
+};
+const adminExportCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "admin.export-cleanup", label: "Очистка экспортов", parsePayload: parseEmptyPayload,
+  defaultMaxAttempts: 3, defaultTimeoutSeconds: 300,
+  async execute() { await cleanupAdminExports(); },
 };
 
 type CoverThumbnailBackfillPayload = {
@@ -321,6 +342,30 @@ const notificationTransportDeliveryHandler: JobHandlerDefinition<Record<string, 
   },
 };
 
+function parseAutomoderationPayload(value: unknown) {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    throw new JobError("invalid-payload", "Ожидался ID проверки автомодерации.", { retryable: false });
+  }
+  const source = value as Record<string, unknown>;
+  const checkId = Number(source.checkId);
+  if (Object.keys(source).length !== 1 || !Number.isSafeInteger(checkId) || checkId < 1) {
+    throw new JobError("invalid-payload", "Некорректный ID проверки автомодерации.", { retryable: false });
+  }
+  return { checkId };
+}
+
+const automoderationHandler: JobHandlerDefinition<{ checkId: number }> = {
+  type: MEDIA_AUTOMODERATION_JOB_TYPE,
+  label: "Автомодерация публикации",
+  schedulable: false,
+  defaultMaxAttempts: 1,
+  defaultTimeoutSeconds: 60,
+  parsePayload: parseAutomoderationPayload,
+  async execute({ payload }) {
+    await processAutomoderationCheck(payload.checkId);
+  },
+};
+
 function parseAchievementBackfillPayload(value: unknown): AchievementBackfillPayload {
   if (!value || typeof value !== "object" || Array.isArray(value)) {
     throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
@@ -380,6 +425,8 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   emailOutboxDeliveryHandler,
   authCleanupHandler,
   jobHistoryCleanupHandler,
+  adminExportGenerateHandler,
+  adminExportCleanupHandler,
   coverThumbnailBackfillHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,
@@ -388,5 +435,6 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   ratingStatsReconciliationHandler,
   domainEventDispatchHandler,
   notificationTransportDeliveryHandler,
+  automoderationHandler,
   achievementBackfillHandler,
 ]);

@@ -75,10 +75,15 @@ export async function resolveNotificationDraft(tx: DbTransaction, event: Persist
   let entityId: string | null = null
   let authorId = 0
 
-  if (event.type === "media.submitted" || event.type === "media.approved") {
-    const payload = event.payload as { authorId: number; mediaItemId: number }
-    body = await getMediaItemTitle(tx, payload.mediaItemId)
-    entityId = String(payload.mediaItemId)
+  if (
+    event.type === "media.submitted" ||
+    event.type === "media.approved" ||
+    event.type === "automoderation.approved"
+  ) {
+    const payload = event.payload as { authorId: number; mediaItemId?: number; subjectKey?: string }
+    const mediaItemId = payload.mediaItemId ?? Number(payload.subjectKey)
+    body = await getMediaItemTitle(tx, mediaItemId)
+    entityId = String(mediaItemId)
     authorId = payload.authorId
   } else if (event.type === "franchise.submitted" || event.type === "franchise.approved") {
     const payload = event.payload as { authorId: number; franchiseId: number }

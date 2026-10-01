@@ -113,6 +113,17 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
     viewportClassName: "h-[min(58vh,520px)]",
   },
+  "boardgame/boardgame": {
+    assetPath: "/mediaCarriers/boardgames/boardgame.webp",
+    aspectRatioClassName: "aspect-[683/1024]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "left-[15.5%] top-[6%] h-[56.2%] w-[69.2%]",
+    placeholderVariant: "dvd-label",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
   "roblox/roblox": {
     assetPath: "/mediaCarriers/roblox/roblox.webp",
     aspectRatioClassName: "aspect-[1008/1499]",
@@ -508,6 +519,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "book" && !item.mediaCarrierCode) {
     return MEDIA_CARRIER_FRAMES["book/book"] ?? null;
+  }
+
+  if (item.mediaType === "boardgame") {
+    return MEDIA_CARRIER_FRAMES["boardgame/boardgame"] ?? null;
   }
 
   if (item.mediaType === "anime") {

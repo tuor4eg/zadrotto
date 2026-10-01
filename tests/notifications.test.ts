@@ -177,6 +177,7 @@ describe("notification catalog", () => {
     assert.equal(getNotificationTitle("media.submitted"), "Новая заявка на запись")
     assert.equal(getNotificationTitle("review.approved"), "Рецензия одобрена")
     assert.equal(getNotificationRecipientType("media.submitted"), "admin")
+    assert.equal(getNotificationRecipientType("automoderation.approved"), "admin")
     assert.equal(getNotificationRecipientType("media-franchise.removal.requested"), "admin")
     assert.equal(getNotificationRecipientType("franchise.approved"), "author")
     assert.equal(
@@ -249,6 +250,7 @@ describe("notification catalog", () => {
     assert.equal(getExternalNotificationRoute("media-franchise.removal.requested")?.code, "submission_created")
     assert.equal(getExternalNotificationRoute("review.submitted")?.code, "submission_created")
     assert.equal(getExternalNotificationRoute("media.approved"), null)
+    assert.equal(getExternalNotificationRoute("automoderation.approved")?.code, "auto_moderation_approved")
     assert.equal(getExternalNotificationRoute("review.approved"), null)
     assert.equal(
       formatExternalNotificationText({
@@ -280,10 +282,12 @@ describe("notification catalog", () => {
     const enabled = new FormData()
     enabled.set("submission_created_telegram", "1")
     assert.deepEqual(parseExternalNotificationRouteForm(enabled), {
+      auto_moderation_approved: [],
       bug_report_created: [],
       submission_created: ["telegram"],
     })
     assert.deepEqual(parseExternalNotificationRouteForm(new FormData()), {
+      auto_moderation_approved: [],
       bug_report_created: [],
       submission_created: [],
     })
@@ -307,6 +311,18 @@ describe("notification polling", () => {
     assert.match(adminReadApiSource, /recipientType: "admin"/)
     assert.match(authorReadApiSource, /markRecipientNotificationRead/)
     assert.match(adminReadApiSource, /markRecipientNotificationRead/)
+  })
+
+  it("refreshes server-rendered admin request counters after a fresh notification", () => {
+    assert.match(inboxHostSource, /import \{ usePathname, useRouter, useSearchParams \} from "next\/navigation"/)
+    assert.match(inboxHostSource, /if \(freshItems\.length > 0\)[\s\S]*if \(audienceRef\.current\) \{[\s\S]*router\.refresh\(\)/)
+  })
+
+  it("marks unread notifications as read when they become visible in the open inbox", () => {
+    assert.match(inboxHostSource, /new IntersectionObserver/)
+    assert.match(inboxHostSource, /root: scrollContainer, threshold: 0\.75/)
+    assert.match(inboxHostSource, /data-notification-id=\{item\.readAt \? undefined : item\.id\}/)
+    assert.match(inboxHostSource, /void inbox\?\.markRead\(id\)/)
   })
 })
 
@@ -341,6 +357,18 @@ describe("admin submission inbox status", () => {
     assert.doesNotMatch(
       notificationQuerySource,
       /recipientType === "author" \? \[adminSubmissionStillOpenSql\]/,
+    )
+  })
+
+  it("refreshes the inbox after same-page moderation redirects", () => {
+    assert.match(inboxHostSource, /useSearchParams\(\)/)
+    assert.match(
+      inboxHostSource,
+      /NotificationSearchParamsWatcher[\s\S]*searchParams\.toString\(\)[\s\S]*void refresh\(\)/,
+    )
+    assert.match(
+      inboxHostSource,
+      /<NotificationSearchParamsWatcher refresh=\{checkNotifications\} \/>/,
     )
   })
 

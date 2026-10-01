@@ -21,6 +21,13 @@ type MediaTitleSourceTokenPayload = {
   provider: MediaProviderCode;
   externalId: string;
   mediaType: MediaType;
+  fields: {
+    title: string;
+    originalTitle: string | null;
+    description: string | null;
+    releaseYear: number | null;
+  };
+  sourceUrl: string | null;
   exp: number;
 };
 
@@ -76,11 +83,23 @@ export function createMediaTitleSourceToken(source: {
   provider: MediaProviderCode;
   externalId: string;
   mediaType: MediaType;
+  title?: string;
+  originalTitle?: string | null;
+  description?: string | null;
+  releaseYear?: number | null;
+  sourceUrl?: string | null;
 }) {
   const payload = encodeBase64UrlJson({
     provider: source.provider,
     externalId: source.externalId,
     mediaType: source.mediaType,
+    fields: {
+      title: source.title?.trim() || source.externalId,
+      originalTitle: source.originalTitle?.trim() || null,
+      description: source.description?.trim() || null,
+      releaseYear: source.releaseYear ?? null,
+    },
+    sourceUrl: source.sourceUrl ?? null,
     exp: Math.floor(Date.now() / 1000) + TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS,
   } satisfies MediaTitleSourceTokenPayload);
 
@@ -103,6 +122,16 @@ export function verifyMediaTitleSourceToken(token: string) {
       typeof value.externalId !== "string" ||
       !value.externalId.trim() ||
       !isMediaTypeCode(value.mediaType as string) ||
+      !isPlainRecord(value.fields) ||
+      typeof value.fields.title !== "string" ||
+      !value.fields.title.trim() ||
+      (value.fields.originalTitle !== null && typeof value.fields.originalTitle !== "string") ||
+      (value.fields.description !== null && typeof value.fields.description !== "string") ||
+      (value.fields.releaseYear !== null &&
+        (typeof value.fields.releaseYear !== "number" ||
+          !Number.isInteger(value.fields.releaseYear) ||
+          value.fields.releaseYear < 0)) ||
+      (value.sourceUrl !== null && !isAbsoluteHttpUrl(value.sourceUrl)) ||
       typeof value.exp !== "number" ||
       value.exp <= Math.floor(Date.now() / 1000)
     ) {
@@ -112,7 +141,18 @@ export function verifyMediaTitleSourceToken(token: string) {
     return {
       provider: value.provider,
       externalId: value.externalId.trim(),
-      mediaType: value.mediaType,
+      mediaType: value.mediaType as MediaType,
+      fields: {
+        title: value.fields.title.trim(),
+        originalTitle: typeof value.fields.originalTitle === "string"
+          ? value.fields.originalTitle.trim() || null
+          : null,
+        description: typeof value.fields.description === "string"
+          ? value.fields.description.trim() || null
+          : null,
+        releaseYear: value.fields.releaseYear as number | null,
+      },
+      sourceUrl: value.sourceUrl as string | null,
     };
   } catch {
     return null;

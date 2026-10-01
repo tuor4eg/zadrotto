@@ -2,6 +2,7 @@ import { eq } from "drizzle-orm";
 
 import { db } from "@/db";
 import { archiveSettings, franchises } from "@/db/schema";
+import { isAutomoderationMode, type AutomoderationMode } from "@/lib/automoderation/model";
 import {
   DEFAULT_MEDIA_ITEM_TITLE_ALIAS_LIMIT,
   parseMediaItemTitleAliasLimit,
@@ -28,6 +29,8 @@ import {
 const ARCHIVE_SETTINGS_ID = 1;
 
 export type ArchiveSettingsValue = {
+  exportRetentionDays: number;
+  mediaAutoModerationMode: AutomoderationMode;
   dailyDossierMinAverageScore: number;
   dailyDossierMinRatingsCount: number;
   maxTitleAliases: number;
@@ -49,12 +52,18 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
       topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
       topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
+      exportRetentionDays: archiveSettings.exportRetentionDays,
+      mediaAutoModerationMode: archiveSettings.mediaAutoModerationMode,
     })
     .from(archiveSettings)
     .where(eq(archiveSettings.id, ARCHIVE_SETTINGS_ID))
     .limit(1);
 
   return {
+    exportRetentionDays: settings?.exportRetentionDays >= 1 && settings.exportRetentionDays <= 90 ? settings.exportRetentionDays : 7,
+    mediaAutoModerationMode: isAutomoderationMode(settings?.mediaAutoModerationMode)
+      ? settings.mediaAutoModerationMode
+      : "off",
     dailyDossierMinAverageScore:
       parseDailyDossierMinAverageScore(settings?.dailyDossierMinAverageScore) ??
       DEFAULT_DAILY_DOSSIER_MIN_AVERAGE_SCORE,
@@ -81,7 +90,7 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
 }
 
 export async function updateArchiveSettings(
-  input: ArchiveSettingsValue & { updatedByAdminId: number },
+  input: Omit<ArchiveSettingsValue, "exportRetentionDays"> & { exportRetentionDays?: number; updatedByAdminId: number },
 ) {
   const maxTitleAliases = parseMediaItemTitleAliasLimit(input.maxTitleAliases);
   const maxFranchiseDepth = input.maxFranchiseDepth;
@@ -95,8 +104,10 @@ export async function updateArchiveSettings(
   const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(input.recentlyViewedTtlDays);
   const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(input.topArchiveMinAverageScore);
   const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(input.topArchiveMinRatingsCount);
+  const exportRetentionDays = Number(input.exportRetentionDays ?? 7);
+  const mediaAutoModerationMode = input.mediaAutoModerationMode;
 
-  if (maxTitleAliases === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (!isAutomoderationMode(mediaAutoModerationMode) || maxTitleAliases === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     throw new Error("Invalid archive settings");
   }
   const rows = await db.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
@@ -116,6 +127,8 @@ export async function updateArchiveSettings(
       recentlyViewedTtlDays,
       topArchiveMinAverageScore,
       topArchiveMinRatingsCount,
+      exportRetentionDays,
+      mediaAutoModerationMode,
       updatedByAdminId: input.updatedByAdminId,
     })
     .onConflictDoUpdate({
@@ -129,6 +142,8 @@ export async function updateArchiveSettings(
         recentlyViewedTtlDays,
         topArchiveMinAverageScore,
         topArchiveMinRatingsCount,
+        exportRetentionDays,
+        mediaAutoModerationMode,
         updatedByAdminId: input.updatedByAdminId,
         updatedAt: new Date(),
       },
@@ -142,6 +157,8 @@ export async function updateArchiveSettings(
       recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
       topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
       topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
+      exportRetentionDays: archiveSettings.exportRetentionDays,
+      mediaAutoModerationMode: archiveSettings.mediaAutoModerationMode,
     });
 
   return settings;

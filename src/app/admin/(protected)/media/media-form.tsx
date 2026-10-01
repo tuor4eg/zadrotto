@@ -404,7 +404,18 @@ export function AdminMediaForm({
   }
 
   return (
-    <ImageUploadForm action={action} className="grid gap-5" noValidate>
+    <ImageUploadForm
+      action={action}
+      className="grid gap-5"
+      noValidate
+      onUploadRejected={(message) => {
+        setLocalErrorToast({
+          id: `cover-upload-rejected-${Date.now()}`,
+          tone: "error",
+          text: message,
+        });
+      }}
+    >
       <AdminToasts clearParams={["created", "error", "updated"]} messages={toastMessages} />
 
       {values?.id ? <input type="hidden" name="mediaItemId" value={values.id} /> : null}

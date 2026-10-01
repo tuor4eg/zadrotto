@@ -1,4 +1,5 @@
 import { createHash, createHmac } from "node:crypto";
+import type { Readable } from "node:stream";
 
 import {
   buildMissingServiceConfigHealthCheck,
@@ -363,6 +364,33 @@ export async function uploadS3Object(input: {
   if (!response.ok) {
     throw new Error(`S3 upload failed with status ${response.status}.`);
   }
+}
+
+export async function uploadS3ObjectStream(input: {
+  objectKey: string;
+  body: ReadableStream<Uint8Array> | Readable;
+  contentLength: number;
+  contentType: string;
+  payloadHash: string;
+  env?: S3StorageEnv;
+}) {
+  const config = getS3StorageConfig(input.env);
+  if (!config) throw new Error("S3 storage is not configured.");
+  const url = getS3ObjectUrl(config, input.objectKey);
+  const amzDate = formatAmzDate(new Date());
+  const response = await fetch(url, {
+    method: "PUT",
+    headers: {
+      Authorization: buildS3AuthorizationHeader({ config, method: "PUT", url, amzDate, payloadHash: input.payloadHash, contentType: input.contentType }),
+      "Content-Length": String(input.contentLength),
+      "Content-Type": input.contentType,
+      "X-Amz-Content-Sha256": input.payloadHash,
+      "X-Amz-Date": amzDate,
+    },
+    body: input.body as BodyInit,
+    duplex: "half",
+  } as RequestInit & { duplex: "half" });
+  if (!response.ok) throw new Error(`S3 upload failed with status ${response.status}.`);
 }
 
 export async function deleteS3Object(input: {

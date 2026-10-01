@@ -8,6 +8,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { getSubmittedAuthorMediaItemsForAdmin } from "@/db/queries/media-items";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminFormErrorMessage } from "@/lib/common/app-error-messages";
+import { getAutomoderationReasonLabel } from "@/lib/automoderation/model";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { EmptyState, PageHeader } from "../admin-ui";
@@ -32,6 +33,24 @@ function formatDate(value: Date | null) {
     timeStyle: "short",
     timeZone: "Europe/Moscow",
   }).format(value);
+}
+
+function AutomoderationStatus({ item }: { item: SubmittedMediaItem }) {
+  if (!item.automoderationStatus) return null;
+  const pending = item.automoderationStatus === "pending" || item.automoderationStatus === "running";
+  const label = pending
+    ? "Автопроверка…"
+    : item.automoderationDecision === "AUTO_APPROVE" && item.automoderationMode === "shadow"
+      ? "Тень: можно одобрить"
+      : "Нужна проверка";
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      <Badge variant={pending ? "outline" : item.automoderationDecision === "AUTO_APPROVE" ? "positive" : "warning"}>{label}</Badge>
+      {!pending ? (item.automoderationReasonCodes ?? []).map((code) => (
+        <Badge key={code} variant="outline">{getAutomoderationReasonLabel(code)}</Badge>
+      )) : null}
+    </div>
+  );
 }
 
 function ReviewMediaCover({
@@ -173,6 +192,7 @@ export default async function AdminMediaReviewPage({
                         {item.originalTitle}
                       </p>
                     ) : null}
+                    <AutomoderationStatus item={item} />
                   </div>
                 </div>
 
@@ -247,6 +267,7 @@ export default async function AdminMediaReviewPage({
                           {item.description}
                         </p>
                       ) : null}
+                      <AutomoderationStatus item={item} />
                     </TD>
                     <TD className="min-w-0 overflow-hidden">
                       <Link

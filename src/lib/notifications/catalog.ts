@@ -5,6 +5,7 @@ export type NotificationRecipientType = (typeof NOTIFICATION_RECIPIENT_TYPES)[nu
 export const NOTIFICATION_TYPES = [
   "media.submitted",
   "media.approved",
+  "automoderation.approved",
   "franchise.submitted",
   "franchise.approved",
   "media-franchise.submitted",
@@ -31,6 +32,7 @@ export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number]
 const NOTIFICATION_TITLES: Record<NotificationType, string> = {
   "media.submitted": "Новая заявка на запись",
   "media.approved": "Заявка на запись одобрена",
+  "automoderation.approved": "Запись одобрена автоматически",
   "franchise.submitted": "Новая заявка на серию",
   "franchise.approved": "Заявка на серию одобрена",
   "media-franchise.submitted": "Новая заявка на связь с серией",
@@ -45,6 +47,7 @@ const NOTIFICATION_TITLES: Record<NotificationType, string> = {
 const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEntityType> = {
   "media.submitted": "media-item",
   "media.approved": "media-item",
+  "automoderation.approved": "media-item",
   "franchise.submitted": "franchise",
   "franchise.approved": "franchise",
   "media-franchise.submitted": "media-franchise",
@@ -69,6 +72,7 @@ export function getNotificationEntityType(type: NotificationType) {
 }
 
 export function getNotificationRecipientType(type: NotificationType): NotificationRecipientType {
+  if (type === "automoderation.approved") return "admin"
   return type.endsWith(".approved") ? "author" : "admin"
 }
 
@@ -111,6 +115,7 @@ export function getNotificationHref(input: {
     case "media.submitted":
       return `/admin/media/${input.entityId}/edit`
     case "media.approved":
+    case "automoderation.approved":
       return input.mediaItemCode ? `/media/${input.mediaItemCode}` : null
     case "franchise.submitted":
     case "media-franchise.submitted":

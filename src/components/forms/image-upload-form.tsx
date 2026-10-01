@@ -7,6 +7,7 @@ import { getImageUploadRejectedMessage } from "@/lib/common/app-error-messages"
 
 type ImageUploadFormProps = Omit<ComponentProps<"form">, "action"> & {
   action: (formData: FormData) => Promise<void> | void
+  onUploadRejected?: (message: string) => void
 }
 
 export async function runServerActionWithImageUploadGuard<T>(
@@ -23,7 +24,13 @@ export async function runServerActionWithImageUploadGuard<T>(
   }
 }
 
-export function ImageUploadForm({ action, children, onSubmit, ...props }: ImageUploadFormProps) {
+export function ImageUploadForm({
+  action,
+  children,
+  onSubmit,
+  onUploadRejected,
+  ...props
+}: ImageUploadFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   return (
@@ -37,6 +44,7 @@ export function ImageUploadForm({ action, children, onSubmit, ...props }: ImageU
           },
           (message) => {
             setError(message)
+            onUploadRejected?.(message)
           },
         )
       }}

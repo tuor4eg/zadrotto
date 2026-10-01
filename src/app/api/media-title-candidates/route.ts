@@ -113,6 +113,11 @@ export async function POST(request: Request) {
         provider: candidate.provider,
         externalId: candidate.externalId,
         mediaType: candidate.mediaType,
+        title: candidate.title,
+        originalTitle: candidate.originalTitle,
+        description: candidate.description,
+        releaseYear: candidate.releaseYear,
+        sourceUrl: candidate.sourcePageUrl,
       }),
     })),
   });

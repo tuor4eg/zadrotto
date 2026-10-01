@@ -12,7 +12,7 @@ import {
   type ReactNode,
 } from "react"
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter, useSearchParams } from "next/navigation"
 import { Bell, Trash2 } from "lucide-react"
 
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts"
@@ -36,41 +36,70 @@ type NotificationInboxValue = {
 
 const NotificationInboxContext = createContext<NotificationInboxValue | null>(null)
 
+function NotificationSearchParamsWatcher({ refresh }: { refresh: () => Promise<void> }) {
+  const searchParams = useSearchParams()
+  const searchParamsKey = searchParams.toString()
+
+  useEffect(() => {
+    void refresh()
+  }, [refresh, searchParamsKey])
+
+  return null
+}
+
 function getNotificationsApiBase(isAdminRoute: boolean) {
   return isAdminRoute ? "/api/admin/notifications" : "/api/notifications"
 }
 
 export function NotificationInboxProvider({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
   const pageUnavailable = usePageUnavailable()
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/")
   const [items, setItems] = useState<NotificationInboxItem[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
   const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([])
   const authenticatedRef = useRef<boolean | null>(null)
+  const itemsRef = useRef<NotificationInboxItem[]>([])
+  const markingReadIdsRef = useRef(new Set<number>())
   const requestPendingRef = useRef(false)
   const seenIdsRef = useRef(new Set<number>())
   const isBaselineRef = useRef(true)
   const audienceRef = useRef(isAdminRoute)
 
   const markRead = useCallback(async (id: number) => {
+    const item = itemsRef.current.find((candidate) => candidate.id === id)
+    if (!item || item.readAt || markingReadIdsRef.current.has(id)) return
+
+    markingReadIdsRef.current.add(id)
     const apiBase = getNotificationsApiBase(audienceRef.current)
     try {
-      await fetch(`${apiBase}/${id}/read`, {
+      const response = await fetch(`${apiBase}/${id}/read`, {
         cache: "no-store",
         credentials: "same-origin",
         method: "POST",
       })
+      if (!response.ok) return
     } catch {
       return
+    } finally {
+      markingReadIdsRef.current.delete(id)
     }
 
-    setItems((current) =>
-      current.map((item) => item.id === id && !item.readAt
-        ? { ...item, readAt: new Date().toISOString() }
-        : item),
+    const readAt = new Date().toISOString()
+    itemsRef.current = itemsRef.current.map((currentItem) =>
+      currentItem.id === id && !currentItem.readAt
+        ? { ...currentItem, readAt }
+        : currentItem,
     )
-    setUnreadCount((current) => Math.max(0, current - 1))
+    setItems((current) =>
+      current.map((currentItem) => currentItem.id === id && !currentItem.readAt
+        ? { ...currentItem, readAt }
+        : currentItem),
+    )
+    if (!item.statusLabel) {
+      setUnreadCount((current) => Math.max(0, current - 1))
+    }
   }, [])
 
   const checkNotifications = useCallback(async () => {
@@ -89,11 +118,13 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
       authenticatedRef.current = data.authenticated
 
       if (!data.authenticated) {
+        itemsRef.current = []
         setItems([])
         setUnreadCount(0)
         return
       }
 
+      itemsRef.current = data.items
       setItems(data.items)
       setUnreadCount(data.unreadCount)
 
@@ -125,16 +156,20 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
             tone: "success",
           })),
         )
+        if (audienceRef.current) {
+          router.refresh()
+        }
       }
     } catch {
       // The next visible poll will retry; notifications stay in the inbox.
     } finally {
       requestPendingRef.current = false
     }
-  }, [markRead, pageUnavailable])
+  }, [markRead, pageUnavailable, router])
 
   const deleteOne = useCallback(async (id: number) => {
     const apiBase = getNotificationsApiBase(audienceRef.current)
+    itemsRef.current = itemsRef.current.filter((item) => item.id !== id)
     setItems((current) => current.filter((item) => item.id !== id))
     try {
       await fetch(`${apiBase}/${id}`, {
@@ -150,6 +185,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
 
   const deleteAll = useCallback(async () => {
     const apiBase = getNotificationsApiBase(audienceRef.current)
+    itemsRef.current = []
     setItems([])
     setUnreadCount(0)
     try {
@@ -171,6 +207,7 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
       isBaselineRef.current = true
       seenIdsRef.current = new Set()
       setItems([])
+      itemsRef.current = []
       setUnreadCount(0)
       setToastMessages([])
     }
@@ -209,6 +246,9 @@ export function NotificationInboxProvider({ children }: { children: ReactNode })
     <NotificationInboxContext.Provider value={value}>
       {children}
       <Suspense fallback={null}>
+        <NotificationSearchParamsWatcher refresh={checkNotifications} />
+      </Suspense>
+      <Suspense fallback={null}>
         <ArchiveToasts messages={pageUnavailable ? [] : toastMessages} />
       </Suspense>
     </NotificationInboxContext.Provider>
@@ -226,6 +266,7 @@ export function NotificationBell({
   const [isOpen, setIsOpen] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const rootRef = useRef<HTMLDivElement>(null)
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   const triggerRef = useRef<HTMLButtonElement>(null)
 
   function closeInbox() {
@@ -256,6 +297,28 @@ export function NotificationBell({
       document.removeEventListener("keydown", handleKeyDown)
     }
   }, [isOpen])
+
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current
+    if (!isOpen || !scrollContainer) return
+
+    const observer = new IntersectionObserver((entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue
+        const id = Number((entry.target as HTMLElement).dataset.notificationId)
+        if (Number.isSafeInteger(id) && id > 0) {
+          observer.unobserve(entry.target)
+          void inbox?.markRead(id)
+        }
+      }
+    }, { root: scrollContainer, threshold: 0.75 })
+
+    for (const element of scrollContainer.querySelectorAll<HTMLElement>("[data-notification-id]")) {
+      observer.observe(element)
+    }
+
+    return () => observer.disconnect()
+  }, [inbox, isOpen])
 
   if (!inbox) return null
 
@@ -311,7 +374,10 @@ export function NotificationBell({
                   {confirmClear ? "Точно удалить все?" : "Удалить все"}
                 </button>
               </div>
-              <div className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto overscroll-contain">
+              <div
+                ref={scrollContainerRef}
+                className="max-h-[min(28rem,calc(100vh-8rem))] overflow-y-auto overscroll-contain"
+              >
                 {inbox.items.map((item) => {
               const isMuted = Boolean(item.readAt || item.statusLabel)
               const content = (
@@ -328,7 +394,11 @@ export function NotificationBell({
               }`
 
               return (
-                <div key={item.id} className="flex items-start gap-0.5">
+                <div
+                  key={item.id}
+                  data-notification-id={item.readAt ? undefined : item.id}
+                  className="flex items-start gap-0.5"
+                >
                   {item.href ? (
                     <Link
                       href={item.href}

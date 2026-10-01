@@ -235,12 +235,24 @@ describe("metadata candidate source", () => {
       provider: "anilist",
       externalId: " 100 ",
       mediaType: "anime",
+      title: "Cowboy Bebop",
+      originalTitle: "カウボーイビバップ",
+      description: "Космический вестерн.",
+      releaseYear: 1998,
+      sourceUrl: "https://anilist.co/anime/100",
     });
 
     assert.deepEqual(verifyMediaTitleSourceToken(token), {
       provider: "anilist",
       externalId: "100",
       mediaType: "anime",
+      fields: {
+        title: "Cowboy Bebop",
+        originalTitle: "カウボーイビバップ",
+        description: "Космический вестерн.",
+        releaseYear: 1998,
+      },
+      sourceUrl: "https://anilist.co/anime/100",
     });
   });
 
@@ -361,6 +373,17 @@ describe("metadata form mutation", () => {
         sourceExternalId: "100",
         sourceUrl: null,
         fetchedAt: null,
+        providerSnapshot: {
+          providerCode: "anilist",
+          externalId: "100",
+          mediaType: "anime",
+          title: "100",
+          originalTitle: null,
+          description: null,
+          releaseYear: null,
+          sourceUrl: null,
+          facts: {},
+        },
       },
     );
   });
@@ -442,6 +465,17 @@ describe("metadata form mutation", () => {
         sourceExternalId: "100",
         sourceUrl: "https://anilist.co/anime/100",
         fetchedAt: undefined,
+        providerSnapshot: {
+          providerCode: "anilist",
+          externalId: "100",
+          mediaType: "anime",
+          title: "100",
+          originalTitle: null,
+          description: null,
+          releaseYear: null,
+          sourceUrl: "https://anilist.co/anime/100",
+          facts,
+        },
       },
     );
   });

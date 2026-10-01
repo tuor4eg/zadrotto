@@ -2,11 +2,16 @@ IMAGE ?= ghcr.io/tuor4eg/zadrotto:latest
 MIGRATOR_IMAGE ?= ghcr.io/tuor4eg/zadrotto-migrator:latest
 JOBS_IMAGE ?= ghcr.io/tuor4eg/zadrotto-jobs:latest
 
-.PHONY: push clean-next deploy migrate seed-admin
+.PHONY: push clean-next clean-docker deploy migrate seed-admin
 
 # Drop local Next.js build/cache artifacts before building Docker images.
 clean-next:
 	npm run clean:next
+
+# Remove dangling images that are not referenced by any container.
+# Keep all containers, tagged images, volumes, and build cache.
+clean-docker:
+	docker image prune --force
 
 # Build images locally and push them to the registry.
 push: clean-next
@@ -22,11 +27,13 @@ push: clean-next
 	docker push $(IMAGE)
 	docker push $(MIGRATOR_IMAGE)
 	docker push $(JOBS_IMAGE)
+	$(MAKE) clean-docker
 
 # Pull fresh runtime images and restart the application with background workers.
 deploy:
 	docker compose pull app jobs-scheduler jobs-worker
 	docker compose up -d --remove-orphans app jobs-scheduler jobs-worker
+	$(MAKE) clean-docker
 
 # Pull the fresh migrator image and apply migrations.
 migrate:

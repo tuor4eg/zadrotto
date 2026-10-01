@@ -34,6 +34,7 @@ import { runInDomainEventTransaction, type DbTransaction } from "@/db/transactio
 import {
   authorMediaExperiences,
   authorMediaStatuses,
+  automoderationChecks,
   authors,
   contributionMediaItems,
   contributions,
@@ -43,6 +44,7 @@ import {
   mediaItemEditorialSummaries,
   mediaItemFranchises,
   mediaItemMetadata,
+  mediaItemProviderSnapshots,
   mediaItemTitleAliases,
   mediaCarriers,
   mediaItemRatingStats,
@@ -1297,6 +1299,9 @@ export async function submitAuthorMediaItemForPublication(input: {
     const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.nextStatus,
+      moderationRevision: input.nextStatus === "submitted"
+        ? sql`${mediaItems.moderationRevision} + 1`
+        : mediaItems.moderationRevision,
       submittedAt: input.nextStatus === "submitted" ? now : null,
       reviewedByAdminId: null,
       reviewedAt: null,
@@ -1314,6 +1319,7 @@ export async function submitAuthorMediaItemForPublication(input: {
       id: mediaItems.id,
       code: mediaItems.code,
       publicationStatus: mediaItems.publicationStatus,
+      moderationRevision: mediaItems.moderationRevision,
     });
 
     if (item?.publicationStatus === "published") {
@@ -1331,7 +1337,11 @@ export async function submitAuthorMediaItemForPublication(input: {
         actorAuthorId: input.authorId,
         aggregateId: String(item.id),
         aggregateType: "media-item",
-        payload: { authorId: input.authorId, mediaItemId: item.id },
+        payload: {
+          authorId: input.authorId,
+          mediaItemId: item.id,
+          moderationRevision: item.moderationRevision,
+        },
         type: "media.submitted",
       });
     }
@@ -1426,9 +1436,18 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       authorId: authors.id,
       authorName: authors.name,
       authorCode: authors.code,
+      automoderationStatus: automoderationChecks.status,
+      automoderationDecision: automoderationChecks.decision,
+      automoderationReasonCodes: automoderationChecks.reasonCodes,
+      automoderationMode: automoderationChecks.mode,
     })
     .from(mediaItems)
     .innerJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+    .leftJoin(automoderationChecks, and(
+      eq(automoderationChecks.subjectType, "media-item"),
+      eq(automoderationChecks.subjectKey, sql`${mediaItems.id}::text`),
+      eq(automoderationChecks.subjectRevision, mediaItems.moderationRevision),
+    ))
     .where(eq(mediaItems.publicationStatus, "submitted"))
     .orderBy(desc(mediaItems.submittedAt), desc(mediaItems.updatedAt));
 
@@ -1529,6 +1548,8 @@ export async function reviewSubmittedAuthorMediaItem(input: {
       );
 
     if (item.publicationStatus === "published") {
+      await tx.delete(mediaItemProviderSnapshots)
+        .where(eq(mediaItemProviderSnapshots.mediaItemId, item.id));
       await appendEvent({
         actorAuthorId: null,
         aggregateId: String(item.id),

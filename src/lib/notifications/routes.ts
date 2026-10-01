@@ -5,12 +5,13 @@ import {
   type NotificationTransportCode,
 } from "@/lib/notifications/transports/catalog"
 
-export const EXTERNAL_NOTIFICATION_ROUTE_CODES = ["submission_created", "bug_report_created"] as const
+export const EXTERNAL_NOTIFICATION_ROUTE_CODES = ["submission_created", "bug_report_created", "auto_moderation_approved"] as const
 
 export type ExternalNotificationRouteCode = (typeof EXTERNAL_NOTIFICATION_ROUTE_CODES)[number]
 
 export const SUBMISSION_CREATED_ROUTE_CODE = "submission_created" satisfies ExternalNotificationRouteCode
 export const BUG_REPORT_CREATED_ROUTE_CODE = "bug_report_created" satisfies ExternalNotificationRouteCode
+export const AUTO_MODERATION_APPROVED_ROUTE_CODE = "auto_moderation_approved" satisfies ExternalNotificationRouteCode
 
 export const SUBMISSION_CREATED_NOTIFICATION_TYPES = [
   "media.submitted",
@@ -32,6 +33,12 @@ export const EXTERNAL_NOTIFICATION_ROUTES = [
     description: "Пользователь сообщил об ошибке.",
     label: "Новый багрепорт",
     notificationTypes: ["bug-report.created"],
+  },
+  {
+    code: AUTO_MODERATION_APPROVED_ROUTE_CODE,
+    description: "Запись автоматически прошла модерацию и опубликована.",
+    label: "Автоматическое одобрение",
+    notificationTypes: ["automoderation.approved"],
   },
 ] as const
 
@@ -67,6 +74,9 @@ export function parseExternalNotificationRouteForm(formData: FormData) {
       ? [TELEGRAM_TRANSPORT_CODE]
       : [],
     bug_report_created: formData.get("bug_report_created_telegram") === "1"
+      ? [TELEGRAM_TRANSPORT_CODE]
+      : [],
+    auto_moderation_approved: formData.get("auto_moderation_approved_telegram") === "1"
       ? [TELEGRAM_TRANSPORT_CODE]
       : [],
   }

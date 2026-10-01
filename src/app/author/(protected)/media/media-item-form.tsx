@@ -224,7 +224,7 @@ export function MediaItemForm({
           const result = await action(formData)
           return { error: result?.error ?? null }
         },
-        (message) => ({ error: message }),
+        () => ({ error: "cover-too-large" }),
       )
     },
     { error: null },

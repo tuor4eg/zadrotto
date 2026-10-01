@@ -31,6 +31,9 @@ export async function getNotificationTransportRouteState() {
   }
 
   return {
+    auto_moderation_approved: {
+      telegram: (transportCodesByRoute.get("auto_moderation_approved") ?? []).includes("telegram"),
+    },
     submission_created: {
       telegram: (transportCodesByRoute.get("submission_created") ?? []).includes("telegram"),
     },

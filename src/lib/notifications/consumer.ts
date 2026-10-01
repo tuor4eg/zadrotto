@@ -25,6 +25,7 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
   eventTypes: [
     "media.submitted",
     "media.approved",
+    "automoderation.approved",
     "franchise.submitted",
     "franchise.approved",
     "media-franchise.submitted",

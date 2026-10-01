@@ -14,6 +14,17 @@ export type MediaMetadataFormMutation =
       sourceExternalId: string;
       sourceUrl: string | null;
       fetchedAt: Date | null | undefined;
+      providerSnapshot: {
+        providerCode: string;
+        externalId: string;
+        mediaType: string;
+        title: string;
+        originalTitle: string | null;
+        description: string | null;
+        releaseYear: number | null;
+        sourceUrl: string | null;
+        facts: Record<string, unknown>;
+      };
     };
 
 export function resolveMediaMetadataFormMutation(input: {
@@ -70,6 +81,17 @@ export function resolveMediaMetadataFormMutation(input: {
       sourceExternalId: metadata.externalId,
       sourceUrl: metadata.sourceUrl,
       fetchedAt: undefined,
+      providerSnapshot: {
+        providerCode: metadata.provider,
+        externalId: metadata.externalId,
+        mediaType: metadata.mediaType,
+        title: selectedSource?.fields.title ?? metadata.externalId,
+        originalTitle: selectedSource?.fields.originalTitle ?? null,
+        description: selectedSource?.fields.description ?? null,
+        releaseYear: selectedSource?.fields.releaseYear ?? null,
+        sourceUrl: metadata.sourceUrl ?? selectedSource?.sourceUrl ?? null,
+        facts: metadata.facts,
+      },
     };
   }
 
@@ -81,6 +103,17 @@ export function resolveMediaMetadataFormMutation(input: {
       sourceExternalId: selectedSource.externalId,
       sourceUrl: null,
       fetchedAt: null,
+      providerSnapshot: {
+        providerCode: selectedSource.provider,
+        externalId: selectedSource.externalId,
+        mediaType: selectedSource.mediaType,
+        title: selectedSource.fields.title,
+        originalTitle: selectedSource.fields.originalTitle,
+        description: selectedSource.fields.description,
+        releaseYear: selectedSource.fields.releaseYear,
+        sourceUrl: selectedSource.sourceUrl,
+        facts: {},
+      },
     };
   }
 

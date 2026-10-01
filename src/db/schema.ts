@@ -172,6 +172,8 @@ export const archiveSettings = pgTable(
     recentlyViewedTtlDays: integer("recently_viewed_ttl_days").default(90).notNull(),
     topArchiveMinAverageScore: integer("top_archive_min_average_score").default(0).notNull(),
     topArchiveMinRatingsCount: integer("top_archive_min_ratings_count").default(1).notNull(),
+    exportRetentionDays: integer("export_retention_days").default(7).notNull(),
+    mediaAutoModerationMode: text("media_auto_moderation_mode").default("off").notNull(),
     updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, {
       onDelete: "set null",
     }),
@@ -196,6 +198,8 @@ export const archiveSettings = pgTable(
     check("archive_settings_recently_viewed_ttl_days_check", sql`${table.recentlyViewedTtlDays} between 1 and 365`),
     check("archive_settings_top_archive_min_average_score_check", sql`${table.topArchiveMinAverageScore} between 0 and 10`),
     check("archive_settings_top_archive_min_ratings_count_check", sql`${table.topArchiveMinRatingsCount} between 0 and 1000`),
+    check("archive_settings_export_retention_days_check", sql`${table.exportRetentionDays} between 1 and 90`),
+    check("archive_settings_media_auto_moderation_mode_check", sql`${table.mediaAutoModerationMode} in ('off', 'shadow', 'enforce')`),
   ],
 );
 
@@ -935,6 +939,9 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_editorial_summary_active_unique")
       .on(sql`(${table.payload}->>'mediaItemId')`)
       .where(sql`${table.type} = 'media.editorial-summary-generate' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_automoderation_active_unique")
+      .on(sql`(${table.payload}->>'checkId')`)
+      .where(sql`${table.type} = 'moderation.auto-check' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
     check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
@@ -943,6 +950,36 @@ export const jobRuns = pgTable(
     check("job_runs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
     check("job_runs_retry_base_seconds_check", sql`${table.retryBaseSeconds} >= 1`),
     check("job_runs_retry_max_seconds_check", sql`${table.retryMaxSeconds} >= ${table.retryBaseSeconds}`),
+  ],
+);
+
+export const adminExports = pgTable(
+  "admin_exports",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    createdByAdminId: integer("created_by_admin_id").notNull().references(() => adminUsers.id, { onDelete: "restrict" }),
+    entityType: text("entity_type").notNull(),
+    status: text("status").default("queued").notNull(),
+    fields: jsonb("fields").$type<string[]>().notNull(),
+    filters: jsonb("filters").$type<Record<string, unknown>>().default({}).notNull(),
+    sort: text("sort").notNull(),
+    rowCount: integer("row_count"),
+    fileSize: integer("file_size"),
+    objectKey: text("object_key"),
+    errorMessage: text("error_message"),
+    expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+    startedAt: timestamp("started_at", { withTimezone: true }),
+    finishedAt: timestamp("finished_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    index("admin_exports_created_at_idx").on(table.createdAt),
+    index("admin_exports_owner_created_idx").on(table.createdByAdminId, table.createdAt),
+    index("admin_exports_status_expires_idx").on(table.status, table.expiresAt),
+    check("admin_exports_entity_type_check", sql`${table.entityType} in ('media_items', 'series')`),
+    check("admin_exports_status_check", sql`${table.status} in ('queued', 'running', 'ready', 'failed', 'expired')`),
+    check("admin_exports_row_count_check", sql`${table.rowCount} is null or ${table.rowCount} >= 0`),
+    check("admin_exports_file_size_check", sql`${table.fileSize} is null or ${table.fileSize} >= 0`),
   ],
 );
 
@@ -998,6 +1035,49 @@ export const domainEventConsumptions = pgTable(
   (table) => [
     primaryKey({ columns: [table.eventId, table.consumerKey] }),
     check("domain_event_consumptions_consumer_key_check", sql`btrim(${table.consumerKey}) <> ''`),
+  ],
+);
+
+export const automoderationChecks = pgTable(
+  "automoderation_checks",
+  {
+    id: serial("id").primaryKey(),
+    sourceEventId: uuid("source_event_id")
+      .notNull()
+      .references(() => domainEvents.id, { onDelete: "cascade" }),
+    subjectType: text("subject_type").notNull(),
+    subjectKey: text("subject_key").notNull(),
+    subjectRevision: integer("subject_revision").notNull(),
+    policyCode: text("policy_code").notNull(),
+    policyVersion: integer("policy_version").notNull(),
+    mode: text("mode").notNull(),
+    status: text("status").default("pending").notNull(),
+    decision: text("decision"),
+    reasonCodes: jsonb("reason_codes").$type<string[]>().default([]).notNull(),
+    inputFingerprint: text("input_fingerprint").notNull(),
+    checkResults: jsonb("check_results").$type<Record<string, unknown>>().default({}).notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+    autoApprovedAt: timestamp("auto_approved_at", { withTimezone: true }),
+    ...timestamps(),
+  },
+  (table) => [
+    uniqueIndex("automoderation_checks_source_event_unique").on(table.sourceEventId),
+    uniqueIndex("automoderation_checks_subject_revision_unique").on(
+      table.subjectType,
+      table.subjectKey,
+      table.subjectRevision,
+    ),
+    index("automoderation_checks_pending_idx")
+      .on(table.status, table.createdAt)
+      .where(sql`${table.status} in ('pending', 'running')`),
+    check("automoderation_checks_subject_type_check", sql`btrim(${table.subjectType}) <> ''`),
+    check("automoderation_checks_subject_key_check", sql`btrim(${table.subjectKey}) <> ''`),
+    check("automoderation_checks_subject_revision_check", sql`${table.subjectRevision} >= 1`),
+    check("automoderation_checks_policy_code_check", sql`btrim(${table.policyCode}) <> ''`),
+    check("automoderation_checks_policy_version_check", sql`${table.policyVersion} >= 1`),
+    check("automoderation_checks_mode_check", sql`${table.mode} in ('shadow', 'enforce')`),
+    check("automoderation_checks_status_check", sql`${table.status} in ('pending', 'running', 'completed', 'stale')`),
+    check("automoderation_checks_decision_check", sql`${table.decision} is null or ${table.decision} in ('AUTO_APPROVE', 'NEEDS_REVIEW')`),
   ],
 );
 
@@ -1292,6 +1372,7 @@ export const mediaItems = pgTable(
     publicationStatus: publicationStatusEnum("publication_status")
       .default(PUBLISHED_PUBLICATION_STATUS)
       .notNull(),
+    moderationRevision: integer("moderation_revision").default(0).notNull(),
     ...timestamps(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     reviewedByAdminId: integer("reviewed_by_admin_id").references(() => adminUsers.id),
@@ -1314,6 +1395,7 @@ export const mediaItems = pgTable(
       "media_items_metadata_issue_code_check",
       sql`${table.metadataIssueCode} is null or ${table.metadataIssueCode} in (${sql.join(Object.keys(METADATA_ISSUE_LABELS).map((code) => sql`${code}`), sql`, `)})`,
     ),
+    check("media_items_moderation_revision_check", sql`${table.moderationRevision} >= 0`),
     uniqueIndex("media_items_author_creation_request_id_unique_idx").on(
       table.createdByAuthorId,
       table.authorCreationRequestId,
@@ -1473,6 +1555,36 @@ export const mediaItemMetadata = pgTable("media_item_metadata", {
   fetchedAt: timestamp("fetched_at", { withTimezone: true }),
   ...timestamps(),
 });
+
+export const mediaItemProviderSnapshots = pgTable(
+  "media_item_provider_snapshots",
+  {
+    mediaItemId: integer("media_item_id")
+      .primaryKey()
+      .references(() => mediaItems.id, { onDelete: "cascade" }),
+    providerCode: text("provider_code").notNull(),
+    externalId: text("external_id").notNull(),
+    mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+    title: text("title").notNull(),
+    originalTitle: text("original_title"),
+    description: text("description"),
+    releaseYear: integer("release_year"),
+    sourceUrl: text("source_url"),
+    facts: jsonb("facts").$type<Record<string, unknown>>().default(sql`'{}'::jsonb`).notNull(),
+    payloadHash: text("payload_hash").notNull(),
+    fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(),
+    ...timestamps(),
+  },
+  (table) => [
+    index("media_item_provider_snapshots_provider_external_idx").on(
+      table.providerCode,
+      table.externalId,
+    ),
+    check("media_item_provider_snapshots_provider_check", sql`btrim(${table.providerCode}) <> ''`),
+    check("media_item_provider_snapshots_external_id_check", sql`btrim(${table.externalId}) <> ''`),
+    check("media_item_provider_snapshots_title_check", sql`btrim(${table.title}) <> ''`),
+  ],
+);
 
 export const mediaItemEditorialSummaries = pgTable("media_item_editorial_summaries", {
   mediaItemId: integer("media_item_id").primaryKey()
