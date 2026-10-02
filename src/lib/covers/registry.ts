@@ -528,7 +528,7 @@ function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
     }),
   );
 
-  if (Object.keys(facts).length === 0) {
+  if (Object.keys(facts).length === 0 && !metadata.fields) {
     return null;
   }
 

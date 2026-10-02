@@ -27,7 +27,7 @@ import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
 import { getEditorialSummary, getEditorialSummaryJob, getEditorialSummarySource } from "@/db/queries/editorial-summaries";
-import { getEditorialSummarySourceHash, parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
+import { getEditorialSummarySourceHash, hasRussianEditorialDescription, parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
 import { generateEditorialSummaryAction, saveEditorialSummaryAction, setEditorialSummaryLockAction } from "./editorial-summary-actions";
 import { Label, Textarea } from "@/components/ui/form";
 import { getMediaItemCollectionReferences } from "@/db/queries/editorial-collections";
@@ -46,6 +46,7 @@ type EditAdminMediaPageProps = {
     summaryError?: string;
     summaryQueued?: string;
     summarySaved?: string;
+    summarySkipped?: string;
   }>;
 };
 
@@ -162,6 +163,7 @@ export default async function EditAdminMediaPage({
   const summaryPrompt = editorialJob ? parseEditorialSummaryOptions(editorialJob.options).prompt : null;
   const summaryStale = Boolean(editorialSummary && !editorialSummary.locked && summaryPrompt && editorialSource &&
     editorialSummary.sourceHash !== getEditorialSummarySourceHash(editorialSource, summaryPrompt));
+  const hasRussianDescription = hasRussianEditorialDescription(editorialSource?.description);
 
   const isPublished = item.publicationStatus === "published";
   const successMessage =
@@ -227,6 +229,7 @@ export default async function EditAdminMediaPage({
             {query.summaryError ? <Alert variant="destructive">Не удалось выполнить действие со справкой.</Alert> : null}
             {query.summaryQueued ? <Alert>Генерация поставлена в очередь.</Alert> : null}
             {query.summarySaved ? <Alert>Справка сохранена и защищена от автозамены.</Alert> : null}
+            {query.summarySkipped ? <Alert>Русскоязычное исходное описание сохранено без изменений.</Alert> : null}
             <div className="text-sm text-stone-600">
               {editorialSummary?.locked ? "Защищена от автозамены" : summaryStale ? "Устарела — ожидает обновления" : editorialSummary?.status === "unusable" ? "AI не подготовил справку" : editorialSummary?.summary ? "Актуальна" : "Ещё не создана"}
               {editorialSummary?.generatedAt ? ` · Последняя генерация: ${editorialSummary.generatedAt.toLocaleString("ru-RU")}` : ""}
@@ -241,7 +244,7 @@ export default async function EditAdminMediaPage({
             <div className="flex flex-wrap gap-2">
               <form action={generateEditorialSummaryAction}>
                 <input type="hidden" name="mediaItemId" value={mediaItemId} />
-                <Button type="submit" variant="outline" disabled={!editorialJob || !canGenerateSummary || Boolean(editorialSummary?.locked)}>
+                <Button type="submit" variant="outline" disabled={!editorialJob || !canGenerateSummary || Boolean(editorialSummary?.locked) || hasRussianDescription}>
                   {editorialSummary?.summary ? "Перегенерировать" : "Сгенерировать"}
                 </Button>
               </form>
@@ -251,7 +254,8 @@ export default async function EditAdminMediaPage({
                 <Button type="submit" variant="outline">{editorialSummary.locked ? "Разблокировать" : "Защитить"}</Button>
               </form> : null}
             </div>
-            {!editorialJob || !canGenerateSummary ? <p className="text-xs text-stone-500">Для генерации настройте и включите AI-сценарий и задачу в админке.</p> : null}
+              {!editorialJob || !canGenerateSummary ? <p className="text-xs text-stone-500">Для генерации настройте и включите AI-сценарий и задачу в админке.</p> : null}
+              {hasRussianDescription ? <p className="text-xs text-stone-500">Русскоязычное исходное описание не заменяется AI-справкой.</p> : null}
           </CardContent>
         </Card>
       </section>

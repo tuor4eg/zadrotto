@@ -1,8 +1,10 @@
 import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
-import { fetchSearchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
+import { fetchJson, fetchSearchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
+import { normalizeSearchText } from "@/lib/search/normalize";
 
 type AniListMedia = {
   id?: number;
+  idMal?: number | null;
   title?: {
     english?: string | null;
     romaji?: string | null;
@@ -41,10 +43,24 @@ type AniListResponse = {
   };
 };
 
+type ShikimoriResponse = {
+  data?: {
+    animes?: Array<{
+      description?: string | null;
+      malId?: number | string | null;
+      name?: string | null;
+      russian?: string | null;
+    }> | null;
+  };
+  errors?: unknown;
+};
+
 const ANILIST_URL = new URL("https://graphql.anilist.co");
+const SHIKIMORI_URL = new URL("https://shikimori.io/api/graphql");
 
 const ANILIST_MEDIA_FIELDS = `
   id
+  idMal
   title {
     english
     romaji
@@ -138,6 +154,105 @@ async function getAniListAnime(id: number) {
   return response?.data?.Media ?? null;
 }
 
+async function getAniListAnimeByMalId(malId: number) {
+  const response = await queryAniList(
+    `query AnimeByMalId($idMal: Int!) {
+      Media(idMal: $idMal, type: ANIME) {
+        ${ANILIST_MEDIA_FIELDS}
+      }
+    }`,
+    { idMal: malId },
+  );
+
+  return response?.data?.Media ?? null;
+}
+
+async function findShikimoriMalId(query: string, candidateLimit: number) {
+  try {
+    const response = await fetchJson<ShikimoriResponse>(SHIKIMORI_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: `query SearchAnime($search: String!, $limit: Int!) {
+          animes(search: $search, limit: $limit) {
+            malId
+            name
+            russian
+          }
+        }`,
+        variables: { search: query, limit: candidateLimit },
+      }),
+    });
+
+    if (!response || response.errors || !Array.isArray(response.data?.animes)) {
+      return null;
+    }
+
+    const normalizedQuery = normalizeSearchText(query);
+    const match = response.data.animes.find((anime) =>
+      [anime?.name, anime?.russian].some(
+        (title) => title && normalizeSearchText(title) === normalizedQuery,
+      ),
+    );
+    const malId = Number(match?.malId);
+
+    return Number.isInteger(malId) && malId > 0 ? malId : null;
+  } catch {
+    return null;
+  }
+}
+
+async function searchAniListAnimeViaShikimori(query: string, candidateLimit: number) {
+  const malId = await findShikimoriMalId(query, candidateLimit);
+
+  if (!malId) return [];
+
+  try {
+    const media = await getAniListAnimeByMalId(malId);
+    return media?.id ? [media] : [];
+  } catch {
+    return [];
+  }
+}
+
+async function getShikimoriAnime(malId: number) {
+  try {
+    const response = await fetchJson<ShikimoriResponse>(SHIKIMORI_URL, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        query: `query AnimeByMalId($ids: String!) {
+          animes(ids: $ids) {
+            malId
+            russian
+            description
+          }
+        }`,
+        variables: { ids: String(malId) },
+      }),
+    });
+
+    if (!response || response.errors || !Array.isArray(response.data?.animes)) {
+      return null;
+    }
+
+    const anime = response.data.animes.find((item) => String(item?.malId) === String(malId));
+
+    if (!anime) return null;
+
+    return {
+      description: anime.description?.trim() || null,
+      russian: anime.russian?.trim() || null,
+    };
+  } catch {
+    return null;
+  }
+}
+
 export const anilistProvider: MediaProvider = {
   code: "anilist",
   mediaTypes: ["anime"],
@@ -148,7 +263,10 @@ export const anilistProvider: MediaProvider = {
       return [];
     }
 
-    const media = await searchAniListAnime(query, options.candidateLimit);
+    const anilistMedia = await searchAniListAnime(query, options.candidateLimit);
+    const media = anilistMedia.length > 0
+      ? anilistMedia
+      : await searchAniListAnimeViaShikimori(query, options.candidateLimit);
 
     return media
       .filter((item) => item.id)
@@ -171,7 +289,7 @@ export const anilistProvider: MediaProvider = {
         };
       });
   },
-  async getTitleMetadata(input) {
+  async getTitleMetadata(input, options) {
     const id = Number(input.externalId);
 
     if (!Number.isInteger(id) || id <= 0) {
@@ -183,6 +301,11 @@ export const anilistProvider: MediaProvider = {
     if (!media?.id) {
       return null;
     }
+
+    const title = getAniListTitle(media, input.externalId);
+    const shikimori = options.enrichTitleFields && Number.isInteger(media.idMal) && media.idMal! > 0
+      ? await getShikimoriAnime(media.idMal!)
+      : null;
 
     return {
       provider: "anilist",
@@ -196,6 +319,15 @@ export const anilistProvider: MediaProvider = {
         genres: getUniqueAniListNames(media.genres),
         studios: getAniListStudioNames(media),
       },
+      ...(options.enrichTitleFields
+        ? { fields: {
+            aliases: shikimori?.russian ? [shikimori.russian] : [],
+            title,
+            originalTitle: getAniListOriginalTitle(media, title),
+            description: shikimori?.description ?? media.description ?? null,
+            releaseYear: getAniListReleaseYear(media),
+          } }
+        : {}),
     };
   },
   async getCoverCandidatesByTitleSource(input) {

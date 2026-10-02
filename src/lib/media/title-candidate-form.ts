@@ -1,4 +1,5 @@
 import type { MediaTitleCandidate, MediaTitleMetadata } from "@/lib/covers/types";
+import { normalizeMediaItemTitleAliases } from "@/lib/media/title-aliases";
 
 type MediaTitleFormFields = {
   description: string;
@@ -55,4 +56,25 @@ export function getMediaTitleMetadataFormFields(
     releaseYear: current.releaseYear.trim() ? current.releaseYear : metadataFields.releaseYear,
     description: current.description.trim() ? current.description : metadataFields.description,
   };
+}
+
+export function mergeMediaTitleMetadataAliases(
+  current: readonly string[],
+  incoming: readonly string[] | undefined,
+  limit: number,
+  context: { originalTitle: string | null; title: string },
+) {
+  let merged = normalizeMediaItemTitleAliases(current, context).slice(0, limit);
+
+  for (const alias of incoming ?? []) {
+    const withAlias = normalizeMediaItemTitleAliases([...merged, alias], context);
+
+    if (withAlias.length === merged.length) continue;
+
+    merged = merged.length < limit
+      ? withAlias
+      : normalizeMediaItemTitleAliases([...merged.slice(0, -1), alias], context);
+  }
+
+  return merged;
 }

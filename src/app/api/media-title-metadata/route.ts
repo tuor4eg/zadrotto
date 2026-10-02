@@ -19,6 +19,7 @@ import { createMediaMetadataCandidateToken } from "@/lib/media/metadata-candidat
 import { isMediaTypeCode } from "@/lib/media/types";
 
 type MediaTitleMetadataRequestBody = {
+  enrichTitleFields?: unknown;
   externalId?: unknown;
   mediaType?: unknown;
   provider?: unknown;
@@ -94,6 +95,7 @@ export async function POST(request: Request) {
       requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
       providerCredentials,
       beforeProviderSearch: providerRateLimiter.canSearchProvider,
+      enrichTitleFields: body.enrichTitleFields === true,
     },
     providerSettings,
   );

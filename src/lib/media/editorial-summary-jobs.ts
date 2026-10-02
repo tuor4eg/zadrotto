@@ -5,7 +5,7 @@ import { generateAiObject } from "@/lib/ai/service";
 import { getEnabledAiScenarioProfile } from "@/db/queries/ai-scenarios";
 import { checkFixedWindowRateLimits } from "@/lib/rate-limits/redis";
 import { JobError } from "@/lib/jobs/types";
-import { EDITORIAL_SUMMARY_SCENARIO_KEY, EDITORIAL_SUMMARY_SCHEMA, EDITORIAL_SUMMARY_SYSTEM_PROMPT, getEditorialSummarySourceHash, isEditorialSummaryResponse, isEditorialSummaryStale, nextEditorialSummaryAvailableAt, parseEditorialSummaryOptions } from "./editorial-summary";
+import { EDITORIAL_SUMMARY_SCENARIO_KEY, EDITORIAL_SUMMARY_SCHEMA, EDITORIAL_SUMMARY_SYSTEM_PROMPT, getEditorialSummarySourceHash, hasRussianEditorialDescription, isEditorialSummaryResponse, isEditorialSummaryStale, nextEditorialSummaryAvailableAt, parseEditorialSummaryOptions } from "./editorial-summary";
 import { runEditorialSummaryFlow } from "./editorial-summary-flow";
 
 export async function sweepEditorialSummaries() {
@@ -25,6 +25,7 @@ export async function sweepEditorialSummaries() {
     for (const item of batch) {
       afterId = item.id;
       if (item.locked) continue;
+      if (hasRussianEditorialDescription(item.description)) continue;
       const hash = getEditorialSummarySourceHash(item, prompt);
       if (!isEditorialSummaryStale({ locked: false, sourceHash: item.sourceHash, currentHash: hash })) continue;
       const availableAt = nextEditorialSummaryAvailableAt(lastAvailableAt, new Date());
@@ -43,6 +44,7 @@ export async function generateEditorialSummary(mediaItemId: number, force = fals
   const [job, item] = await Promise.all([getEditorialSummaryJob(), getEditorialSummarySource(mediaItemId)]);
   if (!job) throw new JobError("configuration", "Задача справок не настроена.", { retryable: false });
   if (!item || item.locked) return;
+  if (hasRussianEditorialDescription(item.description)) return;
   const { prompt } = parseEditorialSummaryOptions(job.options);
   const sourceHash = getEditorialSummarySourceHash(item, prompt);
   if (!force && !isEditorialSummaryStale({ locked: false, sourceHash: item.sourceHash, currentHash: sourceHash })) return;

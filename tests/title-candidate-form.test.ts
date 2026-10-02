@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-import { getMediaTitleCandidateFormFields } from "../src/lib/media/title-candidate-form";
+import {
+  getMediaTitleCandidateFormFields,
+  mergeMediaTitleMetadataAliases,
+} from "../src/lib/media/title-candidate-form";
 import type { MediaTitleCandidate } from "../src/lib/covers/types";
 
 const candidate: MediaTitleCandidate = {
@@ -114,5 +117,35 @@ describe("explicit provider title search applies candidate fields even when edit
         /getMediaTitleMetadataFormFields\(\s*result\.metadata\.fields,[\s\S]*?false,\s*\)/,
       );
     }
+  });
+});
+
+describe("mergeMediaTitleMetadataAliases", () => {
+  const context = { title: "Attack on Titan", originalTitle: "Shingeki no Kyojin" };
+
+  it("adds a unique Russian alias without removing existing aliases", () => {
+    assert.deepEqual(
+      mergeMediaTitleMetadataAliases(["進撃の巨人"], ["Атака титанов"], 3, context),
+      ["進撃の巨人", "Атака титанов"],
+    );
+  });
+
+  it("does not add aliases duplicating canonical or existing titles", () => {
+    assert.deepEqual(
+      mergeMediaTitleMetadataAliases(
+        ["Атака титанов"],
+        [" атака титанов ", "Attack on Titan"],
+        3,
+        context,
+      ),
+      ["Атака титанов"],
+    );
+  });
+
+  it("replaces the last alias when the limit is reached", () => {
+    assert.deepEqual(
+      mergeMediaTitleMetadataAliases(["Первый", "Второй", "Третий"], ["Русский"], 3, context),
+      ["Первый", "Второй", "Русский"],
+    );
   });
 });

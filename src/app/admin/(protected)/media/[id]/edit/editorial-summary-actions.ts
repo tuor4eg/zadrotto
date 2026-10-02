@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { enqueueEditorialSummaryRun, getEditorialSummarySource, saveManualEditorialSummary, setEditorialSummaryLocked } from "@/db/queries/editorial-summaries";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { hasRussianEditorialDescription } from "@/lib/media/editorial-summary";
 
 function readId(formData: FormData) {
   const id = Number(formData.get("mediaItemId"));
@@ -20,6 +21,7 @@ export async function generateEditorialSummaryAction(formData: FormData) {
   const mediaItemId = readId(formData);
   const item = await getEditorialSummarySource(mediaItemId);
   if (!item || item.locked) redirect(`${path(mediaItemId)}?summaryError=locked`);
+  if (hasRussianEditorialDescription(item.description)) redirect(`${path(mediaItemId)}?summarySkipped=1`);
   try {
     const result = await enqueueEditorialSummaryRun({ mediaItemId, source: "manual", createdByAdminId: admin.id, force: true });
     if (result.created) await logActivity({ action: "media.editorial-summary-requested", actorType: "admin", adminUserId: admin.id, entityType: "media-item", entityId: mediaItemId, entityLabel: item.title, message: "Генерация справки поставлена в очередь." });

@@ -7,10 +7,12 @@ import {
   EDITORIAL_SUMMARY_SYSTEM_PROMPT,
   getEditorialSummarySourceHash,
   getGeneratedEditorialSummaryWrite,
+  hasRussianEditorialDescription,
   isEditorialSummaryResponse,
   isEditorialSummaryStale,
   nextEditorialSummaryAvailableAt,
   prepareManualEditorialSummary,
+  resolvePublicMediaDescription,
   type EditorialSummarySource,
 } from "../src/lib/media/editorial-summary";
 import { runEditorialSummaryFlow } from "../src/lib/media/editorial-summary-flow";
@@ -46,11 +48,30 @@ test("production jobs worker receives AI credentials and Redis for summary gener
   assert.match(worker, /REDIS_URL: \$\{REDIS_URL:-redis:\/\/redis:6379\}/);
 });
 
-test("editorial summary prompt preserves a good source description", () => {
-  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /если оно уже является ясной, достоверной русскоязычной справкой/);
-  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /сохрани его без изменений — верни usable=false/);
+test("editorial summary prompt preserves every Russian source description", () => {
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Если исходное описание написано по-русски, не переписывай и не улучшай его/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /только тогда, когда исходное описание отсутствует или написано не по-русски/);
   assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /Редакционная инструкция задаёт только тон и стиль/);
-  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /не может отменить правило сохранения качественного исходного описания/);
+  assert.match(EDITORIAL_SUMMARY_SYSTEM_PROMPT, /не может отменить правило сохранения русскоязычного исходного описания/);
+});
+
+test("Russian source descriptions bypass AI and win over an older generated summary", async () => {
+  assert.equal(hasRussianEditorialDescription("Короткое описание с English названием."), true);
+  assert.equal(hasRussianEditorialDescription("An English description with названием."), false);
+  assert.equal(hasRussianEditorialDescription(null), false);
+  assert.equal(resolvePublicMediaDescription({ description: source.description, editorialSummary: "Старая AI-справка." }), source.description);
+  assert.equal(resolvePublicMediaDescription({ description: "English source.", editorialSummary: "Русская AI-справка." }), "Русская AI-справка.");
+
+  let generated = false;
+  const result = await runEditorialSummaryFlow({
+    mediaItemId: 7,
+    source: { ...source, locked: false, sourceHash: null },
+    prompt: "Редакционная инструкция",
+    generate: async () => { generated = true; return { value: { description, usable: true }, modelId: "test" }; },
+    save: async () => true,
+  });
+  assert.equal(result, "source-russian");
+  assert.equal(generated, false);
 });
 
 test("batch generation is spaced across scheduled slots", () => {
@@ -95,16 +116,17 @@ test("structured output accepts short Russian prose and rejects malformed answer
 test("generation saves usable and unusable results; locked and current records skip AI", async () => {
   const saved: Array<{ description: string | null; sourceHash: string; modelId: string }> = [];
   let calls = 0;
+  const generationSource = { ...source, description: "An English source description." };
   const run = (input: { locked: boolean; sourceHash: string | null; usable: boolean; force?: boolean }) =>
     runEditorialSummaryFlow({
       mediaItemId: 7,
-      source: { ...source, locked: input.locked, sourceHash: input.sourceHash },
+      source: { ...generationSource, locked: input.locked, sourceHash: input.sourceHash },
       prompt: "Редакционная инструкция",
       force: input.force,
       generate: async () => { calls++; return { value: input.usable ? { description, usable: true } : { description: "", usable: false }, modelId: "test-model" }; },
       save: async (result) => { saved.push(result); return true; },
     });
-  const hash = getEditorialSummarySourceHash(source, "Редакционная инструкция");
+  const hash = getEditorialSummarySourceHash(generationSource, "Редакционная инструкция");
   assert.equal(await run({ locked: true, sourceHash: null, usable: true }), "locked");
   assert.equal(await run({ locked: false, sourceHash: hash, usable: true }), "current");
   assert.equal(calls, 0);
@@ -125,7 +147,7 @@ test("manual editing locks the text and invalid responses are never saved", asyn
   let saved = false;
   await assert.rejects(runEditorialSummaryFlow({
     mediaItemId: 7,
-    source: { ...source, locked: false, sourceHash: null },
+    source: { ...source, description: "English source.", locked: false, sourceHash: null },
     prompt: "Редакционная инструкция",
     generate: async () => ({ value: { description: "Too short", usable: true }, modelId: "test" }),
     save: async () => { saved = true; return true; },
@@ -133,7 +155,7 @@ test("manual editing locks the text and invalid responses are never saved", asyn
   assert.equal(saved, false);
   assert.equal(await runEditorialSummaryFlow({
     mediaItemId: 7,
-    source: { ...source, locked: false, sourceHash: null },
+    source: { ...source, description: "English source.", locked: false, sourceHash: null },
     prompt: "Редакционная инструкция",
     generate: async () => ({ value: { description, usable: true }, modelId: "test" }),
     save: async () => false,
@@ -161,7 +183,8 @@ test("deduplication is enforced by a partial unique index and conflict-safe enqu
 test("public page prefers the editorial summary and keeps source description as fallback", () => {
   const page = readFileSync("src/app/media/[code]/page.tsx", "utf8");
   const query = readFileSync("src/db/queries/media-items.ts", "utf8");
-  assert.match(page, /item=\{\{ \.\.\.item, description: item\.editorialSummary \?\? item\.description \}\}/);
-  assert.match(page, /item\.editorialSummary \?\? item\.description \?\? formatMediaItemSummary\(item\)/);
+  assert.match(page, /const publicDescription = resolvePublicMediaDescription\(item\)/);
+  assert.match(page, /description: publicDescription/);
+  assert.match(page, /resolvePublicMediaDescription\(item\) \?\? formatMediaItemSummary\(item\)/);
   assert.match(query, /editorialSummary: mediaItemEditorialSummaries\.summary/);
 });

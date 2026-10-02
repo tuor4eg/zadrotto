@@ -1,5 +1,5 @@
 import { JobError } from "@/lib/jobs/types";
-import { buildEditorialSummaryContext, getEditorialSummarySourceHash, isEditorialSummaryResponse, isEditorialSummaryStale, type EditorialSummaryResponse, type EditorialSummarySource } from "./editorial-summary";
+import { buildEditorialSummaryContext, getEditorialSummarySourceHash, hasRussianEditorialDescription, isEditorialSummaryResponse, isEditorialSummaryStale, type EditorialSummaryResponse, type EditorialSummarySource } from "./editorial-summary";
 
 export async function runEditorialSummaryFlow(input: {
   mediaItemId: number;
@@ -19,6 +19,7 @@ export async function runEditorialSummaryFlow(input: {
   }) => Promise<boolean>;
 }) {
   if (input.source.locked) return "locked" as const;
+  if (hasRussianEditorialDescription(input.source.description)) return "source-russian" as const;
   const sourceHash = getEditorialSummarySourceHash(input.source, input.prompt);
   if (!input.force && !isEditorialSummaryStale({
     locked: false,

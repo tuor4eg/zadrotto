@@ -92,6 +92,7 @@ export type MediaTitleMetadata = {
   sourceUrl: string | null;
   facts: Record<string, unknown>;
   fields?: {
+    aliases?: string[];
     title?: string | null;
     originalTitle?: string | null;
     description?: string | null;
@@ -111,7 +112,9 @@ export type ProviderSearchOptions = {
 
 export type CoverSearchOptions = ProviderSearchOptions;
 export type TitleSearchOptions = ProviderSearchOptions;
-export type TitleMetadataOptions = ProviderSearchOptions;
+export type TitleMetadataOptions = ProviderSearchOptions & {
+  enrichTitleFields?: boolean;
+};
 
 export type MediaProvider = {
   code: MediaProviderCode;

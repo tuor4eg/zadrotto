@@ -39,6 +39,7 @@ import { rankMetadataRefreshCandidates } from "@/lib/media/rank-metadata-refresh
 import {
   getMediaTitleCandidateFormFields,
   getMediaTitleMetadataFormFields,
+  mergeMediaTitleMetadataAliases,
 } from "@/lib/media/title-candidate-form";
 import { getMediaTypeLabel, type MediaType } from "@/lib/media/types";
 import {
@@ -115,7 +116,10 @@ async function fetchMediaTitleCandidates(input: { mediaType: MediaType; query: s
   };
 }
 
-async function fetchMediaTitleMetadata(candidate: MediaTitleMetadataRequest) {
+async function fetchMediaTitleMetadata(
+  candidate: MediaTitleMetadataRequest,
+  options?: { enrichTitleFields?: boolean },
+) {
   const response = await fetch("/api/media-title-metadata", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -123,6 +127,7 @@ async function fetchMediaTitleMetadata(candidate: MediaTitleMetadataRequest) {
       provider: candidate.provider,
       externalId: candidate.externalId,
       mediaType: candidate.mediaType,
+      enrichTitleFields: options?.enrichTitleFields === true,
     }),
   });
 
@@ -553,7 +558,7 @@ export function AdminMediaForm({
                 setMetadataCandidateToken("");
                 if (isEditing) setIsTitleProviderSearchOpen(false);
 
-                void fetchMediaTitleMetadata(candidate)
+                void fetchMediaTitleMetadata(candidate, { enrichTitleFields: true })
                   .then((result) => {
                     if (metadataRequestVersionRef.current !== requestVersion) {
                       return;
@@ -574,6 +579,15 @@ export function AdminMediaForm({
                     setOriginalTitle(canonicalFields.originalTitle);
                     setReleaseYear(canonicalFields.releaseYear);
                     setDescription(canonicalFields.description);
+                    setAliases((current) => mergeMediaTitleMetadataAliases(
+                      current,
+                      result.metadata?.fields?.aliases,
+                      maxTitleAliases,
+                      {
+                        title: canonicalFields.title,
+                        originalTitle: canonicalFields.originalTitle || null,
+                      },
+                    ));
                     setSelectedMetadata(result.metadata);
                     setMetadataCandidateToken(result.metadata.metadataCandidateToken ?? "");
                   })

@@ -1087,6 +1087,117 @@ describe("cover provider registry", () => {
     }
   });
 
+  it("falls back from an empty AniList title search through an exact Shikimori match and MAL id", async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ body: { query: string; variables: Record<string, unknown> }; url: string }> = [];
+
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      const body = JSON.parse(String(init?.body)) as {
+        query: string;
+        variables: Record<string, unknown>;
+      };
+      requests.push({ body, url });
+
+      if (requests.length === 1) {
+        return Response.json({ data: { Page: { media: [] } } });
+      }
+      if (url.startsWith("https://shikimori.io")) {
+        return Response.json({
+          data: {
+            animes: [
+              { malId: "16498", name: "Shingeki no Kyojin", russian: "Атака титанов" },
+              { malId: "18397", name: "Shingeki no Kyojin OVA", russian: "Атака титанов OVA" },
+            ],
+          },
+        });
+      }
+      return Response.json({
+        data: {
+          Media: {
+            id: 16498,
+            idMal: 16498,
+            title: { english: "Attack on Titan", romaji: "Shingeki no Kyojin" },
+            description: "Humanity fights Titans.",
+            siteUrl: "https://anilist.co/anime/16498",
+            seasonYear: 2013,
+          },
+        },
+      });
+    };
+
+    try {
+      const candidates = await anilistProvider.searchTitleCandidates?.(
+        { mediaType: "anime", query: " атака   титанов " },
+        customOptions,
+      );
+
+      assert.equal(candidates?.[0]?.externalId, "16498");
+      assert.equal(candidates?.[0]?.provider, "anilist");
+      assert.equal(requests.length, 3);
+      assert.equal(requests[1]?.url, "https://shikimori.io/api/graphql");
+      assert.match(requests[1]?.body.query ?? "", /malId[\s\S]*name[\s\S]*russian/);
+      assert.deepEqual(requests[1]?.body.variables, { search: "атака   титанов", limit: 2 });
+      assert.equal(requests[2]?.url, "https://graphql.anilist.co/");
+      assert.match(requests[2]?.body.query ?? "", /Media\s*\(\s*idMal:\s*\$idMal/);
+      assert.deepEqual(requests[2]?.body.variables, { idMal: 16498 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("does not retry AniList when Shikimori has no exact title match", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+
+    globalThis.fetch = async (_input, init) => {
+      requestCount += 1;
+      if (requestCount === 1) return Response.json({ data: { Page: { media: [] } } });
+      const body = JSON.parse(String(init?.body)) as { query: string };
+      assert.match(body.query, /animes\s*\(\s*search:/);
+      return Response.json({
+        data: { animes: [{ malId: "18397", name: "Different", russian: "Другое аниме" }] },
+      });
+    };
+
+    try {
+      assert.deepEqual(
+        await anilistProvider.searchTitleCandidates?.(
+          { mediaType: "anime", query: "Атака титанов" },
+          customOptions,
+        ),
+        [],
+      );
+      assert.equal(requestCount, 2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps an empty AniList search successful when the Shikimori fallback fails", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+
+    globalThis.fetch = async () => {
+      requestCount += 1;
+      if (requestCount === 1) return Response.json({ data: { Page: { media: [] } } });
+      return new Response(null, { status: 429 });
+    };
+
+    try {
+      assert.deepEqual(
+        await anilistProvider.searchTitleCandidates?.(
+          { mediaType: "anime", query: "Неизвестное аниме" },
+          customOptions,
+        ),
+        [],
+      );
+      assert.equal(requestCount, 2);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
   it("maps AniList anime studios and genres from public GraphQL metadata", async () => {
     const originalFetch = globalThis.fetch;
     let requestInit: RequestInit | undefined;
@@ -1137,6 +1248,136 @@ describe("cover provider registry", () => {
       assert.match(body.query, /studios\s*\{\s*nodes\s*\{\s*name\s*\}\s*\}/s);
       assert.match(body.query, /\bgenres\b/);
       assert.deepEqual(body.variables, { id: 16498 });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("enriches an explicitly selected AniList anime through one unauthenticated Shikimori lookup", async () => {
+    const originalFetch = globalThis.fetch;
+    const requests: Array<{ init?: RequestInit; url: string }> = [];
+
+    globalThis.fetch = async (input, init) => {
+      const url = String(input);
+      requests.push({ init, url });
+
+      if (url.startsWith("https://graphql.anilist.co")) {
+        return Response.json({
+          data: {
+            Media: {
+              id: 16498,
+              idMal: 16498,
+              title: { english: "Attack on Titan", romaji: "Shingeki no Kyojin" },
+              description: "AniList description",
+              seasonYear: 2013,
+              episodes: 25,
+            },
+          },
+        });
+      }
+
+      return Response.json({
+        data: {
+          animes: [{ malId: "16498", russian: "  Атака титанов  ", description: " Русское описание " }],
+        },
+      });
+    };
+
+    try {
+      const metadata = await anilistProvider.getTitleMetadata?.(
+        { provider: "anilist", externalId: "16498", mediaType: "anime" },
+        { ...customOptions, enrichTitleFields: true },
+      );
+
+      assert.deepEqual(metadata?.fields, {
+        aliases: ["Атака титанов"],
+        title: "Attack on Titan",
+        originalTitle: "Shingeki no Kyojin",
+        description: "Русское описание",
+        releaseYear: 2013,
+      });
+      assert.equal(requests.length, 2);
+      assert.equal(requests[1]?.url, "https://shikimori.io/api/graphql");
+      assert.equal(requests[1]?.init?.method, "POST");
+      assert.equal(new Headers(requests[1]?.init?.headers).has("authorization"), false);
+      const body = JSON.parse(String(requests[1]?.init?.body)) as {
+        query: string;
+        variables: Record<string, unknown>;
+      };
+      assert.match(body.query, /animes\s*\(\s*ids\s*:\s*\$ids\s*\)/);
+      assert.match(body.query, /malId[\s\S]*russian[\s\S]*description/);
+      assert.deepEqual(body.variables, { ids: "16498" });
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("does not call Shikimori without enrichment or a MAL id", async () => {
+    const originalFetch = globalThis.fetch;
+    let requestCount = 0;
+
+    globalThis.fetch = async () => {
+      requestCount += 1;
+      return Response.json({ data: { Media: { id: 1, title: { romaji: "Anime" } } } });
+    };
+
+    try {
+      await anilistProvider.getTitleMetadata?.(
+        { provider: "anilist", externalId: "1", mediaType: "anime" },
+        { ...customOptions, enrichTitleFields: true },
+      );
+      assert.equal(requestCount, 1);
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("keeps AniList fields when Shikimori fails or returns unusable data", async () => {
+    const originalFetch = globalThis.fetch;
+    const shikimoriResponses = [
+      () => new Response(null, { status: 429 }),
+      () => new Response(null, { status: 404 }),
+      () => new Response(null, { status: 500 }),
+      () => Response.json({ errors: [{ message: "bad query" }] }),
+      () => Response.json({ data: { animes: [] } }),
+      () => new Response("not json", { headers: { "content-type": "application/json" } }),
+      () => { throw new Error("timeout"); },
+    ];
+
+    try {
+      for (const createShikimoriResponse of shikimoriResponses) {
+        let requestCount = 0;
+        globalThis.fetch = async () => {
+          requestCount += 1;
+          if (requestCount === 1) {
+            return Response.json({
+              data: {
+                Media: {
+                  id: 1,
+                  idMal: 2,
+                  title: { romaji: "Anime" },
+                  description: "AniList description",
+                },
+              },
+            });
+          }
+          return createShikimoriResponse();
+        };
+
+        const metadata = await anilistProvider.getTitleMetadata?.(
+          { provider: "anilist", externalId: "1", mediaType: "anime" },
+          { ...customOptions, enrichTitleFields: true },
+        );
+
+        assert.equal(requestCount, 2);
+        assert.deepEqual(metadata?.fields, {
+          aliases: [],
+          title: "Anime",
+          originalTitle: null,
+          description: "AniList description",
+          releaseYear: null,
+        });
+      }
     } finally {
       globalThis.fetch = originalFetch;
     }

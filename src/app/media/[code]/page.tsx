@@ -28,6 +28,7 @@ import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 import { formatMediaItemSummary } from "@/lib/media/media-item-summary";
+import { resolvePublicMediaDescription } from "@/lib/media/editorial-summary";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
@@ -54,7 +55,7 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
     return {};
   }
 
-  const description = item.editorialSummary ?? item.description ?? formatMediaItemSummary(item);
+  const description = resolvePublicMediaDescription(item) ?? formatMediaItemSummary(item);
   const images = item.coverUrl ? [item.coverUrl] : undefined;
 
   return {
@@ -91,6 +92,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   }
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
+  const publicDescription = resolvePublicMediaDescription(item);
   const publishedFranchiseLinks = item.franchises.filter(
     (franchise) => franchise.publicationStatus === "published",
   );
@@ -119,7 +121,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
-          item={{ ...item, description: item.editorialSummary ?? item.description }}
+          item={{ ...item, description: publicDescription }}
           variant="archive"
           headerActions={
             headerState.currentAdminUser ? (
