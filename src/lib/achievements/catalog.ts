@@ -269,7 +269,7 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
     }),
   },
   {
-    code: "quiz.correct.count", label: "Количество правильных ответов в викторинах",
+    code: "quiz.correct.count", label: "Количество правильных ответов в квизах",
     eventTypes: ["quiz.completed"],
     params: [{ code: "mediaType", label: "Тип медиа правильного ответа", required: false, type: "mediaType" }],
     parseParams: parseQuizCountParams,
@@ -280,7 +280,7 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
     }),
   },
   {
-    code: "quiz.win.count", label: "Количество побед в викторинах",
+    code: "quiz.win.count", label: "Количество побед в квизах",
     eventTypes: ["quiz.completed"],
     params: [],
     parseParams: parseEmptyParams,

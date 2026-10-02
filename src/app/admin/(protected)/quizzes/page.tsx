@@ -89,7 +89,7 @@ export default async function QuizzesPage({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Викторины"
+        title="Квизы"
         description="Вопросы для поиска ответа в архиве. Сначала показаны самые ранние."
         aside={<Link className={buttonVariants()} href="/admin/quizzes/new"><Plus />Создать</Link>}
       />
@@ -116,7 +116,7 @@ export default async function QuizzesPage({
         {(searchQuery || state || winner) ? <Link className={buttonVariants({ variant: "ghost" })} href="/admin/quizzes">Сбросить</Link> : null}
       </form>
 
-      {result.items.length === 0 ? <EmptyState>Викторин с такими параметрами нет.</EmptyState> : (
+      {result.items.length === 0 ? <EmptyState>Квизов с такими параметрами нет.</EmptyState> : (
         <>
           <div className="grid gap-3 md:hidden">
             {result.items.map((item) => (
@@ -147,7 +147,7 @@ export default async function QuizzesPage({
           </TableWrap>
         </>
       )}
-      <PaginationNav basePath="/admin/quizzes" itemLabel="викторин" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, state, winner }} totalCount={result.totalCount} totalPages={result.totalPages} variant="admin" />
+      <PaginationNav basePath="/admin/quizzes" itemLabel="квизов" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, state, winner }} totalCount={result.totalCount} totalPages={result.totalPages} variant="admin" />
     </div>
   );
 }

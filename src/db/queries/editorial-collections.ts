@@ -166,7 +166,7 @@ export async function getAdminEditorialCollections() {
   }).from(editorialCollections)
     .leftJoin(editorialDocumentBlocks, eq(editorialDocumentBlocks.documentId, editorialCollections.documentId))
     .groupBy(editorialCollections.id)
-    .orderBy(desc(editorialCollections.updatedAt), asc(editorialCollections.title))
+    .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title))
     .then((rows) => rows.map((row) => ({ ...row, coverUrl: resolveCollectionImageUrl(row.coverObjectKey) })));
 }
 
@@ -238,7 +238,7 @@ export async function getPublishedEditorialCollections() {
     .leftJoin(editorialDocumentBlocks, eq(editorialDocumentBlocks.documentId, editorialCollections.documentId))
     .where(eq(editorialCollections.publicationStatus, "published"))
     .groupBy(editorialCollections.id)
-    .orderBy(desc(editorialCollections.updatedAt), asc(editorialCollections.title))
+    .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title))
     .then((rows) => rows.map((row) => ({ ...row, coverUrl: resolveCollectionImageUrl(row.coverObjectKey) })));
 }
 
@@ -250,7 +250,7 @@ export async function getMediaItemCollectionReferences(mediaItemId: number) {
       eq(editorialDocumentBlocks.mediaItemId, mediaItemId),
       eq(editorialDocumentBlocks.blockType, "media"),
     ))
-    .orderBy(asc(editorialCollections.title));
+    .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title));
 }
 
 export async function getCollectionImagePublicationStatus(key: string) {

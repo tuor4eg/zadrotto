@@ -47,7 +47,7 @@ function TemplateActions({
         <ConfirmAction
           action={deleteQuizQuestionTemplateAction}
           confirmLabel="Удалить шаблон"
-          description={`Шаблон «${template.name}» будет удалён. Уже созданные викторины не изменятся.`}
+          description={`Шаблон «${template.name}» будет удалён. Уже созданные квизы не изменятся.`}
           fields={[{ name: "templateId", value: template.id }]}
           title="Удалить шаблон?"
           triggerAriaLabel={`Удалить шаблон ${template.name}`}

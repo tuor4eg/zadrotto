@@ -53,12 +53,12 @@ describe("public site header", () => {
     assert.match(headerSource, /авторизуйтесь чтобы не потерять их/);
     assert.doesNotMatch(headerSource, /NotificationBell/);
     assert.match(headerSource, /href="\/admin"[\s\S]*href="\/author\/profile"/);
-    assert.match(headerSource, /aria-label="Открыть текущую викторину"/);
+    assert.match(headerSource, /aria-label="Открыть текущий квиз"/);
     assert.match(headerSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.match(headerSource, /<QuizModal/);
-    assert.match(headerSource, /\{author \? \([\s\S]*aria-label="Открыть текущую викторину"/);
+    assert.match(headerSource, /\{author \? \([\s\S]*aria-label="Открыть текущий квиз"/);
     assert.match(headerSource, /participant=\{currentQuizParticipant\}[\s\S]*quiz=\{quiz\?\.quiz \?\? null\}/);
-    assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущую викторину[\s\S]*href="\/author\/profile"/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущий квиз[\s\S]*href="\/author\/profile"/);
     assert.match(
       headerSource,
       /href="\/admin"[\s\S]*className="relative grid size-9[^"]*rounded-full/,

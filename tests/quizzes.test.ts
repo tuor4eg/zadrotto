@@ -137,7 +137,7 @@ describe("quizzes", () => {
     assert.match(query, /containsNormalizedSearchSql\(mediaItems\.title, searchQuery\)/);
     assert.match(query, /qp\.is_winner = true/);
     assert.match(query, /earlier\.answer_media_item_id/);
-    assert.match(query, /orderBy\(asc\(quizzes\.startsAt\), asc\(quizzes\.id\)\)/);
+    assert.match(query, /orderBy\(desc\(quizzes\.startsAt\), desc\(quizzes\.id\)\)/);
     assert.match(query, /limit\(ADMIN_QUIZZES_PAGE_SIZE\)[\s\S]*offset\(getOffset\(page, ADMIN_QUIZZES_PAGE_SIZE\)\)/);
   });
   it("searches quiz answers by selected media types and shows Russian type names", () => {
@@ -229,10 +229,10 @@ describe("quizzes", () => {
     assert.match(quizWinner, /<Avatar name=\{winner\.name\} objectKey=\{winner\.avatarObjectKey\}/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /mb-5 px-12 text-center sm:px-32[\s\S]*whitespace-nowrap font-serif text-2xl sm:text-3xl/);
-    assert.match(modal, /Открыть правила викторины/);
-    assert.match(modal, /aria-label="Назад к викторине"[\s\S]*<ArrowLeft/);
+    assert.match(modal, /Открыть правила квиза/);
+    assert.match(modal, /aria-label="Назад к квизу"[\s\S]*<ArrowLeft/);
     assert.match(modal, /left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3[\s\S]*style=\{\{ position: "absolute" \}\}/);
-    assert.match(modal, /right-2 top-2 z-20[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть викторину"/);
+    assert.match(modal, /right-2 top-2 z-20[\s\S]*sm:right-3 sm:top-3[\s\S]*aria-label="Закрыть квиз"/);
     assert.match(modal, /getBoundingClientRect\(\)\.top/);
     assert.match(modal, /paddingTop: `\$\{dialogTop\}px`/);
     assert.match(modal, /dialogTop === null \? "items-center" : "items-start"/);

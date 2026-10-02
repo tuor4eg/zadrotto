@@ -62,7 +62,7 @@ describe("protected author layout", () => {
     assert.doesNotMatch(header, /<NotificationBell/);
     assert.match(header, /style=\{\{ overflow: "visible" \}\}/);
     assert.doesNotMatch(header, />\s*Статистика\s*<\/Link>/);
-    assert.doesNotMatch(header, /href="\/author\/quizzes"|>\s*Викторины\s*<\/Link>/);
+    assert.doesNotMatch(header, /href="\/author\/quizzes"|>\s*Квизы\s*<\/Link>/);
     assert.doesNotMatch(header, /href="\/author\/(?:achievements|reviews)"/);
     assert.match(header, /href="\/author\/profile"/);
     assert.match(header, /action=\{logoutAuthor\}/);
@@ -86,7 +86,7 @@ describe("protected author layout", () => {
     assert.match(mobileMenuSource, /event\.key === "Escape"[\s\S]*triggerRef\.current\?\.focus\(\)/);
     assert.match(mobileMenuSource, /document\.addEventListener\("pointerdown"/);
     assert.doesNotMatch(mobileMenuSource, /\/author\/(?:achievements|reviews)/);
-    assert.doesNotMatch(mobileMenuSource, /\/author\/quizzes|>\s*Викторины\s*<\/Link>/);
+    assert.doesNotMatch(mobileMenuSource, /\/author\/quizzes|>\s*Квизы\s*<\/Link>/);
     assert.doesNotMatch(mobileMenuSource, />\s*Статистика\s*<\/Link>/);
   });
 

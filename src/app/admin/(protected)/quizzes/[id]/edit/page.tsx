@@ -29,8 +29,8 @@ export default async function EditQuizPage({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Редактирование викторины"
-        description={item.question ?? "Викторина с изображением"}
+        title="Редактирование квиза"
+        description={item.question ?? "Квиз с изображением"}
         aside={(
           <Link className={buttonVariants({ variant: "outline" })} href="/admin/quizzes">
             <ArrowLeft />

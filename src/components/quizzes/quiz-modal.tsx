@@ -106,7 +106,7 @@ export function QuizModal({
                 <button
                   type="button"
                   className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-                  aria-label="Открыть правила викторины"
+                  aria-label="Открыть правила квиза"
                   onClick={openRules}
                 >
                   <CircleHelp className="size-4" />
@@ -116,7 +116,7 @@ export function QuizModal({
               <button
                 type="button"
                 className="touch-manipulation grid size-9 shrink-0 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-                aria-label="Назад к викторине"
+                aria-label="Назад к квизу"
                 onClick={() => setView("quiz")}
               >
                 <ArrowLeft className="size-4" />
@@ -128,14 +128,14 @@ export function QuizModal({
           type="button"
           className="pointer-events-auto right-2 top-2 z-20 grid size-9 shrink-0 touch-manipulation place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-3 sm:top-3"
           style={{ position: "absolute" }}
-          aria-label="Закрыть викторину"
+          aria-label="Закрыть квиз"
           onClick={onClose}
         >
           <X className="size-4" />
         </button>
         <div className="pointer-events-none mb-5 px-12 text-center sm:px-32">
           <h2 id="active-quiz-title" className="whitespace-nowrap font-serif text-2xl sm:text-3xl">
-            {view === "rules" ? "Как играть" : "Викторина"}
+            {view === "rules" ? "Как играть" : "Квиз"}
           </h2>
         </div>
         {!quiz ? (
@@ -145,7 +145,7 @@ export function QuizModal({
         ) : view === "rules" ? (
           <div className="mx-auto max-w-xl text-sm leading-6 text-stone-700">
             <ol className="list-decimal space-y-3 pl-5">
-              <li>Раз в день в 12:00 (MSK) публикуются вопросы викторины.</li>
+              <li>Раз в день в 12:00 (MSK) публикуются вопросы квиза.</li>
               <li>
                 Чтобы начать участие, нужно нажать следующую кнопку:
                 <div className="mt-2 text-center">

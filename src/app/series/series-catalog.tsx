@@ -66,7 +66,7 @@ function SeriesTree({
     return (
       <div
         key={series.id}
-        className={depth > 0 ? "relative pl-4" : ""}
+        className={depth > 0 ? "relative pl-4" : "break-inside-avoid"}
       >
         {depth > 0 ? (
           <>
@@ -143,11 +143,11 @@ export function SeriesCatalog({
         {Array.from(groupedItems, ([group, series]) => (
           <section
             aria-labelledby={`series-group-${encodeURIComponent(group)}`}
-            className="mb-4 inline-block w-full break-inside-avoid align-top"
+            className="mb-4"
             key={group}
           >
             <h2
-              className="rounded-sm border-y border-stone-400/35 bg-[linear-gradient(90deg,rgba(190,174,138,0.78),rgba(225,214,186,0.58))] px-2.5 py-1.5 font-serif text-xl font-semibold leading-none text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+              className="break-after-avoid rounded-sm border-y border-stone-400/35 bg-[linear-gradient(90deg,rgba(190,174,138,0.78),rgba(225,214,186,0.58))] px-2.5 py-1.5 font-serif text-xl font-semibold leading-none text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
               id={`series-group-${encodeURIComponent(group)}`}
             >
               {group}

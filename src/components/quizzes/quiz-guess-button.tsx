@@ -70,7 +70,7 @@ function QuizGuessResultModal({
             type="button"
             className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
             style={{ position: "absolute" }}
-            aria-label="Закрыть результат викторины"
+            aria-label="Закрыть результат квиза"
             onClick={onClose}
           >
             <X className="size-4" />

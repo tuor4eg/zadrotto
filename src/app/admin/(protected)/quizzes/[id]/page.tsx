@@ -101,8 +101,8 @@ export default async function AdminQuizResultsPage({
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Результаты викторины"
-        description={quiz.question ?? "Викторина с изображением"}
+        title="Результаты квиза"
+        description={quiz.question ?? "Квиз с изображением"}
         aside={(
           <Link className={buttonVariants({ variant: "outline" })} href="/admin/quizzes">
             <ArrowLeft />
@@ -115,7 +115,7 @@ export default async function AdminQuizResultsPage({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <Badge variant={QUIZ_STATE_VARIANTS[quiz.state]}>{QUIZ_STATE_LABELS[quiz.state]}</Badge>
-            <span className="text-xs tabular-nums text-stone-500">Викторина #{quiz.id}</span>
+            <span className="text-xs tabular-nums text-stone-500">Квиз #{quiz.id}</span>
           </div>
           <h3 className="mt-4 text-xs font-medium uppercase tracking-[0.12em] text-stone-500">Вопрос</h3>
           <p className="mt-2 whitespace-pre-wrap text-lg font-medium leading-7 text-stone-950">
@@ -153,7 +153,7 @@ export default async function AdminQuizResultsPage({
       </section>
 
       <section aria-labelledby="quiz-statistics-heading">
-        <h3 id="quiz-statistics-heading" className="sr-only">Итоги викторины</h3>
+        <h3 id="quiz-statistics-heading" className="sr-only">Итоги квиза</h3>
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <StatisticCard label="Участники" value={aggregates.totalCount} />
           <StatisticCard label="Ответили правильно" value={aggregates.correctCount} />
@@ -189,7 +189,7 @@ export default async function AdminQuizResultsPage({
       <section className="flex flex-col gap-3" aria-labelledby="quiz-participants-heading">
         <h3 id="quiz-participants-heading" className="text-lg font-semibold text-stone-950">Участники</h3>
         {participantsPage.items.length === 0 ? (
-          <EmptyState>В викторине пока никто не участвовал.</EmptyState>
+          <EmptyState>В квизе пока никто не участвовал.</EmptyState>
         ) : (
           <>
             <div className="grid gap-3 md:hidden">

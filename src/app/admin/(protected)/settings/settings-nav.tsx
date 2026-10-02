@@ -29,7 +29,7 @@ const SETTINGS_NAV_ITEMS = [
   },
   {
     href: "/admin/settings/quizzes",
-    label: "Викторины",
+    label: "Квизы",
     icon: CircleHelp,
   },
   {

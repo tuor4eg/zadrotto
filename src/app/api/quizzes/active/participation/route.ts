@@ -9,10 +9,10 @@ export async function POST() {
 
   const result = await joinActiveQuiz(author.id);
   if (result.kind === "missing") {
-    return Response.json({ error: "Активная викторина не найдена." }, { status: 404 });
+    return Response.json({ error: "Активный квиз не найден." }, { status: 404 });
   }
   if (result.kind === "ineligible") {
-    return Response.json({ error: "Сначала включи все разделы этой викторины в интересах." }, { status: 409 });
+    return Response.json({ error: "Сначала включи все разделы этого квиза в интересах." }, { status: 409 });
   }
 
   return Response.json({ participant: result.participant });

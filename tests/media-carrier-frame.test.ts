@@ -4,12 +4,37 @@ import { existsSync, readFileSync, statSync } from "node:fs";
 
 import {
   formatMediaCarrierTitle,
+  getMediaCarrierDetailViewportClassName,
   getMediaCarrierFrame,
   hasMediaCarrierFrame,
   MEDIA_IDENTITY_FONT_CLASS_NAME,
 } from "@/lib/media/carrier-frame";
 
 describe("media carrier frames", () => {
+  it("gives detail pages a concrete width for frames without a viewport", () => {
+    for (const mediaCarrierCode of ["nes", "sega", "snes", "ps1"] as const) {
+      const frame = getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode });
+
+      assert.ok(frame);
+      assert.equal(
+        getMediaCarrierDetailViewportClassName(frame),
+        `${frame.aspectRatioClassName} w-[420px] max-w-full`,
+      );
+    }
+
+    const pcFrames = [
+      { releaseYear: 1990, expected: "aspect-square w-[420px] max-w-full" },
+      { releaseYear: 1998, expected: "aspect-[10/9] w-[420px] max-w-full" },
+    ];
+
+    for (const { releaseYear, expected } of pcFrames) {
+      const frame = getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear });
+
+      assert.ok(frame);
+      assert.equal(getMediaCarrierDetailViewportClassName(frame), expected);
+    }
+  });
+
   it("uses the Steam font for identity text while preserving rating panel fonts", () => {
     const details = readFileSync("src/app/media-item-details.tsx", "utf8");
     const preview = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
@@ -296,6 +321,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/video/dvd/dvd.webp",
+        detailViewportClassName: "aspect-[357/490] w-[min(42vh,379px)] max-w-full",
         aspectRatioClassName: "aspect-[357/490]",
         compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
         compactViewportClassName: "aspect-[357/490] w-full max-w-[min(23vh,219px)]",
@@ -325,6 +351,7 @@ describe("media carrier frames", () => {
         coverAreaClassName:
           "left-[1.6%] top-[0.4%] h-[78.8%] w-[82%] [clip-path:circle(50%)]",
         displayFontClassName: "media-carrier-font-film-reel",
+        detailViewportClassName: "w-[22rem] max-w-full lg:w-[24rem]",
         fontClassName: "media-carrier-font-film-reel",
         labelFontClassName: "media-carrier-font-film-reel-label",
         placeholderVariant: "reel-label",
@@ -356,6 +383,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/anime/anime.webp",
+        detailViewportClassName: "aspect-[954/1346] w-[min(41vh,369px)] max-w-full",
         aspectRatioClassName: "aspect-[954/1346]",
         compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
         compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
@@ -380,6 +408,7 @@ describe("media carrier frames", () => {
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
         coverAreaClassName: "left-[9.2%] top-[10.7%] h-[63.8%] w-[81.9%]",
         displayFontClassName: "media-carrier-font-tv-guide",
+        detailViewportClassName: "w-[31rem] max-w-full lg:w-[34rem]",
         fontClassName: "media-carrier-font-tv-guide",
         labelFontClassName: "media-carrier-font-tv-guide",
         placeholderVariant: "tv-screen-label",

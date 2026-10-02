@@ -63,6 +63,7 @@ export type MediaCarrierFrame = {
   coverLayer?: MediaCarrierFrameCoverLayer;
   coverAreaClassName: string;
   displayFontClassName?: string;
+  detailViewportClassName?: string;
   fontClassName?: string;
   labelFontClassName?: string;
   placeholderVariant: MediaCarrierFramePlaceholderVariant;
@@ -91,6 +92,7 @@ type MediaCarrierFrameInput = {
 const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   "anime/anime": {
     assetPath: "/mediaCarriers/anime/anime.webp",
+    detailViewportClassName: "aspect-[954/1346] w-[min(41vh,369px)] max-w-full",
     aspectRatioClassName: "aspect-[954/1346]",
     compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
     compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
@@ -141,6 +143,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "comic/comic-book": {
     assetPath: "/mediaCarriers/comic/pp.webp",
+    detailViewportClassName: "aspect-[619/960] w-[360px] max-w-full",
     aspectRatioClassName: "aspect-[619/960]",
     compactViewportClassName: "aspect-[619/960] w-full max-w-[13rem]",
     coverAreaClassName: "left-[3.5%] top-[2.8%] h-[94.4%] w-[93%]",
@@ -290,6 +293,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "film/dvd": {
     assetPath: "/mediaCarriers/video/dvd/dvd.webp",
+    detailViewportClassName: "aspect-[357/490] w-[min(42vh,379px)] max-w-full",
     aspectRatioClassName: "aspect-[357/490]",
     compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
     compactViewportClassName: "aspect-[357/490] w-full max-w-[min(23vh,219px)]",
@@ -311,6 +315,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     coverAreaClassName:
       "left-[1.6%] top-[0.4%] h-[78.8%] w-[82%] [clip-path:circle(50%)]",
     displayFontClassName: "media-carrier-font-film-reel",
+    detailViewportClassName: "w-[22rem] max-w-full lg:w-[24rem]",
     fontClassName: "media-carrier-font-film-reel",
     labelFontClassName: "media-carrier-font-film-reel-label",
     placeholderVariant: "reel-label",
@@ -342,6 +347,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
     coverAreaClassName: "left-[9.2%] top-[10.7%] h-[63.8%] w-[81.9%]",
     displayFontClassName: "media-carrier-font-tv-guide",
+    detailViewportClassName: "w-[31rem] max-w-full lg:w-[34rem]",
     fontClassName: "media-carrier-font-tv-guide",
     labelFontClassName: "media-carrier-font-tv-guide",
     placeholderVariant: "tv-screen-label",
@@ -357,6 +363,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
     coverAreaClassName: "left-[7.1%] top-[6.9%] h-[69%] w-[85.9%]",
     displayFontClassName: "media-carrier-font-modern-tv",
+    detailViewportClassName: "w-[31rem] max-w-full lg:w-[34rem]",
     fontClassName: "media-carrier-font-modern-tv",
     labelFontClassName: "media-carrier-font-modern-tv",
     placeholderVariant: "tv-screen-label",
@@ -566,6 +573,14 @@ export function formatMediaCarrierTitle(title: string, frame?: MediaCarrierFrame
   }
 
   return frame.titleTemplate.replaceAll("{title}", title);
+}
+
+export function getMediaCarrierDetailViewportClassName(frame: MediaCarrierFrame) {
+  return (
+    frame.detailViewportClassName ??
+    frame.viewportClassName ??
+    `${frame.aspectRatioClassName} w-[420px] max-w-full`
+  );
 }
 
 export function hasMediaCarrierFrame(item: MediaCarrierFrameInput) {

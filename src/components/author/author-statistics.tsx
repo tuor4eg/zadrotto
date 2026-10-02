@@ -65,7 +65,7 @@ export function AuthorStatistics({
     { Icon: Archive, label: "Добавлено в архив", value: contributionCount },
     ...(quizWinnerCount === undefined
       ? []
-      : [{ Icon: Star, label: "Побед в викторинах", value: quizWinnerCount }]),
+      : [{ Icon: Star, label: "Побед в квизах", value: quizWinnerCount }]),
   ];
 
   return <div className="author-dashboard flex flex-col gap-3">

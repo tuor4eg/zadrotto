@@ -41,7 +41,7 @@ export async function createQuizQuestionTemplateAction(formData: FormData) {
     template = await createQuizQuestionTemplate(input);
   } catch (error) {
     if (isUniqueViolation(error)) redirect(`${SETTINGS_PATH}?error=duplicate-name`);
-    console.error("Не удалось создать шаблон вопроса викторины.", error);
+    console.error("Не удалось создать шаблон вопроса квиза.", error);
     redirect(`${SETTINGS_PATH}?error=${getAdminFormErrorCode(error)}`);
   }
 
@@ -52,7 +52,7 @@ export async function createQuizQuestionTemplateAction(formData: FormData) {
     entityType: "quiz-question-template",
     entityId: template.id,
     entityLabel: template.name,
-    message: "Шаблон вопроса викторины создан.",
+    message: "Шаблон вопроса квиза создан.",
   });
   revalidateTemplateSurfaces();
   redirect(`${SETTINGS_PATH}?created=1`);
@@ -69,7 +69,7 @@ export async function updateQuizQuestionTemplateAction(formData: FormData) {
     template = await updateQuizQuestionTemplate(templateId, input);
   } catch (error) {
     if (isUniqueViolation(error)) redirect(`${SETTINGS_PATH}?error=duplicate-name`);
-    console.error("Не удалось изменить шаблон вопроса викторины.", error);
+    console.error("Не удалось изменить шаблон вопроса квиза.", error);
     redirect(`${SETTINGS_PATH}?error=${getAdminFormErrorCode(error)}`);
   }
   if (!template) redirect(`${SETTINGS_PATH}?error=missing`);
@@ -81,7 +81,7 @@ export async function updateQuizQuestionTemplateAction(formData: FormData) {
     entityType: "quiz-question-template",
     entityId: template.id,
     entityLabel: template.name,
-    message: "Шаблон вопроса викторины изменён.",
+    message: "Шаблон вопроса квиза изменён.",
   });
   revalidateTemplateSurfaces();
   redirect(`${SETTINGS_PATH}?updated=1`);
@@ -96,7 +96,7 @@ export async function deleteQuizQuestionTemplateAction(formData: FormData) {
   try {
     template = await deleteQuizQuestionTemplate(templateId);
   } catch (error) {
-    console.error("Не удалось удалить шаблон вопроса викторины.", error);
+    console.error("Не удалось удалить шаблон вопроса квиза.", error);
     redirect(`${SETTINGS_PATH}?error=${getAdminFormErrorCode(error)}`);
   }
   if (!template) redirect(`${SETTINGS_PATH}?error=missing`);
@@ -108,7 +108,7 @@ export async function deleteQuizQuestionTemplateAction(formData: FormData) {
     entityType: "quiz-question-template",
     entityId: template.id,
     entityLabel: template.name,
-    message: "Шаблон вопроса викторины удалён.",
+    message: "Шаблон вопроса квиза удалён.",
   });
   revalidateTemplateSurfaces();
   redirect(`${SETTINGS_PATH}?deleted=1`);

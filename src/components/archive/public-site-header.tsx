@@ -230,7 +230,7 @@ export function PublicSiteHeader({
                 {author ? (
                   <button
                     type="button"
-                    aria-label="Открыть текущую викторину"
+                    aria-label="Открыть текущий квиз"
                     className={`grid size-9 shrink-0 cursor-pointer place-items-center rounded-full border transition-colors hover:bg-emerald-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
                     onClick={() => setIsQuizOpen(true)}
                   >

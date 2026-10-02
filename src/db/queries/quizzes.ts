@@ -83,7 +83,7 @@ export async function getAdminQuizzes(input: {
     .from(quizzes)
     .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
     .where(where)
-    .orderBy(asc(quizzes.startsAt), asc(quizzes.id))
+    .orderBy(desc(quizzes.startsAt), desc(quizzes.id))
     .limit(ADMIN_QUIZZES_PAGE_SIZE)
     .offset(getOffset(page, ADMIN_QUIZZES_PAGE_SIZE));
   const ids = rows.map(({ quiz }) => quiz.id); const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds(ids), participantQuizIds(ids), answeredQuizIds(ids)]);

@@ -90,7 +90,7 @@ function getAdminNavGroups({
       items: [
         { href: "/admin/materials/reviews", icon: MessageSquareText, label: "Рецензии" },
         { href: "/admin/collections", icon: LibraryBig, label: "Подборки" },
-        { href: "/admin/quizzes", icon: CircleHelp, label: "Викторины" },
+        { href: "/admin/quizzes", icon: CircleHelp, label: "Квизы" },
       ],
     },
     {

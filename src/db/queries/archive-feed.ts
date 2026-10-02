@@ -88,7 +88,7 @@ export async function getLatestArchiveFeed(
     db
       .select({
         coverObjectKey: editorialCollections.coverObjectKey,
-        createdAt: editorialCollections.updatedAt,
+        createdAt: editorialCollections.createdAt,
         id: editorialCollections.id,
         itemsCount: sql<number>`count(${editorialDocumentBlocks.mediaItemId}) filter (where ${editorialDocumentBlocks.blockType} = 'media')::int`,
         slug: editorialCollections.slug,
@@ -101,7 +101,7 @@ export async function getLatestArchiveFeed(
       )
       .where(eq(editorialCollections.publicationStatus, PUBLISHED_PUBLICATION_STATUS))
       .groupBy(editorialCollections.id)
-      .orderBy(desc(editorialCollections.updatedAt), desc(editorialCollections.id))
+      .orderBy(desc(editorialCollections.createdAt), desc(editorialCollections.id))
       .limit(ARCHIVE_FEED_SIZE),
   ]);
 

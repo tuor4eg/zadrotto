@@ -61,7 +61,7 @@ export function ActiveQuizPanel({
         ) : unavailableMediaTypeNames.length > 0 ? (
           <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
             <p>
-              Эта викторина касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.
+              Этот квиз касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.
               Включи их в интересах, чтобы участвовать на равных, или спокойно пропусти этот раунд.
             </p>
             <div className="flex flex-wrap justify-center gap-2">

@@ -36,7 +36,7 @@ export function useQuizParticipation({
       const response = await fetch("/api/quizzes/active/participation", { method: "POST" });
       const data = await response.json();
       if (!response.ok) {
-        setError(data.error ?? "Не удалось присоединиться к викторине.");
+        setError(data.error ?? "Не удалось присоединиться к квизу.");
         return;
       }
       setQuizParticipant((data as { participant?: QuizParticipantHudState }).participant ?? null);
@@ -44,7 +44,7 @@ export function useQuizParticipation({
       else router.push("/archive");
       router.refresh();
     } catch {
-      setError("Не удалось присоединиться к викторине.");
+      setError("Не удалось присоединиться к квизу.");
     } finally {
       setPending(false);
     }

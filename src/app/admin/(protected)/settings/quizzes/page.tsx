@@ -46,9 +46,9 @@ export default async function AdminQuizSettingsPage({ searchParams }: PageProps)
         messages={messages}
       />
       <SettingsSectionHeader
-        description="Заготовки текста для новых викторин. Выбор шаблона копирует вопрос и не связывает его с викториной."
+        description="Заготовки текста для новых квизов. Выбор шаблона копирует вопрос и не связывает его с квизом."
         icon={<CircleHelp />}
-        title="Викторины"
+        title="Квизы"
       />
 
       <QuizQuestionTemplatesManager templates={templates} />

@@ -25,7 +25,7 @@ describe("public media reviews layout", () => {
     assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
     assert.match(details, /<div className="order-4 flex flex-col[^"]*lg:min-h-\[560px\]"/);
     assert.doesNotMatch(details, /order-4 flex min-h-\[560px\]/);
-    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:ml-2"/);
+    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:ml-2 lg:w-\[420px\]"/);
     assert.doesNotMatch(details, /className="mx-auto mt-7 w-full max-w-\[420px\]"/);
   });
 
@@ -111,10 +111,10 @@ describe("public media reviews layout", () => {
     assert.match(reviewArticle, /navigator\.clipboard\?\.writeText/);
   });
 
-  it("keeps every desktop rating skin at its original centered width", () => {
+  it("aligns desktop rating skins to the content edge while preserving their width", () => {
     assert.match(
       details,
-      /mx-auto mt-6 hidden w-full min-w-0 max-w-\[584px\] gap-3 sm:grid sm:grid-cols-2/,
+      /mt-6 hidden w-full min-w-0 max-w-\[584px\] gap-3 sm:grid sm:grid-cols-2/,
     );
   });
 

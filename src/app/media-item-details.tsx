@@ -9,7 +9,11 @@ import { CoverSourceAttribution } from "@/components/archive/cover-source-attrib
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
-import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
+import {
+  getMediaCarrierDetailViewportClassName,
+  getMediaCarrierFrame,
+  MEDIA_IDENTITY_FONT_CLASS_NAME,
+} from "@/lib/media/carrier-frame";
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -343,7 +347,7 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[minmax(280px,0.78fr)_minmax(0,1fr)] lg:grid-rows-[max-content_minmax(0,1fr)]">
+        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[max-content_minmax(0,1fr)]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
@@ -352,7 +356,7 @@ function ArchiveMediaItemDetails({
             className="pointer-events-none absolute -top-[13px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
-          <div className="relative order-1 min-w-0 px-6 pt-3 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0">
+          <div className="relative order-1 min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0 lg:w-0 lg:min-w-full">
             <div
               className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
             >
@@ -372,12 +376,12 @@ function ArchiveMediaItemDetails({
           </div>
 
           <div className="contents lg:relative lg:order-2 lg:col-start-1 lg:row-start-2 lg:block lg:min-w-0 lg:px-6 lg:pb-6">
-            <div className="relative order-2 min-w-0 px-6 pb-6 lg:px-0 lg:pb-0">
+            <div className="relative order-2 min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
               <div
                 className={
                   hasCarrierFrame
-                    ? "mt-6 mx-auto max-w-full sm:max-w-[420px]"
-                    : "mt-6 mx-auto max-w-[360px]"
+                    ? "mt-6 max-w-full sm:ml-2 sm:max-w-[420px] lg:w-max"
+                    : "mt-6 max-w-[360px] sm:ml-2 lg:w-max"
                 }
               >
                 <div
@@ -402,10 +406,8 @@ function ArchiveMediaItemDetails({
                     <div
                       className={
                         hasCarrierFrame
-                          ? `relative max-w-full ${
-                              mediaCarrierFrame.viewportClassName ?? mediaCarrierFrame.aspectRatioClassName
-                            } overflow-visible rounded-sm`
-                          : "relative aspect-[3/4] overflow-hidden rounded-sm bg-stone-800"
+                          ? `relative max-w-full ${getMediaCarrierDetailViewportClassName(mediaCarrierFrame)} overflow-visible rounded-sm`
+                          : "relative aspect-[3/4] w-[360px] max-w-full overflow-hidden rounded-sm bg-stone-800"
                       }
                     >
                       {item.coverUrl ? (
@@ -440,7 +442,7 @@ function ArchiveMediaItemDetails({
             </div>
             {adjacentShelfSlot ? (
               <div className="order-5 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
-                <div className="mt-7 w-full max-w-[420px] sm:ml-2">
+                <div className="mt-7 w-full max-w-[420px] sm:ml-2 lg:w-[420px]">
                   {adjacentShelfSlot}
                 </div>
               </div>
@@ -523,7 +525,7 @@ function ArchiveMediaItemDetails({
                 </div>
               </div>
 
-              <div className="mx-auto mt-6 hidden w-full min-w-0 max-w-[584px] gap-3 sm:grid sm:grid-cols-2">
+              <div className="mt-6 hidden w-full min-w-0 max-w-[584px] gap-3 sm:grid sm:grid-cols-2">
                 <div className="min-w-0">
                   <ArchiveRatingPanel
                     displayFontClassName={ratingDisplayFontClassName}

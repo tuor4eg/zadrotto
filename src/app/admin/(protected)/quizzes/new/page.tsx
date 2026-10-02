@@ -20,7 +20,7 @@ export default async function NewQuizPage() {
   return (
     <div className="flex flex-col gap-5">
       <PageHeader
-        title="Новая викторина"
+        title="Новый квиз"
         description="Создайте вопрос и укажите правильную запись."
         aside={(
           <Link className={buttonVariants({ variant: "outline" })} href="/admin/quizzes">

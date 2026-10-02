@@ -48,7 +48,7 @@ describe("quiz question templates", () => {
     const actions = readFileSync("src/app/admin/(protected)/settings/quizzes/actions.ts", "utf8");
     const nav = readFileSync("src/app/admin/(protected)/settings/settings-nav.tsx", "utf8");
 
-    assert.match(nav, /href: "\/admin\/settings\/quizzes"[\s\S]*label: "Викторины"/);
+    assert.match(nav, /href: "\/admin\/settings\/quizzes"[\s\S]*label: "Квизы"/);
     assert.match(page, /<QuizQuestionTemplatesManager templates=\{templates\}/);
     assert.match(manager, /grid gap-3 md:hidden/);
     assert.match(manager, /<TableWrap className="hidden md:block">/);
@@ -68,10 +68,10 @@ describe("quiz question templates", () => {
   it("logs create, update, and delete as a dedicated activity entity", () => {
     const actions = readFileSync("src/app/admin/(protected)/settings/quizzes/actions.ts", "utf8");
 
-    assert.equal(getActivityEntityTypeLabel("quiz-question-template"), "Шаблон вопроса викторины");
-    assert.equal(getActivityActionLabel("quiz-question-template.created"), "Шаблон вопроса викторины создан");
-    assert.equal(getActivityActionLabel("quiz-question-template.updated"), "Шаблон вопроса викторины изменён");
-    assert.equal(getActivityActionLabel("quiz-question-template.deleted"), "Шаблон вопроса викторины удалён");
+    assert.equal(getActivityEntityTypeLabel("quiz-question-template"), "Шаблон вопроса квиза");
+    assert.equal(getActivityActionLabel("quiz-question-template.created"), "Шаблон вопроса квиза создан");
+    assert.equal(getActivityActionLabel("quiz-question-template.updated"), "Шаблон вопроса квиза изменён");
+    assert.equal(getActivityActionLabel("quiz-question-template.deleted"), "Шаблон вопроса квиза удалён");
     assert.match(actions, /action: "quiz-question-template\.created"[\s\S]*entityType: "quiz-question-template"/);
     assert.match(actions, /action: "quiz-question-template\.updated"[\s\S]*entityType: "quiz-question-template"/);
     assert.match(actions, /action: "quiz-question-template\.deleted"[\s\S]*entityType: "quiz-question-template"/);
