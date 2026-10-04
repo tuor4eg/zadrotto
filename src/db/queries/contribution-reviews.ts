@@ -1118,6 +1118,18 @@ export async function reviewContributionReview(input: {
           type: "review.approved",
         });
       }
+    } else if (previous.status === "submitted") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(review.id),
+        aggregateType: "review",
+        payload: {
+          authorId: review.authorId,
+          contributionId: review.id,
+          mediaItemId: review.mediaItemId,
+        },
+        type: "review.rejected",
+      });
     }
 
     const [mediaItem] = await tx

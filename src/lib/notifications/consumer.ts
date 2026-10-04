@@ -35,6 +35,8 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
     "review.submitted",
     "review.approved",
     "bug-report.created",
+    "author.level-achieved",
+    "author.trusted-granted",
   ],
   async handle(tx, event) {
     if (isManualBugReportCreated(event)) return

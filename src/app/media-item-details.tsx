@@ -348,6 +348,21 @@ function ArchiveMediaItemDetails({
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[max-content_minmax(0,1fr)]">
+          {mediaCarrierFrame?.detailBackgroundPath ? (
+            <div
+              aria-hidden="true"
+              className="pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden rounded-tr-[8px] lg:col-start-2 lg:row-start-1 lg:row-end-3 lg:-top-8 lg:block"
+            >
+              <div
+                className="absolute right-0 top-0 aspect-[4/3] w-1/2 bg-contain bg-right-top bg-no-repeat sm:w-[calc(100%-min(50%,324px))]"
+                style={{
+                  backgroundImage: `url(${mediaCarrierFrame.detailBackgroundPath})`,
+                  maskImage: "linear-gradient(to right, transparent, black 55%), linear-gradient(to top, transparent, black 65%)",
+                  maskComposite: "intersect",
+                }}
+              />
+            </div>
+          ) : null}
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src="/clip-transparent-trimmed.png"
@@ -442,7 +457,7 @@ function ArchiveMediaItemDetails({
             </div>
             {adjacentShelfSlot ? (
               <div className="order-5 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
-                <div className="mt-7 w-full max-w-[420px] sm:ml-2 lg:w-[420px]">
+                <div className="mt-7 w-full max-w-[420px] sm:mx-2 sm:w-[calc(100%-1rem)] lg:w-[calc(420px-1rem)]">
                   {adjacentShelfSlot}
                 </div>
               </div>
@@ -554,9 +569,11 @@ function ArchiveMediaItemDetails({
                 </div>
               </div>
 
-              <div className="mt-6">
-                <ArchiveNote text={item.description} maxWidthClassName="max-w-none" collapsible={!item.editorialSummary} />
-              </div>
+              {item.description?.trim() ? (
+                <div className="mt-6 w-full max-w-[584px]">
+                  <ArchiveNote text={item.description} maxWidthClassName="max-w-none" collapsible={!item.editorialSummary} />
+                </div>
+              ) : null}
 
               <div className="mt-6 flex flex-col gap-3">
                 {noteSlot}

@@ -6,7 +6,9 @@ import { requireAuthor } from "@/lib/auth/author-auth";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
+import { getAuthorLevelProgress } from "@/db/queries/reputation";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
+import { AuthorLevelProgress } from "./author-level-progress";
 import { AuthorMobileNavMenu } from "./author-mobile-nav-menu";
 import { AuthorProposalsMenu } from "./author-proposals-menu";
 
@@ -18,9 +20,10 @@ type AuthorLayoutProps = {
 
 export default async function AuthorLayout({ children }: AuthorLayoutProps) {
   const author = await requireAuthor();
-  const [incomingFriendRequestCount, headerState] = await Promise.all([
+  const [incomingFriendRequestCount, headerState, levelProgress] = await Promise.all([
     getIncomingFriendRequestCount(author.id),
     getPublicSiteHeaderState(author),
+    getAuthorLevelProgress(author.id),
   ]);
 
   return (
@@ -32,9 +35,12 @@ export default async function AuthorLayout({ children }: AuthorLayoutProps) {
           style={{ overflow: "visible" }}
         >
           <div className="flex items-center justify-between gap-3 px-3 py-2 md:block md:py-3 lg:px-7 lg:py-5">
-            <h1 className="min-w-0 break-words font-serif text-xl leading-tight text-stone-950 lg:text-4xl">
-              Кабинет автора: {author.name}
-            </h1>
+            <div className="min-w-0 flex-1">
+              <h1 className="min-w-0 break-words font-serif text-xl leading-tight text-stone-950 lg:text-4xl">
+                Кабинет автора: {author.name}
+              </h1>
+              {levelProgress ? <AuthorLevelProgress progress={levelProgress} /> : null}
+            </div>
             <AuthorMobileNavMenu
               incomingFriendRequestCount={incomingFriendRequestCount}
               logoutSlot={(

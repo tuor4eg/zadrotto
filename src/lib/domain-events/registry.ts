@@ -2,11 +2,12 @@ import type { DbTransaction } from "@/db/transaction";
 import { achievementDomainEventConsumer } from "@/lib/achievements/consumer";
 import { notificationDomainEventConsumer } from "@/lib/notifications/consumer";
 import { mediaAutomoderationConsumer } from "@/lib/automoderation/consumer";
+import { reputationDomainEventConsumer } from "@/lib/reputation/service";
 import type { DomainEventType, PersistedDomainEvent } from "./catalog";
 
 export type DomainEventConsumer<TType extends DomainEventType = DomainEventType> = {
   eventTypes: readonly TType[];
-  handle: (tx: DbTransaction, event: PersistedDomainEvent<TType>) => Promise<void>;
+  handle: (tx: DbTransaction, event: PersistedDomainEvent<TType>) => Promise<string[] | void>;
   key: string;
 };
 
@@ -40,4 +41,5 @@ export const domainEventConsumerRegistry = createDomainEventConsumerRegistry([
   achievementDomainEventConsumer,
   notificationDomainEventConsumer,
   mediaAutomoderationConsumer,
+  reputationDomainEventConsumer,
 ]);

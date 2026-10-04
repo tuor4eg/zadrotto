@@ -673,6 +673,55 @@
       "when": 1790673861421,
       "tag": "0095_media_automoderation",
       "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1790985600000,
+      "tag": "0096_anime_shikimori_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791072000000,
+      "tag": "0097_anime_shikimori_markup_refresh",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1791158400000,
+      "tag": "0098_author_levels_trust",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791244800000,
+      "tag": "0099_level_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1791331200000,
+      "tag": "0100_simplify_author_trust",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1791417600000,
+      "tag": "0101_unify_trust_action_accounting",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1791504000000,
+      "tag": "0102_reputation_trusted_promotion_job",
+      "breakpoints": true
     }
   ]
 }

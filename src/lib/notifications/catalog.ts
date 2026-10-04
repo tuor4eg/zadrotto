@@ -15,6 +15,8 @@ export const NOTIFICATION_TYPES = [
   "review.submitted",
   "review.approved",
   "bug-report.created",
+  "author.level-achieved",
+  "author.trusted-granted",
 ] as const
 
 export type NotificationType = (typeof NOTIFICATION_TYPES)[number]
@@ -25,6 +27,7 @@ export const NOTIFICATION_ENTITY_TYPES = [
   "media-franchise",
   "review",
   "bug-report",
+  "author-level",
 ] as const
 
 export type NotificationEntityType = (typeof NOTIFICATION_ENTITY_TYPES)[number]
@@ -42,6 +45,8 @@ const NOTIFICATION_TITLES: Record<NotificationType, string> = {
   "review.submitted": "Новая заявка на рецензию",
   "review.approved": "Рецензия одобрена",
   "bug-report.created": "Новый багрепорт",
+  "author.level-achieved": "Новый уровень",
+  "author.trusted-granted": "Получен статус Trusted",
 }
 
 const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEntityType> = {
@@ -57,6 +62,8 @@ const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEnt
   "review.submitted": "review",
   "review.approved": "review",
   "bug-report.created": "bug-report",
+  "author.level-achieved": "author-level",
+  "author.trusted-granted": "author-level",
 }
 
 export function isNotificationType(value: string): value is NotificationType {
@@ -72,6 +79,7 @@ export function getNotificationEntityType(type: NotificationType) {
 }
 
 export function getNotificationRecipientType(type: NotificationType): NotificationRecipientType {
+  if (type === "author.level-achieved" || type === "author.trusted-granted") return "author"
   if (type === "automoderation.approved") return "admin"
   return type.endsWith(".approved") ? "author" : "admin"
 }
@@ -112,6 +120,9 @@ export function getNotificationHref(input: {
   type: NotificationType
 }) {
   switch (input.type) {
+    case "author.level-achieved":
+    case "author.trusted-granted":
+      return "/author/profile"
     case "media.submitted":
       return `/admin/media/${input.entityId}/edit`
     case "media.approved":

@@ -30,6 +30,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   "job-run",
   "bug-report",
   "data-export",
+  "reputation-settings",
 ] as const;
 
 export const ACTIVITY_ACTIONS = [
@@ -153,6 +154,9 @@ export const ACTIVITY_ACTIONS = [
   "data-export.expired",
   "data-export.retry-requested",
   "data-export.cancelled",
+  "reputation.settings.updated",
+  "reputation.initialization.requested",
+  "reputation.disabled",
 ] as const;
 
 export type ActivityActorType = (typeof ACTIVITY_ACTOR_TYPES)[number];
@@ -206,6 +210,7 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   "job-run": "Запуск фоновой задачи",
   "bug-report": "Багрепорт",
   "data-export": "Экспорт данных",
+  "reputation-settings": "Уровни и доверие",
 } satisfies Record<ActivityEntityType, string>;
 
 export const ACTIVITY_ACTION_LABELS = {
@@ -329,6 +334,9 @@ export const ACTIVITY_ACTION_LABELS = {
   "data-export.expired": "Срок экспорта истёк",
   "data-export.retry-requested": "Повтор экспорта запрошен",
   "data-export.cancelled": "Экспорт отменён",
+  "reputation.settings.updated": "Настройки уровней и доверия изменены",
+  "reputation.initialization.requested": "Расчёт уровней и доверия запущен",
+  "reputation.disabled": "Начисление уровней и доверия приостановлено",
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([

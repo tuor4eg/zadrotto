@@ -75,7 +75,17 @@ export async function resolveNotificationDraft(tx: DbTransaction, event: Persist
   let entityId: string | null = null
   let authorId = 0
 
-  if (
+  if (event.type === "author.level-achieved") {
+    const payload = event.payload as { authorId: number; level: number }
+    body = `Теперь у вас уровень ${payload.level}.`
+    entityId = String(payload.authorId)
+    authorId = payload.authorId
+  } else if (event.type === "author.trusted-granted") {
+    const payload = event.payload as { authorId: number }
+    body = "Теперь вам доступна автопубликация записей и изменений каталога."
+    entityId = String(payload.authorId)
+    authorId = payload.authorId
+  } else if (
     event.type === "media.submitted" ||
     event.type === "media.approved" ||
     event.type === "automoderation.approved"

@@ -3,22 +3,31 @@ export const DOMAIN_EVENT_TYPES = [
   "review.published",
   "review.submitted",
   "review.approved",
+  "review.rejected",
   "friend.accepted",
   "quiz.completed",
   "media.published",
   "media.submitted",
   "media.approved",
+  "media.rejected",
   "automoderation.approved",
   "media-franchise.published",
   "media-franchise.submitted",
   "media-franchise.approved",
+  "media-franchise.rejected",
   "media-franchise.removal.requested",
   "media-franchise.removal.approved",
+  "media-franchise.removal.rejected",
+  "media-franchise.removed",
   "franchise.parent.changed",
   "franchise.submitted",
   "franchise.approved",
+  "franchise.rejected",
   "bug-report.created",
   "bug-report.confirmed",
+  "bug-report.rejected",
+  "author.level-achieved",
+  "author.trusted-granted",
 ] as const;
 
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
@@ -28,6 +37,7 @@ export type DomainEventPayloads = {
   "review.published": { authorId: number; mediaItemId: number };
   "review.submitted": { authorId: number; contributionId: number; mediaItemId: number };
   "review.approved": { authorId: number; contributionId: number; mediaItemId: number };
+  "review.rejected": { authorId: number; contributionId: number; mediaItemId: number };
   "friend.accepted": {
     acceptedByAuthorId: number;
     friendshipId: number;
@@ -41,17 +51,26 @@ export type DomainEventPayloads = {
   "media.published": { mediaItemId: number };
   "media.submitted": { authorId: number; mediaItemId: number; moderationRevision: number };
   "media.approved": { authorId: number; mediaItemId: number };
+  "media.rejected": { authorId: number; mediaItemId: number };
   "automoderation.approved": {
     authorId: number;
     checkId: number;
     subjectKey: string;
     subjectType: "media-item";
   };
-  "media-franchise.published": { franchiseId: number; mediaItemId: number };
+  "media-franchise.published": {
+    authorId?: number;
+    contributionKind?: "existing-series-link" | "new-series-with-link";
+    franchiseId: number;
+    mediaItemId: number;
+  };
   "media-franchise.submitted": { authorId: number; franchiseId: number; mediaItemId: number };
   "media-franchise.approved": { authorId: number; franchiseId: number; mediaItemId: number };
+  "media-franchise.rejected": { authorId: number; franchiseId: number; mediaItemId: number };
   "media-franchise.removal.requested": { authorId: number; franchiseId: number; mediaItemId: number };
   "media-franchise.removal.approved": { authorId: number; franchiseId: number; mediaItemId: number };
+  "media-franchise.removal.rejected": { authorId: number; franchiseId: number; mediaItemId: number };
+  "media-franchise.removed": { authorId: number; franchiseId: number; mediaItemId: number };
   "franchise.parent.changed": {
     franchiseId: number;
     nextParentId: number | null;
@@ -59,8 +78,12 @@ export type DomainEventPayloads = {
   };
   "franchise.submitted": { authorId: number; franchiseId: number };
   "franchise.approved": { authorId: number; franchiseId: number };
+  "franchise.rejected": { authorId: number; franchiseId: number };
   "bug-report.created": { authorId: number; bugReportId: number };
   "bug-report.confirmed": { authorId: number; bugReportId: number };
+  "bug-report.rejected": { authorId: number; bugReportId: number };
+  "author.level-achieved": { authorId: number; level: number; previousLevel: number };
+  "author.trusted-granted": { authorId: number };
 };
 
 export type DomainEventInput<TType extends DomainEventType = DomainEventType> = {

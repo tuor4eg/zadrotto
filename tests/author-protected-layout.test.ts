@@ -15,6 +15,10 @@ const mobileMenuSource = readFileSync(
   "src/app/author/(protected)/author-mobile-nav-menu.tsx",
   "utf8",
 );
+const levelProgressSource = readFileSync(
+  "src/app/author/(protected)/author-level-progress.tsx",
+  "utf8",
+);
 
 function countMatches(source: string, pattern: RegExp) {
   return source.match(pattern)?.length ?? 0;
@@ -71,6 +75,18 @@ describe("protected author layout", () => {
   it("renders the shared public navigation above the cabinet header", () => {
     assert.match(authorLayoutSource, /<PublicSiteHeader \{\.\.\.headerState\.headerProps\} \/>[\s\S]*<header/);
     assert.match(authorLayoutSource, /getPublicSiteHeaderState\(author\)/);
+  });
+
+  it("shows level progress in the cabinet header only when reputation is enabled", () => {
+    assert.match(authorLayoutSource, /getAuthorLevelProgress\(author\.id\)/);
+    assert.match(authorLayoutSource, /levelProgress \? <AuthorLevelProgress progress=\{levelProgress\} \/> : null/);
+    assert.match(levelProgressSource, /Уровень \{progress\.currentLevel\} · \{progress\.currentLevelName\}/);
+    assert.match(levelProgressSource, /role="progressbar"/);
+    assert.match(levelProgressSource, /Прогресс до уровня/);
+    assert.match(levelProgressSource, /максимальный уровень/);
+    assert.match(levelProgressSource, /Статус:[\s\S]*progress\.accessProfileName/);
+    assert.doesNotMatch(levelProgressSource, /Доверие:/);
+    assert.match(authorLayoutSource, /getAuthorLevelProgress\(author\.id\)/);
   });
 
   it("uses a hamburger menu for the complete mobile navigation", () => {

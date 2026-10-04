@@ -5,7 +5,7 @@ import { and, asc, eq, isNull } from "drizzle-orm";
 import { db } from "@/db";
 import { domainEventConsumptions, domainEventOutbox, domainEvents } from "@/db/schema";
 import { isDomainEventType, type PersistedDomainEvent } from "./catalog";
-import { enqueueNotificationTransportDelivery } from "./queue";
+import { enqueueDomainEventDispatch, enqueueNotificationTransportDelivery } from "./queue";
 import { domainEventConsumerRegistry } from "./registry";
 
 const DEFAULT_RECOVERY_BATCH_SIZE = 50;
@@ -17,16 +17,17 @@ export async function dispatchDomainEvent(eventId: string) {
       .where(eq(domainEventOutbox.eventId, eventId))
       .for("update")
       .limit(1);
-    if (!outbox) return { dispatched: false, shouldDeliverNotifications: false };
-    if (outbox.dispatchedAt) return { dispatched: true, shouldDeliverNotifications: false };
+    if (!outbox) return { dispatched: false, followUpEventIds: [], shouldDeliverNotifications: false };
+    if (outbox.dispatchedAt) return { dispatched: true, followUpEventIds: [], shouldDeliverNotifications: false };
 
     const [event] = await tx.select().from(domainEvents).where(eq(domainEvents.id, eventId)).limit(1);
-    if (!event) return { dispatched: false, shouldDeliverNotifications: false };
+    if (!event) return { dispatched: false, followUpEventIds: [], shouldDeliverNotifications: false };
     if (!isDomainEventType(event.type)) {
       throw new Error(`Unsupported domain event type: ${event.type}`);
     }
 
     const typedEvent = event as PersistedDomainEvent;
+    const followUpEventIds: string[] = [];
     let shouldDeliverNotifications = false;
     for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
       const [claimedRow] = await tx.insert(domainEventConsumptions).values({
@@ -34,7 +35,8 @@ export async function dispatchDomainEvent(eventId: string) {
         eventId,
       }).onConflictDoNothing().returning({ eventId: domainEventConsumptions.eventId });
       if (!claimedRow) continue;
-      await consumer.handle(tx, typedEvent);
+      const producedEventIds = await consumer.handle(tx, typedEvent);
+      if (producedEventIds) followUpEventIds.push(...producedEventIds);
       if (consumer.key === "notifications.create") shouldDeliverNotifications = true;
     }
 
@@ -45,8 +47,9 @@ export async function dispatchDomainEvent(eventId: string) {
       eq(domainEventOutbox.eventId, eventId),
       isNull(domainEventOutbox.dispatchedAt),
     ));
-    return { dispatched: true, shouldDeliverNotifications };
+    return { dispatched: true, followUpEventIds, shouldDeliverNotifications };
   });
+  await Promise.all(result.followUpEventIds.map(enqueueDomainEventDispatch));
   if (result.shouldDeliverNotifications) await enqueueNotificationTransportDelivery();
   return result.dispatched;
 }

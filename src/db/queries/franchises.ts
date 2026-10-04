@@ -1405,6 +1405,14 @@ export async function reviewSubmittedFranchise(input: {
             type: "media-franchise.published",
           });
         }
+      } else {
+        await appendEvent({
+          actorAuthorId: null,
+          aggregateId: String(franchise.id),
+          aggregateType: "franchise",
+          payload: { authorId: franchise.createdByAuthorId, franchiseId: franchise.id },
+          type: "franchise.rejected",
+        });
       }
     }
 
@@ -1469,6 +1477,18 @@ export async function reviewSubmittedMediaItemFranchise(input: {
           });
         }
       }
+    } else if (link?.createdByAuthorId) {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: `${link.mediaItemId}:${link.franchiseId}`,
+        aggregateType: "media-franchise",
+        payload: {
+          authorId: link.createdByAuthorId,
+          franchiseId: link.franchiseId,
+          mediaItemId: link.mediaItemId,
+        },
+        type: "media-franchise.rejected",
+      });
     }
     return link ?? null;
   });
@@ -1522,7 +1542,23 @@ export async function reviewMediaItemFranchiseRemovalRequest(input: {
     const [request] = await tx.delete(mediaItemFranchiseRemovalRequests).where(and(
       eq(mediaItemFranchiseRemovalRequests.mediaItemId, input.mediaItemId),
       eq(mediaItemFranchiseRemovalRequests.franchiseId, input.franchiseId),
-    )).returning({ mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId });
+    )).returning({
+      mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId,
+      requestedByAuthorId: mediaItemFranchiseRemovalRequests.requestedByAuthorId,
+    });
+    if (request) {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: `${input.mediaItemId}:${input.franchiseId}`,
+        aggregateType: "media-franchise",
+        payload: {
+          authorId: request.requestedByAuthorId,
+          franchiseId: input.franchiseId,
+          mediaItemId: input.mediaItemId,
+        },
+        type: "media-franchise.removal.rejected",
+      });
+    }
     return request ?? null;
   });
 }
@@ -1602,7 +1638,12 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
           actorAuthorId: input.authorId,
           aggregateId: `${input.mediaItemId}:${franchiseId}`,
           aggregateType: "media-franchise",
-          payload: { franchiseId, mediaItemId: input.mediaItemId },
+          payload: {
+            authorId: input.authorId,
+            contributionKind: "existing-series-link",
+            franchiseId,
+            mediaItemId: input.mediaItemId,
+          },
           type: "media-franchise.published",
         });
       }
@@ -1689,6 +1730,19 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
       )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
+      if (removed) {
+        await appendEvent({
+          actorAuthorId: input.authorId,
+          aggregateId: `${input.mediaItemId}:${input.franchiseId}`,
+          aggregateType: "media-franchise",
+          payload: {
+            authorId: input.authorId,
+            franchiseId: input.franchiseId,
+            mediaItemId: input.mediaItemId,
+          },
+          type: "media-franchise.removed",
+        });
+      }
       return removed
         ? {
             status: "removed" as const,
@@ -1772,7 +1826,12 @@ export async function createAuthorFranchiseWithMediaItemLink(input: {
         actorAuthorId: input.authorId,
         aggregateId: `${input.mediaItemId}:${franchise.id}`,
         aggregateType: "media-franchise",
-        payload: { franchiseId: franchise.id, mediaItemId: input.mediaItemId },
+        payload: {
+          authorId: input.authorId,
+          contributionKind: "new-series-with-link",
+          franchiseId: franchise.id,
+          mediaItemId: input.mediaItemId,
+        },
         type: "media-franchise.published",
       });
     }

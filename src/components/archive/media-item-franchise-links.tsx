@@ -17,7 +17,7 @@ export function MediaItemFranchiseLinks({
   trailingAction,
 }: MediaItemFranchiseLinksProps) {
   if (franchises.length === 0 && !trailingAction) {
-    return <>—</>;
+    return null;
   }
 
   return (

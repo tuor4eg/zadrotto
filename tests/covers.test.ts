@@ -20,7 +20,10 @@ import {
   runCoverProviderSmokeTest,
 } from "@/lib/covers/provider-smoke-test";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
-import { anilistProvider } from "@/lib/covers/providers/anilist";
+import {
+  anilistProvider,
+  getAniListShikimoriEnrichment,
+} from "@/lib/covers/providers/anilist";
 import { fetchSearchJson } from "@/lib/covers/providers/shared";
 import {
   getCoverProvidersForMediaType,
@@ -1278,7 +1281,7 @@ describe("cover provider registry", () => {
 
       return Response.json({
         data: {
-          animes: [{ malId: "16498", russian: "  Атака титанов  ", description: " Русское описание " }],
+          animes: [{ malId: "16498", russian: "  Атака титанов  ", description: " [anime=16498]Русское описание[/anime] " }],
         },
       });
     };
@@ -1378,6 +1381,47 @@ describe("cover provider registry", () => {
           releaseYear: null,
         });
       }
+    } finally {
+      globalThis.fetch = originalFetch;
+    }
+  });
+
+  it("distinguishes terminal AniList enrichment outcomes from transient Shikimori failures", async () => {
+    const originalFetch = globalThis.fetch;
+
+    try {
+      globalThis.fetch = async () => Response.json({ data: { Media: { id: 1, idMal: null } } });
+      assert.deepEqual(await getAniListShikimoriEnrichment(1), {
+        kind: "terminal",
+        status: "no-mal-id",
+        russian: null,
+        description: null,
+      });
+
+      let requestCount = 0;
+      globalThis.fetch = async () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return Response.json({ data: { Media: { id: 1, idMal: 2 } } });
+        }
+        return new Response(null, { status: 429 });
+      };
+      assert.deepEqual(await getAniListShikimoriEnrichment(1), { kind: "transient-error" });
+
+      requestCount = 0;
+      globalThis.fetch = async () => {
+        requestCount += 1;
+        if (requestCount === 1) {
+          return Response.json({ data: { Media: { id: 1, idMal: 2 } } });
+        }
+        return Response.json({ data: { animes: [] } });
+      };
+      assert.deepEqual(await getAniListShikimoriEnrichment(1), {
+        kind: "terminal",
+        status: "not-found",
+        russian: null,
+        description: null,
+      });
     } finally {
       globalThis.fetch = originalFetch;
     }

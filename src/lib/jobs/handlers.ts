@@ -7,9 +7,11 @@ import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/achievements/backfill";
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
+import { enqueueDomainEventDispatch } from "@/lib/domain-events/queue";
 import { deliverPendingNotificationTransports } from "@/lib/notifications/outbox-delivery";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
+import { backfillAnimeFromShikimori } from "@/lib/media/anime-shikimori-backfill";
 import { generateEditorialSummary, sweepEditorialSummaries } from "@/lib/media/editorial-summary-jobs";
 import { EDITORIAL_SUMMARY_GENERATE_TYPE, EDITORIAL_SUMMARY_SWEEP_TYPE } from "@/lib/media/editorial-summary";
 import { cleanupAdminExports, generateAdminExport } from "@/lib/admin-exports/generate";
@@ -21,6 +23,9 @@ import { createJobHandlerRegistry } from "./registry";
 import { processAutomoderationCheck } from "@/lib/automoderation/process";
 import { MEDIA_AUTOMODERATION_JOB_TYPE } from "@/lib/automoderation/model";
 import { JobError, type JobHandlerDefinition } from "./types";
+import { initializeReputation } from "@/lib/reputation/initialize";
+import { promoteEligibleTrustedAuthors } from "@/lib/reputation/service";
+import { setReputationSystemStatus } from "@/db/queries/reputation";
 
 function parseEmptyPayload(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 0) {
@@ -249,6 +254,17 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   },
 };
 
+const animeShikimoriBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "media.anime-shikimori-backfill",
+  label: "Русские названия и описания аниме",
+  defaultMaxAttempts: 1,
+  defaultTimeoutSeconds: 60,
+  parsePayload: parseEmptyPayload,
+  async execute() {
+    await backfillAnimeFromShikimori();
+  },
+};
+
 function parseRatingStatsReconciliationPayload(
   value: unknown,
 ): RatingStatsReconciliationPayload {
@@ -421,6 +437,35 @@ const achievementBackfillHandler: JobHandlerDefinition<AchievementBackfillPayloa
   },
 };
 
+const reputationInitializeHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "reputation.initialize",
+  label: "Первичный расчёт уровней и доверия",
+  defaultMaxAttempts: 1,
+  defaultTimeoutSeconds: 900,
+  schedulable: false,
+  parsePayload: parseEmptyPayload,
+  async execute() {
+    try {
+      await initializeReputation();
+    } catch (error) {
+      await setReputationSystemStatus("disabled");
+      throw error;
+    }
+  },
+};
+
+const reputationPromoteTrustedHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "reputation.promote-trusted",
+  label: "Автоматическое назначение Trusted",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 120,
+  parsePayload: parseEmptyPayload,
+  async execute() {
+    const eventIds = await promoteEligibleTrustedAuthors();
+    await Promise.all(eventIds.map(enqueueDomainEventDispatch));
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
   emailOutboxDeliveryHandler,
   authCleanupHandler,
@@ -430,6 +475,7 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   coverThumbnailBackfillHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,
+  animeShikimoriBackfillHandler,
   editorialSummarySweepHandler,
   editorialSummaryGenerateHandler,
   ratingStatsReconciliationHandler,
@@ -437,4 +483,6 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   notificationTransportDeliveryHandler,
   automoderationHandler,
   achievementBackfillHandler,
+  reputationInitializeHandler,
+  reputationPromoteTrustedHandler,
 ]);

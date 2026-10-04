@@ -1566,6 +1566,14 @@ export async function reviewSubmittedAuthorMediaItem(input: {
           type: "media.approved",
         });
       }
+    } else if (item.createdByAuthorId) {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(item.id),
+        aggregateType: "media-item",
+        payload: { authorId: item.createdByAuthorId, mediaItemId: item.id },
+        type: "media.rejected",
+      });
     }
   }
 

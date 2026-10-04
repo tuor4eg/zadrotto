@@ -10,6 +10,7 @@ import {
   ChevronDown,
   FileClock,
   FileText,
+  Gauge,
   Download,
   House,
   KeyRound,
@@ -102,6 +103,7 @@ function getAdminNavGroups({
         { href: "/admin/author-tokens", icon: KeyRound, label: "Токены" },
         { href: "/admin/access-profiles", icon: ShieldCheck, label: "Профили" },
         { href: "/admin/achievements", icon: Trophy, label: "Ачивки" },
+        { href: "/admin/reputation", icon: Gauge, label: "Уровни и доверие" },
       ],
     },
     {
@@ -200,7 +202,7 @@ function AdminNavMenu({ count = 0, icon: Icon, items, label }: AdminNavMenuProps
         ) : null}
       </button>
       <div
-        className={`absolute right-0 top-full z-20 min-w-44 pt-2 transition ${
+        className={`absolute right-0 top-full z-20 min-w-52 pt-2 transition ${
           isOpen ? "visible opacity-100" : "invisible opacity-0"
         }`}
       >

@@ -41,6 +41,12 @@ import {
   DEFAULT_ACHIEVEMENT_RARITY,
   type AchievementRarity,
 } from "@/lib/achievements/model";
+import {
+  REPUTATION_ACTION_CODES,
+  type ReputationActionCode,
+  type ReputationOutcome,
+  type ReputationSystemStatus,
+} from "@/lib/reputation/model";
 
 export const publicationStatusEnum = pgEnum("publication_status", PUBLICATION_STATUSES);
 export const contributionTypeEnum = pgEnum("contribution_type", CONTRIBUTION_TYPES);
@@ -942,6 +948,12 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_automoderation_active_unique")
       .on(sql`(${table.payload}->>'checkId')`)
       .where(sql`${table.type} = 'moderation.auto-check' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_reputation_initialize_active_unique")
+      .on(table.type)
+      .where(sql`${table.type} = 'reputation.initialize' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_anime_shikimori_backfill_active_unique")
+      .on(table.type)
+      .where(sql`${table.type} = 'media.anime-shikimori-backfill' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
     check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
@@ -1037,6 +1049,127 @@ export const domainEventConsumptions = pgTable(
     check("domain_event_consumptions_consumer_key_check", sql`btrim(${table.consumerKey}) <> ''`),
   ],
 );
+
+export const levelSettings = pgTable("level_settings", {
+  id: integer("id").primaryKey().default(1),
+  status: text("status").$type<ReputationSystemStatus>().default("disabled").notNull(),
+  enabledAt: timestamp("enabled_at", { withTimezone: true }),
+  maxLockedLevel: integer("max_locked_level").default(0).notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  ...timestamps(),
+}, (table) => [
+  check("level_settings_singleton_id_check", sql`${table.id} = 1`),
+  check("level_settings_status_check", sql`${table.status} in ('disabled', 'initializing', 'enabled')`),
+  check("level_settings_max_locked_level_check", sql`${table.maxLockedLevel} >= 0`),
+]);
+
+export const xpActionRules = pgTable("xp_action_rules", {
+  actionCode: text("action_code").$type<ReputationActionCode>().primaryKey(),
+  xp: integer("xp").notNull(),
+  displayOrder: integer("display_order").notNull(),
+  ...timestamps(),
+}, (table) => [
+  check("xp_action_rules_code_check", sql`btrim(${table.actionCode}) <> ''`),
+  check("xp_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map((code) => sql`${code}`), sql`, `)})`),
+  check("xp_action_rules_xp_check", sql`${table.xp} >= 0`),
+  check("xp_action_rules_display_order_check", sql`${table.displayOrder} >= 0`),
+]);
+
+export const levelThresholds = pgTable("level_thresholds", {
+  level: integer("level").primaryKey(),
+  name: text("name").notNull(),
+  xpThreshold: integer("xp_threshold").notNull().unique(),
+  ...timestamps(),
+}, (table) => [
+  check("level_thresholds_level_check", sql`${table.level} >= 1`),
+  check("level_thresholds_name_check", sql`char_length(btrim(${table.name})) between 1 and 80`),
+  check("level_thresholds_xp_check", sql`${table.xpThreshold} >= 0`),
+]);
+
+export const trustSettings = pgTable("trust_settings", {
+  id: integer("id").primaryKey().default(1),
+  minimumLevel: integer("minimum_level").default(5).notNull(),
+  minimumTrustPoints: integer("minimum_trust_points").default(5).notNull(),
+  minimumApprovalRatePercent: integer("minimum_approval_rate_percent").default(90).notNull(),
+  minimumHistoryDays: integer("minimum_history_days").default(14).notNull(),
+  autoPromotionEnabled: boolean("auto_promotion_enabled").default(true).notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  ...timestamps(),
+}, (table) => [
+  check("trust_settings_singleton_id_check", sql`${table.id} = 1`),
+  check("trust_settings_minimum_level_check", sql`${table.minimumLevel} >= 1`),
+  check("trust_settings_minimum_trust_points_check", sql`${table.minimumTrustPoints} >= 1`),
+  check("trust_settings_minimum_approval_rate_check", sql`${table.minimumApprovalRatePercent} between 0 and 100`),
+  check("trust_settings_minimum_history_days_check", sql`${table.minimumHistoryDays} >= 0`),
+]);
+
+export const trustActionRules = pgTable("trust_action_rules", {
+  actionCode: text("action_code").$type<ReputationActionCode>().primaryKey(),
+  trustPoints: integer("trust_points").notNull(),
+  countsTowardTrust: boolean("counts_toward_trust").default(false).notNull(),
+  displayOrder: integer("display_order").notNull(),
+  ...timestamps(),
+}, (table) => [
+  check("trust_action_rules_code_check", sql`btrim(${table.actionCode}) <> ''`),
+  check("trust_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map((code) => sql`${code}`), sql`, `)})`),
+  check("trust_action_rules_points_check", sql`${table.trustPoints} >= 1`),
+  check("trust_action_rules_display_order_check", sql`${table.displayOrder} >= 0`),
+]);
+
+export const authorProgress = pgTable("author_progress", {
+  authorId: integer("author_id").primaryKey().references(() => authors.id, { onDelete: "cascade" }),
+  xpTotal: integer("xp_total").default(0).notNull(),
+  currentLevel: integer("current_level").default(1).notNull(),
+  maxAchievedLevel: integer("max_achieved_level").default(1).notNull(),
+  initializedAt: timestamp("initialized_at", { withTimezone: true }).defaultNow().notNull(),
+  ...timestamps(),
+}, (table) => [
+  index("author_progress_level_author_idx").on(table.currentLevel, table.authorId),
+  check("author_progress_xp_check", sql`${table.xpTotal} >= 0`),
+  check("author_progress_level_check", sql`${table.currentLevel} >= 1 and ${table.maxAchievedLevel} >= ${table.currentLevel}`),
+]);
+
+export const authorTrust = pgTable("author_trust", {
+  authorId: integer("author_id").primaryKey().references(() => authors.id, { onDelete: "cascade" }),
+  trustPoints: integer("trust_points").default(0).notNull(),
+  successfulOutcomes: integer("successful_outcomes").default(0).notNull(),
+  rejectedOutcomes: integer("rejected_outcomes").default(0).notNull(),
+  firstQualifyingActionAt: timestamp("first_qualifying_action_at", { withTimezone: true }),
+  autoTrustedAt: timestamp("auto_trusted_at", { withTimezone: true }),
+  autoTrustSuppressedAt: timestamp("auto_trust_suppressed_at", { withTimezone: true }),
+  ...timestamps(),
+}, (table) => [
+  index("author_trust_points_author_idx").on(table.trustPoints, table.authorId),
+  check("author_trust_non_negative_check", sql`${table.trustPoints} >= 0 and ${table.successfulOutcomes} >= 0 and ${table.rejectedOutcomes} >= 0`),
+]);
+
+export const authorActionLedger = pgTable("author_action_ledger", {
+  id: serial("id").primaryKey(),
+  authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "cascade" }),
+  actionCode: text("action_code").$type<ReputationActionCode>().notNull(),
+  entryKind: text("entry_kind").$type<"reward" | "outcome">().notNull(),
+  sourceType: text("source_type").notNull(),
+  sourceKey: text("source_key").notNull(),
+  sourceEventId: uuid("source_event_id").references(() => domainEvents.id, { onDelete: "set null" }),
+  idempotencyKey: text("idempotency_key").notNull().unique(),
+  rewardKey: text("reward_key"),
+  xpDelta: integer("xp_delta").default(0).notNull(),
+  trustDelta: integer("trust_delta").default(0).notNull(),
+  outcome: text("outcome").$type<ReputationOutcome>(),
+  occurredAt: timestamp("occurred_at", { withTimezone: true }).notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (table) => [
+  index("author_action_ledger_author_occurred_idx").on(table.authorId, table.occurredAt, table.id),
+  index("author_action_ledger_source_idx").on(table.sourceType, table.sourceKey),
+  index("author_action_ledger_source_event_idx").on(table.sourceEventId),
+  uniqueIndex("author_action_ledger_reward_unique").on(table.rewardKey).where(sql`${table.entryKind} = 'reward'`),
+  check("author_action_ledger_action_code_check", sql`btrim(${table.actionCode}) <> ''`),
+  check("author_action_ledger_source_check", sql`btrim(${table.sourceType}) <> '' and btrim(${table.sourceKey}) <> '' and btrim(${table.idempotencyKey}) <> ''`),
+  check("author_action_ledger_delta_check", sql`${table.xpDelta} >= 0 and ${table.trustDelta} >= 0`),
+  check("author_action_ledger_entry_kind_check", sql`${table.entryKind} in ('reward', 'outcome')`),
+  check("author_action_ledger_entry_shape_check", sql`(${table.entryKind} = 'reward' and ${table.rewardKey} is not null and ${table.outcome} is null) or (${table.entryKind} = 'outcome' and ${table.rewardKey} is null and ${table.xpDelta} = 0 and ${table.trustDelta} = 0 and ${table.outcome} is not null)`),
+  check("author_action_ledger_outcome_check", sql`${table.outcome} is null or ${table.outcome} in ('published', 'approved', 'rejected')`),
+]);
 
 export const automoderationChecks = pgTable(
   "automoderation_checks",
@@ -1363,6 +1496,9 @@ export const mediaItems = pgTable(
     coverThumbUrl: text("cover_thumb_url"),
     coverThumbAttemptedAt: timestamp("cover_thumb_attempted_at", { withTimezone: true }),
     metadataAttemptedAt: timestamp("metadata_attempted_at", { withTimezone: true }),
+    shikimoriEnrichmentAttemptedAt: timestamp("shikimori_enrichment_attempted_at", {
+      withTimezone: true,
+    }),
     metadataIssueCode: text("metadata_issue_code"),
     coverSourceProvider: text("cover_source_provider"),
     coverSourceExternalId: text("cover_source_external_id"),
@@ -1629,6 +1765,7 @@ export const mediaItemFranchises = pgTable(
       table.mediaItemId,
     ),
     index("media_item_franchises_publication_status_idx").on(table.publicationStatus),
+    index("media_item_franchises_created_by_author_idx").on(table.createdByAuthorId),
   ],
 );
 

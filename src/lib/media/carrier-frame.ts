@@ -55,6 +55,7 @@ export const MEDIA_IDENTITY_FONT_CLASS_NAME = "media-carrier-font-pc-steam";
 
 export type MediaCarrierFrame = {
   assetPath: string;
+  detailBackgroundPath?: string;
   aspectRatioClassName: string;
   bottomOverlayClassName?: string;
   bottomOverlayPath?: string;
@@ -117,6 +118,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "boardgame/boardgame": {
     assetPath: "/mediaCarriers/boardgames/boardgame.webp",
+    detailBackgroundPath: "/mediaCarriers/boardgames/background.webp",
     aspectRatioClassName: "aspect-[683/1024]",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
     compactViewportClassName: "h-[min(32vh,300px)]",

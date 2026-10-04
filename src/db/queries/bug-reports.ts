@@ -325,6 +325,14 @@ export async function transitionBugReportStatus(input: {
         payload: { authorId: current.authorId, bugReportId: input.id },
         type: "bug-report.confirmed",
       });
+    } else if (input.status === "rejected") {
+      await appendEvent({
+        actorAuthorId: null,
+        aggregateId: String(input.id),
+        aggregateType: "bug-report",
+        payload: { authorId: current.authorId, bugReportId: input.id },
+        type: "bug-report.rejected",
+      });
     }
     return { id: input.id, status: input.status };
   });

@@ -20,6 +20,7 @@
     "jobs:scheduler": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/scheduler.ts",
     "jobs:worker": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx src/jobs/worker.ts",
     "covers:backfill-thumbs": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx tools/backfill-cover-thumbs.ts",
+    "anime:requeue-shikimori": "NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-server tsx tools/requeue-anime-shikimori.ts",
     "db:generate-games-import": "tsx tools/import-games-csv.ts --file pasha_games.csv --author pasha"
   },
   "dependencies": {

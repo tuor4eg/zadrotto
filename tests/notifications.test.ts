@@ -42,6 +42,7 @@ const adminDeleteApiSource = readFileSync("src/app/api/admin/notifications/[id]/
 const authorReadApiSource = readFileSync("src/app/api/notifications/[id]/read/route.ts", "utf8")
 const adminReadApiSource = readFileSync("src/app/api/admin/notifications/[id]/read/route.ts", "utf8")
 const notificationQuerySource = readFileSync("src/db/queries/notifications.ts", "utf8")
+const dispatcherSource = readFileSync("src/lib/domain-events/dispatcher.ts", "utf8")
 
 describe("notifications schema", () => {
   it("stores an inbox row per recipient with unread and list indexes", () => {
@@ -147,6 +148,7 @@ describe("notification consumer", () => {
     assert.match(notificationQuerySource, /insertNotifications/)
     assert.match(notificationQuerySource, /eq\(notifications\.recipientType, input\.recipientType\)/)
     assert.match(notificationQuerySource, /isNull\(notifications\.readAt\)/)
+    assert.match(dispatcherSource, /followUpEventIds\.map\(enqueueDomainEventDispatch\)/)
   })
 
   it("fans out to external transports through a retryable transactional outbox", () => {
@@ -176,10 +178,23 @@ describe("notification catalog", () => {
   it("maps each type to copy, audience, and href", () => {
     assert.equal(getNotificationTitle("media.submitted"), "Новая заявка на запись")
     assert.equal(getNotificationTitle("review.approved"), "Рецензия одобрена")
+    assert.equal(getNotificationTitle("author.level-achieved"), "Новый уровень")
+    assert.equal(getNotificationTitle("author.trusted-granted"), "Получен статус Trusted")
     assert.equal(getNotificationRecipientType("media.submitted"), "admin")
     assert.equal(getNotificationRecipientType("automoderation.approved"), "admin")
     assert.equal(getNotificationRecipientType("media-franchise.removal.requested"), "admin")
     assert.equal(getNotificationRecipientType("franchise.approved"), "author")
+    assert.equal(getNotificationRecipientType("author.level-achieved"), "author")
+    assert.equal(getNotificationRecipientType("author.trusted-granted"), "author")
+    assert.equal(
+      getNotificationHref({
+        entityId: "1",
+        franchiseCode: null,
+        mediaItemCode: null,
+        type: "author.level-achieved",
+      }),
+      "/author/profile",
+    )
     assert.equal(
       getNotificationHref({
         entityId: "12",

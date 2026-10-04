@@ -1,6 +1,7 @@
 import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
 import { fetchJson, fetchSearchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { sanitizeShikimoriDescription } from "@/lib/media/shikimori-description";
 
 type AniListMedia = {
   id?: number;
@@ -217,9 +218,18 @@ async function searchAniListAnimeViaShikimori(query: string, candidateLimit: num
   }
 }
 
-async function getShikimoriAnime(malId: number) {
+export type AniListShikimoriEnrichmentResult =
+  | { kind: "transient-error" }
+  | {
+      kind: "terminal";
+      description: string | null;
+      russian: string | null;
+      status: "enriched" | "no-mal-id" | "not-found";
+    };
+
+async function getShikimoriAnime(malId: number): Promise<AniListShikimoriEnrichmentResult> {
   try {
-    const response = await fetchJson<ShikimoriResponse>(SHIKIMORI_URL, {
+    const response = await fetchSearchJson<ShikimoriResponse>(SHIKIMORI_URL, {
       method: "POST",
       headers: {
         "content-type": "application/json",
@@ -236,21 +246,51 @@ async function getShikimoriAnime(malId: number) {
       }),
     });
 
-    if (!response || response.errors || !Array.isArray(response.data?.animes)) {
-      return null;
+    if (response.errors || !Array.isArray(response.data?.animes)) {
+      return { kind: "transient-error" };
     }
 
     const anime = response.data.animes.find((item) => String(item?.malId) === String(malId));
 
-    if (!anime) return null;
+    if (!anime) {
+      return { kind: "terminal", description: null, russian: null, status: "not-found" };
+    }
 
     return {
-      description: anime.description?.trim() || null,
+      kind: "terminal",
+      description: sanitizeShikimoriDescription(anime.description ?? "") || null,
       russian: anime.russian?.trim() || null,
+      status: "enriched",
     };
   } catch {
-    return null;
+    return { kind: "transient-error" };
   }
+}
+
+export async function getAniListShikimoriEnrichment(
+  anilistId: number,
+): Promise<AniListShikimoriEnrichmentResult> {
+  if (!Number.isSafeInteger(anilistId) || anilistId <= 0) {
+    return { kind: "terminal", description: null, russian: null, status: "not-found" };
+  }
+
+  let media: AniListMedia | null;
+
+  try {
+    media = await getAniListAnime(anilistId);
+  } catch {
+    return { kind: "transient-error" };
+  }
+
+  if (!media?.id) {
+    return { kind: "terminal", description: null, russian: null, status: "not-found" };
+  }
+
+  if (!Number.isInteger(media.idMal) || media.idMal! <= 0) {
+    return { kind: "terminal", description: null, russian: null, status: "no-mal-id" };
+  }
+
+  return getShikimoriAnime(media.idMal!);
 }
 
 export const anilistProvider: MediaProvider = {
@@ -303,9 +343,10 @@ export const anilistProvider: MediaProvider = {
     }
 
     const title = getAniListTitle(media, input.externalId);
-    const shikimori = options.enrichTitleFields && Number.isInteger(media.idMal) && media.idMal! > 0
+    const shikimoriResult = options.enrichTitleFields && Number.isInteger(media.idMal) && media.idMal! > 0
       ? await getShikimoriAnime(media.idMal!)
       : null;
+    const shikimori = shikimoriResult?.kind === "terminal" ? shikimoriResult : null;
 
     return {
       provider: "anilist",

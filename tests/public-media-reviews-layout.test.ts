@@ -25,8 +25,7 @@ describe("public media reviews layout", () => {
     assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
     assert.match(details, /<div className="order-4 flex flex-col[^"]*lg:min-h-\[560px\]"/);
     assert.doesNotMatch(details, /order-4 flex min-h-\[560px\]/);
-    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:ml-2 lg:w-\[420px\]"/);
-    assert.doesNotMatch(details, /className="mx-auto mt-7 w-full max-w-\[420px\]"/);
+    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:mx-2 sm:w-\[calc\(100%-1rem\)\] lg:w-\[calc\(420px-1rem\)\]"/);
   });
 
   it("renders three review previews and one action card", () => {

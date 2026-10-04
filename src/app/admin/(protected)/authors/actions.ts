@@ -19,6 +19,8 @@ import { getAdminFormErrorCode, isUniqueViolation } from "@/lib/common/app-error
 import { canAssignAuthorAccessProfile } from "@/lib/authors/access-profiles";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { logActivity } from "@/lib/activity-logs/server";
+import { suppressAutomaticTrustOnManualDowngrade } from "@/db/queries/reputation";
+import { TRUSTED_AUTHOR_ACCESS_PROFILE_CODE } from "@/lib/authors/access-profiles";
 
 function getFormString(formData: FormData, key: string) {
   const value = formData.get(key);
@@ -103,6 +105,7 @@ export async function updateAuthorAction(formData: FormData) {
 
   let author;
   let accessProfile;
+  const existingAuthor = authorId ? await getAuthorById(authorId) : null;
 
   try {
     accessProfile = await getAuthorAccessProfileById(accessProfileId);
@@ -132,6 +135,11 @@ export async function updateAuthorAction(formData: FormData) {
 
   if (!author) {
     redirect("/admin/authors?error=invalid-author");
+  }
+
+  if (existingAuthor?.accessProfileCode === TRUSTED_AUTHOR_ACCESS_PROFILE_CODE
+    && accessProfile.code !== TRUSTED_AUTHOR_ACCESS_PROFILE_CODE) {
+    await suppressAutomaticTrustOnManualDowngrade(authorId);
   }
 
   revalidatePath("/admin/authors");
