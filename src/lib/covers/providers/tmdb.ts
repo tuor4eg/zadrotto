@@ -1,3 +1,4 @@
+import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   buildUrl,
@@ -35,6 +36,7 @@ type TmdbImagesResponse = {
 
 type TmdbMovieDetailsResponse = {
   genres?: Array<{
+    id?: number;
     name?: string;
   }>;
   id?: number;
@@ -54,6 +56,7 @@ type TmdbSeriesDetailsResponse = {
   episode_run_time?: Array<number | null | undefined>;
   first_air_date?: string | null;
   genres?: Array<{
+    id?: number;
     name?: string;
   }>;
   last_air_date?: string | null;
@@ -270,6 +273,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
 
       if (mediaType === "film") {
         const movieDetails = details as TmdbMovieDetailsResponse;
+        const genreReferences = getProviderGenreReferences(movieDetails.genres);
 
         return {
           provider: "tmdb",
@@ -278,6 +282,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
           facts: {
             runtimeMinutes: movieDetails.runtime ?? null,
             genres: getTmdbNames(movieDetails.genres),
+            ...(genreReferences.length > 0 ? { genreReferences } : {}),
             productionCountries: getTmdbProductionCountries(movieDetails.production_countries),
             originalLanguage: movieDetails.original_language ?? null,
             productionCompanies: getTmdbNames(movieDetails.production_companies),
@@ -286,6 +291,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
       }
 
       const seriesDetails = details as TmdbSeriesDetailsResponse;
+      const genreReferences = getProviderGenreReferences(seriesDetails.genres);
       const averageEpisodeRuntimeMinutes = getTmdbAverageEpisodeRuntimeMinutes(seriesDetails);
 
       return {
@@ -297,6 +303,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
           episodeCount: seriesDetails.number_of_episodes ?? null,
           averageEpisodeRuntimeMinutes,
           genres: getTmdbNames(seriesDetails.genres),
+          ...(genreReferences.length > 0 ? { genreReferences } : {}),
           networks: getTmdbNames(seriesDetails.networks),
           firstAirYear: getFirstYear(seriesDetails.first_air_date) ?? null,
           lastAirYear: getFirstYear(seriesDetails.last_air_date) ?? null,

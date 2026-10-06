@@ -18,8 +18,9 @@ function normalizeFilters(type: AdminExportEntityType, value: AdminExportFilters
 
 export async function createAdminExport(input: { adminId: number; entityType: AdminExportEntityType; fields: unknown; filters?: AdminExportFilters; sort?: string }) {
   if (!ADMIN_EXPORT_ENTITY_TYPES.includes(input.entityType)) throw new Error("Некорректный тип экспорта.");
-  const fields = parseAdminExportFields(input.entityType, input.fields);
   const filters = normalizeFilters(input.entityType, input.filters ?? {});
+  const mediaTypes = filters.mediaType ? [filters.mediaType] : [];
+  const fields = parseAdminExportFields(input.entityType, input.fields, mediaTypes);
   const sort = input.sort?.trim() || "title";
   const duplicate = (await getActiveAdminExports(input.adminId)).find((row) => row.entityType === input.entityType && row.sort === sort && JSON.stringify(row.fields) === JSON.stringify(fields) && JSON.stringify(row.filters) === JSON.stringify(filters));
   if (duplicate) return duplicate;

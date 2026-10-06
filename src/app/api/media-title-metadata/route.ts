@@ -17,6 +17,7 @@ import { getTitleMetadata } from "@/lib/covers/registry";
 import { isCoverProviderCode } from "@/lib/covers/types";
 import { createMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode } from "@/lib/media/types";
+import { resolveProviderGenres } from "@/db/queries/media-item-genres";
 
 type MediaTitleMetadataRequestBody = {
   enrichTitleFields?: unknown;
@@ -113,10 +114,14 @@ export async function POST(request: Request) {
     );
   }
 
+  const normalized = result.metadata
+    ? await resolveProviderGenres({ facts: result.metadata.facts, provider: result.metadata.provider, mediaType })
+    : null;
   return NextResponse.json({
     metadata: result.metadata
       ? {
           facts: result.metadata.facts,
+          genres: normalized?.genres ?? [],
           fields: result.metadata.fields,
           sourceProvider: result.metadata.provider,
           sourceExternalId: result.metadata.externalId,

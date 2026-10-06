@@ -7,12 +7,12 @@ const previewSource = readFileSync("src/app/media-catalog-preview.tsx", "utf8");
 const summarySource = readFileSync("src/lib/media/media-item-summary.ts", "utf8");
 
 describe("saved Roblox media details", () => {
-  it("adds saved creation year, genre, category, and creator to the Roblox metadata line", () => {
+  it("adds saved creation year and creator, without raw genres or categories to the Roblox metadata line", () => {
     assert.match(detailsSource, /getArchiveMediaItemInfoLabels/);
     assert.match(summarySource, /item\.mediaType === "roblox"/);
     assert.match(summarySource, /getDateFactYear\(item\.metadataFacts, "createdAt"\)/);
-    assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genre"\)/);
-    assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genreLevel1"\)/);
+    assert.doesNotMatch(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genre"\)/);
+    assert.doesNotMatch(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "genreLevel1"\)/);
     assert.match(summarySource, /getNonEmptyStringFact\(item\.metadataFacts, "creatorName"\)/);
   });
 

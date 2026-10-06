@@ -249,6 +249,7 @@ export function CatalogHeaderControls({
 
       if (nextFilters.q !== undefined) {
         nextSearchParams.delete("series");
+        nextSearchParams.delete("genre");
         nextSearchParams.delete("ratedBy");
         nextSearchParams.delete("compare");
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");

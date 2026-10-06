@@ -1,9 +1,12 @@
+import type { MediaItemGenre } from "@/lib/media/genres";
+
 export type MediaMetadataFactsValue = {
   facts: Record<string, unknown>;
   sourceProvider: string | null;
   sourceExternalId: string | null;
   sourceUrl: string | null;
   fetchedAt?: Date | string | null;
+  genres?: MediaItemGenre[];
 };
 
 const FACT_LABELS: Record<string, string> = {
@@ -13,7 +16,6 @@ const FACT_LABELS: Record<string, string> = {
   developers: "Разработчики",
   episodeCount: "Серий",
   firstAirYear: "Первый год эфира",
-  genres: "Жанры",
   universeId: "Universe ID",
   rootPlaceId: "Root Place ID",
   creatorId: "ID создателя",
@@ -21,9 +23,6 @@ const FACT_LABELS: Record<string, string> = {
   creatorType: "Тип создателя",
   createdAt: "Создано в Roblox",
   updatedAt: "Обновлено в Roblox",
-  genre: "Жанр Roblox",
-  genreLevel1: "Категория Roblox",
-  genreLevel2: "Подкатегория Roblox",
   lastAirYear: "Последний год эфира",
   networks: "Каналы/сети",
   originalLanguage: "Язык оригинала",
@@ -87,9 +86,11 @@ function formatFactEntry(key: string, value: unknown) {
   return formattedValue;
 }
 
+const RAW_GENRE_KEYS = new Set(["genres", "genreReferences", "genre", "genreLevel1", "genreLevel2"]);
+
 function getFactEntries(facts: Record<string, unknown>) {
   return Object.entries(facts)
-    .filter(([, value]) => isPresentFactValue(value))
+    .filter(([key, value]) => !RAW_GENRE_KEYS.has(key) && isPresentFactValue(value))
     .map(([key, value]) => ({
       key,
       label: getFactLabel(key),
@@ -99,12 +100,15 @@ function getFactEntries(facts: Record<string, unknown>) {
 
 export function MediaMetadataFacts({
   metadata,
+  genres = [],
 }: {
   metadata: MediaMetadataFactsValue | null;
+  genres?: readonly MediaItemGenre[];
 }) {
   const entries = metadata ? getFactEntries(metadata.facts) : [];
+  if (genres.length > 0) entries.push({ key: "genres", label: "Жанры", value: genres.map((genre) => genre.name).join(", ") });
 
-  if (!metadata || (entries.length === 0 && !metadata.sourceProvider && !metadata.sourceUrl)) {
+  if (entries.length === 0 && !metadata?.sourceProvider && !metadata?.sourceUrl) {
     return null;
   }
 

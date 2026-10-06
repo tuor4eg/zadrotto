@@ -17,6 +17,7 @@ const mediaQueries = read("src/db/queries/media-items.ts");
 const mediaTile = read("src/app/media-item-tile.tsx");
 const profilePage = read("src/app/users/[id]/page.tsx");
 const profileHeader = read("src/app/users/[id]/public-user-header.tsx");
+const reputationQueries = read("src/db/queries/reputation.ts");
 
 describe("public rating archive", () => {
   it("parses public URL state conservatively", () => {
@@ -39,6 +40,14 @@ describe("public rating archive", () => {
     assert.match(archiveContext, />\s*Средней\s*</);
     assert.match(archiveContext, />\s*Моей\s*</);
     assert.doesNotMatch(archiveContext, /totalCount|Количество/);
+  });
+
+  it("shows the enabled reputation level below the public profile name", () => {
+    assert.match(profilePage, /getPublicAuthorLevel\(profile\.id\)/);
+    assert.match(profilePage, /level=\{level\}/);
+    assert.match(profileHeader, /Уровень \{level\.level\} · \{level\.name\}/);
+    assert.doesNotMatch(profileHeader, /progressbar|xpTotal|nextLevel|Статус:/);
+    assert.match(reputationQueries, /system\?\.status !== "enabled"/);
   });
 
   it("activates ratedBy only after the existing journal permission check", () => {

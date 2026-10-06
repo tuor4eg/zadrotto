@@ -1,3 +1,4 @@
+import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -616,7 +617,7 @@ export type ArchiveSeriesMatch = {
 export async function searchArchiveSeriesMatches(
   searchQuery: string,
   enabledMediaTypeCodes: readonly string[],
-  limit = 3,
+  limit = ARCHIVE_SEARCH_MATCH_LIMIT,
 ) {
   const normalizedQuery = normalizeSearchText(searchQuery);
 

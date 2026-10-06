@@ -11,6 +11,7 @@ import { getPublicAuthorStatistics, getPublicUserProfile } from "@/db/queries/fr
 import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getAuthorQuizStatistics } from "@/db/queries/quizzes";
+import { getPublicAuthorLevel } from "@/db/queries/reputation";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
@@ -44,7 +45,10 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const isAdmin = headerState.currentAdminUser;
   const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
-  const achievementItems = await getAchievementShowcase(profile.id);
+  const [achievementItems, level] = await Promise.all([
+    getAchievementShowcase(profile.id),
+    getPublicAuthorLevel(profile.id),
+  ]);
   const accessibleMediaTypeCodes = profile.canViewJournal
     ? isAdmin
       ? (await getAllMediaTypeOptions()).map((item) => item.code)
@@ -83,6 +87,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
       <PublicUserHeader
         currentAdmin={isAdmin}
         currentAuthor={Boolean(current)}
+        level={level}
         profile={profile}
         returnTo={basePath}
         statistics={statistics && quizStatistics ? [

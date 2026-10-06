@@ -1,4 +1,7 @@
+export const RATING_PILL_SHADOW_CLASS_NAME = "shadow-[0_0_5px_var(--rating-glow),0_0_12px_color-mix(in_srgb,var(--rating-glow)_45%,transparent),inset_0_0_6px_rgba(255,255,255,0.06)]";
+
 export type RatingTone = "empty" | "bad" | "medium" | "good";
+export const ARCHIVE_RATING_VALUE_CLASS_NAME = "text-stone-50";
 
 const RATING_TONE_CSS_VARIABLE_CLASS_NAMES: Record<RatingTone, string> = {
   empty: "[--rating-main:#D6D3D1] [--rating-border:rgba(245,245,244,0.9)] [--rating-author-border:rgba(214,211,209,0.50)] [--rating-glow:rgba(245,245,244,0.32)] [--rating-background:rgba(28,25,23,0.84)] [--rating-pill-background:rgba(28,25,23,0.50)]",
@@ -22,6 +25,13 @@ export const RATING_PILL_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
   medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
   good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
+};
+
+export const RATING_PANEL_TONE_CLASS_NAMES: Record<RatingTone, string> = {
+  empty: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.empty} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
 };
 
 export const AVERAGE_RATING_TEXT_TONE_CLASS_NAMES: Record<RatingTone, string> = {

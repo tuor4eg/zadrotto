@@ -93,7 +93,7 @@ function buildBrowserRequestUrl(filters: BrowserFilters) {
 
 function getCompactMetadata(item: AdminMediaBrowserItem) {
   const candidates = [
-    getStringListFact(item.metadataFacts, "genres"),
+    item.genres.map((genre) => genre.name),
     getStringListFact(item.metadataFacts, "authors"),
     getStringListFact(item.metadataFacts, "developers"),
     getStringListFact(item.metadataFacts, "platforms"),

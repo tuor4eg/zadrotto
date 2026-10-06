@@ -12,7 +12,7 @@ const archivePageSource = read("src/app/archive/page.tsx");
 const globalsSource = read("src/app/globals.css");
 
 const publicPages = [
-  "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx",
+  "src/app/page.tsx", "src/app/archive/page.tsx", "src/app/series/page.tsx", "src/app/genres/page.tsx",
   "src/app/collections/page.tsx", "src/app/collections/[slug]/page.tsx",
   "src/app/media/[code]/page.tsx",   "src/app/reviews/page.tsx", "src/app/reviews/[id]/page.tsx",
   "src/app/achievements/page.tsx",

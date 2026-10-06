@@ -57,7 +57,7 @@ describe("series alphabet", () => {
     assert.match(catalogSource, /series\.children\.length > COLLAPSED_CHILDREN_COUNT/);
     assert.match(catalogSource, /isSearchActive[\s\S]*series\.children\.slice/);
     assert.match(catalogSource, /columns-1 gap-6 lg:columns-2/);
-    assert.match(catalogSource, /COUNT_BADGE_STYLES\[tier\]/);
+    assert.match(readFileSync("src/components/archive/catalog-count.tsx", "utf8"), /COUNT_BADGE_STYLES\[tier\]/);
     assert.match(catalogSource, /const countTier = getSeriesCountTier\(series\.mediaItemsCount\)/);
     assert.match(catalogSource, /TITLE_STYLES\[countTier\]/);
     assert.match(catalogSource, /isExpanded \? "Свернуть" : `Ещё \$\{hiddenChildrenCount\}`/);

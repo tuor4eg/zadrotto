@@ -954,6 +954,9 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_anime_shikimori_backfill_active_unique")
       .on(table.type)
       .where(sql`${table.type} = 'media.anime-shikimori-backfill' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_genre_request_apply_active_unique")
+      .on(sql`(${table.payload}->>'requestId')`)
+      .where(sql`${table.type} = 'media.genre-request-apply' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
     check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
@@ -1676,6 +1679,100 @@ export const mediaItemTitleAliases = pgTable(
     ),
   ],
 );
+
+export const genres = pgTable("genres", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps(),
+}, (table) => [
+  check("genres_slug_check", sql`btrim(${table.slug}) <> ''`),
+  check("genres_name_check", sql`btrim(${table.name}) <> ''`),
+]);
+
+export const mediaItemGenres = pgTable("media_item_genres", {
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  genreId: integer("genre_id").notNull().references(() => genres.id, { onDelete: "restrict" }),
+  provider: text("provider"),
+  isManual: boolean("is_manual").notNull().default(false),
+  ...timestamps(),
+}, (table) => [
+  primaryKey({ columns: [table.mediaItemId, table.genreId] }),
+  index("media_item_genres_genre_id_idx").on(table.genreId),
+  check("media_item_genres_source_check", sql`${table.provider} is not null or ${table.isManual}`),
+  check("media_item_genres_provider_check", sql`${table.provider} is null or btrim(${table.provider}) <> ''`),
+]);
+
+export const providerGenreMappings = pgTable("provider_genre_mappings", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalGenreId: text("external_genre_id"),
+  externalGenreName: text("external_genre_name").notNull(),
+  normalizedExternalGenreName: text("normalized_external_genre_name").notNull(),
+  genreId: integer("genre_id").notNull().references(() => genres.id, { onDelete: "restrict" }),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("provider_genre_mappings_name_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalGenreName, table.genreId),
+  uniqueIndex("provider_genre_mappings_id_unique_idx").on(table.provider, table.mediaType, table.externalGenreId, table.genreId).where(sql`${table.externalGenreId} is not null`),
+  check("provider_genre_mappings_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("provider_genre_mappings_name_check", sql`btrim(${table.externalGenreName}) <> ''`),
+  check("provider_genre_mappings_normalized_name_check", sql`btrim(${table.normalizedExternalGenreName}) <> ''`),
+  check("provider_genre_mappings_external_id_check", sql`${table.externalGenreId} is null or btrim(${table.externalGenreId}) <> ''`),
+]);
+
+export const genreRequests = pgTable("genre_requests", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalGenreName: text("external_genre_name").notNull(),
+  normalizedExternalGenreName: text("normalized_external_genre_name").notNull(),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  decision: text("decision").$type<"create" | "map" | "exclude">(),
+  resolvedByAdminId: integer("resolved_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  jobRunId: integer("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
+  applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(),
+  jobError: text("job_error"),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("genre_requests_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalGenreName),
+  index("genre_requests_pending_idx").on(table.firstSeenAt, table.id).where(sql`${table.decision} is null`),
+  index("genre_requests_job_run_id_idx").on(table.jobRunId),
+  check("genre_requests_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("genre_requests_name_check", sql`btrim(${table.externalGenreName}) <> '' and btrim(${table.normalizedExternalGenreName}) <> ''`),
+  check("genre_requests_decision_check", sql`${table.decision} is null or ${table.decision} in ('create', 'map', 'exclude')`),
+  check("genre_requests_apply_status_check", sql`${table.applyStatus} in ('pending', 'applying', 'processed', 'failed')`),
+  check("genre_requests_resolution_check", sql`(${table.decision} is null and ${table.resolvedAt} is null and ${table.applyStatus} = 'pending') or (${table.decision} is not null and ${table.resolvedAt} is not null and ${table.applyStatus} <> 'pending')`),
+]);
+
+export const genreRequestMediaItems = pgTable("genre_request_media_items", {
+  requestId: integer("request_id").notNull().references(() => genreRequests.id, { onDelete: "cascade" }),
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  externalGenreName: text("external_genre_name").notNull(),
+  externalGenreId: text("external_genre_id"),
+  ...timestamps(),
+}, (table) => [
+  primaryKey({ columns: [table.requestId, table.mediaItemId] }),
+  index("genre_request_media_items_item_idx").on(table.mediaItemId),
+  check("genre_request_media_items_name_check", sql`btrim(${table.externalGenreName}) <> ''`),
+  check("genre_request_media_items_external_id_check", sql`${table.externalGenreId} is null or btrim(${table.externalGenreId}) <> ''`),
+]);
+
+export const providerGenreExclusions = pgTable("provider_genre_exclusions", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalGenreName: text("external_genre_name").notNull(),
+  normalizedExternalGenreName: text("normalized_external_genre_name").notNull(),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("provider_genre_exclusions_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalGenreName),
+  check("provider_genre_exclusions_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("provider_genre_exclusions_name_check", sql`btrim(${table.externalGenreName}) <> '' and btrim(${table.normalizedExternalGenreName}) <> ''`),
+]);
 
 export const mediaItemMetadata = pgTable("media_item_metadata", {
   mediaItemId: integer("media_item_id")

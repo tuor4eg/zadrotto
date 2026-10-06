@@ -46,6 +46,29 @@ export type AuthorLevelProgress = {
   xpTotal: number;
 };
 
+export type PublicAuthorLevel = {
+  level: number;
+  name: string;
+};
+
+export async function getPublicAuthorLevel(authorId: number): Promise<PublicAuthorLevel | null> {
+  const [system] = await db
+    .select({ status: levelSettings.status })
+    .from(levelSettings)
+    .where(eq(levelSettings.id, 1))
+    .limit(1);
+  if (system?.status !== "enabled") return null;
+
+  const [level] = await db
+    .select({ level: levelThresholds.level, name: levelThresholds.name })
+    .from(levelThresholds)
+    .leftJoin(authorProgress, eq(authorProgress.authorId, authorId))
+    .where(eq(levelThresholds.level, sql<number>`coalesce(${authorProgress.currentLevel}, 1)`))
+    .limit(1);
+
+  return level ?? null;
+}
+
 export async function getAuthorLevelProgress(authorId: number): Promise<AuthorLevelProgress | null> {
   const [system] = await db
     .select({ status: levelSettings.status })

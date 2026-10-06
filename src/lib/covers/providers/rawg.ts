@@ -1,3 +1,4 @@
+import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
@@ -39,6 +40,7 @@ type RawgGameDetailsResponse = {
     name?: string;
   }>;
   genres?: Array<{
+    id?: number;
     name?: string;
   }>;
 };
@@ -103,6 +105,7 @@ export const rawgProvider: MediaProvider = {
       return null;
     }
 
+    const genreReferences = getProviderGenreReferences(details.genres);
     return {
       provider: "rawg",
       externalId: input.externalId,
@@ -112,6 +115,7 @@ export const rawgProvider: MediaProvider = {
         developers: getNames(details.developers),
         publishers: getNames(details.publishers),
         genres: getNames(details.genres),
+        ...(genreReferences.length > 0 ? { genreReferences } : {}),
       },
     };
   },

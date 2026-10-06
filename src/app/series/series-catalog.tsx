@@ -3,43 +3,12 @@
 import Link from "next/link";
 import { useState } from "react";
 
+import { CatalogCountBadge as SeriesCountBadge, CATALOG_TITLE_STYLES as TITLE_STYLES } from "@/components/archive/catalog-count";
+
 import type { FranchiseTreeNode } from "@/db/queries/franchises";
 import { getSeriesAlphabetGroup, getSeriesCountTier } from "@/lib/series/series-alphabet";
 
 const COLLAPSED_CHILDREN_COUNT = 8;
-
-const COUNT_BADGE_STYLES = {
-  small: "size-6 text-[0.6rem]",
-  medium: "size-7 text-xs font-semibold",
-  large: "size-9 text-base font-bold",
-} as const;
-
-const TITLE_STYLES = {
-  small: "text-base font-medium",
-  medium: "text-xl font-semibold",
-  large: "text-2xl font-semibold",
-} as const;
-
-function formatMediaItemsCount(count: number) {
-  const plural = new Intl.PluralRules("ru-RU").select(count);
-  const label = plural === "one" ? "запись" : plural === "few" ? "записи" : "записей";
-
-  return `${count} ${label}`;
-}
-
-function SeriesCountBadge({ count }: { count: number }) {
-  const tier = getSeriesCountTier(count);
-
-  return (
-    <span
-      aria-label={formatMediaItemsCount(count)}
-      className={`inline-flex shrink-0 items-center justify-center rounded-full border border-stone-400/55 bg-transparent font-mono leading-none text-stone-600 ${COUNT_BADGE_STYLES[tier]}`}
-      title={formatMediaItemsCount(count)}
-    >
-      {count}
-    </span>
-  );
-}
 
 function SeriesTree({
   depth = 0,

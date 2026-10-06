@@ -394,7 +394,7 @@ export function MediaItemReviews({
         Рецензии
       </h2>
 
-      <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 px-1 py-3">
+      <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 py-3">
         {reviews.slice(0, 3).map((review, index) => (
           <MediaItemReviewCard key={review.id} index={index} review={review} />
         ))}

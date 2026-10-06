@@ -2,12 +2,12 @@ import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { Bookmark, Info, Lock, PlusCircle } from "lucide-react";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
+  ARCHIVE_RATING_VALUE_CLASS_NAME,
   AVERAGE_BOOK_NOTE_RATING_TONE_CLASS_NAMES,
   AVERAGE_ANIME_RATING_TONE_CLASS_NAMES,
   AVERAGE_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
-  AVERAGE_RATING_TONE_CLASS_NAMES,
   AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
   AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES,
   AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES,
@@ -19,7 +19,6 @@ import {
   AUTHOR_DVD_MENU_RATING_TONE_CLASS_NAMES,
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
-  AUTHOR_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
   AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES,
   AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
@@ -29,6 +28,7 @@ import {
   getRatingTone,
   LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES,
   RATING_TEXT_TONE_CLASS_NAMES,
+  RATING_PANEL_TONE_CLASS_NAMES,
 } from "@/lib/ratings/tone";
 
 type RatingStarsProps = {
@@ -192,10 +192,10 @@ const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.webp";
 const ANIME_ARCHIVE_RATING_ART_PATH = "/mediaCarriers/anime/robot.webp";
 const ANIME_AUTHOR_RATING_ART_PATH = "/mediaCarriers/anime/kawai.webp";
 
-function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
+export function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
+  const starCount = Math.max(0, Math.min(5, (score ?? 0) / 20));
   if (variant === "terminal") {
+    const filledStars = Math.round(starCount);
     return (
       <span className="whitespace-nowrap text-current" aria-hidden="true">
         {Array.from({ length: 5 }, (_, index) => (
@@ -208,9 +208,16 @@ function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   }
 
   return (
-    <span className="font-mono text-2xl leading-none tracking-[0.16em] text-current" aria-hidden="true">
-      {"★".repeat(filledStars)}
-      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
+    <span className="inline-flex gap-[0.16em] font-mono text-2xl leading-none text-current" aria-hidden="true">
+      {Array.from({ length: 5 }, (_, index) => {
+        const fill = Math.max(0, Math.min(1, starCount - index));
+        return (
+          <span key={index} className="relative inline-block">
+            <span className="opacity-35">★</span>
+            <span className="absolute inset-0" style={{ clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)` }}>★</span>
+          </span>
+        );
+      })}
     </span>
   );
 }
@@ -2058,7 +2065,7 @@ export function ArchiveRatingPanel({
       <div
         className={`rounded-md border text-center ${
           compact ? "p-2" : "p-4"
-        } ${AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]}`}
+        } border-[color:var(--rating-author-border)] ${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(score)]}`}
       >
         <NesRatingPanelContent
           compact={compact}
@@ -2183,48 +2190,34 @@ export function ArchiveRatingPanel({
   return (
     <div
       className={`h-full rounded-md border text-center ${
-        compact && showStarsWhenCompact
-          ? "flex flex-col justify-evenly p-2"
-          : compact
-            ? "p-2"
-            : "p-4"
-      } ${
-        inverted
-          ? AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
-          : AVERAGE_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
-      }`}
+        compact ? "p-2" : "p-4"
+      } border-[color:var(--rating-author-border)] ${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(score)]}`}
     >
       <div
-        className={`${labelFontClassName} text-[10px] uppercase ${
-          compact && showStarsWhenCompact ? "leading-3" : "leading-5"
-        } opacity-70`}
+        className={`${labelFontClassName} ${compact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 opacity-70`}
       >
         {label}
       </div>
       <div
         className={`${
-          compact && showStarsWhenCompact
-            ? "text-2xl leading-none"
-            : compact
-              ? "mt-1 text-3xl"
-              : "mt-2 text-4xl sm:text-5xl"
-        } ${displayFontClassName} tabular-nums`}
+          compact ? "mt-1 text-3xl" : "mt-2 text-4xl sm:text-5xl"
+        } ${displayFontClassName} tabular-nums ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
       >
         {formatScore(score)}
       </div>
       {!compact || showStarsWhenCompact ? (
         <div
           className={`${
-            compact ? "h-4 scale-75" : "mt-2"
-          } flex justify-center`}
+            compact ? "mt-1 h-5 scale-75" : "mt-2"
+          } flex justify-center ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
         >
           <RatingStars score={score} />
         </div>
       ) : null}
       <div
         className={`${
-          compact && showStarsWhenCompact ? "leading-3" : compact ? "mt-1 leading-5" : "mt-2 leading-5"
-        } ${labelFontClassName} text-[10px] uppercase opacity-70`}
+          compact ? "mt-1 leading-5" : "mt-2 leading-5"
+        } ${labelFontClassName} ${compact ? "text-[10px]" : "text-xs"} font-semibold uppercase opacity-70`}
       >
         {formatRatingsCount(ratingsCount)}
       </div>

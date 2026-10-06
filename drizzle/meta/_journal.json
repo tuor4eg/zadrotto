@@ -722,6 +722,20 @@
       "when": 1791504000000,
       "tag": "0102_reputation_trusted_promotion_job",
       "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1791590400000,
+      "tag": "0103_unified_genres",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1791676800000,
+      "tag": "0104_genre_requests",
+      "breakpoints": true
     }
   ]
 }

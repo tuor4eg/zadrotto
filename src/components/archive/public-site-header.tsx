@@ -35,6 +35,7 @@ export type PublicSiteHeaderProps = {
 const BASE_MENU_ITEMS = [
   { href: "/archive", label: "Архив" },
   { href: "/series", label: "Серии" },
+  { href: "/genres", label: "Жанры" },
   { href: "/collections", label: "Подборки" },
   { href: "/reviews", label: "Рецензии" },
 ] as const;

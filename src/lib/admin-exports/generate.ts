@@ -13,7 +13,7 @@ import { deleteS3Object, uploadS3ObjectStream } from "@/lib/services/minio";
 import { logSystemActivity } from "@/lib/activity-logs/system";
 import { createCsvRow, CSV_BOM } from "./csv";
 import { normalizeSearchText } from "@/lib/search/normalize";
-import { ADMIN_EXPORT_ENTITY_TYPES, ADMIN_EXPORT_FIELDS, parseAdminExportFields, type AdminExportEntityType } from "./model";
+import { ADMIN_EXPORT_ENTITY_TYPES, ADMIN_EXPORT_FIELDS, formatMetadataExportValue, getMetadataExportField, parseAdminExportFields, type AdminExportEntityType } from "./model";
 
 const BATCH_SIZE = 500;
 const MAX_EXPORT_BYTES = 1024 * 1024 * 1024;
@@ -41,8 +41,8 @@ function mediaConditions(filters: Record<string, unknown>, afterId: number): SQL
 }
 
 async function getMediaBatch(filters: Record<string, unknown>, afterId: number) {
-  return db.select({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title, originalTitle: mediaItems.originalTitle, description: mediaItems.description, mediaType: mediaItems.mediaType, carrier: mediaCarriers.name, releaseYear: mediaItems.releaseYear, coverUrl: mediaItems.coverUrl, publicationStatus: mediaItems.publicationStatus, author: authors.name, createdAt: mediaItems.createdAt, updatedAt: mediaItems.updatedAt })
-    .from(mediaItems).leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId)).leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId))
+  return db.select({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title, originalTitle: mediaItems.originalTitle, description: mediaItems.description, mediaType: mediaItems.mediaType, carrier: mediaCarriers.name, releaseYear: mediaItems.releaseYear, coverUrl: mediaItems.coverUrl, publicationStatus: mediaItems.publicationStatus, author: authors.name, createdAt: mediaItems.createdAt, updatedAt: mediaItems.updatedAt, metadataFacts: mediaItemMetadata.facts })
+    .from(mediaItems).leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId)).leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId)).leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .where(and(...mediaConditions(filters, afterId))).orderBy(asc(mediaItems.id)).limit(BATCH_SIZE);
 }
 
@@ -95,7 +95,8 @@ export async function generateAdminExport(exportId: string) {
   try {
     if (!ADMIN_EXPORT_ENTITY_TYPES.includes(item.entityType as AdminExportEntityType)) throw new Error("Некорректный тип экспорта.");
     const entityType = item.entityType as AdminExportEntityType;
-    const fields = parseAdminExportFields(entityType, item.fields);
+    const mediaTypes = typeof item.filters.mediaType === "string" ? [item.filters.mediaType] : [];
+    const fields = parseAdminExportFields(entityType, item.fields, mediaTypes);
     let maxAliases = 0;
     if (item.entityType === "media_items" && fields.includes("aliases")) {
       let afterId = 0;
@@ -105,7 +106,10 @@ export async function generateAdminExport(exportId: string) {
     const stream = createWriteStream(filePath, { encoding: "utf8" }); const state = { bytes: 0 }; let rowCount = 0;
     await writeChunk(stream, CSV_BOM, state);
     const labels = new Map<string, string>(ADMIN_EXPORT_FIELDS[entityType].map((field) => [field.key, field.label]));
-    const headers = fields.flatMap((field) => field === "aliases" ? Array.from({ length: maxAliases }, (_, index) => `Псевдоним ${index + 1}`) : [labels.get(field) ?? field]);
+    const headers = fields.flatMap((field) => {
+      if (field === "aliases") return Array.from({ length: maxAliases }, (_, index) => `Псевдоним ${index + 1}`);
+      return [getMetadataExportField(field)?.label ?? labels.get(field) ?? field];
+    });
     await writeChunk(stream, createCsvRow(headers), state);
     let afterId = 0;
     while (true) {
@@ -118,6 +122,8 @@ export async function generateAdminExport(exportId: string) {
           if (field === "aliases") return Array.from({ length: maxAliases }, (_, index) => related?.aliases.get(row.id)?.[index] ?? "");
           if (field === "seriesTitles") return [(related?.series.get(row.id) ?? []).map((value) => value.title).join(" | ")];
           if (field === "seriesCodes") return [(related?.series.get(row.id) ?? []).map((value) => value.code).join(" | ")];
+          const metadataField = getMetadataExportField(field);
+          if (metadataField) return [formatMetadataExportValue(metadataField, record.metadataFacts as Record<string, unknown> | null)];
           return [record[field] ?? ""];
         });
         await writeChunk(stream, createCsvRow(values), state); rowCount += 1;

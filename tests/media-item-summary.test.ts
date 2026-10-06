@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 
 import { formatMediaItemSummary } from "../src/lib/media/media-item-summary";
 
+const genreList = (...names: string[]) => names.map((name, index) => ({ id: index + 1, slug: `genre-${index}`, name }));
+
 describe("media item summary", () => {
   it("formats a film runtime, genres, and production companies", () => {
     assert.equal(
@@ -10,6 +12,7 @@ describe("media item summary", () => {
         mediaType: "film",
         mediaTypeLabel: "Фильм",
         releaseYear: 1995,
+        genres: genreList("Приключения", "Фэнтези", "Семейный"),
         metadataFacts: {
           runtimeMinutes: 104,
           genres: ["Приключения", "Фэнтези", "Семейный"],
@@ -31,6 +34,7 @@ describe("media item summary", () => {
         mediaType: "game",
         mediaTypeLabel: "Игра",
         releaseYear: 2004,
+        genres: genreList("Шутер", "Головоломка"),
         metadataFacts: {
           developers: ["Valve"],
           genres: ["Шутер", "Головоломка"],
@@ -134,6 +138,7 @@ describe("media item summary", () => {
         mediaType: "series",
         mediaTypeLabel: "Сериал",
         releaseYear: 2010,
+        genres: genreList("Драма", "Криминал"),
         metadataFacts: {
           firstAirYear: 2011,
           lastAirYear: 2015,
@@ -206,6 +211,7 @@ describe("media item summary", () => {
         mediaType: "anime",
         mediaTypeLabel: "Аниме",
         releaseYear: 2013,
+        genres: genreList("Боевик", "Приключения", "Драма", "Фэнтези"),
         metadataFacts: {
           animeType: "TV",
           episodeCount: 25,
@@ -214,7 +220,7 @@ describe("media item summary", () => {
           genres: ["Action", "Adventure", "Drama", "Fantasy"],
         },
       }),
-      "Аниме · 2013 · TV · 25 серий · WIT STUDIO, Production I.G, MAPPA, CloverWorks · Action, Adventure, Drama, Fantasy",
+      "Аниме · 2013 · TV · 25 серий · WIT STUDIO, Production I.G, MAPPA, CloverWorks · Боевик, Приключения, Драма, Фэнтези",
     );
   });
 
@@ -224,6 +230,7 @@ describe("media item summary", () => {
         mediaType: "anime",
         mediaTypeLabel: "Аниме",
         releaseYear: 2004,
+        genres: genreList("Приключения", "Фантастика"),
         metadataFacts: {
           animeType: "MOVIE",
           episodeCount: 1,
@@ -232,7 +239,7 @@ describe("media item summary", () => {
           genres: ["Adventure", "Sci-Fi"],
         },
       }),
-      "Аниме · 2004 · MOVIE · 126 мин. · Sunrise · Adventure, Sci-Fi",
+      "Аниме · 2004 · MOVIE · 126 мин. · Sunrise · Приключения, Фантастика",
     );
   });
 
@@ -260,7 +267,7 @@ describe("media item summary", () => {
           genres: ["Drama", "", 42, " Drama "],
         },
       }),
-      "Аниме · 1995 · Drama",
+      "Аниме · 1995",
     );
   });
 

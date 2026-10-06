@@ -68,8 +68,8 @@ export function MediaCatalogPreview({
 
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
-  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
-  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
+  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const firstFranchiseCode = item.franchises[0]?.code ?? null;
   const yearLabel = item.releaseYear
     ? String(item.releaseYear)
@@ -213,6 +213,7 @@ export function MediaCatalogPreview({
         <div className="mt-2 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-2">
           <ArchiveRatingPanel
             compact
+            showStarsWhenCompact
             displayFontClassName={ratingDisplayFontClassName}
             label="Оценка архива"
             labelFontClassName={ratingLabelFontClassName}

@@ -4,11 +4,13 @@ import {
   getDateFactYear,
   getStringListFact,
 } from "@/lib/media/metadata-facts";
+import type { MediaItemGenre } from "@/lib/media/genres";
 
 type MediaItemSummaryInput = {
   mediaType: string;
   mediaTypeLabel: string;
   metadataFacts?: Record<string, unknown> | null;
+  genres?: readonly MediaItemGenre[];
   releaseYear: number | null;
 };
 
@@ -35,8 +37,6 @@ export function getArchiveMediaItemInfoLabels(item: MediaItemSummaryInput) {
   const robloxDetails = item.mediaType === "roblox"
     ? [
         getDateFactYear(item.metadataFacts, "createdAt"),
-        getNonEmptyStringFact(item.metadataFacts, "genre"),
-        getNonEmptyStringFact(item.metadataFacts, "genreLevel1"),
         getNonEmptyStringFact(item.metadataFacts, "creatorName"),
       ].filter((value): value is string => Boolean(value))
     : [];
@@ -65,6 +65,7 @@ function formatAirYears(firstAirYear: number | null, lastAirYear: number | null)
 
 export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
   const facts = item.metadataFacts;
+  const genreNames = (item.genres ?? []).map((genre) => genre.name);
   const year =
     item.mediaType === "series"
       ? formatAirYears(
@@ -78,19 +79,17 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
 
   if (item.mediaType === "film") {
     const runtime = getPositiveIntegerFact(facts, "runtimeMinutes");
-    const genres = getStringListFact(facts, "genres");
     const productionCompanies = getStringListFact(facts, "productionCompanies");
     details = [
       runtime ? `${runtime} мин.` : null,
-      genres.length > 0 ? genres.join(", ") : null,
+      genreNames.length > 0 ? genreNames.join(", ") : null,
       productionCompanies.length > 0 ? productionCompanies.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "game") {
     const developers = getStringListFact(facts, "developers");
-    const genres = getStringListFact(facts, "genres");
     details = [
       developers.length > 0 ? formatFactList(developers) : null,
-      genres.length > 0 ? formatFactList(genres) : null,
+      genreNames.length > 0 ? genreNames.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "book") {
     const authors = formatAuthorsFact(facts);
@@ -110,7 +109,6 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
     const seasons = getPositiveIntegerFact(facts, "seasonCount");
     const episodes = getPositiveIntegerFact(facts, "episodeCount");
     const runtime = getPositiveIntegerFact(facts, "averageEpisodeRuntimeMinutes");
-    const genres = getStringListFact(facts, "genres");
     const networks = getStringListFact(facts, "networks");
     details = [
       seasons
@@ -120,7 +118,7 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
         ? formatPluralCount(episodes, { one: "серия", few: "серии", many: "серий" })
         : null,
       runtime ? `${runtime} мин./серия` : null,
-      genres.length > 0 ? genres.join(", ") : null,
+      genreNames.length > 0 ? genreNames.join(", ") : null,
       networks.length > 0 ? networks.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "anime") {
@@ -129,7 +127,6 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
     const episodes = getPositiveIntegerFact(facts, "episodeCount");
     const runtime = getPositiveIntegerFact(facts, "averageEpisodeRuntimeMinutes");
     const studios = getStringListFact(facts, "studios");
-    const genres = getStringListFact(facts, "genres");
     details = [
       animeType,
       isMovie
@@ -140,7 +137,7 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
           ? formatPluralCount(episodes, { one: "серия", few: "серии", many: "серий" })
           : null,
       studios.length > 0 ? studios.join(", ") : null,
-      genres.length > 0 ? genres.join(", ") : null,
+      genreNames.length > 0 ? genreNames.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   }
 

@@ -1,3 +1,4 @@
+import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   fetchSearchJson,
@@ -28,6 +29,7 @@ type IgdbGameResponse = Array<{
     height?: number;
   };
   genres?: Array<{
+    id?: number;
     name?: string;
   }>;
   involved_companies?: Array<{
@@ -141,7 +143,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
     async getGameMetadata(id: number) {
       const [game] = await fetchGames(
         [
-          "fields genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name,slug,url;",
+          "fields genres.id,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name,slug,url;",
           `where id = ${id};`,
           "limit 1;",
         ].join(" "),
@@ -239,6 +241,7 @@ export const igdbProvider: MediaProvider = {
       return null;
     }
 
+    const genreReferences = getProviderGenreReferences(game.genres);
     return {
       provider: "igdb",
       externalId: input.externalId,
@@ -248,6 +251,7 @@ export const igdbProvider: MediaProvider = {
         developers: getInvolvedCompanyNames(game, "developer"),
         publishers: getInvolvedCompanyNames(game, "publisher"),
         genres: getUniqueNames(game.genres),
+        ...(genreReferences.length > 0 ? { genreReferences } : {}),
       },
     };
   },

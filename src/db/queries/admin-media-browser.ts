@@ -1,3 +1,4 @@
+import { mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import {
   and,
   asc,
@@ -211,6 +212,7 @@ export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery) {
         mediaType: mediaItems.mediaType,
         mediaTypeLabel: mediaTypes.name,
         metadataFacts: mediaItemMetadata.facts,
+        genres: mediaItemGenresJsonSql(),
         originalTitle: mediaItems.originalTitle,
         ratingsCount: mediaItemRatingsCountSql,
         releaseYear: mediaItems.releaseYear,

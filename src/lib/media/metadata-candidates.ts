@@ -2,6 +2,7 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { COVER_PROVIDER_CODES, type MediaProviderCode } from "@/lib/covers/types";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
+import { extractExternalGenres } from "@/lib/media/genres";
 
 const METADATA_CANDIDATE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 const TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
@@ -212,6 +213,7 @@ export function verifyMediaMetadataCandidateToken(token: string) {
     if (!isMediaMetadataCandidateTokenPayload(decodedPayload)) {
       return null;
     }
+    extractExternalGenres(decodedPayload.facts);
 
     if (decodedPayload.exp <= Math.floor(Date.now() / 1000)) {
       return null;

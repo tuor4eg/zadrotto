@@ -1,5 +1,6 @@
 import "server-only";
 
+import { applyGenreRequest } from "@/db/queries/genre-requests";
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
 import { cleanupJobRunHistory } from "@/db/queries/jobs";
@@ -466,7 +467,30 @@ const reputationPromoteTrustedHandler: JobHandlerDefinition<Record<string, never
   },
 };
 
+const genreRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
+  type: "media.genre-request-apply",
+  label: "Применение решения по жанру",
+  schedulable: false,
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+    }
+    const source = value as Record<string, unknown>;
+    if (Object.keys(source).length !== 1 || typeof source.requestId !== "number"
+      || !Number.isSafeInteger(source.requestId) || source.requestId <= 0 || source.requestId > 2_147_483_647) {
+      throw new JobError("invalid-payload", "Некорректный ID заявки на жанр.", { retryable: false });
+    }
+    return { requestId: source.requestId };
+  },
+  async execute({ payload, signal, runId }) {
+    await applyGenreRequest(payload.requestId, { signal, jobRunId: runId });
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  genreRequestApplyHandler,
   emailOutboxDeliveryHandler,
   authCleanupHandler,
   jobHistoryCleanupHandler,

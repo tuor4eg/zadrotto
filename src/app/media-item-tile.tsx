@@ -10,7 +10,9 @@ import {
 import { formatScore } from "@/lib/ratings/score";
 import {
   AUTHOR_RATING_TONE_CLASS_NAMES,
+  ARCHIVE_RATING_VALUE_CLASS_NAME,
   RATING_PILL_TONE_CLASS_NAMES,
+  RATING_PILL_SHADOW_CLASS_NAME,
   getRatingTone,
 } from "@/lib/ratings/tone";
 
@@ -29,7 +31,7 @@ export type MediaItemTileItem = {
 };
 
 type ArchiveCoverProps = {
-  carrierFrameSize?: "default" | "compact";
+  carrierFrameSize?: "default" | "compact" | "detail";
   className?: string;
   carrierFrame?: boolean;
   item: {
@@ -239,6 +241,21 @@ function MediaCarrierCoverPlaceholder({ frame }: { frame: MediaCarrierFrame }) {
   );
 }
 
+function getCarrierFrameSizeClassName(
+  carrierFrameSize: NonNullable<ArchiveCoverProps["carrierFrameSize"]>,
+  frame: MediaCarrierFrame,
+) {
+  if (carrierFrameSize === "detail") {
+    return "h-full w-full"
+  }
+
+  if (carrierFrameSize === "compact") {
+    return frame.compactSizeClassName ?? frame.sizeClassName ?? "w-[96%] max-w-full"
+  }
+
+  return frame.sizeClassName ?? "w-[96%] max-w-full"
+}
+
 function CartridgeCover({
   carrierFrameSize = "default",
   className,
@@ -247,10 +264,8 @@ function CartridgeCover({
 }: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
   const coverLayerClassName =
     frame.coverLayer === "above-frame" ? "z-20" : "z-0";
-  const sizeClassName =
-    carrierFrameSize === "compact"
-      ? frame.compactSizeClassName ?? frame.sizeClassName
-      : frame.sizeClassName;
+  const sizeClassName = getCarrierFrameSizeClassName(carrierFrameSize, frame);
+  const fillsDetailViewport = carrierFrameSize === "detail";
 
   return (
     <div
@@ -263,8 +278,10 @@ function CartridgeCover({
       className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
     >
       <span
-        className={`relative block ${frame.aspectRatioClassName} ${
-          sizeClassName ?? "w-[96%] max-w-full"
+        className={`relative block ${
+          fillsDetailViewport
+            ? sizeClassName
+            : `${frame.aspectRatioClassName} ${sizeClassName}`
         }`}
       >
         {item.coverUrl ? (
@@ -300,10 +317,8 @@ function CoverOverlayCover({
   frame,
   item,
 }: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
-  const sizeClassName =
-    carrierFrameSize === "compact"
-      ? frame.compactSizeClassName ?? frame.sizeClassName
-      : frame.sizeClassName;
+  const sizeClassName = getCarrierFrameSizeClassName(carrierFrameSize, frame);
+  const fillsDetailViewport = carrierFrameSize === "detail";
 
   return (
     <div
@@ -316,8 +331,10 @@ function CoverOverlayCover({
       className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
     >
       <span
-        className={`relative block overflow-hidden rounded-[2%] bg-stone-900 shadow-[0_10px_24px_rgba(15,23,42,0.24)] ${frame.aspectRatioClassName} ${
-          sizeClassName ?? "w-[96%] max-w-full"
+        className={`relative block overflow-hidden rounded-[2%] bg-stone-900 shadow-[0_10px_24px_rgba(15,23,42,0.24)] ${
+          fillsDetailViewport
+            ? sizeClassName
+            : `${frame.aspectRatioClassName} ${sizeClassName}`
         }`}
       >
         {item.coverUrl ? (
@@ -442,10 +459,8 @@ function StreamingCover({
   frame,
   item,
 }: Omit<ArchiveCoverProps, "mode"> & { frame: MediaCarrierFrame }) {
-  const sizeClassName =
-    carrierFrameSize === "compact"
-      ? frame.compactSizeClassName ?? frame.sizeClassName
-      : frame.sizeClassName;
+  const sizeClassName = getCarrierFrameSizeClassName(carrierFrameSize, frame);
+  const fillsDetailViewport = carrierFrameSize === "detail";
   const progressLabel =
     getStreamingProgressLabel(item) ?? frame.streamingProgressLabel ?? "Просмотрено";
   const topBadgeLabel = getStreamingTopBadgeLabel(item) ?? frame.streamingTopBadgeLabel;
@@ -461,8 +476,10 @@ function StreamingCover({
       className={`media-carrier-lift-trigger grid place-items-center ${className ?? ""}`}
     >
       <span
-        className={`relative block overflow-hidden rounded-[3%] border border-white/12 bg-stone-950 shadow-[0_14px_30px_rgba(15,23,42,0.28),0_0_0_1px_rgba(255,255,255,0.08)] ${frame.fontClassName ?? ""} ${frame.aspectRatioClassName} ${
-          sizeClassName ?? "w-[96%] max-w-full"
+        className={`relative block overflow-hidden rounded-[3%] border border-white/12 bg-stone-950 shadow-[0_14px_30px_rgba(15,23,42,0.28),0_0_0_1px_rgba(255,255,255,0.08)] ${frame.fontClassName ?? ""} ${
+          fillsDetailViewport
+            ? sizeClassName
+            : `${frame.aspectRatioClassName} ${sizeClassName}`
         }`}
       >
         {item.coverUrl ? (
@@ -673,7 +690,7 @@ export function MediaItemTile({
   const ratingPillRightClassName = profileRating || shouldShowAuthorScore
     ? "right-2 sm:right-2.5"
     : "right-1.5 sm:right-2";
-  const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] shadow-[0_0_5px_var(--rating-glow),0_0_12px_color-mix(in_srgb,var(--rating-glow)_45%,transparent),inset_0_0_6px_rgba(255,255,255,0.06)] sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
+  const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] ${RATING_PILL_SHADOW_CLASS_NAME} sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
   const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
   const tileCoverItem = {
     ...item,
@@ -711,7 +728,7 @@ export function MediaItemTile({
           className={[ratingPillClassName, "gap-1 sm:gap-1.5", onRatingClick ? "cursor-pointer" : ""].filter(Boolean).join(" ")}
         >
           <Star aria-hidden="true" className="size-3.5 shrink-0 fill-current drop-shadow-[0_0_4px_var(--rating-glow)] sm:size-4" />
-          <span className="inline-flex h-full items-center text-[13px] leading-[13px] text-stone-50 sm:text-[15px] sm:leading-[15px]">
+          <span className={`inline-flex h-full items-center text-[13px] leading-[13px] ${ARCHIVE_RATING_VALUE_CLASS_NAME} sm:text-[15px] sm:leading-[15px]`}>
             {formatScore(comparisonScore)}
           </span>
           <span className={`-my-px -mr-1 inline-flex size-[2.125rem] items-center justify-center rounded-full border-2 bg-stone-950/35 text-center shadow-[0_0_5px_var(--rating-glow),0_0_10px_var(--rating-glow),inset_0_0_5px_rgba(255,255,255,0.10)] sm:-mr-1.5 sm:size-[2.375rem] ${authorRatingToneClassName}`}>
@@ -726,7 +743,7 @@ export function MediaItemTile({
       >
         <Star aria-hidden="true" className="size-3.5 shrink-0 fill-current drop-shadow-[0_0_4px_var(--rating-glow)] sm:size-4" />
         {!shouldShowAuthorOnly ? (
-          <span className="inline-flex h-full items-center text-[13px] leading-[13px] text-stone-50 sm:text-[15px] sm:leading-[15px]">
+          <span className={`inline-flex h-full items-center text-[13px] leading-[13px] ${ARCHIVE_RATING_VALUE_CLASS_NAME} sm:text-[15px] sm:leading-[15px]`}>
             {formatScore(item.averageScore)}
           </span>
         ) : null}

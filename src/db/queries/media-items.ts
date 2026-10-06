@@ -1,3 +1,4 @@
+import { mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import {
   and,
   asc,
@@ -44,6 +45,7 @@ import {
   mediaItemEditorialSummaries,
   mediaItemFranchises,
   mediaItemMetadata,
+  mediaItemGenres,
   mediaItemProviderSnapshots,
   mediaItemTitleAliases,
   mediaCarriers,
@@ -406,6 +408,11 @@ const catalogSeriesCondition = (seriesId: number) =>
       ),
   );
 
+function catalogGenreCondition(genreId: number) {
+  return exists(db.select({ id: mediaItemGenres.genreId }).from(mediaItemGenres)
+    .where(and(eq(mediaItemGenres.mediaItemId, mediaItems.id), eq(mediaItemGenres.genreId, genreId))));
+}
+
 function catalogFilterConditions(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
@@ -413,6 +420,7 @@ function catalogFilterConditions(input: {
   enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   seriesId?: number;
+  genreId?: number;
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -430,6 +438,8 @@ function catalogFilterConditions(input: {
   if (input.mediaTypeFilter !== "all") {
     conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
   }
+
+  if (input.genreId) conditions.push(catalogGenreCondition(input.genreId));
 
   if (input.seriesId) {
     conditions.push(catalogSeriesCondition(input.seriesId));
@@ -661,6 +671,7 @@ export async function getCatalogMediaItems(input: {
   pageSize: number;
   searchQuery: string;
   seriesId?: number;
+  genreId?: number;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   yearFilter: CatalogYearFilter;
@@ -695,6 +706,7 @@ export async function getCatalogMediaTypeCounts(input: {
   enabledMediaTypeCodes: readonly string[];
   searchQuery: string;
   seriesId?: number;
+  genreId?: number;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {
@@ -724,7 +736,7 @@ export async function getPublishedMediaTypeCounts() {
     .groupBy(mediaItems.mediaType);
 }
 
-export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[]) {
+export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number) {
   const [bounds] = await db
     .select({
       minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
@@ -733,6 +745,7 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
     .where(and(
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
+      genreId ? catalogGenreCondition(genreId) : undefined,
     ));
 
   return {
@@ -1105,6 +1118,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
 export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: number) {
   const [item] = await db
     .select({
+      genres: mediaItemGenresJsonSql(),
       id: mediaItems.id,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
@@ -1132,6 +1146,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
 export async function getAdminMediaItemForEdit(mediaItemId: number) {
   const [item] = await db
     .select({
+      genres: mediaItemGenresJsonSql(),
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
@@ -1776,6 +1791,7 @@ export async function getPublicMediaItemMetadataByCode(
 ) {
   const [item] = await db
     .select({
+      genres: mediaItemGenresJsonSql(),
       title: mediaItems.title,
       description: mediaItems.description,
       editorialSummary: mediaItemEditorialSummaries.summary,
@@ -1840,6 +1856,7 @@ export async function getMediaItemByCode(
 ) {
   const [item] = await db
     .select({
+      genres: mediaItemGenresJsonSql(),
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,

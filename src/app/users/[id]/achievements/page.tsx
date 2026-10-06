@@ -8,6 +8,7 @@ import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getAchievementSettings } from "@/db/queries/achievement-settings";
 import { getAchievementShowcase } from "@/db/queries/achievements";
 import { getPublicUserProfile } from "@/db/queries/friends";
+import { getPublicAuthorLevel } from "@/db/queries/reputation";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
@@ -37,9 +38,10 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
   const isAdmin = headerState.currentAdminUser
   const profile = await getPublicUserProfile(id, current?.id, isAdmin)
   if (!profile) notFound()
-  const [items, settings] = await Promise.all([
+  const [items, settings, level] = await Promise.all([
     getAchievementShowcase(profile.id),
     getAchievementSettings(),
+    getPublicAuthorLevel(profile.id),
   ])
   const basePath = `/users/${profile.id}`
 
@@ -47,7 +49,7 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <PublicUserHeader currentAdmin={isAdmin} currentAuthor={Boolean(current)} profile={profile} returnTo={`${basePath}/achievements`} />
+        <PublicUserHeader currentAdmin={isAdmin} currentAuthor={Boolean(current)} level={level} profile={profile} returnTo={`${basePath}/achievements`} />
         <FeaturedAchievementShowcase
           defaultShowcaseBackgroundImageUrl={settings.defaultShowcaseBackgroundImageUrl}
           items={items}

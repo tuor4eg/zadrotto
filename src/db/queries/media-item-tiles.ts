@@ -1,6 +1,8 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
+import type { MediaItemGenre } from "@/lib/media/genres";
 import {
   mediaItemAverageScoreSql,
   mediaItemRatingsCountSql,
@@ -26,6 +28,7 @@ export type MediaItemTileData = {
   mediaType: string;
   mediaTypeName: string;
   metadataFacts: Record<string, unknown> | null;
+  genres: MediaItemGenre[];
   originalTitle: string | null;
   ratingsCount: number;
   releaseYear: number | null;
@@ -62,6 +65,7 @@ export async function getMediaItemTilesByIds(
       mediaType: mediaItems.mediaType,
       mediaTypeName: mediaTypes.name,
       metadataFacts: mediaItemMetadata.facts,
+      genres: mediaItemGenresJsonSql(),
       originalTitle: mediaItems.originalTitle,
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,

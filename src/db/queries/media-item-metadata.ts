@@ -4,6 +4,11 @@ import { db } from "@/db"
 import { mediaCarriers, mediaItemMetadata, mediaItems } from "@/db/schema"
 import type { MetadataIssueCode } from "@/lib/media/metadata-issue"
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status"
+import { logSystemActivity } from "@/lib/activity-logs/system"
+import { hasNewUnmappedGenres, mediaItemGenresJsonSql, resolveProviderGenres, syncMediaItemProviderGenres } from "@/db/queries/media-item-genres"
+import { lockGenreRequestsForMetadata, syncGenreRequestOccurrences } from "@/db/queries/genre-requests"
+import { extractExternalGenres } from "@/lib/media/genres"
+import type { MediaItemGenre } from "@/lib/media/genres"
 
 export type MediaItemMetadataFacts = Record<string, unknown>;
 
@@ -15,6 +20,7 @@ export type MediaItemMetadataValue = {
   sourceUrl: string | null;
   fetchedAt: Date | null;
   updatedAt: Date;
+  genres: MediaItemGenre[];
 };
 
 export type UpsertMediaItemMetadataInput = {
@@ -26,7 +32,7 @@ export type UpsertMediaItemMetadataInput = {
   fetchedAt?: Date | null;
 };
 
-function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect): MediaItemMetadataValue {
+function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect, genres: MediaItemGenre[]): MediaItemMetadataValue {
   return {
     mediaItemId: row.mediaItemId,
     facts: row.facts,
@@ -35,6 +41,7 @@ function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect): Media
     sourceUrl: row.sourceUrl,
     fetchedAt: row.fetchedAt,
     updatedAt: row.updatedAt,
+    genres,
   };
 }
 
@@ -42,12 +49,12 @@ export async function getMediaItemMetadata(
   mediaItemId: number,
 ): Promise<MediaItemMetadataValue | null> {
   const [row] = await db
-    .select()
+    .select({ metadata: mediaItemMetadata, genres: mediaItemGenresJsonSql(mediaItemMetadata.mediaItemId) })
     .from(mediaItemMetadata)
     .where(eq(mediaItemMetadata.mediaItemId, mediaItemId))
     .limit(1);
 
-  return row ? mapMediaItemMetadata(row) : null;
+  return row ? mapMediaItemMetadata(row.metadata, row.genres) : null;
 }
 
 export async function upsertMediaItemMetadata(
@@ -55,13 +62,21 @@ export async function upsertMediaItemMetadata(
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
   const fetchedAt = input.fetchedAt === undefined ? now : input.fetchedAt;
-  return db.transaction(async (tx) => {
+  const provider = input.sourceProvider?.trim() || null;
+  const result = await db.transaction(async (tx) => {
+    const [item] = await tx.select({ mediaType: mediaItems.mediaType, title: mediaItems.title })
+      .from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).for("update");
+    if (!item) throw new Error("Media item not found");
+    const [previous] = await tx.select().from(mediaItemMetadata)
+      .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId));
+    await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: input.facts, provider, mediaType: item.mediaType });
+    const resolved = await resolveProviderGenres({ facts: input.facts, provider, mediaType: item.mediaType }, tx);
     const [row] = await tx
       .insert(mediaItemMetadata)
       .values({
         mediaItemId: input.mediaItemId,
         facts: input.facts,
-        sourceProvider: input.sourceProvider ?? null,
+        sourceProvider: provider,
         sourceExternalId: input.sourceExternalId ?? null,
         sourceUrl: input.sourceUrl ?? null,
         fetchedAt,
@@ -71,7 +86,7 @@ export async function upsertMediaItemMetadata(
         target: mediaItemMetadata.mediaItemId,
         set: {
           facts: input.facts,
-          sourceProvider: input.sourceProvider ?? null,
+          sourceProvider: provider,
           sourceExternalId: input.sourceExternalId ?? null,
           sourceUrl: input.sourceUrl ?? null,
           fetchedAt,
@@ -80,19 +95,44 @@ export async function upsertMediaItemMetadata(
       })
       .returning();
 
+    await syncMediaItemProviderGenres(tx, { mediaItemId: input.mediaItemId, provider, genres: resolved.genres });
+    await syncGenreRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
+      externalGenres: extractExternalGenres(input.facts) });
+
     if (Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
 
-    return mapMediaItemMetadata(row);
+    const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql() }).from(mediaItems)
+      .where(eq(mediaItems.id, input.mediaItemId));
+    return {
+      metadata: mapMediaItemMetadata(row, genreRow.genres),
+      title: item.title, mediaType: item.mediaType, unmapped: resolved.unmapped,
+      shouldWarn: hasNewUnmappedGenres({
+        unmapped: resolved.unmapped, provider,
+        previousProvider: previous?.sourceProvider ?? null, previousFacts: previous?.facts ?? null,
+      }),
+    };
   });
+  if (result.shouldWarn && !provider) {
+    await logSystemActivity({
+      action: "media.genres.unmapped", entityId: input.mediaItemId, entityLabel: result.title,
+      message: "Для части жанров записи не найдены внутренние соответствия.", severity: "warning",
+      metadata: { provider, mediaType: result.mediaType, reason: provider ? "unmapped-value" : "missing-provider",
+        genres: result.unmapped.map((genre) => ({ name: genre.name, id: genre.id })) },
+    });
+  }
+  return result.metadata;
 }
 
 export async function deleteMediaItemMetadata(mediaItemId: number) {
-  await db
-    .delete(mediaItemMetadata)
-    .where(eq(mediaItemMetadata.mediaItemId, mediaItemId))
+  await db.transaction(async (tx) => {
+    await tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
+    await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
+    await syncGenreRequestOccurrences(tx, { mediaItemId, provider: null, mediaType: "", externalGenres: [] });
+    await syncMediaItemProviderGenres(tx, { mediaItemId, provider: null, genres: [] });
+  });
 }
 
 const hasMetadataSourceSql = sql`(

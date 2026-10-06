@@ -18,6 +18,7 @@ import {
   NesRatingPanelContent,
   Ps1RatingPanelContent,
   RobloxRatingContent,
+  RatingStars,
   SteamAchievementRatingContent,
   StreamingRatingContent,
   TvGuideRatingContent,
@@ -29,9 +30,9 @@ import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { RatingCoachAnchor } from "@/components/onboarding/rating-coach-anchor";
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { formatFirstExperiencedDate } from "@/lib/authors/experience-date";
-import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
+import { MEDIA_IDENTITY_FONT_CLASS_NAME, type MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
 import { formatScore } from "@/lib/ratings/score";
-import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
+import { RATING_PANEL_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
@@ -64,17 +65,6 @@ type MediaItemRatingModalProps = MediaItemRatingDialogProps & {
   onClose: () => void;
 };
 
-export function RatingStars({ score }: { score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span className="font-mono text-2xl leading-none tracking-[0.16em] text-current" aria-hidden="true">
-      {"★".repeat(filledStars)}
-      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
-    </span>
-  );
-}
-
 export function MediaItemRatingPanel({
   currentAuthor,
   currentAuthorFirstExperiencedAt = null,
@@ -92,7 +82,7 @@ export function MediaItemRatingPanel({
     currentAuthorFirstExperiencedPrecision,
   );
   const authorRatingToneClassName =
-    AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)];
+    `${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(currentAuthorScore)]} border-[color:var(--rating-author-border)]`;
   const isDosTerminalPanel = panelVariant === "dos-terminal";
   const isFilmStripPanel = panelVariant === "film-strip";
   const isModernTvGuidePanel = panelVariant === "modern-tv-guide";
@@ -129,7 +119,7 @@ export function MediaItemRatingPanel({
   const ratingPanelClassName = isStandalonePanel
     ? "group relative block h-full w-full min-w-0 cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
-      ? `group relative block h-full w-full min-w-[82px] cursor-pointer rounded-md border px-3 py-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+      ? `group relative flex h-full w-full min-w-[82px] flex-col items-center justify-start cursor-pointer rounded-md border p-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor
             ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
             : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
@@ -139,20 +129,16 @@ export function MediaItemRatingPanel({
             ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
             : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
         }`;
-  const labelClassName = isCompact
-    ? `block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase ${
-        currentAuthor ? "opacity-75" : "text-stone-500"
-      }`
-    : `block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-xs uppercase ${
-        currentAuthor ? "opacity-75" : "text-stone-500"
-      }`;
+  const labelClassName = `block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} ${isCompact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 ${
+    currentAuthor ? "opacity-70" : "text-stone-500"
+  }`;
   const valueClassName = currentAuthor
     ? isCompact
-      ? `mt-1 block ${panelDisplayClassName ?? "font-serif"} text-3xl tabular-nums`
-      : `mt-2 block ${panelDisplayClassName ?? "font-serif"} text-5xl tabular-nums`
+      ? `mt-1 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-3xl tabular-nums`
+      : `mt-2 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-5xl tabular-nums`
     : isCompact
-      ? `mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.1em]"} text-xs uppercase text-red-900`
-      : `mt-2 block ${panelLabelClassName ?? "font-mono tracking-[0.14em]"} text-sm uppercase text-red-900`;
+      ? `mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs uppercase text-red-900`
+      : `mt-2 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
   const content = isAnimeMangaPanel ? (
@@ -160,7 +146,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -170,7 +156,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти в аккаунт"}
@@ -181,7 +167,7 @@ export function MediaItemRatingPanel({
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix="Знакомство: "
       footer="C:\\USER>"
-      label="Ваша оценка"
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       toneSource="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -191,7 +177,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
@@ -200,7 +186,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -211,7 +197,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
@@ -221,7 +207,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -231,7 +217,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -241,7 +227,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -251,7 +237,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
@@ -260,7 +246,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -270,7 +256,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       footerLabel="Chapter"
       footerValue={currentAuthor && firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : undefined}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -280,7 +266,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -290,7 +276,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -300,7 +286,7 @@ export function MediaItemRatingPanel({
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      label={isCompact ? "Моя оценка" : "Ваша оценка"}
+      label="Моя оценка"
       score={currentAuthor ? currentAuthorScore : null}
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
@@ -308,19 +294,19 @@ export function MediaItemRatingPanel({
   ) : panelVariant === "nes-hearts" ? (
     <NesRatingPanelContent
       compact={isCompact}
-      compactLabel="Моя"
+      compactLabel="Моя оценка"
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      displayFontClassName={panelDisplayClassName ?? "font-serif"}
+      displayFontClassName={panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME}
       emptyHelper="чтобы поставить оценку"
-      label="Ваша оценка"
-      labelFontClassName={panelLabelClassName ?? "font-mono tracking-[0.14em]"}
+      label="Моя оценка"
+      labelFontClassName={panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME}
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : (
     <>
-      <span className={labelClassName}>{isCompact ? "Моя" : "Ваша оценка"}</span>
+      <span className={labelClassName}>Моя оценка</span>
       <span className={valueClassName}>{currentAuthor ? formatScore(currentAuthorScore) : "Войти"}</span>
       {!isCompact ? (
         currentAuthor ? (
@@ -328,7 +314,7 @@ export function MediaItemRatingPanel({
             <span className="mt-2 flex justify-center">
               <RatingStars score={currentAuthorScore} />
             </span>
-            <span className={`mt-3 block ${panelLabelClassName ?? "font-mono tracking-[0.12em]"} text-[10px] uppercase ${firstExperiencedDate ? "opacity-75" : "opacity-0"}`}>
+            <span className={`mt-3 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
               {firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : "—"}
             </span>
           </>
@@ -338,9 +324,14 @@ export function MediaItemRatingPanel({
           </span>
         )
       ) : currentAuthor ? (
-        <span className={`mt-1 block ${panelLabelClassName ?? "font-mono tracking-[0.08em]"} text-[9px] uppercase ${firstExperiencedDate ? "opacity-75" : "opacity-0"}`}>
-          {firstExperiencedDate ?? "—"}
-        </span>
+        <>
+          <span className="mt-1 flex h-5 shrink-0 scale-75 justify-center">
+            <RatingStars score={currentAuthorScore} />
+          </span>
+          <span className={`mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
+            {firstExperiencedDate ?? "—"}
+          </span>
+        </>
       ) : null}
     </>
   );

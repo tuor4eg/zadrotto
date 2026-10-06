@@ -21,11 +21,17 @@ describe("public media reviews layout", () => {
     const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
     const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
     assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
-    assert.match(details, /className="contents lg:relative[^"]*lg:block/);
+    assert.match(details, /order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline/);
+    assert.match(details, /contents lg:col-start-2 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:self-baseline/);
+    assert.doesNotMatch(details, /lg:row-span-2|lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
     assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
     assert.match(details, /<div className="order-4 flex flex-col[^"]*lg:min-h-\[560px\]"/);
     assert.doesNotMatch(details, /order-4 flex min-h-\[560px\]/);
-    assert.match(details, /className="mt-7 w-full max-w-\[420px\] sm:mx-2 sm:w-\[calc\(100%-1rem\)\] lg:w-\[calc\(420px-1rem\)\]"/);
+    assert.match(details, /className="mt-7 w-full max-w-full sm:ml-2 sm:max-w-\[420px\]"/);
+    assert.match(details, /sm:max-w-\[420px\]/);
+    assert.match(details, /carrierFrameSize=\{hasCarrierFrame \? "detail" : "default"\}/);
+    assert.match(reviews, /grid min-w-0 grid-cols-2 gap-3 py-3/);
+    assert.doesNotMatch(reviews, /grid-cols-2 gap-3 px-1/);
   });
 
   it("renders three review previews and one action card", () => {

@@ -1,0 +1,1 @@
+export const ARCHIVE_SEARCH_MATCH_LIMIT = 3;

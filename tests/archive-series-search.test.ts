@@ -15,7 +15,7 @@ describe("archive series search", () => {
   it("shows at most three direct series matches and links excess results to series", () => {
     assert.match(archivePage, /searchArchiveSeriesMatches\(searchQuery, enabledMediaTypeCodes\)/);
     assert.match(franchiseQueries, /export async function searchArchiveSeriesMatches/);
-    assert.match(franchiseQueries, /limit = 3/);
+    assert.match(franchiseQueries, /limit = ARCHIVE_SEARCH_MATCH_LIMIT/);
     assert.match(franchiseQueries, /matchesNormalizedSearch\(\[series\.title, series\.originalTitle, series\.code\]/);
     assert.match(franchiseQueries, /items: matches\.slice\(0, Math\.max\(0, limit\)\)/);
     assert.match(seriesContext, /totalCount > items\.length/);
@@ -42,7 +42,7 @@ describe("archive series search", () => {
       /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"\]/,
     );
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
-    assert.match(archivePage, /const catalogSearchQuery = selectedSeries \? "" : searchQuery/);
+    assert.match(archivePage, /const catalogSearchQuery = selectedGenre \|\| selectedSeries \? "" : searchQuery/);
     assert.match(archivePage, /const parsedSort = selectedSeries[\s\S]*\? "release_year"/);
     assert.match(archivePage, /const sortDirection = selectedSeries[\s\S]*\? "asc"/);
     assert.match(seriesContext, /aria-label="Сбросить выбранную серию"/);

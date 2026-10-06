@@ -1198,7 +1198,7 @@ export function MediaItemForm({
               ) : null}
             </div>
           ) : null}
-          <MediaMetadataFacts metadata={selectedMetadata} />
+          <MediaMetadataFacts metadata={selectedMetadata} genres={selectedMetadata?.genres ?? []} />
         </div>
       </fieldset>
 

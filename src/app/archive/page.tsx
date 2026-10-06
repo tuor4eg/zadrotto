@@ -1,3 +1,5 @@
+import { getActiveGenreBySlug, searchArchiveGenreMatches } from "@/db/queries/genres";
+import { ArchiveSelectedGenre } from "./archive-genre-context";
 import { connection } from "next/server";
 
 import {
@@ -61,6 +63,7 @@ type HomeProps = {
     ratedBy?: string;
     compare?: string;
     series?: string;
+    genre?: string;
     dir?: string;
     sort?: string;
     suggested?: string;
@@ -85,10 +88,11 @@ export default async function Home({ searchParams }: HomeProps) {
   const currentAdminUser = headerState.currentAdminUser;
   const requestedSeriesCode = params.series?.trim() ?? "";
   const requestedRatedByAuthorId = parseRatedByAuthorId(params.ratedBy);
+  const selectedGenre = params.genre ? await getActiveGenreBySlug(params.genre.trim()) : null;
   const [effectiveMediaTypes, activeQuiz, selectedSeries, requestedRatedProfile] = await Promise.all([
     getEffectiveMediaTypeOptions(currentAuthor?.id),
     currentAuthor ? getActiveQuiz() : Promise.resolve(null),
-    requestedSeriesCode ? getFranchiseByCode(requestedSeriesCode) : Promise.resolve(null),
+    !selectedGenre && requestedSeriesCode ? getFranchiseByCode(requestedSeriesCode) : Promise.resolve(null),
     requestedRatedByAuthorId
       ? getPublicUserProfile(
           requestedRatedByAuthorId,
@@ -113,7 +117,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
-  const catalogSearchQuery = selectedSeries ? "" : searchQuery;
+  const catalogSearchQuery = selectedGenre || selectedSeries ? "" : searchQuery;
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const pageSize = parsePageSize(
     params.pageSize,
@@ -149,6 +153,7 @@ export default async function Home({ searchParams }: HomeProps) {
     authorMediaSuggestionData,
     seriesMatches,
     selectedSeriesBranch,
+    genreMatches,
   ] =
     await Promise.all([
       getCatalogMediaItems({
@@ -161,6 +166,7 @@ export default async function Home({ searchParams }: HomeProps) {
         pageSize,
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
+        genreId: selectedGenre?.id,
         sort,
         sortDirection,
         yearFilter,
@@ -173,10 +179,11 @@ export default async function Home({ searchParams }: HomeProps) {
         enabledMediaTypeCodes,
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
+        genreId: selectedGenre?.id,
         yearFilter,
         yearMode,
       }),
-      getCatalogReleaseYearBounds(enabledMediaTypeCodes),
+      getCatalogReleaseYearBounds(enabledMediaTypeCodes, selectedGenre?.id),
       currentAuthor
           ? Promise.all([
             getFranchiseOptions(currentAuthor.id),
@@ -202,12 +209,15 @@ export default async function Home({ searchParams }: HomeProps) {
             }),
           )
         : Promise.resolve(null),
-      searchQuery && !selectedSeries
+      searchQuery && !selectedSeries && !selectedGenre
         ? searchArchiveSeriesMatches(searchQuery, enabledMediaTypeCodes)
         : Promise.resolve({ items: [], totalCount: 0 }),
       selectedSeries
         ? getPublishedFranchiseBranch(selectedSeries.id, enabledMediaTypeCodes)
         : Promise.resolve(null),
+      searchQuery && !selectedSeries && !selectedGenre
+        ? searchArchiveGenreMatches(searchQuery, enabledMediaTypeCodes)
+        : Promise.resolve({ items: [], totalCount: 0 }),
     ]);
   const preservedCatalogParams = new URLSearchParams();
   for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
@@ -231,7 +241,8 @@ export default async function Home({ searchParams }: HomeProps) {
   );
   const getRatedContextHref = (comparison: ArchiveRatingComparison | null) => {
     const nextParams = new URLSearchParams();
-    for (const key of ["mine", "pageSize", "q", "series", "dir", "sort", "type", "year", "yearMode"] as const) {
+    for (const key of ["mine", "pageSize", "q", "series", "genre", "dir", "sort", "type", "year", "yearMode"] as const) {
+      if (selectedGenre && (key === "q" || key === "series")) continue;
       const value = params[key];
       if (value) nextParams.set(key, value);
     }
@@ -316,7 +327,7 @@ export default async function Home({ searchParams }: HomeProps) {
             mediaTypeFilter={mediaTypeFilter}
             minReleaseYear={releaseYearBounds.minReleaseYear}
             ratedByAuthor={Boolean(ratedByAuthorId)}
-            searchQuery={searchQuery}
+            searchQuery={selectedGenre ? "" : searchQuery}
             sort={sort}
             sortDirection={sortDirection}
             yearFilter={yearFilter}
@@ -325,6 +336,7 @@ export default async function Home({ searchParams }: HomeProps) {
         }
         />
         <div className="archive-catalog-shell flex min-h-0 w-full flex-1 flex-col gap-3">
+          {selectedGenre ? <ArchiveSelectedGenre genre={selectedGenre} clearHref={getArchiveSeriesHref()} /> : null}
           {selectedSeries ? (
             <ArchiveSelectedSeries
               adminCanEdit={Boolean(currentAdminUser)}
@@ -356,6 +368,14 @@ export default async function Home({ searchParams }: HomeProps) {
               moreHref={`/series?q=${encodeURIComponent(searchQuery)}`}
               selectionHrefs={seriesSelectionHrefs}
               totalCount={seriesMatches.totalCount}
+              genres={genreMatches.items}
+              genreTotalCount={genreMatches.totalCount}
+              genreMoreHref={`/genres?q=${encodeURIComponent(searchQuery)}`}
+              genreSelectionHrefs={Object.fromEntries(genreMatches.items.map((genre) => {
+                const nextParams = new URLSearchParams(preservedCatalogParams);
+                nextParams.set("genre", genre.slug);
+                return [genre.id, `/archive?${nextParams.toString()}`];
+              }))}
             />
           )}
           {ratedProfile ? (
@@ -389,8 +409,9 @@ export default async function Home({ searchParams }: HomeProps) {
           publishedFranchises={authorMediaSuggestionData?.publishedFranchises ?? []}
           ratedAuthorComparison={ratingComparison}
           ratedByAuthorId={ratedByAuthorId ?? null}
-          searchQuery={searchQuery}
+          searchQuery={selectedGenre ? "" : searchQuery}
           seriesCode={selectedSeries?.code ?? null}
+          genreSlug={selectedGenre?.slug ?? null}
           sort={sort}
           sortDirection={sortDirection}
           totalCount={catalog.totalCount}
@@ -412,7 +433,7 @@ export default async function Home({ searchParams }: HomeProps) {
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypesByCount}
-          searchQuery={searchQuery}
+          searchQuery={selectedGenre ? "" : searchQuery}
         />
       ) : null}
     </main>

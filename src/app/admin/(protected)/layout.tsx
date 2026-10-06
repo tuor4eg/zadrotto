@@ -14,6 +14,7 @@ import { NotificationBell } from "@/components/notifications/notification-inbox"
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
 import { getSubmittedFranchisesCountForAdmin } from "@/db/queries/franchises";
+import { getPendingGenreRequestCount } from "@/db/queries/genre-requests";
 import { getOpenBugReportCount } from "@/db/queries/bug-reports";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
@@ -33,12 +34,13 @@ type AdminLayoutProps = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount] = await Promise.all([
+  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount] = await Promise.all([
     requireAdminUser(),
     getSubmittedAuthorMediaItemsCountForAdmin(),
     getSubmittedFranchisesCountForAdmin(),
     getSubmittedContributionReviewCountForAdmin(),
     getOpenBugReportCount(),
+    getPendingGenreRequestCount(),
   ]);
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#f3f0ea_45%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -65,6 +67,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             submittedFranchisesCount={submittedFranchisesCount}
             submittedReviewsCount={submittedReviewsCount}
             openBugReportsCount={openBugReportsCount}
+            pendingGenreRequestsCount={pendingGenreRequestsCount}
             logoutSlot={
               <form action={logoutAdmin}>
                 <button
@@ -97,6 +100,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               submittedFranchisesCount={submittedFranchisesCount}
               submittedReviewsCount={submittedReviewsCount}
               openBugReportsCount={openBugReportsCount}
+              pendingGenreRequestsCount={pendingGenreRequestsCount}
             />
             <AdminToolsMenu />
             <Link

@@ -1,4 +1,5 @@
 import { isMediaTypeCode } from "@/lib/media/types";
+import type { MediaItemGenre } from "@/lib/media/genres";
 
 export const ADMIN_MEDIA_BROWSER_SORTS = [
   "average_score",
@@ -47,6 +48,7 @@ export type AdminMediaBrowserItem = {
   mediaType: string;
   mediaTypeLabel: string;
   metadataFacts: Record<string, unknown> | null;
+  genres: MediaItemGenre[];
   originalTitle: string | null;
   ratingsCount: number;
   releaseYear: number | null;

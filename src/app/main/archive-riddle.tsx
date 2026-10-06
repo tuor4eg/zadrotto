@@ -76,8 +76,8 @@ export function ArchiveRiddle({
       role="button"
       tabIndex={0}
     >
-      <div className="flex flex-wrap shrink-0 items-center gap-x-2 gap-y-1 sm:h-8 sm:flex-nowrap">
-          <CircleHelp aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
+      <div className="flex flex-wrap shrink-0 items-start gap-x-2 gap-y-1 md:h-8 sm:flex-nowrap">
+          <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
           <h2 id="main-archive-riddle" className="font-serif text-2xl leading-none text-stone-950">
             Загадка архива
           </h2>

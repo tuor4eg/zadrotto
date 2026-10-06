@@ -25,8 +25,9 @@ describe("main page author statistics", () => {
     assert.match(widgetWithDemo, /fetch\("\/api\/demo-home-statistics"/);
     assert.doesNotMatch(widget, /DemoHomeIntro|demo-profile|localStorage/);
     assert.match(widget, /archive-paper archive-panel overflow-hidden/);
-    assert.match(widget, /grid gap-5 lg:grid-cols-3 lg:gap-3/);
-    assert.match(widget, /className="lg:col-span-2"/);
+    assert.match(widget, /grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-3/);
+    assert.match(widget, /className="min-w-0 lg:col-span-2"/);
+    assert.match(widget, /className="min-w-0 border-t/);
     assert.equal(widget.match(/mb-3 flex min-h-9 items-center/g)?.length, 2);
     assert.match(widget, /aria-label="Статистика пользователя"/);
     assert.doesNotMatch(widget, /<BarChart3|main-author-statistics-title/);
@@ -95,5 +96,16 @@ describe("main page author statistics", () => {
     assert.match(widget, /lg:w-\[var\(--year-desktop-width\)\]/);
     assert.doesNotMatch(widget, /showCount|countLabelStep/);
     assert.doesNotMatch(widget, /<circle|<path/);
+  });
+
+  it("preserves ancient records and the latest years in a long scrollable timeline", () => {
+    const timeline = fillReleaseYearTimeline([
+      { count: 1, year: 600 },
+      { count: 2, year: 2026 },
+    ]);
+    assert.equal(timeline.length, 1427);
+    assert.deepEqual(timeline[0], { count: 1, year: 600 });
+    assert.deepEqual(timeline.at(-1), { count: 2, year: 2026 });
+    assert.equal(timeline.reduce((sum, item) => sum + item.count, 0), 3);
   });
 });

@@ -538,25 +538,12 @@ body:has(.public-site-footer-layer) {
   border: 1px solid rgb(120 113 108 / 38%);
   border-radius: 2px;
   padding: 1.35rem 1.45rem 1.2rem;
-  background:
-    linear-gradient(90deg, rgb(147 197 253 / 34%) 1px, transparent 1px),
-    linear-gradient(180deg, rgb(147 197 253 / 34%) 1px, transparent 1px),
-    linear-gradient(135deg, #fffdf5, #f4ecd9);
-  background-size: 22px 22px, 22px 22px, auto;
+  background-color: #f7efdc;
+  background-image: linear-gradient(135deg, #fffdf5, #f1e8d5);
   box-shadow:
     0 13px 22px rgb(var(--archive-shadow) / 18%),
     inset 0 0 0 1px rgb(255 255 255 / 58%);
   transform: rotate(-0.35deg);
-}
-
-.archive-notebook-note::before {
-  position: absolute;
-  top: 0;
-  bottom: 0;
-  left: 1.1rem;
-  width: 1px;
-  content: "";
-  background: rgb(185 28 28 / 26%);
 }
 
 .archive-notebook-tape {

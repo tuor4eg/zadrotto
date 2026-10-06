@@ -13,14 +13,14 @@ export function MediaCarrierDisplayTitle({ frame, title }: MediaCarrierDisplayTi
 
   if (frame?.titleIconPath) {
     return (
-      <span className="inline-flex max-w-full items-start gap-x-[0.2em] align-baseline">
+      <span className="inline-flex max-w-full items-baseline gap-x-[0.2em] align-baseline">
         <Image
           src={frame.titleIconPath}
           alt=""
           aria-hidden="true"
           width={frame.titleIconWidth ?? 16}
           height={frame.titleIconHeight ?? 16}
-          className="mt-[0.22em] h-[1em] w-auto shrink-0"
+          className="mt-[0.22em] h-[1em] w-auto shrink-0 self-start"
         />
         <span className="min-w-0">
           {formattedTitle}

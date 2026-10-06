@@ -7,6 +7,7 @@ import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchi
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items"
 import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame"
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary"
+import type { MediaItemGenre } from "@/lib/media/genres"
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types"
 
 type ArchiveMediaItemIdentityProps = {
@@ -20,6 +21,7 @@ type ArchiveMediaItemIdentityProps = {
     mediaCarrierCode?: string | null
     mediaType: MediaType
     metadataFacts?: Record<string, unknown> | null
+    genres: MediaItemGenre[]
     originalTitle: string | null
     releaseYear: number | null
     title: string
@@ -41,6 +43,7 @@ export function ArchiveMediaItemIdentity({
     mediaType: item.mediaType,
     mediaTypeLabel,
     metadataFacts: item.metadataFacts,
+    genres: item.genres,
     releaseYear: item.releaseYear,
   })
   const coverUrl = item.coverThumbUrl ?? item.coverUrl ?? null

@@ -62,6 +62,25 @@ describe("archive route split", () => {
     assert.match(mediaItemDetails, /lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
   });
 
+  it("keeps the desktop dossier identity within the rating-column width", () => {
+    assert.match(
+      mediaItemDetails,
+      /break-words lg:max-w-\[584px\][\s\S]*<MediaCarrierDisplayTitle title=\{item\.title\}/,
+    );
+    assert.match(mediaItemDetails, /mt-5 w-full[^"`]*lg:max-w-\[584px\]/);
+    assert.match(mediaItemDetails, /mt-8 grid w-full[^"`]*lg:max-w-\[584px\]/);
+    assert.match(mediaItemDetails, /className="break-words">\{label\}/);
+  });
+
+  it("does not let a wrapped desktop title increase the breadcrumb row", () => {
+    assert.match(
+      mediaItemDetails,
+      /order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2[\s\S]*\{breadcrumbSlot\}[\s\S]*<ArchiveCover/,
+    );
+    assert.match(mediaItemDetails, /lg:col-start-2 lg:row-start-1 lg:self-baseline/);
+    assert.match(mediaItemDetails, /lg:col-start-2 lg:row-start-2 lg:min-h-\[560px\]/);
+  });
+
   it("submits the main-page search to the archive only on form submission", () => {
     assert.match(
       publicHeader,

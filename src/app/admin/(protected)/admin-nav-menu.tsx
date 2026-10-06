@@ -65,11 +65,13 @@ function getAdminNavGroups({
   submittedFranchisesCount = 0,
   submittedReviewsCount = 0,
   openBugReportsCount = 0,
+  pendingGenreRequestsCount = 0,
 }: {
   submittedMediaItemsCount?: number;
   submittedFranchisesCount?: number;
   submittedReviewsCount?: number;
   openBugReportsCount?: number;
+  pendingGenreRequestsCount?: number;
 } = {}): AdminNavGroup[] {
   return [
     {
@@ -78,6 +80,7 @@ function getAdminNavGroups({
       label: "Записи",
       items: [
         { href: "/admin/media", icon: FileText, label: "Записи" },
+        { href: "/admin/genres", icon: Tags, label: "Жанры" },
         { href: "/admin/media-types", icon: Tags, label: "Типы" },
         { href: "/admin/series", icon: Layers3, label: "Серии" },
         { href: "/admin/exports", icon: Download, label: "Экспорты" },
@@ -108,10 +111,11 @@ function getAdminNavGroups({
     },
     {
       key: "requests",
-      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount,
+      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0),
       icon: FileClock,
       label: "Заявки",
       items: [
+        { href: "/admin/genre-requests", icon: Tags, label: "Жанры", count: pendingGenreRequestsCount },
         {
           href: "/admin/media-review",
           icon: FileText,
@@ -243,20 +247,22 @@ export function AdminMobileNavMenu({
   submittedFranchisesCount,
   submittedReviewsCount,
   openBugReportsCount,
+  pendingGenreRequestsCount,
 }: {
   logoutSlot: React.ReactNode;
   submittedMediaItemsCount: number;
   submittedFranchisesCount: number;
   submittedReviewsCount: number;
   openBugReportsCount: number;
+  pendingGenreRequestsCount?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     content: true,
-    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount > 0,
+    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0) > 0,
   });
   const rootRef = useRef<HTMLDivElement>(null);
-  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount });
+  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount });
 
   useEffect(() => {
     if (!isOpen) {
@@ -404,13 +410,15 @@ export function AdminRequestsMenu({
   submittedFranchisesCount,
   submittedReviewsCount,
   openBugReportsCount,
+  pendingGenreRequestsCount,
 }: {
   submittedMediaItemsCount: number;
   submittedFranchisesCount: number;
   submittedReviewsCount: number;
   openBugReportsCount: number;
+  pendingGenreRequestsCount?: number;
 }) {
-  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount })
+  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount })
     .find((item) => item.key === "requests");
 
   return (

@@ -7,31 +7,46 @@ import {
   getMediaCarrierDetailViewportClassName,
   getMediaCarrierFrame,
   hasMediaCarrierFrame,
+  MEDIA_CARRIER_DETAIL_WIDTH_CLASS_NAME,
+  MEDIA_CARRIER_DETAIL_WIDTH_PX,
   MEDIA_IDENTITY_FONT_CLASS_NAME,
 } from "@/lib/media/carrier-frame";
 
 describe("media carrier frames", () => {
-  it("gives detail pages a concrete width for frames without a viewport", () => {
-    for (const mediaCarrierCode of ["nes", "sega", "snes", "ps1"] as const) {
-      const frame = getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode });
+  it("gives every detail cover the same width as two review cards", () => {
+    assert.equal(MEDIA_CARRIER_DETAIL_WIDTH_PX, 420);
+    assert.equal(MEDIA_CARRIER_DETAIL_WIDTH_CLASS_NAME, "w-[420px] max-w-full");
 
+    const detailFrames = [
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "nes" }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "sega" }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "snes" }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "ps1" }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "mobile" }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 1990 }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 1998 }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2008 }),
+      getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear: 2015 }),
+      getMediaCarrierFrame({ mediaType: "anime" }),
+      getMediaCarrierFrame({ mediaType: "book" }),
+      getMediaCarrierFrame({ mediaType: "boardgame" }),
+      getMediaCarrierFrame({ mediaType: "roblox" }),
+      getMediaCarrierFrame({ mediaType: "comic" }),
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs" }),
+      getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
+      getMediaCarrierFrame({ mediaType: "film", releaseYear: 1979 }),
+      getMediaCarrierFrame({ mediaType: "film", releaseYear: 2015 }),
+      getMediaCarrierFrame({ mediaType: "series", releaseYear: 2003 }),
+      getMediaCarrierFrame({ mediaType: "series", releaseYear: 2008 }),
+      getMediaCarrierFrame({ mediaType: "series", releaseYear: 2015 }),
+    ];
+
+    for (const frame of detailFrames) {
       assert.ok(frame);
       assert.equal(
         getMediaCarrierDetailViewportClassName(frame),
-        `${frame.aspectRatioClassName} w-[420px] max-w-full`,
+        `${frame.aspectRatioClassName} ${MEDIA_CARRIER_DETAIL_WIDTH_CLASS_NAME}`,
       );
-    }
-
-    const pcFrames = [
-      { releaseYear: 1990, expected: "aspect-square w-[420px] max-w-full" },
-      { releaseYear: 1998, expected: "aspect-[10/9] w-[420px] max-w-full" },
-    ];
-
-    for (const { releaseYear, expected } of pcFrames) {
-      const frame = getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "pc", releaseYear });
-
-      assert.ok(frame);
-      assert.equal(getMediaCarrierDetailViewportClassName(frame), expected);
     }
   });
 
@@ -94,10 +109,11 @@ describe("media carrier frames", () => {
   it("uses the compressed board game frame with or without an explicit carrier", () => {
     const expectedFrame = {
       assetPath: "/mediaCarriers/boardgames/boardgame.webp",
+      detailBackgroundPath: "/mediaCarriers/boardgames/background.webp",
       aspectRatioClassName: "aspect-[683/1024]",
       compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
       compactViewportClassName: "h-[min(32vh,300px)]",
-      coverAreaClassName: "left-[15.5%] top-[6%] h-[56.2%] w-[69.2%]",
+      coverAreaClassName: "left-[15.5%] top-[6.2%] h-[55.3%] w-[69.1%]",
       placeholderVariant: "dvd-label",
       renderKind: "cartridge",
       sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
@@ -208,7 +224,7 @@ describe("media carrier frames", () => {
       {
         assetPath: "/mediaCarriers/game/pc/win9x/jewel.webp",
         aspectRatioClassName: "aspect-[10/9]",
-        coverAreaClassName: "left-[12.2%] top-[9.6%] h-[87.6%] w-[65.1%]",
+        coverAreaClassName: "left-[12.6%] top-[9.4%] h-[87.3%] w-[64.2%]",
         displayFontClassName: "media-carrier-font-pc-win9x",
         fontClassName: "media-carrier-font-pc-win9x",
         labelFontClassName: "media-carrier-font-pc-win9x",
@@ -306,7 +322,7 @@ describe("media carrier frames", () => {
         aspectRatioClassName: "aspect-[993/1529]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
-        coverAreaClassName: "left-[6%] top-[7%] h-[85%] w-[69%]",
+        coverAreaClassName: "left-[5.7%] top-[8.2%] h-[83.5%] w-[66%]",
         displayFontClassName: "media-carrier-font-vhs",
         fontClassName: "media-carrier-font-vhs",
         labelFontClassName: "media-carrier-font-vhs",
@@ -321,11 +337,10 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/video/dvd/dvd.webp",
-        detailViewportClassName: "aspect-[357/490] w-[min(42vh,379px)] max-w-full",
         aspectRatioClassName: "aspect-[357/490]",
         compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
         compactViewportClassName: "aspect-[357/490] w-full max-w-[min(23vh,219px)]",
-        coverAreaClassName: "left-[4.8%] top-[8%] h-[90.8%] w-[90.4%]",
+        coverAreaClassName: "left-[5.9%] top-[8.1%] h-[90.4%] w-[90.2%]",
         displayFontClassName: "media-carrier-font-film-dvd",
         fontClassName: "media-carrier-font-film-dvd",
         labelFontClassName: "media-carrier-font-film-dvd",
@@ -349,9 +364,8 @@ describe("media carrier frames", () => {
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
         coverAreaClassName:
-          "left-[1.6%] top-[0.4%] h-[78.8%] w-[82%] [clip-path:circle(50%)]",
+          "left-[1.7%] top-[0.5%] h-[78.7%] w-[82%] [clip-path:circle(50%)]",
         displayFontClassName: "media-carrier-font-film-reel",
-        detailViewportClassName: "w-[22rem] max-w-full lg:w-[24rem]",
         fontClassName: "media-carrier-font-film-reel",
         labelFontClassName: "media-carrier-font-film-reel-label",
         placeholderVariant: "reel-label",
@@ -383,7 +397,6 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/anime/anime.webp",
-        detailViewportClassName: "aspect-[954/1346] w-[min(41vh,369px)] max-w-full",
         aspectRatioClassName: "aspect-[954/1346]",
         compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
         compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
@@ -408,7 +421,6 @@ describe("media carrier frames", () => {
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
         coverAreaClassName: "left-[9.2%] top-[10.7%] h-[63.8%] w-[81.9%]",
         displayFontClassName: "media-carrier-font-tv-guide",
-        detailViewportClassName: "w-[31rem] max-w-full lg:w-[34rem]",
         fontClassName: "media-carrier-font-tv-guide",
         labelFontClassName: "media-carrier-font-tv-guide",
         placeholderVariant: "tv-screen-label",
@@ -417,6 +429,10 @@ describe("media carrier frames", () => {
         sizeClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
         viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
       },
+    );
+    assert.equal(
+      getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 })?.coverAreaClassName,
+      "left-[7.3%] top-[7%] h-[68.7%] w-[85.3%]",
     );
     assert.equal(
       getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2004 })?.assetPath,

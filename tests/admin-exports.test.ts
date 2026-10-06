@@ -5,7 +5,12 @@ import { describe, it } from "node:test";
 import { CSV_BOM, createCsvRow, escapeCsvCell } from "../src/lib/admin-exports/csv";
 import {
   ADMIN_EXPORT_FIELDS,
+  MEDIA_METADATA_EXPORT_FIELDS,
+  formatMetadataExportValue,
+  getAvailableMetadataExportFields,
   getDefaultAdminExportFields,
+  getMetadataExportField,
+  getMetadataExportFieldKey,
   parseAdminExportFields,
 } from "../src/lib/admin-exports/model";
 
@@ -17,6 +22,8 @@ const exportActionsSource = readFileSync(
   "src/app/admin/(protected)/exports/actions.ts",
   "utf8",
 );
+const exportCreateSource = readFileSync("src/lib/admin-exports/create.ts", "utf8");
+const exportGenerateSource = readFileSync("src/lib/admin-exports/generate.ts", "utf8");
 const exportHistorySource = readFileSync(
   "src/app/admin/(protected)/exports/page.tsx",
   "utf8",
@@ -91,6 +98,50 @@ describe("admin export field catalog", () => {
       /неизвестное поле экспорта/,
     );
   });
+
+  it("offers common metadata for mixed selections and type metadata for one selection", () => {
+    assert.deepEqual(getAvailableMetadataExportFields([]).map((field) => field.key), ["genres"]);
+    assert.deepEqual(getAvailableMetadataExportFields(["film", "series"]).map((field) => field.key), ["genres"]);
+    assert.deepEqual(getAvailableMetadataExportFields(["game"]).map((field) => field.key), [
+      "genres",
+      "platforms",
+      "developers",
+      "publishers",
+    ]);
+  });
+
+  it("keeps technical provider identifiers outside the metadata registry", () => {
+    const keys = new Set<string>(MEDIA_METADATA_EXPORT_FIELDS.map((field) => field.key));
+    assert.equal(keys.has("universeId"), false);
+    assert.equal(keys.has("rootPlaceId"), false);
+    assert.equal(keys.has("creatorId"), false);
+  });
+
+  it("validates metadata fields against the selected media type", () => {
+    assert.deepEqual(
+      parseAdminExportFields("media_items", ["title", "metadata.genres", "metadata.platforms"], ["game"]),
+      ["title", "metadata.genres", "metadata.platforms"],
+    );
+    assert.throws(
+      () => parseAdminExportFields("media_items", ["title", "metadata.platforms"], ["film"]),
+      /неизвестное поле экспорта/,
+    );
+    assert.throws(
+      () => parseAdminExportFields("series", ["title", "metadata.genres"]),
+      /неизвестное поле экспорта/,
+    );
+  });
+
+  it("formats valid metadata values and leaves invalid values empty", () => {
+    const genres = getMetadataExportField(getMetadataExportFieldKey("genres"));
+    const runtime = getMetadataExportField(getMetadataExportFieldKey("runtimeMinutes"));
+    assert.ok(genres);
+    assert.ok(runtime);
+    assert.equal(formatMetadataExportValue(genres, { genres: ["Drama", " ", 42, "Comedy"] }), "Drama | Comedy");
+    assert.equal(formatMetadataExportValue(runtime, { runtimeMinutes: 125 }), 125);
+    assert.equal(formatMetadataExportValue(runtime, { runtimeMinutes: "125" }), "");
+    assert.equal(formatMetadataExportValue(genres, null), "");
+  });
 });
 
 describe("admin CSV serialization", () => {
@@ -128,6 +179,9 @@ describe("admin export UI contracts", () => {
     assert.match(exportDialogSource, /name="sort" value=\{sort\}/);
     assert.match(exportDialogSource, /name="fields" value=\{field\.key\}/);
     assert.match(exportDialogSource, /defaultChecked=\{defaults\.has\(field\.key\)\}/);
+    assert.match(exportDialogSource, /<span>Метаданные<\/span>/);
+    assert.match(exportDialogSource, /metadataToggleRef\.current\.indeterminate = someMetadataSelected/);
+    assert.match(exportDialogSource, /getAvailableMetadataExportFields\(selectedMediaTypes\)/);
   });
 
   it("explains that all matching rows are exported asynchronously", () => {
@@ -141,6 +195,15 @@ describe("admin export UI contracts", () => {
     assert.match(exportActionsSource, /ADMIN_EXPORT_ENTITY_TYPES\.includes/);
     assert.match(exportActionsSource, /fields: formData\.getAll\("fields"\)/);
     assert.match(exportActionsSource, /adminId: admin\.id/);
+  });
+
+  it("validates metadata after normalizing filters and reads facts during generation", () => {
+    assert.match(
+      exportCreateSource,
+      /const filters = normalizeFilters[\s\S]*const mediaTypes = filters\.mediaType[\s\S]*parseAdminExportFields\(input\.entityType, input\.fields, mediaTypes\)/,
+    );
+    assert.match(exportGenerateSource, /leftJoin\(mediaItemMetadata, eq\(mediaItemMetadata\.mediaItemId, mediaItems\.id\)\)/);
+    assert.match(exportGenerateSource, /formatMetadataExportValue\(metadataField, record\.metadataFacts/);
   });
 
   it("redirects successful creation and retry to export history", () => {

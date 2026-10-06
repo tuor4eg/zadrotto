@@ -6,6 +6,7 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
+import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
@@ -15,6 +16,7 @@ import {
   MEDIA_IDENTITY_FONT_CLASS_NAME,
 } from "@/lib/media/carrier-frame";
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary";
+import type { MediaItemGenre } from "@/lib/media/genres";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import { AVERAGE_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
@@ -32,6 +34,7 @@ type MediaItemDetailsItem = {
   mediaCarrierCode?: string | null;
   releaseYear: number | null;
   metadataFacts?: Record<string, unknown> | null;
+  genres: MediaItemGenre[];
   coverUrl: string | null;
   coverSourceProvider?: string | null;
   coverSourcePageUrl?: string | null;
@@ -123,6 +126,7 @@ export function MediaItemDetails({
 }: MediaItemDetailsProps) {
   const [detailsYearLabel, ...detailsMetaLabels] = getArchiveMediaItemInfoLabels({
     ...item,
+    genres: [],
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
@@ -208,6 +212,7 @@ export function MediaItemDetails({
                 {detailsMetaLabels.map((label) => (
                   <span key={label} className="mr-2">{label}</span>
                 ))}
+                {item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
                 {meta}
               </div>
 
@@ -335,10 +340,11 @@ function ArchiveMediaItemDetails({
 }) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
-  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono";
-  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? "font-serif";
+  const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
+  const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const archiveInfoLabels = getArchiveMediaItemInfoLabels({
     ...item,
+    genres: [],
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
 
@@ -347,14 +353,14 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[max-content_minmax(0,1fr)]">
+        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
           {mediaCarrierFrame?.detailBackgroundPath ? (
             <div
               aria-hidden="true"
-              className="pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden rounded-tr-[8px] lg:col-start-2 lg:row-start-1 lg:row-end-3 lg:-top-8 lg:block"
+              className="pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden rounded-tr-[8px] lg:col-start-2 lg:row-start-1 lg:-top-8 lg:block"
             >
               <div
-                className="absolute right-0 top-0 aspect-[4/3] w-1/2 bg-contain bg-right-top bg-no-repeat sm:w-[calc(100%-min(50%,324px))]"
+                className="absolute right-0 top-0 aspect-[4/3] w-1/2 bg-contain bg-right-top bg-no-repeat sm:w-[calc(100%-min(50%,420px))]"
                 style={{
                   backgroundImage: `url(${mediaCarrierFrame.detailBackgroundPath})`,
                   maskImage: "linear-gradient(to right, transparent, black 55%), linear-gradient(to top, transparent, black 65%)",
@@ -371,31 +377,22 @@ function ArchiveMediaItemDetails({
             className="pointer-events-none absolute -top-[13px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
-          <div className="relative order-1 min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:col-start-1 lg:row-start-1 lg:self-baseline lg:pt-0 lg:w-0 lg:min-w-full">
-            <div
-              className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
-            >
-              {breadcrumbSlot}
-              {headerActions ? <div className="mr-10 shrink-0 sm:mr-0">{headerActions}</div> : null}
+          <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline">
+            <div className="relative min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:pt-0">
+              <div
+                className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
+              >
+                {breadcrumbSlot}
+                {headerActions ? <div className="mr-10 shrink-0 sm:mr-0">{headerActions}</div> : null}
+              </div>
             </div>
-          </div>
 
-          <div
-            className={
-              mediaCarrierFrame
-                ? `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-2xl leading-[1.55] text-stone-950 sm:px-8 sm:text-4xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
-                : `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-4xl leading-none text-stone-950 sm:px-8 sm:text-6xl lg:col-start-2 lg:row-start-1 lg:self-baseline`
-            }
-          >
-            <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
-          </div>
-
-          <div className="contents lg:relative lg:order-2 lg:col-start-1 lg:row-start-2 lg:block lg:min-w-0 lg:px-6 lg:pb-6">
+          <div className="relative min-w-0 lg:px-6 lg:pb-6">
             <div className="relative order-2 min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
               <div
                 className={
                   hasCarrierFrame
-                    ? "mt-6 max-w-full sm:ml-2 sm:max-w-[420px] lg:w-max"
+                    ? "mt-6 w-full max-w-full sm:ml-2 sm:max-w-[420px]"
                     : "mt-6 max-w-[360px] sm:ml-2 lg:w-max"
                 }
               >
@@ -434,10 +431,18 @@ function ArchiveMediaItemDetails({
                             hasCarrierFrame ? "" : "media-image-lift-trigger"
                           }`}
                         >
-                          <ArchiveCover item={item} className="h-full w-full" />
+                          <ArchiveCover
+                            carrierFrameSize={hasCarrierFrame ? "detail" : "default"}
+                            item={item}
+                            className="h-full w-full"
+                          />
                         </ImageViewer>
                       ) : (
-                        <ArchiveCover item={item} className="h-full w-full" />
+                        <ArchiveCover
+                          carrierFrameSize={hasCarrierFrame ? "detail" : "default"}
+                          item={item}
+                          className="h-full w-full"
+                        />
                       )}
                       {!item.coverUrl && !hasCarrierFrame ? (
                         <div className="pointer-events-none absolute inset-0 grid place-items-center px-4">
@@ -457,16 +462,30 @@ function ArchiveMediaItemDetails({
             </div>
             {adjacentShelfSlot ? (
               <div className="order-5 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
-                <div className="mt-7 w-full max-w-[420px] sm:mx-2 sm:w-[calc(100%-1rem)] lg:w-[calc(420px-1rem)]">
+                <div className="mt-7 w-full max-w-full sm:ml-2 sm:max-w-[420px]">
                   {adjacentShelfSlot}
                 </div>
               </div>
             ) : null}
           </div>
+          </div>
 
-          <div className="order-4 flex flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:col-start-2 lg:row-start-2 lg:min-h-[560px]">
+          <div className="contents lg:col-start-2 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:self-baseline">
+          <div
+            className={
+              mediaCarrierFrame
+                ? `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-2xl leading-[1.55] text-stone-950 sm:px-8 sm:text-4xl`
+                : `${MEDIA_IDENTITY_FONT_CLASS_NAME} order-3 min-w-0 px-6 text-4xl leading-none text-stone-950 sm:px-8 sm:text-6xl`
+            }
+          >
+            <div className="w-full break-words lg:max-w-[584px]">
+              <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
+            </div>
+          </div>
+
+          <div className="order-4 flex flex-col justify-between gap-8 px-6 pb-6 pt-0 sm:px-8 sm:pb-8 sm:pt-0 lg:flex-1 lg:min-h-[560px]">
             <div>
-              <div className="max-w-[760px] pr-16 sm:pr-20 lg:pr-24">
+              <div className="w-full max-w-[584px] pr-16 sm:pr-20 lg:pr-0">
                 {titleActions}
                 {item.originalTitle && item.originalTitle !== item.title ? (
                   <div className={`mt-3 ${ratingLabelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
@@ -480,19 +499,23 @@ function ArchiveMediaItemDetails({
                 ) : null}
               </div>
 
-              <div className={`mt-5 ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs leading-6 text-stone-800`}>
+              <div className={`mt-5 w-full ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs leading-6 text-stone-800 lg:max-w-[584px]`}>
                 {archiveInfoLabels.map((label, index) => (
                   <Fragment key={`${label}-${index}`}>
                     {index > 0 ? <span className="mx-1.5">•</span> : null}
-                    <span>{label}</span>
+                    <span className="break-words">{label}</span>
                   </Fragment>
                 ))}
-                {meta && archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
+                {item.genres.length > 0 ? <>
+                  {archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
+                  <MediaItemGenreLinks genres={item.genres} />
+                </> : null}
+                {meta && (archiveInfoLabels.length > 0 || item.genres.length > 0) ? <span className="mx-1.5">•</span> : null}
                 {meta}
               </div>
 
               {(item.franchises.length > 0 || showFranchiseSection) ? (
-                <dl className="mt-8 grid gap-5 text-sm leading-6 text-stone-800">
+                <dl className="mt-8 grid w-full gap-5 text-sm leading-6 text-stone-800 lg:max-w-[584px]">
                   <div>
                     <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
                       <span className={MEDIA_IDENTITY_FONT_CLASS_NAME}>Серия</span>
@@ -581,8 +604,10 @@ function ArchiveMediaItemDetails({
             </div>
           </div>
 
+          </div>
+
           {relatedFranchiseSections.length > 0 ? (
-            <div className="order-5 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-3">
+            <div className="order-5 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-2">
               <div className="flex flex-col gap-6">
                 {relatedFranchiseSections.map((section) => (
                   <section key={section.franchise.id}>

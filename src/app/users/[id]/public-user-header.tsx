@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FriendshipControls } from "@/app/users/friendship-controls";
 import { Avatar } from "@/components/ui/avatar";
 import { buttonVariants } from "@/components/ui/button";
+import type { PublicAuthorLevel } from "@/db/queries/reputation";
 
 type PublicUserHeaderProps = {
   currentAuthor: boolean;
@@ -14,6 +15,7 @@ type PublicUserHeaderProps = {
     name: string;
     relationState: Parameters<typeof FriendshipControls>[0]["state"];
   };
+  level?: PublicAuthorLevel | null;
   returnTo: string;
   statistics?: readonly { label: string; value: string }[];
 };
@@ -21,6 +23,7 @@ type PublicUserHeaderProps = {
 export function PublicUserHeader({
   currentAdmin,
   currentAuthor,
+  level,
   profile,
   returnTo,
   statistics = [],
@@ -38,7 +41,14 @@ export function PublicUserHeader({
           >
             <Avatar name={profile.name} objectKey={profile.avatarObjectKey} className="size-20 text-2xl" />
           </Link>
-          <h1 className="break-words font-serif text-3xl sm:text-4xl">{profile.name}</h1>
+          <div className="min-w-0">
+            <h1 className="break-words font-serif text-3xl sm:text-4xl">{profile.name}</h1>
+            {level ? (
+              <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
+                Уровень {level.level} · {level.name}
+              </p>
+            ) : null}
+          </div>
         </div>
         {currentAuthor ? (
           <div className="shrink-0 lg:ml-auto">
