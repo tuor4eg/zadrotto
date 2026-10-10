@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
 import { RatingStars } from "@/app/media-rating-panel";
+import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 
 function getHiddenPercentages(score: number | null) {
   const markup = renderToStaticMarkup(createElement(RatingStars, { score }));
@@ -11,6 +12,14 @@ function getHiddenPercentages(score: number | null) {
 }
 
 describe("proportional rating stars", () => {
+  it("uses SVG meeples for board games with proportional filling", () => {
+    const frame = getMediaCarrierFrame({ mediaType: "boardgame" });
+    assert.equal(frame?.ratingPanelVariant, "boardgame-meeples");
+    const markup = renderToStaticMarkup(createElement(RatingStars, { score: 90, variant: "meeple" }));
+    assert.doesNotMatch(markup, /★/);
+    assert.equal([...markup.matchAll(/data-rating-symbol="meeple"/g)].length, 10);
+    assert.match(markup, /clip-path:inset\(0 50% 0 0\)/);
+  });
   it("fills four and a half stars for a rating of 9", () => {
     assert.deepEqual(getHiddenPercentages(90), [0, 0, 0, 0, 50]);
   });

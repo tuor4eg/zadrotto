@@ -16,6 +16,7 @@ export type MediaCarrierFramePlaceholderVariant =
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
+  | "boardgame-meeples"
   | "anime-manga"
   | "book-note"
   | "comic-card"
@@ -126,6 +127,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     compactViewportClassName: "h-[min(32vh,300px)]",
     coverAreaClassName: "left-[15.5%] top-[6.2%] h-[55.3%] w-[69.1%]",
     placeholderVariant: "dvd-label",
+    ratingPanelVariant: "boardgame-meeples",
     renderKind: "cartridge",
     sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
     viewportClassName: "h-[min(58vh,520px)]",

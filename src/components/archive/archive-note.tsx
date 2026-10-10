@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 
-export const ARCHIVE_NOTE_PREVIEW_LENGTH = 350;
-const ARCHIVE_NOTE_MIN_HIDDEN_LENGTH = 100;
+export const ARCHIVE_NOTE_PREVIEW_LENGTH = 500;
+const ARCHIVE_NOTE_MIN_HIDDEN_LENGTH = 250;
 
 type ArchiveNoteProps = {
   text?: string | null;
@@ -35,16 +35,19 @@ export function ArchiveNote({ text, maxWidthClassName = "max-w-[620px]", collaps
   const visibleText = text?.trim() || "Здесь пока пусто...";
   const preview = collapsible ? getArchiveNotePreview(visibleText) : null;
   const displayedText = preview && !isExpanded ? preview : visibleText;
+  const paragraphs = displayedText.split(/\r?\n/).filter((paragraph) => paragraph.trim().length > 0);
 
   return (
     <div className={`archive-notebook-note mx-auto w-full ${maxWidthClassName}`}>
       <div className="archive-notebook-tape" aria-hidden="true" />
-      <div className="archive-typewriter-text mb-4 text-[11px] font-semibold uppercase tracking-[0.2em] text-stone-500">
+      <div className="media-carrier-font-streaming mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
         Архивная заметка
       </div>
-      <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">
-        {displayedText}
-        {preview ? (
+      <div className="media-carrier-font-streaming space-y-4 [overflow-wrap:anywhere] text-[15px] leading-6 text-stone-800 sm:text-base sm:leading-7">
+        {paragraphs.map((paragraph, index) => (
+        <p key={index} className="whitespace-pre-wrap">
+        {paragraph}
+        {preview && index === paragraphs.length - 1 ? (
           <>
             {" "}
             <button
@@ -57,7 +60,9 @@ export function ArchiveNote({ text, maxWidthClassName = "max-w-[620px]", collaps
             </button>
           </>
         ) : null}
-      </p>
+        </p>
+        ))}
+      </div>
     </div>
   );
 }

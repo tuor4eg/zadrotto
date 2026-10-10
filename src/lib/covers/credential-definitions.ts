@@ -12,6 +12,7 @@ export type CoverProviderCredentialDefinition = {
 };
 
 export const COVER_PROVIDER_CREDENTIAL_DEFINITIONS = [
+  { providerCode: "bgg", fields: [{ name: "accessToken", label: "BGG Application Token" }] },
   {
     providerCode: "tmdb",
     fields: [

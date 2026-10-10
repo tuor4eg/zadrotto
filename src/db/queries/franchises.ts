@@ -262,6 +262,8 @@ export async function getAiFranchiseCandidates(currentAuthorId?: number) {
         visibilityCondition,
         mediaVisibilityCondition,
         linkVisibilityCondition,
+        // BGG records must not enter AI prompts as examples for other media types.
+        sql`not exists (select 1 from ${mediaItemMetadata} where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id} and ${mediaItemMetadata.sourceProvider} = 'bgg')`,
       ))
       .orderBy(
         asc(mediaItemFranchises.franchiseId),

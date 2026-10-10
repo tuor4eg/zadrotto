@@ -256,19 +256,8 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
                   role="status"
                   aria-label={`Осталось попыток: ${visibleParticipant.attemptsRemaining} из ${visibleParticipant.attemptLimit}`}
                 >
-                  {Array.from({ length: visibleParticipant.attemptLimit }, (_, index) => {
-                    const available = index < visibleParticipant.attemptsRemaining;
-                    return (
-                      <Heart
-                        key={index}
-                        aria-hidden="true"
-                        className={available
-                          ? "size-5 fill-red-700 text-red-800 drop-shadow-sm"
-                          : "size-5 fill-stone-200 text-stone-400"
-                        }
-                      />
-                    );
-                  })}
+                  <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />
+                  <span aria-hidden="true" className="whitespace-nowrap font-medium tabular-nums text-red-900">× {visibleParticipant.attemptsRemaining}</span>
                 </div>
               ) : null}
               <ArchiveTooltip align="end" label="Сообщить об ошибке" portal side="bottom">

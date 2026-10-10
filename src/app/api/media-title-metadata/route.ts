@@ -15,7 +15,7 @@ import {
 } from "@/lib/covers/rate-limits";
 import { getTitleMetadata } from "@/lib/covers/registry";
 import { isCoverProviderCode } from "@/lib/covers/types";
-import { createMediaMetadataCandidateToken } from "@/lib/media/metadata-candidates";
+import { createMediaMetadataCandidateToken, createMediaTitleSourceToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode } from "@/lib/media/types";
 import { resolveProviderGenres } from "@/db/queries/media-item-genres";
 
@@ -109,7 +109,7 @@ export async function POST(request: Request) {
       },
       {
         status: result.error === "provider-daily-limit" || result.error === "provider-rate-limit" ? 429 : 503,
-        headers: result.error === "provider-rate-limit" ? { "retry-after": "60" } : undefined,
+        headers: result.error === "provider-rate-limit" ? { "retry-after": String(result.retryAfterSeconds ?? 60) } : undefined,
       },
     );
   }
@@ -123,6 +123,12 @@ export async function POST(request: Request) {
           facts: result.metadata.facts,
           genres: normalized?.genres ?? [],
           fields: result.metadata.fields,
+          titleSourceToken: result.metadata.provider === "bgg" && result.metadata.fields?.title
+            ? createMediaTitleSourceToken({
+                provider: "bgg", externalId: result.metadata.externalId, mediaType,
+                ...result.metadata.fields, title: result.metadata.fields.title,
+                sourceUrl: result.metadata.sourceUrl,
+              }) : undefined,
           sourceProvider: result.metadata.provider,
           sourceExternalId: result.metadata.externalId,
           sourceUrl: result.metadata.sourceUrl,

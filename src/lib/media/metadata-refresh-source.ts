@@ -20,6 +20,7 @@ export type MediaMetadataRefreshSourceInput = {
 };
 
 const MEDIA_PROVIDER_CODES = [
+  "bgg",
   "tmdb",
   "comic-vine",
   "open-library",
@@ -74,6 +75,11 @@ export function normalizeMetadataExternalId(
   pageUrl?: string | null,
 ) {
   const value = externalId?.trim() || "";
+
+  if (provider === "bgg") {
+    const id = /^\d+$/.test(value) ? Number(value) : NaN;
+    return Number.isSafeInteger(id) && id > 0 ? String(id) : null;
+  }
 
   if (provider === "tmdb") {
     return (

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { calculateAuthorQuizStatistics, formatQuizTimeRemaining, getQuizState, isQuizMediaTypeAllowed } from "../src/lib/quizzes/model";
+import { calculateAuthorQuizStatistics, calculateQuizPoints, formatQuizTimeRemaining, getQuizState, isQuizMediaTypeAllowed } from "../src/lib/quizzes/model";
 import { formatAdminQuizDateTime, formatMoscowDateTimeLocal, getDefaultQuizPeriod, parseMoscowDateTimeLocal } from "../src/lib/quizzes/admin-time";
 
 describe("quizzes", () => {
@@ -87,12 +87,31 @@ describe("quizzes", () => {
     assert.equal(isQuizMediaTypeAllowed(["book"], "book"), true);
     assert.equal(isQuizMediaTypeAllowed(["book"], "film"), false);
   });
+  it("awards remaining attempts including the successful attempt for any quiz limit", () => {
+    for (const limit of [1, 3, 10]) {
+      for (let remaining = limit; remaining >= 1; remaining -= 1) {
+        assert.equal(calculateQuizPoints({ outcome: "correct", attemptsRemaining: remaining }), remaining);
+        assert.equal(calculateQuizPoints({ outcome: null, attemptsRemaining: remaining }), 0);
+      }
+      assert.equal(calculateQuizPoints({ outcome: "exhausted", attemptsRemaining: 0 }), 0);
+    }
+  });
+  it("recalculates historical points from saved attempts without accumulating a balance", () => {
+    const rows = [
+      { outcome: "correct" as const, attemptsRemaining: 10, attemptLimit: 10, durationSeconds: 5 },
+      { outcome: "correct" as const, attemptsRemaining: 1, attemptLimit: 1, durationSeconds: 15 },
+      { outcome: "correct" as const, attemptsRemaining: 2, attemptLimit: 3, durationSeconds: 20 },
+      { outcome: "exhausted" as const, attemptsRemaining: 0, attemptLimit: 10, durationSeconds: 30 },
+    ];
+    assert.equal(calculateAuthorQuizStatistics(rows).totalPoints, 13);
+    assert.deepEqual(calculateAuthorQuizStatistics(rows), calculateAuthorQuizStatistics(rows));
+  });
   it("calculates completed quiz statistics in chronological input order", () => {
     assert.deepEqual(calculateAuthorQuizStatistics([
-      { outcome: "correct", attemptsRemaining: 3, attemptLimit: 3, isWinner: true, durationSeconds: 25 },
-      { outcome: "correct", attemptsRemaining: 1, attemptLimit: 3, isWinner: false, durationSeconds: 40 },
-      { outcome: "exhausted", attemptsRemaining: 0, attemptLimit: 3, isWinner: false, durationSeconds: 65 },
-      { outcome: "correct", attemptsRemaining: 2, attemptLimit: 3, isWinner: true, durationSeconds: 10 },
+      { outcome: "correct", attemptsRemaining: 3, attemptLimit: 3, durationSeconds: 25 },
+      { outcome: "correct", attemptsRemaining: 1, attemptLimit: 3, durationSeconds: 40 },
+      { outcome: "exhausted", attemptsRemaining: 0, attemptLimit: 3, durationSeconds: 65 },
+      { outcome: "correct", attemptsRemaining: 2, attemptLimit: 3, durationSeconds: 10 },
     ]), {
       playedCount: 4,
       correctCount: 3,
@@ -100,7 +119,7 @@ describe("quizzes", () => {
       firstTryCorrectCount: 1,
       currentCorrectStreak: 1,
       bestCorrectStreak: 2,
-      winnerCount: 2,
+      totalPoints: 6,
       totalTimeSeconds: 140,
     });
     assert.deepEqual(calculateAuthorQuizStatistics([]), {
@@ -110,7 +129,7 @@ describe("quizzes", () => {
       firstTryCorrectCount: 0,
       currentCorrectStreak: 0,
       bestCorrectStreak: 0,
-      winnerCount: 0,
+      totalPoints: 0,
       totalTimeSeconds: 0,
     });
   });
@@ -119,7 +138,7 @@ describe("quizzes", () => {
 
     assert.match(page, /Удалить квиз вместе со всей историей\?/);
     assert.match(page, /изображение, список участников и все их результаты будут удалены без возможности восстановления/);
-    assert.match(page, /личную статистику, общее время, серии, таблицу победителей и архив квизов/);
+    assert.match(page, /личную статистику, общее время, серии, таблицу лидеров и архив квизов/);
     assert.match(page, /Запись с правильным ответом и уже выданные ачивки останутся/);
     assert.match(page, /confirmLabel="Удалить квиз и результаты"/);
   });
@@ -127,15 +146,15 @@ describe("quizzes", () => {
     const page = readFileSync("src/app/admin/(protected)/quizzes/page.tsx", "utf8");
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
 
-    assert.match(page, /name="q"[\s\S]*name="state"[\s\S]*name="winner"/);
-    assert.match(page, /<TH>Победитель<\/TH>/);
+    assert.match(page, /name="q"[\s\S]*name="state"[\s\S]*name="hasCorrect"/);
+    assert.match(page, /<TH>Ответили правильно<\/TH>/);
     assert.match(page, /Ответ уже встречался/);
     assert.match(page, /<PaginationNav[\s\S]*basePath="\/admin\/quizzes"/);
     assert.match(page, /className="grid gap-3 md:hidden"/);
     assert.match(page, /<TableWrap className="hidden md:block">/);
     assert.match(query, /containsNormalizedSearchSql\(quizzes\.question, searchQuery\)/);
     assert.match(query, /containsNormalizedSearchSql\(mediaItems\.title, searchQuery\)/);
-    assert.match(query, /qp\.is_winner = true/);
+    assert.match(query, /qp\.outcome = 'correct'/);
     assert.match(query, /earlier\.answer_media_item_id/);
     assert.match(query, /orderBy\(desc\(quizzes\.startsAt\), desc\(quizzes\.id\)\)/);
     assert.match(query, /limit\(ADMIN_QUIZZES_PAGE_SIZE\)[\s\S]*offset\(getOffset\(page, ADMIN_QUIZZES_PAGE_SIZE\)\)/);
@@ -182,6 +201,23 @@ describe("quizzes", () => {
     assert.match(winnersMigration, /ORDER BY "quiz_id", "completed_at" ASC, "author_id" ASC/);
     assert.match(winnersMigration, /quiz_participants_winner_check/);
     assert.match(winnersMigration, /CREATE UNIQUE INDEX "quiz_participants_one_winner_idx"[\s\S]*WHERE "is_winner" = true/);
+    const pointsMigration = readFileSync("drizzle/0105_quiz_points.sql", "utf8");
+    assert.match(pointsMigration, /DROP INDEX "quiz_participants_one_winner_idx"/);
+    assert.match(pointsMigration, /DROP CONSTRAINT "quiz_participants_winner_check"/);
+    assert.match(pointsMigration, /DROP COLUMN "is_winner"/);
+    assert.doesNotMatch(pointsMigration, /UPDATE|INSERT|DELETE FROM|CREATE INDEX/);
+
+  });
+  it("queues the historical achievement backfill during container migrations", () => {
+    const migration = readFileSync("drizzle/0106_quiz_achievements_backfill.sql", "utf8");
+    assert.match(migration, /INSERT INTO "job_runs"/);
+    assert.match(migration, /'achievements.backfill'/);
+    assert.match(migration, /jsonb_build_object\('achievementIds', jsonb_agg\("id" ORDER BY "id"\), 'batchSize', 100\)/);
+    assert.match(migration, /WHERE "mechanic" = 'quiz.win.count' AND "enabled" = true/);
+    assert.match(migration, /HAVING count\(\*\) > 0/);
+    const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8"));
+    assert.ok(journal.entries.some((entry: { tag: string }) => entry.tag === "0106_quiz_achievements_backfill"));
+    assert.doesNotMatch(readFileSync("package.json", "utf8"), /quizzes:backfill-achievements/);
   });
   it("uses a shared archive context", () => {
     const page = readFileSync("src/app/archive/page.tsx", "utf8"); const catalog = readFileSync("src/app/media-items-catalog.tsx", "utf8");
@@ -217,16 +253,12 @@ describe("quizzes", () => {
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
     assert.match(activeQuizPanel, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
     assert.match(activeQuizPanel, /formatQuizTimeRemaining\(quiz\.endsAt, now\)/);
-    assert.match(activeQuizPanel, /participant\?\.completed[\s\S]*Ура, вы уже ответили на этот вопрос!/);
+    assert.match(activeQuizPanel, /participant\?\.completed[\s\S]*Вы ответили правильно! Очков:/);
     assert.match(activeQuizPanel, /participant\.outcome === "correct"[\s\S]*Вы исчерпали попытки, повезёт в следующий раз/);
     assert.match(publicHeader, /participant=\{currentQuizParticipant\}/);
     assert.doesNotMatch(publicHeader, /visibleQuiz|isQuizCompleted/);
-    assert.match(activeQuizPanel, /quiz\.winner[\s\S]*<QuizWinner winner=\{quiz\.winner\}/);
-    assert.match(query, /getActiveQuiz[\s\S]*eq\(quizParticipants\.isWinner, true\)[\s\S]*winner: winner \?\? null/);
-    const quizWinner = readFileSync("src/components/quizzes/quiz-winner.tsx", "utf8");
-    assert.match(quizWinner, /Есть победитель!/);
-    assert.match(quizWinner, /items-center justify-center[^"]*text-center/);
-    assert.match(quizWinner, /<Avatar name=\{winner\.name\} objectKey=\{winner\.avatarObjectKey\}/);
+    assert.doesNotMatch(activeQuizPanel, /QuizWinner|quiz\.winner/);
+    assert.doesNotMatch(query, /isWinner|existingWinner/);
     assert.match(modal, /view === "rules"[\s\S]*Как играть/);
     assert.match(modal, /mb-5 px-12 text-center sm:px-32[\s\S]*whitespace-nowrap font-serif text-2xl sm:text-3xl/);
     assert.match(modal, /Открыть правила квиза/);
@@ -285,15 +317,15 @@ describe("quizzes", () => {
     assert.match(query, /comment: correct \? quiz\.comment : null/);
     assert.match(guessRoute, /comment: result\.correct \? result\.comment : null/);
   });
-  it("assigns one winner under the quiz lock and loads completed author statistics", () => {
+  it("keeps completion atomic under the quiz lock and loads historical author statistics", () => {
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
     const guess = query.slice(query.indexOf("export async function checkQuizGuess"), query.indexOf("export async function searchQuizAnswerTitles"));
     const quizLock = guess.indexOf("from(quizzes)");
     const participantLock = guess.indexOf("from(quizParticipants)");
     assert.ok(quizLock >= 0 && participantLock > quizLock);
     assert.match(guess, /from\(quizzes\)[\s\S]*\.for\("update"\)[\s\S]*from\(quizParticipants\)[\s\S]*\.for\("update"\)/);
-    assert.match(guess, /eq\(quizParticipants\.isWinner, true\)/);
-    assert.match(guess, /isWinner: correct && !existingWinner/);
+    assert.doesNotMatch(guess, /isWinner|existingWinner/);
+    assert.match(guess, /if \(participant\.outcome\)[\s\S]*kind: "completed"/);
     assert.match(guess, /runInDomainEventTransaction[\s\S]*if \(outcome\) \{[\s\S]*type: "quiz\.completed"/);
     assert.match(guess, /aggregateId: `\$\{quiz\.id\}:\$\{authorId\}`/);
     assert.match(guess, /payload: \{ authorId, outcome, quizId: quiz\.id \}/);
@@ -346,10 +378,9 @@ describe("quizzes", () => {
     assert.match(guessButton, /Верно!/);
     assert.match(guessButton, /Попытки закончились/);
     assert.match(guessButton, /src="\/mascot\/deadz_quiz_fail\.webp"/);
-    assert.match(guessButton, /data\.participant\?\.isWinner \? "winner" : "correct"/);
-    assert.match(guessButton, /src="\/mascot\/deadz_quiz_win\.webp"/);
-    assert.match(guessButton, /!isWinner \? \([\s\S]*?<X className="size-4"/);
-    assert.match(guessButton, /isWinner \? \([\s\S]*?Ура!/);
+    assert.doesNotMatch(guessButton, /isWinner|"winner"|deadz_quiz_win/);
+    assert.match(guessButton, /participant\?\.points/);
+    assert.match(guessButton, /<X className="size-4"/);
     assert.match(guessButton, /src="\/mascot\/deadz_quiz_correct\.webp"/);
     assert.match(guessButton, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.doesNotMatch(guessButton, /ArchiveTooltip/);

@@ -238,7 +238,7 @@ export function ProvidersForm({
                         )}
                       </button>
                       </Tooltip>
-                      <Tooltip label={proxyImagesEnabled ? "Загружать изображения напрямую" : "Загружать изображения через сервер"}>
+                      <Tooltip label={provider.providerCode === "bgg" ? "Изображения BGG всегда загружаются через сервер" : proxyImagesEnabled ? "Загружать изображения напрямую" : "Загружать изображения через сервер"}>
                       <button
                         type="button"
                         aria-label={`${proxyImagesEnabled ? "Выключить" : "Включить"} загрузку изображений через сервер для ${COVER_PROVIDER_LABELS[provider.providerCode]}`}
@@ -248,7 +248,7 @@ export function ProvidersForm({
                             ? "border-sky-200 bg-sky-50 text-sky-700 hover:bg-sky-100"
                             : "border-stone-200 bg-white text-stone-400 hover:bg-stone-100 hover:text-stone-700",
                         )}
-                        disabled={isProviderPending}
+                        disabled={isProviderPending || provider.providerCode === "bgg"}
                         onClick={() => saveImageSetting(provider.providerCode, !proxyImagesEnabled)}
                       >
                         <CloudDownload className="size-4" />

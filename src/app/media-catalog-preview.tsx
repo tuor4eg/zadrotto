@@ -178,7 +178,11 @@ export function MediaCatalogPreview({
           {metaItems.map((metaItem, index) => (
             <Fragment key={`${metaItem}-${index}`}>
               {index > 0 ? <span className="mx-1.5">•</span> : null}
-              <span className="break-words">{metaItem}</span>
+              {index === 1 && item.releaseYear ? (
+                <Link className="break-words underline underline-offset-4 hover:text-stone-950" href={`/archive?year=${item.releaseYear}&yearMode=release`}>
+                  {metaItem}
+                </Link>
+              ) : <span className="break-words">{metaItem}</span>}
             </Fragment>
           ))}
         </div>

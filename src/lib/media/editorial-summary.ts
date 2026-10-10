@@ -25,6 +25,7 @@ const FACT_KEYS_BY_TYPE: Record<string, readonly string[]> = {
 };
 
 export type EditorialSummarySource = {
+  sourceProvider?: string | null;
   title: string;
   originalTitle: string | null;
   mediaType: string;

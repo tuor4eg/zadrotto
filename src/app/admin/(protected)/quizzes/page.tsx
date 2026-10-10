@@ -9,7 +9,7 @@ import { Table, TableWrap, TBody, TD, TH, THead, TR } from "@/components/ui/tabl
 import {
   getAdminQuizzes,
   type AdminQuizStateFilter,
-  type AdminQuizWinnerFilter,
+  type AdminQuizCorrectFilter,
 } from "@/db/queries/quizzes";
 import { parsePage } from "@/lib/common/pagination";
 import { formatAdminQuizDateTime } from "@/lib/quizzes/admin-time";
@@ -38,7 +38,7 @@ function QuizActions({ item }: { item: { id: number } }) {
       <ConfirmAction
         action={deleteQuizAction}
         confirmLabel="Удалить квиз и результаты"
-        description="Квиз, его изображение, список участников и все их результаты будут удалены без возможности восстановления. Это изменит личную статистику, общее время, серии, таблицу победителей и архив квизов. Запись с правильным ответом и уже выданные ачивки останутся."
+        description="Квиз, его изображение, список участников и все их результаты будут удалены без возможности восстановления. Это изменит личную статистику, общее время, серии, таблицу лидеров и архив квизов. Запись с правильным ответом и уже выданные ачивки останутся."
         fields={[{ name: "quizId", value: item.id }]}
         title="Удалить квиз вместе со всей историей?"
         triggerAriaLabel="Удалить"
@@ -74,17 +74,17 @@ function Answer({ item }: { item: Awaited<ReturnType<typeof getAdminQuizzes>>["i
 export default async function QuizzesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ page?: string; q?: string; state?: string; winner?: string }>;
+  searchParams: Promise<{ page?: string; q?: string; state?: string; hasCorrect?: string }>;
 }) {
   const params = await searchParams;
   const searchQuery = params.q?.trim() ?? "";
   const state = stateValues.includes(params.state as AdminQuizStateFilter)
     ? params.state as AdminQuizStateFilter
     : undefined;
-  const winner = params.winner === "yes" || params.winner === "no"
-    ? params.winner as AdminQuizWinnerFilter
+  const hasCorrect = params.hasCorrect === "yes" || params.hasCorrect === "no"
+    ? params.hasCorrect as AdminQuizCorrectFilter
     : undefined;
-  const result = await getAdminQuizzes({ page: parsePage(params.page), searchQuery, state, winner });
+  const result = await getAdminQuizzes({ page: parsePage(params.page), searchQuery, state, hasCorrect });
 
   return (
     <div className="flex flex-col gap-5">
@@ -107,13 +107,13 @@ export default async function QuizzesPage({
           </select>
         </label>
         <label className="grid gap-1 text-sm">
-          <span className="font-medium">Победитель</span>
-          <select className="h-10 rounded-md border border-stone-300 bg-white px-3" defaultValue={winner ?? ""} name="winner">
+          <span className="font-medium">Ответили правильно</span>
+          <select className="h-10 rounded-md border border-stone-300 bg-white px-3" defaultValue={hasCorrect ?? ""} name="hasCorrect">
             <option value="">Неважно</option><option value="yes">Есть</option><option value="no">Нет</option>
           </select>
         </label>
         <button className={buttonVariants({ variant: "outline" })} type="submit">Применить</button>
-        {(searchQuery || state || winner) ? <Link className={buttonVariants({ variant: "ghost" })} href="/admin/quizzes">Сбросить</Link> : null}
+        {(searchQuery || state || hasCorrect) ? <Link className={buttonVariants({ variant: "ghost" })} href="/admin/quizzes">Сбросить</Link> : null}
       </form>
 
       {result.items.length === 0 ? <EmptyState>Квизов с такими параметрами нет.</EmptyState> : (
@@ -125,7 +125,7 @@ export default async function QuizzesPage({
                 <h2 className="mt-3 font-medium">{item.question ?? "Только изображение"}</h2>
                 <div className="mt-2 text-sm"><Answer item={item} /></div>
                 <dl className="mt-3 grid grid-cols-2 gap-3 border-t border-stone-100 pt-3 text-sm">
-                  <div><dt className="text-xs text-stone-500">Победитель</dt><dd>{item.winnerName ?? "—"}</dd></div>
+                  <div><dt className="text-xs text-stone-500">Ответили правильно</dt><dd>{item.correctCount}</dd></div>
                   <div><dt className="text-xs text-stone-500">Попытки</dt><dd>{item.attemptLimit}</dd></div>
                   <div className="col-span-2"><dt className="text-xs text-stone-500">Период</dt><dd>{formatAdminQuizDateTime(item.startsAt)} — {formatAdminQuizDateTime(item.endsAt)}</dd></div>
                 </dl>
@@ -135,10 +135,10 @@ export default async function QuizzesPage({
           </div>
           <TableWrap className="hidden md:block">
             <Table>
-              <THead><tr><TH>Вопрос</TH><TH>Ответ</TH><TH>Победитель</TH><TH>Попытки</TH><TH>Период</TH><TH>Состояние</TH><TH className="text-right">Действия</TH></tr></THead>
+              <THead><tr><TH>Вопрос</TH><TH>Ответ</TH><TH>Ответили правильно</TH><TH>Попытки</TH><TH>Период</TH><TH>Состояние</TH><TH className="text-right">Действия</TH></tr></THead>
               <TBody>{result.items.map((item) => (
                 <TR key={item.id}>
-                  <TD>{item.question ?? "Только изображение"}</TD><TD><Answer item={item} /></TD><TD>{item.winnerName ?? "—"}</TD><TD>{item.attemptLimit}</TD>
+                  <TD>{item.question ?? "Только изображение"}</TD><TD><Answer item={item} /></TD><TD>{item.correctCount}</TD><TD>{item.attemptLimit}</TD>
                   <TD className="whitespace-nowrap text-xs">{formatAdminQuizDateTime(item.startsAt)} — {formatAdminQuizDateTime(item.endsAt)}</TD>
                   <TD><StateToggle item={item} /></TD><TD><QuizActions item={item} /></TD>
                 </TR>
@@ -147,7 +147,7 @@ export default async function QuizzesPage({
           </TableWrap>
         </>
       )}
-      <PaginationNav basePath="/admin/quizzes" itemLabel="квизов" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, state, winner }} totalCount={result.totalCount} totalPages={result.totalPages} variant="admin" />
+      <PaginationNav basePath="/admin/quizzes" itemLabel="квизов" page={result.page} pageSize={result.pageSize} searchParams={{ q: searchQuery || undefined, state, hasCorrect }} totalCount={result.totalCount} totalPages={result.totalPages} variant="admin" />
     </div>
   );
 }

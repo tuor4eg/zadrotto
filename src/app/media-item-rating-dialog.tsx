@@ -312,7 +312,7 @@ export function MediaItemRatingPanel({
         currentAuthor ? (
           <>
             <span className="mt-2 flex justify-center">
-              <RatingStars score={currentAuthorScore} />
+              <RatingStars score={currentAuthorScore} variant={panelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
             </span>
             <span className={`mt-3 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
               {firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : "—"}
@@ -326,7 +326,7 @@ export function MediaItemRatingPanel({
       ) : currentAuthor ? (
         <>
           <span className="mt-1 flex h-5 shrink-0 scale-75 justify-center">
-            <RatingStars score={currentAuthorScore} />
+            <RatingStars score={currentAuthorScore} variant={panelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
           </span>
           <span className={`mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
             {firstExperiencedDate ?? "—"}

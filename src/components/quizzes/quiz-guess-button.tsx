@@ -13,20 +13,21 @@ import {
 } from "@/components/external-interface/external-interface-layer";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
-type QuizGuessResult = "correct" | "exhausted" | "winner";
+type QuizGuessResult = "correct" | "exhausted";
 
 function QuizGuessResultModal({
   comment,
   onClose,
   result,
+  points,
 }: {
   comment: string | null;
   onClose: () => void;
   result: QuizGuessResult;
+  points: number;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isCorrect = result !== "exhausted";
-  const isWinner = result === "winner";
 
   useEffect(() => {
     const previouslyFocusedElement = document.activeElement as HTMLElement | null;
@@ -65,27 +66,16 @@ function QuizGuessResultModal({
         tabIndex={-1}
         className="archive-paper archive-panel relative w-full max-w-md p-6 text-center shadow-2xl sm:p-8"
       >
-        {!isWinner ? (
-          <button
-            type="button"
-            className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
-            style={{ position: "absolute" }}
-            aria-label="Закрыть результат квиза"
-            onClick={onClose}
-          >
-            <X className="size-4" />
-          </button>
-        ) : null}
-        {isWinner ? (
-          <Image
-            alt=""
-            className="mx-auto mb-4 h-auto w-40"
-            height={525}
-            src="/mascot/deadz_quiz_win.webp"
-            unoptimized
-            width={350}
-          />
-        ) : isCorrect ? (
+        <button
+          type="button"
+          className="absolute right-3 top-3 grid size-9 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
+          style={{ position: "absolute" }}
+          aria-label="Закрыть результат квиза"
+          onClick={onClose}
+        >
+          <X className="size-4" />
+        </button>
+        {isCorrect ? (
           <Image
             alt=""
             className="mx-auto mb-4 h-auto w-40"
@@ -105,22 +95,15 @@ function QuizGuessResultModal({
           />
         )}
         <h2 id="quiz-guess-result-title" className="font-serif text-3xl">
-          {isWinner ? "Победа!" : isCorrect ? "Верно!" : "Попытки закончились"}
+          {isCorrect ? "Верно!" : "Попытки закончились"}
         </h2>
         <p id="quiz-guess-result-description" className="mt-3 text-sm leading-6 text-stone-600">
-          {isWinner
-            ? "Твой ответ оказался первым и правильным. Архив впечатлён, хотя очень старается этого не показывать."
-            : isCorrect
-            ? "Попадание! Не первым, зато архив всё равно одобрительно хмыкнул."
+          {isCorrect
+            ? `Правильный ответ! Очков: ${points}.`
             : "Все попытки ушли в архив. Правильный ответ, увы, остался там же."}
         </p>
         {isCorrect && comment ? (
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">{comment}</p>
-        ) : null}
-        {isWinner ? (
-          <Button type="button" className="mx-auto mt-6" onClick={onClose}>
-            Ура!
-          </Button>
         ) : null}
       </div>
     </div>,
@@ -139,6 +122,7 @@ export function QuizGuessButton({
   const [cooldown, setCooldown] = useState(false);
   const [feedback, setFeedback] = useState<ArchiveToast | null>(null);
   const [result, setResult] = useState<QuizGuessResult | null>(null);
+  const [resultPoints, setResultPoints] = useState(0);
   const [resultComment, setResultComment] = useState<string | null>(null);
   const cooldownTimeoutRef = useRef<number | null>(null);
   const { quizParticipant, setQuizParticipant } = useExternalInterface();
@@ -169,9 +153,10 @@ export function QuizGuessButton({
         setQuizParticipant(data.participant as QuizParticipantHudState | null);
       }
       if (response.ok && (data.correct || data.participant?.outcome === "exhausted")) {
+        setResultPoints(data.participant?.points ?? 0);
         setResultComment(data.correct && typeof data.comment === "string" ? data.comment : null);
         setResult(data.correct
-          ? data.participant?.isWinner ? "winner" : "correct"
+          ? "correct"
           : "exhausted");
         return;
       }
@@ -214,6 +199,7 @@ export function QuizGuessButton({
         <QuizGuessResultModal
           comment={resultComment}
           result={result}
+          points={resultPoints}
           onClose={() => setResult(null)}
         />
       ) : null}

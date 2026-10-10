@@ -1,3 +1,5 @@
+import { BggAttribution } from "@/components/ui/bgg-attribution";
+
 const COVER_SOURCE_LABELS: Record<string, string> = {
   "comic-vine": "Comic Vine",
   rawg: "RAWG",
@@ -12,6 +14,10 @@ export function CoverSourceAttribution({
   provider,
   pageUrl,
 }: CoverSourceAttributionProps) {
+  if (provider === "bgg") {
+    return <BggAttribution className="mt-2" />;
+  }
+
   const providerLabel = provider ? COVER_SOURCE_LABELS[provider] : null;
 
   if (!providerLabel || !pageUrl) {

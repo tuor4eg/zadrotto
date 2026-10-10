@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
+import { createBggRuntime } from "@/lib/covers/providers/bgg-runtime";
 
 import type { CoverProviderCode } from "@/lib/covers/types";
 
@@ -6,6 +7,7 @@ const TOKEN_MAX_AGE_SECONDS = 5 * 60;
 const FETCH_TIMEOUT_MS = 10_000;
 const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const PROVIDER_IMAGE_HOSTS: Record<CoverProviderCode, readonly string[]> = {
+  bgg: ["cf.geekdo-images.com"],
   tmdb: ["image.tmdb.org"],
   "comic-vine": ["comicvine.gamespot.com", ".gamespot.com"],
   "open-library": ["covers.openlibrary.org"],
@@ -90,10 +92,32 @@ export function verifyProviderImageToken(token: string) {
 
 export function getProviderImageRelayUrl(providerCode: CoverProviderCode, imageUrl: string) {
   const token = createProviderImageToken(providerCode, imageUrl);
-  return token ? `/api/provider-image?token=${encodeURIComponent(token)}` : imageUrl;
+  return token ? `/api/provider-image?token=${encodeURIComponent(token)}` : providerCode === "bgg" ? "" : imageUrl;
+}
+
+const bggImageCache = createBggRuntime();
+class BggImageFetchError extends Error {
+  constructor(readonly result: Extract<ProviderImageFetchResult, { ok: false }>) { super("BGG image unavailable"); }
 }
 
 export async function fetchProviderImage(input: {
+  providerCode: CoverProviderCode;
+  imageUrl: string;
+  maxBytes: number;
+}): Promise<ProviderImageFetchResult> {
+  if (input.providerCode !== "bgg") return fetchUncachedProviderImage(input);
+  if (!isSafeProviderImageUrl(input.providerCode, input.imageUrl)) return { ok: false, error: "invalid-url" };
+  try {
+    const cached = await bggImageCache.cached("public-images", `image:${input.maxBytes}:${input.imageUrl}`, 86_400, AbortSignal.timeout(FETCH_TIMEOUT_MS), async () => {
+      const image = await fetchUncachedProviderImage(input);
+      if (!image.ok) throw new BggImageFetchError(image);
+      return { body: image.body.toString("base64"), contentType: image.contentType };
+    });
+    return { ok: true, body: Buffer.from(cached.body, "base64"), contentType: cached.contentType };
+  } catch (error) { return error instanceof BggImageFetchError ? error.result : { ok: false, error: "unavailable" }; }
+}
+
+async function fetchUncachedProviderImage(input: {
   providerCode: CoverProviderCode;
   imageUrl: string;
   maxBytes: number;

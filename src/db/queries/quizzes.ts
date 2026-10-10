@@ -8,7 +8,7 @@ import { resolveQuizImageUrl } from "@/lib/quizzes/images";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE, calculateUsedQuizAttempts, getAdminQuizParticipantStatus } from "@/lib/quizzes/admin-analytics";
-import { calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
+import { calculateQuizPoints, calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
 export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
 
@@ -33,14 +33,14 @@ async function answeredQuizIds(ids: number[]) {
   return new Set(rows.map((row) => row.quizId));
 }
 export type AdminQuizStateFilter = "scheduled" | "active" | "finished" | "disabled";
-export type AdminQuizWinnerFilter = "yes" | "no";
+export type AdminQuizCorrectFilter = "yes" | "no";
 export const ADMIN_QUIZZES_PAGE_SIZE = 25;
 
 export async function getAdminQuizzes(input: {
   page?: number;
   searchQuery?: string;
   state?: AdminQuizStateFilter;
-  winner?: AdminQuizWinnerFilter;
+  hasCorrect?: AdminQuizCorrectFilter;
 } = {}) {
   const now = new Date();
   const searchQuery = input.searchQuery?.trim() ?? "";
@@ -53,8 +53,8 @@ export async function getAdminQuizzes(input: {
   if (input.state === "scheduled") filters.push(and(eq(quizzes.enabled, true), gt(quizzes.startsAt, now))!);
   if (input.state === "active") filters.push(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, now), gt(quizzes.endsAt, now))!);
   if (input.state === "finished") filters.push(and(eq(quizzes.enabled, true), lte(quizzes.endsAt, now))!);
-  if (input.winner === "yes") filters.push(sql`exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.is_winner = true)`);
-  if (input.winner === "no") filters.push(sql`not exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.is_winner = true)`);
+  if (input.hasCorrect === "yes") filters.push(sql`exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.outcome = 'correct')`);
+  if (input.hasCorrect === "no") filters.push(sql`not exists (select 1 from quiz_participants qp where qp.quiz_id = ${quizzes.id} and qp.outcome = 'correct')`);
   const where = filters.length ? and(...filters) : undefined;
   const [{ totalCount }] = await db
     .select({ totalCount: sql<number>`count(*)::int` })
@@ -73,11 +73,9 @@ export async function getAdminQuizzes(input: {
         where earlier.answer_media_item_id = ${quizzes.answerMediaItemId}
           and (earlier.starts_at < ${quizzes.startsAt} or (earlier.starts_at = ${quizzes.startsAt} and earlier.id < ${quizzes.id}))
       )`,
-      winnerName: sql<string | null>`(
-        select a.name from quiz_participants qp
-        inner join authors a on a.id = qp.author_id
-        where qp.quiz_id = ${quizzes.id} and qp.is_winner = true
-        limit 1
+      correctCount: sql<number>`(
+        select count(*)::int from quiz_participants qp
+        where qp.quiz_id = ${quizzes.id} and qp.outcome = 'correct'
       )`,
     })
     .from(quizzes)
@@ -155,27 +153,6 @@ export async function getAdminQuizAggregates(quizId: number) {
   };
 }
 
-export async function getAdminQuizWinner(quizId: number) {
-  const [row] = await db
-    .select({
-      authorAvatarObjectKey: authors.avatarObjectKey,
-      authorId: authors.id,
-      authorName: authors.name,
-      completedAt: quizParticipants.completedAt,
-      secondsSinceQuizStart: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float`,
-    })
-    .from(quizParticipants)
-    .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
-    .innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId))
-    .where(and(
-      eq(quizParticipants.quizId, quizId),
-      eq(quizParticipants.isWinner, true),
-    ))
-    .limit(1);
-
-  return row ?? null;
-}
-
 export async function getAdminQuizParticipantPage(input: {
   quizId: number;
   requestedPage: number;
@@ -191,7 +168,6 @@ export async function getAdminQuizParticipantPage(input: {
       attemptLimit: quizzes.attemptLimit,
       attemptsRemaining: quizParticipants.attemptsRemaining,
       completedAt: quizParticipants.completedAt,
-      isWinner: quizParticipants.isWinner,
       joinedAt: quizParticipants.joinedAt,
       outcome: quizParticipants.outcome,
       secondsSinceJoined: sql<number | null>`extract(epoch from (${quizParticipants.completedAt} - ${quizParticipants.joinedAt}))::float`,
@@ -203,11 +179,11 @@ export async function getAdminQuizParticipantPage(input: {
     .where(eq(quizParticipants.quizId, input.quizId))
     .orderBy(
       sql`case
-        when ${quizParticipants.isWinner} then 0
         when ${quizParticipants.outcome} = 'correct' then 1
         when ${quizParticipants.outcome} = 'exhausted' then 2
         else 3
       end`,
+      desc(sql`case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end`),
       asc(quizParticipants.completedAt),
       asc(quizParticipants.joinedAt),
       asc(quizParticipants.authorId),
@@ -222,6 +198,7 @@ export async function getAdminQuizParticipantPage(input: {
 
       return {
         ...participantState,
+        points: calculateQuizPoints(participantState),
         status: getAdminQuizParticipantStatus(participantState),
         usedAttempts: calculateUsedQuizAttempts(participantState),
       };
@@ -272,19 +249,7 @@ export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
   const currentTime = now ?? sql`now()`;
   const [quiz] = await db.select().from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
   if (!quiz) return null;
-  const [types, [winner]] = await Promise.all([
-    mediaTypesForQuizIds([quiz.id]),
-    db
-      .select({
-        avatarObjectKey: authors.avatarObjectKey,
-        id: authors.id,
-        name: authors.name,
-      })
-      .from(quizParticipants)
-      .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
-      .where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.isWinner, true)))
-      .limit(1),
-  ]);
+  const types = await mediaTypesForQuizIds([quiz.id]);
   return {
     id: quiz.id,
     question: quiz.question,
@@ -293,7 +258,6 @@ export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
     startsAt: quiz.startsAt.toISOString(),
     endsAt: quiz.endsAt.toISOString(),
     attemptLimit: quiz.attemptLimit,
-    winner: winner ?? null,
   };
 }
 export async function isQuizParticipant(quizId: number, authorId: number) {
@@ -335,17 +299,17 @@ export async function joinActiveQuiz(authorId: number, now?: Date) {
   return { kind: "joined" as const, participant: await getActiveQuizParticipantState(authorId, now) };
 }
 
-function mapParticipantState(row: { quizId: number; attemptLimit: number; attemptsRemaining: number; outcome: string | null; isWinner: boolean }): QuizParticipantState {
-  return { quizId: row.quizId, attemptLimit: row.attemptLimit, attemptsRemaining: row.attemptsRemaining, completed: row.outcome !== null, outcome: row.outcome as QuizParticipantState["outcome"], isWinner: row.isWinner };
+function mapParticipantState(row: { quizId: number; attemptLimit: number; attemptsRemaining: number; outcome: string | null }): QuizParticipantState {
+  return { quizId: row.quizId, attemptLimit: row.attemptLimit, attemptsRemaining: row.attemptsRemaining, completed: row.outcome !== null, outcome: row.outcome as QuizParticipantState["outcome"], points: calculateQuizPoints({ ...row, outcome: row.outcome as QuizParticipantOutcome | null }) };
 }
 
 export async function getActiveQuizParticipantState(authorId: number, now?: Date): Promise<QuizParticipantState | null> {
   const currentTime = now ?? sql`now()`;
-  const [row] = await db.select({ quizId: quizzes.id, attemptLimit: quizzes.attemptLimit, attemptsRemaining: quizParticipants.attemptsRemaining, outcome: quizParticipants.outcome, isWinner: quizParticipants.isWinner }).from(quizzes).innerJoin(quizParticipants, and(eq(quizParticipants.quizId, quizzes.id), eq(quizParticipants.authorId, authorId))).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
+  const [row] = await db.select({ quizId: quizzes.id, attemptLimit: quizzes.attemptLimit, attemptsRemaining: quizParticipants.attemptsRemaining, outcome: quizParticipants.outcome }).from(quizzes).innerJoin(quizParticipants, and(eq(quizParticipants.quizId, quizzes.id), eq(quizParticipants.authorId, authorId))).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
   return row ? mapParticipantState(row) : null;
 }
 export async function getAuthorQuizStatistics(authorId: number) {
-  const rows = await db.select({ outcome: quizParticipants.outcome, attemptsRemaining: quizParticipants.attemptsRemaining, attemptLimit: quizzes.attemptLimit, isWinner: quizParticipants.isWinner, durationSeconds: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float` }).from(quizParticipants).innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId)).where(and(eq(quizParticipants.authorId, authorId), isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome))).orderBy(asc(quizParticipants.completedAt), asc(quizParticipants.quizId));
+  const rows = await db.select({ outcome: quizParticipants.outcome, attemptsRemaining: quizParticipants.attemptsRemaining, attemptLimit: quizzes.attemptLimit, durationSeconds: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float` }).from(quizParticipants).innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId)).where(and(eq(quizParticipants.authorId, authorId), isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome))).orderBy(asc(quizParticipants.completedAt), asc(quizParticipants.quizId));
   return calculateAuthorQuizStatistics(rows.map((row) => ({ ...row, outcome: row.outcome as QuizParticipantOutcome })));
 }
 export async function getQuizLeaderboard(limit = 5) {
@@ -354,18 +318,18 @@ export async function getQuizLeaderboard(limit = 5) {
       authorAvatarObjectKey: authors.avatarObjectKey,
       authorId: authors.id,
       authorName: authors.name,
-      winnerCount: sql<number>`count(*) filter (where ${quizParticipants.isWinner} = true)::int`,
-      totalTimeSeconds: sql<number>`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.isWinner} = true)::float`,
+      totalPoints: sql<number>`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)::int`,
+      totalTimeSeconds: sql<number>`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.outcome} = 'correct')::float`,
     })
     .from(quizParticipants)
     .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
     .innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId))
     .where(and(isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome)))
     .groupBy(authors.id, authors.name, authors.avatarObjectKey)
-    .having(sql`count(*) filter (where ${quizParticipants.isWinner} = true) > 0`)
+    .having(sql`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end) > 0`)
     .orderBy(
-      desc(sql`count(*) filter (where ${quizParticipants.isWinner} = true)`),
-      asc(sql`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.isWinner} = true)`),
+      desc(sql`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)`),
+      asc(sql`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.outcome} = 'correct')`),
       asc(authors.name),
       asc(authors.id),
     )
@@ -393,7 +357,7 @@ export async function getQuizArchive(limit = 5, now?: Date) {
       .select({
         participantCount: sql<number>`count(*)::int`,
         quizId: quizParticipants.quizId,
-        winnerName: sql<string | null>`max(case when ${quizParticipants.isWinner} then ${authors.name} end)`,
+        correctCount: sql<number>`count(*) filter (where ${quizParticipants.outcome} = 'correct')::int`,
       })
       .from(quizParticipants)
       .innerJoin(authors, eq(authors.id, quizParticipants.authorId))
@@ -424,7 +388,7 @@ export async function getQuizArchive(limit = 5, now?: Date) {
     imageUrl: resolveQuizImageUrl(imageObjectKey),
     mediaTypes: mediaTypesByQuizId.get(quiz.id) ?? [],
     participantCount: participantsByQuizId.get(quiz.id)?.participantCount ?? 0,
-    winnerName: participantsByQuizId.get(quiz.id)?.winnerName ?? null,
+    correctCount: participantsByQuizId.get(quiz.id)?.correctCount ?? 0,
   }));
 }
 export async function checkQuizGuess(titleId: number, authorId: number, now?: Date) {
@@ -440,8 +404,7 @@ export async function checkQuizGuess(titleId: number, authorId: number, now?: Da
     const correct = quiz.answerMediaItemId === titleId;
     const attemptsRemaining = correct ? participant.attemptsRemaining : participant.attemptsRemaining - 1;
     const outcome = correct ? "correct" as const : attemptsRemaining === 0 ? "exhausted" as const : null;
-    const [existingWinner] = correct ? await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.isWinner, true))).limit(1) : [];
-    const [updated] = await tx.update(quizParticipants).set({ attemptsRemaining, outcome, completedAt: outcome ? new Date() : null, isWinner: correct && !existingWinner }).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.authorId, authorId))).returning();
+    const [updated] = await tx.update(quizParticipants).set({ attemptsRemaining, outcome, completedAt: outcome ? new Date() : null }).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.authorId, authorId))).returning();
     if (outcome) {
       await appendEvent({
         actorAuthorId: authorId,

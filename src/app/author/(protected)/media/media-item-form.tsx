@@ -101,6 +101,7 @@ type MediaTitleMetadataResponse = {
   metadata?: (MediaMetadataFactsValue & {
     fields?: MediaTitleMetadata["fields"];
     metadataCandidateToken?: string | null;
+    titleSourceToken?: string;
   }) | null;
 };
 
@@ -816,6 +817,9 @@ export function MediaItemForm({
                     }
 
                     if (!result.metadata) return;
+                    if (candidate.provider === "bgg" && result.metadata.titleSourceToken) {
+                      setSelectedTitleSource({ provider: "bgg", externalId: candidate.externalId, token: result.metadata.titleSourceToken });
+                    }
                     const canonicalFields = getMediaTitleMetadataFormFields(
                       result.metadata.fields,
                       nextFields,
@@ -938,7 +942,7 @@ export function MediaItemForm({
                 }}
               />
             ) : null}
-            {canSuggestFranchises ? (
+            {canSuggestFranchises && selectedMediaType !== "boardgame" ? (
               <Tooltip
                 label="Предложить серии"
                 className="[&_[role=tooltip]]:left-auto [&_[role=tooltip]]:right-0 [&_[role=tooltip]]:translate-x-0"

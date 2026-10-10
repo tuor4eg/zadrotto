@@ -19,7 +19,7 @@ export function QuizLeaderboard({ items }: { items: QuizLeaderboardItem[] }) {
         className="flex items-center gap-2 border-b border-stone-400/25 pb-3 font-serif text-xl leading-none sm:text-2xl"
       >
         <Trophy className="size-5 shrink-0 text-red-950/70" aria-hidden="true" />
-        Таблица победителей
+        Таблица лидеров
       </h2>
 
       {items.length > 0 ? (
@@ -28,7 +28,7 @@ export function QuizLeaderboard({ items }: { items: QuizLeaderboardItem[] }) {
             <tr className="font-mono text-[8px] uppercase tracking-[0.1em] text-stone-500 sm:text-[9px]">
               <th className="w-8 pb-2 font-normal">#</th>
               <th className="pb-2 font-normal">Пользователь</th>
-              <th className="w-16 pb-2 text-center font-normal">Результат</th>
+              <th className="w-16 pb-2 text-center font-normal">Очки</th>
               <th className="w-36 pb-2 text-right font-normal">Время</th>
             </tr>
           </thead>
@@ -52,7 +52,7 @@ export function QuizLeaderboard({ items }: { items: QuizLeaderboardItem[] }) {
                   </Link>
                 </td>
                 <td className="py-2 text-center font-serif text-lg font-semibold tabular-nums text-stone-950">
-                  {item.winnerCount}
+                  {item.totalPoints}
                 </td>
                 <td className="whitespace-nowrap py-2 text-right font-mono text-[10px] tabular-nums text-stone-600 sm:text-xs">
                   {formatQuizDuration(item.totalTimeSeconds)}

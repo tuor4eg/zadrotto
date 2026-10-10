@@ -179,7 +179,6 @@ async function evaluateQuizCount(input: {
   tx: DbTransaction;
   authorIds: readonly number[];
   instances: readonly AchievementMechanicInstance<QuizCountMechanicParams>[];
-  source: "correct" | "win";
 }) {
   if (input.authorIds.length === 0 || input.instances.length === 0) return [];
   const groups = new Map<string | null, number[]>();
@@ -194,7 +193,7 @@ async function evaluateQuizCount(input: {
     inner join ${quizzes} on ${quizzes.id} = ${quizParticipants.quizId}
     inner join ${mediaItems} on ${mediaItems.id} = ${quizzes.answerMediaItemId}
     where ${quizParticipants.authorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})
-      and ${input.source === "correct" ? sql`${quizParticipants.outcome} = 'correct'` : sql`${quizParticipants.isWinner} = true`}
+      and ${quizParticipants.outcome} = 'correct'
       and ${instance.mediaType === null ? sql`true` : sql`${mediaItems.mediaType} = ${instance.mediaType}`}
     group by ${quizParticipants.authorId}`);
   const result = await input.tx.execute(sql.join(queries, sql` union all `));
@@ -276,18 +275,16 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
     evaluateBatch: (input) => evaluateQuizCount({
       ...input,
       instances: input.instances as readonly AchievementMechanicInstance<QuizCountMechanicParams>[],
-      source: "correct",
     }),
   },
   {
-    code: "quiz.win.count", label: "Количество побед в квизах",
+    code: "quiz.win.count", label: "Количество правильных ответов в квизах (без фильтра)",
     eventTypes: ["quiz.completed"],
     params: [],
     parseParams: parseEmptyParams,
     evaluateBatch: (input) => evaluateQuizCount({
       ...input,
       instances: input.instances as readonly AchievementMechanicInstance<QuizCountMechanicParams>[],
-      source: "win",
     }),
   },
   {

@@ -3,27 +3,34 @@ import { containsNormalizedSearchSql } from "@/db/search";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { paginatePublicGenres } from "@/lib/media/public-genres";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { genres, mediaItemGenres, mediaItems, mediaTypes, providerGenreMappings } from "@/db/schema";
+import { genres, genreRequests, jobRuns, mediaItemGenres, mediaItems, mediaTypes, providerGenreMappings } from "@/db/schema";
 import { groupGenreProviderVariants, parseGenreName } from "@/lib/media/admin-genres";
 
-async function getGenresWithVariants(id?: number) {
+async function getGenresWithVariants(id?: number | number[]) {
+  if (Array.isArray(id) && !id.length) return [];
   const [rows, variants] = await Promise.all([
     db.select({
       id: genres.id, slug: genres.slug, name: genres.name, isActive: genres.isActive,
       mediaItemsCount: sql<number>`(select count(*)::int from ${mediaItemGenres} genre_link
         where genre_link.genre_id = "genres"."id")`,
-    }).from(genres).where(id === undefined ? undefined : eq(genres.id, id))
+    }).from(genres).where(id === undefined ? undefined : Array.isArray(id) ? inArray(genres.id, id) : eq(genres.id, id))
       .orderBy(asc(genres.name), asc(genres.id)),
     db.select({
+      mappingId: providerGenreMappings.id,
+      applying: sql<boolean>`exists (select 1 from ${genreRequests} left join ${jobRuns} on ${jobRuns.id} = ${genreRequests.jobRunId}
+        where ${genreRequests.provider} = ${providerGenreMappings.provider}
+        and ${genreRequests.mediaType} = ${providerGenreMappings.mediaType}
+        and ${genreRequests.normalizedExternalGenreName} = ${providerGenreMappings.normalizedExternalGenreName}
+        and (${jobRuns.status} in ('queued', 'running') or (${genreRequests.jobRunId} is null and ${genreRequests.applyStatus} = 'applying')))`,
       genreId: providerGenreMappings.genreId, provider: providerGenreMappings.provider,
       mediaType: providerGenreMappings.mediaType, mediaTypeName: mediaTypes.name,
       externalGenreName: providerGenreMappings.externalGenreName,
     }).from(providerGenreMappings)
       .innerJoin(mediaTypes, eq(mediaTypes.code, providerGenreMappings.mediaType))
-      .where(id === undefined ? undefined : eq(providerGenreMappings.genreId, id)),
+      .where(id === undefined ? undefined : Array.isArray(id) ? inArray(providerGenreMappings.genreId, id) : eq(providerGenreMappings.genreId, id)),
   ]);
   const variantsByGenre = new Map<number, typeof variants>();
   for (const variant of variants) {
@@ -40,6 +47,24 @@ export type AdminGenre = Awaited<ReturnType<typeof getAdminGenres>>[number];
 
 export async function getAdminGenres() {
   return getGenresWithVariants();
+}
+
+export async function getAdminGenresPage(input: { searchQuery: string; page: number }) {
+  const search = normalizeSearchText(input.searchQuery);
+  const filter = and(eq(genres.isActive, true), search ? or(
+    containsNormalizedSearchSql(genres.name, search),
+    containsNormalizedSearchSql(genres.slug, search),
+    sql`exists (select 1 from ${providerGenreMappings} where ${providerGenreMappings.genreId} = ${genres.id}
+      and ${containsNormalizedSearchSql(providerGenreMappings.externalGenreName, search)})`,
+  ) : undefined);
+  const [count] = await db.select({ total: sql<number>`count(*)::int` }).from(genres).where(filter);
+  const total = count.total;
+  const pageSize = 25;
+  const totalPages = Math.max(1, Math.ceil(total / pageSize));
+  const page = Math.min(totalPages, Number.isSafeInteger(input.page) && input.page > 0 ? input.page : 1);
+  const ids = await db.select({ id: genres.id }).from(genres).where(filter)
+    .orderBy(asc(genres.name), asc(genres.id)).limit(pageSize).offset((page - 1) * pageSize);
+  return { items: await getGenresWithVariants(ids.map((row) => row.id)), total, page, totalPages };
 }
 
 export async function getAdminGenreById(id: number) {

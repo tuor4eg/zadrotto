@@ -1,4 +1,6 @@
 export type GenreProviderVariant = {
+  mappingId?: number;
+  applying?: boolean;
   genreId: number;
   provider: string;
   mediaType: string;
@@ -11,6 +13,7 @@ export type GenreProviderVariantGroup = {
   mediaType: string;
   mediaTypeName: string;
   names: string[];
+  variants?: { mappingId: number; name: string; applying: boolean }[];
 };
 
 export function groupGenreProviderVariants(variants: readonly GenreProviderVariant[]) {
@@ -19,13 +22,16 @@ export function groupGenreProviderVariants(variants: readonly GenreProviderVaria
     const key = JSON.stringify([variant.provider, variant.mediaType]);
     const group = groups.get(key) ?? {
       provider: variant.provider, mediaType: variant.mediaType,
-      mediaTypeName: variant.mediaTypeName, names: [],
+      mediaTypeName: variant.mediaTypeName, names: [], variants: [],
     };
     if (!group.names.includes(variant.externalGenreName)) group.names.push(variant.externalGenreName);
+    if (variant.mappingId !== undefined && !group.variants?.some((item) => item.name === variant.externalGenreName)) {
+      group.variants!.push({ mappingId: variant.mappingId, name: variant.externalGenreName, applying: variant.applying ?? false });
+    }
     groups.set(key, group);
   }
   return [...groups.values()].map((group) => ({
-    ...group, names: [...group.names].sort((a, b) => a.localeCompare(b, "ru")),
+    ...group, variants: group.variants?.sort((a, b) => a.name.localeCompare(b.name, "ru")), names: [...group.names].sort((a, b) => a.localeCompare(b, "ru")),
   })).sort((a, b) => a.provider.localeCompare(b.provider) || a.mediaType.localeCompare(b.mediaType));
 }
 

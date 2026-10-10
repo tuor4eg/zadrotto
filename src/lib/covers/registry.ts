@@ -56,6 +56,7 @@ export type ProviderSearchError = ProviderRequestError;
 export type ProviderSearchResult<T> = {
   candidates: T[];
   error: ProviderSearchError | null;
+  retryAfterSeconds?: number;
 };
 
 function getAggregatedSearchError(errors: readonly ProviderSearchError[]) {
@@ -63,6 +64,7 @@ function getAggregatedSearchError(errors: readonly ProviderSearchError[]) {
 }
 
 function getProviderExecutionError(error: unknown): ProviderSearchError {
+  if (error && typeof error === "object" && "code" in error && error.code === "rate-limit-unavailable") return "rate-limit-unavailable";
   if (
     error &&
     typeof error === "object" &&
@@ -108,10 +110,12 @@ async function canSearchProvider(
 function buildProviderSearchResult<T>(
   candidates: T[],
   errors: readonly ProviderSearchError[],
+  retryAfterSeconds?: number,
 ): ProviderSearchResult<T> {
   return {
     candidates,
     error: candidates.length > 0 ? null : getAggregatedSearchError(errors),
+    ...(candidates.length === 0 && retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}),
   };
 }
 
@@ -233,6 +237,7 @@ export async function searchCoverCandidates(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   const errors: ProviderSearchError[] = [];
+  let retryAfterSeconds: number | undefined;
 
   if (input.titleSource) {
     const configuredProviders = getCoverProvidersForMediaType(
@@ -275,13 +280,14 @@ export async function searchCoverCandidates(
           ),
         ).slice(0, options.candidateLimit);
       } catch (error) {
+        retryAfterSeconds = getRetryAfterSeconds(error) ?? retryAfterSeconds;
         errors.push(getProviderExecutionError(error));
         exactCandidates = [];
       }
     }
 
     if (input.mediaType !== "anime" || exactCandidates.length >= options.candidateLimit) {
-      return buildProviderSearchResult(exactCandidates, errors);
+      return buildProviderSearchResult(exactCandidates, errors, retryAfterSeconds);
     }
 
     let candidates = exactCandidates;
@@ -319,6 +325,7 @@ export async function searchCoverCandidates(
           options.candidateLimit,
         );
       } catch (error) {
+        retryAfterSeconds = getRetryAfterSeconds(error) ?? retryAfterSeconds;
         errors.push(getProviderExecutionError(error));
         continue;
       }
@@ -328,7 +335,7 @@ export async function searchCoverCandidates(
       }
     }
 
-    return buildProviderSearchResult(candidates, errors);
+    return buildProviderSearchResult(candidates, errors, retryAfterSeconds);
   }
 
   const normalizedTitle = input.title.trim();
@@ -382,7 +389,10 @@ export async function searchCoverCandidates(
         : [],
   );
 
-  return buildProviderSearchResult(candidates, settledErrors);
+  for (const result of settledResults) {
+    if (result.status === "rejected") retryAfterSeconds = getRetryAfterSeconds(result.reason) ?? retryAfterSeconds;
+  }
+  return buildProviderSearchResult(candidates, settledErrors, retryAfterSeconds);
 }
 
 function normalizeTitleCandidates(candidates: MediaTitleCandidate[]) {
@@ -417,6 +427,7 @@ export async function searchTitleCandidates(
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
 ) {
   const errors: ProviderSearchError[] = [];
+  let retryAfterSeconds: number | undefined;
   const query = input.query.trim();
 
   if (!query) {
@@ -470,6 +481,9 @@ export async function searchTitleCandidates(
           : [],
     ),
   );
+  for (const result of parallelResults) {
+    if (result.status === "rejected") retryAfterSeconds = getRetryAfterSeconds(result.reason) ?? retryAfterSeconds;
+  }
 
   if (parallelCandidates.length > 0) {
     return buildProviderSearchResult(
@@ -497,12 +511,13 @@ export async function searchTitleCandidates(
         return buildProviderSearchResult(candidates.slice(0, options.candidateLimit), errors);
       }
     } catch (error) {
+      retryAfterSeconds = getRetryAfterSeconds(error) ?? retryAfterSeconds;
       errors.push(getProviderExecutionError(error));
       continue;
     }
   }
 
-  return buildProviderSearchResult([], errors);
+  return buildProviderSearchResult([], errors, retryAfterSeconds);
 }
 
 function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
@@ -543,7 +558,7 @@ export async function getTitleMetadata(
   providers: readonly MediaProvider[] = COVER_PROVIDERS,
   options: TitleMetadataOptions = DEFAULT_COVER_SEARCH_OPTIONS,
   providerSettings: readonly CoverProviderRuntimeSetting[] = DEFAULT_PROVIDER_SETTINGS,
-) {
+): Promise<{ metadata: MediaTitleMetadata | null; error: ProviderSearchError | null; retryAfterSeconds?: number }> {
   const provider = getMetadataProviderForMediaType(
     input.mediaType,
     input.provider,
@@ -575,6 +590,13 @@ export async function getTitleMetadata(
       error: null,
     };
   } catch (error) {
-    return { metadata: null, error: getProviderExecutionError(error) };
+    const retryAfterSeconds = getRetryAfterSeconds(error);
+    return { metadata: null, error: getProviderExecutionError(error), ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}) };
+  }
+}
+
+function getRetryAfterSeconds(error: unknown): number | undefined {
+  if (error && typeof error === "object" && "retryAfterSeconds" in error && typeof error.retryAfterSeconds === "number" && Number.isFinite(error.retryAfterSeconds)) {
+    return Math.max(1, Math.ceil(error.retryAfterSeconds));
   }
 }

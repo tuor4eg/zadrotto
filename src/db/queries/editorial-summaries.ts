@@ -14,6 +14,7 @@ export async function getEditorialSummarySource(mediaItemId: number) {
     releaseYear: mediaItems.releaseYear,
     description: mediaItems.description,
     metadataFacts: mediaItemMetadata.facts,
+    sourceProvider: mediaItemMetadata.sourceProvider,
     summary: mediaItemEditorialSummaries.summary,
     sourceHash: mediaItemEditorialSummaries.sourceHash,
     locked: mediaItemEditorialSummaries.locked,
@@ -47,6 +48,7 @@ export async function listEditorialSummarySources(afterId: number, limit: number
     releaseYear: mediaItems.releaseYear,
     description: mediaItems.description,
     metadataFacts: mediaItemMetadata.facts,
+    sourceProvider: mediaItemMetadata.sourceProvider,
     sourceHash: mediaItemEditorialSummaries.sourceHash,
     locked: mediaItemEditorialSummaries.locked,
   }).from(mediaItems)
@@ -109,7 +111,7 @@ export async function saveGeneratedEditorialSummary(input: {
       description: mediaItems.description,
     }).from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).for("update").limit(1);
     if (!item) return false;
-    const [metadata] = await tx.select({ facts: mediaItemMetadata.facts }).from(mediaItemMetadata)
+    const [metadata] = await tx.select({ facts: mediaItemMetadata.facts, provider: mediaItemMetadata.sourceProvider }).from(mediaItemMetadata)
       .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId)).limit(1);
     const [job] = await tx.select({ options: jobs.options }).from(jobs)
       .where(eq(jobs.code, EDITORIAL_SUMMARY_JOB_CODE)).for("share").limit(1);
@@ -117,6 +119,7 @@ export async function saveGeneratedEditorialSummary(input: {
     const prompt = parseEditorialSummaryOptions(job.options).prompt;
     const source: EditorialSummarySource = { ...item, metadataFacts: metadata?.facts ?? null };
     if (prompt !== input.prompt || getEditorialSummarySourceHash(source, prompt) !== input.sourceHash) return false;
+    if (metadata?.provider === "bgg") return false;
     const [current] = await tx.select({
       locked: mediaItemEditorialSummaries.locked,
       summary: mediaItemEditorialSummaries.summary,

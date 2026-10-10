@@ -38,6 +38,24 @@ describe("provider variants", () => {
   it("renders an explicit empty state", () => {
     assert.match(renderToStaticMarkup(createElement(GenreProviderVariants, { groups: [] })), /Нет соответствий провайдеров/);
   });
+  it("submits stable mapping IDs and disables variants with active apply jobs", () => {
+    const groups = groupGenreProviderVariants([
+      { mappingId: 31, genreId: 1, provider: "tmdb", mediaType: "film", mediaTypeName: "Фильм", externalGenreName: "Драма", applying: false },
+      { mappingId: 32, genreId: 1, provider: "tmdb", mediaType: "film", mediaTypeName: "Фильм", externalGenreName: "Комедия", applying: true },
+    ]);
+    assert.deepEqual(groups[0].variants, [
+      { mappingId: 31, name: "Драма", applying: false }, { mappingId: 32, name: "Комедия", applying: true },
+    ]);
+    const html = renderToStaticMarkup(createElement(GenreProviderVariants, { groups, reopenAction: async () => {} }));
+    assert.match(html, /name="mappingId" value="31"/);
+    assert.match(html, /name="mappingId" value="32"/);
+    const buttons = html.match(/<button\b[^>]*>.*?<\/button>/g) ?? [];
+    assert.equal(buttons.length, 2);
+    assert.doesNotMatch(buttons[0], /\sdisabled=""/);
+    assert.match(buttons[0], /Вернуть в заявки Драма/);
+    assert.match(buttons[1], /disabled=""/);
+    assert.match(buttons[1], /Применяется…/);
+  });
 });
 
 describe("admin genre routes", () => {
@@ -56,6 +74,16 @@ describe("admin genre routes", () => {
       assert.ok(action.includes(`revalidatePath("${route}"`));
     }
     assert.match(action, /if \(!genre\) redirect\("\/admin\/genres\?error=invalid-genre"\)/);
+  });
+  it("authenticates mapping returns and provides them on desktop, mobile and edit pages", () => {
+    const reopen = action.split("export async function reopenGenreMappingAction")[1];
+    assert.ok(reopen);
+    assert.ok(reopen.indexOf("await requireAdminUser()") < reopen.indexOf('formData.get("mappingId")'));
+    assert.match(reopen, /reopenGenreMapping\(/);
+    const page = readFileSync("src/app/admin/(protected)/genres/page.tsx", "utf8");
+    assert.equal((page.match(/reopenAction=\{reopenGenreMappingAction\}/g) ?? []).length, 2);
+    const edit = readFileSync("src/app/admin/(protected)/genres/[id]/edit/page.tsx", "utf8");
+    assert.match(edit, /reopenAction=\{reopenGenreMappingAction\}/);
   });
   it("returns 404 for invalid or absent genres and exposes only the name editor", () => {
     const page = readFileSync("src/app/admin/(protected)/genres/[id]/edit/page.tsx", "utf8");

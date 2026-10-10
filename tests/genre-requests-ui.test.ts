@@ -40,15 +40,17 @@ describe("genre request administrative display", () => {
     occurrenceCount: 3, status: "pending", decision: null, firstSeenAt: new Date("2026-10-05T10:00:00Z"), lastSeenAt: new Date(), resolvedAt: null,
     resolvedByAdminId: null, jobRunId: null, jobError: null } satisfies GenreRequestListItem;
   it("shows the same provider/type, count, genre and status on desktop and mobile", () => {
-    const html = renderToStaticMarkup(createElement(GenreRequestsList, { requests: [request], all: false }));
+    const html = renderToStaticMarkup(createElement(GenreRequestsList, { requests: [request] }));
     for (const text of ["Новый жанр", "TMDB", "Фильм", "Ожидает решения"]) assert.equal(html.split(text).length - 1, 2);
     assert.match(html, /md:hidden/);
     assert.match(html, /hidden md:block/);
     assert.equal((html.match(/href="\/admin\/genre-requests\/1"/g) ?? []).length, 2);
   });
-  it("has pending and all-list empty states and explains concurrent decisions", () => {
-    assert.match(renderToStaticMarkup(createElement(GenreRequestsList, { requests: [], all: false })), /Нет жанров, ожидающих решения/);
-    assert.match(renderToStaticMarkup(createElement(GenreRequestsList, { requests: [], all: true })), /Заявок на жанры пока нет/);
+  it("shows only pending requests and explains concurrent decisions", () => {
+    assert.match(renderToStaticMarkup(createElement(GenreRequestsList, { requests: [] })), /Нет жанров, ожидающих решения/);
+    const page = readFileSync("src/app/admin/(protected)/genre-requests/page.tsx", "utf8");
+    assert.match(page, /getGenreRequests\(\)/);
+    assert.doesNotMatch(page, /Все заявки|all=1|<nav/);
     assert.match(genreRequestError("already-resolved")!, /Другой администратор/);
   });
   it("authenticates both actions before reading input and has guarded detail routes", () => {

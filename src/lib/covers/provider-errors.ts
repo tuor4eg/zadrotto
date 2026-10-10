@@ -9,7 +9,7 @@ export type CoverRequestError = ProviderRequestError | "author-rate-limit";
 export const COVER_REQUEST_ERROR_MESSAGES: Record<CoverRequestError, string> = {
   "author-rate-limit": "Ваш лимит поиска исчерпан. Попробуйте позже.",
   "provider-daily-limit": "Суточный лимит провайдера исчерпан. Попробуйте позже.",
-  "provider-rate-limit": "Roblox временно ограничил поиск. Попробуйте чуть позже.",
+  "provider-rate-limit": "Внешний провайдер временно ограничил поиск. Попробуйте чуть позже.",
   "provider-unavailable": "Внешний провайдер временно недоступен. Попробуйте позже.",
   "rate-limit-unavailable": "Не удалось проверить лимиты поиска. Попробуйте позже.",
 };

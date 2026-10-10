@@ -124,14 +124,14 @@ export async function POST(request: Request) {
       },
       {
         status: result.error === "provider-daily-limit" || result.error === "provider-rate-limit" ? 429 : 503,
-        headers: result.error === "provider-rate-limit" ? { "retry-after": "60" } : undefined,
+        headers: result.error === "provider-rate-limit" ? { "retry-after": String(result.retryAfterSeconds ?? 60) } : undefined,
       },
     );
   }
 
   return NextResponse.json({
     candidates: result.candidates.map((candidate) => {
-      const proxyEnabled = imageSettings.some(
+      const proxyEnabled = candidate.provider === "bgg" || imageSettings.some(
         (setting) => setting.providerCode === candidate.provider && setting.proxyImagesEnabled,
       );
       return {

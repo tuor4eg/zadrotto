@@ -736,6 +736,27 @@
       "when": 1791676800000,
       "tag": "0104_genre_requests",
       "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1791763200000,
+      "tag": "0105_quiz_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1791849600000,
+      "tag": "0106_quiz_achievements_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791936000000,
+      "tag": "0107_genre_mapping_reopen",
+      "breakpoints": true
     }
   ]
 }

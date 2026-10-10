@@ -173,16 +173,11 @@ export function QuizModal({
                 </div>
               </li>
               <li>
-                Если ответ правильный, вы получаете балл. Если при этом ответили правильно первым — становитесь победителем. Если неправильно, можно попробовать ещё, пока не кончатся все попытки. Число попыток отображается на экране в виде сердечек.
+                За правильный ответ вы получаете столько очков, сколько осталось попыток, включая успешную. Например, при трёх попытках: с первой — 3 очка, со второй — 2, с последней — 1. Если неправильно, можно попробовать ещё, пока не кончатся все попытки. Оставшиеся попытки отображаются на экране как сердечко × число.
                 <div className="mt-3 flex justify-center">
-                  <span className="archive-paper-surface flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-sm">
-                    {Array.from({ length: 3 }, (_, index) => (
-                      <Heart
-                        key={index}
-                        aria-hidden="true"
-                        className="size-5 fill-red-700 text-red-800 drop-shadow-sm"
-                      />
-                    ))}
+                  <span aria-label="Осталось попыток: 3" className="archive-paper-surface flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-sm">
+                    <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />
+                    <span aria-hidden="true" className="whitespace-nowrap font-medium tabular-nums text-red-900">× 3</span>
                   </span>
                 </div>
               </li>

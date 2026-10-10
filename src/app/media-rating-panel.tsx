@@ -33,7 +33,7 @@ import {
 
 type RatingStarsProps = {
   score: number | null;
-  variant?: "plain" | "terminal";
+  variant?: "plain" | "terminal" | "meeple";
 };
 
 type AnimeMangaRatingContentProps = {
@@ -211,10 +211,15 @@ export function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
     <span className="inline-flex gap-[0.16em] font-mono text-2xl leading-none text-current" aria-hidden="true">
       {Array.from({ length: 5 }, (_, index) => {
         const fill = Math.max(0, Math.min(1, starCount - index));
+        const symbol = variant === "meeple" ? (
+          <svg viewBox="0 0 24 24" className="h-[1em] w-[1em]" fill="currentColor" aria-hidden="true" data-rating-symbol="meeple">
+            <path d="M12 2a3.4 3.4 0 0 1 3.4 3.4v1.2l4.8 1.8c1.3.5 2 1.5 1.8 2.6-.2 1.2-1.2 2-2.5 2h-2l3 6.9c.4 1-.2 2.1-1.3 2.1h-4.1L12 16.8 8.9 22H4.8c-1.1 0-1.7-1.1-1.3-2.1l3-6.9h-2C3.2 13 2.2 12.2 2 11c-.2-1.1.5-2.1 1.8-2.6l4.8-1.8V5.4A3.4 3.4 0 0 1 12 2Z" />
+          </svg>
+        ) : "★";
         return (
           <span key={index} className="relative inline-block">
-            <span className="opacity-35">★</span>
-            <span className="absolute inset-0" style={{ clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)` }}>★</span>
+            <span className="opacity-35">{symbol}</span>
+            <span className="absolute inset-0" style={{ clipPath: `inset(0 ${(1 - fill) * 100}% 0 0)` }}>{symbol}</span>
           </span>
         );
       })}
@@ -2211,7 +2216,7 @@ export function ArchiveRatingPanel({
             compact ? "mt-1 h-5 scale-75" : "mt-2"
           } flex justify-center ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
         >
-          <RatingStars score={score} />
+          <RatingStars score={score} variant={ratingPanelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
         </div>
       ) : null}
       <div

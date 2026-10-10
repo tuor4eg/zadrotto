@@ -7,6 +7,7 @@ import { formatQuizDuration, type AuthorQuizStatistics as AuthorQuizStatisticsVa
 
 export function AuthorQuizStatistics({ statistics }: { statistics: AuthorQuizStatisticsValue }) {
   const items = [
+    { Icon: Award, label: "Очков", value: statistics.totalPoints },
     { Icon: CircleCheck, label: "Правильных ответов", value: statistics.correctCount },
     { Icon: Target, label: "Точность", value: `${statistics.accuracyPercent}%` },
     { Icon: Sparkles, label: "С первой попытки", value: statistics.firstTryCorrectCount },

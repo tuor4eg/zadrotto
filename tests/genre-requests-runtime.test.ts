@@ -12,7 +12,8 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
   process.env.DATABASE_MAX_CONNECTIONS = "3";
   const { getDbClient } = await import("../src/db");
   const { upsertMediaItemMetadata, getMediaItemMetadata, deleteMediaItemMetadata } = await import("../src/db/queries/media-item-metadata");
-  const { getGenreRequests, getGenreRequestDetail, getPendingGenreRequestCount, resolveGenreRequest, retryGenreRequest, applyGenreRequest } = await import("../src/db/queries/genre-requests");
+  const { getGenreRequests, getGenreRequestDetail, getPendingGenreRequestCount, resolveGenreRequest, retryGenreRequest, applyGenreRequest, reopenGenreMapping } = await import("../src/db/queries/genre-requests");
+  const { getGenreExclusionsPage, restoreGenreExclusion } = await import("../src/db/queries/genre-exclusions");
   const client = getDbClient();
   try {
     await client.unsafe(`CREATE SCHEMA ${schema}`);
@@ -41,7 +42,7 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
           (7,'tmdb','{"genres":["Unknownalias"],"genreReferences":[{"id":" 999 ","name":"Unknownalias"}]}');
         INSERT INTO media_item_provider_snapshots VALUES (4,'film','tmdb','{"genres":["комедия","Неизвестный legacy"]}');`);
       const rawBeforeMigration = await tx`SELECT * FROM media_item_metadata ORDER BY media_item_id`;
-      for (const file of ["0103_unified_genres.sql", "0104_genre_requests.sql"]) {
+      for (const file of ["0103_unified_genres.sql", "0104_genre_requests.sql", "0107_genre_mapping_reopen.sql"]) {
         for (const statement of readFileSync(`drizzle/${file}`, "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
         if (file === "0103_unified_genres.sql") {
           await tx`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_id,external_genre_name,normalized_external_genre_name,genre_id)
@@ -111,7 +112,9 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     await upsertMediaItemMetadata({ mediaItemId: 3, sourceProvider: "rawg", facts: { genres: ["New mechanic"] } });
     request = (await getGenreRequests())[0];
     const filmGenreId = (await client`SELECT id FROM genres WHERE slug='drama'`)[0].id;
-    await assert.rejects(resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "map", genreIds: [filmGenreId] }), /подходящего типа/);
+    await client`UPDATE genres SET is_active=false WHERE id=${filmGenreId}`;
+    await assert.rejects(resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "map", genreIds: [filmGenreId] }), /активные жанры/);
+    await client`UPDATE genres SET is_active=true WHERE id=${filmGenreId}`;
     assert.equal((await getGenreRequestDetail(request.id))?.request.status, "pending");
     await assert.rejects(resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "map", genreIds: [2_147_483_648] }), /Выберите хотя бы/);
     const excluded = await resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "exclude" });
@@ -172,6 +175,138 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     await deleteMediaItemMetadata(3);
     assert.equal((await getGenreRequestDetail(request.id))?.request.occurrenceCount, 0);
     assert.equal((await client`SELECT count(*)::int AS n FROM admin_activity_logs WHERE action='genre-request.detected'`)[0].n, 3);
+    await client`INSERT INTO provider_genre_exclusions(provider,media_type,external_genre_name,normalized_external_genre_name)
+      SELECT 'restore-test','film','Отменённый ' || n,'отмененный ' || n FROM generate_series(1,28) n`;
+    const cancelled = await getGenreExclusionsPage({ searchQuery: "  ОТМЕНЁННЫЙ  ", page: 1 });
+    assert.equal(cancelled.total, 28);
+    assert.equal(cancelled.items.length, 25);
+    const cancelledNext = await getGenreExclusionsPage({ searchQuery: "Отменённый", page: 2 });
+    assert.equal(cancelledNext.items.length, 3);
+    const restoredId = await restoreGenreExclusion(cancelled.items[0].id, 1);
+    assert.equal((await getGenreRequestDetail(restoredId))?.request.status, "pending");
+    await assert.rejects(restoreGenreExclusion(cancelled.items[0].id, 1), /not-found/);
+    const pendingJob = await resolveGenreRequest({ requestId: restoredId, adminId: 1, decision: "exclude" });
+    const [blocked] = await client`SELECT id FROM provider_genre_exclusions WHERE provider='restore-test'
+      AND normalized_external_genre_name=(SELECT normalized_external_genre_name FROM genre_requests WHERE id=${restoredId})`;
+    await assert.rejects(restoreGenreExclusion(Number(blocked.id), 1), /applying/);
+    assert.equal((await getGenreRequestDetail(restoredId))?.request.decision, "exclude");
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${pendingJob.jobRunId}`;
+    assert.equal(await restoreGenreExclusion(Number(blocked.id), 1), restoredId);
+    assert.equal((await getGenreRequestDetail(restoredId))?.request.status, "pending");
+    const [gameGenre] = await client`SELECT id FROM genres WHERE slug LIKE 'game-%' AND is_active=true LIMIT 1`;
+    await resolveGenreRequest({ requestId: restoredId, adminId: 1, decision: "map", genreIds: [Number(gameGenre.id)] });
+    assert.equal((await getGenreRequestDetail(restoredId))?.genres[0].id, Number(gameGenre.id));
+
+    // Returning a create decision preserves the created genre and raw metadata, but removes its automatic assignment.
+    const [createdMapping] = await client`SELECT id FROM provider_genre_mappings WHERE genre_id=${customId}
+      AND normalized_external_genre_name='новый жанр'`;
+    const createdRequestId = (await client`SELECT id FROM genre_requests WHERE normalized_external_genre_name='новый жанр'`)[0].id;
+    const reopenedCreated = await reopenGenreMapping({ mappingId: Number(createdMapping.id), adminId: 1 });
+    assert.equal(reopenedCreated.requestId, Number(createdRequestId));
+    assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "applying");
+    assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.decision, null);
+    await assert.rejects(reopenGenreMapping({ mappingId: Number(createdMapping.id), adminId: 1 }));
+    await assert.rejects(resolveGenreRequest({ requestId: reopenedCreated.requestId, adminId: 1, decision: "exclude" }));
+    await applyGenreRequest(reopenedCreated.requestId, { jobRunId: reopenedCreated.jobRunId });
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${reopenedCreated.jobRunId}`;
+    assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "pending");
+    assert.deepEqual((await getMediaItemMetadata(1))?.genres.map((genre) => genre.slug), ["drama"]);
+    assert.deepEqual((await getMediaItemMetadata(1))?.facts, rawBefore);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${customId}`)[0].n, 1);
+    await client`DELETE FROM job_runs WHERE id=${reopenedCreated.jobRunId}`;
+    assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "pending");
+    await assert.rejects(retryGenreRequest({ requestId: reopenedCreated.requestId, adminId: 1 }));
+
+    // One provider variant can map to several internal genres; all its mappings return together.
+    await client`INSERT INTO media_items(id,code,title,media_type) VALUES (200,'reopen','Возврат','film')`;
+    await upsertMediaItemMetadata({ mediaItemId: 200, sourceProvider: "tmdb", facts: { genres: ["Reopen shared"] } });
+    const sharedRequestId = (await client`SELECT id FROM genre_requests WHERE normalized_external_genre_name='reopen shared'`)[0].id;
+    const sharedDecision = await resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "map", genreIds: [customId, filmGenreId] });
+    const sharedMappings = await client`SELECT id FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared' ORDER BY id`;
+    await assert.rejects(reopenGenreMapping({ mappingId: Number(sharedMappings[0].id), adminId: 1 }));
+    assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared'`)[0].n, 2);
+    await applyGenreRequest(Number(sharedRequestId), { jobRunId: sharedDecision.jobRunId });
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${sharedDecision.jobRunId}`;
+    await client`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_name,normalized_external_genre_name,genre_id)
+      VALUES ('tmdb','film','Still confirmed','still confirmed',${customId})`;
+    await upsertMediaItemMetadata({ mediaItemId: 200, sourceProvider: "tmdb", facts: { genres: ["Reopen shared", "Still confirmed"] } });
+    await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) SELECT 200,id,true FROM genres WHERE slug='comedy'`;
+    const sharedFacts = (await getMediaItemMetadata(200))!.facts;
+    const competingReturns = await Promise.allSettled(sharedMappings.map((mapping) => reopenGenreMapping({ mappingId: Number(mapping.id), adminId: 1 })));
+    assert.equal(competingReturns.filter((result) => result.status === "fulfilled").length, 1);
+    const successfulReturn = competingReturns.find((result) => result.status === "fulfilled")!;
+    if (successfulReturn.status !== "fulfilled") throw new Error("Missing successful return");
+    const reopenedShared = successfulReturn.value;
+    assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared'`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM job_runs WHERE payload->>'requestId'=${String(sharedRequestId)}`)[0].n, 2);
+    const stoppedReturn = new AbortController(); stoppedReturn.abort();
+    await assert.rejects(applyGenreRequest(Number(sharedRequestId), { signal: stoppedReturn.signal, jobRunId: reopenedShared.jobRunId }));
+    await client`UPDATE job_runs SET status='failed',error_message='Return failed' WHERE id=${reopenedShared.jobRunId}`;
+    await client`DELETE FROM job_runs WHERE id=${reopenedShared.jobRunId}`;
+    assert.equal((await getGenreRequestDetail(Number(sharedRequestId)))?.request.status, "failed");
+    assert.equal((await getGenreRequestDetail(Number(sharedRequestId)))?.request.decision, null);
+    await assert.rejects(resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "exclude" }));
+    const failedReturnRetry = await retryGenreRequest({ requestId: Number(sharedRequestId), adminId: 1 });
+    await client`UPDATE job_runs SET status='cancelled' WHERE id=${failedReturnRetry.jobRunId}`;
+    await client`DELETE FROM job_runs WHERE id=${failedReturnRetry.jobRunId}`;
+    assert.equal((await getGenreRequestDetail(Number(sharedRequestId)))?.request.status, "failed");
+    const returnRetry = await retryGenreRequest({ requestId: Number(sharedRequestId), adminId: 1 });
+    await applyGenreRequest(Number(sharedRequestId), { jobRunId: returnRetry.jobRunId });
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${returnRetry.jobRunId}`;
+    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", `custom-${customId}`]);
+    assert.deepEqual((await getMediaItemMetadata(200))?.facts, sharedFacts);
+    assert.equal((await getGenreRequestDetail(Number(sharedRequestId)))?.request.status, "pending");
+    const corrected = await resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "map", genreIds: [filmGenreId] });
+    await applyGenreRequest(Number(sharedRequestId), { jobRunId: corrected.jobRunId });
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${corrected.jobRunId}`;
+    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", `custom-${customId}`, "drama"]);
+
+    // Old seeded mappings have no request. Discover current occurrences by normalized name and external ID.
+    await client`INSERT INTO media_items(id,code,title,media_type) VALUES
+      (201,'seed-name','Имя','film'),(202,'seed-id','ID','film'),(203,'seed-provider','Другой провайдер','film'),(204,'seed-type','Другой тип','game')`;
+    const [seedMapping] = await client`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_id,external_genre_name,normalized_external_genre_name,genre_id)
+      VALUES ('tmdb','film','2009','Seed return','seed return',${filmGenreId}) RETURNING id`;
+    await upsertMediaItemMetadata({ mediaItemId: 201, sourceProvider: "tmdb", facts: { genres: ["  SEED   RETURN  "] } });
+    await upsertMediaItemMetadata({ mediaItemId: 202, sourceProvider: "tmdb", facts: { genres: ["Seed alias"], genreReferences: [{ id: "2009", name: "Seed alias" }] } });
+    await upsertMediaItemMetadata({ mediaItemId: 203, sourceProvider: "rawg", facts: { genres: ["Seed return"] } });
+    await upsertMediaItemMetadata({ mediaItemId: 204, sourceProvider: "tmdb", facts: { genres: ["Seed return"] } });
+    assert.equal((await client`SELECT count(*)::int AS n FROM genre_requests WHERE provider='tmdb' AND media_type='film' AND normalized_external_genre_name='seed return'`)[0].n, 0);
+    // Enqueue failure must restore the seed mapping and avoid leaving a partial request or audit record.
+    const auditCount = (await client`SELECT count(*)::int AS n FROM admin_activity_logs`)[0].n;
+    await client.unsafe("CREATE TRIGGER reject_request_job BEFORE INSERT ON job_runs FOR EACH ROW EXECUTE FUNCTION reject_request_job()");
+    await assert.rejects(reopenGenreMapping({ mappingId: Number(seedMapping.id), adminId: 1 }));
+    await client.unsafe("DROP TRIGGER reject_request_job ON job_runs");
+    assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE id=${seedMapping.id}`)[0].n, 1);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genre_requests WHERE provider='tmdb' AND media_type='film' AND normalized_external_genre_name='seed return'`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM admin_activity_logs`)[0].n, auditCount);
+    const reopenedSeed = await reopenGenreMapping({ mappingId: Number(seedMapping.id), adminId: 1 });
+    assert.deepEqual((await getGenreRequestDetail(reopenedSeed.requestId))?.items, []);
+    assert.deepEqual((await client`SELECT payload FROM job_runs WHERE id=${reopenedSeed.jobRunId}`)[0].payload,
+      { requestId: reopenedSeed.requestId });
+    // ID aliases must still be recalculated when the original job history no longer exists.
+    await assert.rejects(applyGenreRequest(reopenedSeed.requestId, { jobRunId: reopenedSeed.jobRunId, signal: stoppedReturn.signal }));
+    await client`UPDATE job_runs SET status='failed' WHERE id=${reopenedSeed.jobRunId}`;
+    await client`DELETE FROM job_runs WHERE id=${reopenedSeed.jobRunId}`;
+    const seedRetry = await retryGenreRequest({ requestId: reopenedSeed.requestId, adminId: 1 });
+    await applyGenreRequest(reopenedSeed.requestId, { jobRunId: seedRetry.jobRunId });
+    await client`UPDATE job_runs SET status='succeeded' WHERE id=${seedRetry.jobRunId}`;
+    assert.deepEqual((await getMediaItemMetadata(201))?.genres, []);
+    assert.deepEqual((await getMediaItemMetadata(202))?.genres, []);
+    assert.equal((await getGenreRequestDetail(reopenedSeed.requestId))?.request.status, "pending");
+    assert.deepEqual((await getGenreRequestDetail(reopenedSeed.requestId))?.items.map((item) => item.id), [201]);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genre_requests WHERE provider='tmdb'
+      AND media_type='film' AND normalized_external_genre_name='seed alias'`)[0].n, 1);
+    // Returning a seeded mapping while metadata is refreshed must preserve the media→request lock order.
+    await client`INSERT INTO media_items(id,code,title,media_type) VALUES (205,'seed-race','Seed race','film')`;
+    const [seedRaceMapping] = await client`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_name,normalized_external_genre_name,genre_id)
+      VALUES ('tmdb','film','Seed race','seed race',${filmGenreId}) RETURNING id`;
+    await upsertMediaItemMetadata({ mediaItemId: 205, sourceProvider: "tmdb", facts: { genres: ["Seed race"] } });
+    const [seedRaceReturn] = await Promise.all([
+      reopenGenreMapping({ mappingId: Number(seedRaceMapping.id), adminId: 1 }),
+      upsertMediaItemMetadata({ mediaItemId: 205, sourceProvider: "tmdb", facts: { genres: ["Seed race"] } }),
+    ]);
+    await applyGenreRequest(seedRaceReturn.requestId, { jobRunId: seedRaceReturn.jobRunId });
+    assert.deepEqual((await getMediaItemMetadata(205))?.genres, []);
   } finally {
     await client.unsafe(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await client.end();

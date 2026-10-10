@@ -1,3 +1,4 @@
+import { reopenGenreMappingAction } from "../../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -33,7 +34,7 @@ export default async function EditGenrePage({ params, searchParams }: {
       </CardContent></Card>
       <Card><CardContent className="grid gap-3 pt-5">
         <h3 className="text-sm font-medium text-stone-950">Варианты у провайдеров</h3>
-        <GenreProviderVariants groups={genre.providerVariants} />
+        <GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} />
       </CardContent></Card>
     </div>
   );

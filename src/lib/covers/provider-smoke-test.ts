@@ -2,12 +2,14 @@ import { DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT } from "@/lib/covers/config";
 import { coverProviderRequiresCredentials } from "@/lib/covers/credential-definitions";
 import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import { ProviderHttpError } from "@/lib/covers/providers/shared";
+import { BggRequestError } from "@/lib/covers/providers/bgg-runtime";
 import type { CoverProviderCode, MediaProvider } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
 
 export const COVER_PROVIDER_SMOKE_TEST_TIMEOUT_MS = 15_000;
 
 const TEST_QUERIES_BY_MEDIA_TYPE: Record<string, string> = {
+  boardgame: "Carcassonne",
   film: "Star Wars",
   series: "Breaking Bad",
   anime: "Cowboy Bebop",
@@ -44,6 +46,10 @@ function getTestQuery(mediaType: MediaType) {
 }
 
 function getErrorCode(error: unknown, requiresCredentials: boolean): Extract<CoverProviderSmokeTestResult, { ok: false }> ["error"] {
+  if (error instanceof BggRequestError) {
+    if (error.invalidCredentials) return "invalid-credentials";
+    return error.code === "provider-rate-limit" ? "rate-limited" : "unavailable";
+  }
   if (error instanceof CoverProviderSmokeTestTimeoutError) return "timeout";
 
   const message = error instanceof Error ? error.message : "";
@@ -120,6 +126,7 @@ export async function runCoverProviderSmokeTest(input: {
         { query: getTestQuery(input.mediaType), mediaType: input.mediaType },
         {
           candidateLimit: 1,
+          bypassCache: true,
           tmdbResultScanLimit: DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
           providerCredentials: input.providerCredentials,
         },

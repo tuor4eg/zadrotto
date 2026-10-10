@@ -30,7 +30,7 @@ export function AuthorStatistics({
   reviewCount,
   reviewsHref,
   contributionCount,
-  quizWinnerCount,
+  quizTotalPoints,
   showAnalytics = true,
   showStatistics = true,
   tileGridInitialColumnCount = 3,
@@ -45,7 +45,7 @@ export function AuthorStatistics({
   reviewCount: number;
   reviewsHref: string;
   contributionCount: number;
-  quizWinnerCount?: number;
+  quizTotalPoints?: number;
   showAnalytics?: boolean;
   showStatistics?: boolean;
   tileGridInitialColumnCount?: number;
@@ -63,9 +63,9 @@ export function AuthorStatistics({
     { Icon: CalendarCheck, label: "Оценено в этом году", value: ratingSummary.currentYearRatingsCount },
     { Icon: FileText, label: "Рецензий", value: reviewCount },
     { Icon: Archive, label: "Добавлено в архив", value: contributionCount },
-    ...(quizWinnerCount === undefined
+    ...(quizTotalPoints === undefined
       ? []
-      : [{ Icon: Star, label: "Побед в квизах", value: quizWinnerCount }]),
+      : [{ Icon: Star, label: "Очков за квизы", value: quizTotalPoints }]),
   ];
 
   return <div className="author-dashboard flex flex-col gap-3">

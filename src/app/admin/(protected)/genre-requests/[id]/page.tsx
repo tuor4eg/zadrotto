@@ -10,10 +10,10 @@ import { EmptyState, PageHeader } from "../../admin-ui";
 import { resolveGenreRequestAction, retryGenreRequestAction } from "../actions";
 import { GenreRequestAutoRefresh } from "../auto-refresh";
 import { GenreRequestDecisionForm } from "../decision-form";
-import { genreProviderLabel, genreRequestDate, genreRequestError, GenreRequestStatus } from "../presentation";
+import { genreProviderLabel, genreProviderName, genreRequestDate, genreRequestError, GenreRequestStatus } from "../presentation";
 
 export default async function GenreRequestPage({ params, searchParams }: {
-  params: Promise<{ id: string }>; searchParams: Promise<{ page?: string; error?: string; saved?: string; retried?: string }>;
+  params: Promise<{ id: string }>; searchParams: Promise<{ page?: string; error?: string; saved?: string; retried?: string; reopened?: string }>;
 }) {
   await requireAdminUser();
   const [{ id: idValue }, query] = await Promise.all([params, searchParams]);
@@ -23,36 +23,39 @@ export default async function GenreRequestPage({ params, searchParams }: {
   const detail = await getGenreRequestDetail(id, { page });
   if (!detail) notFound();
   const { request, variants, items, genres } = detail;
-  const choices = request.status === "pending" ? (await getAdminGenres()).filter((genre) => genre.isActive && genre.slug.startsWith("game-") === (request.mediaType === "game")) : [];
+  const choices = request.status === "pending" ? (await getAdminGenres()).filter((genre) => genre.isActive) : [];
   const error = genreRequestError(query.error);
   const messages = [
+    ...(query.reopened === "1" ? [{ id: "reopened", tone: "success" as const, text: "Вариант возвращён в заявки. Пересчёт жанров записей поставлен в очередь." }] : []),
     ...(query.saved === "1" ? [{ id: "saved", tone: "success" as const, text: "Решение сохранено. Обновление записей поставлено в очередь." }] : []),
     ...(query.retried === "1" ? [{ id: "retried", tone: "success" as const, text: "Повторное применение поставлено в очередь." }] : []),
     ...(error ? [{ id: "error", tone: "error" as const, text: error }] : []),
   ] satisfies AdminToast[];
   return <div className="grid gap-6">
-    <PageHeader title={request.externalGenreName} description={`${genreProviderLabel(request.provider)} · ${request.mediaTypeName}`}
+    <PageHeader title={genreProviderName(request.provider, request.externalGenreName)} description={`${genreProviderLabel(request.provider)} · ${request.mediaTypeName}`}
       aside={<Link href="/admin/genre-requests" className={buttonVariants({ variant: "outline", size: "sm" })}>К заявкам</Link>} />
-    <AdminToasts clearParams={["error", "saved", "retried"]} messages={messages} />
+    <AdminToasts clearParams={["error", "saved", "retried", "reopened"]} messages={messages} />
     <GenreRequestAutoRefresh enabled={request.status === "applying"} />
     <div className="flex flex-wrap items-center gap-3"><GenreRequestStatus status={request.status} />
       <span className="text-sm text-stone-500">Обнаружен: {genreRequestDate(request.firstSeenAt)}</span>
     </div>
     <section className="grid gap-3"><h3 className="font-semibold">Исходные варианты</h3>
       {variants.length ? <ul className="grid gap-2 text-sm">{variants.map((variant) => <li key={JSON.stringify([variant.name, variant.externalId])} className="break-words">
-        {variant.name}{variant.externalId ? <span className="ml-2 break-all text-xs text-stone-500">ID: {variant.externalId}</span> : null}
+        {genreProviderName(request.provider, variant.name)}{variant.externalId ? <span className="ml-2 break-all text-xs text-stone-500">ID: {variant.externalId}</span> : null}
         <span className="ml-2 text-xs text-stone-500">Записей: {variant.count}</span>
-      </li>)}</ul> : <p className="break-words text-sm text-stone-500">{request.externalGenreName} · Нет текущих связанных записей.</p>}
+      </li>)}</ul> : <p className="break-words text-sm text-stone-500">{genreProviderName(request.provider, request.externalGenreName)} · Нет текущих связанных записей.</p>}
     </section>
     <section className="grid gap-3 border-t border-stone-200 pt-5"><h3 className="font-semibold">Решение</h3>
       {request.status === "pending" ? <GenreRequestDecisionForm requestId={id} genres={choices} action={resolveGenreRequestAction} /> : <>
+        {request.decision === null ? <p className="text-sm">Снимаем прежние соответствия. Выбор жанров станет доступен после пересчёта записей.</p> : <>
         <p className="text-sm">{request.decision === "exclude" ? "Не считать жанром" : request.decision === "create" ? "Создан наш жанр" : "Связано с существующими жанрами"}</p>
         {genres.length ? <p className="text-sm font-medium">{genres.map((genre) => genre.name).join(", ")}</p> : null}
         <p className="text-xs text-stone-500">Принято: {genreRequestDate(request.resolvedAt)} · Администратор #{request.resolvedByAdminId}</p>
+        </>}
         {request.status === "applying" ? <p role="status" className="text-sm text-stone-500">Обновляем жанры существующих записей. Статус обновляется автоматически.</p> : null}
         {request.status === "failed" ? <div className="grid gap-3">
           <p className="break-words text-sm text-red-700">{request.jobError || "Не удалось завершить применение решения."}</p>
-          <form action={retryGenreRequestAction}><input type="hidden" name="requestId" value={id} /><Button type="submit">Повторить применение</Button></form>
+          <form action={retryGenreRequestAction}><input type="hidden" name="requestId" value={id} /><Button type="submit">{request.decision === null ? "Повторить пересчёт" : "Повторить применение"}</Button></form>
         </div> : null}
       </>}
     </section>

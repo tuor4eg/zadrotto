@@ -89,6 +89,7 @@ type MediaTitleMetadataResponse = {
   metadata?: (MediaMetadataFactsValue & {
     fields?: MediaTitleMetadata["fields"];
     metadataCandidateToken?: string | null;
+    titleSourceToken?: string;
   }) | null;
 };
 
@@ -570,6 +571,9 @@ export function AdminMediaForm({
                     }
 
                     if (!result.metadata) return;
+                    if (candidate.provider === "bgg" && result.metadata.titleSourceToken) {
+                      setSelectedTitleSource({ provider: "bgg", externalId: candidate.externalId, token: result.metadata.titleSourceToken });
+                    }
                     const canonicalFields = getMediaTitleMetadataFormFields(
                       result.metadata.fields,
                       nextFields,
@@ -672,7 +676,7 @@ export function AdminMediaForm({
                 setFranchiseSelectResetKey((currentKey) => currentKey + 1);
               }}
             />
-            {canSuggestFranchises ? (
+            {canSuggestFranchises && selectedMediaType !== "boardgame" ? (
               <Tooltip
                 label="Предложить серии"
                 className="[&_[role=tooltip]]:left-auto [&_[role=tooltip]]:right-0 [&_[role=tooltip]]:translate-x-0"
@@ -814,7 +818,7 @@ export function AdminMediaForm({
               ) : null}
             </div>
           ) : null}
-          <MediaMetadataFacts metadata={selectedMetadata} genres={selectedMetadata?.genres ?? []} />
+          <MediaMetadataFacts metadata={selectedMetadata} genres={selectedMetadata?.genres ?? []} showProviderGenres />
         </div>
       </fieldset>
 

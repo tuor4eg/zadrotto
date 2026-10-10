@@ -27,10 +27,9 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   assert.match(currentQuiz, /className=\{`max-w-full rounded-md object-contain \$\{imageMaxHeightClassName\}`\}/);
   assert.match(currentQuiz, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
   assert.match(currentQuiz, /<QuizNoActiveState compact=\{size === "default"\} \/>/);
-  assert.match(currentQuiz, /quiz\.winner[\s\S]*<QuizWinner winner=\{quiz\.winner\}/);
-  assert.match(currentQuiz, /quiz\?\.winner \? "max-h-\[210px\]" : "max-h-\[250px\]"/);
-  assert.match(currentQuiz, /quiz\?\.winner \? "max-h-\[135px\]" : "max-h-\[170px\]"/);
-  assert.match(currentQuiz, /absolute inset-x-3 bottom-2 flex justify-center/);
+  assert.doesNotMatch(currentQuiz, /QuizWinner|quiz\.winner/);
+  assert.match(currentQuiz, /max-h-\[250px\]/);
+  assert.match(currentQuiz, /max-h-\[170px\]/);
   assert.match(noActiveState, /src="\/quiz_no_active_placeholder\.webp"/);
   assert.match(noActiveState, /Новый квиз уже готовится\./);
   assert.match(noActiveState, /Загляни чуть позже — хорошие вопросы всегда возвращаются\./);
@@ -46,14 +45,14 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   assert.ok(statSync("public/back_quizzes.webp").size < 300_000);
 });
 
-test("quiz hero promotes three key statistics without duplicating them below", () => {
+test("quiz hero promotes key statistics and keeps point totals available in the profile widget", () => {
   const hero = read("src/components/quizzes/quizzes-hero.tsx");
   const heroStatistics = read("src/components/quizzes/quiz-hero-statistics.tsx");
   const lowerStatistics = read("src/components/author/author-quiz-statistics.tsx");
 
-  assert.match(hero, /<QuizHeroStatistics[\s\S]*playedCount=\{statistics\.playedCount\}[\s\S]*winnerCount=\{statistics\.winnerCount\}/);
+  assert.match(hero, /<QuizHeroStatistics[\s\S]*playedCount=\{statistics\.playedCount\}[\s\S]*totalPoints=\{statistics\.totalPoints\}/);
   assert.match(heroStatistics, /icon: Gamepad2[\s\S]*label: "Сыграно"/);
-  assert.match(heroStatistics, /icon: Trophy[\s\S]*label: "Побед"/);
+  assert.match(heroStatistics, /icon: Trophy[\s\S]*label: "Очков"/);
   assert.match(heroStatistics, /icon: Flame[\s\S]*label: "Текущая серия"/);
   assert.match(heroStatistics, /size-9 shrink-0 sm:size-10/);
   assert.match(heroStatistics, /font-serif text-xl[^"\n]*sm:text-3xl/);
@@ -61,7 +60,8 @@ test("quiz hero promotes three key statistics without duplicating them below", (
   assert.match(heroStatistics, /\.filter\(\(item\) => item\.value > 0\)/);
   assert.match(heroStatistics, /if \(items\.length === 0\) return null/);
   assert.match(hero, /relative z-20 flex h-full w-full flex-col/);
-  assert.doesNotMatch(lowerStatistics, /label: "(?:Сыграно|Побед|Текущая серия)"/);
+  assert.match(lowerStatistics, /label: "Очков"[\s\S]*statistics\.totalPoints/);
+  assert.doesNotMatch(lowerStatistics, /label: "(?:Сыграно|Текущая серия)"/);
 });
 
 test("public quizzes section contains three equal lower widgets and owns quiz statistics", () => {
@@ -101,11 +101,12 @@ test("quiz archive renders a compact unlinked list", () => {
 
   assert.match(query, /getQuizArchive[\s\S]*lte\(quizzes\.endsAt, currentTime\)/);
   assert.match(query, /participantCount: sql<number>`count\(\*\)::int`/);
-  assert.match(query, /winnerName: sql<string \| null>`max\(case when/);
+  assert.match(query, /correctCount: sql<number>`count\(\*\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)::int`/);
   assert.match(query, /mediaTypesByQuizId/);
   assert.match(archive, /Архив квизов/);
   assert.match(archive, /Участников: \{item\.participantCount\.toLocaleString\("ru-RU"\)\}/);
-  assert.match(archive, /item\.winnerName \?\? "Нет победителя"/);
+  assert.match(archive, /item\.correctCount/);
+  assert.doesNotMatch(archive, /winnerName|Победитель|Нет победителя/);
   assert.doesNotMatch(archive, /<Link|href=/);
   assert.match(archive, /imageSrc="\/quiz_archieve_placeholder\.webp"/);
   assert.match(archive, /Здесь пока нет завершенных квизов/);
@@ -114,20 +115,22 @@ test("quiz archive renders a compact unlinked list", () => {
   assert.ok(statSync("public/quiz_archieve_placeholder.webp").size < 100_000);
 });
 
-test("quiz leaderboard ranks authors by a single win count", () => {
+test("quiz leaderboard ranks authors by all correct answer points and elapsed time", () => {
   const leaderboard = read("src/components/quizzes/quiz-leaderboard.tsx");
   const query = read("src/db/queries/quizzes.ts");
 
   assert.match(query, /getQuizLeaderboard[\s\S]*isNotNull\(quizParticipants\.completedAt\)/);
-  assert.match(query, /winnerCount: sql<number>`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\)::int`/);
-  assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.isWinner\} = true\)::float`/);
+  assert.match(query, /totalPoints: sql<number>`[\s\S]*sum\([\s\S]*quizParticipants\.attemptsRemaining/);
+  assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)::float`/);
   assert.match(query, /groupBy\(authors\.id, authors\.name, authors\.avatarObjectKey\)/);
-  assert.match(query, /having\(sql`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\) > 0`\)/);
-  assert.match(query, /orderBy\([\s\S]*desc\(sql`count\(\*\) filter \(where \$\{quizParticipants\.isWinner\} = true\)`\),[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.isWinner\} = true\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
+  assert.match(query, /having\(sql`[\s\S]*quizParticipants\.attemptsRemaining[\s\S]*> 0`\)/);
+  assert.match(query, /orderBy\([\s\S]*desc\(sql`[\s\S]*quizParticipants\.attemptsRemaining[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
+  assert.doesNotMatch(query, /isWinner|winnerCount|winnerName/);
   assert.match(query, /limit\(limit\)/);
-  assert.match(leaderboard, />\s*#\s*<[\s\S]*Пользователь[\s\S]*Результат[\s\S]*Время/);
+  assert.match(leaderboard, /Таблица лидеров/);
+  assert.match(leaderboard, />\s*#\s*<[\s\S]*Пользователь[\s\S]*Очк[\s\S]*Время/);
   assert.match(leaderboard, /href=\{`\/users\/\$\{item\.authorId\}`\}/);
-  assert.match(leaderboard, /\{item\.winnerCount\}/);
+  assert.match(leaderboard, /\{item\.totalPoints\}/);
   assert.match(leaderboard, /formatQuizDuration\(item\.totalTimeSeconds\)/);
   assert.match(leaderboard, /w-36 pb-2 text-right font-normal/);
   assert.match(leaderboard, /whitespace-nowrap py-2 text-right/);

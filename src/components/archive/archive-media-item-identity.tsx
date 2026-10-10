@@ -4,6 +4,7 @@ import Link from "next/link"
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title"
 import { ArchiveMediaItemIdentityLayout } from "@/components/archive/archive-media-item-identity-layout"
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links"
+import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links"
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items"
 import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame"
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary"
@@ -43,7 +44,7 @@ export function ArchiveMediaItemIdentity({
     mediaType: item.mediaType,
     mediaTypeLabel,
     metadataFacts: item.metadataFacts,
-    genres: item.genres,
+    genres: [],
     releaseYear: item.releaseYear,
   })
   const coverUrl = item.coverThumbUrl ?? item.coverUrl ?? null
@@ -120,9 +121,17 @@ export function ArchiveMediaItemIdentity({
         {infoLabels.map((label, index) => (
           <Fragment key={`${label}-${index}`}>
             {index > 0 ? <span className="mx-1.5">•</span> : null}
-            <span>{label}</span>
+            {index === 0 && item.releaseYear ? (
+              <Link className="underline underline-offset-4 hover:text-stone-950" href={`/archive?year=${item.releaseYear}&yearMode=release`}>
+                {label}
+              </Link>
+            ) : <span>{label}</span>}
           </Fragment>
         ))}
+        {item.genres.length > 0 ? <>
+          {infoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
+          <MediaItemGenreLinks genres={item.genres} />
+        </> : null}
       </div>
 
     </ArchiveMediaItemIdentityLayout>

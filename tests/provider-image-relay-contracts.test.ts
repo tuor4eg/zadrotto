@@ -7,7 +7,7 @@ function readProjectFile(path: string) {
 }
 
 describe("provider image relay data contracts", () => {
-  it("stores one global disabled-by-default setting per provider", () => {
+  it("stores one global disabled-by-default setting per provider with mandatory BGG relay", () => {
     const schema = readProjectFile("src/db/schema.ts");
     const migration = readProjectFile("drizzle/0052_provider_image_settings.sql");
     const queries = readProjectFile("src/db/queries/cover-settings.ts");
@@ -16,7 +16,9 @@ describe("provider image relay data contracts", () => {
     assert.match(schema, /proxyImagesEnabled: boolean\("proxy_images_enabled"\)\.default\(false\)\.notNull\(\)/);
     assert.match(migration, /"provider_code" text PRIMARY KEY NOT NULL/);
     assert.match(migration, /"proxy_images_enabled" boolean DEFAULT false NOT NULL/);
-    assert.match(queries, /proxyImagesEnabled: rowsByCode\.get\(providerCode\)\?\.proxyImagesEnabled \?\? false/);
+    assert.match(queries, /proxyImagesEnabled: providerCode === "bgg" \|\| \(rowsByCode\.get\(providerCode\)\?\.proxyImagesEnabled \?\? false\)/);
+    assert.match(queries, /if \(providerCode === "bgg"\) return true/);
+    assert.match(queries, /proxyImagesEnabled: input\.providerCode === "bgg" \|\| input\.proxyImagesEnabled/);
     assert.match(queries, /return row\?\.proxyImagesEnabled \?\? false/);
   });
 

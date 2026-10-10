@@ -45,6 +45,10 @@ export async function suggestFranchisesForMediaItem(
   input: SuggestFranchisesMediaInput,
   context: { currentAuthorId?: number } = {},
 ) {
+  // Unsaved boardgame fields may originate from BGG even without metadata attached.
+  if (input.mediaType === "boardgame") {
+    throw new AiError("configuration", "Подбор серий для настольных игр временно недоступен.");
+  }
   const profile = await getEnabledAiScenarioProfile(AI_SCENARIO_KEYS.SUGGEST_SERIES);
   if (!profile) {
     throw new AiError("configuration", "Сценарий «Предложить серии» не настроен или выключен.");

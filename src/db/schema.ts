@@ -1644,7 +1644,6 @@ export const quizParticipants = pgTable(
     attemptsRemaining: integer("attempts_remaining").notNull(),
     outcome: text("outcome"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
-    isWinner: boolean("is_winner").default(false).notNull(),
   },
   (table) => [
     primaryKey({ columns: [table.quizId, table.authorId], name: "quiz_participants_pk" }),
@@ -1653,8 +1652,6 @@ export const quizParticipants = pgTable(
     check("quiz_participants_outcome_check", sql`${table.outcome} is null or ${table.outcome} in ('correct', 'exhausted')`),
     check("quiz_participants_completion_check", sql`(${table.outcome} is null and ${table.completedAt} is null) or (${table.outcome} is not null and ${table.completedAt} is not null)`),
     check("quiz_participants_attempt_state_check", sql`(${table.outcome} is null and ${table.attemptsRemaining} > 0) or ${table.outcome} = 'correct' or (${table.outcome} = 'exhausted' and ${table.attemptsRemaining} = 0)`),
-    check("quiz_participants_winner_check", sql`${table.isWinner} = false or ${table.outcome} = 'correct'`),
-    uniqueIndex("quiz_participants_one_winner_idx").on(table.quizId).where(sql`${table.isWinner} = true`),
   ],
 );
 
@@ -1745,7 +1742,7 @@ export const genreRequests = pgTable("genre_requests", {
   check("genre_requests_name_check", sql`btrim(${table.externalGenreName}) <> '' and btrim(${table.normalizedExternalGenreName}) <> ''`),
   check("genre_requests_decision_check", sql`${table.decision} is null or ${table.decision} in ('create', 'map', 'exclude')`),
   check("genre_requests_apply_status_check", sql`${table.applyStatus} in ('pending', 'applying', 'processed', 'failed')`),
-  check("genre_requests_resolution_check", sql`(${table.decision} is null and ${table.resolvedAt} is null and ${table.applyStatus} = 'pending') or (${table.decision} is not null and ${table.resolvedAt} is not null and ${table.applyStatus} <> 'pending')`),
+  check("genre_requests_resolution_check", sql`(${table.decision} is null and ${table.resolvedAt} is null and ${table.applyStatus} in ('pending', 'applying', 'failed')) or (${table.decision} is not null and ${table.resolvedAt} is not null and ${table.applyStatus} <> 'pending')`),
 ]);
 
 export const genreRequestMediaItems = pgTable("genre_request_media_items", {

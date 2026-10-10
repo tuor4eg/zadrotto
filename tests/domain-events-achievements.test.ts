@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import type { SQL } from "drizzle-orm";
+import { PgDialect } from "drizzle-orm/pg-core";
+
+import type { DbTransaction } from "../src/db/transaction";
 
 import {
   achievementMechanicRegistry,
@@ -139,13 +143,49 @@ describe("achievement consumer", () => {
     const catalogSource = readFileSync("src/lib/achievements/catalog.ts", "utf8");
     assert.match(catalogSource, /from \$\{quizParticipants\}[\s\S]*authorId} in \(\$\{sql\.join\(input\.authorIds/);
     assert.match(catalogSource, /quizParticipants\.outcome} = 'correct'/);
-    assert.match(catalogSource, /quizParticipants\.isWinner} = true/);
+    assert.doesNotMatch(catalogSource, /quizParticipants\.isWinner/);
+    const legacyWinMechanic = catalogSource.slice(catalogSource.indexOf('code: "quiz.win.count"'));
+    assert.match(legacyWinMechanic, /evaluateBatch: \(input\) => evaluateQuizCount\(/);
+    assert.doesNotMatch(legacyWinMechanic, /Количество побед в квизах/);
     assert.match(catalogSource, /inner join \$\{mediaItems\} on \$\{mediaItems\.id\} = \$\{quizzes\.answerMediaItemId\}/);
     assert.match(catalogSource, /mediaItems\.mediaType} = \$\{instance\.mediaType}/);
     assert.match(catalogSource, /group by \$\{quizParticipants\.authorId\}/);
     assert.doesNotMatch(catalogSource, /for \(const authorId of input\.authorIds\)/);
     assert.match(achievementConsumerSource, /"quiz\.completed"/);
     assert.match(achievementConsumerSource, /event\.type === "quiz\.completed"[\s\S]*authorId/);
+  });
+
+  it("keeps legacy quiz achievement IDs and counts every correct participant on repeated evaluation", async () => {
+    const mechanic = getAchievementMechanic("quiz.win.count")!;
+    const dialect = new PgDialect();
+    const statements: string[] = [];
+    const tx = {
+      execute: async (query: SQL) => {
+        statements.push(dialect.sqlToQuery(query).sql);
+        return [
+          { groupIndex: 0, authorId: 7, value: 3 },
+          { groupIndex: 0, authorId: 8, value: 2 },
+        ];
+      },
+    } as unknown as DbTransaction;
+    const input = {
+      tx,
+      authorIds: [7, 8],
+      instances: [{ achievementId: 41, params: {} }, { achievementId: 42, params: {} }],
+    };
+    const expected = [
+      { achievementId: 41, authorId: 7, value: 3 },
+      { achievementId: 42, authorId: 7, value: 3 },
+      { achievementId: 41, authorId: 8, value: 2 },
+      { achievementId: 42, authorId: 8, value: 2 },
+    ];
+    assert.deepEqual(await mechanic.evaluateBatch(input), expected);
+    assert.deepEqual(await mechanic.evaluateBatch(input), expected);
+    for (const statement of statements) {
+      assert.match(statement, /"quiz_participants"\."outcome" = 'correct'/);
+      assert.match(statement, /count\(\*\)/);
+      assert.doesNotMatch(statement, /is_winner|attempts_remaining|update |insert /i);
+    }
   });
 
   it("checks current published data and awards with a database uniqueness guard", () => {

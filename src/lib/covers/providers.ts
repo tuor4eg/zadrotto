@@ -1,4 +1,5 @@
 import type { MediaProvider } from "@/lib/covers/types";
+import { bggProvider } from "@/lib/covers/providers/bgg";
 import { anilistProvider } from "@/lib/covers/providers/anilist";
 import { comicVineProvider } from "@/lib/covers/providers/comic-vine";
 import { fantLabProvider } from "@/lib/covers/providers/fantlab";
@@ -11,6 +12,7 @@ import { robloxProvider } from "@/lib/covers/providers/roblox";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
 
 export const COVER_PROVIDERS = [
+  bggProvider,
   createTmdbProvider("film"),
   createTmdbProvider("series"),
   comicVineProvider,

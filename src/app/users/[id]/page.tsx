@@ -95,7 +95,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
           { label: "Средняя", value: formatScore(statistics.ratingSummary.averageScore) },
           { label: "Рецензий", value: statistics.reviewCount.toLocaleString("ru-RU") },
           { label: "Добавлено в архив", value: statistics.contributionCount.toLocaleString("ru-RU") },
-          { label: "Побед в квизах", value: quizStatistics.winnerCount.toLocaleString("ru-RU") },
+          { label: "Очков за квизы", value: quizStatistics.totalPoints.toLocaleString("ru-RU") },
         ] : undefined}
       />
 

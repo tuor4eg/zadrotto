@@ -349,11 +349,12 @@ export async function getCoverProviderImageSettings(): Promise<CoverProviderImag
 
   return [...new Set(getKnownProviderCodes())].map((providerCode) => ({
     providerCode,
-    proxyImagesEnabled: rowsByCode.get(providerCode)?.proxyImagesEnabled ?? false,
+    proxyImagesEnabled: providerCode === "bgg" || (rowsByCode.get(providerCode)?.proxyImagesEnabled ?? false),
   }));
 }
 
 export async function getCoverProviderImageSetting(providerCode: CoverProviderCode) {
+  if (providerCode === "bgg") return true;
   const [row] = await db.select({
     proxyImagesEnabled: providerImageSettings.proxyImagesEnabled,
   }).from(providerImageSettings)
@@ -370,11 +371,12 @@ export async function updateCoverProviderImageSetting(input: {
 }) {
   await db.insert(providerImageSettings).values({
     ...input,
+    proxyImagesEnabled: input.providerCode === "bgg" || input.proxyImagesEnabled,
     updatedAt: new Date(),
   }).onConflictDoUpdate({
     target: providerImageSettings.providerCode,
     set: {
-      proxyImagesEnabled: input.proxyImagesEnabled,
+      proxyImagesEnabled: input.providerCode === "bgg" || input.proxyImagesEnabled,
       updatedByAdminId: input.updatedByAdminId,
       updatedAt: new Date(),
     },

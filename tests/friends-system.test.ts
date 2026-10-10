@@ -86,7 +86,7 @@ test("friends journal exposes ratings through the shared archive", () => {
   assert.match(profilePage, /<AuthorStatistics[\s\S]*<HomeAuthorStatistics[\s\S]*<RecentAchievementShowcase/);
   assert.match(queries, /releaseYearMediaTypeDistribution/);
   assert.match(queries, /groupBy\(mediaItems\.releaseYear, mediaItems\.mediaType\)/);
-  assert.match(profilePage, /label: "Побед в квизах"/);
+  assert.match(profilePage, /label: "Очков за квизы"/);
   assert.match(profileHeader, /statistics\.map/);
   assert.match(profileHeader, /grid-cols-3 lg:flex-1 lg:grid-cols-5/);
   assert.match(profilePage, /reviewsHref=\{`\/reviews\?author=\$\{profile\.id\}`\}/);

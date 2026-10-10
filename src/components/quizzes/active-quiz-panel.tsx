@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import { QuizParticipationButton } from "@/components/quizzes/quiz-participation-button";
-import { QuizWinner } from "@/components/quizzes/quiz-winner";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   formatQuizTimeRemaining,
@@ -55,7 +54,7 @@ export function ActiveQuizPanel({
         {participant?.completed ? (
           <p className="font-serif text-base font-semibold text-stone-700 sm:text-lg">
             {participant.outcome === "correct"
-              ? "Ура, вы уже ответили на этот вопрос!"
+              ? `Вы ответили правильно! Очков: ${participant.points}.`
               : "Вы исчерпали попытки, повезёт в следующий раз"}
           </p>
         ) : unavailableMediaTypeNames.length > 0 ? (
@@ -79,11 +78,6 @@ export function ActiveQuizPanel({
           <QuizParticipationButton isParticipating={participant !== null} onOpenArchive={onOpenArchive} />
         )}
       </div>
-      {quiz.winner ? (
-        <div className="border-t border-stone-400/25 pt-3">
-          <QuizWinner winner={quiz.winner} />
-        </div>
-      ) : null}
       <p className="absolute -bottom-3 -right-3 text-right text-xs text-stone-600 sm:-bottom-6 sm:-right-6">
         {now ? formatQuizTimeRemaining(quiz.endsAt, now) : null}
       </p>

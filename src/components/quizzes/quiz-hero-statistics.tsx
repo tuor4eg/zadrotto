@@ -3,11 +3,11 @@ import { Flame, Gamepad2, Trophy } from "lucide-react";
 export function QuizHeroStatistics({
   currentCorrectStreak,
   playedCount,
-  winnerCount,
+  totalPoints,
 }: {
   currentCorrectStreak: number;
   playedCount: number;
-  winnerCount: number;
+  totalPoints: number;
 }) {
   const items = [
     {
@@ -19,8 +19,8 @@ export function QuizHeroStatistics({
     {
       icon: Trophy,
       iconClassName: "text-amber-700",
-      label: "Побед",
-      value: winnerCount,
+      label: "Очков",
+      value: totalPoints,
     },
     {
       icon: Flame,

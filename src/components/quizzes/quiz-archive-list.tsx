@@ -62,8 +62,8 @@ export function QuizArchiveList({ items }: { items: QuizArchiveItem[] }) {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <Trophy className="size-3.5 shrink-0" aria-hidden="true" />
-                  <dt className="sr-only">Победитель</dt>
-                  <dd className="truncate">{item.winnerName ?? "Нет победителя"}</dd>
+                  <dt className="sr-only">Ответили правильно</dt>
+                  <dd className="truncate">{item.correctCount}</dd>
                 </div>
               </dl>
             </li>

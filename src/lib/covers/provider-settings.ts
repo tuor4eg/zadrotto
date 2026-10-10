@@ -1,9 +1,25 @@
-import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import type { CoverProviderCode, MediaProvider } from "@/lib/covers/types";
 import type { MediaType } from "@/lib/media/types";
 
 export const TITLE_SEARCH_MODES = ["parallel", "fallback", "off"] as const;
 export type TitleSearchMode = (typeof TITLE_SEARCH_MODES)[number];
+
+// This module is also consumed by client forms. Keep server adapters out of its import graph.
+const DEFAULT_PROVIDER_CATALOG = [
+  { code: "bgg", mediaTypes: ["boardgame"] },
+  { code: "tmdb", mediaTypes: ["film"] },
+  { code: "tmdb", mediaTypes: ["series"] },
+  { code: "comic-vine", mediaTypes: ["comic"] },
+  { code: "open-library", mediaTypes: ["book"] },
+  { code: "google-books", mediaTypes: ["book"] },
+  { code: "fantlab", mediaTypes: ["book"] },
+  { code: "igdb", mediaTypes: ["game"] },
+  { code: "rawg", mediaTypes: ["game"] },
+  { code: "roblox", mediaTypes: ["roblox"] },
+  { code: "jikan", mediaTypes: ["anime"] },
+  { code: "anilist", mediaTypes: ["anime"] },
+  { code: "tmdb", mediaTypes: ["anime"] },
+] as const satisfies readonly Pick<MediaProvider, "code" | "mediaTypes">[];
 
 export type CoverProviderMediaSetting = {
   mediaType: MediaType;
@@ -15,6 +31,7 @@ export type CoverProviderMediaSetting = {
 };
 
 export const COVER_PROVIDER_LABELS = {
+  bgg: "BoardGameGeek",
   tmdb: "TMDB",
   "comic-vine": "ComicVine",
   "open-library": "Open Library",
@@ -35,7 +52,7 @@ export function getCoverProviderSettingKey(input: {
 }
 
 export function getCoverProviderDefaultSettings(
-  providers: readonly MediaProvider[] = COVER_PROVIDERS,
+  providers: readonly Pick<MediaProvider, "code" | "mediaTypes">[] = DEFAULT_PROVIDER_CATALOG,
 ): CoverProviderMediaSetting[] {
   const prioritiesByMediaType = new Map<MediaType, number>();
   const settingsByKey = new Map<string, CoverProviderMediaSetting>();
@@ -60,7 +77,7 @@ export function getCoverProviderDefaultSettings(
         enabled: true,
         titleSearchMode:
           mediaType === "anime" && provider.code === "tmdb" ? "off" : "parallel",
-        coverSearchEnabled: true,
+        coverSearchEnabled: provider.code !== "bgg",
         priority,
       });
     }

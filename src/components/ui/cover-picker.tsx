@@ -1,5 +1,6 @@
 "use client";
 
+import { BggAttribution } from "@/components/ui/bgg-attribution";
 import { RefreshCw } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 
@@ -310,6 +311,7 @@ export function CoverPicker({
         <div className="mt-3 grid gap-3">
           {visibleCandidates.length > 0 ? (
             <div className="grid gap-3">
+              {visibleCandidates.some((candidate) => candidate.provider === "bgg") ? <BggAttribution /> : null}
               {hasVisibleGoogleBooksCandidates ? (
                 <div>
                   {/* eslint-disable-next-line @next/next/no-img-element */}

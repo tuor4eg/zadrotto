@@ -1,6 +1,11 @@
 import { Badge } from "@/components/ui/badge";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 import { isCoverProviderCode } from "@/lib/covers/types";
+import { decodeBggNumericEntities } from "@/lib/media/metadata-facts";
+
+export function genreProviderName(provider: string, name: string) {
+  return provider === "bgg" ? decodeBggNumericEntities(name) : name;
+}
 
 export const GENRE_REQUEST_STATUS_LABELS = {
   pending: "Ожидает решения", applying: "Применяется", processed: "Обработана", failed: "Ошибка применения",
@@ -22,6 +27,7 @@ export function genreRequestDate(date: Date | string | null) {
 
 export function genreRequestError(code: string | undefined) {
   if (!code) return null;
+  if (code === "applying") return "Сначала завершите текущий пересчёт жанров записей.";
   if (code === "already-resolved" || code === "changed") return "Другой администратор уже изменил заявку. Проверьте текущее решение.";
   if (code === "invalid" || code === "invalid-name" || code === "invalid-genres") return "Проверьте название и выбранные жанры.";
   if (code === "not-found") return "Заявка не найдена.";

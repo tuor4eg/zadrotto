@@ -328,7 +328,7 @@ export default async function MainPage() {
         ratingSummary,
         ratingsCount: ratingSummary.ratingsCount,
         reviewCount: reviewSummary.reviewsCount,
-        quizWinnerCount: quizStatistics.winnerCount,
+        quizTotalPoints: quizStatistics.totalPoints,
       }))
     : null;
   const latestAcquaintanceItem = author && authorHeroStatistics?.latestRating
@@ -356,10 +356,10 @@ export default async function MainPage() {
   const authorHeroStatisticItems = authorResearchSnapshot && authorHeroStatistics
     ? [
         ...buildHomeHeroStatisticItems(authorResearchSnapshot),
-        ...(authorHeroStatistics.quizWinnerCount > 0
+        ...(authorHeroStatistics.quizTotalPoints > 0
           ? [{
-              label: "Побед в квизах",
-              value: authorHeroStatistics.quizWinnerCount.toLocaleString("ru-RU"),
+              label: "Очков за квизы",
+              value: authorHeroStatistics.quizTotalPoints.toLocaleString("ru-RU"),
             }]
           : []),
       ]

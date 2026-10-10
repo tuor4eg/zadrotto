@@ -18,6 +18,7 @@ export async function runEditorialSummaryFlow(input: {
     modelId: string;
   }) => Promise<boolean>;
 }) {
+  if (input.source.sourceProvider === "bgg") return "provider-restricted" as const;
   if (input.source.locked) return "locked" as const;
   if (hasRussianEditorialDescription(input.source.description)) return "source-russian" as const;
   const sourceHash = getEditorialSummarySourceHash(input.source, input.prompt);

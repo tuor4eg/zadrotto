@@ -6,6 +6,7 @@ import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
+import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -16,6 +17,7 @@ import {
   MEDIA_IDENTITY_FONT_CLASS_NAME,
 } from "@/lib/media/carrier-frame";
 import { getArchiveMediaItemInfoLabels } from "@/lib/media/media-item-summary";
+import { getBoardgameFactValues, getStringListFact } from "@/lib/media/metadata-facts";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
@@ -163,7 +165,9 @@ export function MediaItemDetails({
     );
   }
 
-  const hasCarrierFrame = getMediaCarrierFrame(item) !== null;
+  const carrierFrame = getMediaCarrierFrame(item);
+  const hasCarrierFrame = carrierFrame !== null;
+  const isBoardgame = carrierFrame?.ratingPanelVariant === "boardgame-meeples";
 
   return (
     <div className="flex flex-col gap-5">
@@ -199,7 +203,7 @@ export function MediaItemDetails({
               <ArchiveCover item={item} className="h-full w-full" />
             )}
             <CoverSourceAttribution
-              provider={item.coverSourceProvider}
+              provider={item.metadataFacts?.bggItemType ? "bgg" : item.coverSourceProvider}
               pageUrl={item.coverSourcePageUrl}
             />
           </div>
@@ -208,13 +212,21 @@ export function MediaItemDetails({
             <div className="flex flex-col gap-5">
               <div className="text-xs font-semibold uppercase leading-6 tracking-[0.16em] text-red-700">
                 <span className="mr-2">{getMediaTypeLabel(item.mediaType, mediaTypes)}</span>
-                {detailsYearLabel ? <span className="mr-2">{detailsYearLabel}</span> : null}
+                {detailsYearLabel ? (
+                  item.releaseYear ? (
+                    <Link className="mr-2 underline underline-offset-4" href={`/archive?year=${item.releaseYear}&yearMode=release`}>
+                      {detailsYearLabel}
+                    </Link>
+                  ) : <span className="mr-2">{detailsYearLabel}</span>
+                ) : null}
                 {detailsMetaLabels.map((label) => (
                   <span key={label} className="mr-2">{label}</span>
                 ))}
-                {item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
+                {!isBoardgame && item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} separatorBefore /> : null}
                 {meta}
               </div>
+
 
               {(item.franchises.length > 0 || showFranchiseSection) ? (
                 <div className="flex flex-wrap gap-1.5 text-sm text-zinc-500">
@@ -340,6 +352,8 @@ function ArchiveMediaItemDetails({
 }) {
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
+  const isBoardgame = mediaCarrierFrame?.ratingPanelVariant === "boardgame-meeples";
+  const hasBoardgameFacts = isBoardgame && (item.genres.length > 0 || getStringListFact(item.metadataFacts, "genres").length > 0 || Object.values(getBoardgameFactValues(item.metadataFacts)).some(Boolean));
   const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const archiveInfoLabels = getArchiveMediaItemInfoLabels({
@@ -455,7 +469,7 @@ function ArchiveMediaItemDetails({
                   </div>
                 </div>
                 <CoverSourceAttribution
-                  provider={item.coverSourceProvider}
+                  provider={item.metadataFacts?.bggItemType ? "bgg" : item.coverSourceProvider}
                   pageUrl={item.coverSourcePageUrl}
                 />
               </div>
@@ -493,7 +507,7 @@ function ArchiveMediaItemDetails({
                   </div>
                 ) : null}
                 {(item.aliases?.length ?? 0) > 0 ? (
-                  <div className={`mt-2 ${ratingLabelFontClassName} text-xs leading-5 text-stone-600`}>
+                  <div className={`mt-5 ${ratingLabelFontClassName} text-xs leading-6 text-stone-600`}>
                     Также известно как: {item.aliases?.join(", ")}
                   </div>
                 ) : null}
@@ -503,19 +517,25 @@ function ArchiveMediaItemDetails({
                 {archiveInfoLabels.map((label, index) => (
                   <Fragment key={`${label}-${index}`}>
                     {index > 0 ? <span className="mx-1.5">•</span> : null}
-                    <span className="break-words">{label}</span>
+                    {index === 0 && item.releaseYear ? (
+                      <Link className="break-words underline underline-offset-4 hover:text-stone-950" href={`/archive?year=${item.releaseYear}&yearMode=release`}>
+                        {label}
+                      </Link>
+                    ) : <span className="break-words">{label}</span>}
                   </Fragment>
                 ))}
-                {item.genres.length > 0 ? <>
+                {!isBoardgame && item.genres.length > 0 ? <>
                   {archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
                   <MediaItemGenreLinks genres={item.genres} />
                 </> : null}
-                {meta && (archiveInfoLabels.length > 0 || item.genres.length > 0) ? <span className="mx-1.5">•</span> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
+                {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}
               </div>
 
+
               {(item.franchises.length > 0 || showFranchiseSection) ? (
-                <dl className="mt-8 grid w-full gap-5 text-sm leading-6 text-stone-800 lg:max-w-[584px]">
+                <dl className="mt-5 grid w-full gap-5 text-sm leading-6 text-stone-800 lg:max-w-[584px]">
                   <div>
                     <dt className="flex items-center gap-2 text-xs font-semibold uppercase leading-6 text-stone-600">
                       <span className={MEDIA_IDENTITY_FONT_CLASS_NAME}>Серия</span>
@@ -537,6 +557,7 @@ function ArchiveMediaItemDetails({
                 <div className="h-full min-w-0">
                   <ArchiveRatingPanel
                     compact
+                    showStarsWhenCompact
                     displayFontClassName={ratingDisplayFontClassName}
                     label="Оценка архива"
                     labelFontClassName={ratingLabelFontClassName}

@@ -15,6 +15,7 @@ import {
 import { DEFAULT_COVER_CANDIDATE_LIMIT, DEFAULT_COVER_MAX_BYTES } from "@/lib/covers/config";
 import { validateCoverProviderCredentials } from "@/lib/covers/credential-validation";
 import { getCoverProviderDefaultSettings } from "@/lib/covers/provider-settings";
+import { COVER_PROVIDERS } from "@/lib/covers/providers";
 import {
   COVER_PROVIDER_SMOKE_TEST_TIMEOUT_MS,
   runCoverProviderSmokeTest,
@@ -2408,6 +2409,9 @@ describe("cover provider registry", () => {
 });
 
 describe("cover settings form", () => {
+  it("keeps the client default catalog consistent with registered server providers", () => {
+    assert.deepEqual(getCoverProviderDefaultSettings(), getCoverProviderDefaultSettings(COVER_PROVIDERS));
+  });
   it("parses cover settings limits into bytes", () => {
     assert.deepEqual(
       parseCoverSettingsFormInput({
@@ -2468,6 +2472,7 @@ describe("cover settings form", () => {
     const formData = new FormData();
 
     for (const [mediaType, providerCode] of [
+      ["boardgame", "bgg"],
       ["film", "tmdb"],
       ["series", "tmdb"],
       ["comic", "comic-vine"],
@@ -2571,6 +2576,7 @@ describe("cover settings form", () => {
     const formData = new FormData();
 
     for (const providerCode of [
+      "bgg",
       "tmdb",
       "comic-vine",
       "open-library",

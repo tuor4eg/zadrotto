@@ -52,7 +52,7 @@ export function QuizzesHero({ statistics }: { statistics: AuthorQuizStatistics }
         <QuizHeroStatistics
           currentCorrectStreak={statistics.currentCorrectStreak}
           playedCount={statistics.playedCount}
-          winnerCount={statistics.winnerCount}
+          totalPoints={statistics.totalPoints}
         />
       </div>
     </section>

@@ -3,6 +3,8 @@ import {
 } from "@/lib/covers/credential-definitions";
 import { buildUrl } from "@/lib/covers/providers/shared";
 import type { CoverProviderCode } from "@/lib/covers/types";
+import { bggProvider } from "@/lib/covers/providers/bgg";
+import { BggRequestError } from "@/lib/covers/providers/bgg-runtime";
 
 type ValidationOk = {
   ok: true;
@@ -196,6 +198,16 @@ export async function validateCoverProviderCredentials(input: {
   }
 
   switch (input.providerCode) {
+    case "bgg":
+      try {
+        const metadata = await bggProvider.getTitleMetadata!({ provider: "bgg", externalId: "822", mediaType: "boardgame" }, {
+          candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: CREDENTIAL_VALIDATION_TIMEOUT_MS, bypassCache: true,
+          providerCredentials: { bgg: parsed.value },
+        });
+        return metadata ? { ok: true } : { ok: false, error: "provider-unavailable" };
+      } catch (error) {
+        return { ok: false, error: error instanceof BggRequestError && error.invalidCredentials ? "invalid-credentials" : "provider-unavailable" };
+      }
     case "tmdb":
       return validateTmdbCredentials(parsed.value);
     case "google-books":

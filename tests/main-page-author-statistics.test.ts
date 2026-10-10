@@ -33,14 +33,14 @@ describe("main page author statistics", () => {
     assert.doesNotMatch(widget, /<BarChart3|main-author-statistics-title/);
   });
 
-  it("adds quiz wins to the authenticated hero statistics", () => {
+  it("adds quiz points to the authenticated hero statistics", () => {
     const hero = readFileSync("src/components/user-state/home-intro-hero.tsx", "utf8");
 
     assert.match(page, /getAuthorQuizStatistics\(author\.id\)/);
-    assert.match(page, /quizWinnerCount: quizStatistics\.winnerCount/);
+    assert.match(page, /quizTotalPoints: quizStatistics\.totalPoints/);
     assert.match(page, /authorResearchSnapshot && authorHeroStatistics/);
-    assert.match(page, /authorHeroStatistics\.quizWinnerCount > 0/);
-    assert.match(page, /label: "Побед в квизах"/);
+    assert.match(page, /authorHeroStatistics\.quizTotalPoints > 0/);
+    assert.match(page, /label: "Очков за квизы"/);
     assert.match(hero, /statisticItems\.length >= 5 \? "sm:grid-cols-5" : "sm:grid-cols-4"/);
   });
 

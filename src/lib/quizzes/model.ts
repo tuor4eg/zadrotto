@@ -9,11 +9,6 @@ export type ActiveQuiz = {
   startsAt: string;
   endsAt: string;
   attemptLimit: number;
-  winner: {
-    avatarObjectKey: string | null;
-    id: number;
-    name: string;
-  } | null;
 };
 export type ActiveQuizContext = Pick<ActiveQuiz, "id" | "mediaTypes">;
 export type QuizParticipantOutcome = "correct" | "exhausted";
@@ -23,7 +18,7 @@ export type QuizParticipantState = {
   attemptsRemaining: number;
   completed: boolean;
   outcome: QuizParticipantOutcome | null;
-  isWinner: boolean;
+  points: number;
 };
 
 export type AuthorQuizStatistics = {
@@ -33,7 +28,7 @@ export type AuthorQuizStatistics = {
   firstTryCorrectCount: number;
   currentCorrectStreak: number;
   bestCorrectStreak: number;
-  winnerCount: number;
+  totalPoints: number;
   totalTimeSeconds: number;
 };
 
@@ -71,18 +66,24 @@ export function formatQuizDuration(totalSeconds: number | null) {
   return parts.filter(Boolean).join(" ");
 }
 
+export function calculateQuizPoints(input: {
+  outcome: QuizParticipantOutcome | null;
+  attemptsRemaining: number;
+}) {
+  return input.outcome === "correct" ? input.attemptsRemaining : 0;
+}
+
 export function calculateAuthorQuizStatistics(rows: readonly {
   outcome: QuizParticipantOutcome;
   attemptsRemaining: number;
   attemptLimit: number;
   durationSeconds: number;
-  isWinner: boolean;
 }[]): AuthorQuizStatistics {
   let correctCount = 0;
   let firstTryCorrectCount = 0;
   let currentCorrectStreak = 0;
   let bestCorrectStreak = 0;
-  let winnerCount = 0;
+  let totalPoints = 0;
   let totalTimeSeconds = 0;
 
   for (const row of rows) {
@@ -92,7 +93,7 @@ export function calculateAuthorQuizStatistics(rows: readonly {
       currentCorrectStreak += 1;
       bestCorrectStreak = Math.max(bestCorrectStreak, currentCorrectStreak);
       if (row.attemptsRemaining === row.attemptLimit) firstTryCorrectCount += 1;
-      if (row.isWinner) winnerCount += 1;
+      totalPoints += calculateQuizPoints(row);
     } else {
       currentCorrectStreak = 0;
     }
@@ -105,7 +106,7 @@ export function calculateAuthorQuizStatistics(rows: readonly {
     firstTryCorrectCount,
     currentCorrectStreak,
     bestCorrectStreak,
-    winnerCount,
+    totalPoints,
     totalTimeSeconds,
   };
 }

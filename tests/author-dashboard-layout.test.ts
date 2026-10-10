@@ -38,8 +38,8 @@ describe("author dashboard layout", () => {
     assert.match(source, /<AuthorMediaInterestsPanel[\s\S]*items=\{interestItems\}[\s\S]*yearlyItems=\{ratingSummary\.releaseYearDistribution\}/);
   });
 
-  it("keeps the existing metrics and quiz wins in one divided statistics list", () => {
-    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount[\s\S]*contributionCount[\s\S]*quizWinnerCount/);
+  it("keeps the existing metrics and quiz points in one divided statistics list", () => {
+    assert.match(source, /const statistics = \[[\s\S]*ratingSummary\.ratingsCount[\s\S]*ratingSummary\.averageScore[\s\S]*ratingSummary\.currentYearRatingsCount[\s\S]*reviewCount[\s\S]*contributionCount[\s\S]*quizTotalPoints/);
     assert.match(source, /<AuthorStatisticList items=\{statistics\} \/>/);
     assert.match(statisticListSource, /divide-y divide-dashed divide-stone-400\/35/);
     assert.match(

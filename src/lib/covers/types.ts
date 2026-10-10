@@ -1,6 +1,7 @@
 import type { MediaType } from "@/lib/media/types";
 
 export type MediaProviderCode =
+  | "bgg"
   | "tmdb"
   | "comic-vine"
   | "open-library"
@@ -15,6 +16,7 @@ export type MediaProviderCode =
 export type CoverProviderCode = MediaProviderCode;
 
 export const COVER_PROVIDER_CODES = [
+  "bgg",
   "tmdb",
   "comic-vine",
   "open-library",
@@ -101,6 +103,8 @@ export type MediaTitleMetadata = {
 };
 
 export type ProviderSearchOptions = {
+  /** Connection checks must reach the provider rather than use a cached response. */
+  bypassCache?: boolean;
   candidateLimit: number;
   tmdbResultScanLimit: number;
   requestTimeoutMs?: number;

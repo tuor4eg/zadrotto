@@ -1,5 +1,6 @@
 "use client";
 
+import { BggAttribution } from "@/components/ui/bgg-attribution";
 import { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 
@@ -173,6 +174,9 @@ export function MediaTitleCandidatePicker({
       />
       {visibleCandidates.length > 0 ? (
         <div className="absolute left-0 right-0 top-2 z-20 overflow-hidden rounded-md border border-stone-200 bg-white shadow-lg">
+          {visibleCandidates.some((candidate) => candidate.provider === "bgg") ? (
+            <div className="border-b border-stone-200 px-3 py-2"><BggAttribution /></div>
+          ) : null}
           {hasVisibleGoogleBooksCandidates ? (
             <div className="border-b border-stone-200 px-3 py-2">
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -278,7 +282,9 @@ export function MediaTitleCandidatePicker({
             status === "idle" && "sr-only",
           )}
         >
-          {status === "empty" ? "Подходящие записи не найдены." : null}
+          {status === "empty" ? (mediaType === "boardgame"
+            ? "Подходящие записи не найдены. Попробуйте оригинальное название, bgg:<ID> или ссылку BoardGameGeek."
+            : "Подходящие записи не найдены.") : null}
           {status === "error" ? "Не удалось получить варианты записи." : null}
         </p>
       )}

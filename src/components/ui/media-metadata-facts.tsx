@@ -1,4 +1,6 @@
+import { BggAttribution } from "@/components/ui/bgg-attribution";
 import type { MediaItemGenre } from "@/lib/media/genres";
+import { getStringListFact } from "@/lib/media/metadata-facts";
 
 export type MediaMetadataFactsValue = {
   facts: Record<string, unknown>;
@@ -10,6 +12,15 @@ export type MediaMetadataFactsValue = {
 };
 
 const FACT_LABELS: Record<string, string> = {
+  alternateNames: "Альтернативные названия",
+  artists: "Художники",
+  mechanics: "Механики",
+  minPlayers: "Минимум игроков",
+  maxPlayers: "Максимум игроков",
+  minPlayingTimeMinutes: "Минимальное время партии",
+  maxPlayingTimeMinutes: "Максимальное время партии",
+  minAge: "Возраст от",
+  bggItemType: "Тип настольной игры",
   animeType: "Формат",
   authors: "Авторы",
   averageEpisodeRuntimeMinutes: "Средняя длительность серии",
@@ -79,9 +90,15 @@ function getFactLabel(key: string) {
 function formatFactEntry(key: string, value: unknown) {
   const formattedValue = formatFactValue(value);
 
-  if (key === "runtimeMinutes" || key === "averageEpisodeRuntimeMinutes") {
+  if (key === "runtimeMinutes" || key === "averageEpisodeRuntimeMinutes" || key === "minPlayingTimeMinutes" || key === "maxPlayingTimeMinutes") {
     return `${formattedValue} мин.`;
   }
+
+  if (key === "bggItemType") {
+    return value === "boardgameexpansion" ? "Дополнение" : value === "boardgame" ? "Самостоятельная игра" : formattedValue;
+  }
+
+  if (key === "minAge") return `${formattedValue}+`;
 
   return formattedValue;
 }
@@ -100,13 +117,17 @@ function getFactEntries(facts: Record<string, unknown>) {
 
 export function MediaMetadataFacts({
   metadata,
-  genres = [],
+  genres = metadata?.genres ?? [],
+  showProviderGenres = false,
 }: {
   metadata: MediaMetadataFactsValue | null;
   genres?: readonly MediaItemGenre[];
+  showProviderGenres?: boolean;
 }) {
   const entries = metadata ? getFactEntries(metadata.facts) : [];
   if (genres.length > 0) entries.push({ key: "genres", label: "Жанры", value: genres.map((genre) => genre.name).join(", ") });
+  const providerGenres = showProviderGenres ? getStringListFact(metadata?.facts, "genres") : [];
+  if (providerGenres.length > 0) entries.push({ key: "providerGenres", label: "Жанры провайдера", value: providerGenres.join(", ") });
 
   if (entries.length === 0 && !metadata?.sourceProvider && !metadata?.sourceUrl) {
     return null;
@@ -116,7 +137,7 @@ export function MediaMetadataFacts({
     <section className="rounded-md border border-stone-200 bg-stone-50 p-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <h3 className="text-sm font-medium text-stone-950">Факты</h3>
-        {metadata?.sourceProvider ? (
+        {metadata?.sourceProvider === "bgg" ? <BggAttribution /> : metadata?.sourceProvider ? (
           <span className="rounded border border-stone-200 bg-white px-2 py-1 text-xs text-stone-600">
             {metadata.sourceProvider}
           </span>

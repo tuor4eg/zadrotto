@@ -11,7 +11,6 @@ import {
   getAdminQuizAggregates,
   getAdminQuizContext,
   getAdminQuizParticipantPage,
-  getAdminQuizWinner,
 } from "@/db/queries/quizzes";
 import { parsePage } from "@/lib/common/pagination";
 import {
@@ -41,7 +40,6 @@ const PARTICIPANT_STATUS_LABELS: Record<AdminQuizParticipantStatus, string> = {
   correct: "Ответил правильно",
   exhausted: "Попытки исчерпаны",
   "not-started": "Ещё не отвечал",
-  winner: "Победитель",
 };
 
 const PARTICIPANT_STATUS_VARIANTS: Record<
@@ -52,7 +50,6 @@ const PARTICIPANT_STATUS_VARIANTS: Record<
   correct: "positive",
   exhausted: "destructive",
   "not-started": "outline",
-  winner: "positive",
 };
 
 const dateTimeFormatter = new Intl.DateTimeFormat("ru-RU", {
@@ -85,10 +82,9 @@ export default async function AdminQuizResultsPage({
   const quizId = Number(idValue);
   if (!Number.isSafeInteger(quizId) || quizId < 1) notFound();
 
-  const [quiz, aggregates, winner] = await Promise.all([
+  const [quiz, aggregates] = await Promise.all([
     getAdminQuizContext(quizId),
     getAdminQuizAggregates(quizId),
-    getAdminQuizWinner(quizId),
   ]);
   if (!quiz) notFound();
 
@@ -166,26 +162,6 @@ export default async function AdminQuizResultsPage({
         </div>
       </section>
 
-      <section className="rounded-lg border border-stone-200 bg-white p-5 shadow-sm">
-        <h3 className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500">Победитель</h3>
-        {winner ? (
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-4">
-            <Link
-              className="flex min-w-0 items-center gap-3 font-medium text-stone-950 underline-offset-2 hover:underline"
-              href={`/admin/authors/${winner.authorId}`}
-            >
-              <Avatar name={winner.authorName} objectKey={winner.authorAvatarObjectKey} />
-              <span className="break-words">{winner.authorName}</span>
-            </Link>
-            <div className="text-sm tabular-nums text-stone-600">
-              {formatDateTime(winner.completedAt)} · за {formatQuizDuration(winner.secondsSinceQuizStart)}
-            </div>
-          </div>
-        ) : (
-          <p className="mt-3 text-sm text-stone-500">Не определён</p>
-        )}
-      </section>
-
       <section className="flex flex-col gap-3" aria-labelledby="quiz-participants-heading">
         <h3 id="quiz-participants-heading" className="text-lg font-semibold text-stone-950">Участники</h3>
         {participantsPage.items.length === 0 ? (
@@ -219,6 +195,7 @@ export default async function AdminQuizResultsPage({
                   </div>
 
                   <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
+                    <div><dt className="text-xs text-stone-500">Очки</dt><dd className="mt-0.5 tabular-nums text-stone-800">{participant.points}</dd></div>
                     <div>
                       <dt className="text-xs text-stone-500">Попытки</dt>
                       <dd className="mt-0.5 tabular-nums text-stone-800">
@@ -258,13 +235,14 @@ export default async function AdminQuizResultsPage({
               <Table className="table-fixed [&_td]:px-2 [&_th]:px-2 lg:[&_td]:px-3 lg:[&_th]:px-3">
                 <THead>
                   <tr>
-                    <TH className="w-[15%]">Автор</TH>
-                    <TH className="w-[15%]">Статус</TH>
+                    <TH className="w-[14%]">Автор</TH>
+                    <TH className="w-[14%]">Статус</TH>
+                    <TH className="w-[6%]">Очки</TH>
                     <TH className="w-[8%]">Попытки</TH>
-                    <TH className="w-[17%]">Вошёл</TH>
-                    <TH className="w-[17%]">Завершил</TH>
-                    <TH className="w-[16%]">От старта</TH>
-                    <TH className="w-[12%]">После входа</TH>
+                    <TH className="w-[15%]">Вошёл</TH>
+                    <TH className="w-[15%]">Завершил</TH>
+                    <TH className="w-[15%]">От старта</TH>
+                    <TH className="w-[13%]">После входа</TH>
                   </tr>
                 </THead>
                 <TBody>
@@ -288,6 +266,7 @@ export default async function AdminQuizResultsPage({
                           {PARTICIPANT_STATUS_LABELS[participant.status]}
                         </Badge>
                       </TD>
+                      <TD className="tabular-nums">{participant.points}</TD>
                       <TD className="tabular-nums">
                         {participant.usedAttempts} из {participant.attemptLimit}
                       </TD>

@@ -24,6 +24,7 @@ export async function sweepEditorialSummaries() {
     if (batch.length === 0) break;
     for (const item of batch) {
       afterId = item.id;
+      if (item.sourceProvider === "bgg") continue;
       if (item.locked) continue;
       if (hasRussianEditorialDescription(item.description)) continue;
       const hash = getEditorialSummarySourceHash(item, prompt);
@@ -44,6 +45,7 @@ export async function generateEditorialSummary(mediaItemId: number, force = fals
   const [job, item] = await Promise.all([getEditorialSummaryJob(), getEditorialSummarySource(mediaItemId)]);
   if (!job) throw new JobError("configuration", "Задача справок не настроена.", { retryable: false });
   if (!item || item.locked) return;
+  if (item.sourceProvider === "bgg") return;
   if (hasRussianEditorialDescription(item.description)) return;
   const { prompt } = parseEditorialSummaryOptions(job.options);
   const sourceHash = getEditorialSummarySourceHash(item, prompt);
