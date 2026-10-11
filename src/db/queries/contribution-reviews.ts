@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
 import { searchPublishedMediaItems } from "@/db/queries/inline-mention-media-items";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import {
@@ -97,6 +98,8 @@ export async function getPublishedReviewById(
       mediaItemId: mediaItems.id,
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
+      mediaItemAliases: mediaItemDisplayAliasesSql(),
+      mediaItemOriginalTitle: mediaItems.originalTitle,
       mediaItemMediaType: mediaItems.mediaType,
       mediaItemReleaseYear: mediaItems.releaseYear,
       mediaItemCarrierCode: mediaCarriers.code,
@@ -150,6 +153,8 @@ const publishedReviewCardSelection = {
   title: contributionReviews.title,
   body: contributionReviews.body,
   mediaItemTitle: mediaItems.title,
+  mediaItemAliases: mediaItemDisplayAliasesSql(),
+  mediaItemOriginalTitle: mediaItems.originalTitle,
   mediaType: mediaItems.mediaType,
   mediaItemCarrierCode: mediaCarriers.code,
   mediaItemReleaseYear: mediaItems.releaseYear,
@@ -250,6 +255,8 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
       id: contributions.id,
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
+      mediaItemAliases: mediaItemDisplayAliasesSql(),
+      mediaItemOriginalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
     })
@@ -381,6 +388,8 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
       likeCount: reviewReactionCountSql(contributions.id, "like"),
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
+      mediaItemAliases: mediaItemDisplayAliasesSql(),
+      mediaItemOriginalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
       mediaItemReleaseYear: mediaItems.releaseYear,
       mediaItemCarrierCode: mediaCarriers.code,
@@ -484,6 +493,8 @@ export async function getLatestPublishedReviewCards(
       title: contributionReviews.title,
       body: contributionReviews.body,
       mediaItemTitle: mediaItems.title,
+      mediaItemAliases: mediaItemDisplayAliasesSql(),
+      mediaItemOriginalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
       mediaItemCarrierCode: mediaCarriers.code,
       mediaItemReleaseYear: mediaItems.releaseYear,
@@ -652,6 +663,8 @@ export async function getMyReviewsCatalog(filters: MyReviewsCatalogFilters) {
       updatedAt: contributions.updatedAt,
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
+      mediaItemAliases: mediaItemDisplayAliasesSql(),
+      mediaItemOriginalTitle: mediaItems.originalTitle,
       mediaType: mediaItems.mediaType,
       mediaItemReleaseYear: mediaItems.releaseYear,
       mediaItemCarrierCode: mediaCarriers.code,

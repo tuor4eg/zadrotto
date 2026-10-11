@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles"
 import Link from "next/link"
 import { Heart } from "lucide-react"
 
@@ -17,6 +18,8 @@ export type ReviewCatalogRowItem = {
   title: string
   mediaItemCode: string
   mediaItemTitle: string
+  mediaItemOriginalTitle?: string | null;
+  mediaItemAliases?: string[] | null
   mediaType: string
   mediaItemReleaseYear: number | null
   mediaItemCarrierCode: string | null
@@ -34,6 +37,7 @@ export function ReviewCatalogRow({
   item: ReviewCatalogRowItem
   mediaTypes: readonly MediaTypeOption[]
 }) {
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle })
   const mediaTypeLabel = getMediaTypeLabel(item.mediaType, mediaTypes)
   const publishedLabel = formatRelativeArchiveDate(item.publishedAt ?? item.updatedAt)
   const ratingToneClassName = AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(item.authorScore)]
@@ -42,7 +46,7 @@ export function ReviewCatalogRow({
     <Link
       href={`/reviews/${item.id}`}
       className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(5.5rem,auto)] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_minmax(5.75rem,auto)] sm:gap-x-4 sm:px-3"
-      aria-label={`Рецензия «${item.title}» на «${item.mediaItemTitle}», автор ${item.authorName}`}
+      aria-label={`Рецензия «${item.title}» на «${mediaItemTitle}», автор ${item.authorName}`}
     >
       <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:w-12">
         <ArchiveCover
@@ -52,7 +56,7 @@ export function ReviewCatalogRow({
             mediaCarrierCode: item.mediaItemCarrierCode,
             mediaType: item.mediaType,
             releaseYear: item.mediaItemReleaseYear,
-            title: item.mediaItemTitle,
+            title: mediaItemTitle,
           }}
           className="absolute inset-0 h-full w-full"
         />
@@ -63,7 +67,7 @@ export function ReviewCatalogRow({
           {item.title}
         </span>
         <span className="mt-1 block truncate text-xs leading-tight text-stone-600">
-          {mediaTypeLabel} · {item.mediaItemTitle}
+          {mediaTypeLabel} · {mediaItemTitle}
         </span>
         <span className="mt-1 flex min-w-0 items-baseline gap-2 text-[10px] leading-tight">
           <span className="min-w-0 truncate text-stone-800">{item.authorName}</span>
@@ -73,7 +77,7 @@ export function ReviewCatalogRow({
 
       <span className="hidden min-w-0 sm:block">
         <span className="block truncate text-sm font-semibold leading-tight text-stone-950 group-hover:underline group-hover:underline-offset-4">
-          {item.mediaItemTitle}
+          {mediaItemTitle}
         </span>
         <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
           {mediaTypeLabel}

@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Loader2, Minus, Plus, Search, X } from "lucide-react";
 
@@ -16,6 +17,7 @@ type SearchItem = {
   code: string;
   title: string;
   originalTitle: string | null;
+  aliases?: string[] | null;
   mediaType: MediaType;
   releaseYear: number | null;
   linkStatus: "private" | "submitted" | "published" | "rejected" | null;
@@ -303,24 +305,25 @@ export function ArchiveSeriesMediaLinkSearch({
           {visibleItems.length > 0 ? (
             <ul className="min-w-0 divide-y divide-stone-200 overflow-hidden">
               {visibleItems.map((item) => {
+                const { displayTitle, displayOriginalTitle } = resolveMediaItemDisplayTitles(item);
                 const pending = pendingId === item.id;
                 const canAdd = item.linkStatus === null;
                 const disabled = pendingId !== null || (!canAdd && !item.canRemove);
                 const actionLabel = canAdd
-                  ? `Добавить ${item.title} в серию`
+                  ? `Добавить ${displayTitle} в серию`
                   : item.canRemove
-                    ? `Убрать ${item.title} из серии`
+                    ? `Убрать ${displayTitle} из серии`
                     : "Связь уже предложена";
 
                 return (
                   <li key={item.id} className="flex min-w-0 items-center gap-3 px-3 py-3">
                     <div className="min-w-0 flex-1">
                       <p className="font-serif text-lg leading-tight text-stone-950">
-                        {item.title}
+                        {displayTitle}
                       </p>
-                      {item.originalTitle && item.originalTitle !== item.title ? (
+                      {displayOriginalTitle ? (
                         <p className="mt-0.5 truncate text-xs text-stone-500">
-                          {item.originalTitle}
+                          {displayOriginalTitle}
                         </p>
                       ) : null}
                       <p className="mt-1 font-mono text-[0.68rem] uppercase tracking-[0.1em] text-stone-500">

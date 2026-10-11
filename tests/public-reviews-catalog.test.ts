@@ -108,7 +108,7 @@ describe("public reviews catalog page", () => {
     assert.match(polaroidRow, /<MediaItemReviewCard[\s\S]*key=\{review\.id\}[\s\S]*variant=\{variant\}/)
     assert.doesNotMatch(polaroidRow, /compact/)
     assert.match(polaroidRow, /COVER_REVIEW_CARD_WIDTH = 240/)
-    assert.match(polaroidRow, /reviews\.slice\(0, visibleCardCount\)/)
+    assert.match(polaroidRow, /reviews\.slice\(0, mobileScrollable \? 5 : visibleCardCount\)/)
     assert.match(mediaReviews, /export function MediaItemReviewCard/)
     assert.match(mediaReviews, /variant === "cover"/)
     assert.match(mediaReviews, /ArchiveCover[\s\S]*carrierFrame=\{false\}/)
@@ -120,7 +120,8 @@ describe("public reviews catalog page", () => {
 
   it("lists reviews as flat rows with cover, titles, author, and author score", () => {
     assert.match(row, /<ArchiveCover[\s\S]*carrierFrame=\{false\}/)
-    assert.match(row, /item\.mediaItemTitle/)
+    assert.match(row, /resolveMediaItemDisplayTitles\(\{ title: item\.mediaItemTitle, aliases: item\.mediaItemAliases, originalTitle: item\.mediaItemOriginalTitle \}\)/)
+    assert.match(row, /\{mediaItemTitle\}/)
     assert.match(row, /\{item\.title\}/)
     assert.doesNotMatch(row, /excerpt|line-clamp-2/)
     assert.match(row, /grid-cols-\[2\.75rem_minmax\(0,1fr\)/)

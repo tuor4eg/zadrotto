@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react";
 import Link from "next/link";
 import { FolderOpen } from "lucide-react";
@@ -66,6 +67,7 @@ export function MediaCatalogPreview({
     );
   }
 
+  const { displayTitle, displayOriginalTitle } = resolveMediaItemDisplayTitles(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
@@ -129,22 +131,22 @@ export function MediaCatalogPreview({
             {item.coverUrl ? (
               <ImageViewer
                 src={item.coverUrl}
-                alt={`Обложка: ${item.title}`}
-                title={item.title}
+                alt={`Обложка: ${displayTitle}`}
+                title={displayTitle}
                 triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
                   hasCarrierFrame ? "" : "media-image-lift-trigger"
                 }`}
               >
                 <ArchiveCover
                   carrierFrameSize="compact"
-                  item={item}
+                  item={{ ...item, title: displayTitle }}
                   className="h-full w-full"
                 />
               </ImageViewer>
             ) : (
               <ArchiveCover
                 carrierFrameSize="compact"
-                item={item}
+                item={{ ...item, title: displayTitle }}
                 className="h-full w-full"
               />
             )}
@@ -164,13 +166,13 @@ export function MediaCatalogPreview({
 
         <div className={`mt-3 ${MEDIA_IDENTITY_FONT_CLASS_NAME} text-2xl leading-tight text-stone-950`}>
           <MediaCarrierDisplayTitle
-            title={item.title}
+            title={displayTitle}
             frame={mediaCarrierFrame}
           />
         </div>
-        {item.originalTitle && item.originalTitle !== item.title ? (
+        {displayOriginalTitle ? (
           <div className={`mt-2 ${ratingLabelFontClassName} text-xs uppercase leading-5 text-stone-600`}>
-            {item.originalTitle}
+            {displayOriginalTitle}
           </div>
         ) : null}
 
@@ -217,7 +219,6 @@ export function MediaCatalogPreview({
         <div className="mt-2 grid grid-cols-2 gap-2 border-t border-dashed border-stone-300 pt-2">
           <ArchiveRatingPanel
             compact
-            showStarsWhenCompact
             displayFontClassName={ratingDisplayFontClassName}
             label="Оценка архива"
             labelFontClassName={ratingLabelFontClassName}
@@ -229,7 +230,7 @@ export function MediaCatalogPreview({
             key={ratingOpenRequestKey ?? "rating-panel"}
             mediaItemCode={item.code}
             franchiseCode={firstFranchiseCode}
-            title={item.title}
+            title={displayTitle}
             currentAuthor={currentAuthor}
             currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}
             currentAuthorFirstExperiencedPrecision={
@@ -266,7 +267,7 @@ export function MediaCatalogPreview({
         {currentAdmin ? (
           <div className="mt-auto flex justify-end pt-4">
             <AdminEntityEditLink
-              ariaLabel={`Редактировать запись ${item.title}`}
+              ariaLabel={`Редактировать запись ${displayTitle}`}
               href={`/admin/media/${item.id}/edit`}
               tooltipLabel="Редактировать запись"
               tooltipSide="left"

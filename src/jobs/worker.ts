@@ -34,7 +34,7 @@ async function runClaimLoop() {
   while (!stopping) {
     try {
       const run = await claimNextJobRun({ lockedBy });
-      if (run) await executeClaimedJobRun({ getHandler: (type) => jobHandlerRegistry.get(type), run });
+      if (run) await executeClaimedJobRun({ getHandler: (type) => jobHandlerRegistry.get(type), run, signal: shutdownController.signal });
     } catch (error) {
       console.error("jobs worker: iteration failed", error);
     }

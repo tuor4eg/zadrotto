@@ -1,5 +1,6 @@
 "use client"
 
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles"
 import { ArrowRight, Plus, Star } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
@@ -22,6 +23,8 @@ export type MediaItemReview = {
   body: string
   publishedAt: Date | string | null
   updatedAt: Date | string
+  mediaItemOriginalTitle?: string | null;
+  mediaItemAliases?: string[] | null
   mediaItemTitle?: string | null
   mediaType?: string | null
   mediaItemCarrierCode?: string | null
@@ -188,7 +191,7 @@ function MediaItemReviewCoverCard({
   review: MediaItemReview
 }) {
   const publishedAt = formatDate(review.publishedAt ?? review.updatedAt)
-  const mediaItemTitle = review.mediaItemTitle?.trim() || review.title
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle?.trim() || review.title, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle })
   const coverUrl = review.coverThumbUrl ?? review.coverUrl ?? null
 
   return (
@@ -254,6 +257,7 @@ export function MediaItemReviewCard({
   }
 
   const publishedAt = formatDate(review.publishedAt ?? review.updatedAt)
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle ?? "", aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle })
 
   return (
     <Link
@@ -283,7 +287,7 @@ export function MediaItemReviewCard({
             compact ? "text-[9px] leading-3" : "text-xs leading-4 sm:text-sm"
           }`}
         >
-          {review.mediaItemTitle}
+          {mediaItemTitle}
         </div>
       ) : null}
       <ReviewQuotePreview body={review.body} />

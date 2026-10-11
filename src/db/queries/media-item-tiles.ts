@@ -1,6 +1,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
 import { hasUnifiedGenresSql, publicMediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import {
@@ -20,6 +21,7 @@ import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences"
 import { resolveCoverUrl } from "@/lib/services/minio";
 
 export type MediaItemTileData = {
+  aliases?: string[];
   averageScore: number | null;
   code: string;
   coverThumbUrl: string | null;
@@ -79,6 +81,7 @@ export async function getMediaItemTilesByIds(
       genres: publicMediaItemGenresJsonSql(),
       hasUnifiedGenres: hasUnifiedGenresSql(),
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemDisplayAliasesSql(),
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,

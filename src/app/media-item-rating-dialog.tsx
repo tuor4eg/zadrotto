@@ -8,21 +8,10 @@ import { X } from "lucide-react";
 import { AuthorRatingForm } from "@/app/author-rating-form";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import {
-  AnimeMangaRatingContent,
-  BoardgameRatingValue,
-  BookNoteRatingContent,
   ComicCardRatingContent,
-  DosTerminalRatingContent,
-  DvdMenuRatingContent,
   FilmStripRatingContent,
-  ModernTvGuideRatingContent,
   NesRatingPanelContent,
   Ps1RatingPanelContent,
-  RobloxRatingContent,
-  RatingStars,
-  SteamAchievementRatingContent,
-  StreamingRatingContent,
-  TvGuideRatingContent,
   VhsRatingPanelContent,
   WinDvdAeroRatingContent,
   Win9xRatingContent,
@@ -99,28 +88,22 @@ export function MediaItemRatingPanel({
   const isComicCardPanel = panelVariant === "comic-card";
   const isBookNotePanel = panelVariant === "book-note";
   const isAnimeMangaPanel = panelVariant === "anime-manga";
+  const isSymbolPanel = panelVariant === "boardgame-meeples" || isBookNotePanel || isAnimeMangaPanel || isStreamingCardPanel || isDvdMenuPanel || isSteamAchievementPanel || isRobloxPlaquePanel || isTvGuidePanel || isModernTvGuidePanel || isDosTerminalPanel || panelVariant === "standard";
+  const ratingDisplayFontClassName = (isDvdMenuPanel || isRobloxPlaquePanel || isTvGuidePanel || isModernTvGuidePanel || isDosTerminalPanel || panelVariant === "standard") ? MEDIA_IDENTITY_FONT_CLASS_NAME : panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
+  const ratingLabelFontClassName = (isDvdMenuPanel || isRobloxPlaquePanel || isTvGuidePanel || isModernTvGuidePanel || isDosTerminalPanel || panelVariant === "standard") ? MEDIA_IDENTITY_FONT_CLASS_NAME : panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const isStandalonePanel =
-    isAnimeMangaPanel ||
-    isBookNotePanel ||
     isComicCardPanel ||
-    isDvdMenuPanel ||
-    isDosTerminalPanel ||
     isFilmStripPanel ||
-    isModernTvGuidePanel ||
-    isTvGuidePanel ||
     isVhsPosterPanel ||
-    isSteamAchievementPanel ||
-    isStreamingCardPanel ||
     isWin9xWindowPanel ||
     isWinDvdAeroPanel ||
-    isRobloxPlaquePanel ||
     isPs1MemoryCardPanel;
 
   const tooltipClassName = "flex h-full w-full";
   const ratingPanelClassName = isStandalonePanel
     ? "group relative block h-full w-full min-w-0 cursor-pointer rounded-md text-center transition-[filter,transform] hover:-translate-y-0.5 hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
     : isCompact
-      ? `group relative flex h-full w-full min-w-[82px] flex-col items-center justify-start cursor-pointer rounded-md border p-2 text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+      ? `group relative flex h-full w-full min-w-[82px] flex-col items-center justify-start cursor-pointer rounded-md border ${(panelVariant === "nes-hearts" || panelVariant === "gamepad") ? "px-0.5 py-2" : "p-2"} text-center transition-[background-color,border-color,box-shadow,color,transform] hover:-translate-y-0.5 hover:shadow-[0_8px_18px_rgba(28,25,23,0.18)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
           currentAuthor
             ? `${authorRatingToneClassName} hover:shadow-[0_10px_22px_rgba(28,25,23,0.24)]`
             : "border-stone-300/80 bg-stone-50/35 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
@@ -130,50 +113,19 @@ export function MediaItemRatingPanel({
             ? `${authorRatingToneClassName} hover:shadow-[0_16px_34px_rgba(28,25,23,0.26)]`
             : "border-stone-300/80 bg-stone-50/45 text-stone-700 hover:border-stone-950 hover:bg-stone-100/70"
         }`;
-  const labelClassName = `block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} ${isCompact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 ${
+  const labelClassName = `block ${ratingLabelFontClassName} ${panelVariant === "gamepad" ? isCompact ? "text-[8px]" : "text-[10px]" : isCompact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 ${
     currentAuthor ? "opacity-70" : "text-stone-500"
   }`;
   const valueClassName = currentAuthor
     ? isCompact
-      ? `mt-1 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-3xl tabular-nums`
-      : `mt-2 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} ${panelVariant === "boardgame-meeples" ? "text-4xl sm:text-5xl" : "text-5xl"} tabular-nums`
+      ? `mt-1 block ${ratingDisplayFontClassName} text-3xl tabular-nums`
+      : `mt-2 block ${ratingDisplayFontClassName} ${isSymbolPanel ? "text-4xl sm:text-5xl" : "text-5xl"} tabular-nums`
     : isCompact
-      ? `mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs uppercase text-red-900`
-      : `mt-2 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-sm uppercase text-red-900`;
+      ? `mt-1 block ${ratingLabelFontClassName} text-xs uppercase text-red-900`
+      : `mt-2 block ${ratingLabelFontClassName} text-sm uppercase text-red-900`;
   const ratingActionLabel = currentAuthorScore === null ? "Поставить оценку" : "Изменить оценку";
   const tooltip = currentAuthor ? ratingActionLabel : "Войти как автор";
-  const content = isAnimeMangaPanel ? (
-    <AnimeMangaRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isBookNotePanel ? (
-    <BookNoteRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти в аккаунт"}
-    />
-  ) : isDosTerminalPanel ? (
-    <DosTerminalRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix="Знакомство: "
-      footer="C:\\USER>"
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      toneSource="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isFilmStripPanel ? (
+  const content = isFilmStripPanel ? (
     <FilmStripRatingContent
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
@@ -184,27 +136,6 @@ export function MediaItemRatingPanel({
     />
   ) : isVhsPosterPanel ? (
     <VhsRatingPanelContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isTvGuidePanel ? (
-    <TvGuideRatingContent
-      channel="5"
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isModernTvGuidePanel ? (
-    <ModernTvGuideRatingContent
-      channel="REN"
       compact={isCompact}
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
@@ -233,35 +164,6 @@ export function MediaItemRatingPanel({
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
     />
-  ) : isSteamAchievementPanel ? (
-    <SteamAchievementRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isStreamingCardPanel ? (
-    <StreamingRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
-  ) : isDvdMenuPanel ? (
-    <DvdMenuRatingContent
-      compact={isCompact}
-      footerLabel="Chapter"
-      footerValue={currentAuthor && firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : undefined}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
   ) : isComicCardPanel ? (
     <ComicCardRatingContent
       compact={isCompact}
@@ -282,42 +184,28 @@ export function MediaItemRatingPanel({
       tone="author"
       value={currentAuthor ? undefined : "Войти"}
     />
-  ) : isRobloxPlaquePanel ? (
-    <RobloxRatingContent
-      compact={isCompact}
-      detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
-      detailPrefix={isCompact ? "" : "Знакомство: "}
-      label="Моя оценка"
-      score={currentAuthor ? currentAuthorScore : null}
-      tone="author"
-      value={currentAuthor ? undefined : "Войти"}
-    />
   ) : panelVariant === "nes-hearts" ? (
     <NesRatingPanelContent
       compact={isCompact}
       compactLabel="Моя оценка"
       detail={currentAuthor ? firstExperiencedDate ?? undefined : undefined}
       detailPrefix={isCompact ? "" : "Знакомство: "}
-      displayFontClassName={panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME}
+      displayFontClassName={ratingDisplayFontClassName}
       emptyHelper="чтобы поставить оценку"
       label="Моя оценка"
-      labelFontClassName={panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME}
+      labelFontClassName={ratingLabelFontClassName}
       score={currentAuthor ? currentAuthorScore : null}
       value={currentAuthor ? undefined : "Войти"}
     />
   ) : (
     <>
       <span className={labelClassName}>Моя оценка</span>
-      <span className={valueClassName}>{currentAuthor ? (panelVariant === "boardgame-meeples" ? <BoardgameRatingValue score={currentAuthorScore} /> : formatScore(currentAuthorScore)) : "Войти"}</span>
+      <span className={valueClassName}>{currentAuthor ? formatScore(currentAuthorScore) : "Войти"}</span>
       {!isCompact ? (
         currentAuthor ? (
           <>
-            {panelVariant !== "boardgame-meeples" ? (
-              <span className="mt-2 flex justify-center">
-                <RatingStars score={currentAuthorScore} />
-              </span>
-            ) : null}
-            <span className={`${panelVariant === "boardgame-meeples" ? "mt-2" : "mt-3"} block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
+
+            <span className={`${isSymbolPanel ? "mt-2" : "mt-3"} block ${ratingLabelFontClassName} ${panelVariant === "gamepad" ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
               {firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : "—"}
             </span>
           </>
@@ -328,12 +216,8 @@ export function MediaItemRatingPanel({
         )
       ) : currentAuthor ? (
         <>
-          {panelVariant !== "boardgame-meeples" ? (
-            <span className="mt-1 flex h-5 shrink-0 scale-75 justify-center">
-              <RatingStars score={currentAuthorScore} />
-            </span>
-          ) : null}
-          <span className={`mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
+
+          <span className={`mt-1 block ${ratingLabelFontClassName} ${panelVariant === "gamepad" ? "text-[8px]" : "text-[10px]"} font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
             {firstExperiencedDate ?? "—"}
           </span>
         </>
@@ -481,7 +365,6 @@ export function MediaItemRatingDialog({
   const [isLoginOpen, setIsLoginOpen] = useState(() => openRequestKey != null && !canRate);
   const [openRatingAfterLogin, setOpenRatingAfterLogin] = useState(false);
   const isRatingOpen = isOpen || Boolean(hasRealAuthor && openRatingAfterLogin);
-
 
   return (
     <>

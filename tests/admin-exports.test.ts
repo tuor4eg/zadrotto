@@ -12,6 +12,7 @@ import {
   getMetadataExportField,
   getMetadataExportFieldKey,
   parseAdminExportFields,
+  getAdminExportDownload,
 } from "../src/lib/admin-exports/model";
 
 const exportDialogSource = readFileSync(
@@ -237,7 +238,8 @@ describe("admin export UI contracts", () => {
   });
 
   it("serves CSV downloads as private attachments", () => {
-    assert.match(exportDownloadRouteSource, /"Content-Type": "text\/csv; charset=utf-8"/);
+    assert.deepEqual(getAdminExportDownload({ entityType: "media_items", createdAt: new Date("2026-10-12T10:00:00Z") }), { filename: "media-items-2026-10-12.csv", contentType: "text/csv; charset=utf-8" });
+    assert.match(exportDownloadRouteSource, /getAdminExportDownload\(item\)/);
     assert.match(exportDownloadRouteSource, /"Content-Disposition": `attachment; filename="\$\{filename\}"`/);
     assert.match(exportDownloadRouteSource, /"Cache-Control": "private, no-store"/);
   });

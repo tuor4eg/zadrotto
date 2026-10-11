@@ -103,6 +103,24 @@ test("rate-limit deferral keeps the same run without consuming retry attempts", 
   assert.equal(deferred[0]?.id, 13);
 });
 
+test("worker shutdown aborts the running handler and requeues its work", async () => {
+  const controller = new AbortController();
+  const requeues: Array<Record<string, unknown>> = [];
+  await executeClaimedJobRun({
+    signal: controller.signal,
+    getHandler: () => ({
+      ...handler,
+      execute: ({ signal }) => new Promise<void>((resolve) => {
+        signal.addEventListener("abort", () => resolve(), { once: true });
+        controller.abort();
+      }),
+    }),
+    operations: { finish: async () => null, requeue: async (input) => { requeues.push(input); return null; } },
+    run: { attempts: 1, id: 14, jobId: null, lockToken: "token", maxAttempts: 2, payload: {}, source: "manual", timeoutSeconds: 3600, type: "test.job" } as never,
+  });
+  assert.equal(requeues[0]?.errorCode, "interrupted");
+});
+
 test("queue queries retain locking, deduplication, and token guards", async () => {
   const source = await readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8");
   assert.match(source, /for\("update", \{ skipLocked: true \}\)/);

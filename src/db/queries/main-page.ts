@@ -1,6 +1,7 @@
 import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
 import {
   mediaItemAverageScoreSql,
   mediaItemRatingsCountSql,
@@ -21,6 +22,8 @@ import {
 } from "@/lib/main-page/daily-dossier-settings";
 
 export type MainPageMediaItem = {
+  originalTitle?: string | null;
+  aliases?: string[];
   averageScore: number | null;
   code: string;
   coverThumbUrl: string | null;
@@ -79,6 +82,8 @@ function createDailyDossierQuery(input: {
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
+      originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemDisplayAliasesSql(),
     })
     .from(mediaItems)
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))

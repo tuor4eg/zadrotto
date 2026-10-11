@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -55,21 +56,22 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
     return {};
   }
 
+  const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const description = resolvePublicMediaDescription(item) ?? formatMediaItemSummary(item);
   const images = item.coverUrl ? [item.coverUrl] : undefined;
 
   return {
-    title: item.title,
+    title: displayTitle,
     description,
     openGraph: {
       type: "website",
-      title: item.title,
+      title: displayTitle,
       description,
       images,
     },
     twitter: {
       card: item.coverUrl ? "summary_large_image" : "summary",
-      title: item.title,
+      title: displayTitle,
       description,
       images,
     },
@@ -91,6 +93,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     notFound();
   }
 
+  const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const publicDescription = resolvePublicMediaDescription(item);
   const publishedFranchiseLinks = item.franchises.filter(
@@ -126,7 +129,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
           headerActions={
             headerState.currentAdminUser ? (
               <AdminEntityEditLink
-                ariaLabel={`Редактировать запись ${item.title}`}
+                ariaLabel={`Редактировать запись ${displayTitle}`}
                 href={`/admin/media/${item.id}/edit`}
                 tooltipLabel="Редактировать запись"
               />
@@ -153,7 +156,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
                   className="min-w-0 max-w-full flex-1 truncate text-stone-800"
                   aria-current="page"
                 >
-                  {item.title}
+                  {displayTitle}
                 </li>
               </ol>
             </nav>
@@ -219,7 +222,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
             <MediaItemRatingDialog
               mediaItemCode={item.code}
               franchiseCode={firstFranchiseCode}
-              title={item.title}
+              title={displayTitle}
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
               }
@@ -236,7 +239,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
             <MediaItemRatingDialog
               mediaItemCode={item.code}
               franchiseCode={firstFranchiseCode}
-              title={item.title}
+              title={displayTitle}
               currentAuthor={
                 currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null
               }

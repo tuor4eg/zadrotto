@@ -77,9 +77,9 @@ function parseAdminExportPayload(value: unknown) {
 }
 
 const adminExportGenerateHandler: JobHandlerDefinition<{ exportId: string }> = {
-  type: "admin.export-generate", label: "Экспорт записей и серий", schedulable: false,
+  type: "admin.export-generate", label: "Экспорт данных и дамп базы", schedulable: false,
   defaultMaxAttempts: 3, defaultTimeoutSeconds: 3600, parsePayload: parseAdminExportPayload,
-  async execute({ payload }) { await generateAdminExport(payload.exportId); },
+  async execute({ payload, signal }) { await generateAdminExport(payload.exportId, signal); },
 };
 const adminExportCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "admin.export-cleanup", label: "Очистка экспортов", parsePayload: parseEmptyPayload,

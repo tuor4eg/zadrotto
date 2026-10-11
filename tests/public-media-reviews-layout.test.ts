@@ -80,7 +80,8 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviewArticle, /min-h-\[calc\(100dvh/);
     assert.match(globals, /\.archive-panel\.archive-panel-overflow-visible \{\s*overflow: visible;/);
     assert.doesNotMatch(reviewArticle, />Досье</);
-    assert.match(mediaIdentity, /aria-label="Хлебные крошки"[\s\S]*<MediaCarrierDisplayTitle title=\{item\.title\}/);
+    assert.match(mediaIdentity, /resolveMediaItemDisplayTitles\(item\)/);
+    assert.match(mediaIdentity, /aria-label="Хлебные крошки"[\s\S]*<MediaCarrierDisplayTitle title=\{displayTitle\}/);
     assert.match(mediaIdentity, /ArchiveMediaItemIdentityLayout[\s\S]*coverUrl=\{coverUrl\}[\s\S]*viewerCoverUrl=\{viewerCoverUrl\}/);
     assert.match(mediaIdentity, /item\.coverThumbUrl \?\? item\.coverUrl/);
     assert.doesNotMatch(mediaIdentity, /aspect-\[2\/3\]|<ArchiveCover|h-0 min-h-full|max-h-\[9\.5rem\]/);
@@ -96,7 +97,7 @@ describe("public media reviews layout", () => {
     assert.match(identityLayout, /h-\[var\(--identity-cover-height\)\][^"\n]*w-fit[^"\n]*max-w-\[40vw\]/);
     assert.match(identityLayout, /h-full w-auto max-w-full object-contain object-left/);
     assert.doesNotMatch(identityLayout, /from "next\/link"|href=\{href\}/);
-    assert.match(mediaIdentity, /item\.originalTitle[\s\S]*item\.aliases/);
+    assert.match(mediaIdentity, /\{displayOriginalTitle\}[\s\S]*displayAliases\.join/);
     assert.match(mediaIdentity, /<MediaItemFranchiseLinks[\s\S]*franchiseActions/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
     assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
@@ -143,7 +144,8 @@ describe("public media reviews layout", () => {
     assert.match(reviewPolaroidRow, /reviews\.slice\(0, mobileScrollable \? 5 : visibleCardCount\)/);
     assert.match(reviewPolaroidRow, /PAPER_REVIEW_CARD_WIDTH = 200/);
     assert.equal(reviewPage.match(/limit: 5/g)?.length, 2);
-    assert.match(reviews, /showMediaItemTitle && review\.mediaItemTitle[\s\S]*\{review\.mediaItemTitle\}/);
+    assert.match(reviews, /resolveMediaItemDisplayTitles\(\{ title: review\.mediaItemTitle[\s\S]*aliases: review\.mediaItemAliases/);
+    assert.match(reviews, /showMediaItemTitle && review\.mediaItemTitle[\s\S]*\{mediaItemTitle\}/);
     assert.match(reviewPage, /getMediaItemByCode[\s\S]*MediaItemFranchiseSuggestionDialog[\s\S]*triggerTooltipPortal/);
   });
 });

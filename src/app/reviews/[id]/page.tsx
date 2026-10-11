@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -54,8 +55,9 @@ export async function generateMetadata({ params }: ReviewPageProps): Promise<Met
   const currentAuthor = await getCurrentAuthor();
   const { review } = await getReview((await params).id, currentAuthor);
   if (!review) return {};
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle });
   return {
-    title: `${review.title} — рецензия на «${review.mediaItemTitle}»`,
+    title: `${review.title} — рецензия на «${mediaItemTitle}»`,
     description: inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim().slice(0, 180),
   };
 }

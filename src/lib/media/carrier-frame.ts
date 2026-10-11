@@ -16,6 +16,9 @@ export type MediaCarrierFramePlaceholderVariant =
   | "win9x-jewel-label"
   | "vhs-label";
 export type MediaCarrierRatingPanelVariant =
+  | "standard"
+  | "gamepad"
+  | "smartphone"
   | "boardgame-meeples"
   | "anime-manga"
   | "book-note"
@@ -173,6 +176,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "game/mobile": {
+    ratingPanelVariant: "smartphone",
     assetPath: "/mediaCarriers/game/mobile/phone.png",
     aspectRatioClassName: "aspect-[133/260]",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
@@ -258,10 +262,11 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     fontClassName: "media-carrier-font-ps1",
     labelFontClassName: "media-carrier-font-ps1",
     placeholderVariant: "win9x-jewel-label",
-    ratingPanelVariant: "ps1-memory-card",
+    ratingPanelVariant: "standard",
     renderKind: "cartridge",
   },
   "game/sega": {
+    ratingPanelVariant: "standard",
     assetPath: "/mediaCarriers/game/sega/cartridge.webp",
     aspectRatioClassName: "aspect-[4/3]",
     coverAreaClassName: "left-[15.2%] top-[7.8%] h-[79.5%] w-[69.6%]",
@@ -272,6 +277,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "game/snes": {
+    ratingPanelVariant: "standard",
     assetPath: "/mediaCarriers/game/snes/cartridge.webp",
     aspectRatioClassName: "aspect-[4/3]",
     coverAreaClassName: "left-[14.6%] top-[4.5%] h-[41.5%] w-[70.8%]",

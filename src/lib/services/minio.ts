@@ -208,7 +208,10 @@ function buildS3AuthorizationHeader(input: {
   const canonicalRequest = [
     input.method,
     input.url.pathname,
-    "",
+    Array.from(input.url.searchParams.entries())
+      .map(([key, value]) => [encodeURIComponent(key), encodeURIComponent(value)] as const)
+      .sort(([keyA, valueA], [keyB, valueB]) => keyA < keyB ? -1 : keyA > keyB ? 1 : valueA < valueB ? -1 : valueA > valueB ? 1 : 0)
+      .map(([key, value]) => `${key}=${value}`).join("&"),
     canonicalHeaders,
     signedHeaders,
     input.payloadHash,
@@ -237,6 +240,7 @@ function buildS3AuthorizationHeader(input: {
 export async function fetchS3Object(input: {
   objectKey: string;
   env?: S3StorageEnv;
+  signal?: AbortSignal;
 }) {
   const config = getS3StorageConfig(input.env);
 
@@ -249,6 +253,7 @@ export async function fetchS3Object(input: {
   const payloadHash = sha256Hex("");
   const response = await fetch(url, {
     method: "GET",
+    signal: input.signal,
     headers: {
       Authorization: buildS3AuthorizationHeader({
         config,
@@ -267,6 +272,46 @@ export async function fetchS3Object(input: {
   }
 
   return response;
+}
+
+export class S3BucketAccessError extends Error {
+  readonly retryable: boolean;
+
+  constructor(status: number) {
+    super("Cannot inspect S3 bucket access settings.");
+    this.name = "S3BucketAccessError";
+    this.retryable = status >= 500 || status === 429;
+  }
+}
+
+export async function getS3BucketAccessSettings(input: { env?: S3StorageEnv; signal?: AbortSignal }) {
+  const config = getS3StorageConfig(input.env);
+  if (!config) throw new S3BucketAccessError(400);
+  const storageConfig = config;
+  async function readSetting(setting: "policy" | "acl") {
+    const url = getS3BucketUrl(storageConfig);
+    url.searchParams.set(setting, "");
+    const amzDate = formatAmzDate(new Date());
+    const payloadHash = sha256Hex("");
+    const response = await fetch(url, {
+      signal: input.signal,
+      headers: {
+        Authorization: buildS3AuthorizationHeader({ config: storageConfig, method: "GET", url, amzDate, payloadHash }),
+        "X-Amz-Content-Sha256": payloadHash,
+        "X-Amz-Date": amzDate,
+      },
+    });
+    const body = await response.text();
+    if (setting === "policy" && response.status === 404 && body.includes("<Code>NoSuchBucketPolicy</Code>")) return null;
+    if (!response.ok) throw new S3BucketAccessError(response.status);
+    return body;
+  }
+  const [policy, acl] = await Promise.all([readSetting("policy"), readSetting("acl")]);
+  try {
+    return { bucket: config.bucket, policy: policy === null ? { Statement: [] } : JSON.parse(policy) as unknown, acl: acl! };
+  } catch {
+    throw new S3BucketAccessError(400);
+  }
 }
 
 export async function checkMinioHealth(): Promise<ServiceHealthCheck> {
@@ -373,6 +418,7 @@ export async function uploadS3ObjectStream(input: {
   contentType: string;
   payloadHash: string;
   env?: S3StorageEnv;
+  signal?: AbortSignal;
 }) {
   const config = getS3StorageConfig(input.env);
   if (!config) throw new Error("S3 storage is not configured.");
@@ -389,6 +435,7 @@ export async function uploadS3ObjectStream(input: {
     },
     body: input.body as BodyInit,
     duplex: "half",
+    signal: input.signal,
   } as RequestInit & { duplex: "half" });
   if (!response.ok) throw new Error(`S3 upload failed with status ${response.status}.`);
 }

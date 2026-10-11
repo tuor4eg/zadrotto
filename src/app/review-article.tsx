@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Heart, LoaderCircle, Pencil, Share2 } from "lucide-react";
 import Link from "next/link";
 import { useState } from "react";
@@ -83,6 +84,7 @@ export function ReviewArticle({
   resolvedInlineEntities,
   review,
 }: ReviewArticleProps) {
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle });
   const router = useRouter();
   const [toastMessages, setToastMessages] = useState<ArchiveToast[]>([]);
   const [loginOpen, setLoginOpen] = useState(false);
@@ -92,7 +94,7 @@ export function ReviewArticle({
 
   async function shareReview() {
     const shareData = {
-      text: `Рецензия на «${review.mediaItemTitle}»`,
+      text: `Рецензия на «${mediaItemTitle}»`,
       title: review.title,
       url: window.location.href,
     };
@@ -258,7 +260,7 @@ export function ReviewArticle({
               <h2 id="more-media-reviews" className="font-mono text-xs font-semibold uppercase tracking-[0.14em] text-stone-600">
                 Еще рецензии на{" "}
                 <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${review.mediaItemCode}`}>
-                  {review.mediaItemTitle}
+                  {mediaItemTitle}
                 </Link>
               </h2>
               <div className="mt-4"><ReviewPolaroidRow mobileScrollable reviews={otherMediaItemReviews} variant="paper" /></div>

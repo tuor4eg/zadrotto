@@ -1,5 +1,5 @@
-import type { MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
-import { Bookmark, Info, Lock, PlusCircle } from "lucide-react";
+import { MEDIA_IDENTITY_FONT_CLASS_NAME, type MediaCarrierRatingPanelVariant } from "@/lib/media/carrier-frame";
+import { Bookmark, Lock, PlusCircle } from "lucide-react";
 import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 import {
   ARCHIVE_RATING_VALUE_CLASS_NAME,
@@ -9,7 +9,6 @@ import {
   AVERAGE_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AVERAGE_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AVERAGE_PS1_RATING_TONE_CLASS_NAMES,
-  AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES,
   AVERAGE_STREAMING_RATING_TONE_CLASS_NAMES,
   AVERAGE_TERMINAL_RATING_TONE_CLASS_NAMES,
   AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES,
@@ -20,7 +19,6 @@ import {
   AUTHOR_COMIC_CARD_RATING_TONE_CLASS_NAMES,
   AUTHOR_MODERN_TV_RATING_TONE_CLASS_NAMES,
   AUTHOR_PS1_RATING_TONE_CLASS_NAMES,
-  AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES,
   AUTHOR_STREAMING_RATING_TONE_CLASS_NAMES,
   AUTHOR_TERMINAL_RATING_TONE_CLASS_NAMES,
   AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES,
@@ -177,12 +175,9 @@ type ArchiveRatingPanelProps = {
   ratingPanelVariant?: MediaCarrierRatingPanelVariant;
   ratingsCount: number;
   score: number | null;
-  showStarsWhenCompact?: boolean;
 };
 
-const NES_HEART_PATH = "/mediaCarriers/game/nes/heart.webp";
 const VHS_ARCHIVE_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_all.webp";
-const VHS_AUTHOR_RATING_BACKGROUND_PATH = "/mediaCarriers/video/vhs/rating_my.webp";
 const PS1_LOGO_PATH = "/mediaCarriers/game/ps1/ps1_logo.webp";
 const WINDVD_AERO_ICON_PATH = "/mediaCarriers/game/pc/windvd/icon.webp";
 const WINDVD_AERO_BUTTONS_PATH = "/mediaCarriers/game/pc/windvd/buttons.webp";
@@ -191,17 +186,6 @@ const COMIC_AUTHOR_BURST_PATH = "/mediaCarriers/comic/bam.webp";
 const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.webp";
 const ANIME_ARCHIVE_RATING_ART_PATH = "/mediaCarriers/anime/robot.webp";
 const ANIME_AUTHOR_RATING_ART_PATH = "/mediaCarriers/anime/kawai.webp";
-
-export function BoardgameRatingValue({ score }: { score: number | null }) {
-  return (
-    <span className="relative inline-block leading-none">
-      <svg viewBox="0 0 24 24" className="absolute right-full top-1/2 mr-2 size-[0.65em] -translate-y-1/2" fill="currentColor" aria-hidden="true" data-rating-symbol="meeple">
-        <path d="M12 2a3.4 3.4 0 0 1 3.4 3.4v1.2l4.8 1.8c1.3.5 2 1.5 1.8 2.6-.2 1.2-1.2 2-2.5 2h-2l3 6.9c.4 1-.2 2.1-1.3 2.1h-4.1L12 16.8 8.9 22H4.8c-1.1 0-1.7-1.1-1.3-2.1l3-6.9h-2C3.2 13 2.2 12.2 2 11c-.2-1.1.5-2.1 1.8-2.6l4.8-1.8V5.4A3.4 3.4 0 0 1 12 2Z" />
-      </svg>
-      <span>{formatScore(score)}</span>
-    </span>
-  );
-}
 
 export function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   const starCount = Math.max(0, Math.min(5, (score ?? 0) / 20));
@@ -234,21 +218,6 @@ export function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
           </span>
         );
       })}
-    </span>
-  );
-}
-
-function RatingHearts({ score }: { score: number | null }) {
-  const filledHearts = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span className="flex justify-center gap-1.5" aria-hidden="true">
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < filledHearts ? "" : "opacity-25 grayscale"}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={NES_HEART_PATH} alt="" className="h-5 w-auto object-contain" />
-        </span>
-      ))}
     </span>
   );
 }
@@ -305,9 +274,7 @@ export function AnimeMangaRatingContent({
             чтобы поставить оценку
           </span>
         ) : (
-          <span className={`block text-black ${compact ? "mt-0 scale-75" : "mt-2"}`}>
-            <RatingStars score={score} />
-          </span>
+          null
         )}
       </span>
       <span className="relative z-[3] flex min-h-6 items-center justify-between gap-2 border-t-2 border-black bg-[#f4f0e6] px-2 py-1 font-mono text-[8px] font-black uppercase tracking-[0.1em] text-black">
@@ -316,31 +283,6 @@ export function AnimeMangaRatingContent({
           {detail ? `${detailPrefix}${detail}` : "// 00"}
         </span>
       </span>
-    </span>
-  );
-}
-
-function BookNoteRatingStars({
-  compact = false,
-  score,
-  toneClassName,
-}: {
-  compact?: boolean;
-  score: number | null;
-  toneClassName: string;
-}) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center justify-center leading-none ${
-        compact ? "gap-1 text-xl" : "gap-3 text-[2rem]"
-      } ${toneClassName}`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
-      ))}
     </span>
   );
 }
@@ -387,11 +329,7 @@ export function BookNoteRatingContent({
           <div className={`font-serif tabular-nums ${ratingToneClassName} ${compact ? "text-3xl" : "text-6xl leading-none"}`}>
             {formatScore(score)}
           </div>
-          {!compact ? (
-            <div className="mt-4">
-              <BookNoteRatingStars score={score} toneClassName={ratingToneClassName} />
-            </div>
-          ) : null}
+
           <div className={`font-serif text-stone-700 ${compact ? "mt-1 text-xs" : "mt-4 text-sm"}`}>
             {detailText ?? "—"}
           </div>
@@ -421,33 +359,6 @@ export function BookNoteRatingContent({
         </div>
       ) : null}
     </div>
-  );
-}
-
-function ComicRatingStars({
-  compact = false,
-  score,
-  toneClassName,
-}: {
-  compact?: boolean;
-  score: number | null;
-  toneClassName: string;
-}) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center justify-center leading-none text-black ${
-        compact ? "gap-0.5 text-lg" : "gap-1 text-3xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < filledStars ? toneClassName : "text-stone-950/35"}>
-          {index < filledStars ? "★" : "☆"}
-        </span>
-      ))}
-    </span>
   );
 }
 
@@ -538,9 +449,6 @@ export function ComicCardRatingContent({
               <span className={`block leading-none tabular-nums ${ratingToneClassName} ${compact ? "text-5xl" : "text-7xl"}`}>
                 {formatScore(score)}
               </span>
-              <span className={compact ? "mt-1" : "mt-3"}>
-                <ComicRatingStars compact={compact} score={score} toneClassName={ratingToneClassName} />
-              </span>
             </span>
           )}
         </span>
@@ -556,25 +464,6 @@ export function ComicCardRatingContent({
               : "—"}
         </span>
       </span>
-    </span>
-  );
-}
-
-function Ps1RatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center justify-center leading-none text-[#183047] drop-shadow-[0_1px_0_rgba(255,255,255,0.35)] ${
-        compact ? "gap-0.5 text-lg" : "gap-1 text-2xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < filledStars ? "" : "text-stone-950/35"}>
-          {index < filledStars ? "★" : "☆"}
-        </span>
-      ))}
     </span>
   );
 }
@@ -630,23 +519,6 @@ function Ps1ButtonMarks({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function Win9xRatingStars({ className, score, compact = false }: { className?: string; compact?: boolean; score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`whitespace-nowrap leading-none ${
-        compact ? "text-xl tracking-[0.08em]" : "text-3xl tracking-[0.12em]"
-      } ${className ?? ""}`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
-      ))}
-    </span>
-  );
-}
-
 export function Win9xRatingContent({
   compact = false,
   detail,
@@ -663,11 +535,9 @@ export function Win9xRatingContent({
       : "bg-gradient-to-r from-[#061c86] to-[#163ca8]";
   const panelPaddingClassName = compact ? "flex-1 px-2 pb-2 pt-1.5" : "px-3 pb-3 pt-2";
   const panelJustifyClassName = hasValueOverride ? "justify-center" : "justify-between";
-  const valueClassName = compact
-    ? hasValueOverride
-      ? "max-w-full whitespace-nowrap text-[1.65rem] leading-none"
-      : "text-4xl leading-none"
-    : "text-6xl leading-none";
+  const valueClassName = hasValueOverride
+    ? compact ? "max-w-full whitespace-nowrap text-xs leading-none" : "text-sm leading-none"
+    : compact ? "text-3xl leading-none" : "text-4xl leading-none sm:text-5xl";
   const detailText = detail ?? "";
   const ratingTone = getRatingTone(score);
   const ratingToneClassName =
@@ -677,14 +547,14 @@ export function Win9xRatingContent({
 
   return (
     <span
-      className={`media-carrier-font-pc-win9x flex min-h-full flex-col overflow-hidden border border-[#202020] bg-[#d6d2c8] text-center text-[#111] shadow-[0_0_0_1px_#f4f1e8,2px_2px_0_#5f5b54,inset_2px_2px_0_#ffffff,inset_-2px_-2px_0_#7b776f] ${
+      className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-h-full flex-col overflow-hidden border border-[#202020] bg-[#d6d2c8] text-center text-[#111] shadow-[0_0_0_1px_#f4f1e8,2px_2px_0_#5f5b54,inset_2px_2px_0_#ffffff,inset_-2px_-2px_0_#7b776f] ${
         compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
       }`}
     >
       <span className={`flex items-center justify-between gap-2 px-1 py-1 text-left text-white ${titleBarClassName}`}>
         <span
           className={`block truncate uppercase ${
-            compact ? "text-[9px] leading-3" : "text-[11px] leading-4"
+            compact ? "text-[10px] leading-3" : "text-xs leading-4"
           }`}
         >
           {label}
@@ -699,18 +569,19 @@ export function Win9xRatingContent({
         </span>
       </span>
       <span className={`flex flex-col items-center ${panelJustifyClassName} ${panelPaddingClassName} ${ratingToneClassName}`}>
-        <span className={`${valueClassName} block tabular-nums`}>
-          {value ?? formatScore(score)}
+        <span className={`${valueClassName} relative block tabular-nums`}>
+          {hasValueOverride ? value : (
+            <>
+
+              {formatScore(score)}
+            </>
+          )}
         </span>
-        {!hasValueOverride ? (
-          <span className={compact ? "mt-1 block" : "mt-2 block"}>
-            <Win9xRatingStars compact={compact} score={score} />
-          </span>
-        ) : null}
+
         {!hasValueOverride ? (
           <span
             className={`block min-h-5 uppercase ${
-              compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+              compact ? "mt-1 text-[10px] leading-5" : "mt-3 text-xs leading-5"
             } ${detailText ? "" : "opacity-0"}`}
           >
             {detailText ? `${detailPrefix}${detailText}` : "—"}
@@ -789,12 +660,6 @@ export function Ps1RatingPanelContent({
           </span>
         </span>
 
-        {!hasValueOverride ? (
-          <span className="block text-center">
-            <Ps1RatingStars compact={compact} score={score} />
-          </span>
-        ) : null}
-
         <span
           className={`block min-h-4 text-center uppercase text-stone-700 ${
             compact ? "text-[8px] leading-3" : "text-[10px] leading-4"
@@ -809,49 +674,18 @@ export function Ps1RatingPanelContent({
   );
 }
 
-function WinDvdAeroRatingMarks({
-  compact = false,
-  score,
-  toneClassName,
-}: {
-  compact?: boolean;
-  score: number | null;
-  toneClassName: string;
-}) {
-  const filledMarks = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`whitespace-nowrap leading-none ${compact ? "text-xl tracking-[0.06em]" : "text-3xl tracking-[0.1em]"}`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span
-          key={index}
-          className={index < filledMarks ? `${toneClassName} drop-shadow-[0_1px_0_rgba(255,255,255,0.78)]` : "text-slate-400/70"}
-        >
-          ★
-        </span>
-      ))}
-    </span>
-  );
-}
-
 function SteamAchievementIcon({
   compact = false,
   displayScore,
   toneClassName,
+  valueToneClassName,
 }: {
   compact?: boolean;
   displayScore?: string;
   toneClassName: string;
+  valueToneClassName: string;
 }) {
-  const scoreClassName =
-    compact && displayScore && displayScore.length > 1
-      ? "text-[1.35rem]"
-      : compact
-        ? "text-[1.7rem]"
-        : "text-[2.35rem]";
+  const scoreClassName = compact ? "text-3xl" : "text-4xl sm:text-5xl";
 
   return (
     <span
@@ -862,7 +696,7 @@ function SteamAchievementIcon({
     >
       {displayScore !== undefined ? (
         <span
-          className={`font-semibold leading-none tabular-nums drop-shadow-[0_0_10px_rgba(34,211,238,0.45)] ${scoreClassName}`}
+          className={`leading-none tabular-nums ${scoreClassName} ${valueToneClassName}`}
         >
           {displayScore}
         </span>
@@ -884,41 +718,15 @@ function SteamAchievementIcon({
   );
 }
 
-function SteamAchievementStars({
-  compact = false,
-  score,
-  toneClassName,
-}: {
-  compact?: boolean;
-  score: number | null;
-  toneClassName: string;
-}) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center leading-none ${toneClassName} ${
-        compact ? "gap-0.5 text-lg" : "gap-1.5 text-2xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index} className={index < filledStars ? "drop-shadow-[0_0_7px_rgba(255,255,255,0.18)]" : "text-slate-500/70"}>
-          {index < filledStars ? "★" : "☆"}
-        </span>
-      ))}
-    </span>
-  );
-}
-
 export function SteamAchievementRatingContent({
   compact = false,
   detail,
   detailPrefix = "",
   label,
   score,
+  tone = "archive",
   value,
-}: SteamAchievementRatingContentProps) {
+}: SteamAchievementRatingContentProps & { tone?: "archive" | "author" }) {
   const hasValueOverride = value !== undefined;
   const detailText = detail ?? "";
   const steamToneClassName = `${RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)]} border-[color:var(--rating-border)]`;
@@ -928,31 +736,27 @@ export function SteamAchievementRatingContent({
       className={`media-carrier-font-pc-steam relative mx-auto flex h-full w-full min-w-0 overflow-hidden border bg-[linear-gradient(180deg,#123144_0%,#0b2230_48%,#081720_100%)] text-left text-slate-200 shadow-[0_10px_22px_rgba(4,13,20,0.26),inset_0_0_0_1px_rgba(125,211,252,0.08)] ${steamToneClassName} ${
         compact
           ? "min-h-[7.5rem] flex-col items-center gap-1.5 px-2 py-2 text-center"
-          : "min-h-[10.5rem] max-w-[17.5rem] gap-3 px-3 py-3"
+          : "min-h-[10.5rem] max-w-[17.5rem] flex-col items-center px-3 py-3 text-center"
       }`}
     >
       <span
         aria-hidden="true"
         className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(14,165,233,0.08)_0%,transparent_32%,rgba(14,165,233,0.05)_100%)]"
       />
-      <SteamAchievementIcon
-        compact={compact}
-        displayScore={!hasValueOverride ? formatScore(score) : undefined}
-        toneClassName={steamToneClassName}
-      />
-      <span
-        className={`relative z-10 flex min-w-0 flex-1 flex-col ${
-          compact ? "w-full items-center" : ""
-        } ${hasValueOverride ? "justify-center" : compact ? "justify-between" : "justify-center gap-3"}`}
-      >
         <span
-          className={`block max-w-full truncate uppercase tracking-[0.08em] text-slate-200 ${
-            compact ? "text-[9px] leading-3" : "text-xs leading-4"
+          className={`relative z-10 block max-w-full truncate font-semibold uppercase leading-5 opacity-70 ${steamToneClassName} ${
+            compact ? "text-[10px]" : "text-xs"
           }`}
         >
           {label}
         </span>
-
+      <span className="relative z-10 flex min-h-0 w-full flex-1 flex-col items-center justify-center">
+        <SteamAchievementIcon
+          compact={compact}
+          displayScore={!hasValueOverride ? formatScore(score) : undefined}
+          toneClassName={steamToneClassName}
+          valueToneClassName={tone === "archive" ? ARCHIVE_RATING_VALUE_CLASS_NAME : RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)]}
+        />
         {hasValueOverride ? (
           <>
             <span className={`block max-w-full text-slate-300 ${compact ? "mt-1 text-[9px] leading-3" : "mt-2 text-xs leading-4"}`}>
@@ -967,69 +771,20 @@ export function SteamAchievementRatingContent({
               <span className="ml-1" aria-hidden="true">›</span>
             </span>
           </>
-        ) : (
-          <>
-            <SteamAchievementStars
-              compact={compact}
-              score={score}
-              toneClassName={steamToneClassName}
-            />
+        ) : null}
+      </span>
+        {!hasValueOverride ? (
             <span
-              className={`block min-h-4 max-w-full text-slate-300 ${
-                compact ? "text-[9px] leading-3" : "text-xs leading-4"
-              } ${detailText ? "" : "opacity-0"}`}
+              className={`relative z-10 block min-h-5 max-w-full font-semibold uppercase leading-5 ${steamToneClassName} ${
+                compact ? "text-[10px]" : "text-xs"
+              } ${detailText ? "opacity-70" : "opacity-0"}`}
               title={detailText ? `${detailPrefix}${detailText}` : undefined}
             >
               {detailText ? `${detailPrefix}${detailText}` : "—"}
             </span>
-          </>
-        )}
-      </span>
+        ) : null}
     </span>
   );
-}
-
-function StreamingRatingStars({
-  compact = false,
-  score,
-  toneClassName,
-}: {
-  compact?: boolean;
-  score: number | null;
-  toneClassName: string;
-}) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center leading-none ${toneClassName} ${
-        compact ? "gap-1 text-xl" : "gap-2 text-4xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span
-          key={index}
-          className={index < filledStars ? "drop-shadow-[0_0_10px_rgba(99,102,241,0.34)]" : "text-slate-500/72"}
-        >
-          {index < filledStars ? "★" : "☆"}
-        </span>
-      ))}
-    </span>
-  );
-}
-
-function getStreamingRatingCaption(score: number | null) {
-  if (score === null) {
-    return "Нет оценки";
-  }
-
-  return {
-    empty: "Нет оценки",
-    bad: "Слабо",
-    medium: "Нормально",
-    good: "Отлично",
-  }[getRatingTone(score)];
 }
 
 export function StreamingRatingContent({
@@ -1072,16 +827,9 @@ export function StreamingRatingContent({
         >
           {label}
         </span>
-        {tone === "archive" ? (
-          <span className="flex shrink-0 items-center gap-2 text-slate-400">
-            <Info className={compact ? "size-3" : "size-3.5"} strokeWidth={2} />
-            <span className={compact ? "text-[9px] leading-3" : "text-[10px] leading-4"}>
-              {detailText}
-            </span>
-          </span>
-        ) : (
+        {tone === "author" ? (
           <Lock className={`shrink-0 text-slate-400 ${compact ? "size-3" : "size-3.5"}`} strokeWidth={2.4} />
-        )}
+        ) : null}
       </span>
 
       {hasValueOverride ? (
@@ -1108,49 +856,23 @@ export function StreamingRatingContent({
           </span>
         </span>
       ) : (
-        <span className="relative z-10 flex min-h-0 flex-1 flex-col items-center justify-center text-center">
+        <span className="relative z-10 flex min-h-0 flex-1 flex-col items-center text-center">
+          <span className="flex min-h-0 flex-1 items-center justify-center">
           <span className={`block font-bold tabular-nums ${toneClassName} ${compact ? "text-4xl" : "text-6xl"}`}>
             {formatScore(score)}
           </span>
-          <span className={compact ? "mt-2" : "mt-4"}>
-            <StreamingRatingStars compact={compact} score={score} toneClassName={toneClassName} />
           </span>
+
           <span
             className={`block min-h-4 max-w-full truncate font-semibold uppercase tracking-[0.06em] ${toneClassName} ${
-              compact ? "mt-2 text-[9px] leading-3" : "mt-4 text-xs leading-4"
+              compact ? "mt-1 text-[10px] leading-5" : "mt-2 text-xs leading-5"
             } ${detailText ? "" : "opacity-0"}`}
             title={detailText ? `${detailPrefix}${detailText}` : undefined}
           >
-            {tone === "archive" ? getStreamingRatingCaption(score) : detailText ? `${detailPrefix}${detailText}` : "—"}
+            {detailText ? `${detailPrefix}${detailText}` : "—"}
           </span>
         </span>
       )}
-    </span>
-  );
-}
-
-function DvdMenuRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center justify-center leading-none ${
-        compact ? "gap-0.5 text-2xl" : "gap-1 text-4xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span
-          key={index}
-          className={
-            index < filledStars
-              ? "text-slate-600 drop-shadow-[0_1px_0_rgba(255,255,255,0.82)]"
-              : "text-stone-400/70 drop-shadow-[0_1px_0_rgba(255,255,255,0.7)]"
-          }
-        >
-          {index < filledStars ? "★" : "☆"}
-        </span>
-      ))}
     </span>
   );
 }
@@ -1168,23 +890,6 @@ function FilmStripPerforations({ compact = false }: { compact?: boolean }) {
             compact ? "h-2 w-2" : "h-3 w-3"
           }`}
         />
-      ))}
-    </span>
-  );
-}
-
-function FilmStripRatingStars({ compact = false, score, toneClassName }: { compact?: boolean; score: number | null; toneClassName: string }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`inline-flex items-center justify-center ${toneClassName} ${
-        compact ? "gap-0.5 text-base" : "gap-1.5 text-3xl"
-      }`}
-      aria-hidden="true"
-    >
-      {Array.from({ length: 5 }, (_, index) => (
-        <span key={index}>{index < filledStars ? "★" : "☆"}</span>
       ))}
     </span>
   );
@@ -1213,19 +918,15 @@ export function FilmStripRatingContent({
         className="pointer-events-none absolute inset-0 opacity-45 [background-image:radial-gradient(circle_at_18%_22%,rgba(255,255,255,0.14)_0_1px,transparent_1px),radial-gradient(circle_at_72%_64%,rgba(255,255,255,0.1)_0_1px,transparent_1px)] [background-size:7px_7px,11px_11px]"
       />
       <span className={`relative z-10 flex h-full min-w-0 flex-col ${compact ? "gap-1" : "gap-1.5"}`}>
-        <span className="flex items-center justify-between px-1 text-[8px] leading-none text-[#d0ad62]">
-          <span>11A ▶</span>
-          <span>12</span>
-        </span>
         <FilmStripPerforations compact={compact} />
         <span
           className={`flex min-w-0 flex-1 flex-col items-center justify-between border border-[#6b4a2c]/28 bg-[linear-gradient(180deg,#f1e6c9_0%,#dcc79f_100%)] text-center shadow-[inset_0_1px_0_rgba(255,255,255,0.55),inset_0_-12px_22px_rgba(88,49,23,0.08)] ${
-            compact ? "px-1.5 py-1.5" : "px-2.5 py-2"
+            compact ? "px-0.5 py-1.5" : "px-2.5 py-2"
           }`}
         >
           <span
-            className={`media-carrier-font-film-reel-label flex w-full min-w-0 items-center gap-2 uppercase text-[#4f2f1d] ${
-              compact ? "text-[7px] leading-3" : "text-[10px] leading-4"
+            className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex w-full min-w-0 items-center uppercase ${ratingToneClassName} ${
+              compact ? "gap-0.5 text-[10px] leading-3" : "gap-2 text-xs leading-4"
             }`}
           >
             <span aria-hidden="true" className="h-px flex-1 bg-[#7a5132]/36" />
@@ -1233,42 +934,38 @@ export function FilmStripRatingContent({
             <span aria-hidden="true" className="h-px flex-1 bg-[#7a5132]/36" />
           </span>
           <span
-            className={`media-carrier-font-film-reel block max-w-full leading-none tabular-nums ${ratingToneClassName} ${
+            className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} block max-w-full leading-none tabular-nums ${ratingToneClassName} ${
               hasValueOverride
                 ? compact
-                  ? "text-[1.85rem]"
-                  : "text-[2.65rem]"
+                  ? "text-xs"
+                  : "text-sm"
                 : compact
-                  ? "text-[3.25rem]"
-                  : "text-[4.6rem]"
+                  ? "text-3xl"
+                  : "text-4xl sm:text-5xl"
             }`}
           >
             {value ?? formatScore(score)}
           </span>
           {!hasValueOverride ? (
-            <FilmStripRatingStars compact={compact} score={score} toneClassName={ratingToneClassName} />
+            null
           ) : (
             <span
-              className={`media-carrier-font-film-reel-label uppercase text-[#6d3d24] ${
-                compact ? "text-[7px] leading-3" : "text-[9px] leading-4"
+              className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} uppercase ${ratingToneClassName} ${
+                compact ? "text-xs leading-3" : "text-sm leading-4"
               }`}
             >
               чтобы поставить оценку
             </span>
           )}
           <span
-            className={`media-carrier-font-film-reel-label block min-h-4 uppercase text-[#6d3d24] ${
-              compact ? "text-[6px] leading-3" : "text-[8px] leading-4"
+            className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} block min-h-4 uppercase ${ratingToneClassName} ${
+              compact ? "text-[10px] leading-3" : "text-xs leading-4"
             } ${detailText && !hasValueOverride ? "" : "opacity-0"}`}
           >
             {detailText && !hasValueOverride ? `${detailPrefix}${detailText}` : "—"}
           </span>
         </span>
         <FilmStripPerforations compact={compact} />
-        <span className="flex items-center justify-between px-1 text-[8px] leading-none text-[#d0ad62]">
-          <span>11A ▶</span>
-          <span>{hasValueOverride ? "12" : detailText}</span>
-        </span>
       </span>
     </span>
   );
@@ -1339,7 +1036,7 @@ export function DvdMenuRatingContent({
             {value ?? formatScore(score)}
           </span>
           {!hasValueOverride ? (
-            <DvdMenuRatingStars compact={compact} score={score} />
+            null
           ) : (
             <span className={`${compact ? "text-[9px]" : "text-xs"} uppercase tracking-[0.08em] text-red-900`}>
               чтобы поставить оценку
@@ -1394,36 +1091,30 @@ export function WinDvdAeroRatingContent({
     tone === "author"
       ? AUTHOR_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone]
       : AVERAGE_WINDVD_RATING_TONE_CLASS_NAMES[ratingTone];
-  const valueBoxClassName = hasValueOverride
+  const valueClassName = hasValueOverride
     ? compact
-      ? "h-14 w-full max-w-[5.75rem] px-1 text-[1.75rem]"
-      : "h-20 w-full max-w-[12rem] px-3 text-5xl"
+      ? "text-xs"
+      : "text-sm"
     : compact
-      ? "size-14 text-4xl"
-      : "size-20 text-6xl";
-  const contentJustifyClassName = hasValueOverride
-    ? compact
-      ? "justify-center"
-      : "justify-start"
-    : "justify-between";
-
+      ? "text-3xl"
+      : "text-4xl sm:text-5xl";
   return (
     <span
-      className={`media-carrier-font-pc-windvd flex h-full flex-col overflow-hidden rounded-xl border border-sky-900/30 bg-[linear-gradient(180deg,rgba(235,249,255,0.94),rgba(210,229,240,0.86))] text-left text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.88)] backdrop-blur ${
+      className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex h-full flex-col overflow-hidden rounded-xl border border-sky-900/30 bg-[linear-gradient(180deg,rgba(235,249,255,0.94),rgba(210,229,240,0.86))] text-left text-slate-900 shadow-[0_10px_24px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.88)] backdrop-blur ${
         compact ? "min-h-[6.25rem]" : "min-h-[10.5rem]"
       }`}
     >
-      <span className="flex items-center gap-2 border-b border-sky-700/25 bg-[linear-gradient(180deg,rgba(235,249,255,0.95),rgba(92,156,202,0.72)_52%,rgba(220,239,250,0.92))] px-2 py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)]">
+      <span className={`flex items-center border-b border-sky-700/25 bg-[linear-gradient(180deg,rgba(235,249,255,0.95),rgba(92,156,202,0.72)_52%,rgba(220,239,250,0.92))] py-1 shadow-[inset_0_1px_0_rgba(255,255,255,0.9)] ${compact ? "gap-0.5 px-0.5" : "gap-1 px-1"}`}>
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={WINDVD_AERO_ICON_PATH}
           alt=""
-          className={compact ? "size-4 shrink-0" : "size-6 shrink-0"}
+          className={compact ? "size-3 shrink-0" : "size-6 shrink-0"}
           aria-hidden="true"
         />
         <span
-          className={`block min-w-0 flex-1 uppercase text-slate-900 ${
-            compact ? "text-[8px] leading-3" : "truncate text-xs"
+          className={`block min-w-0 flex-1 whitespace-nowrap uppercase text-slate-900 ${
+            compact ? "text-[10px] leading-3" : "truncate text-xs"
           }`}
         >
           {label}
@@ -1438,19 +1129,24 @@ export function WinDvdAeroRatingContent({
           />
         ) : null}
       </span>
-      <span className={compact ? "flex flex-1 px-1.5 pb-1.5 pt-0" : "flex flex-1 px-2 pb-2 pt-0"}>
+      <span className={compact ? "flex flex-1 p-1.5" : "flex flex-1 p-2"}>
         <span
-          className={`flex min-h-0 flex-1 flex-col items-center rounded-lg border border-sky-700/24 bg-transparent text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.46)] ${
+          className={`relative min-h-0 flex-1 rounded-lg border border-sky-700/24 bg-transparent text-center shadow-[inset_0_0_0_1px_rgba(255,255,255,0.46)] ${hasValueOverride ? "flex flex-col items-center justify-center" : "grid grid-rows-[minmax(0,1fr)_auto]"} ${
             compact ? "px-1.5 py-2" : "px-3 py-3"
-          } ${contentJustifyClassName}`}
+          }`}
         >
-        <span className="flex w-full flex-col items-center">
+        <span className={hasValueOverride ? "flex w-full flex-col items-center" : "grid min-h-0 place-items-center"}>
           <span
-            className={`grid place-items-center rounded-xl border border-current/35 bg-[radial-gradient(circle_at_35%_20%,rgba(255,255,255,0.98)_0%,rgba(226,244,255,0.86)_45%,rgba(125,201,239,0.72)_100%)] shadow-[0_10px_24px_rgba(14,165,233,0.18),inset_0_1px_0_rgba(255,255,255,0.86),inset_0_-10px_18px_rgba(3,105,161,0.12)] ${
-              valueBoxClassName
+            className={`relative block ${
+              valueClassName
             } ${ratingToneClassName} font-semibold leading-none tabular-nums`}
           >
-            {value ?? formatScore(score)}
+            {hasValueOverride ? value : (
+              <>
+
+                {formatScore(score)}
+              </>
+            )}
           </span>
           {hasValueOverride ? (
             <span className={`${compact ? "mt-1 text-xs" : "mt-3 text-sm"} uppercase text-red-900`}>
@@ -1458,19 +1154,11 @@ export function WinDvdAeroRatingContent({
             </span>
           ) : null}
         </span>
-        {!hasValueOverride ? (
-          <span className={compact ? "mt-1 block" : "mt-2 block"}>
-            <WinDvdAeroRatingMarks
-              compact={compact}
-              score={score}
-              toneClassName={ratingToneClassName}
-            />
-          </span>
-        ) : null}
+
         {!hasValueOverride ? (
           <span
-            className={`block min-h-5 uppercase text-slate-800 ${
-              compact ? "mt-1 text-[9px] leading-4" : "mt-3 text-sm leading-5"
+            className={`block min-h-5 uppercase ${ratingToneClassName} ${
+              compact ? "text-[10px] leading-5" : "text-xs leading-5"
             } ${detailText ? "" : "opacity-0"}`}
           >
             {detailText ? `${detailPrefix}${detailText}` : "—"}
@@ -1519,9 +1207,7 @@ export function DosTerminalRatingContent({
       <span className={`${valueClassName} relative z-10 block text-center tabular-nums`}>
         {value ?? formatScore(score)}
       </span>
-      <span className="relative z-10 block text-center text-[10px] leading-4 opacity-85">
-        <RatingStars score={score} variant="terminal" />
-      </span>
+
       <span
         className={`relative z-10 flex h-8 shrink-0 items-center justify-center text-center text-[10px] uppercase leading-4 ${
           detailText ? "opacity-85" : "opacity-0"
@@ -1566,7 +1252,7 @@ export function NesRatingPanelContent({
     <>
       <span
         className={`${labelFontClassName} ${
-          compact ? "flex min-h-8 items-end justify-center text-[10px] leading-4" : "block text-xs"
+          compact ? "block text-[8px] leading-3" : "block text-[10px]"
         } uppercase ${hasValueOverride ? "text-stone-500" : "opacity-75"}`}
       >
         {compact ? compactLabel ?? label : label}
@@ -1575,10 +1261,10 @@ export function NesRatingPanelContent({
         className={
           hasValueOverride
             ? `mt-2 block ${labelFontClassName} ${
-                compact ? "text-xs" : "text-sm"
+                compact ? "text-[8px]" : "text-[10px]"
               } uppercase text-red-900`
             : `block ${displayFontClassName} ${ratingToneClassName} ${
-                compact ? "mt-1 text-3xl leading-none" : "mt-2 text-5xl"
+                compact ? "mt-1 text-2xl leading-none" : "mt-2 text-4xl"
               } tabular-nums`
         }
       >
@@ -1587,15 +1273,12 @@ export function NesRatingPanelContent({
       {!compact ? (
         hasValueOverride ? (
           emptyHelper ? (
-            <span className="mt-3 block text-sm leading-5 text-stone-600">
+            <span className="mt-3 block text-[10px] leading-5 text-stone-600">
               {emptyHelper}
             </span>
           ) : null
         ) : (
           <>
-            <span className="mt-2 flex justify-center">
-              <RatingHearts score={score} />
-            </span>
             <span className={`mt-3 block ${labelFontClassName} text-[10px] uppercase ${detail ? "opacity-75" : "opacity-0"}`}>
               {detail ? `${detailPrefix}${detail}` : "—"}
             </span>
@@ -1603,7 +1286,7 @@ export function NesRatingPanelContent({
         )
       ) : !hasValueOverride ? (
         <span
-          className={`mt-1 block min-h-4 ${labelFontClassName} text-[9px] uppercase leading-4 ${detail ? "opacity-75" : "opacity-0"}`}
+          className={`mt-1 block min-h-4 ${labelFontClassName} text-[8px] uppercase leading-4 ${detail ? "opacity-75" : "opacity-0"}`}
         >
           {detail ? `${detailPrefix}${detail}` : "—"}
         </span>
@@ -1629,10 +1312,9 @@ export function VhsRatingPanelContent({
   tone: "archive" | "author";
   value?: string;
 }) {
-  const backgroundPath =
-    tone === "author" ? VHS_AUTHOR_RATING_BACKGROUND_PATH : VHS_ARCHIVE_RATING_BACKGROUND_PATH;
-  const hasValueOverride = value !== undefined;
+  const backgroundPath = VHS_ARCHIVE_RATING_BACKGROUND_PATH;
   const ratingToneClassName = RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
+  const valueToneClassName = tone === "author" ? ratingToneClassName : ARCHIVE_RATING_VALUE_CLASS_NAME;
 
   return (
     <span
@@ -1647,50 +1329,30 @@ export function VhsRatingPanelContent({
       />
       <span
         aria-hidden="true"
-        className={`absolute inset-0 ${
-          tone === "author" ? "bg-stone-950/20" : "bg-stone-950/42"
-        }`}
+        className="absolute inset-0 bg-stone-950/42"
       />
-      <span className="relative z-10 flex flex-1 flex-col items-center justify-between gap-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.72)]">
-        <span className="media-carrier-font-vhs block text-[10px] font-semibold uppercase leading-4 tracking-[0.14em] text-stone-50/88">
+      <span className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} relative z-10 flex flex-1 flex-col items-center justify-between gap-1 drop-shadow-[0_1px_1px_rgba(0,0,0,0.72)]`}>
+        <span className={`block font-semibold uppercase leading-5 opacity-70 ${ratingToneClassName} ${compact ? "text-[10px]" : "text-xs"}`}>
           {label}
         </span>
         <span
-          className={`media-carrier-font-vhs block ${
-            compact ? "text-4xl" : "text-6xl"
-          } leading-none tabular-nums ${ratingToneClassName}`}
+          className={`block ${
+            value !== undefined
+              ? compact ? "text-xs" : "text-sm"
+              : compact ? "text-3xl" : "text-4xl sm:text-5xl"
+          } leading-none tabular-nums ${value !== undefined ? "text-red-900" : valueToneClassName}`}
         >
           {value ?? formatScore(score)}
         </span>
-        {!compact && !hasValueOverride ? (
-          <span className={`block ${ratingToneClassName}`}>
-            <RatingStars score={score} />
-          </span>
-        ) : null}
+
         <span
-          className={`media-carrier-font-vhs block min-h-4 text-[10px] uppercase leading-4 tracking-[0.08em] text-stone-50/82 ${
-            detail ? "" : "opacity-0"
+          className={`block min-h-5 font-semibold uppercase leading-5 ${ratingToneClassName} ${compact ? "text-[10px]" : "text-xs"} ${
+            detail ? "opacity-70" : "opacity-0"
           }`}
         >
           {detail ? `${detailPrefix}${detail}` : "—"}
         </span>
       </span>
-    </span>
-  );
-}
-
-function TvGuideRatingStars({ compact = false, score }: { compact?: boolean; score: number | null }) {
-  const filledStars = score === null ? 0 : Math.max(0, Math.min(5, Math.round(score / 20)));
-
-  return (
-    <span
-      className={`font-bold leading-none text-current ${
-        compact ? "text-xl tracking-[0.1em]" : "text-2xl tracking-[0.16em]"
-      }`}
-      aria-hidden="true"
-    >
-      {"★".repeat(filledStars)}
-      <span className="opacity-35">{"★".repeat(5 - filledStars)}</span>
     </span>
   );
 }
@@ -1746,9 +1408,7 @@ export function ModernTvGuideRatingContent({
               {value ?? formatScore(score)}
             </span>
             {!hasValueOverride ? (
-              <span className="mt-1.5">
-                <TvGuideRatingStars compact score={score} />
-              </span>
+              null
             ) : (
               <span className="mt-1.5 block text-[8px] font-bold uppercase">чтобы поставить оценку</span>
             )}
@@ -1777,9 +1437,7 @@ export function ModernTvGuideRatingContent({
             {value ?? formatScore(score)}
           </span>
           {!hasValueOverride ? (
-            <span className="mt-3">
-              <TvGuideRatingStars score={score} />
-            </span>
+            null
           ) : (
             <span className="mt-2 block text-[10px] font-bold uppercase">чтобы поставить оценку</span>
           )}
@@ -1838,9 +1496,7 @@ export function TvGuideRatingContent({
               {value ?? formatScore(score)}
             </span>
             {!hasValueOverride ? (
-              <span className={`mt-2 ${ratingToneClassName}`}>
-                <TvGuideRatingStars compact score={score} />
-              </span>
+              null
             ) : (
               <span className="mt-2 block text-[8px] font-bold uppercase">чтобы поставить оценку</span>
             )}
@@ -1874,9 +1530,7 @@ export function TvGuideRatingContent({
               {value ?? formatScore(score)}
             </span>
             {!hasValueOverride ? (
-              <span className={`mt-3 ${ratingToneClassName}`}>
-                <TvGuideRatingStars score={score} />
-              </span>
+              null
             ) : (
               <span className="mt-2 block text-[10px] font-bold uppercase">чтобы поставить оценку</span>
             )}
@@ -1919,24 +1573,23 @@ export function RobloxRatingContent({
 }) {
   const isAuthor = tone === "author";
   const hasValueOverride = value !== undefined;
-  const toneClassName = isAuthor
-    ? AUTHOR_ROBLOX_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
-    : AVERAGE_ROBLOX_RATING_TONE_CLASS_NAMES[getRatingTone(score)];
+  const toneClassName = RATING_TEXT_TONE_CLASS_NAMES[getRatingTone(score)];
+  const valueToneClassName = isAuthor ? toneClassName : ARCHIVE_RATING_VALUE_CLASS_NAME;
 
   return (
     <span
-      className={`media-carrier-font-roblox relative flex h-full min-w-0 flex-col items-center overflow-hidden border text-center ${
-        compact ? "min-h-[7.25rem] rounded-lg px-3 pb-3 pt-4" : "min-h-[11rem] rounded-xl px-5 pb-4 pt-5"
-      } ${
-        isAuthor
-          ? "border-blue-950/45 bg-[linear-gradient(145deg,#1689e5_0%,#086dcc_38%,#0754aa_100%)] text-white shadow-[0_3px_0_#06458f,0_8px_16px_rgba(3,54,116,0.26),inset_0_2px_0_rgba(255,255,255,0.26),inset_0_-3px_0_rgba(2,50,112,0.38)]"
-          : "border-stone-400/60 bg-[linear-gradient(145deg,#fffdf7_0%,#f5f1e8_48%,#e7dfd0_100%)] text-stone-800 shadow-[0_7px_0_#c9bda8,0_11px_20px_rgba(87,69,43,0.22),inset_0_2px_0_rgba(255,255,255,0.95),inset_0_-3px_0_rgba(120,113,108,0.18)]"
-      }`}
+      className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} relative flex h-full min-w-0 flex-col items-center overflow-hidden border text-center ${
+        compact ? "min-h-32 rounded-lg px-3 pb-3 pt-4" : "min-h-[11rem] rounded-xl px-5 pb-4 pt-5"
+      } border-[color:var(--rating-author-border)] ${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(score)]}`}
     >
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-0 rounded-[inherit] bg-[linear-gradient(145deg,rgba(255,255,255,0.10),transparent_48%,rgba(0,0,0,0.18))] shadow-[inset_0_2px_0_rgba(255,255,255,0.26),inset_0_-5px_0_rgba(0,0,0,0.38)]"
+      />
       {isAuthor ? (
         <span
           aria-hidden="true"
-          className="absolute inset-x-2 top-[-0.28rem] h-3 rounded-t-xl border border-blue-950/25 bg-blue-600"
+          className="absolute inset-x-2 top-[-0.28rem] h-3 rounded-t-xl border border-[color:var(--rating-author-border)] bg-[var(--rating-background)] shadow-[inset_0_2px_0_rgba(255,255,255,0.20)]"
         />
       ) : null}
       {["left-3", "right-3"].map((position) => (
@@ -1949,42 +1602,40 @@ export function RobloxRatingContent({
                 ? "left-2 top-2 h-3 w-3"
                 : "right-2 top-2 h-3 w-3"
               : `top-3 h-4 w-4 ${position}`
-          } ${
-            isAuthor ? "border-blue-950/35 bg-blue-600" : "border-stone-300 bg-stone-100"
-          }`}
+          } border-[color:var(--rating-author-border)] bg-[var(--rating-background)]`}
         />
       ))}
       <span
-        className={`relative z-10 uppercase drop-shadow-sm ${
+        className={`absolute inset-x-3 top-5 z-10 block font-semibold uppercase opacity-70 ${toneClassName} ${
           compact
-            ? "flex min-h-8 max-w-full items-start justify-center px-4 text-[10px] leading-4"
-            : "block text-xs leading-5"
-        } ${isAuthor ? "text-white" : "text-sky-600"}`}
+            ? "text-[10px] leading-3"
+            : "text-xs leading-4"
+        }`}
       >
         {label}
       </span>
       <span
-        className={`relative z-10 block tabular-nums ${toneClassName} ${
+        className={`absolute left-1/2 top-1/2 z-10 block -translate-x-1/2 -translate-y-1/2 whitespace-nowrap leading-none tabular-nums ${hasValueOverride ? "text-red-900" : valueToneClassName} ${
           hasValueOverride
             ? compact
-              ? "mt-3 text-xs"
-              : "mt-4 text-sm"
+              ? "text-xs"
+              : "text-sm"
             : compact
-              ? "mt-3 text-3xl leading-none"
-              : "mt-4 text-5xl leading-none"
+              ? "text-3xl"
+              : "text-4xl sm:text-5xl"
         }`}
       >
-        {value ?? formatScore(score)}
+        {hasValueOverride ? value : (
+          <span className="relative block leading-none">
+
+            <span>{formatScore(score)}</span>
+          </span>
+        )}
       </span>
-      {!hasValueOverride ? (
-        <span className={`relative z-10 flex justify-center ${toneClassName} ${compact ? "mt-1 scale-75" : "mt-2"}`}>
-          <RatingStars score={score} />
-        </span>
-      ) : null}
       <span
-        className={`relative z-10 mt-auto block min-h-4 pt-2 uppercase ${
-          compact ? "text-[8px] leading-3" : "text-[10px] leading-4"
-        } ${detail ? "opacity-90" : "opacity-0"}`}
+        className={`absolute inset-x-2 z-10 block font-semibold uppercase ${toneClassName} ${
+          compact ? "bottom-3 text-[10px] leading-3" : "bottom-4 text-xs leading-4"
+        } ${detail ? "opacity-70" : "opacity-0"}`}
       >
         {detail ? `${detailPrefix}${detail}` : "—"}
       </span>
@@ -2001,32 +1652,7 @@ export function ArchiveRatingPanel({
   ratingPanelVariant,
   ratingsCount,
   score,
-  showStarsWhenCompact = false,
 }: ArchiveRatingPanelProps) {
-  if (ratingPanelVariant === "anime-manga") {
-    return (
-      <AnimeMangaRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
-
-  if (ratingPanelVariant === "book-note") {
-    return (
-      <BookNoteRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
-
   if (ratingPanelVariant === "comic-card") {
     return (
       <ComicCardRatingContent
@@ -2039,31 +1665,6 @@ export function ArchiveRatingPanel({
     );
   }
 
-  if (ratingPanelVariant === "dvd-menu") {
-    return (
-      <DvdMenuRatingContent
-        compact={compact}
-        footerLabel="Feature"
-        footerValue={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
-
-  if (ratingPanelVariant === "dos-terminal") {
-    return (
-      <DosTerminalRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        footer="C:\\ARCHIVE>"
-        label={label}
-        score={score}
-        toneSource="average"
-      />
-    );
-  }
 
   if (ratingPanelVariant === "film-strip") {
     return (
@@ -2080,7 +1681,7 @@ export function ArchiveRatingPanel({
     return (
       <div
         className={`rounded-md border text-center ${
-          compact ? "p-2" : "p-4"
+          compact ? "px-0.5 py-2" : "p-4"
         } border-[color:var(--rating-author-border)] ${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(score)]}`}
       >
         <NesRatingPanelContent
@@ -2107,53 +1708,6 @@ export function ArchiveRatingPanel({
     );
   }
 
-  if (ratingPanelVariant === "roblox-plaque") {
-    return (
-      <RobloxRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
-
-  if (ratingPanelVariant === "steam-achievement") {
-    return (
-      <SteamAchievementRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-      />
-    );
-  }
-
-  if (ratingPanelVariant === "streaming-card") {
-    return (
-      <StreamingRatingContent
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
-
-  if (ratingPanelVariant === "modern-tv-guide") {
-    return (
-      <ModernTvGuideRatingContent
-        channel="3"
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-        tone="archive"
-      />
-    );
-  }
 
   if (ratingPanelVariant === "vhs-poster") {
     return (
@@ -2167,17 +1721,6 @@ export function ArchiveRatingPanel({
     );
   }
 
-  if (ratingPanelVariant === "tv-guide") {
-    return (
-      <TvGuideRatingContent
-        channel="2"
-        compact={compact}
-        detail={formatRatingsCount(ratingsCount)}
-        label={label}
-        score={score}
-      />
-    );
-  }
 
   if (ratingPanelVariant === "win9x-window") {
     return (
@@ -2206,34 +1749,26 @@ export function ArchiveRatingPanel({
   return (
     <div
       className={`h-full rounded-md border text-center ${
-        compact ? "p-2" : "p-4"
+        compact ? ratingPanelVariant === "gamepad" ? "px-0.5 py-2" : "p-2" : "p-4"
       } border-[color:var(--rating-author-border)] ${RATING_PANEL_TONE_CLASS_NAMES[getRatingTone(score)]}`}
     >
       <div
-        className={`${labelFontClassName} ${compact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 opacity-70`}
+        className={`${(ratingPanelVariant === "dvd-menu" || ratingPanelVariant === "roblox-plaque" || ratingPanelVariant === "tv-guide" || ratingPanelVariant === "modern-tv-guide" || ratingPanelVariant === "dos-terminal" || ratingPanelVariant === "standard") ? MEDIA_IDENTITY_FONT_CLASS_NAME : labelFontClassName} ${ratingPanelVariant === "gamepad" ? compact ? "text-[8px]" : "text-[10px]" : compact ? "text-[10px]" : "text-xs"} font-semibold uppercase leading-5 opacity-70`}
       >
         {label}
       </div>
       <div
         className={`${
           compact ? "mt-1 text-3xl" : "mt-2 text-4xl sm:text-5xl"
-        } ${displayFontClassName} tabular-nums ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
+        } ${(ratingPanelVariant === "dvd-menu" || ratingPanelVariant === "roblox-plaque" || ratingPanelVariant === "tv-guide" || ratingPanelVariant === "modern-tv-guide" || ratingPanelVariant === "dos-terminal" || ratingPanelVariant === "standard") ? MEDIA_IDENTITY_FONT_CLASS_NAME : displayFontClassName} tabular-nums ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
       >
-        {ratingPanelVariant === "boardgame-meeples" ? <BoardgameRatingValue score={score} /> : formatScore(score)}
+        {formatScore(score)}
       </div>
-      {ratingPanelVariant !== "boardgame-meeples" && (!compact || showStarsWhenCompact) ? (
-        <div
-          className={`${
-            compact ? "mt-1 h-5 scale-75" : "mt-2"
-          } flex justify-center ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
-        >
-          <RatingStars score={score} variant={ratingPanelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
-        </div>
-      ) : null}
+
       <div
         className={`${
           compact ? "mt-1 leading-5" : "mt-2 leading-5"
-        } ${labelFontClassName} ${compact ? "text-[10px]" : "text-xs"} font-semibold uppercase opacity-70`}
+        } ${(ratingPanelVariant === "dvd-menu" || ratingPanelVariant === "roblox-plaque" || ratingPanelVariant === "tv-guide" || ratingPanelVariant === "modern-tv-guide" || ratingPanelVariant === "dos-terminal" || ratingPanelVariant === "standard") ? MEDIA_IDENTITY_FONT_CLASS_NAME : labelFontClassName} ${ratingPanelVariant === "gamepad" ? compact ? "text-[8px]" : "text-[10px]" : compact ? "text-[10px]" : "text-xs"} font-semibold uppercase opacity-70`}
       >
         {formatRatingsCount(ratingsCount)}
       </div>

@@ -7,7 +7,7 @@ import { once } from "node:events";
 import { and, asc, eq, exists, gt, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
 import { missingGenreSeriesBindingSql } from "@/db/queries/media-item-genres";
-import { getExpiredAdminExports, markAdminExportExpired, markAdminExportFailed, markAdminExportReady, markAdminExportRunning } from "@/db/queries/admin-exports";
+import { getAdminExportById, getExpiredAdminExports, markAdminExportExpired, markAdminExportFailed, markAdminExportReady, markAdminExportRunning } from "@/db/queries/admin-exports";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
 import { authors, franchises, mediaCarriers, mediaItemFranchises, mediaItemMetadata, mediaItems, mediaItemTitleAliases } from "@/db/schema";
 import { deleteS3Object, uploadS3ObjectStream } from "@/lib/services/minio";
@@ -15,6 +15,8 @@ import { logSystemActivity } from "@/lib/activity-logs/system";
 import { createCsvRow, CSV_BOM } from "./csv";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { ADMIN_EXPORT_ENTITY_TYPES, ADMIN_EXPORT_FIELDS, formatMetadataExportValue, getMetadataExportField, parseAdminExportFields, type AdminExportEntityType } from "./model";
+import { cleanupDatabaseDumpFiles, generateDatabaseDump } from "./database-dump";
+import { getAdminExportStorageEnv } from "./storage";
 
 const BATCH_SIZE = 500;
 const MAX_EXPORT_BYTES = 1024 * 1024 * 1024;
@@ -89,7 +91,9 @@ async function hashFile(filePath: string) {
   return hash.digest("hex");
 }
 
-export async function generateAdminExport(exportId: string) {
+export async function generateAdminExport(exportId: string, signal: AbortSignal) {
+  const current = await getAdminExportById(exportId);
+  if (current?.entityType === "database_dump") return generateDatabaseDump(exportId, signal);
   const item = await markAdminExportRunning(exportId);
   if (!item || item.status === "ready") return;
   const directory = await mkdtemp(join(tmpdir(), "zadrotto-export-"));
@@ -146,7 +150,8 @@ export async function generateAdminExport(exportId: string) {
 }
 
 export async function cleanupAdminExports() {
+  await cleanupDatabaseDumpFiles();
   const expired = await getExpiredAdminExports();
-  for (const item of expired) { if (item.objectKey) await deleteS3Object({ objectKey: item.objectKey }); await markAdminExportExpired(item.id); await logSystemActivity({ action: "data-export.expired", entityType: "data-export", entityLabel: item.id, message: "Истёкший файл экспорта удалён." }); }
+  for (const item of expired) { if (item.objectKey) await deleteS3Object({ objectKey: item.objectKey, env: getAdminExportStorageEnv(item.entityType) }); await markAdminExportExpired(item.id); await logSystemActivity({ action: "data-export.expired", entityType: "data-export", entityLabel: item.id, message: "Истёкший файл экспорта удалён." }); }
   return expired.length;
 }

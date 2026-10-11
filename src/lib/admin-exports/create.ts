@@ -1,8 +1,9 @@
 import { getArchiveSettings } from "@/db/queries/archive-settings";
-import { getActiveAdminExports, getAdminExportForOwner, insertAdminExport, markAdminExportFailed, requeueAdminExport, type AdminExportFilters } from "@/db/queries/admin-exports";
-import { fetchS3Object } from "@/lib/services/minio";
+import { getActiveAdminExports, getAdminExportForOwner, insertAdminExport, insertDatabaseDumpExport, markAdminExportFailed, requeueAdminExport, type AdminExportFilters } from "@/db/queries/admin-exports";
+import { deleteS3Object, fetchS3Object } from "@/lib/services/minio";
 import { enqueueJobRun } from "@/lib/jobs/queue";
-import { ADMIN_EXPORT_ENTITY_TYPES, parseAdminExportFields, type AdminExportEntityType } from "./model";
+import { ADMIN_EXPORT_ENTITY_TYPES, getAdminExportDownload, parseAdminExportFields, type AdminExportEntityType } from "./model";
+import { getAdminExportStorageEnv } from "./storage";
 
 function normalizeFilters(type: AdminExportEntityType, value: AdminExportFilters): AdminExportFilters {
   const q = value.q?.trim();
@@ -42,15 +43,33 @@ export async function getDownloadableAdminExport(input: { adminId: number; expor
   if (!item) throw new Error("Экспорт не найден.");
   if (item.status !== "ready" || !item.objectKey) throw new Error("Файл экспорта ещё не готов.");
   if (item.expiresAt <= new Date()) throw new Error("Срок хранения экспорта истёк.");
-  const response = await fetchS3Object({ objectKey: item.objectKey });
+  const response = await fetchS3Object({ objectKey: item.objectKey, env: getAdminExportStorageEnv(item.entityType) });
   if (!response?.body) throw new Error("Файл экспорта не найден в хранилище.");
-  return { body: response.body, contentLength: item.fileSize, fileName: `${item.entityType}-${item.id}.csv` };
+  const download = getAdminExportDownload(item);
+  return { body: response.body, contentLength: item.fileSize, fileName: download.filename, contentType: download.contentType };
+}
+
+export async function createDatabaseDumpExport(adminId: number) {
+  const settings = await getArchiveSettings();
+  const { item, created } = await insertDatabaseDumpExport({ adminId, expiresAt: new Date(Date.now() + settings.exportRetentionDays * 86_400_000) });
+  if (!created) return item;
+  try {
+    await enqueueJobRun({ createdByAdminId: adminId, payload: { exportId: item.id }, source: "manual", type: "admin.export-generate" });
+  } catch (error) {
+    await markAdminExportFailed(item.id, "Не удалось поставить дамп в очередь.");
+    throw error;
+  }
+  return item;
 }
 
 export async function retryAdminExport(input: { adminId: number; exportId: string }) {
   const current = await getAdminExportForOwner(input.exportId, input.adminId);
   if (!current || current.status !== "failed") throw new Error("Повторить можно только неудачный экспорт.");
-  const row = await requeueAdminExport(input.exportId, input.adminId);
+  if (current.entityType === "database_dump" && current.objectKey) {
+    await deleteS3Object({ objectKey: current.objectKey, env: getAdminExportStorageEnv(current.entityType) });
+  }
+  const settings = await getArchiveSettings();
+  const row = await requeueAdminExport(input.exportId, input.adminId, new Date(Date.now() + settings.exportRetentionDays * 86_400_000));
   if (!row) throw new Error("Экспорт уже изменён.");
   try {
     await enqueueJobRun({ createdByAdminId: input.adminId, payload: { exportId: row.id }, source: "manual", type: "admin.export-generate" });

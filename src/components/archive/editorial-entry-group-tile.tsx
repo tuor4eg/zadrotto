@@ -1,5 +1,6 @@
 "use client";
 
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { MediaItemTile } from "@/app/media-item-tile";
 import { MediaItemStatusTile } from "@/app/media-item-status-tile";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
@@ -30,7 +31,7 @@ export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuth
         key={ratingRequest}
         openRequestKey={ratingRequest}
         mediaItemCode={item.code}
-        title={item.title}
+        title={resolveMediaItemDisplayTitles(item).displayTitle}
         currentAuthor={ratingAuthor}
         currentAuthorScore={item.currentAuthorScore}
         currentAuthorFirstExperiencedAt={item.currentAuthorFirstExperiencedAt}

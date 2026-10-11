@@ -20,6 +20,7 @@ COPY tools ./tools
 # Node runners keep the source tree and can execute the same handlers as the app.
 FROM base AS jobs-runner
 ENV NODE_ENV=production
+RUN apk add --no-cache postgresql18-client
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY tsconfig.json ./

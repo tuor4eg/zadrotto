@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react"
 import Link from "next/link"
 
@@ -37,6 +38,7 @@ export function ArchiveMediaItemIdentity({
   mediaTypes,
   showFranchiseSection = false,
 }: ArchiveMediaItemIdentityProps) {
+  const { displayTitle, displayOriginalTitle, displayAliases } = resolveMediaItemDisplayTitles(item)
   const mediaCarrierFrame = getMediaCarrierFrame(item)
   const carrierLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? "font-mono"
   const mediaTypeLabel = getMediaTypeLabel(item.mediaType, mediaTypes)
@@ -53,7 +55,7 @@ export function ArchiveMediaItemIdentity({
   return (
     <ArchiveMediaItemIdentityLayout
       coverUrl={coverUrl}
-      title={item.title}
+      title={displayTitle}
       viewerCoverUrl={viewerCoverUrl}
       breadcrumb={
         <nav aria-label="Хлебные крошки" className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
@@ -66,7 +68,7 @@ export function ArchiveMediaItemIdentity({
           <li aria-hidden="true" className="text-stone-400">/</li>
           <li>
             <Link className="underline decoration-stone-400 underline-offset-4 hover:text-stone-950" href={`/media/${item.code}`}>
-              {item.title}
+              {displayTitle}
             </Link>
           </li>
           <li aria-hidden="true" className="text-stone-400">/</li>
@@ -103,16 +105,16 @@ export function ArchiveMediaItemIdentity({
             ? `${MEDIA_IDENTITY_FONT_CLASS_NAME} text-xl leading-[1.5] text-stone-950 hover:text-stone-700 sm:text-3xl`
             : `${MEDIA_IDENTITY_FONT_CLASS_NAME} text-3xl leading-none text-stone-950 hover:text-stone-700 sm:text-5xl`}
         >
-          <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
+          <MediaCarrierDisplayTitle title={displayTitle} frame={mediaCarrierFrame} />
         </Link>
-        {item.originalTitle && item.originalTitle !== item.title ? (
+        {displayOriginalTitle ? (
           <div className={`mt-3 ${carrierLabelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
-            {item.originalTitle}
+            {displayOriginalTitle}
           </div>
         ) : null}
-        {(item.aliases?.length ?? 0) > 0 ? (
+        {displayAliases.length > 0 ? (
           <div className={`mt-2 ${carrierLabelFontClassName} text-xs leading-5 text-stone-600`}>
-            Также известно как: {item.aliases?.join(", ")}
+            Также известно как: {displayAliases.join(", ")}
           </div>
         ) : null}
       </div>

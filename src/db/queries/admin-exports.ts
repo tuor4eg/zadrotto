@@ -1,7 +1,7 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminExports, jobRuns } from "@/db/schema";
-import type { AdminExportEntityType } from "@/lib/admin-exports/model";
+import type { AdminExportType } from "@/lib/admin-exports/model";
 
 export type AdminExportFilters = {
   q?: string;
@@ -12,9 +12,26 @@ export type AdminExportFilters = {
   seriesBinding?: "missing";
 };
 
-export async function insertAdminExport(input: { adminId: number; entityType: AdminExportEntityType; fields: string[]; filters: AdminExportFilters; sort: string; expiresAt: Date }) {
+export async function insertAdminExport(input: { adminId: number; entityType: AdminExportType; fields: string[]; filters: AdminExportFilters; sort: string; expiresAt: Date }) {
   const [row] = await db.insert(adminExports).values({ createdByAdminId: input.adminId, entityType: input.entityType, fields: input.fields, filters: input.filters, sort: input.sort, expiresAt: input.expiresAt }).returning();
   return row;
+}
+
+export async function insertDatabaseDumpExport(input: { adminId: number; expiresAt: Date }) {
+  return db.transaction(async (tx) => {
+    // Serialize requests by one administrator without keeping a transaction open during pg_dump.
+    await tx.execute(sql`select pg_advisory_xact_lock(6432, ${input.adminId})`);
+    const [existing] = await tx.select().from(adminExports).where(and(
+      eq(adminExports.createdByAdminId, input.adminId),
+      eq(adminExports.entityType, "database_dump"),
+      inArray(adminExports.status, ["queued", "running"]),
+    )).limit(1);
+    if (existing) return { item: existing, created: false };
+    const [item] = await tx.insert(adminExports).values({
+      createdByAdminId: input.adminId, entityType: "database_dump", fields: [], filters: {}, sort: "none", expiresAt: input.expiresAt,
+    }).returning();
+    return { item, created: true };
+  });
 }
 
 export async function listAdminExports(input: { adminId: number; page?: number; pageSize?: number }) {
@@ -42,15 +59,20 @@ export async function markAdminExportRunning(id: string) {
   const [row] = await db.update(adminExports).set({ status: "running", startedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(and(eq(adminExports.id, id), inArray(adminExports.status, ["queued", "running", "failed"]))).returning();
   return row ?? null;
 }
-export async function markAdminExportReady(input: { id: string; objectKey: string; rowCount: number; fileSize: number }) {
-  await db.update(adminExports).set({ status: "ready", objectKey: input.objectKey, rowCount: input.rowCount, fileSize: input.fileSize, finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, input.id));
+export async function markAdminExportReady(input: { id: string; objectKey: string; rowCount: number | null; fileSize: number; expiresAt?: Date }) {
+  if (!Number.isSafeInteger(input.fileSize) || input.fileSize < 0) throw new Error("Некорректный размер экспорта.");
+  await db.update(adminExports).set({ status: "ready", objectKey: input.objectKey, rowCount: input.rowCount, fileSize: input.fileSize, ...(input.expiresAt ? { expiresAt: input.expiresAt } : {}), finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, input.id));
 }
 export async function markAdminExportFailed(id: string, message = "Не удалось сформировать экспорт.") {
   await db.update(adminExports).set({ status: "failed", errorMessage: message, finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, id));
 }
-export async function requeueAdminExport(id: string, adminId: number) {
-  const [row] = await db.update(adminExports).set({ status: "queued", errorMessage: null, startedAt: null, finishedAt: null, objectKey: null, rowCount: null, fileSize: null, updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.createdByAdminId, adminId), eq(adminExports.status, "failed"))).returning();
+export async function requeueAdminExport(id: string, adminId: number, expiresAt?: Date) {
+  const [row] = await db.update(adminExports).set({ status: "queued", errorMessage: null, startedAt: null, finishedAt: null, objectKey: null, rowCount: null, fileSize: null, ...(expiresAt ? { expiresAt } : {}), updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.createdByAdminId, adminId), eq(adminExports.status, "failed"))).returning();
   return row ?? null;
+}
+
+export async function setAdminExportObjectKey(id: string, objectKey: string) {
+  await db.update(adminExports).set({ objectKey, updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.status, "running")));
 }
 export async function getExpiredAdminExports(now = new Date()) {
   return db.select().from(adminExports).where(and(lt(adminExports.expiresAt, now), inArray(adminExports.status, ["queued", "ready", "failed"]))).limit(100);

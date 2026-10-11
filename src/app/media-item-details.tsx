@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react";
 import Link from "next/link";
 
@@ -127,6 +128,7 @@ export function MediaItemDetails({
   relatedItems = [],
   relatedFranchiseSections,
 }: MediaItemDetailsProps) {
+  const { displayTitle, displayOriginalTitle, displayAliases } = resolveMediaItemDisplayTitles(item);
   const [detailsYearLabel, ...detailsMetaLabels] = getArchiveMediaItemInfoLabels({
     ...item,
     genres: [],
@@ -192,16 +194,16 @@ export function MediaItemDetails({
             {item.coverUrl ? (
               <ImageViewer
                 src={item.coverUrl}
-                alt={`Обложка: ${item.title}`}
-                title={item.title}
+                alt={`Обложка: ${displayTitle}`}
+                title={displayTitle}
                 triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
                   hasCarrierFrame ? "" : "media-image-lift-trigger"
                 }`}
               >
-                <ArchiveCover item={item} className="h-full w-full" />
+                <ArchiveCover item={{ ...item, title: displayTitle }} className="h-full w-full" />
               </ImageViewer>
             ) : (
-              <ArchiveCover item={item} className="h-full w-full" />
+              <ArchiveCover item={{ ...item, title: displayTitle }} className="h-full w-full" />
             )}
             <CoverSourceAttribution
               provider={item.metadataFacts?.bggItemType ? "bgg" : item.coverSourceProvider}
@@ -243,15 +245,15 @@ export function MediaItemDetails({
 
               <div className="flex flex-col gap-2">
                 <h1 className="text-4xl font-semibold leading-tight text-zinc-950 sm:text-5xl">
-                  {item.title}
+                  {displayTitle}
                 </h1>
                 {titleActions}
-                {item.originalTitle && item.originalTitle !== item.title ? (
-                  <p className="text-lg text-zinc-500">{item.originalTitle}</p>
+                {displayOriginalTitle ? (
+                  <p className="text-lg text-zinc-500">{displayOriginalTitle}</p>
                 ) : null}
-                {(item.aliases?.length ?? 0) > 0 ? (
+                {displayAliases.length > 0 ? (
                   <p className="text-sm text-zinc-500">
-                    Также известно как: {item.aliases?.join(", ")}
+                    Также известно как: {displayAliases.join(", ")}
                   </p>
                 ) : null}
                 {item.description ? (
@@ -351,6 +353,7 @@ function ArchiveMediaItemDetails({
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
   relatedFranchiseSections: RelatedFranchiseSection[];
 }) {
+  const { displayTitle, displayOriginalTitle, displayAliases } = resolveMediaItemDisplayTitles(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const isBoardgame = mediaCarrierFrame?.ratingPanelVariant === "boardgame-meeples";
@@ -440,22 +443,22 @@ function ArchiveMediaItemDetails({
                       {item.coverUrl ? (
                         <ImageViewer
                           src={item.coverUrl}
-                          alt={`Обложка: ${item.title}`}
-                          title={item.title}
+                          alt={`Обложка: ${displayTitle}`}
+                          title={displayTitle}
                           triggerClassName={`block h-full w-full cursor-zoom-in text-left ${
                             hasCarrierFrame ? "" : "media-image-lift-trigger"
                           }`}
                         >
                           <ArchiveCover
                             carrierFrameSize={hasCarrierFrame ? "detail" : "default"}
-                            item={item}
+                            item={{ ...item, title: displayTitle }}
                             className="h-full w-full"
                           />
                         </ImageViewer>
                       ) : (
                         <ArchiveCover
                           carrierFrameSize={hasCarrierFrame ? "detail" : "default"}
-                          item={item}
+                          item={{ ...item, title: displayTitle }}
                           className="h-full w-full"
                         />
                       )}
@@ -494,7 +497,7 @@ function ArchiveMediaItemDetails({
             }
           >
             <div className="w-full break-words lg:max-w-[584px]">
-              <MediaCarrierDisplayTitle title={item.title} frame={mediaCarrierFrame} />
+              <MediaCarrierDisplayTitle title={displayTitle} frame={mediaCarrierFrame} />
             </div>
           </div>
 
@@ -502,14 +505,14 @@ function ArchiveMediaItemDetails({
             <div>
               <div className="w-full max-w-[584px] pr-16 sm:pr-20 lg:pr-0">
                 {titleActions}
-                {item.originalTitle && item.originalTitle !== item.title ? (
+                {displayOriginalTitle ? (
                   <div className={`mt-3 ${ratingLabelFontClassName} text-xs uppercase leading-6 text-stone-700`}>
-                    {item.originalTitle}
+                    {displayOriginalTitle}
                   </div>
                 ) : null}
-                {(item.aliases?.length ?? 0) > 0 ? (
+                {displayAliases.length > 0 ? (
                   <div className={`mt-5 ${ratingLabelFontClassName} text-xs leading-6 text-stone-600`}>
-                    Также известно как: {item.aliases?.join(", ")}
+                    Также известно как: {displayAliases.join(", ")}
                   </div>
                 ) : null}
               </div>
@@ -558,7 +561,6 @@ function ArchiveMediaItemDetails({
                 <div className="h-full min-w-0">
                   <ArchiveRatingPanel
                     compact
-                    showStarsWhenCompact
                     displayFontClassName={ratingDisplayFontClassName}
                     label="Оценка архива"
                     labelFontClassName={ratingLabelFontClassName}

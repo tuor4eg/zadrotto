@@ -6,6 +6,8 @@ import {
   getCoverObjectPublicUrl,
   getS3StorageConfig,
   resolveCoverUrl,
+  getS3BucketAccessSettings,
+  S3BucketAccessError,
 } from "../src/lib/services/minio";
 
 const storageEnv = {
@@ -17,6 +19,16 @@ const storageEnv = {
   S3_FORCE_PATH_STYLE: "true",
   S3_PUBLIC_BASE_URL: "http://127.0.0.1:9000/zadrotto-covers/",
 };
+
+it("bucket access inspection fails closed and distinguishes permissions from transient S3 errors", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const status of [403, 500, 429]) {
+      globalThis.fetch = async () => new Response("Unavailable", { status });
+      await assert.rejects(getS3BucketAccessSettings({ env: storageEnv }), (error: unknown) => error instanceof S3BucketAccessError && error.retryable === (status !== 403));
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});
 
 describe("storage helpers", () => {
   it("reads normalized S3-compatible storage config from env", () => {

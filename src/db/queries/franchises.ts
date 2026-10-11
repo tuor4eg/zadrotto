@@ -483,6 +483,7 @@ export async function searchPublishedMediaItemsForFranchise(input: {
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemTitleAliasesSql(),
       mediaType: mediaItems.mediaType,
       releaseYear: mediaItems.releaseYear,
       linkStatus: mediaItemFranchises.publicationStatus,

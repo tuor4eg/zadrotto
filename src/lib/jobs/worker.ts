@@ -3,6 +3,7 @@ import { sanitizeJobError } from "./model";
 import { JobError, type AnyJobHandlerDefinition } from "./types";
 
 export async function executeClaimedJobRun(input: {
+  signal?: AbortSignal;
   getHandler: (type: string) => AnyJobHandlerDefinition;
   operations?: {
     finish: typeof finishJobRun;
@@ -15,6 +16,7 @@ export async function executeClaimedJobRun(input: {
   const operations = input.operations ?? { finish: finishJobRun, requeue: requeueJobRun, defer: deferJobRun };
   if (!run.lockToken) return;
   const controller = new AbortController();
+  const signal = input.signal ? AbortSignal.any([controller.signal, input.signal]) : controller.signal;
   const timer = setTimeout(() => controller.abort(), run.timeoutSeconds * 1000);
   try {
     const handler = input.getHandler(run.type);
@@ -24,7 +26,8 @@ export async function executeClaimedJobRun(input: {
     } catch {
       throw new JobError("invalid-payload", "Параметры задачи не прошли проверку.", { retryable: false });
     }
-    await handler.execute({ attempt: run.attempts, jobId: run.jobId, payload, runId: run.id, signal: controller.signal, source: run.source as import("./model").JobRunSource } as never);
+    await handler.execute({ attempt: run.attempts, jobId: run.jobId, payload, runId: run.id, signal, source: run.source as import("./model").JobRunSource } as never);
+    if (input.signal?.aborted) throw new JobError("interrupted", "Задача прервана при остановке worker.");
     if (controller.signal.aborted) {
       throw new JobError("timeout", "Превышено время выполнения задачи.");
     }
@@ -32,6 +35,8 @@ export async function executeClaimedJobRun(input: {
   } catch (error) {
     const normalized = error instanceof JobError
       ? error
+      : input.signal?.aborted
+        ? new JobError("interrupted", "Задача прервана при остановке worker.")
       : controller.signal.aborted
         ? new JobError("timeout", "Превышено время выполнения задачи.")
         : new JobError("execution-failed", "Не удалось выполнить задачу.");

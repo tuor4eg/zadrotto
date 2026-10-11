@@ -41,7 +41,7 @@ export function ArchiveNote({ text, maxWidthClassName = "max-w-[620px]", collaps
     <div className={`archive-notebook-note mx-auto w-full ${maxWidthClassName}`}>
       <div className="archive-notebook-tape" aria-hidden="true" />
       <div className="media-carrier-font-streaming mb-4 text-xs font-semibold uppercase tracking-[0.2em] text-stone-500">
-        Архивная заметка
+        Про что
       </div>
       <div className="media-carrier-font-streaming space-y-4 [overflow-wrap:anywhere] text-[15px] leading-6 text-stone-800 sm:text-base sm:leading-7">
         {paragraphs.map((paragraph, index) => (

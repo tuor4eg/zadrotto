@@ -1,5 +1,20 @@
 export const ADMIN_EXPORT_ENTITY_TYPES = ["media_items", "series"] as const;
 export type AdminExportEntityType = (typeof ADMIN_EXPORT_ENTITY_TYPES)[number];
+export type AdminExportType = AdminExportEntityType | "database_dump";
+
+export function getAdminExportLabel(type: string) {
+  if (type === "database_dump") return "Дамп базы";
+  return type === "media_items" ? "Записи" : "Серии";
+}
+
+export function getAdminExportDownload(item: { entityType: string; createdAt: Date }) {
+  if (item.entityType === "database_dump") {
+    const timestamp = item.createdAt.toISOString().replace(/[:.]/g, "-");
+    return { filename: `geekoteka-db-${timestamp}.sql.gz`, contentType: "application/gzip" };
+  }
+  const prefix = item.entityType === "media_items" ? "media-items" : "series";
+  return { filename: `${prefix}-${item.createdAt.toISOString().slice(0, 10)}.csv`, contentType: "text/csv; charset=utf-8" };
+}
 
 type MetadataExportValueType = "date" | "number" | "string" | "string[]";
 

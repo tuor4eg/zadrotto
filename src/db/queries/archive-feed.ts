@@ -2,6 +2,7 @@ import { and, desc, eq, inArray } from "drizzle-orm";
 
 import { editorialDocumentItemsCountSql } from "@/db/queries/editorial-document-references";
 import { db } from "@/db";
+import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
 import {
   authors,
   contributionReviews,
@@ -26,6 +27,12 @@ export type ArchiveFeedItem = {
   kind: "collection" | "media" | "review" | "series";
   meta: string;
   title: string;
+  originalTitle?: string | null;
+  aliases?: string[];
+  mediaItemTitle?: string;
+  mediaItemOriginalTitle?: string | null;
+  mediaItemAliases?: string[];
+  authorName?: string;
 };
 
 export async function getLatestArchiveFeed(
@@ -43,6 +50,8 @@ export async function getLatestArchiveFeed(
         mediaType: mediaItems.mediaType,
         releaseYear: mediaItems.releaseYear,
         title: mediaItems.title,
+        originalTitle: mediaItems.originalTitle,
+        aliases: mediaItemDisplayAliasesSql(),
       })
       .from(mediaItems)
       .where(and(
@@ -60,6 +69,8 @@ export async function getLatestArchiveFeed(
         id: contributions.id,
         mediaItemCode: mediaItems.code,
         mediaItemTitle: mediaItems.title,
+        mediaItemOriginalTitle: mediaItems.originalTitle,
+        mediaItemAliases: mediaItemDisplayAliasesSql(),
         reviewTitle: contributionReviews.title,
       })
       .from(contributions)
@@ -141,6 +152,8 @@ export async function getLatestArchiveFeed(
         item.releaseYear,
       ].filter(Boolean).join(" · "),
       title: item.title,
+      aliases: item.aliases,
+      originalTitle: item.originalTitle,
     })),
     ...seriesRows.map((item): ArchiveFeedItem => ({
       createdAt: item.createdAt,
@@ -158,6 +171,10 @@ export async function getLatestArchiveFeed(
       key: `review-${item.id}`,
       kind: "review",
       meta: `${item.mediaItemTitle} · ${item.authorName}`,
+      mediaItemTitle: item.mediaItemTitle,
+      mediaItemAliases: item.mediaItemAliases,
+      mediaItemOriginalTitle: item.mediaItemOriginalTitle,
+      authorName: item.authorName,
       title: item.reviewTitle,
     })),
     ...collectionRows.map((item): ArchiveFeedItem => ({

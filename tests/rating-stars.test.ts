@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 
-import { RatingStars } from "@/app/media-rating-panel";
+import { ArchiveRatingPanel, RatingStars } from "@/app/media-rating-panel";
 import { getMediaCarrierFrame } from "@/lib/media/carrier-frame";
 
 function getHiddenPercentages(score: number | null) {
@@ -12,6 +12,31 @@ function getHiddenPercentages(score: number | null) {
 }
 
 describe("proportional rating stars", () => {
+  it("omits left rating icons for both present and absent scores", () => {
+    const variants = ["gamepad", "smartphone", "boardgame-meeples", "anime-manga", "book-note", "dvd-menu", "dos-terminal", "nes-hearts", "ps1-memory-card", "roblox-plaque", "steam-achievement", "vhs-poster", "win9x-window", "windvd-aero", "streaming-card"] as const;
+    for (const ratingPanelVariant of variants) {
+      for (const compact of [false, true]) {
+        for (const score of [null, 0, 80]) {
+          const markup = renderToStaticMarkup(createElement(ArchiveRatingPanel, {
+            compact, ratingPanelVariant, score, ratingsCount: 3, label: "Оценка архива",
+          }));
+          assert.doesNotMatch(markup, /right-full|data-rating-symbol/, ratingPanelVariant);
+        }
+      }
+    }
+  });
+  it("omits stars from every archive rating panel in full and compact views", () => {
+    const variants = [undefined, "gamepad", "smartphone", "boardgame-meeples", "anime-manga", "book-note", "comic-card", "dvd-menu", "dos-terminal", "film-strip", "modern-tv-guide", "nes-hearts", "ps1-memory-card", "roblox-plaque", "steam-achievement", "streaming-card", "tv-guide", "vhs-poster", "win9x-window", "windvd-aero"] as const;
+    for (const ratingPanelVariant of variants) {
+      for (const compact of [false, true]) {
+        const markup = renderToStaticMarkup(createElement(ArchiveRatingPanel, {
+          compact, ratingPanelVariant, score: 83, ratingsCount: 3, label: "Оценка архива",
+        }));
+        assert.doesNotMatch(markup, /[★☆⭐]/, `${ratingPanelVariant}: compact=${compact}`);
+        assert.match(markup, /8\.3/);
+      }
+    }
+  });
   it("uses SVG meeples for board games with proportional filling", () => {
     const frame = getMediaCarrierFrame({ mediaType: "boardgame" });
     assert.equal(frame?.ratingPanelVariant, "boardgame-meeples");

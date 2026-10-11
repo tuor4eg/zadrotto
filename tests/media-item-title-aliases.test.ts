@@ -63,6 +63,6 @@ describe("media item title aliases", () => {
     assert.match(mediaQueries, /aliases: mediaItemTitleAliasesSql\(\)/);
     assert.match(mediaQueries, /from\(mediaItemTitleAliases\)/);
     assert.match(mediaQueries, /containsNormalizedSearchSql\(mediaItemTitleAliases\.value, normalizedSearchQuery\)/);
-    assert.match(details, /Также известно как: \{item\.aliases\?\.join\(", "\)\}/);
+    assert.match(details, /Также известно как: \{displayAliases\.join\(", "\)\}/);
   });
 });

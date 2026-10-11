@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import Link from "next/link";
 import { Play, Plus, Star } from "lucide-react";
 
@@ -17,6 +18,8 @@ import {
 } from "@/lib/ratings/tone";
 
 export type MediaItemTileItem = {
+  originalTitle?: string | null;
+  aliases?: readonly string[];
   averageScore: number | null;
   code: string;
   coverThumbUrl?: string | null;
@@ -671,6 +674,7 @@ export function MediaItemTile({
   selected = false,
   showMediaTypeLabel = false,
 }: MediaItemTileProps) {
+  const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const shouldShowAuthorScore = currentAuthorScore !== undefined && currentAuthorScore !== null;
   const shouldShowAuthorOnly = ratingDisplay === "author-only" && shouldShowAuthorScore;
   const shouldShowRating = ratingDisplay !== "author-only" || shouldShowAuthorScore;
@@ -694,6 +698,7 @@ export function MediaItemTile({
   const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
   const tileCoverItem = {
     ...item,
+    title: displayTitle,
     coverUrl: item.coverThumbUrl ?? item.coverUrl,
   };
   const content = (
@@ -718,7 +723,7 @@ export function MediaItemTile({
       ) : null}
       <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
         <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
-          {item.title}
+          {displayTitle}
         </span>
       </span>
       {profileRating ? (

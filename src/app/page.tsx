@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import Link from "next/link";
 import Image from "next/image";
 import { Suspense } from "react";
@@ -122,7 +123,7 @@ function DailyRecommendation({
       {item ? (
         <Link
           href={`/media/${item.code}`}
-          aria-label={`Открыть досье «${item.title}»`}
+          aria-label={`Открыть досье «${resolveMediaItemDisplayTitles(item).displayTitle}»`}
           className="inset-0 rounded-lg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-3px] focus-visible:outline-stone-950"
           style={{ position: "absolute", zIndex: 20 }}
         />
@@ -170,7 +171,7 @@ function DailyRecommendation({
 
         {item ? (
           <div className="flex flex-1 flex-col pt-1">
-            <h3 className="font-serif text-2xl leading-tight text-stone-950">{item.title}</h3>
+            <h3 className="font-serif text-2xl leading-tight text-stone-950">{resolveMediaItemDisplayTitles(item).displayTitle}</h3>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
               {mediaTypeName ?? item.mediaType}
               {item.releaseYear ? ` · ${item.releaseYear}` : ""}
@@ -247,7 +248,7 @@ function LatestReview({
           <Link
             href={`/reviews/${review.id}`}
             className="mt-1 flex min-h-0 flex-1 flex-col rounded-sm focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950"
-            aria-label={`Читать рецензию на «${review.mediaItemTitle}»`}
+            aria-label={`Читать рецензию на «${resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle }).displayTitle}»`}
           >
             <div className="flex min-h-0 w-full flex-1 flex-col md:max-w-[72%]">
               <p className="shrink-0 text-sm leading-6 text-stone-600 md:h-8">
@@ -255,7 +256,7 @@ function LatestReview({
               </p>
               <div className="flex min-h-0 flex-1 flex-col pt-1">
                 <h3 className="shrink-0 font-serif text-xl leading-tight text-stone-950">
-                  {review.mediaItemTitle}
+                  {resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle }).displayTitle}
                 </h3>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
                   {mediaTypeName ?? review.mediaType}

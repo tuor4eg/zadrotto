@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import Link from "next/link";
 import { Clock3, FileText, Layers3, Library, MessageSquareQuote, type LucideIcon } from "lucide-react";
 
@@ -28,6 +29,10 @@ function ArchiveFeedCard({
   className: string;
   item: ArchiveFeedItem;
 }) {
+  const displayTitle = item.kind === "media" ? resolveMediaItemDisplayTitles(item).displayTitle : item.title;
+  const meta = item.kind === "review" && item.mediaItemTitle
+    ? `${resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle }).displayTitle} · ${item.authorName}`
+    : item.meta;
   const { icon: KindIcon, label } = KIND_DETAILS[item.kind];
 
   return (
@@ -49,8 +54,8 @@ function ArchiveFeedCard({
           <span aria-hidden="true">·</span>
           <time dateTime={item.createdAt.toISOString()}>{formatFeedDate(item.createdAt)}</time>
         </div>
-        <h3 className="mt-2 line-clamp-3 font-serif text-lg leading-tight text-stone-950">{item.title}</h3>
-        <p className="mt-auto line-clamp-2 pt-2 text-xs leading-5 text-stone-600">{item.meta}</p>
+        <h3 className="mt-2 line-clamp-3 font-serif text-lg leading-tight text-stone-950">{displayTitle}</h3>
+        <p className="mt-auto line-clamp-2 pt-2 text-xs leading-5 text-stone-600">{meta}</p>
       </div>
     </Link>
   );

@@ -1,3 +1,4 @@
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles"
 import Link from "next/link"
 import { Edit3, Eye, Trash2 } from "lucide-react"
 
@@ -25,6 +26,8 @@ export type MyReviewCatalogRowItem = {
   title: string
   mediaItemCode: string
   mediaItemTitle: string
+  mediaItemOriginalTitle?: string | null;
+  mediaItemAliases?: string[] | null
   mediaType: string
   mediaItemReleaseYear: number | null
   mediaItemCarrierCode: string | null
@@ -114,6 +117,7 @@ export function MyReviewCatalogRow({
   item: MyReviewCatalogRowItem
   mediaTypes: readonly MediaTypeOption[]
 }) {
+  const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle })
   const mediaTypeLabel = getMediaTypeLabel(item.mediaType, mediaTypes)
   const updatedLabel = formatRelativeArchiveDate(item.updatedAt)
   const publishedLabel = item.publishedAt
@@ -131,7 +135,7 @@ export function MyReviewCatalogRow({
               mediaCarrierCode: item.mediaItemCarrierCode,
               mediaType: item.mediaType,
               releaseYear: item.mediaItemReleaseYear,
-              title: item.mediaItemTitle,
+              title: mediaItemTitle,
             }}
             className="absolute inset-0 h-full w-full"
           />
@@ -139,7 +143,7 @@ export function MyReviewCatalogRow({
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight text-stone-950">
-            {item.mediaItemTitle}
+            {mediaItemTitle}
           </p>
           <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
             {mediaTypeLabel}
@@ -188,7 +192,7 @@ export function MyReviewCatalogRow({
                 mediaCarrierCode: item.mediaItemCarrierCode,
                 mediaType: item.mediaType,
                 releaseYear: item.mediaItemReleaseYear,
-                title: item.mediaItemTitle,
+                title: mediaItemTitle,
               }}
               className="absolute inset-0 h-full w-full"
             />
@@ -201,7 +205,7 @@ export function MyReviewCatalogRow({
               <MyReviewScore score={item.authorScore} />
             </div>
             <p className="mt-2 truncate text-sm font-semibold text-stone-950">
-              {item.mediaItemTitle}
+              {mediaItemTitle}
             </p>
             <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               {mediaTypeLabel}

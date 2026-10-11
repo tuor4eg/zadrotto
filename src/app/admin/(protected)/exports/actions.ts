@@ -2,11 +2,25 @@
 
 import { redirect } from "next/navigation";
 
-import { createAdminExport, retryAdminExport } from "@/lib/admin-exports/create";
+import { createAdminExport, createDatabaseDumpExport, retryAdminExport } from "@/lib/admin-exports/create";
 import { cancelQueuedAdminExport } from "@/db/queries/admin-exports";
 import { ADMIN_EXPORT_ENTITY_TYPES } from "@/lib/admin-exports/model";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { logActivity } from "@/lib/activity-logs/server";
+import { getDatabaseDumpCreationErrorCode } from "@/lib/admin-exports/errors";
+
+export async function createDatabaseDumpAction() {
+  const admin = await requireAdminUser();
+  try {
+    const item = await createDatabaseDumpExport(admin.id);
+    await logActivity({ action: "data-export.created", actorType: "admin", adminUserId: admin.id, entityType: "data-export", entityLabel: item.id, message: "Запрошено создание полного дампа базы." });
+  } catch (error) {
+    const code = getDatabaseDumpCreationErrorCode(error);
+    console.error("Database dump request failed", { code });
+    redirect(`/admin/exports?error=${code}`);
+  }
+  redirect("/admin/exports?created=1");
+}
 
 export async function createAdminExportAction(formData: FormData) {
   const admin = await requireAdminUser();
