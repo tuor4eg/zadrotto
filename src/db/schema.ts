@@ -57,7 +57,7 @@ export const firstExperiencedPrecisionEnum = pgEnum(
   FIRST_EXPERIENCED_PRECISIONS,
 );
 export const editorialDocumentKindEnum = pgEnum("editorial_document_kind", ["collection", "article"]);
-export const editorialDocumentBlockTypeEnum = pgEnum("editorial_document_block_type", ["media", "heading", "text"]);
+export const editorialDocumentBlockTypeEnum = pgEnum("editorial_document_block_type", ["media", "heading", "text", "entry_group"]);
 
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
@@ -1429,6 +1429,18 @@ export const achievementSettings = pgTable(
   ],
 );
 
+export const collectionSettings = pgTable("collection_settings", {
+  id: integer("id").primaryKey().default(1),
+  maxBlocks: integer("max_blocks").default(300).notNull(),
+  maxEntries: integer("max_entries").default(200).notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  ...timestamps(),
+}, (table) => [
+  check("collection_settings_singleton_id_check", sql`${table.id} = 1`),
+  check("collection_settings_max_blocks_check", sql`${table.maxBlocks} > 0`),
+  check("collection_settings_max_entries_check", sql`${table.maxEntries} > 0`),
+]);
+
 export const toastSettings = pgTable(
   "toast_settings",
   {
@@ -1554,6 +1566,7 @@ export const editorialDocumentBlocks = pgTable(
     blockType: editorialDocumentBlockTypeEnum("block_type").notNull(),
     mediaItemId: integer("media_item_id")
       .references(() => mediaItems.id, { onDelete: "restrict" }),
+    title: text("title"),
     content: text("content"),
     ...timestamps(),
   },
@@ -1571,11 +1584,32 @@ export const editorialDocumentBlocks = pgTable(
     check(
       "editorial_document_blocks_shape_check",
       sql`(
+        ${table.title} is null and (
         (${table.blockType} = 'media' and ${table.mediaItemId} is not null and (${table.content} is null or char_length(${table.content}) <= 1000))
         or (${table.blockType} = 'heading' and ${table.mediaItemId} is null and ${table.content} is not null and char_length(btrim(${table.content})) between 1 and 200)
         or (${table.blockType} = 'text' and ${table.mediaItemId} is null and ${table.content} is not null and char_length(btrim(${table.content})) between 1 and 5000)
+        )
+      ) or (
+        ${table.blockType}::text = 'entry_group' and ${table.mediaItemId} is null
+        and (${table.title} is null or char_length(${table.title}) <= 200)
+        and (${table.content} is null or char_length(${table.content}) <= 5000)
       )`,
     ),
+  ],
+);
+
+export const editorialDocumentBlockItems = pgTable(
+  "editorial_document_block_items",
+  {
+    blockId: integer("block_id").notNull().references(() => editorialDocumentBlocks.id, { onDelete: "cascade" }),
+    mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "restrict" }),
+    position: integer("position").notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.blockId, table.mediaItemId] }),
+    unique("editorial_document_block_items_position_unique").on(table.blockId, table.position),
+    index("editorial_document_block_items_media_item_id_idx").on(table.mediaItemId),
+    check("editorial_document_block_items_position_check", sql`${table.position} >= 0`),
   ],
 );
 
@@ -1682,8 +1716,10 @@ export const genres = pgTable("genres", {
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  replacementFranchiseId: integer("replacement_franchise_id").references(() => franchises.id, { onDelete: "set null" }),
   ...timestamps(),
 }, (table) => [
+  index("genres_replacement_franchise_id_idx").on(table.replacementFranchiseId),
   check("genres_slug_check", sql`btrim(${table.slug}) <> ''`),
   check("genres_name_check", sql`btrim(${table.name}) <> ''`),
 ]);
@@ -1711,6 +1747,7 @@ export const providerGenreMappings = pgTable("provider_genre_mappings", {
   genreId: integer("genre_id").notNull().references(() => genres.id, { onDelete: "restrict" }),
   ...timestamps(),
 }, (table) => [
+  index("provider_genre_mappings_genre_id_idx").on(table.genreId),
   uniqueIndex("provider_genre_mappings_name_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalGenreName, table.genreId),
   uniqueIndex("provider_genre_mappings_id_unique_idx").on(table.provider, table.mediaType, table.externalGenreId, table.genreId).where(sql`${table.externalGenreId} is not null`),
   check("provider_genre_mappings_provider_check", sql`btrim(${table.provider}) <> ''`),

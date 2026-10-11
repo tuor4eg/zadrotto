@@ -1,4 +1,6 @@
-import { mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
+import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
+import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
+import { hasUnifiedGenresSql, missingGenreSeriesBindingSql, publicMediaItemGenresJsonSql, visibleGenreSql, mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import {
   and,
   asc,
@@ -39,7 +41,6 @@ import {
   authors,
   contributionMediaItems,
   contributions,
-  editorialDocumentBlocks,
   franchises,
   mediaItemFranchiseRemovalRequests,
   mediaItemEditorialSummaries,
@@ -382,35 +383,14 @@ const currentAuthorStatusCondition = (currentAuthorId: number, status: AuthorMed
   );
 
 const catalogSeriesCondition = (seriesId: number) =>
-  exists(
-    db
-      .select({ mediaItemId: mediaItemFranchises.mediaItemId })
-      .from(mediaItemFranchises)
-      .where(
-        and(
-          eq(mediaItemFranchises.mediaItemId, mediaItems.id),
-          eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-          sql`${mediaItemFranchises.franchiseId} in (
-            with recursive published_descendants as (
-              select ${franchises.id}
-              from ${franchises}
-              where ${franchises.id} = ${seriesId}
-                and ${franchises.publicationStatus} = ${PUBLISHED_PUBLICATION_STATUS}
-              union all
-              select child.id
-              from ${franchises} child
-              inner join published_descendants parent on child.parent_id = parent.id
-              where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-            )
-            select id from published_descendants
-          )`,
-        ),
-      ),
-  );
+  publishedSeriesMembershipSql(sql`"media_items"."id"`, sql`${seriesId}`);
 
 function catalogGenreCondition(genreId: number) {
   return exists(db.select({ id: mediaItemGenres.genreId }).from(mediaItemGenres)
-    .where(and(eq(mediaItemGenres.mediaItemId, mediaItems.id), eq(mediaItemGenres.genreId, genreId))));
+    .where(and(eq(mediaItemGenres.mediaItemId, mediaItems.id), eq(mediaItemGenres.genreId, genreId),
+      sql`exists (select 1 from genres filter_genre where filter_genre.id = ${mediaItemGenres.genreId}
+        and filter_genre.is_active = true
+        and ${visibleGenreSql(sql`"media_items"."id"`, sql`filter_genre.replacement_franchise_id`)})`)));
 }
 
 function catalogFilterConditions(input: {
@@ -810,6 +790,7 @@ function adminMediaFilterConditions(input: {
   authorId?: number;
   mediaCarrierId?: number;
   metadataFilter?: "absent" | "missing";
+  seriesBinding?: "missing";
   mediaTypeFilter: MediaTypeFilter;
   searchQuery: string;
 }) {
@@ -832,6 +813,8 @@ function adminMediaFilterConditions(input: {
     conditions.push(eq(mediaItems.createdByAuthorId, input.authorId));
   }
 
+  if (input.seriesBinding === "missing") conditions.push(missingGenreSeriesBindingSql());
+
   if (input.metadataFilter) {
     if (input.metadataFilter === "missing") {
       conditions.push(isNotNull(mediaItems.metadataAttemptedAt));
@@ -850,6 +833,7 @@ export async function getAdminMediaItems(input: {
   authorId?: number;
   mediaCarrierId?: number;
   metadataFilter?: "absent" | "missing";
+  seriesBinding?: "missing";
   mediaTypeFilter: MediaTypeFilter;
   page: number;
   pageSize: number;
@@ -1609,14 +1593,8 @@ export async function updateAdminMediaItemPublicationStatus(input: {
       .limit(1)
       .for("update");
     if (input.nextStatus === "private") {
-      const [reference] = await tx.select({ mediaItemId: editorialDocumentBlocks.mediaItemId })
-        .from(editorialDocumentBlocks)
-        .where(and(
-          eq(editorialDocumentBlocks.mediaItemId, input.mediaItemId),
-          eq(editorialDocumentBlocks.blockType, "media"),
-        ))
-        .limit(1);
-      if (reference) throw new Error("collection-reference");
+      const [reference] = await tx.execute<{ referenced: boolean }>(sql`select ${mediaItemHasEditorialReferenceSql(input.mediaItemId)} as referenced`);
+      if (reference.referenced) throw new Error("collection-reference");
     }
     const [item] = await tx.update(mediaItems)
     .set({
@@ -1679,14 +1657,8 @@ export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId
       return null;
     }
 
-    const [reference] = await tx.select({ mediaItemId: editorialDocumentBlocks.mediaItemId })
-      .from(editorialDocumentBlocks)
-      .where(and(
-        eq(editorialDocumentBlocks.mediaItemId, mediaItemId),
-        eq(editorialDocumentBlocks.blockType, "media"),
-      ))
-      .limit(1);
-    if (reference) throw new Error("collection-reference");
+    const [reference] = await tx.execute<{ referenced: boolean }>(sql`select ${mediaItemHasEditorialReferenceSql(mediaItemId)} as referenced`);
+    if (reference.referenced) throw new Error("collection-reference");
 
     await tx
       .delete(contributionMediaItems)
@@ -1791,7 +1763,8 @@ export async function getPublicMediaItemMetadataByCode(
 ) {
   const [item] = await db
     .select({
-      genres: mediaItemGenresJsonSql(),
+      genres: publicMediaItemGenresJsonSql(),
+      hasUnifiedGenres: hasUnifiedGenresSql(),
       title: mediaItems.title,
       description: mediaItems.description,
       editorialSummary: mediaItemEditorialSummaries.summary,
@@ -1856,7 +1829,8 @@ export async function getMediaItemByCode(
 ) {
   const [item] = await db
     .select({
-      genres: mediaItemGenresJsonSql(),
+      genres: publicMediaItemGenresJsonSql(),
+      hasUnifiedGenres: hasUnifiedGenresSql(),
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,

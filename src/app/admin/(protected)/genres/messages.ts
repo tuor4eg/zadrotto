@@ -4,5 +4,6 @@ export function getGenreErrorMessage(error?: string) {
   if (error === "reopen") return "Не удалось вернуть вариант в заявки. Возможно, соответствие изменено или задача ещё выполняется.";
   if (error === "required") return "Заполни название жанра.";
   if (error === "invalid-genre") return "Не удалось найти жанр.";
+  if (error === "invalid-series") return "Выберите опубликованную серию или вариант «Без замены».";
   return getAdminFormErrorMessage(error);
 }

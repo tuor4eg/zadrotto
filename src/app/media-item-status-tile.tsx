@@ -9,26 +9,40 @@ import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 type MediaItemStatusTileProps = Omit<ComponentProps<typeof MediaItemTile>, "currentAuthorScore"> & {
   currentAuthorScore: number | null;
   currentAuthorStatus: AuthorMediaStatus | null;
+  horizontalScroll?: boolean;
 };
 
 export function MediaItemStatusTile({
   currentAuthorScore,
   currentAuthorStatus,
   item,
+  horizontalScroll = false,
   ...tileProps
 }: MediaItemStatusTileProps) {
   const [statusActionsRevealed, setStatusActionsRevealed] = useState(false);
   const pointerStartX = useRef<number | null>(null);
   const didSwipeToReveal = useRef(false);
+  const touchStartX = useRef<number | null>(null);
   const showStatusActions = currentAuthorScore === null;
 
   return (
     <div
-      className="group relative aspect-[2/3] min-w-0 touch-pan-y [&>a]:h-full [&>a]:w-full [&>button]:h-full [&>button]:w-full"
+      className={`group relative aspect-[2/3] min-w-0 ${horizontalScroll ? "touch-auto" : "touch-pan-y"} [&>a]:h-full [&>a]:w-full [&>button]:h-full [&>button]:w-full`}
+      onTouchStart={horizontalScroll ? (event) => {
+        touchStartX.current = event.touches[0]?.clientX ?? null;
+      } : undefined}
+      onTouchMove={horizontalScroll ? (event) => {
+        const x = event.touches[0]?.clientX;
+        if (showStatusActions && touchStartX.current !== null && x !== undefined && x - touchStartX.current < -40) {
+          setStatusActionsRevealed(true);
+        }
+      } : undefined}
+      onTouchEnd={horizontalScroll ? () => { touchStartX.current = null; } : undefined}
+      onTouchCancel={horizontalScroll ? () => { touchStartX.current = null; } : undefined}
       onPointerDown={(event) => {
         const isDesktopMouse =
           event.pointerType === "mouse" && window.matchMedia("(min-width: 1280px)").matches;
-        if (!showStatusActions || isDesktopMouse) return;
+        if (!showStatusActions || isDesktopMouse || horizontalScroll) return;
         event.currentTarget.setPointerCapture(event.pointerId);
         pointerStartX.current = event.clientX;
         didSwipeToReveal.current = false;

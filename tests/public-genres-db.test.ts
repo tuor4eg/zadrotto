@@ -12,7 +12,9 @@ test("public genre counts use one query and exclude inactive, draft and inaccess
   const { getCatalogMediaTypeCounts, getCatalogReleaseYearBounds } = await import("../src/db/queries/media-items");
   try {
     await client.unsafe("CREATE SCHEMA " + schema);
-    await client.unsafe(`CREATE TABLE genres(id serial PRIMARY KEY,slug text,name text,is_active boolean,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
+    await client.unsafe(`CREATE TABLE franchises(id integer PRIMARY KEY,parent_id integer,publication_status text);
+      CREATE TABLE media_item_franchises(media_item_id integer,franchise_id integer,publication_status text);
+      CREATE TABLE genres(id serial PRIMARY KEY,slug text,name text,is_active boolean,replacement_franchise_id integer,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
       CREATE TABLE media_items(id integer PRIMARY KEY,media_type text,publication_status text,release_year integer);
       CREATE TABLE media_item_genres(media_item_id integer,genre_id integer,PRIMARY KEY(media_item_id,genre_id));
       CREATE INDEX media_item_genres_genre_id_idx ON media_item_genres(genre_id);

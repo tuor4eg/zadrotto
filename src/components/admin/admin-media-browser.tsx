@@ -26,7 +26,7 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 type AdminMediaBrowserProps = {
   excludedIds?: readonly number[];
   mediaTypes: readonly MediaTypeOption[];
-  onConfirm: (items: AdminMediaBrowserItem[]) => void;
+  onConfirm: (items: AdminMediaBrowserItem[]) => void | boolean;
   series: readonly AdminMediaBrowserSeriesOption[];
 };
 
@@ -264,8 +264,9 @@ export function AdminMediaBrowser({
       return;
     }
 
-    onConfirm(selectedAvailableItems);
-    setSelectedItems(new Map());
+    if (onConfirm(selectedAvailableItems) !== false) {
+      setSelectedItems(new Map());
+    }
   }
 
   return (

@@ -1,7 +1,8 @@
 "use client"
 
 import Image from "next/image"
-import { BadgeCheck, ChevronLeft, ChevronRight, LockKeyhole, Trophy } from "lucide-react"
+import { BadgeCheck, LockKeyhole, Trophy } from "lucide-react"
+import { CarouselArrowButton } from "@/components/archive/carousel-arrow-button"
 import { useEffect, useRef, useState } from "react"
 
 import type { AchievementRarity } from "@/lib/achievements/model"
@@ -280,24 +281,20 @@ export function AchievementCard({
       {canBrowse ? (
         <>
           {viewIndex > 0 ? (
-            <button
-              type="button"
+            <CarouselArrowButton
+              direction="previous"
               aria-label="Предыдущий уровень"
-              className="absolute left-1 top-14 z-10 grid size-7 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
+              className="absolute left-1 top-14 z-10 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100"
               onClick={() => setViewIndex((index) => Math.max(0, index - 1))}
-            >
-              <ChevronLeft className="size-4" />
-            </button>
+            />
           ) : null}
           {viewIndex < currentIndex ? (
-            <button
-              type="button"
+            <CarouselArrowButton
+              direction="next"
               aria-label="Следующий уровень"
-              className="absolute right-1 top-14 z-10 grid size-7 place-items-center rounded-full border border-stone-950/20 bg-stone-950/40 text-white/90 opacity-0 shadow-sm pointer-events-none transition-opacity group-hover:pointer-events-auto group-hover:opacity-100 hover:bg-stone-950/55"
+              className="absolute right-1 top-14 z-10 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100"
               onClick={() => setViewIndex((index) => Math.min(currentIndex, index + 1))}
-            >
-              <ChevronRight className="size-4" />
-            </button>
+            />
           ) : null}
         </>
       ) : null}

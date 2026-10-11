@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { Input } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
-export function GenreSearch({ searchQuery, cancelled = false }: { searchQuery: string; cancelled?: boolean }) {
+export function GenreSearch({ searchQuery, cancelled = false, series = false }: { searchQuery: string; cancelled?: boolean; series?: boolean }) {
   const router = useRouter();
   const { draft, setDraft } = useDebouncedSearchDraft({
     searchQuery,
     onSearch: (query) => {
       const params = new URLSearchParams();
       if (cancelled) params.set("tab", "cancelled");
+      else if (series) params.set("tab", "series");
       if (query) params.set("q", query);
       const suffix = params.toString();
       router.replace(suffix ? `/admin/genres?${suffix}` : "/admin/genres", { scroll: false });

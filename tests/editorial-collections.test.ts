@@ -14,6 +14,8 @@ const editor = readFileSync("src/app/admin/(protected)/collections/collection-fo
 const documentEditor = readFileSync("src/components/admin/editorial-document-editor.tsx", "utf8");
 const renderer = readFileSync("src/components/archive/editorial-document-renderer.tsx", "utf8");
 const documentQueries = readFileSync("src/db/queries/editorial-documents.ts", "utf8");
+const documentModel = readFileSync("src/lib/editorial-documents/model.ts", "utf8");
+const documentReferences = readFileSync("src/db/queries/editorial-document-references.ts", "utf8");
 const migration = readFileSync("drizzle/0084_editorial_documents.sql", "utf8");
 const actions = readFileSync("src/app/admin/(protected)/collections/actions.ts", "utf8");
 const imageRoute = readFileSync("src/app/collection-images/[...objectKey]/route.ts", "utf8");
@@ -43,10 +45,11 @@ describe("editorial collection persistence", () => {
   });
 
   it("validates block limits and empty content before replacement", () => {
-    assert.match(documentQueries, /MAX_EDITORIAL_DOCUMENT_BLOCKS/);
-    assert.match(documentQueries, /MAX_EDITORIAL_DOCUMENT_MEDIA_BLOCKS/);
-    assert.match(documentQueries, /heading-empty/);
-    assert.match(documentQueries, /text-empty/);
+    assert.match(documentQueries, /assertEditorialDocumentBlocks\(blocks, await getCollectionSettings\(tx\)\)/);
+    assert.match(documentModel, /MAX_EDITORIAL_DOCUMENT_BLOCKS/);
+    assert.match(documentModel, /MAX_EDITORIAL_DOCUMENT_MEDIA_BLOCKS/);
+    assert.match(documentModel, /heading-empty/);
+    assert.match(documentModel, /text-empty/);
     assert.match(documentQueries, /pg_advisory_xact_lock/);
   });
 
@@ -113,7 +116,9 @@ describe("collection surfaces", () => {
   it("blocks unpublishing and deleting referenced archive records", () => {
     const references = mediaQueries.match(/collection-reference/g) ?? [];
     assert.ok(references.length >= 2);
-    assert.match(mediaQueries, /editorialDocumentBlocks\.mediaItemId/);
+    assert.match(mediaQueries, /mediaItemHasEditorialReferenceSql/);
+    assert.match(documentReferences, /editorialDocumentBlocks\.mediaItemId/);
+    assert.match(documentReferences, /editorialDocumentBlockItems\.mediaItemId/);
   });
 
   it("serves collection covers through the configured internal nginx location", () => {

@@ -41,7 +41,7 @@ export async function reviewFranchiseAction(formData: FormData) {
   revalidatePath("/admin", "layout");
   revalidatePath("/admin/series");
   revalidatePath("/author/media");
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/archive");
   await logActivity({
     action: decision === "published" ? "franchise-review.approved" : "franchise-review.rejected",

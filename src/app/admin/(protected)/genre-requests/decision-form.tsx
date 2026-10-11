@@ -6,6 +6,7 @@ import { X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import type { MediaItemGenre } from "@/lib/media/genres";
+import { SearchableFranchiseSelect, type SearchableFranchiseOption } from "@/components/ui/searchable-franchise-select";
 import { normalizeSearchText } from "@/lib/search/normalize";
 
 function SubmitDecision() {
@@ -13,9 +14,10 @@ function SubmitDecision() {
   return <Button type="submit" disabled={pending}>{pending ? "Сохранение…" : "Сохранить решение"}</Button>;
 }
 
-export function GenreRequestDecisionForm({ requestId, genres, action }: {
-  requestId: number; genres: readonly MediaItemGenre[]; action: (formData: FormData) => Promise<void>;
+export function GenreRequestDecisionForm({ requestId, genres, franchiseOptions = [], action }: {
+  franchiseOptions?: SearchableFranchiseOption[]; requestId: number; genres: readonly MediaItemGenre[]; action: (formData: FormData) => Promise<void>;
 }) {
+  const [replacementFranchiseId, setReplacementFranchiseId] = useState("");
   const [decision, setDecision] = useState("map");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -41,6 +43,10 @@ export function GenreRequestDecisionForm({ requestId, genres, action }: {
     {decision === "create" ? <div className="grid gap-2">
       <Label htmlFor="new-genre-name">Название</Label><Input id="new-genre-name" name="name" required aria-describedby="new-genre-hint" />
       <p id="new-genre-hint" className="text-xs leading-5 text-stone-500">Название используется во всех карточках записей с этим жанром.</p>
+      <Label htmlFor="new-genre-series">Заменяющая серия</Label>
+      <SearchableFranchiseSelect id="new-genre-series" name="replacementFranchiseId" options={franchiseOptions}
+        emptyLabel="Без замены" value={replacementFranchiseId} onChange={setReplacementFranchiseId} />
+      <p className="text-xs leading-5 text-stone-500">Жанр скрывается у пользователя, когда запись входит в выбранную опубликованную серию или её опубликованную дочернюю серию через опубликованную связь.</p>
     </div> : null}
     {decision === "map" ? <fieldset><legend className="mb-3 text-sm font-medium">Наши жанры</legend>
       {selectedIds.map((id) => <input key={id} type="hidden" name="genreIds" value={id} />)}

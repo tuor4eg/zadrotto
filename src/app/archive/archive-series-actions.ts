@@ -21,7 +21,7 @@ export type SeriesMediaLinkActionResult = {
 };
 
 function revalidateSeriesMediaSurfaces(mediaItemCode: string) {
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/archive");
   revalidatePath("/series");
   revalidatePath(`/media/${mediaItemCode}`);

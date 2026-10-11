@@ -1,6 +1,8 @@
 import "server-only";
 
 import { applyGenreRequest } from "@/db/queries/genre-requests";
+import { backfillGenreSeriesLinks } from "@/db/queries/genre-series-backfill";
+import { logSystemActivity } from "@/lib/activity-logs/system";
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
 import { cleanupJobRunHistory } from "@/db/queries/jobs";
@@ -489,7 +491,26 @@ const genreRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
   },
 };
 
+const genreSeriesBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "media.genre-series-backfill",
+  label: "Привязка серий по жанрам опубликованных записей",
+  schedulable: false,
+  defaultMaxAttempts: 1,
+  defaultTimeoutSeconds: 900,
+  parsePayload: parseEmptyPayload,
+  async execute({ source, signal, runId, jobId }) {
+    if (source !== "manual" || jobId !== null) {
+      throw new JobError("manual-only", "Привязка серий по жанрам доступна только разовым ручным запуском.", { retryable: false });
+    }
+    const result = await backfillGenreSeriesLinks(signal);
+    await logSystemActivity({ action: "media.genre-series-backfill.completed", entityType: "job-run", entityId: runId,
+      message: `Привязка серий по жанрам завершена: обновлено записей — ${result.updatedRecords}, добавлено связей — ${result.addedLinks}.`,
+      metadata: result });
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  genreSeriesBackfillHandler,
   genreRequestApplyHandler,
   emailOutboxDeliveryHandler,
   authCleanupHandler,

@@ -1,13 +1,13 @@
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { adminActivityLogs, genres, genreRequests, genreRequestMediaItems, jobRuns, mediaItemMetadata, mediaItems, mediaTypes, providerGenreExclusions, providerGenreMappings } from "@/db/schema";
+import { adminActivityLogs, franchises, genres, genreRequests, genreRequestMediaItems, jobRuns, mediaItemGenres, mediaItemMetadata, mediaItems, mediaTypes, providerGenreExclusions, providerGenreMappings } from "@/db/schema";
 import { extractExternalGenres, type ExternalGenre } from "@/lib/media/genres";
 import { resolveProviderGenres, syncMediaItemProviderGenres, type GenreTransaction } from "@/db/queries/media-item-genres";
 
 export const GENRE_REQUEST_JOB_TYPE = "media.genre-request-apply";
 export class GenreRequestError extends Error {
-  constructor(public readonly code: "already-resolved" | "not-found" | "invalid-name" | "invalid-genres" | "not-retryable" | "applying" | "changed", message: string) {
+  constructor(public readonly code: "already-resolved" | "not-found" | "invalid-name" | "invalid-series" | "invalid-genres" | "not-retryable" | "applying" | "changed", message: string) {
     super(message);
     this.name = "GenreRequestError";
   }
@@ -124,7 +124,7 @@ async function enqueueApply(tx: GenreTransaction, requestId: number, adminId: nu
 }
 
 export async function resolveGenreRequest(input: {
-  requestId: number; adminId: number; decision: GenreRequestDecision; genreIds?: number[]; name?: string;
+  requestId: number; adminId: number; decision: GenreRequestDecision; genreIds?: number[]; name?: string; replacementFranchiseId?: number | null;
 }) {
   if (!["map", "create", "exclude"].includes(input.decision)) throw new Error("Неизвестное решение заявки.");
   const result = await db.transaction(async (tx) => {
@@ -140,9 +140,18 @@ export async function resolveGenreRequest(input: {
     if (input.decision === "create") {
       const name = input.name?.trim();
       if (!name) throw new GenreRequestError("invalid-name", "Укажите название жанра.");
+      const replacementFranchiseId = input.replacementFranchiseId ?? null;
+      if (replacementFranchiseId !== null) {
+        if (!Number.isSafeInteger(replacementFranchiseId) || replacementFranchiseId <= 0 || replacementFranchiseId > 2_147_483_647) {
+          throw new GenreRequestError("invalid-series", "Выберите опубликованную серию.");
+        }
+        const [series] = await tx.select({ publicationStatus: franchises.publicationStatus }).from(franchises)
+          .where(eq(franchises.id, replacementFranchiseId)).for("share");
+        if (!series || series.publicationStatus !== "published") throw new GenreRequestError("invalid-series", "Выберите опубликованную серию.");
+      }
       const [next] = await tx.execute<{ id: number }>(sql`select nextval(pg_get_serial_sequence('genres', 'id'))::int as id`);
       const slug = `${request.mediaType === "game" ? "game-" : ""}custom-${next.id}`;
-      const [genre] = await tx.insert(genres).values({ id: next.id, name, slug }).returning({ id: genres.id });
+      const [genre] = await tx.insert(genres).values({ id: next.id, name, slug, replacementFranchiseId }).returning({ id: genres.id });
       genreIds = [genre.id];
     } else if (input.decision === "map") {
       genreIds = [...new Set(input.genreIds ?? [])];
@@ -194,16 +203,32 @@ export async function reopenGenreMapping(input: { mappingId: number; adminId: nu
     if (!mappings.some((row) => row.id === input.mappingId) || request.decision === "exclude") {
       throw new GenreRequestError("changed", "Соответствие уже изменено.");
     }
+    // Serialize removal of different provider variants of the same genre, and
+    // prevent a new mapping from being added between the orphan check and deletion.
+    const affectedGenreIds = [...new Set(mappings.map((row) => row.genreId))];
+    await tx.select({ id: genres.id }).from(genres).where(inArray(genres.id, affectedGenreIds))
+      .orderBy(asc(genres.id)).for("update");
     // Discovery belongs to the worker: inserting occurrences here would take FK media-item
     // locks after the request lock, reversing the metadata import lock order.
     await tx.delete(providerGenreMappings).where(inArray(providerGenreMappings.id, mappings.map((row) => row.id)));
+    const orphanGenres = await tx.select({ id: genres.id }).from(genres).where(and(
+      inArray(genres.id, affectedGenreIds),
+      sql`not exists (select 1 from ${providerGenreMappings} where ${providerGenreMappings.genreId} = ${genres.id})`,
+    ));
+    const deletedGenreIds = orphanGenres.map((genre) => genre.id);
+    if (deletedGenreIds.length > 0) {
+      // Deleting outgoing links takes no FK locks on media items, preserving
+      // the media → request lock order used by provider imports.
+      await tx.delete(mediaItemGenres).where(inArray(mediaItemGenres.genreId, deletedGenreIds));
+      await tx.delete(genres).where(inArray(genres.id, deletedGenreIds));
+    }
     await tx.update(genreRequests).set({ decision: null, resolvedAt: null, resolvedByAdminId: null,
       applyStatus: "applying", jobError: null, updatedAt: new Date() }).where(eq(genreRequests.id, request.id));
     const queued = await enqueueApply(tx, request.id, input.adminId);
     await tx.insert(adminActivityLogs).values({ action: "genre-mapping.reopened", actorType: "admin", adminUserId: input.adminId,
       entityType: "genre-request", entityId: request.id, entityLabel: mapping.externalGenreName, status: "success", severity: "info",
       message: "Вариант провайдера возвращён в заявки на жанры. Пересчёт записей поставлен в очередь.",
-      metadata: { genreIds: mappings.map((row) => row.genreId), jobRunId: queued.jobRunId } });
+      metadata: { genreIds: affectedGenreIds, deletedGenreIds, jobRunId: queued.jobRunId } });
     return queued;
   });
 }

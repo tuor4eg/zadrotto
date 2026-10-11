@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Archive, Bell, CircleHelp, ShieldCheck, Trophy, Users } from "lucide-react";
+import { Archive, Library, Bell, CircleHelp, ShieldCheck, Trophy, Users } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -26,6 +26,11 @@ const SETTINGS_NAV_ITEMS = [
     href: "/admin/settings/achievements",
     label: "Ачивки",
     icon: Trophy,
+  },
+  {
+    href: "/admin/settings/collections",
+    label: "Подборки",
+    icon: Library,
   },
   {
     href: "/admin/settings/quizzes",

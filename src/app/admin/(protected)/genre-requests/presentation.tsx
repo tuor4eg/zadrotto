@@ -30,6 +30,7 @@ export function genreRequestError(code: string | undefined) {
   if (code === "applying") return "Сначала завершите текущий пересчёт жанров записей.";
   if (code === "already-resolved" || code === "changed") return "Другой администратор уже изменил заявку. Проверьте текущее решение.";
   if (code === "invalid" || code === "invalid-name" || code === "invalid-genres") return "Проверьте название и выбранные жанры.";
+  if (code === "invalid-series") return "Выберите опубликованную серию или оставьте жанр без замены.";
   if (code === "not-found") return "Заявка не найдена.";
   if (code === "not-retryable") return "Повтор доступен только после ошибки применения.";
   return "Не удалось сохранить решение. Попробуйте ещё раз.";

@@ -13,6 +13,7 @@ function normalizeFilters(type: AdminExportEntityType, value: AdminExportFilters
     ...(Number.isSafeInteger(value.mediaCarrierId) && Number(value.mediaCarrierId) > 0 ? { mediaCarrierId: Number(value.mediaCarrierId) } : {}),
     ...(value.mediaType?.trim() ? { mediaType: value.mediaType.trim() } : {}),
     ...(value.metadata === "missing" || value.metadata === "absent" ? { metadata: value.metadata } : {}),
+    ...(value.seriesBinding === "missing" ? { seriesBinding: value.seriesBinding } : {}),
   };
 }
 

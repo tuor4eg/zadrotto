@@ -12,6 +12,15 @@ import { getGenreErrorMessage } from "./messages";
 import { GenreProviderVariants } from "./provider-variants";
 import { GenreSearch } from "./genre-search";
 import { CancelledGenres } from "./cancelled-genres";
+import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
+
+function GenreReplacement({ genre }: { genre: AdminGenre }) {
+  const series = genre.replacementFranchise;
+  return series ? <div className="min-w-0">
+    <Link href={`/admin/series/${series.id}/edit`} className="break-words text-sm font-medium text-stone-950 underline underline-offset-4">{series.title}</Link>
+    <div className="mt-1"><Badge variant={series.publicationStatus === "published" ? "positive" : "warning"}>{PUBLICATION_STATUS_VALUE_LABELS[series.publicationStatus]}</Badge></div>
+  </div> : null;
+}
 
 function GenreIdentity({ genre }: { genre: AdminGenre }) {
   return <div className="min-w-0">
@@ -30,8 +39,10 @@ export default async function GenresPage({ searchParams }: { searchParams: Promi
   const query = await searchParams;
   const searchQuery = query.q ?? "";
   const cancelled = query.tab === "cancelled";
+  const series = query.tab === "series";
   const tabs = <nav aria-label="Статус жанров" className="flex flex-wrap gap-2">
-    <Link href="/admin/genres" aria-current={!cancelled ? "page" : undefined} className={buttonVariants({ variant: cancelled ? "outline" : "default", size: "sm" })}>Активные</Link>
+    <Link href="/admin/genres" aria-current={!cancelled && !series ? "page" : undefined} className={buttonVariants({ variant: cancelled || series ? "outline" : "default", size: "sm" })}>Обычные</Link>
+    <Link href="/admin/genres?tab=series" aria-current={series ? "page" : undefined} className={buttonVariants({ variant: series ? "default" : "outline", size: "sm" })}>Заменяемые сериями</Link>
     <Link href="/admin/genres?tab=cancelled" aria-current={cancelled ? "page" : undefined} className={buttonVariants({ variant: cancelled ? "default" : "outline", size: "sm" })}>Отменённые</Link>
   </nav>;
   if (cancelled) return <div className="grid gap-5">
@@ -40,20 +51,22 @@ export default async function GenresPage({ searchParams }: { searchParams: Promi
     {tabs}<GenreSearch searchQuery={searchQuery} cancelled />
     <CancelledGenres searchQuery={searchQuery} page={Number(query.page ?? 1)} />
   </div>;
-  const result = await getAdminGenresPage({ searchQuery, page: Number(query.page ?? 1) });
+  const result = await getAdminGenresPage({ searchQuery, page: Number(query.page ?? 1), tab: series ? "series" : "ordinary" });
   const genres = result.items;
-  const pageUrl = (page: number) => `/admin/genres?${new URLSearchParams({ ...(searchQuery ? { q: searchQuery } : {}), page: String(page) })}`;
+  const pageUrl = (page: number) => `/admin/genres?${new URLSearchParams({ ...(series ? { tab: "series" } : {}), ...(searchQuery ? { q: searchQuery } : {}), page: String(page) })}`;
   const error = getGenreErrorMessage(query.error);
   return (
     <div className="grid gap-5">
       <PageHeader title="Жанры" description="Названия жанров в карточках записей и их варианты у провайдеров." />
       <AdminToasts clearParams={["error"]} messages={error ? [{ id: "error", tone: "error", text: error }] : []} />
-      {tabs}<GenreSearch searchQuery={searchQuery} />
+      {tabs}<GenreSearch searchQuery={searchQuery} series={series} />
+      {series ? <p className="text-sm text-stone-600">Эти жанры могут не отображаться у пользователя, если запись входит в заменяющую серию или её опубликованную дочернюю серию.</p> : null}
       <p className="text-sm text-stone-500">Жанров: {result.total}</p>
       {genres.length === 0 ? <EmptyState>{searchQuery ? "Жанры не найдены." : "Жанры пока не добавлены."}</EmptyState> : <>
         <div className="grid gap-3 md:hidden">
           {genres.map((genre) => <article key={genre.id} className="min-w-0 rounded-lg border border-stone-200 bg-white p-4">
             <GenreIdentity genre={genre} />
+            {series ? <div className="mt-4"><p className="mb-2 text-xs font-medium text-stone-500">Заменяющая серия</p><GenreReplacement genre={genre} /></div> : null}
             <div className="mt-4"><p className="mb-2 text-xs font-medium text-stone-500">Варианты у провайдеров</p>
               <GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} /></div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -63,10 +76,10 @@ export default async function GenresPage({ searchParams }: { searchParams: Promi
         </div>
         <TableWrap className="hidden md:block">
           <Table className="table-fixed">
-            <THead><tr><TH className="w-1/4">Наш жанр</TH><TH>Варианты у провайдеров</TH>
+            <THead><tr><TH className="w-1/4">Наш жанр</TH>{series ? <TH className="w-1/4">Заменяющая серия</TH> : null}<TH>Варианты у провайдеров</TH>
               <TH className="w-24">Записей</TH><TH className="w-44 text-right">Действия</TH></tr></THead>
             <TBody>{genres.map((genre) => <TR key={genre.id}>
-              <TD><GenreIdentity genre={genre} /></TD><TD><GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} /></TD>
+              <TD><GenreIdentity genre={genre} /></TD>{series ? <TD><GenreReplacement genre={genre} /></TD> : null}<TD><GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} /></TD>
               <TD><Badge variant="outline">{genre.mediaItemsCount}</Badge></TD><TD className="text-right"><GenreEditLink genre={genre} /></TD>
             </TR>)}</TBody>
           </Table>

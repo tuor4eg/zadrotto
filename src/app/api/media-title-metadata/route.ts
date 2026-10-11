@@ -18,6 +18,7 @@ import { isCoverProviderCode } from "@/lib/covers/types";
 import { createMediaMetadataCandidateToken, createMediaTitleSourceToken } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode } from "@/lib/media/types";
 import { resolveProviderGenres } from "@/db/queries/media-item-genres";
+import { getGenreReplacementFranchiseIds } from "@/db/queries/genres";
 
 type MediaTitleMetadataRequestBody = {
   enrichTitleFields?: unknown;
@@ -117,11 +118,13 @@ export async function POST(request: Request) {
   const normalized = result.metadata
     ? await resolveProviderGenres({ facts: result.metadata.facts, provider: result.metadata.provider, mediaType })
     : null;
+  const suggestedFranchiseIds = await getGenreReplacementFranchiseIds(normalized?.genres.map((genre) => genre.id) ?? []);
   return NextResponse.json({
     metadata: result.metadata
       ? {
           facts: result.metadata.facts,
           genres: normalized?.genres ?? [],
+          suggestedFranchiseIds,
           fields: result.metadata.fields,
           titleSourceToken: result.metadata.provider === "bgg" && result.metadata.fields?.title
             ? createMediaTitleSourceToken({

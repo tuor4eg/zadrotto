@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
 import { reopenGenreMapping } from "@/db/queries/genre-requests";
-import { updateGenreName } from "@/db/queries/genres";
+import { updateGenre } from "@/db/queries/genres";
 import { restoreGenreExclusion } from "@/db/queries/genre-exclusions";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAdminFormErrorCode } from "@/lib/common/app-error-messages";
@@ -32,16 +32,23 @@ export async function updateGenreNameAction(formData: FormData) {
   if (id === null) redirect("/admin/genres?error=invalid-genre");
   const name = parseGenreName(formData.get("name"));
   if (name === null) redirect(`/admin/genres/${id}/edit?error=required`);
+  const rawReplacementFranchiseId = formData.get("replacementFranchiseId");
+  const replacementFranchiseId = rawReplacementFranchiseId === "" ? null : parseGenreId(rawReplacementFranchiseId);
+  if (rawReplacementFranchiseId !== "" && replacementFranchiseId === null) {
+    redirect(`/admin/genres/${id}/edit?error=invalid-series`);
+  }
 
   let genre;
   try {
-    genre = await updateGenreName(id, name);
+    genre = await updateGenre(id, name, replacementFranchiseId);
   } catch (error) {
-    console.error("Failed to rename genre", error);
+    if (error instanceof Error && error.message === "invalid-series") redirect(`/admin/genres/${id}/edit?error=invalid-series`);
+    console.error("Не удалось сохранить жанр", error);
     redirect(`/admin/genres/${id}/edit?error=${getAdminFormErrorCode(error)}`);
   }
   if (!genre) redirect("/admin/genres?error=invalid-genre");
 
+  revalidatePath("/", "layout");
   revalidatePath("/admin/genres");
   revalidatePath("/admin/genres/[id]/edit", "page");
   revalidatePath("/media/[code]", "page");
@@ -65,7 +72,7 @@ export async function reopenGenreMappingAction(formData: FormData) {
     console.error("Не удалось вернуть вариант жанра в заявки.", error);
     redirect("/admin/genres?error=reopen");
   }
-  revalidatePath("/admin", "layout");
+  revalidatePath("/", "layout");
   revalidatePath("/admin/genres");
   revalidatePath("/admin/genre-requests");
   revalidatePath("/media/[code]", "page");

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 
 import { formatBoardgameRange, getBoardgameFactValues, getStringListFact } from "@/lib/media/metadata-facts";
 
@@ -39,4 +42,19 @@ test("missing or malformed boardgame facts do not fabricate details", () => {
   const empty = { authors: null, age: null, players: null, playingTime: null, type: null };
   assert.deepEqual(getBoardgameFactValues(null), empty);
   assert.deepEqual(getBoardgameFactValues({ authors: [], minAge: 0, runtimeMinutes: -1, bggItemType: "unknown" }), empty);
+});
+
+
+test("hidden unified boardgame genres do not return through provider fallback", () => {
+  const facts = { genres: ["Western"], minAge: 8 };
+  const hidden = renderToStaticMarkup(createElement(BoardgameDetailsFacts, { facts, genres: [], hasUnifiedGenres: true }));
+  assert.doesNotMatch(hidden, /Western|Жанры/);
+  assert.match(hidden, /8\+/);
+  const legacy = renderToStaticMarkup(createElement(BoardgameDetailsFacts, { facts, genres: [], hasUnifiedGenres: false }));
+  assert.match(legacy, /Western/);
+  const visible = renderToStaticMarkup(createElement(BoardgameDetailsFacts, {
+    facts, genres: [{ id: 1, slug: "western", name: "Дикий запад" }], hasUnifiedGenres: true,
+  }));
+  assert.match(visible, /Дикий запад/);
+  assert.doesNotMatch(visible, /Western/);
 });

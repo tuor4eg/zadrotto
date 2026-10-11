@@ -389,7 +389,7 @@ export function AdminMobileNavMenu({
 
             <div className="mt-1 border-t border-stone-100 pt-1">
               <Link
-                href="/"
+                href="/archive"
                 onClick={closeMenu}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium text-stone-700 transition-colors hover:bg-stone-100 hover:text-stone-950"
               >

@@ -16,17 +16,28 @@ type EditorialDocumentMediaBlock = {
   item: unknown;
 };
 
-export function EditorialDocumentRenderer<TMediaBlock extends EditorialDocumentMediaBlock>({
+type EditorialDocumentEntryGroupBlock = {
+  id: number;
+  position: number;
+  type: "entry_group";
+};
+
+export function EditorialDocumentRenderer<
+  TMediaBlock extends EditorialDocumentMediaBlock,
+  TEntryGroupBlock extends EditorialDocumentEntryGroupBlock,
+>({
   blocks,
   mediaGroupClassName,
   renderMedia,
+  renderEntryGroup,
 }: {
-  blocks: Array<EditorialDocumentContentBlock | TMediaBlock>;
+  blocks: Array<EditorialDocumentContentBlock | TMediaBlock | TEntryGroupBlock>;
   mediaGroupClassName?: string;
   renderMedia: (block: TMediaBlock, mediaNumber: number) => ReactNode;
+  renderEntryGroup: (block: TEntryGroupBlock) => ReactNode;
 }) {
   const sections: ReactNode[] = [];
-  let mediaGroup: TMediaBlock[] = [];
+  let mediaGroup: Array<TMediaBlock | TEntryGroupBlock> = [];
   let mediaNumber = 0;
 
   function flushMediaGroup(key: string) {
@@ -35,6 +46,9 @@ export function EditorialDocumentRenderer<TMediaBlock extends EditorialDocumentM
     mediaGroup = [];
     sections.push(<div key={key} className={cn("grid gap-6 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4", mediaGroupClassName)}>
       {group.map((block) => {
+        if (block.type === "entry_group") {
+          return <div key={block.id} className="min-w-0">{renderEntryGroup(block)}</div>;
+        }
         mediaNumber += 1;
         return renderMedia(block, mediaNumber);
       })}
@@ -42,8 +56,8 @@ export function EditorialDocumentRenderer<TMediaBlock extends EditorialDocumentM
   }
 
   for (const block of blocks) {
-    if (block.type === "media") {
-      mediaGroup.push(block as TMediaBlock);
+    if (block.type === "media" || block.type === "entry_group") {
+      mediaGroup.push(block);
       continue;
     }
     flushMediaGroup(`media-before-${block.id}`);
@@ -53,5 +67,5 @@ export function EditorialDocumentRenderer<TMediaBlock extends EditorialDocumentM
   }
   flushMediaGroup("media-end");
 
-  return <div className="grid gap-8 border-t border-stone-950/10 p-5 sm:p-7">{sections}</div>;
+  return <div className="grid min-w-0 grid-cols-[minmax(0,1fr)] gap-8 border-t border-stone-950/10 p-5 sm:p-7">{sections}</div>;
 }

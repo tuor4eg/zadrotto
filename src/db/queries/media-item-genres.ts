@@ -1,8 +1,9 @@
-import { and, eq, getTableName, inArray, isNotNull, notInArray, or, sql } from "drizzle-orm";
+import { and, eq, getTableName, inArray, isNotNull, notInArray, or, sql, type SQLWrapper } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
 import { db } from "@/db";
 import { normalizeSearchSql } from "@/db/search";
+import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { genres, mediaItemGenres, mediaItems, providerGenreExclusions, providerGenreMappings } from "@/db/schema";
 import {
   extractExternalGenres, resolveGenreMappings,
@@ -17,16 +18,46 @@ export function normalizeGenreNameSql(value: Parameters<typeof normalizeSearchSq
   return sql<string>`btrim(${normalizeSearchSql(value)})`;
 }
 
-export function mediaItemGenresJsonSql(mediaItemId: AnyPgColumn = mediaItems.id) {
+function qualifiedColumn(column: AnyPgColumn) {
+  return sql`${sql.identifier(getTableName(column.table))}.${sql.identifier(column.name)}`;
+}
+
+export function visibleGenreSql(mediaItemId: SQLWrapper, replacementFranchiseId: SQLWrapper) {
+  return sql<boolean>`(${replacementFranchiseId} is null or not ${publishedSeriesMembershipSql(mediaItemId, replacementFranchiseId)})`;
+}
+
+export function missingGenreSeriesBindingSql(mediaItemId: AnyPgColumn = mediaItems.id) {
+  const itemId = qualifiedColumn(mediaItemId);
+  return sql<boolean>`exists (
+    select 1 from ${mediaItemGenres} missing_genre_link
+    inner join ${genres} missing_genre on missing_genre.id = missing_genre_link.genre_id
+    where missing_genre_link.media_item_id = ${itemId} and missing_genre.is_active = true
+      and missing_genre.replacement_franchise_id is not null
+      and ${visibleGenreSql(itemId, sql`missing_genre.replacement_franchise_id`)}
+  )`;
+}
+
+export function hasUnifiedGenresSql(mediaItemId: AnyPgColumn = mediaItems.id) {
+  return sql<boolean>`exists (select 1 from ${mediaItemGenres} unified_link
+    inner join ${genres} unified_genre on unified_genre.id = unified_link.genre_id
+    where unified_link.media_item_id = ${qualifiedColumn(mediaItemId)} and unified_genre.is_active = true)`;
+}
+
+export function publicMediaItemGenresJsonSql(mediaItemId: AnyPgColumn = mediaItems.id) {
+  return mediaItemGenresJsonSql(mediaItemId, true);
+}
+
+export function mediaItemGenresJsonSql(mediaItemId: AnyPgColumn = mediaItems.id, visibleOnly = false) {
   // Drizzle strips column qualifiers in single-table selects. Keep the outer
   // reference explicitly qualified so it cannot bind to genre.id in the subquery.
-  const qualifiedId = sql`${sql.identifier(getTableName(mediaItemId.table))}.${sql.identifier(mediaItemId.name)}`;
+  const qualifiedId = qualifiedColumn(mediaItemId);
   return sql<MediaItemGenre[]>`coalesce((
     select jsonb_agg(jsonb_build_object('id', genre.id, 'slug', genre.slug, 'name', genre.name)
       order by genre.slug collate "C", genre.id)
     from ${mediaItemGenres} genre_link
     inner join ${genres} genre on genre.id = genre_link.genre_id
     where genre_link.media_item_id = ${qualifiedId} and genre.is_active = true
+      ${visibleOnly ? sql`and ${visibleGenreSql(qualifiedId, sql`genre.replacement_franchise_id`)}` : sql``}
   ), '[]'::jsonb)`;
 }
 

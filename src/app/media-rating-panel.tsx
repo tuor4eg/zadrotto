@@ -192,6 +192,17 @@ const COMIC_SIGNIN_BURST_PATH = "/mediaCarriers/comic/signin.webp";
 const ANIME_ARCHIVE_RATING_ART_PATH = "/mediaCarriers/anime/robot.webp";
 const ANIME_AUTHOR_RATING_ART_PATH = "/mediaCarriers/anime/kawai.webp";
 
+export function BoardgameRatingValue({ score }: { score: number | null }) {
+  return (
+    <span className="relative inline-block leading-none">
+      <svg viewBox="0 0 24 24" className="absolute right-full top-1/2 mr-2 size-[0.65em] -translate-y-1/2" fill="currentColor" aria-hidden="true" data-rating-symbol="meeple">
+        <path d="M12 2a3.4 3.4 0 0 1 3.4 3.4v1.2l4.8 1.8c1.3.5 2 1.5 1.8 2.6-.2 1.2-1.2 2-2.5 2h-2l3 6.9c.4 1-.2 2.1-1.3 2.1h-4.1L12 16.8 8.9 22H4.8c-1.1 0-1.7-1.1-1.3-2.1l3-6.9h-2C3.2 13 2.2 12.2 2 11c-.2-1.1.5-2.1 1.8-2.6l4.8-1.8V5.4A3.4 3.4 0 0 1 12 2Z" />
+      </svg>
+      <span>{formatScore(score)}</span>
+    </span>
+  );
+}
+
 export function RatingStars({ score, variant = "plain" }: RatingStarsProps) {
   const starCount = Math.max(0, Math.min(5, (score ?? 0) / 20));
   if (variant === "terminal") {
@@ -2208,9 +2219,9 @@ export function ArchiveRatingPanel({
           compact ? "mt-1 text-3xl" : "mt-2 text-4xl sm:text-5xl"
         } ${displayFontClassName} tabular-nums ${inverted ? "" : ARCHIVE_RATING_VALUE_CLASS_NAME}`}
       >
-        {formatScore(score)}
+        {ratingPanelVariant === "boardgame-meeples" ? <BoardgameRatingValue score={score} /> : formatScore(score)}
       </div>
-      {!compact || showStarsWhenCompact ? (
+      {ratingPanelVariant !== "boardgame-meeples" && (!compact || showStarsWhenCompact) ? (
         <div
           className={`${
             compact ? "mt-1 h-5 scale-75" : "mt-2"

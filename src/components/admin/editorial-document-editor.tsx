@@ -29,7 +29,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { useRef, useState } from "react";
+import { useId, useRef, useState } from "react";
 
 import { AutoResizeTextarea } from "@/components/ui/auto-resize-textarea";
 import { Badge } from "@/components/ui/badge";
@@ -59,8 +59,17 @@ export type EditorialDocumentTextBlock = {
   type: "text";
 };
 
+export type EditorialDocumentEntryGroupBlock = {
+  clientId: string;
+  title: string;
+  description: string;
+  items: AdminMediaBrowserItem[];
+  type: "entry_group";
+};
+
 export type EditorialDocumentBlock =
   | EditorialDocumentMediaBlock
+  | EditorialDocumentEntryGroupBlock
   | EditorialDocumentHeadingBlock
   | EditorialDocumentTextBlock;
 
@@ -68,6 +77,7 @@ export type EditorialDocumentEditorProps = {
   blocks: EditorialDocumentBlock[];
   onChange: (blocks: EditorialDocumentBlock[]) => void;
   onRequestMediaInsert: (index: number) => void;
+  onRequestGroupMediaInsert: (clientId: string) => void;
 };
 
 type SortableBlockProps = {
@@ -77,9 +87,10 @@ type SortableBlockProps = {
   onMove: (offset: -1 | 1) => void;
   onRemove: () => void;
   totalCount: number;
+  onRequestGroupMediaInsert: (clientId: string) => void;
 };
 
-function createClientId(type: EditorialDocumentHeadingBlock["type"] | EditorialDocumentTextBlock["type"]) {
+function createClientId(type: "heading" | "text" | "entry_group") {
   return `${type}-${crypto.randomUUID()}`;
 }
 
@@ -95,7 +106,9 @@ function BlockControls({
 }) {
   const blockLabel = block.type === "media"
     ? `запись «${block.item.title}»`
-    : block.type === "heading"
+    : block.type === "entry_group"
+      ? "набор записей"
+      : block.type === "heading"
       ? "заголовок"
       : "текст";
 
@@ -204,6 +217,37 @@ function MediaBlockEditor({
   );
 }
 
+function EntryGroupEditor({ block, onChange, onRequestMediaInsert }: {
+  block: EditorialDocumentEntryGroupBlock;
+  onChange: (block: EditorialDocumentEntryGroupBlock) => void;
+  onRequestMediaInsert: () => void;
+}) {
+  return <div className="grid min-w-0 gap-4">
+    <div className="grid gap-2">
+      <Label htmlFor={`editorial-group-title-${block.clientId}`}>Заголовок набора</Label>
+      <Input data-editorial-block-input={block.clientId} id={`editorial-group-title-${block.clientId}`} maxLength={200} placeholder="Необязательный заголовок" value={block.title} onChange={(event) => onChange({ ...block, title: event.currentTarget.value })} />
+      <span className="text-right text-xs tabular-nums text-stone-400">{block.title.length}/200</span>
+    </div>
+    <div className="grid gap-2">
+      <Label htmlFor={`editorial-group-description-${block.clientId}`}>Описание набора</Label>
+      <AutoResizeTextarea id={`editorial-group-description-${block.clientId}`} maxLength={5000} placeholder="Необязательное описание" value={block.description} onChange={(event) => onChange({ ...block, description: event.currentTarget.value })} />
+      <span className="text-right text-xs tabular-nums text-stone-400">{block.description.length}/5000</span>
+    </div>
+    <ol className="grid gap-2">
+      {block.items.map((item, index) => <li key={item.id} className="flex min-w-0 flex-wrap items-center gap-2 rounded border border-stone-200 p-3">
+        <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{index + 1}. {item.title}</p><p className="text-xs text-stone-500">{item.mediaTypeLabel}{item.releaseYear ? ` · ${item.releaseYear}` : ""}</p></div>
+        <div className="flex gap-1">
+          <Button aria-label={`Переместить запись «${item.title}» выше в наборе`} disabled={index === 0} size="icon" type="button" variant="outline" onClick={() => onChange({ ...block, items: arrayMove(block.items, index, index - 1) })}><ArrowUp /></Button>
+          <Button aria-label={`Переместить запись «${item.title}» ниже в наборе`} disabled={index === block.items.length - 1} size="icon" type="button" variant="outline" onClick={() => onChange({ ...block, items: arrayMove(block.items, index, index + 1) })}><ArrowDown /></Button>
+          <Button aria-label={`Удалить запись «${item.title}» из набора`} size="icon" type="button" variant="destructive" onClick={() => onChange({ ...block, items: block.items.filter((current) => current.id !== item.id) })}><Trash2 /></Button>
+        </div>
+      </li>)}
+    </ol>
+    {block.items.length === 0 ? <p className="text-sm text-amber-700">Добавьте хотя бы одну запись в набор.</p> : null}
+    <div><Button type="button" variant="outline" onClick={onRequestMediaInsert}><Images />Добавить записи</Button></div>
+  </div>;
+}
+
 function SortableBlock({
   block,
   index,
@@ -211,13 +255,16 @@ function SortableBlock({
   onMove,
   onRemove,
   totalCount,
+  onRequestGroupMediaInsert,
 }: SortableBlockProps) {
   const sortable = useSortable({ id: block.clientId });
   const style = {
     transform: CSS.Transform.toString(sortable.transform),
     transition: sortable.transition,
   };
-  const empty = block.type !== "media" && block.content.trim().length === 0;
+  const empty = block.type === "entry_group"
+    ? block.items.length === 0
+    : block.type !== "media" && block.content.trim().length === 0;
 
   return (
     <article
@@ -231,7 +278,7 @@ function SortableBlock({
     >
       <div className="mb-4 flex flex-wrap items-start justify-between gap-3">
         <Badge variant={empty ? "warning" : "outline"}>
-          {block.type === "media" ? "Запись" : block.type === "heading" ? "Заголовок" : "Текст"}
+          {block.type === "media" ? "Запись" : block.type === "entry_group" ? "Набор записей" : block.type === "heading" ? "Заголовок" : "Текст"}
         </Badge>
         <BlockControls
           block={block}
@@ -245,6 +292,8 @@ function SortableBlock({
 
       {block.type === "media" ? (
         <MediaBlockEditor block={block} onChange={onChange} />
+      ) : block.type === "entry_group" ? (
+        <EntryGroupEditor block={block} onChange={onChange} onRequestMediaInsert={() => onRequestGroupMediaInsert(block.clientId)} />
       ) : block.type === "heading" ? (
         <div className="grid gap-2">
           <Label htmlFor={`editorial-heading-${block.clientId}`}>Заголовок раздела</Label>
@@ -290,7 +339,7 @@ function InsertBlockControl({
   setOpen,
 }: {
   index: number;
-  onInsertContent: (index: number, type: "heading" | "text") => void;
+  onInsertContent: (index: number, type: "heading" | "text" | "entry_group") => void;
   onRequestMediaInsert: (index: number) => void;
   open: boolean;
   setOpen: (open: boolean) => void;
@@ -301,7 +350,7 @@ function InsertBlockControl({
   function toggleMenu() {
     if (!open) {
       const triggerBounds = triggerRef.current?.getBoundingClientRect();
-      const menuHeight = 164;
+      const menuHeight = 208;
 
       setOpenAbove(Boolean(
         triggerBounds
@@ -348,6 +397,7 @@ function InsertBlockControl({
             <Images className="size-4" />
             Добавить записи
           </button>
+          <button className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-100 hover:text-stone-950" onClick={() => { setOpen(false); onInsertContent(index, "entry_group"); }} role="menuitem" type="button"><Images className="size-4" />Набор записей</button>
           <button
             className="flex items-center gap-2 rounded px-3 py-2 text-left text-sm text-stone-700 hover:bg-stone-100 hover:text-stone-950"
             onClick={() => {
@@ -382,7 +432,9 @@ export function EditorialDocumentEditor({
   blocks,
   onChange,
   onRequestMediaInsert,
+  onRequestGroupMediaInsert,
 }: EditorialDocumentEditorProps) {
+  const dndId = useId();
   const rootRef = useRef<HTMLDivElement>(null);
   const [openInsertIndex, setOpenInsertIndex] = useState<number | null>(null);
   const sensors = useSensors(
@@ -407,9 +459,11 @@ export function EditorialDocumentEditor({
     onChange(arrayMove(blocks, fromIndex, toIndex));
   }
 
-  function insertContentBlock(index: number, type: "heading" | "text") {
+  function insertContentBlock(index: number, type: "heading" | "text" | "entry_group") {
     const clientId = createClientId(type);
-    const block = { clientId, content: "", type } satisfies EditorialDocumentBlock;
+    const block: EditorialDocumentBlock = type === "entry_group"
+      ? { clientId, type, title: "", description: "", items: [] }
+      : { clientId, content: "", type };
 
     onChange([...blocks.slice(0, index), block, ...blocks.slice(index)]);
     window.requestAnimationFrame(() => {
@@ -422,6 +476,7 @@ export function EditorialDocumentEditor({
   return (
     <div ref={rootRef} className="grid gap-1">
       <DndContext
+        id={dndId}
         collisionDetection={closestCenter}
         onDragEnd={handleDragEnd}
         sensors={sensors}
@@ -452,6 +507,7 @@ export function EditorialDocumentEditor({
                 onRemove={() => onChange(
                   blocks.filter((currentBlock) => currentBlock.clientId !== block.clientId),
                 )}
+                onRequestGroupMediaInsert={onRequestGroupMediaInsert}
                 totalCount={blocks.length}
               />
               <InsertBlockControl

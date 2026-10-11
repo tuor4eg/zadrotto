@@ -33,6 +33,7 @@ type AdminMediaFiltersFormProps = {
   metadataFilter: "absent" | "missing" | null;
   mediaTypes: MediaTypeOption[];
   searchQuery: string;
+  seriesBinding: "missing" | null;
   sort: AdminMediaSort;
   totalCount: number;
 };
@@ -72,6 +73,7 @@ export function AdminMediaFiltersForm({
   metadataFilter,
   mediaTypes,
   searchQuery,
+  seriesBinding,
   sort,
   totalCount,
 }: AdminMediaFiltersFormProps) {
@@ -86,6 +88,7 @@ export function AdminMediaFiltersForm({
       carrier?: number | null;
       metadataFilter?: "absent" | "missing" | null;
       q?: string;
+      seriesBinding?: "missing" | null;
       sort?: AdminMediaSort;
       type?: MediaTypeFilter;
     }) => {
@@ -129,6 +132,9 @@ export function AdminMediaFiltersForm({
 
       if (nextFilters.metadataFilter !== undefined) {
         updateFilterParam(nextSearchParams, "metadata", nextFilters.metadataFilter ?? "", "");
+      }
+      if (nextFilters.seriesBinding !== undefined) {
+        updateFilterParam(nextSearchParams, "seriesBinding", nextFilters.seriesBinding ?? "", "");
       }
 
       const queryString = nextSearchParams.toString();
@@ -174,7 +180,7 @@ export function AdminMediaFiltersForm({
         aria-label="Поиск записей"
       />
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-[repeat(5,minmax(0,1fr))_auto]">
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
         <Select
           value={mediaTypeFilter}
           onChange={(event) => replaceFilters({ type: event.target.value as MediaTypeFilter })}
@@ -237,6 +243,13 @@ export function AdminMediaFiltersForm({
           <option value="all">Все метаданные</option>
           <option value="absent">Метаданные отсутствуют</option>
           <option value="missing">Метаданные не найдены</option>
+        </Select>
+
+        <Select value={seriesBinding ?? "all"}
+          onChange={(event) => replaceFilters({ seriesBinding: event.target.value === "missing" ? "missing" : null })}
+          aria-label="Фильтр по привязке к серии">
+          <option value="all">Все привязки к сериям</option>
+          <option value="missing">Нет привязки к серии</option>
         </Select>
 
         <Select

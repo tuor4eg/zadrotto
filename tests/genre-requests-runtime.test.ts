@@ -58,6 +58,9 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
       assert.equal((await tx`SELECT count(*)::int AS n FROM genre_requests`)[0].n, 1);
       assert.equal((await tx`SELECT count(*)::int AS n FROM genre_request_media_items`)[0].n, 1);
     });
+    await client.unsafe("ALTER TABLE genres ADD COLUMN replacement_franchise_id integer");
+    await client.unsafe("CREATE TABLE franchises(id integer PRIMARY KEY, publication_status text NOT NULL)");
+    await client`INSERT INTO franchises VALUES (42,'published'), (43,'draft')`;
     assert.equal(await getPendingGenreRequestCount(), 1);
     let request = (await getGenreRequests())[0];
     assert.equal(request.externalGenreName, "Новый жанр");
@@ -68,7 +71,13 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     assert.equal(detail.request.occurrenceCount, 2);
     assert.deepEqual(detail.variants, [{ name: "НОВЫЙ   ЖАНР", externalId: "900", count: 2 }]);
     assert.equal((await client`SELECT count(*)::int AS n FROM admin_activity_logs WHERE action='genre-request.detected'`)[0].n, 0);
-    const decision = await resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "create", name: "  Новый внутренний  " });
+    for (const replacementFranchiseId of [43, 999, 0, 2_147_483_648]) {
+      await assert.rejects(resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "create", name: "Новый внутренний", replacementFranchiseId }), /опубликованную серию/);
+      assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE name='Новый внутренний'`)[0].n, 0);
+      assert.equal((await getGenreRequestDetail(request.id))?.request.decision, null);
+    }
+    const decision = await resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "create", name: "  Новый внутренний  ", replacementFranchiseId: 42 });
+    assert.equal((await client`SELECT replacement_franchise_id FROM genres WHERE name='Новый внутренний'`)[0].replacement_franchise_id, 42);
     assert.equal((await getGenreRequestDetail(request.id))?.request.status, "applying");
     assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE external_genre_id='900'`)[0].n, 0);
     await assert.rejects(resolveGenreRequest({ requestId: request.id, adminId: 1, decision: "exclude" }), /уже принято/);
@@ -197,11 +206,23 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     await resolveGenreRequest({ requestId: restoredId, adminId: 1, decision: "map", genreIds: [Number(gameGenre.id)] });
     assert.equal((await getGenreRequestDetail(restoredId))?.genres[0].id, Number(gameGenre.id));
 
-    // Returning a create decision preserves the created genre and raw metadata, but removes its automatic assignment.
+    // Returning the last provider mapping removes the genre and all normalized links, retaining raw metadata.
     const [createdMapping] = await client`SELECT id FROM provider_genre_mappings WHERE genre_id=${customId}
       AND normalized_external_genre_name='новый жанр'`;
     const createdRequestId = (await client`SELECT id FROM genre_requests WHERE normalized_external_genre_name='новый жанр'`)[0].id;
+    await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) VALUES(3,${customId},true)`;
+    const createdLinksBeforeReturn = await client`SELECT * FROM media_item_genres WHERE genre_id=${customId} ORDER BY media_item_id`;
+    const createdGenreBeforeReturn = (await client`SELECT * FROM genres WHERE id=${customId}`)[0];
+    const createdMappingsBeforeReturn = await client`SELECT * FROM provider_genre_mappings WHERE genre_id=${customId} ORDER BY id`;
+    await client.unsafe("CREATE TRIGGER reject_request_job BEFORE INSERT ON job_runs FOR EACH ROW EXECUTE FUNCTION reject_request_job()");
+    await assert.rejects(reopenGenreMapping({ mappingId: Number(createdMapping.id), adminId: 1 }));
+    await client.unsafe("DROP TRIGGER reject_request_job ON job_runs");
+    assert.deepEqual((await client`SELECT * FROM genres WHERE id=${customId}`)[0], createdGenreBeforeReturn);
+    assert.deepEqual(await client`SELECT * FROM media_item_genres WHERE genre_id=${customId} ORDER BY media_item_id`, createdLinksBeforeReturn);
+    assert.deepEqual(await client`SELECT * FROM provider_genre_mappings WHERE genre_id=${customId} ORDER BY id`, createdMappingsBeforeReturn);
     const reopenedCreated = await reopenGenreMapping({ mappingId: Number(createdMapping.id), adminId: 1 });
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${customId}`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM media_item_genres WHERE genre_id=${customId}`)[0].n, 0);
     assert.equal(reopenedCreated.requestId, Number(createdRequestId));
     assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "applying");
     assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.decision, null);
@@ -212,23 +233,25 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "pending");
     assert.deepEqual((await getMediaItemMetadata(1))?.genres.map((genre) => genre.slug), ["drama"]);
     assert.deepEqual((await getMediaItemMetadata(1))?.facts, rawBefore);
-    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${customId}`)[0].n, 1);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${customId}`)[0].n, 0);
     await client`DELETE FROM job_runs WHERE id=${reopenedCreated.jobRunId}`;
     assert.equal((await getGenreRequestDetail(reopenedCreated.requestId))?.request.status, "pending");
     await assert.rejects(retryGenreRequest({ requestId: reopenedCreated.requestId, adminId: 1 }));
 
-    // One provider variant can map to several internal genres; all its mappings return together.
+    // One provider variant can map to several internal genres; genres with other variants survive.
+    const [sharedGenre] = await client`INSERT INTO genres(name,slug) VALUES('Shared internal','shared-internal') RETURNING id`;
+    const sharedGenreId = Number(sharedGenre.id);
     await client`INSERT INTO media_items(id,code,title,media_type) VALUES (200,'reopen','Возврат','film')`;
     await upsertMediaItemMetadata({ mediaItemId: 200, sourceProvider: "tmdb", facts: { genres: ["Reopen shared"] } });
     const sharedRequestId = (await client`SELECT id FROM genre_requests WHERE normalized_external_genre_name='reopen shared'`)[0].id;
-    const sharedDecision = await resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "map", genreIds: [customId, filmGenreId] });
+    const sharedDecision = await resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "map", genreIds: [sharedGenreId, filmGenreId] });
     const sharedMappings = await client`SELECT id FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared' ORDER BY id`;
     await assert.rejects(reopenGenreMapping({ mappingId: Number(sharedMappings[0].id), adminId: 1 }));
     assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared'`)[0].n, 2);
     await applyGenreRequest(Number(sharedRequestId), { jobRunId: sharedDecision.jobRunId });
     await client`UPDATE job_runs SET status='succeeded' WHERE id=${sharedDecision.jobRunId}`;
     await client`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_name,normalized_external_genre_name,genre_id)
-      VALUES ('tmdb','film','Still confirmed','still confirmed',${customId})`;
+      VALUES ('tmdb','film','Still confirmed','still confirmed',${sharedGenreId})`;
     await upsertMediaItemMetadata({ mediaItemId: 200, sourceProvider: "tmdb", facts: { genres: ["Reopen shared", "Still confirmed"] } });
     await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) SELECT 200,id,true FROM genres WHERE slug='comedy'`;
     const sharedFacts = (await getMediaItemMetadata(200))!.facts;
@@ -237,6 +260,7 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     const successfulReturn = competingReturns.find((result) => result.status === "fulfilled")!;
     if (successfulReturn.status !== "fulfilled") throw new Error("Missing successful return");
     const reopenedShared = successfulReturn.value;
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${sharedGenreId}`)[0].n, 1);
     assert.equal((await client`SELECT count(*)::int AS n FROM provider_genre_mappings WHERE normalized_external_genre_name='reopen shared'`)[0].n, 0);
     assert.equal((await client`SELECT count(*)::int AS n FROM job_runs WHERE payload->>'requestId'=${String(sharedRequestId)}`)[0].n, 2);
     const stoppedReturn = new AbortController(); stoppedReturn.abort();
@@ -253,13 +277,13 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     const returnRetry = await retryGenreRequest({ requestId: Number(sharedRequestId), adminId: 1 });
     await applyGenreRequest(Number(sharedRequestId), { jobRunId: returnRetry.jobRunId });
     await client`UPDATE job_runs SET status='succeeded' WHERE id=${returnRetry.jobRunId}`;
-    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", `custom-${customId}`]);
+    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", "shared-internal"]);
     assert.deepEqual((await getMediaItemMetadata(200))?.facts, sharedFacts);
     assert.equal((await getGenreRequestDetail(Number(sharedRequestId)))?.request.status, "pending");
     const corrected = await resolveGenreRequest({ requestId: Number(sharedRequestId), adminId: 1, decision: "map", genreIds: [filmGenreId] });
     await applyGenreRequest(Number(sharedRequestId), { jobRunId: corrected.jobRunId });
     await client`UPDATE job_runs SET status='succeeded' WHERE id=${corrected.jobRunId}`;
-    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", `custom-${customId}`, "drama"]);
+    assert.deepEqual((await getMediaItemMetadata(200))?.genres.map((genre) => genre.slug), ["comedy", "drama", "shared-internal"]);
 
     // Old seeded mappings have no request. Discover current occurrences by normalized name and external ID.
     await client`INSERT INTO media_items(id,code,title,media_type) VALUES
@@ -307,6 +331,28 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     ]);
     await applyGenreRequest(seedRaceReturn.requestId, { jobRunId: seedRaceReturn.jobRunId });
     assert.deepEqual((await getMediaItemMetadata(205))?.genres, []);
+
+    // Different last variants returning concurrently must serialize on their shared genre.
+    const [orphan] = await client`INSERT INTO genres(name,slug) VALUES('Concurrent orphan','concurrent-orphan') RETURNING id`;
+    const orphanMappings = await client`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_name,normalized_external_genre_name,genre_id)
+      VALUES ('tmdb','film','Orphan one','orphan one',${orphan.id}),('rawg','game','Orphan two','orphan two',${orphan.id}) RETURNING id`;
+    await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) VALUES(205,${orphan.id},true)`;
+    await Promise.all(orphanMappings.map(mapping => reopenGenreMapping({ mappingId: Number(mapping.id), adminId: 1 })));
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${orphan.id}`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM media_item_genres WHERE genre_id=${orphan.id}`)[0].n, 0);
+
+    // Clean up genres that had already lost all provider variants before this change.
+    const [oldOrphan] = await client`INSERT INTO genres(name,slug) VALUES('Old orphan','old-orphan') RETURNING id`;
+    await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) VALUES(205,${oldOrphan.id},true)`;
+    const factsBeforeCleanup = await client`SELECT * FROM media_item_metadata ORDER BY media_item_id`;
+    await client.begin(async tx => {
+      for (const statement of readFileSync("drizzle/0109_remove_unmapped_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+    });
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${oldOrphan.id}`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM media_item_genres WHERE genre_id=${oldOrphan.id}`)[0].n, 0);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${sharedGenreId}`)[0].n, 1);
+    assert.deepEqual(await client`SELECT * FROM media_item_metadata ORDER BY media_item_id`, factsBeforeCleanup);
+    assert.equal((await client`SELECT count(*)::int AS n FROM genres g WHERE NOT EXISTS (SELECT 1 FROM provider_genre_mappings m WHERE m.genre_id=g.id)`)[0].n, 0);
   } finally {
     await client.unsafe(`DROP SCHEMA IF EXISTS ${schema} CASCADE`);
     await client.end();

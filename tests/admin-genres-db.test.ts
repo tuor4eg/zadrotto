@@ -11,7 +11,7 @@ test("admin genres load in two queries and rename only the shared display name",
   process.env.DATABASE_URL = url.toString();
   process.env.DATABASE_MAX_CONNECTIONS = "2";
   const { db, getDbClient } = await import("../src/db");
-  const { getAdminGenres, getAdminGenresPage, getAdminGenreById, updateGenreName } = await import("../src/db/queries/genres");
+  const { getAdminGenres, getAdminGenresPage, getAdminGenreById, updateGenreName, updateGenre } = await import("../src/db/queries/genres");
   const { mediaItemGenresJsonSql } = await import("../src/db/queries/media-item-genres");
   const { mediaItems } = await import("../src/db/schema");
   const { formatMediaItemSummary } = await import("../src/lib/media/media-item-summary");
@@ -20,7 +20,8 @@ test("admin genres load in two queries and rename only the shared display name",
   try {
     await client.unsafe(`CREATE SCHEMA ${schema}`);
     await client.begin(async (tx) => {
-      await tx.unsafe(`CREATE TABLE media_types(code text PRIMARY KEY, name text NOT NULL);
+      await tx.unsafe(`CREATE TABLE franchises(id integer PRIMARY KEY, title text, code text, publication_status text);
+        CREATE TABLE media_types(code text PRIMARY KEY, name text NOT NULL);
         INSERT INTO media_types VALUES ('film','Фильм'),('series','Сериал'),('anime','Аниме'),('game','Игра');
         CREATE TABLE media_items(id integer PRIMARY KEY, media_type text);
         CREATE TABLE media_item_metadata(media_item_id integer PRIMARY KEY, source_provider text, facts jsonb);
@@ -31,6 +32,7 @@ test("admin genres load in two queries and rename only the shared display name",
         INSERT INTO media_items VALUES (1,'film'),(2,'series');
         INSERT INTO media_item_metadata VALUES (1,'tmdb','{"genres":["боевик"]}'),(2,'tmdb','{"genres":["Боевик и Приключения"]}');`);
       for (const statement of readFileSync("drizzle/0103_unified_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+      await tx.unsafe("ALTER TABLE genres ADD COLUMN replacement_franchise_id integer REFERENCES franchises(id) ON DELETE SET NULL");
     });
     const originalUnsafe = client.unsafe;
     let queryCount = 0;
@@ -94,8 +96,18 @@ test("admin genres load in two queries and rename only the shared display name",
     await updateGenreName(adventure.id, "Экшен"); // Duplicate names are explicitly allowed.
     await assert.rejects(updateGenreName(action.id, " \t "));
     assert.equal(await updateGenreName(2147483647, "Нет такого жанра"), null);
+    await client`INSERT INTO franchises VALUES (1,'Дикий запад','west','published')`;
+    await updateGenre(action.id, "Экшен", 1);
+    assert.equal((await getAdminGenresPage({ searchQuery: "", page: 1, tab: "ordinary" })).total, 52);
+    const replacements = await getAdminGenresPage({ searchQuery: "", page: 1, tab: "series" });
+    assert.equal(replacements.total, 1);
+    assert.equal(replacements.items[0].replacementFranchise?.title, "Дикий запад");
+    assert.equal((await getAdminGenresPage({ searchQuery: "БОЕВИК И ПРИКЛЮЧЕНИЯ", page: 1, tab: "series" })).total, 1);
+    await client`UPDATE franchises SET publication_status='draft' WHERE id=1`;
+    assert.equal((await getAdminGenresPage({ searchQuery: "", page: 1, tab: "series" })).items[0].replacementFranchise?.publicationStatus, "draft");
     await client`UPDATE genres SET is_active=false WHERE id=${action.id}`;
     assert.equal((await getAdminGenreById(action.id))?.isActive, false);
+    assert.equal((await getAdminGenresPage({ searchQuery: "", page: 1, tab: "series" })).total, 0);
     await client`DELETE FROM provider_genre_mappings WHERE genre_id=${action.id}`;
     assert.deepEqual((await getAdminGenreById(action.id))?.providerVariants, []);
   } finally {

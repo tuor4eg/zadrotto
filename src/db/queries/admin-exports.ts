@@ -9,6 +9,7 @@ export type AdminExportFilters = {
   mediaCarrierId?: number;
   mediaType?: string;
   metadata?: "missing" | "absent";
+  seriesBinding?: "missing";
 };
 
 export async function insertAdminExport(input: { adminId: number; entityType: AdminExportEntityType; fields: string[]; filters: AdminExportFilters; sort: string; expiresAt: Date }) {

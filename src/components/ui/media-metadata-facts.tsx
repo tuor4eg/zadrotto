@@ -9,6 +9,7 @@ export type MediaMetadataFactsValue = {
   sourceUrl: string | null;
   fetchedAt?: Date | string | null;
   genres?: MediaItemGenre[];
+  suggestedFranchiseIds?: number[];
 };
 
 const FACT_LABELS: Record<string, string> = {

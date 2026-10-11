@@ -26,6 +26,13 @@ describe("genre request decisions", () => {
       { requestId: "1", decision: "map" }, { requestId: "1", decision: "map", genreIds: ["2", "bad"] },
     ]) assert.equal(parseGenreRequestDecision(form(values)), null);
   });
+  it("accepts an optional series only for a new genre and rejects malformed IDs", () => {
+    const values = { requestId: "1", decision: "create", name: "Драма" };
+    assert.deepEqual(parseGenreRequestDecision(form({ ...values, replacementFranchiseId: "42" })), { requestId: 1, decision: "create", name: "Драма", replacementFranchiseId: 42 });
+    assert.deepEqual(parseGenreRequestDecision(form({ ...values, replacementFranchiseId: "" })), { requestId: 1, decision: "create", name: "Драма" });
+    for (const replacementFranchiseId of ["bad", "0", "2147483648"]) assert.equal(parseGenreRequestDecision(form({ ...values, replacementFranchiseId })), null);
+    assert.deepEqual(parseGenreRequestDecision(form({ requestId: "1", decision: "exclude", replacementFranchiseId: "42" })), { requestId: 1, decision: "exclude" });
+  });
   it("renders multiple choices without a slug field", () => {
     const html = renderToStaticMarkup(createElement(GenreRequestDecisionForm, { requestId: 1,
       genres: [{ id: 10, name: "Драма", slug: "drama" }, { id: 11, name: "Комедия", slug: "comedy" }], action: async () => {} }));

@@ -6,6 +6,7 @@ import { startTransition, useActionState, useEffect, useMemo, useRef, useState }
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { CoverPicker } from "@/components/ui/cover-picker";
+import { appendGenreSeriesSuggestions } from "@/lib/media/genre-series-suggestions";
 import { FranchiseSuggestionStatus } from "@/components/ui/franchise-suggestion-status";
 import { Input, Label, Select, Textarea } from "@/components/ui/form";
 import {
@@ -549,6 +550,10 @@ export function MediaItemForm({
 
       if (metadataRequestVersionRef.current === requestVersion) {
         setSelectedMetadata(nextMetadata);
+        if (!isEditing && nextMetadata.suggestedFranchiseIds?.length) {
+          setSelectedFranchiseIds((current) => appendGenreSeriesSuggestions(current, nextMetadata.suggestedFranchiseIds ?? [], franchiseOptions));
+          setFranchiseSelectResetKey((current) => current + 1);
+        }
         setMetadataCandidateToken(nextMetadata.metadataCandidateToken ?? "");
         if (nextTitleSource) {
           setSelectedTitleSource({
@@ -839,6 +844,11 @@ export function MediaItemForm({
                       },
                     ));
                     setSelectedMetadata(result.metadata);
+                    if (!isEditing && result.metadata.suggestedFranchiseIds?.length) {
+                      const suggestedFranchiseIds = result.metadata.suggestedFranchiseIds;
+                      setSelectedFranchiseIds((current) => appendGenreSeriesSuggestions(current, suggestedFranchiseIds, franchiseOptions));
+                      setFranchiseSelectResetKey((current) => current + 1);
+                    }
                     setMetadataCandidateToken(result.metadata.metadataCandidateToken ?? "");
                   })
                   .catch(() => {

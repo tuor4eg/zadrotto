@@ -36,6 +36,7 @@ type AdminMediaPageProps = {
     error?: string;
     author?: string;
     metadata?: string;
+    seriesBinding?: string;
     carrier?: string;
     page?: string;
     q?: string;
@@ -226,6 +227,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
   ]);
   const searchQuery = params.q?.trim() ?? "";
   const metadataFilter = params.metadata === "missing" || params.metadata === "absent" ? params.metadata : null;
+  const seriesBinding = params.seriesBinding === "missing" ? "missing" : null;
   const authorFilter = parseAuthorFilter(params.author);
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const mediaCarrierFilter = parseMediaCarrierFilter(params.carrier, {
@@ -239,6 +241,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
       authorId: authorFilter ?? undefined,
       mediaCarrierId: mediaCarrierFilter ?? undefined,
       metadataFilter: metadataFilter ?? undefined,
+      seriesBinding: seriesBinding ?? undefined,
       mediaTypeFilter,
       page: parsePage(params.page),
       pageSize: ADMIN_MEDIA_PAGE_SIZE,
@@ -276,12 +279,14 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
     Boolean(authorFilter) ||
     Boolean(mediaCarrierFilter) ||
     Boolean(metadataFilter) ||
+    Boolean(seriesBinding) ||
     mediaTypeFilter !== "all" ||
     sort !== "title";
   const paginationSearchParams = {
     author: authorFilter ? String(authorFilter) : undefined,
     carrier: mediaCarrierFilter ? String(mediaCarrierFilter) : undefined,
     metadata: metadataFilter ?? undefined,
+    seriesBinding: seriesBinding ?? undefined,
     q: searchQuery || undefined,
     sort: sort !== "title" ? sort : undefined,
     type: mediaTypeFilter !== "all" ? mediaTypeFilter : undefined,
@@ -305,6 +310,7 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
                 ...(authorFilter ? { authorId: authorFilter } : {}),
                 ...(mediaCarrierFilter ? { mediaCarrierId: mediaCarrierFilter } : {}),
                 ...(metadataFilter ? { metadata: metadataFilter } : {}),
+                ...(seriesBinding ? { seriesBinding } : {}),
                 ...(searchQuery ? { q: searchQuery } : {}),
                 ...(mediaTypeFilter !== "all" ? { mediaType: mediaTypeFilter } : {}),
               }}
@@ -333,12 +339,14 @@ export default async function AdminMediaPage({ searchParams }: AdminMediaPagePro
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypes}
           searchQuery={searchQuery}
+          seriesBinding={seriesBinding}
           sort={sort}
           totalCount={totalItemsCount}
         />
       ) : null}
 
       {metadataFilter ? <p className="text-sm text-stone-600">{metadataFilter === "absent" ? "Метаданные отсутствуют" : "Метаданные не найдены"}: {mediaResult.totalCount}</p> : null}
+      {seriesBinding ? <p className="text-sm text-stone-600">Нет привязки к серии: {mediaResult.totalCount}. У записи есть жанр с заменяющей серией, но нет опубликованного вхождения в неё или её опубликованные дочерние серии.</p> : null}
 
       {totalItemsCount === 0 ? (
         <EmptyState>Записей пока нет.</EmptyState>

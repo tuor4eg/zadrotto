@@ -6,6 +6,7 @@ import { join } from "node:path";
 import { once } from "node:events";
 import { and, asc, eq, exists, gt, inArray, isNotNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
+import { missingGenreSeriesBindingSql } from "@/db/queries/media-item-genres";
 import { getExpiredAdminExports, markAdminExportExpired, markAdminExportFailed, markAdminExportReady, markAdminExportRunning } from "@/db/queries/admin-exports";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
 import { authors, franchises, mediaCarriers, mediaItemFranchises, mediaItemMetadata, mediaItems, mediaItemTitleAliases } from "@/db/schema";
@@ -36,6 +37,7 @@ function mediaConditions(filters: Record<string, unknown>, afterId: number): SQL
   if (filters.mediaCarrierId) conditions.push(eq(mediaItems.mediaCarrierId, Number(filters.mediaCarrierId)));
   if (filters.mediaType && filters.mediaType !== "all") conditions.push(eq(mediaItems.mediaType, String(filters.mediaType)));
   if (filters.metadata === "missing") conditions.push(isNotNull(mediaItems.metadataAttemptedAt));
+  if (filters.seriesBinding === "missing") conditions.push(missingGenreSeriesBindingSql());
   if (filters.metadata === "missing" || filters.metadata === "absent") conditions.push(sql`not exists (select 1 from ${mediaItemMetadata} where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id} and ${mediaItemMetadata.facts} <> '{}'::jsonb)`);
   return conditions;
 }

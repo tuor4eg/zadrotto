@@ -732,7 +732,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       entityLabel: form.value.title,
       message: "Запись опубликована автором.",
     });
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     revalidatePath("/archive");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect(
@@ -1019,7 +1019,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
       entityLabel: item.title,
       message: "Запись опубликована автором.",
     });
-    revalidatePath("/");
+    revalidatePath("/", "layout");
     revalidatePath("/archive");
     revalidatePath(`/media/${updatedItem.code}`);
     redirect("/author/media?published=1");

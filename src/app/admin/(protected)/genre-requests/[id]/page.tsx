@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getGenreRequestDetail } from "@/db/queries/genre-requests";
+import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { getAdminGenres } from "@/db/queries/genres";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { parseGenreId } from "@/lib/media/admin-genres";
@@ -23,7 +24,9 @@ export default async function GenreRequestPage({ params, searchParams }: {
   const detail = await getGenreRequestDetail(id, { page });
   if (!detail) notFound();
   const { request, variants, items, genres } = detail;
-  const choices = request.status === "pending" ? (await getAdminGenres()).filter((genre) => genre.isActive) : [];
+  const [genreChoices, franchiseOptions] = request.status === "pending"
+    ? await Promise.all([getAdminGenres(), getPublishedFranchiseOptions()]) : [[], []];
+  const choices = genreChoices.filter((genre) => genre.isActive);
   const error = genreRequestError(query.error);
   const messages = [
     ...(query.reopened === "1" ? [{ id: "reopened", tone: "success" as const, text: "Вариант возвращён в заявки. Пересчёт жанров записей поставлен в очередь." }] : []),
@@ -46,7 +49,7 @@ export default async function GenreRequestPage({ params, searchParams }: {
       </li>)}</ul> : <p className="break-words text-sm text-stone-500">{genreProviderName(request.provider, request.externalGenreName)} · Нет текущих связанных записей.</p>}
     </section>
     <section className="grid gap-3 border-t border-stone-200 pt-5"><h3 className="font-semibold">Решение</h3>
-      {request.status === "pending" ? <GenreRequestDecisionForm requestId={id} genres={choices} action={resolveGenreRequestAction} /> : <>
+      {request.status === "pending" ? <GenreRequestDecisionForm requestId={id} genres={choices} franchiseOptions={franchiseOptions} action={resolveGenreRequestAction} /> : <>
         {request.decision === null ? <p className="text-sm">Снимаем прежние соответствия. Выбор жанров станет доступен после пересчёта записей.</p> : <>
         <p className="text-sm">{request.decision === "exclude" ? "Не считать жанром" : request.decision === "create" ? "Создан наш жанр" : "Связано с существующими жанрами"}</p>
         {genres.length ? <p className="text-sm font-medium">{genres.map((genre) => genre.name).join(", ")}</p> : null}

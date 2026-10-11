@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CatalogCountBadge as SeriesCountBadge, CATALOG_TITLE_STYLES as TITLE_STYLES } from "@/components/archive/catalog-count";
 
@@ -12,10 +12,12 @@ const COLLAPSED_CHILDREN_COUNT = 8;
 
 function SeriesTree({
   depth = 0,
+  heading,
   isSearchActive,
   nodes,
 }: {
   depth?: number;
+  heading?: ReactNode;
   isSearchActive: boolean;
   nodes: FranchiseTreeNode[];
 }) {
@@ -37,6 +39,7 @@ function SeriesTree({
         key={series.id}
         className={depth > 0 ? "relative pl-4" : "break-inside-avoid"}
       >
+        {seriesIndex === 0 ? heading : null}
         {depth > 0 ? (
           <>
             <span
@@ -115,13 +118,18 @@ export function SeriesCatalog({
             className="mb-4"
             key={group}
           >
-            <h2
-              className="break-after-avoid rounded-sm border-y border-stone-400/35 bg-[linear-gradient(90deg,rgba(190,174,138,0.78),rgba(225,214,186,0.58))] px-2.5 py-1.5 font-serif text-xl font-semibold leading-none text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
-              id={`series-group-${encodeURIComponent(group)}`}
-            >
-              {group}
-            </h2>
-            <SeriesTree nodes={series} isSearchActive={isSearchActive} />
+            <SeriesTree
+              nodes={series}
+              isSearchActive={isSearchActive}
+              heading={
+                <h2
+                  className="break-after-avoid rounded-sm border-y border-stone-400/35 bg-[linear-gradient(90deg,rgba(190,174,138,0.78),rgba(225,214,186,0.58))] px-2.5 py-1.5 font-serif text-xl font-semibold leading-none text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]"
+                  id={`series-group-${encodeURIComponent(group)}`}
+                >
+                  {group}
+                </h2>
+              }
+            />
           </section>
         ))}
       </div>

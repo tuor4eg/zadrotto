@@ -113,7 +113,7 @@ describe("media carrier frames", () => {
       aspectRatioClassName: "aspect-[683/1024]",
       compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
       compactViewportClassName: "h-[min(32vh,300px)]",
-      coverAreaClassName: "left-[15.5%] top-[6.2%] h-[55.3%] w-[69.1%]",
+      coverAreaClassName: "left-[13.5%] top-[10.5%] h-[62%] w-[73%]",
       placeholderVariant: "dvd-label",
       ratingPanelVariant: "boardgame-meeples",
       renderKind: "cartridge",

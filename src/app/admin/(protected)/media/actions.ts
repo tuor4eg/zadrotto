@@ -181,7 +181,7 @@ function revalidateMediaSurfaces(input: {
   revalidatePath("/author/media");
   revalidatePath(`/author/media/${input.id}`);
   revalidatePath(`/author/media/${input.id}/edit`);
-  revalidatePath("/");
+  revalidatePath("/", "layout");
   revalidatePath("/archive");
   revalidatePath(`/media/${input.code}`);
 

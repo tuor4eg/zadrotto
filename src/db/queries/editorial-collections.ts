@@ -1,12 +1,12 @@
 import { and, asc, desc, eq, inArray, sql } from "drizzle-orm";
 
+import { getCollectionSettings } from "@/db/queries/collection-settings";
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import {
   authorMediaStatuses,
   editorialCollections,
-  editorialDocumentBlocks,
   editorialDocuments,
   mediaItems,
 } from "@/db/schema";
@@ -15,6 +15,7 @@ import {
   getEditorialDocumentBlocks,
   replaceEditorialDocumentBlocks,
 } from "@/db/queries/editorial-documents";
+import { editorialDocumentItemsCountSql, editorialDocumentMediaReferencesSql } from "@/db/queries/editorial-document-references";
 import type { EditorialDocumentBlockInput } from "@/lib/editorial-documents/model";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { slugifyCodePart } from "@/lib/common/generated-code";
@@ -29,7 +30,12 @@ export type EditorialCollectionWriteInput = {
   blocks: EditorialDocumentBlockInput[];
 };
 
-type EditorialCollectionMediaTile = Awaited<ReturnType<typeof getMediaItemTilesByIds>>[number];
+export type EditorialCollectionMediaTile = Awaited<ReturnType<typeof getMediaItemTilesByIds>>[number];
+export type EditorialCollectionGroupItem = {
+  mediaItemId: number;
+  item: EditorialCollectionMediaTile;
+  currentAuthorStatus: AuthorMediaStatus | null;
+};
 export type HydratedEditorialCollectionBlock =
   | { id: number; position: number; type: "heading" | "text"; content: string }
   | {
@@ -40,14 +46,22 @@ export type HydratedEditorialCollectionBlock =
       editorialComment: string | null;
       item: EditorialCollectionMediaTile;
       currentAuthorStatus: AuthorMediaStatus | null;
+    }
+  | {
+      id: number;
+      position: number;
+      type: "entry_group";
+      title: string | null;
+      description: string | null;
+      items: EditorialCollectionGroupItem[];
     };
 
-function assertCollectionInput(input: EditorialCollectionWriteInput) {
+async function assertCollectionInput(input: EditorialCollectionWriteInput) {
   if (!input.title.trim()) throw new Error("title");
   if (input.description && input.description.length > MAX_COLLECTION_DESCRIPTION_LENGTH) {
     throw new Error("description-length");
   }
-  assertEditorialDocumentBlocks(input.blocks);
+  assertEditorialDocumentBlocks(input.blocks, await getCollectionSettings());
 }
 
 async function createUniqueSlug(
@@ -69,7 +83,7 @@ async function createUniqueSlug(
 export async function createEditorialCollection(
   input: EditorialCollectionWriteInput & { adminId: number },
 ) {
-  assertCollectionInput(input);
+  await assertCollectionInput(input);
   return db.transaction(async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(64300001)`);
     const slug = await createUniqueSlug(tx, input.title);
@@ -92,7 +106,7 @@ export async function updateEditorialCollection(
   id: number,
   input: EditorialCollectionWriteInput & { adminId: number },
 ) {
-  assertCollectionInput(input);
+  await assertCollectionInput(input);
   return db.transaction(async (tx) => {
     const [existing] = await tx.select().from(editorialCollections)
       .where(eq(editorialCollections.id, id)).limit(1).for("update");
@@ -122,16 +136,14 @@ export async function setEditorialCollectionPublicationStatus(
       .from(editorialCollections).where(eq(editorialCollections.id, id)).limit(1).for("update");
     if (!collection) return null;
     if (status === "published") {
-      const [{ publishedCount, totalCount }] = await tx.select({
-        publishedCount: sql<number>`count(*) filter (where ${mediaItems.publicationStatus} = 'published')::int`,
-        totalCount: sql<number>`count(*)::int`,
-      })
-        .from(editorialDocumentBlocks)
-        .innerJoin(mediaItems, eq(mediaItems.id, editorialDocumentBlocks.mediaItemId))
-        .where(and(
-          eq(editorialDocumentBlocks.documentId, collection.documentId),
-          eq(editorialDocumentBlocks.blockType, "media"),
-        ));
+      const references = editorialDocumentMediaReferencesSql(sql`${collection.documentId}`);
+      const result = await tx.execute<{ publishedCount: number; totalCount: number }>(sql`
+        select count(*)::int as "totalCount",
+          count(*) filter (where ${mediaItems.publicationStatus} = 'published')::int as "publishedCount"
+        from (${references}) as document_entries
+        left join ${mediaItems} on ${mediaItems.id} = document_entries.media_item_id
+      `);
+      const { publishedCount, totalCount } = result[0];
       if (totalCount === 0) throw new Error("empty");
       if (publishedCount !== totalCount) throw new Error("items-unpublished");
     }
@@ -162,10 +174,8 @@ export async function getAdminEditorialCollections() {
     publicationStatus: editorialCollections.publicationStatus,
     coverObjectKey: editorialCollections.coverObjectKey,
     updatedAt: editorialCollections.updatedAt,
-    itemsCount: sql<number>`count(${editorialDocumentBlocks.mediaItemId}) filter (where ${editorialDocumentBlocks.blockType} = 'media')::int`,
+    itemsCount: editorialDocumentItemsCountSql(editorialCollections.documentId),
   }).from(editorialCollections)
-    .leftJoin(editorialDocumentBlocks, eq(editorialDocumentBlocks.documentId, editorialCollections.documentId))
-    .groupBy(editorialCollections.id)
     .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title))
     .then((rows) => rows.map((row) => ({ ...row, coverUrl: resolveCollectionImageUrl(row.coverObjectKey) })));
 }
@@ -190,7 +200,8 @@ async function hydrateCollection(
   currentAuthorId?: number,
 ) {
   const rows = await getEditorialDocumentBlocks(collection.documentId);
-  const ids = rows.flatMap((block) => block.type === "media" && block.mediaItemId ? [block.mediaItemId] : []);
+  const ids = rows.flatMap((block) => block.type === "media" && block.mediaItemId
+    ? [block.mediaItemId] : block.type === "entry_group" ? block.mediaItemIds : []);
   const [tiles, statuses] = await Promise.all([
     getMediaItemTilesByIds(ids, currentAuthorId),
     currentAuthorId && ids.length
@@ -214,6 +225,15 @@ async function hydrateCollection(
         item,
         currentAuthorStatus: statusById.get(item.id) ?? null,
       });
+    } else if (block.type === "entry_group") {
+      const items = block.mediaItemIds.flatMap((id) => {
+        const item = tileById.get(id);
+        return item ? [{ mediaItemId: id, item, currentAuthorStatus: statusById.get(id) ?? null }] : [];
+      });
+      if (items.length) blocks.push({
+        id: block.id, position: block.position, type: "entry_group",
+        title: block.title, description: block.content, items,
+      });
     } else {
       blocks.push({ id: block.id, position: block.position, type: block.type, content: block.content! });
     }
@@ -233,23 +253,20 @@ export async function getPublishedEditorialCollections() {
     description: editorialCollections.description,
     coverObjectKey: editorialCollections.coverObjectKey,
     updatedAt: editorialCollections.updatedAt,
-    itemsCount: sql<number>`count(${editorialDocumentBlocks.mediaItemId}) filter (where ${editorialDocumentBlocks.blockType} = 'media')::int`,
+    itemsCount: editorialDocumentItemsCountSql(editorialCollections.documentId),
   }).from(editorialCollections)
-    .leftJoin(editorialDocumentBlocks, eq(editorialDocumentBlocks.documentId, editorialCollections.documentId))
     .where(eq(editorialCollections.publicationStatus, "published"))
-    .groupBy(editorialCollections.id)
     .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title))
     .then((rows) => rows.map((row) => ({ ...row, coverUrl: resolveCollectionImageUrl(row.coverObjectKey) })));
 }
 
 export async function getMediaItemCollectionReferences(mediaItemId: number) {
   return db.select({ id: editorialCollections.id, title: editorialCollections.title })
-    .from(editorialDocumentBlocks)
-    .innerJoin(editorialCollections, eq(editorialCollections.documentId, editorialDocumentBlocks.documentId))
-    .where(and(
-      eq(editorialDocumentBlocks.mediaItemId, mediaItemId),
-      eq(editorialDocumentBlocks.blockType, "media"),
-    ))
+    .from(editorialCollections)
+    .where(sql`exists (
+      select 1 from (${editorialDocumentMediaReferencesSql(editorialCollections.documentId)}) as document_entries
+      where document_entries.media_item_id = ${mediaItemId}
+    )`)
     .orderBy(desc(editorialCollections.createdAt), asc(editorialCollections.title));
 }
 

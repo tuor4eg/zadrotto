@@ -104,7 +104,7 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             />
             <AdminToolsMenu />
             <Link
-              href="/"
+              href="/archive"
               className={buttonVariants({ variant: "outline", size: "sm" })}
             >
               <Archive />

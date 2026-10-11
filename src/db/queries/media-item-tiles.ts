@@ -1,7 +1,7 @@
 import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
+import { hasUnifiedGenresSql, publicMediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import {
   mediaItemAverageScoreSql,
@@ -14,7 +14,9 @@ import {
   mediaItems,
   mediaTypes,
   ratings,
+  authorMediaExperiences,
 } from "@/db/schema";
+import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { resolveCoverUrl } from "@/lib/services/minio";
 
 export type MediaItemTileData = {
@@ -23,12 +25,15 @@ export type MediaItemTileData = {
   coverThumbUrl: string | null;
   coverUrl: string | null;
   currentAuthorScore: number | null;
+  currentAuthorFirstExperiencedAt?: string | null;
+  currentAuthorFirstExperiencedPrecision?: FirstExperiencedPrecision | null;
   id: number;
   mediaCarrierCode: string | null;
   mediaType: string;
   mediaTypeName: string;
   metadataFacts: Record<string, unknown> | null;
   genres: MediaItemGenre[];
+  hasUnifiedGenres: boolean;
   originalTitle: string | null;
   ratingsCount: number;
   releaseYear: number | null;
@@ -61,11 +66,18 @@ export async function getMediaItemTilesByIds(
           )`
         : sql<number | null>`null`,
       id: mediaItems.id,
+      currentAuthorFirstExperiencedAt: currentAuthorId
+        ? sql<string | null>`(select ${authorMediaExperiences.firstExperiencedAt} from ${authorMediaExperiences} where ${authorMediaExperiences.mediaItemId} = ${mediaItems.id} and ${authorMediaExperiences.authorId} = ${currentAuthorId} limit 1)`
+        : sql<string | null>`null`,
+      currentAuthorFirstExperiencedPrecision: currentAuthorId
+        ? sql<FirstExperiencedPrecision | null>`(select ${authorMediaExperiences.firstExperiencedPrecision} from ${authorMediaExperiences} where ${authorMediaExperiences.mediaItemId} = ${mediaItems.id} and ${authorMediaExperiences.authorId} = ${currentAuthorId} limit 1)`
+        : sql<FirstExperiencedPrecision | null>`null`,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
       mediaTypeName: mediaTypes.name,
       metadataFacts: mediaItemMetadata.facts,
-      genres: mediaItemGenresJsonSql(),
+      genres: publicMediaItemGenresJsonSql(),
+      hasUnifiedGenres: hasUnifiedGenresSql(),
       originalTitle: mediaItems.originalTitle,
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,

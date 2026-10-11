@@ -37,6 +37,7 @@ type MediaItemDetailsItem = {
   releaseYear: number | null;
   metadataFacts?: Record<string, unknown> | null;
   genres: MediaItemGenre[];
+  hasUnifiedGenres?: boolean;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
   coverSourcePageUrl?: string | null;
@@ -223,7 +224,7 @@ export function MediaItemDetails({
                   <span key={label} className="mr-2">{label}</span>
                 ))}
                 {!isBoardgame && item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
-                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} separatorBefore /> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
 
@@ -353,7 +354,7 @@ function ArchiveMediaItemDetails({
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const isBoardgame = mediaCarrierFrame?.ratingPanelVariant === "boardgame-meeples";
-  const hasBoardgameFacts = isBoardgame && (item.genres.length > 0 || getStringListFact(item.metadataFacts, "genres").length > 0 || Object.values(getBoardgameFactValues(item.metadataFacts)).some(Boolean));
+  const hasBoardgameFacts = isBoardgame && (item.genres.length > 0 || (!item.hasUnifiedGenres && getStringListFact(item.metadataFacts, "genres").length > 0) || Object.values(getBoardgameFactValues(item.metadataFacts)).some(Boolean));
   const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const archiveInfoLabels = getArchiveMediaItemInfoLabels({
@@ -528,7 +529,7 @@ function ArchiveMediaItemDetails({
                   {archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
                   <MediaItemGenreLinks genres={item.genres} />
                 </> : null}
-                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}
               </div>

@@ -1,12 +1,12 @@
-import { and, desc, eq, inArray, sql } from "drizzle-orm";
+import { and, desc, eq, inArray } from "drizzle-orm";
 
+import { editorialDocumentItemsCountSql } from "@/db/queries/editorial-document-references";
 import { db } from "@/db";
 import {
   authors,
   contributionReviews,
   contributions,
   editorialCollections,
-  editorialDocumentBlocks,
   franchises,
   mediaItemFranchises,
   mediaItems,
@@ -90,17 +90,12 @@ export async function getLatestArchiveFeed(
         coverObjectKey: editorialCollections.coverObjectKey,
         createdAt: editorialCollections.createdAt,
         id: editorialCollections.id,
-        itemsCount: sql<number>`count(${editorialDocumentBlocks.mediaItemId}) filter (where ${editorialDocumentBlocks.blockType} = 'media')::int`,
+        itemsCount: editorialDocumentItemsCountSql(editorialCollections.documentId),
         slug: editorialCollections.slug,
         title: editorialCollections.title,
       })
       .from(editorialCollections)
-      .leftJoin(
-        editorialDocumentBlocks,
-        eq(editorialDocumentBlocks.documentId, editorialCollections.documentId),
-      )
       .where(eq(editorialCollections.publicationStatus, PUBLISHED_PUBLICATION_STATUS))
-      .groupBy(editorialCollections.id)
       .orderBy(desc(editorialCollections.createdAt), desc(editorialCollections.id))
       .limit(ARCHIVE_FEED_SIZE),
   ]);

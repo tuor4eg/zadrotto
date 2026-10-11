@@ -11,26 +11,30 @@ import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/form";
 import type { AdminMediaBrowserSeriesOption } from "@/lib/admin/media-browser";
 import { cn } from "@/lib/common/utils";
+import type { EditorialDocumentLimits } from "@/lib/editorial-documents/model";
 import type { MediaTypeOption } from "@/lib/media/types";
 import type { CollectionFormState } from "./actions";
 
-export function CollectionForm({ action, initial, mediaTypes, series }: {
+export function CollectionForm({ action, initial, mediaTypes, series, limits }: {
   action: (state: CollectionFormState, form: FormData) => Promise<CollectionFormState>;
+  limits: EditorialDocumentLimits;
   initial?: { id: number; title: string; description: string | null; coverUrl: string | null; blocks: EditorialDocumentBlock[] };
   mediaTypes: readonly MediaTypeOption[];
   series: readonly AdminMediaBrowserSeriesOption[];
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null, submissionId: 0 });
   const [blocks, setBlocks] = useState<EditorialDocumentBlock[]>(initial?.blocks ?? []);
-  const [browserInsertIndex, setBrowserInsertIndex] = useState<number | null>(null);
+  const [browserTarget, setBrowserTarget] = useState<{ type: "media"; index: number } | { type: "entry_group"; clientId: string } | null>(null);
+  const [browserError, setBrowserError] = useState<string | null>(null);
+  const [editorError, setEditorError] = useState<string | null>(null);
   const [previewUrl, setPreviewUrl] = useState(initial?.coverUrl ?? null);
   const localUrl = useRef<string | null>(null);
   const [removeImage, setRemoveImage] = useState(false);
 
   useEffect(() => () => { if (localUrl.current) URL.revokeObjectURL(localUrl.current); }, []);
   useEffect(() => {
-    if (browserInsertIndex === null) return;
-    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setBrowserInsertIndex(null); };
+    if (browserTarget === null) return;
+    const onKeyDown = (event: KeyboardEvent) => { if (event.key === "Escape") setBrowserTarget(null); };
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKeyDown);
@@ -38,12 +42,25 @@ export function CollectionForm({ action, initial, mediaTypes, series }: {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", onKeyDown);
     };
-  }, [browserInsertIndex]);
+  }, [browserTarget]);
 
   const serializedBlocks = blocks.map((block) => block.type === "media"
     ? { type: "media", mediaItemId: block.item.id, editorialComment: block.editorialComment }
-    : { type: block.type, content: block.content });
-  const hasEmptyContentBlock = blocks.some((block) => block.type !== "media" && !block.content.trim());
+    : block.type === "entry_group"
+      ? { type: "entry_group", title: block.title.trim() || null, description: block.description.trim() || null, mediaItemIds: block.items.map((item) => item.id) }
+      : { type: block.type, content: block.content });
+  const hasEmptyContentBlock = blocks.some((block) => (block.type === "heading" || block.type === "text") && !block.content.trim());
+  const hasEmptyGroup = blocks.some((block) => block.type === "entry_group" && block.items.length === 0);
+  const selectedMediaIds = blocks.flatMap((block) => block.type === "media" ? [block.item.id] : block.type === "entry_group" ? block.items.map((item) => item.id) : []);
+
+  function changeBlocks(nextBlocks: EditorialDocumentBlock[]) {
+    if (nextBlocks.length > limits.maxBlocks && nextBlocks.length > blocks.length) {
+      setEditorError(`В подборке может быть не больше ${limits.maxBlocks} блоков.`);
+      return;
+    }
+    setEditorError(null);
+    setBlocks(nextBlocks);
+  }
 
   return <form action={formAction} className="grid gap-6">
     {initial ? <input type="hidden" name="collectionId" value={initial.id} /> : null}
@@ -61,25 +78,40 @@ export function CollectionForm({ action, initial, mediaTypes, series }: {
       </div>
     </section>
     <section className="grid gap-3">
-      <div><h2 className="text-xl font-semibold">Содержимое</h2><p className="text-sm text-stone-500">До 300 блоков, из них до 200 записей. Добавляйте блоки кнопками между элементами.</p></div>
-      <EditorialDocumentEditor blocks={blocks} onChange={setBlocks} onRequestMediaInsert={setBrowserInsertIndex} />
+      <div><h2 className="text-xl font-semibold">Содержимое</h2><p className="text-sm text-stone-500">До {limits.maxBlocks} блоков и {limits.maxEntries} записей, включая записи внутри наборов. Добавляйте блоки кнопками между элементами.</p></div>
+      {editorError ? <p role="alert" className="text-sm text-red-800">{editorError}</p> : null}
+      <EditorialDocumentEditor blocks={blocks} onChange={changeBlocks} onRequestMediaInsert={(index) => { setBrowserError(null); setBrowserTarget({ type: "media", index }); }} onRequestGroupMediaInsert={(clientId) => { setBrowserError(null); setBrowserTarget({ type: "entry_group", clientId }); }} />
     </section>
-    {browserInsertIndex !== null ? createPortal(
-      <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/55 p-3 sm:p-6" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBrowserInsertIndex(null); }}>
+    {browserTarget !== null ? createPortal(
+      <div className="fixed inset-0 z-50 grid place-items-center bg-stone-950/55 p-3 sm:p-6" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) setBrowserTarget(null); }}>
         <div role="dialog" aria-modal="true" aria-labelledby="collection-media-browser-title" className="grid max-h-[calc(100vh-1.5rem)] w-full max-w-6xl grid-rows-[auto_minmax(0,1fr)] overflow-hidden rounded-lg border border-stone-200 bg-white shadow-2xl sm:max-h-[calc(100vh-3rem)]">
-          <header className="flex items-start justify-between gap-4 border-b border-stone-200 px-4 py-3 sm:px-5"><div><h2 id="collection-media-browser-title" className="text-lg font-semibold">Добавить записи</h2><p className="mt-1 text-sm text-stone-500">Выберите одну или несколько записей архива.</p></div><Button type="button" variant="ghost" size="icon" aria-label="Закрыть" onClick={() => setBrowserInsertIndex(null)}><X /></Button></header>
-          <div className="overflow-y-auto p-3 sm:p-5"><AdminMediaBrowser excludedIds={blocks.flatMap((block) => block.type === "media" ? [block.item.id] : [])} mediaTypes={mediaTypes} series={series} onConfirm={(selected) => {
-            setBlocks((current) => {
-              const mediaCount = current.filter((block) => block.type === "media").length;
-              const allowed = Math.min(300 - current.length, 200 - mediaCount);
-              const inserted: EditorialDocumentBlock[] = selected.slice(0, allowed).map((item) => ({ clientId: `media-${crypto.randomUUID()}`, type: "media", item, editorialComment: "" }));
-              return [...current.slice(0, browserInsertIndex), ...inserted, ...current.slice(browserInsertIndex)];
-            });
-            setBrowserInsertIndex(null);
+          <header className="flex items-start justify-between gap-4 border-b border-stone-200 px-4 py-3 sm:px-5"><div><h2 id="collection-media-browser-title" className="text-lg font-semibold">{browserTarget.type === "entry_group" ? "Добавить записи в набор" : "Добавить записи"}</h2><p className="mt-1 text-sm text-stone-500">Выберите одну или несколько записей архива.</p></div><Button type="button" variant="ghost" size="icon" aria-label="Закрыть" onClick={() => setBrowserTarget(null)}><X /></Button></header>
+          <div className="overflow-y-auto p-3 sm:p-5">{browserError ? <p role="alert" className="mb-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{browserError}</p> : null}<AdminMediaBrowser excludedIds={selectedMediaIds} mediaTypes={mediaTypes} series={series} onConfirm={(selected) => {
+            if (selectedMediaIds.length + selected.length > limits.maxEntries) {
+              setBrowserError(`В подборке может быть не больше ${limits.maxEntries} записей, включая наборы. Уменьшите выбор.`);
+              return false;
+            }
+            if (browserTarget.type === "media" && blocks.length + selected.length > limits.maxBlocks) {
+              setBrowserError(`В подборке может быть не больше ${limits.maxBlocks} блоков. Уменьшите выбор.`);
+              return false;
+            }
+            if (browserTarget.type === "entry_group") {
+              const targetId = browserTarget.clientId;
+              if (!blocks.some((block) => block.type === "entry_group" && block.clientId === targetId)) {
+                setBrowserError("Набор больше не существует. Закройте окно и выберите блок заново.");
+                return false;
+              }
+              setBlocks((current) => current.map((block) => block.type === "entry_group" && block.clientId === targetId ? { ...block, items: [...block.items, ...selected] } : block));
+            } else {
+              const insertIndex = browserTarget.index;
+              const inserted: EditorialDocumentBlock[] = selected.map((item) => ({ clientId: `media-${crypto.randomUUID()}`, type: "media", item, editorialComment: "" }));
+              setBlocks((current) => [...current.slice(0, insertIndex), ...inserted, ...current.slice(insertIndex)]);
+            }
+            setBrowserTarget(null);
           }} /></div>
         </div>
       </div>, document.body,
     ) : null}
-    <div>{hasEmptyContentBlock ? <p className="mb-2 text-sm text-amber-700">Заполните пустые заголовки и текстовые блоки.</p> : null}<Button disabled={pending || hasEmptyContentBlock} type="submit">{pending ? "Сохраняем…" : "Сохранить подборку"}</Button></div>
+    <div>{hasEmptyContentBlock ? <p className="mb-2 text-sm text-amber-700">Заполните пустые заголовки и текстовые блоки.</p> : null}{hasEmptyGroup ? <p className="mb-2 text-sm text-amber-700">Добавьте хотя бы одну запись в каждый набор.</p> : null}<Button disabled={pending || hasEmptyContentBlock || hasEmptyGroup} type="submit">{pending ? "Сохраняем…" : "Сохранить подборку"}</Button></div>
   </form>;
 }

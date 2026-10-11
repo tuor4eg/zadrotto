@@ -13,13 +13,14 @@ const FACT_PRESENTATION = [
   { key: "type", label: "Тип игры", icon: null },
 ] as const;
 
-export function BoardgameDetailsFacts({ facts, genres, separatorBefore = false }: {
+export function BoardgameDetailsFacts({ facts, genres, hasUnifiedGenres = genres.length > 0, separatorBefore = false }: {
   facts: Record<string, unknown> | null | undefined;
   genres: readonly MediaItemGenre[];
+  hasUnifiedGenres?: boolean;
   separatorBefore?: boolean;
 }) {
   const values = getBoardgameFactValues(facts);
-  const providerGenres = genres.length === 0 ? getStringListFact(facts, "genres") : [];
+  const providerGenres = !hasUnifiedGenres ? getStringListFact(facts, "genres") : [];
   const entries: { key: string; content: React.ReactNode }[] = FACT_PRESENTATION.flatMap(({ key, label, icon: Icon }) => values[key] ? [{
     key,
     content: <span title={label} className="break-words">

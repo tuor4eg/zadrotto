@@ -1,3 +1,4 @@
+import { getCollectionSettings } from "@/db/queries/collection-settings";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -8,6 +9,6 @@ import { createCollectionAction } from "../actions";
 import { CollectionForm } from "../collection-form";
 
 export default async function NewCollectionPage() {
-  const { mediaTypes, series } = await getAdminMediaBrowserFilterOptions();
-  return <div className="grid gap-5"><PageHeader title="Новая подборка" aside={<Link className={buttonVariants({ variant: "outline" })} href="/admin/collections"><ArrowLeft />К списку</Link>} /><CollectionForm action={createCollectionAction} mediaTypes={mediaTypes} series={series} /></div>;
+  const [{ mediaTypes, series }, limits] = await Promise.all([getAdminMediaBrowserFilterOptions(), getCollectionSettings()]);
+  return <div className="grid gap-5"><PageHeader title="Новая подборка" aside={<Link className={buttonVariants({ variant: "outline" })} href="/admin/collections"><ArrowLeft />К списку</Link>} /><CollectionForm limits={limits} action={createCollectionAction} mediaTypes={mediaTypes} series={series} /></div>;
 }

@@ -38,6 +38,7 @@ import { formatRatingsCount, formatScore } from "@/lib/ratings/score";
 
 import { AdaptiveReviewExcerpt } from "./main/adaptive-review-excerpt";
 import { ArchiveFeed } from "./main/archive-feed";
+import { HomeCollectionsRow } from "./main/home-collections-row";
 import { ArchiveRiddle } from "./main/archive-riddle";
 import { HomeAuthorStatisticsWithDemo } from "@/components/user-state/home-author-statistics-with-demo";
 import {
@@ -57,11 +58,11 @@ function EditorialCollectionsStrip({ collections }: { collections: PublishedColl
       <h2 id="main-collections-title" className="flex items-center gap-2 font-serif text-2xl leading-none text-stone-950"><Layers3 className="size-5 text-red-950/70" aria-hidden="true" />Подборки</h2>
       <Link href="/collections" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link>
     </div>
-    <div className="flex gap-3 overflow-x-auto pb-1 [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,.45)_transparent]">
-      {collections.map((collection) => <Link key={collection.id} href={`/collections/${collection.slug}`} className="group relative aspect-video w-[15rem] shrink-0 overflow-hidden rounded-lg border border-white/10 bg-stone-900 shadow-md sm:w-[18rem] lg:w-[calc((100%-2.25rem)/4)] lg:min-w-[15rem]">
+    <HomeCollectionsRow>
+      {collections.map((collection) => <Link key={collection.id} href={`/collections/${collection.slug}`} className="group relative block aspect-video w-[15rem] shrink-0 overflow-hidden rounded-lg border border-white/10 bg-stone-900 shadow-md sm:w-[18rem] lg:w-full">
         {collection.coverUrl ? <>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={collection.coverUrl} alt="" className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
+          <img src={collection.coverUrl} alt="" loading="lazy" className="absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.03]" />
         </> : <span aria-hidden="true" className="absolute inset-0 bg-[linear-gradient(135deg,#44403c,#1c1917)]" />}
         <span aria-hidden="true" className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent" />
         <span className="absolute inset-x-0 bottom-0 p-3 text-white">
@@ -69,7 +70,7 @@ function EditorialCollectionsStrip({ collections }: { collections: PublishedColl
           <span className="mt-1 block font-mono text-[10px] uppercase tracking-[0.1em] text-stone-300">{collection.itemsCount} записей</span>
         </span>
       </Link>)}
-    </div>
+    </HomeCollectionsRow>
   </section>;
 }
 

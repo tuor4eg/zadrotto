@@ -30,7 +30,7 @@ const publishedFranchiseCondition = eq(
 
 const MEDIA_ITEM_FRANCHISE_ADVISORY_LOCK_NAMESPACE = 58_391_039;
 
-async function lockMediaItemFranchiseMutations(tx: DbTransaction, mediaItemIds: number[]) {
+export async function lockMediaItemFranchiseMutations(tx: DbTransaction, mediaItemIds: number[]) {
   const uniqueMediaItemIds = [...new Set(mediaItemIds)].sort((left, right) => left - right);
 
   if (uniqueMediaItemIds.length === 0) return;

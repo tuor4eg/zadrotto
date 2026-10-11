@@ -105,7 +105,7 @@ describe("author media status action and controls", () => {
     assert.match(mediaItemStatusTile, /event\.preventDefault\(\);\s*event\.stopPropagation\(\)/);
     assert.match(
       mediaItemStatusTile,
-      /group relative aspect-\[2\/3\][^"\n]*touch-pan-y[^"\n]*\[&>button\]:h-full/,
+      /group relative aspect-\[2\/3\][^\n]*touch-pan-y[^\n]*\[&>button\]:h-full/,
     );
     assert.match(
       mediaItemStatusTile,

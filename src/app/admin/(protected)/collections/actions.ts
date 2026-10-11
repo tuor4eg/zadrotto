@@ -10,7 +10,8 @@ import {
   setEditorialCollectionPublicationStatus,
   updateEditorialCollection,
 } from "@/db/queries/editorial-collections";
-import type { EditorialDocumentBlockInput } from "@/lib/editorial-documents/model";
+import { getCollectionSettings } from "@/db/queries/collection-settings";
+import { parseEditorialDocumentBlocks } from "@/lib/editorial-documents/model";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { deleteCollectionImageBestEffort, uploadCollectionImage } from "@/lib/collections/images";
@@ -26,35 +27,17 @@ function parseId(value: FormDataEntryValue | null) {
   return Number.isSafeInteger(id) && id > 0 ? id : null;
 }
 
-function parseBlocks(value: FormDataEntryValue | null): EditorialDocumentBlockInput[] {
-  try {
-    const parsed = JSON.parse(String(value ?? "[]"));
-    if (!Array.isArray(parsed)) throw new Error();
-    return parsed.map((block) => {
-      if (block?.type === "media") return {
-        type: "media" as const,
-        mediaItemId: Number(block.mediaItemId),
-        editorialComment: typeof block.editorialComment === "string" ? block.editorialComment.trim() || null : null,
-      };
-      if (block?.type === "heading" || block?.type === "text") return {
-        type: block.type,
-        content: typeof block.content === "string" ? block.content : "",
-      };
-      throw new Error();
-    });
-  } catch {
-    throw new Error("blocks-invalid");
-  }
-}
-
 function getErrorMessage(error: unknown) {
   const code = error instanceof Error ? error.message : "save";
   if (code === "title") return "Укажите название подборки.";
   if (code === "description-length") return "Описание должно быть не длиннее 10 000 символов.";
   if (code === "comment-length") return "Комментарий к записи должен быть не длиннее 1 000 символов.";
-  if (code === "blocks-limit") return "В подборке может быть не больше 300 блоков.";
-  if (code === "media-blocks-limit") return "В подборке может быть не больше 200 записей.";
+  if (code.startsWith("blocks-limit:")) return `В подборке может быть не больше ${code.split(":")[1]} блоков.`;
+  if (code.startsWith("media-blocks-limit:")) return `В подборке может быть не больше ${code.split(":")[1]} записей.`;
   if (code === "blocks-invalid") return "Содержимое подборки повреждено. Обновите страницу и попробуйте снова.";
+  if (code === "group-empty") return "Добавьте хотя бы одну запись в набор или удалите пустой набор.";
+  if (code === "group-title-length") return "Заголовок набора должен быть не длиннее 200 символов.";
+  if (code === "group-description-length") return "Описание набора должно быть не длиннее 5 000 символов.";
   if (code === "heading-empty") return "Заполните пустой заголовок.";
   if (code === "text-empty") return "Заполните пустой текстовый блок.";
   if (code === "heading-length") return "Заголовок раздела должен быть не длиннее 200 символов.";
@@ -91,7 +74,7 @@ export async function createCollectionAction(_state: CollectionFormState, form: 
       title: String(form.get("title") ?? ""),
       description: String(form.get("description") ?? "").trim() || null,
       coverObjectKey: image.key,
-      blocks: parseBlocks(form.get("blocks")),
+      blocks: parseEditorialDocumentBlocks(String(form.get("blocks") ?? "[]"), await getCollectionSettings()),
     });
     revalidateCollection(collection.slug);
     await logActivity({ action: "collection.created", actorType: "admin", adminUserId: admin.id, entityType: "collection", entityId: collection.id, entityLabel: collection.title, message: "Подборка создана." });
@@ -119,7 +102,7 @@ export async function updateCollectionAction(_state: CollectionFormState, form: 
       title: String(form.get("title") ?? ""),
       description: String(form.get("description") ?? "").trim() || null,
       coverObjectKey: image.key,
-      blocks: parseBlocks(form.get("blocks")),
+      blocks: parseEditorialDocumentBlocks(String(form.get("blocks") ?? "[]"), await getCollectionSettings()),
     });
     if (!collection) return errorState("Подборка не найдена.");
     if (current.coverObjectKey !== image.key) await deleteCollectionImageBestEffort(current.coverObjectKey);

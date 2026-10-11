@@ -9,6 +9,7 @@ import { AuthorRatingForm } from "@/app/author-rating-form";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import {
   AnimeMangaRatingContent,
+  BoardgameRatingValue,
   BookNoteRatingContent,
   ComicCardRatingContent,
   DosTerminalRatingContent,
@@ -135,7 +136,7 @@ export function MediaItemRatingPanel({
   const valueClassName = currentAuthor
     ? isCompact
       ? `mt-1 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-3xl tabular-nums`
-      : `mt-2 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-5xl tabular-nums`
+      : `mt-2 block ${panelDisplayClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} ${panelVariant === "boardgame-meeples" ? "text-4xl sm:text-5xl" : "text-5xl"} tabular-nums`
     : isCompact
       ? `mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs uppercase text-red-900`
       : `mt-2 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-sm uppercase text-red-900`;
@@ -307,14 +308,16 @@ export function MediaItemRatingPanel({
   ) : (
     <>
       <span className={labelClassName}>Моя оценка</span>
-      <span className={valueClassName}>{currentAuthor ? formatScore(currentAuthorScore) : "Войти"}</span>
+      <span className={valueClassName}>{currentAuthor ? (panelVariant === "boardgame-meeples" ? <BoardgameRatingValue score={currentAuthorScore} /> : formatScore(currentAuthorScore)) : "Войти"}</span>
       {!isCompact ? (
         currentAuthor ? (
           <>
-            <span className="mt-2 flex justify-center">
-              <RatingStars score={currentAuthorScore} variant={panelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
-            </span>
-            <span className={`mt-3 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
+            {panelVariant !== "boardgame-meeples" ? (
+              <span className="mt-2 flex justify-center">
+                <RatingStars score={currentAuthorScore} />
+              </span>
+            ) : null}
+            <span className={`${panelVariant === "boardgame-meeples" ? "mt-2" : "mt-3"} block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-xs font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
               {firstExperiencedDate ? `Знакомство: ${firstExperiencedDate}` : "—"}
             </span>
           </>
@@ -325,9 +328,11 @@ export function MediaItemRatingPanel({
         )
       ) : currentAuthor ? (
         <>
-          <span className="mt-1 flex h-5 shrink-0 scale-75 justify-center">
-            <RatingStars score={currentAuthorScore} variant={panelVariant === "boardgame-meeples" ? "meeple" : "plain"} />
-          </span>
+          {panelVariant !== "boardgame-meeples" ? (
+            <span className="mt-1 flex h-5 shrink-0 scale-75 justify-center">
+              <RatingStars score={currentAuthorScore} />
+            </span>
+          ) : null}
           <span className={`mt-1 block ${panelLabelClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 ${firstExperiencedDate ? "opacity-70" : "opacity-0"}`}>
             {firstExperiencedDate ?? "—"}
           </span>
