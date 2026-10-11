@@ -1,9 +1,8 @@
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getActiveAdminExports, getAdminExportForOwner, insertAdminExport, insertDatabaseDumpExport, markAdminExportFailed, requeueAdminExport, type AdminExportFilters } from "@/db/queries/admin-exports";
-import { deleteS3Object, fetchS3Object } from "@/lib/services/minio";
 import { enqueueJobRun } from "@/lib/jobs/queue";
 import { ADMIN_EXPORT_ENTITY_TYPES, getAdminExportDownload, parseAdminExportFields, type AdminExportEntityType } from "./model";
-import { getAdminExportStorageEnv } from "./storage";
+import { fetchAdminExportFile, deleteAdminExportFile } from "./storage";
 
 function normalizeFilters(type: AdminExportEntityType, value: AdminExportFilters): AdminExportFilters {
   const q = value.q?.trim();
@@ -43,7 +42,7 @@ export async function getDownloadableAdminExport(input: { adminId: number; expor
   if (!item) throw new Error("Экспорт не найден.");
   if (item.status !== "ready" || !item.objectKey) throw new Error("Файл экспорта ещё не готов.");
   if (item.expiresAt <= new Date()) throw new Error("Срок хранения экспорта истёк.");
-  const response = await fetchS3Object({ objectKey: item.objectKey, env: getAdminExportStorageEnv(item.entityType) });
+  const response = await fetchAdminExportFile({ objectKey: item.objectKey, entityType: item.entityType });
   if (!response?.body) throw new Error("Файл экспорта не найден в хранилище.");
   const download = getAdminExportDownload(item);
   return { body: response.body, contentLength: item.fileSize, fileName: download.filename, contentType: download.contentType };
@@ -66,7 +65,7 @@ export async function retryAdminExport(input: { adminId: number; exportId: strin
   const current = await getAdminExportForOwner(input.exportId, input.adminId);
   if (!current || current.status !== "failed") throw new Error("Повторить можно только неудачный экспорт.");
   if (current.entityType === "database_dump" && current.objectKey) {
-    await deleteS3Object({ objectKey: current.objectKey, env: getAdminExportStorageEnv(current.entityType) });
+    await deleteAdminExportFile({ objectKey: current.objectKey, entityType: current.entityType });
   }
   const settings = await getArchiveSettings();
   const row = await requeueAdminExport(input.exportId, input.adminId, new Date(Date.now() + settings.exportRetentionDays * 86_400_000));

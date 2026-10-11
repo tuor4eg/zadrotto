@@ -1,8 +1,7 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { createHash, randomUUID } from "node:crypto";
-import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { createServer } from "node:http";
+import { randomUUID } from "node:crypto";
+import { mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { test } from "node:test";
@@ -15,7 +14,7 @@ import { JobError } from "../src/lib/jobs/types";
 
 const testUrl = process.env.DATABASE_DUMP_TEST_DATABASE_URL;
 
-test("complete dump lifecycle, migration, locking, S3 errors and restoration into an empty database", { skip: !testUrl, timeout: 120000 }, async () => {
+test("complete dump lifecycle, migration, locking, local storage errors and restoration into an empty database", { skip: !testUrl, timeout: 120000 }, async () => {
   const suffix = randomUUID().replaceAll("-", "");
   const sourceName = `dump_source_${suffix}`;
   const restoreName = `dump_restore_${suffix}`;
@@ -26,36 +25,6 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
   restoreUrl.pathname = `/${restoreName}`;
   const originalEnv = { ...process.env };
   const directory = await mkdtemp(join(tmpdir(), "dump-db-test-"));
-  const objects = new Map<string, Buffer>();
-  let publicBucket = false;
-  let uploadFails = false;
-  const server = createServer(async (request, response) => {
-    const url = new URL(request.url!, "http://localhost");
-    if (url.searchParams.has("policy")) {
-      response.setHeader("Content-Type", "application/json");
-      response.end(JSON.stringify({ Statement: publicBucket ? [{ Effect: "Allow", Principal: "*", Action: "s3:GetObject", Resource: "arn:aws:s3:::private-dumps/*" }] : [] }));
-    } else if (url.searchParams.has("acl")) {
-      response.end('<AccessControlPolicy><AccessControlList><Grant><Grantee><ID>owner</ID></Grantee><Permission>FULL_CONTROL</Permission></Grant></AccessControlList></AccessControlPolicy>');
-    } else if (request.method === "PUT") {
-      const chunks: Buffer[] = [];
-      for await (const chunk of request) chunks.push(chunk);
-      const bytes = Buffer.concat(chunks);
-      assert.equal(request.headers["x-amz-content-sha256"], createHash("sha256").update(bytes).digest("hex"));
-      if (uploadFails) { response.writeHead(500).end(); return; }
-      objects.set(url.pathname, bytes);
-      response.writeHead(200).end();
-    } else if (request.method === "DELETE") {
-      objects.delete(url.pathname);
-      response.writeHead(204).end();
-    } else {
-      const bytes = objects.get(url.pathname);
-      if (!bytes) { response.writeHead(404).end(); return; }
-      response.setHeader("Content-Type", "application/gzip");
-      response.end(bytes);
-    }
-  });
-  await new Promise<void>((resolve) => server.listen(0, "127.0.0.1", resolve));
-  const address = server.address() as { port: number };
   let source: ReturnType<typeof postgres> | undefined;
   let restored: ReturnType<typeof postgres> | undefined;
   let closeAppDb: (() => Promise<void>) | undefined;
@@ -80,7 +49,8 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
     `);
     const [actor] = await source`insert into admin_users (login,password_hash) values ('dump-test','test') returning id`;
     process.env.DATABASE_URL = sourceUrl.toString();
-    Object.assign(process.env, { S3_ENDPOINT: `http://127.0.0.1:${address.port}`, S3_BUCKET: "public-covers", ADMIN_EXPORTS_S3_BUCKET: "private-dumps", S3_ACCESS_KEY_ID: "test", S3_SECRET_ACCESS_KEY: "test", S3_FORCE_PATH_STYLE: "true" });
+    process.env.ADMIN_EXPORTS_DIR = join(directory, "exports");
+    process.env.S3_ENDPOINT = "http://invalid-unused-s3";
     if (process.env.DATABASE_DUMP_TEST_PG_DUMP) {
       await writeFile(join(directory, "pg_dump"), `#!/bin/sh\nexec "${process.env.DATABASE_DUMP_TEST_PG_DUMP}" "$@"\n`, { mode: 0o700 });
       process.env.PATH = `${directory}:${process.env.PATH}`;
@@ -89,8 +59,7 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
     const { getDbClient } = await import("../src/db");
     closeAppDb = async () => { await getDbClient().end({ timeout: 2 }); };
     const { generateDatabaseDump } = await import("../src/lib/admin-exports/database-dump");
-    const { fetchS3Object } = await import("../src/lib/services/minio");
-    const { getAdminExportStorageEnv } = await import("../src/lib/admin-exports/storage");
+    const { fetchAdminExportFile, getLocalDumpPath } = await import("../src/lib/admin-exports/storage");
     const exports = await Promise.all(Array.from({ length: 6 }, () => queries.insertDatabaseDumpExport({ adminId: actor.id, expiresAt: new Date(Date.now() + 86400000) })));
     assert.equal(exports.filter((item) => item.created).length, 1);
     assert.equal(new Set(exports.map((item) => item.item.id)).size, 1);
@@ -106,18 +75,14 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
       await reserved`select pg_advisory_unlock(6433,1)`;
     } finally { reserved.release(); }
 
-    publicBucket = true;
-    await assert.rejects(generateDatabaseDump(item.id, new AbortController().signal), (error: unknown) => error instanceof JobError && error.code === "dump-storage" && !error.retryable);
-    assert.equal(objects.size, 0);
-    publicBucket = false;
-    await queries.requeueAdminExport(item.id, actor.id);
     await generateDatabaseDump(item.id, new AbortController().signal);
     const ready = await queries.getAdminExportById(item.id);
     assert.equal(ready?.status, "ready");
     assert.equal(ready?.rowCount, null);
-    const response = await fetchS3Object({ objectKey: ready!.objectKey!, env: getAdminExportStorageEnv("database_dump") });
-    const gzip = Buffer.from(await response!.arrayBuffer());
+    const response = await fetchAdminExportFile({ objectKey: ready!.objectKey!, entityType: "database_dump" });
+    const gzip = Buffer.from(await new Response(response!.body).arrayBuffer());
     assert.equal(gzip.length, ready!.fileSize);
+    assert.deepEqual(await readFile(getLocalDumpPath(ready!.objectKey!)), gzip);
     const sql = gunzipSync(gzip);
     assert.match(sql.toString(), /CREATE PROCEDURE dump_fixture.touch_all/);
     assert.match(sql.toString(), /CREATE VIEW dump_fixture.labels/);
@@ -147,11 +112,14 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
     assert.equal(trigger.touched, true);
 
     const nextExport = await queries.insertDatabaseDumpExport({ adminId: actor.id, expiresAt: new Date(Date.now() + 86400000) });
-    uploadFails = true;
+    const goodDirectory = process.env.ADMIN_EXPORTS_DIR;
+    const blockedDirectory = join(directory, "blocked");
+    await writeFile(blockedDirectory, "not a directory");
+    process.env.ADMIN_EXPORTS_DIR = blockedDirectory;
     await assert.rejects(generateDatabaseDump(nextExport.item.id, new AbortController().signal));
     assert.equal((await queries.getAdminExportById(nextExport.item.id))?.status, "failed");
-    assert.equal(objects.size, 1);
-    uploadFails = false;
+    process.env.ADMIN_EXPORTS_DIR = goodDirectory;
+    assert.equal((await readdir(goodDirectory!)).length, 1);
     await queries.requeueAdminExport(nextExport.item.id, actor.id);
     await generateDatabaseDump(nextExport.item.id, new AbortController().signal);
     assert.equal((await queries.getAdminExportById(nextExport.item.id))?.status, "ready");
@@ -170,13 +138,13 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
     assert.deepEqual(run.payload, { exportId: queued.id });
     await queries.cancelQueuedAdminExport(queued.id, actor.id);
     await generateDatabaseDump(queued.id, new AbortController().signal);
-    assert.equal(objects.size, 2);
+    assert.equal((await readdir(process.env.ADMIN_EXPORTS_DIR!)).length, 2);
     const [cancelled] = await source`select status from job_runs where payload->>'exportId' = ${queued.id}`;
     assert.equal(cancelled.status, "cancelled");
     await source`update admin_exports set expires_at = now() - interval '1 day' where status = 'ready'`;
     const { cleanupAdminExports } = await import("../src/lib/admin-exports/generate");
     assert.equal(await cleanupAdminExports(), 2);
-    assert.equal(objects.size, 0);
+    assert.equal((await readdir(process.env.ADMIN_EXPORTS_DIR!)).length, 0);
     assert.equal((await queries.getAdminExportById(item.id))?.status, "expired");
 
     // The low-level runner also remains usable independently of the admin queue.
@@ -192,7 +160,6 @@ test("complete dump lifecycle, migration, locking, S3 errors and restoration int
     await admin.end({ timeout: 2 });
     for (const key of Object.keys(process.env)) if (!(key in originalEnv)) delete process.env[key];
     Object.assign(process.env, originalEnv);
-    await new Promise<void>((resolve) => server.close(() => resolve()));
     await rm(directory, { recursive: true, force: true });
   }
 });

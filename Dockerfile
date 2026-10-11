@@ -20,11 +20,17 @@ COPY tools ./tools
 # Node runners keep the source tree and can execute the same handlers as the app.
 FROM base AS jobs-runner
 ENV NODE_ENV=production
-RUN apk add --no-cache postgresql18-client
+RUN apk add --no-cache postgresql18-client \
+  && addgroup --system --gid 1001 nodejs \
+  && adduser --system --uid 1001 --ingroup nodejs nextjs \
+  && mkdir -p /var/lib/geekoteka/admin-exports \
+  && chown nextjs:nodejs /var/lib/geekoteka/admin-exports \
+  && chmod 700 /var/lib/geekoteka/admin-exports
 COPY --from=deps /app/node_modules ./node_modules
 COPY package.json ./
 COPY tsconfig.json ./
 COPY src ./src
+USER nextjs
 
 # Build Next.js in CI.
 FROM base AS builder
@@ -39,7 +45,10 @@ FROM base AS runner
 ENV NODE_ENV=production
 
 RUN addgroup --system --gid 1001 nodejs \
-  && adduser --system --uid 1001 nextjs
+  && adduser --system --uid 1001 --ingroup nodejs nextjs \
+  && mkdir -p /var/lib/geekoteka/admin-exports \
+  && chown nextjs:nodejs /var/lib/geekoteka/admin-exports \
+  && chmod 700 /var/lib/geekoteka/admin-exports
 
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
