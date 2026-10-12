@@ -395,8 +395,8 @@ function ArchiveMediaItemDetails({
             className="pointer-events-none absolute -top-[13px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
           />
 
-          <div className="order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline">
-            <div className="relative min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:pt-0">
+          <div className="contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline">
+            <div className="relative order-1 min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:pt-0">
               <div
                 className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} flex min-w-0 items-center gap-3 text-sm leading-7 text-stone-950`}
               >
@@ -405,7 +405,7 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
 
-          <div className="relative min-w-0 lg:px-6 lg:pb-6">
+          <div className="contents lg:relative lg:block lg:min-w-0 lg:px-6 lg:pb-6">
             <div className="relative order-2 min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
               <div
                 className={

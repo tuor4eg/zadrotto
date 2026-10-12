@@ -21,7 +21,9 @@ describe("public media reviews layout", () => {
     const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
     const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
     assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
-    assert.match(details, /order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline/);
+    assert.match(details, /contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline/);
+    assert.match(details, /relative order-1 min-w-0 px-6 pt-3/);
+    assert.match(details, /contents lg:relative lg:block lg:min-w-0 lg:px-6 lg:pb-6/);
     assert.match(details, /contents lg:col-start-2 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:self-baseline/);
     assert.doesNotMatch(details, /lg:row-span-2|lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
     assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
