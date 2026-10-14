@@ -1,4 +1,4 @@
-import type { MediaTitleCandidate, TitleMetadataInput, TitleSearchInput } from "@/lib/covers/types"
+import type { ProviderTitlePart, MediaTitleCandidate, TitleMetadataInput, TitleSearchInput } from "@/lib/covers/types"
 import { isCoverProviderCode } from "@/lib/covers/types"
 import { isMediaTypeCode } from "@/lib/media/types"
 import { normalizeMetadataExternalId } from "@/lib/media/metadata-refresh-source"
@@ -18,11 +18,17 @@ export type MetadataJobItem = {
   title: string
 }
 
+export type MetadataJobUpdatedItem = {
+  id: number
+  title: string
+}
+
 export type MetadataJobResult = {
   failed: number
   retryableFailed: number
   skipped: number
   updated: number
+  updatedItems: MetadataJobUpdatedItem[]
   stopError?: "provider-daily-limit" | "rate-limit-unavailable"
 }
 
@@ -31,6 +37,7 @@ export type MetadataJobContext = {
     error: string | null
     metadata: {
       externalId: string
+      parts?: ProviderTitlePart[]
       facts: Record<string, unknown>
       provider: string
       sourceUrl: string | null
@@ -50,6 +57,7 @@ export type MetadataJobStore = {
   }) => Promise<void>
   markAttempt: (mediaItemId: number, issueCode: MetadataIssueCode | null) => Promise<void>
   upsert: (input: {
+    parts?: ProviderTitlePart[]
     facts: Record<string, unknown>
     mediaItemId: number
     sourceExternalId: string | null
@@ -76,6 +84,7 @@ function emptyJobResult(): MetadataJobResult {
     retryableFailed: 0,
     skipped: 0,
     updated: 0,
+    updatedItems: [],
   }
 }
 
@@ -123,6 +132,7 @@ async function fetchAndStoreMetadata(input: {
   }
 
   await input.store.upsert({
+    parts: result.metadata.parts,
     facts: result.metadata.facts,
     mediaItemId: input.item.id,
     sourceExternalId: result.metadata.externalId,
@@ -179,6 +189,7 @@ async function applyItemOutcome(input: {
 
   if (input.outcome.kind === "updated") {
     input.result.updated += 1
+    input.result.updatedItems.push({ id: input.item.id, title: input.item.title })
     return "continue" as const
   }
 

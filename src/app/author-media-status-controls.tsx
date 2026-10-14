@@ -10,6 +10,7 @@ import {
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { cn } from "@/lib/common/utils";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
+import { hasDemoRating } from "@/lib/user-state/demo-profile";
 import { toggleDemoStatus } from "@/lib/user-state/demo-actions";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
@@ -34,18 +35,22 @@ const STATUS_OPTIONS = [
 export function AuthorMediaStatusControls({
   className,
   currentAuthorScore,
+  currentAuthorHasRating = currentAuthorScore !== null,
+  isAuthorized = false,
   currentAuthorStatus,
   mediaItemCode,
   variant = "detail",
 }: {
   className?: string;
   currentAuthorScore: number | null;
+  currentAuthorHasRating?: boolean;
+  isAuthorized?: boolean;
   currentAuthorStatus: AuthorMediaStatus | null;
   mediaItemCode: string;
   variant?: "detail" | "preview" | "tile";
 }) {
   const demoProfile = useDemoProfile();
-  const isDemo = Boolean(demoProfile && demoProfile.import.importedAt == null);
+  const isDemo = Boolean(!isAuthorized && demoProfile && demoProfile.import.importedAt == null);
   const overlay = useDemoMediaOverlay(mediaItemCode, currentAuthorScore, currentAuthorStatus);
   const effectiveScore = isDemo ? overlay.score : currentAuthorScore;
   const effectiveStatus = isDemo ? overlay.status : currentAuthorStatus;
@@ -53,7 +58,8 @@ export function AuthorMediaStatusControls({
   const [state, action, pending] = useActionState(toggleAuthorMediaStatusAction, INITIAL_STATE);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoPending, startDemoTransition] = useTransition();
-  const disabled = effectiveScore !== null || (isDemo ? demoPending : pending);
+  const hasRating = isDemo && demoProfile ? hasDemoRating(demoProfile, mediaItemCode) : currentAuthorHasRating;
+  const disabled = hasRating || effectiveScore !== null || (isDemo ? demoPending : pending);
 
   function handleDemoToggle(status: AuthorMediaStatus) {
     startDemoTransition(() => {

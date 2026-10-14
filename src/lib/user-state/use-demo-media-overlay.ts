@@ -4,6 +4,7 @@ import { useMemo } from "react"
 
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences"
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status"
+import { hasDemoRating } from "@/lib/user-state/demo-profile"
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile"
 
 export function useDemoMediaOverlay(
@@ -30,7 +31,7 @@ export function useDemoMediaOverlay(
     return {
       isDemo: true,
       score: rating?.score ?? null,
-      status: rating ? null : (status?.status ?? null),
+      status: hasDemoRating(profile, mediaItemCode) ? null : (status?.status ?? null),
       firstExperiencedAt: rating?.experience?.experiencedAt ?? null,
       firstExperiencedPrecision: rating?.experience?.precision ?? null,
     }

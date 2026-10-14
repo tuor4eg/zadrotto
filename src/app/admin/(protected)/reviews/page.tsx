@@ -97,7 +97,7 @@ export default async function AdminReviewsPage({ searchParams }: AdminReviewsPag
                     href={`/media/${review.mediaItemCode}`}
                     className="text-xs font-medium text-stone-500 underline underline-offset-2 transition-colors hover:text-stone-950"
                   >
-                    {review.mediaItemTitle}
+                    {review.mediaItemTitle}{review.partLabel ? ` · ${review.partLabel}` : ""}
                   </Link>
                   <h3 className="mt-1 break-words font-semibold leading-5 text-stone-950">
                     {review.reviewTitle}
@@ -185,7 +185,7 @@ export default async function AdminReviewsPage({ searchParams }: AdminReviewsPag
                         href={`/media/${review.mediaItemCode}`}
                         className="text-xs font-medium text-stone-500 underline underline-offset-2 transition-colors hover:text-stone-950"
                       >
-                        {review.mediaItemTitle}
+                        {review.mediaItemTitle}{review.partLabel ? ` · ${review.partLabel}` : ""}
                       </Link>
                       <h3 className="mt-1 truncate font-semibold leading-5 text-stone-950">
                         {review.reviewTitle}

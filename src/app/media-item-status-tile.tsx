@@ -10,10 +10,14 @@ type MediaItemStatusTileProps = Omit<ComponentProps<typeof MediaItemTile>, "curr
   currentAuthorScore: number | null;
   currentAuthorStatus: AuthorMediaStatus | null;
   horizontalScroll?: boolean;
+  currentAuthorHasRating?: boolean;
+  isAuthorized?: boolean;
 };
 
 export function MediaItemStatusTile({
   currentAuthorScore,
+  currentAuthorHasRating = currentAuthorScore !== null,
+  isAuthorized = false,
   currentAuthorStatus,
   item,
   horizontalScroll = false,
@@ -23,7 +27,7 @@ export function MediaItemStatusTile({
   const pointerStartX = useRef<number | null>(null);
   const didSwipeToReveal = useRef(false);
   const touchStartX = useRef<number | null>(null);
-  const showStatusActions = currentAuthorScore === null;
+  const showStatusActions = !currentAuthorHasRating;
 
   return (
     <div
@@ -86,6 +90,8 @@ export function MediaItemStatusTile({
         >
           <AuthorMediaStatusControls
             currentAuthorScore={currentAuthorScore}
+            currentAuthorHasRating={currentAuthorHasRating}
+            isAuthorized={isAuthorized}
             currentAuthorStatus={currentAuthorStatus}
             mediaItemCode={item.code}
             variant="tile"

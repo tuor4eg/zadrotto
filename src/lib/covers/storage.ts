@@ -387,3 +387,15 @@ export async function resolveCoverUpload(input: {
     source: getManualCoverSource(),
   };
 }
+
+/** Server-only provider import; the relay enforces the provider host allowlist. */
+export async function uploadTitlePartPoster(input: { partId: number; imageUrl: string }): Promise<CoverUploadResult> {
+  const image = await fetchProviderImage({ providerCode: "tmdb", imageUrl: input.imageUrl, maxBytes: 5 * 1024 * 1024 });
+  if (!image.ok) return { ok: false, error: image.error === "too-large" ? "cover-too-large" : image.error === "unsupported-type" ? "cover-type" : "cover-upload" };
+  const validation = validateCoverFileInput({ size: image.body.byteLength, type: image.contentType });
+  if (!validation.ok) return validation;
+  const extension = getCoverFileExtension(image.contentType);
+  return uploadCoverBuffer({ body: image.body, contentType: image.contentType,
+    objectKey: extension ? `covers/title-parts/${input.partId}-${randomUUID()}.${extension}` : null,
+    source: { provider: "tmdb", externalId: String(input.partId), pageUrl: null } });
+}

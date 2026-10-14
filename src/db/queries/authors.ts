@@ -35,7 +35,7 @@ const authorHasUsageSql = sql<boolean>`(
 
 function authorUsageCountByIdSql(authorId: number) {
   return sql<number>`(
-    (select count(*) from ${ratings} where ${ratings.authorId} = ${authorId}) +
+    (select count(distinct ${ratings.mediaItemId}) from ${ratings} where ${ratings.authorId} = ${authorId}) +
     (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId}) +
     (select count(*) from ${contributions} where ${contributions.authorId} = ${authorId}) +
     (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId})
@@ -44,7 +44,7 @@ function authorUsageCountByIdSql(authorId: number) {
 
 function authorRatingsCountSql(authorId: typeof authors.id) {
   return sql<number>`(
-    select count(*) from ${ratings} where ${ratings.authorId} = ${authorId}
+    select count(distinct ${ratings.mediaItemId}) from ${ratings} where ${ratings.authorId} = ${authorId}
   )::int`;
 }
 
@@ -226,7 +226,7 @@ export async function getAdminAuthorProfileById(id: number) {
           and ${mediaItems.publicationStatus} = 'published'
       )::int`,
       ratingsCount: sql<number>`(
-        select count(*) from ${ratings} where ${ratings.authorId} = ${authors.id}
+        select count(distinct ${ratings.mediaItemId}) from ${ratings} where ${ratings.authorId} = ${authors.id}
       )::int`,
       reviewsCount: sql<number>`(
         select count(*) from ${contributions}

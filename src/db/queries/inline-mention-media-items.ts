@@ -1,4 +1,4 @@
-import { and, desc, eq, exists, inArray, or } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, isNull, or } from "drizzle-orm";
 
 import { db } from "@/db";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
@@ -66,6 +66,7 @@ export async function searchPublishedMediaItems(input: {
           eq(contributions.primaryMediaItemId, mediaItems.id),
           eq(contributions.authorId, input.authorId),
           eq(contributions.type, "review"),
+          isNull(contributions.partId),
         ),
     )
     .where(condition)

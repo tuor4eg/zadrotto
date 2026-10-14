@@ -138,7 +138,7 @@ describe("demo profile foundation", () => {
     assert.equal(getDemoRatingsCount(parsed!), 1)
     assert.equal(parseDemoProfile(null), null)
     assert.equal(parseDemoProfile({ schemaVersion: "nope" }), null)
-    assert.equal(parseDemoProfile({ schemaVersion: 2 }), null)
+    assert.equal(parseDemoProfile({ schemaVersion: 3 }), null)
   })
 
   it("drops status entries that collide with ratings", () => {

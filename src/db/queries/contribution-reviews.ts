@@ -1,5 +1,7 @@
+import { isTitlePartReviewable } from "@/lib/media/title-parts";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 
+import { reviewAuthorScoreSql } from "@/db/queries/review-author-score";
 import { db } from "@/db";
 import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
 import { searchPublishedMediaItems } from "@/db/queries/inline-mention-media-items";
@@ -18,6 +20,7 @@ import {
   mediaItemMetadata,
   mediaItems,
   ratings,
+  titleParts,
 } from "@/db/schema";
 import {
   isAuthorEditableContributionStatus,
@@ -31,6 +34,16 @@ import { resolveCoverUrl } from "@/lib/services/minio";
 import type { ReviewReactionCounts, ReviewReactionSummary } from "@/lib/reviews/reactions";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
+
+function reviewPartLabelSql(preferSeasonNumber = false) {
+  return sql<string | null>`(select case when p.type = 'season' and p.number = 0 then 'Спецвыпуски'
+    when p.type = 'season' and ${preferSeasonNumber} then 'Сезон ' || p.number
+    else coalesce(nullif(p.name, ''), case
+    when p.type = 'season' then 'Сезон ' || p.number
+    when p.type = 'volume' then 'Том ' || p.number
+    when p.type = 'issue' then 'Выпуск ' || p.number
+    else 'Часть ' || p.number end) end from title_parts p where p.id = ${contributions.partId})`;
+}
 
 export async function getSubmittedContributionReviewCountForAdmin() {
   const [result] = await db
@@ -49,7 +62,9 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       authorName: authors.name,
       authorCode: authors.code,
       authorAvatarObjectKey: authors.avatarObjectKey,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
       publishedAt: contributions.reviewedAt,
@@ -64,6 +79,7 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       and(
         eq(ratings.authorId, contributions.authorId),
         eq(ratings.mediaItemId, contributionMediaItems.mediaItemId),
+        sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`,
       ),
     )
     .where(
@@ -90,7 +106,9 @@ export async function getPublishedReviewById(
       authorName: authors.name,
       authorCode: authors.code,
       authorAvatarObjectKey: authors.avatarObjectKey,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
       publishedAt: contributions.reviewedAt,
@@ -119,7 +137,7 @@ export async function getPublishedReviewById(
     .innerJoin(authors, eq(authors.id, contributions.authorId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(and(
       eq(contributions.id, reviewId),
@@ -149,7 +167,9 @@ const publishedReviewCardSelection = {
   authorName: authors.name,
   authorCode: authors.code,
   authorAvatarObjectKey: authors.avatarObjectKey,
-  authorScore: ratings.score,
+  authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
   title: contributionReviews.title,
   body: contributionReviews.body,
   mediaItemTitle: mediaItems.title,
@@ -191,7 +211,7 @@ export async function getOtherPublishedReviewCardsForMediaItem(input: {
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(and(
       eq(contributions.primaryMediaItemId, input.mediaItemId),
@@ -224,7 +244,7 @@ export async function getOtherPublishedReviewCardsByAuthor(input: {
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(and(
       eq(contributions.authorId, input.authorId),
@@ -248,7 +268,9 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
   const [review] = await db
     .select({
       authorName: authors.name,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(true),
       body: contributionReviews.body,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
@@ -266,7 +288,7 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
     .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(and(
       eq(contributions.type, "review"),
@@ -324,17 +346,17 @@ function buildPublishedReviewsCatalogConditions(filters: PublishedReviewsCatalog
   }
 
   if (filters.scoreFilter === "none") {
-    conditions.push(isNull(ratings.score))
+    conditions.push(isNull(reviewAuthorScoreSql()))
   } else if (filters.scoreFilter === "low") {
-    conditions.push(lte(ratings.score, 50))
+    conditions.push(lte(reviewAuthorScoreSql(), 50))
   } else if (filters.scoreFilter !== "all") {
-    conditions.push(eq(ratings.score, Number(filters.scoreFilter) * 10))
+    conditions.push(eq(reviewAuthorScoreSql(), Number(filters.scoreFilter) * 10))
   }
 
   if (filters.preset === "fresh") {
     conditions.push(sql`${contributions.reviewedAt} >= now() - interval '30 days'`)
   } else if (filters.preset === "high") {
-    conditions.push(gte(ratings.score, 80))
+    conditions.push(gte(reviewAuthorScoreSql(), 80))
   } else if (filters.preset === "long") {
     conditions.push(sql`char_length(${contributionReviews.body}) >= 2000`)
   } else if (filters.preset === "short") {
@@ -365,7 +387,7 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
       .innerJoin(authors, eq(authors.id, contributions.authorId))
       .leftJoin(
         ratings,
-        and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+        and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
       )
       .where(whereCondition)
 
@@ -381,7 +403,9 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
       authorName: authors.name,
       authorCode: authors.code,
       authorAvatarObjectKey: authors.avatarObjectKey,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       publishedAt: contributions.reviewedAt,
       updatedAt: contributions.updatedAt,
@@ -403,7 +427,7 @@ export async function getPublishedReviewsCatalog(filters: PublishedReviewsCatalo
     .innerJoin(authors, eq(authors.id, contributions.authorId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(whereCondition)
     .orderBy(desc(contributions.createdAt), desc(contributions.id))
@@ -489,7 +513,9 @@ export async function getLatestPublishedReviewCards(
       authorName: authors.name,
       authorCode: authors.code,
       authorAvatarObjectKey: authors.avatarObjectKey,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
       mediaItemTitle: mediaItems.title,
@@ -510,7 +536,7 @@ export async function getLatestPublishedReviewCards(
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(
       and(
@@ -657,7 +683,9 @@ export async function getMyReviewsCatalog(filters: MyReviewsCatalogFilters) {
       id: contributions.id,
       status: contributions.status,
       adminNote: contributions.adminNote,
-      authorScore: ratings.score,
+      authorScore: reviewAuthorScoreSql(),
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       publishedAt: contributions.reviewedAt,
       updatedAt: contributions.updatedAt,
@@ -677,7 +705,7 @@ export async function getMyReviewsCatalog(filters: MyReviewsCatalogFilters) {
     .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
     .leftJoin(
       ratings,
-      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id)),
+      and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, mediaItems.id), sql`${ratings.partId} IS NOT DISTINCT FROM ${contributions.partId}`),
     )
     .where(whereCondition)
     .orderBy(desc(contributions.updatedAt), desc(contributions.id))
@@ -724,6 +752,8 @@ export async function getAuthorReviewSummary(
         mediaItemCode: mediaItems.code,
         mediaItemTitle: mediaItems.title,
         reviewTitle: contributionReviews.title,
+        partId: contributions.partId,
+        partLabel: reviewPartLabelSql(),
       })
       .from(contributions)
       .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
@@ -759,6 +789,8 @@ export async function getAuthorReviewForEdit(
       mediaItemId: mediaItems.id,
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
+      partId: contributions.partId,
+      partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
     })
@@ -778,7 +810,7 @@ export async function getAuthorReviewForEdit(
   return review ?? null;
 }
 
-export async function getAuthorReviewForMediaItem(authorId: number, mediaItemId: number) {
+export async function getAuthorReviewForMediaItem(authorId: number, mediaItemId: number, partId: number | null = null) {
   const [review] = await db
     .select({
       id: contributions.id,
@@ -790,6 +822,7 @@ export async function getAuthorReviewForMediaItem(authorId: number, mediaItemId:
         eq(contributions.authorId, authorId),
         eq(contributions.primaryMediaItemId, mediaItemId),
         eq(contributions.type, "review"),
+        sql`${contributions.partId} IS NOT DISTINCT FROM ${partId}`,
       ),
     )
     .limit(1);
@@ -836,6 +869,7 @@ export async function getPublishedMediaItemForReview(
 export async function upsertAuthorReview(input: {
   authorId: number;
   contributionId?: number | null;
+  partId?: number | null;
   mediaItemId: number;
   title: string;
   body: string;
@@ -846,12 +880,21 @@ export async function upsertAuthorReview(input: {
   const reviewedAt = input.status === "published" ? now : null;
 
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const partId = input.partId ?? null;
+    // Serialize scope changes and creation for this author/record, including swaps.
+    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`review:${input.authorId}:${input.mediaItemId}`}, 0))`);
+    if (partId !== null) {
+      const [part] = await tx.select({ id: titleParts.id, type: titleParts.type, number: titleParts.number }).from(titleParts)
+        .where(and(eq(titleParts.id, partId), eq(titleParts.mediaItemId, input.mediaItemId))).limit(1);
+      if (!part || !isTitlePartReviewable(part)) return { ok: false as const, reason: "not-found" as const };
+    }
     const existingReview = input.contributionId
       ? await tx
           .select({
             id: contributions.id,
             status: contributions.status,
             mediaItemId: contributions.primaryMediaItemId,
+            partId: contributions.partId,
           })
           .from(contributions)
           .where(
@@ -868,31 +911,52 @@ export async function upsertAuthorReview(input: {
             id: contributions.id,
             status: contributions.status,
             mediaItemId: contributions.primaryMediaItemId,
+            partId: contributions.partId,
           })
           .from(contributions)
           .where(
             and(
               eq(contributions.authorId, input.authorId),
               eq(contributions.primaryMediaItemId, input.mediaItemId),
+              sql`${contributions.partId} IS NOT DISTINCT FROM ${partId}`,
               eq(contributions.type, "review"),
             ),
           )
           .limit(1)
           .for("update");
     const existing = existingReview[0];
+    if (input.contributionId && !existing) return { ok: false as const, reason: "not-found" as const };
 
     if (existing && !isAuthorEditableContributionStatus(existing.status)) {
       return { ok: false as const, reason: "locked" as const };
     }
 
-    if (existing && existing.mediaItemId !== input.mediaItemId) {
+    if (existing && (existing.mediaItemId !== input.mediaItemId)) {
       return { ok: false as const, reason: "not-found" as const };
+    }
+
+    if (existing && existing.partId !== partId) {
+      const [occupied] = await tx.select({ id: contributions.id }).from(contributions)
+        .where(and(eq(contributions.authorId, input.authorId),
+          eq(contributions.primaryMediaItemId, input.mediaItemId),
+          eq(contributions.type, "review"),
+          sql`${contributions.partId} IS NOT DISTINCT FROM ${partId}`,
+          ne(contributions.id, existing.id))).limit(1);
+      if (occupied) return { ok: false as const, reason: "scope-conflict" as const };
+      const [text] = await tx.select({ title: contributionReviews.title, body: contributionReviews.body })
+        .from(contributionReviews).where(eq(contributionReviews.contributionId, existing.id)).limit(1);
+      if (text?.title === input.title && text.body === input.body) {
+        // A scope correction keeps publication/moderation state and history intact.
+        await tx.update(contributions).set({ partId, updatedAt: now }).where(eq(contributions.id, existing.id));
+        return { ok: true as const, id: existing.id };
+      }
     }
 
     if (existing) {
       await tx
         .update(contributions)
         .set({
+          partId,
           status: input.status,
           submittedAt,
           reviewedByAdminId: null,
@@ -942,6 +1006,7 @@ export async function upsertAuthorReview(input: {
         type: "review",
         authorId: input.authorId,
         primaryMediaItemId: input.mediaItemId,
+        partId,
         status: input.status,
         submittedAt,
         reviewedAt,
@@ -1014,6 +1079,8 @@ export async function getAdminContributionReviews(input: {
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
       reviewTitle: contributionReviews.title,
+        partId: contributions.partId,
+        partLabel: reviewPartLabelSql(),
       reviewBody: contributionReviews.body,
     })
     .from(contributions)
@@ -1036,6 +1103,8 @@ export async function getSubmittedContributionReviewForAdminView(contributionId:
       mediaItemCode: mediaItems.code,
       mediaItemTitle: mediaItems.title,
       reviewTitle: contributionReviews.title,
+        partId: contributions.partId,
+        partLabel: reviewPartLabelSql(),
       reviewBody: contributionReviews.body,
     })
     .from(contributions)

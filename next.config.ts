@@ -7,6 +7,22 @@ const nextConfig: NextConfig = {
     },
   },
   output: "standalone",
+  // Export files are runtime volume data. Dynamic filesystem paths can make
+  // tracing include project sources; the server runs compiled .next code.
+  outputFileTracingExcludes: {
+    "/*": [
+      "./src/**/*",
+      "./tests/**/*",
+      "./drizzle/**/*",
+      "./docs/**/*",
+      "./tools/**/*",
+      "./deploy/**/*",
+      "./openspec/**/*",
+      "./.data/admin-exports/**/*",
+      // Docker copies public separately into the runtime image.
+      "./public/**/*",
+    ],
+  },
   reactCompiler: true,
   async redirects() {
     return [

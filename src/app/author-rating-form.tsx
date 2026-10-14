@@ -13,12 +13,13 @@ import {
 import type { FirstExperiencedPrecision } from "@/lib/authors/media-experiences";
 import { ARCHIVE_ONBOARDING_RATING_SAVED_EVENT } from "@/lib/onboarding/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
-import { deleteDemoRating, upsertDemoRating } from "@/lib/user-state/demo-actions";
+import { deleteDemoPartRating, getDemoPartRating, upsertDemoPartRating, deleteDemoRating, upsertDemoRating } from "@/lib/user-state/demo-actions";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 type AuthorRatingFormProps = {
   mediaItemCode: string;
+  partId?: number | null;
   franchiseCode?: string | null;
   currentAuthor: {
     name: string;
@@ -51,6 +52,7 @@ const DEMO_AUTHOR = {
 
 export function AuthorRatingForm({
   mediaItemCode,
+  partId = null,
   franchiseCode,
   currentAuthor,
   currentAuthorScore,
@@ -75,7 +77,7 @@ export function AuthorRatingForm({
   );
   const demoOverlay = useDemoMediaOverlay(mediaItemCode, currentAuthorScore, null);
   const effectiveAuthor = hasRealAuthor ? currentAuthor : isDemo ? DEMO_AUTHOR : null;
-  const effectiveScore = hasRealAuthor ? currentAuthorScore : demoOverlay.score;
+  const effectiveScore = hasRealAuthor ? currentAuthorScore : partId !== null ? getDemoPartRating(mediaItemCode, partId, demoProfile)?.score ?? null : demoOverlay.score;
   const effectiveFirstExperiencedAt = hasRealAuthor
     ? currentAuthorFirstExperiencedAt
     : demoOverlay.firstExperiencedAt;
@@ -138,13 +140,14 @@ export function AuthorRatingForm({
       try {
         setDemoError(null);
         if (intent === "delete") {
-          deleteDemoRating(mediaItemCode);
+          if (partId !== null) deleteDemoPartRating(mediaItemCode, partId);
+          else deleteDemoRating(mediaItemCode);
         } else if (scoreValue != null) {
           let experience: {
             experiencedAt: string | null
             precision: FirstExperiencedPrecision | null
           } | null | undefined
-          if (showExperienceFields && formData) {
+          if (partId === null && showExperienceFields && formData) {
             const rawValue = String(formData.get("firstExperiencedValue") ?? "").trim()
             const rawPrecision = String(formData.get("firstExperiencedPrecision") ?? "").trim()
             if (rawValue) {
@@ -168,7 +171,8 @@ export function AuthorRatingForm({
               experience = null
             }
           }
-          upsertDemoRating(mediaItemCode, scoreValue, experience);
+          if (partId !== null) upsertDemoPartRating(mediaItemCode, partId, scoreValue);
+          else upsertDemoRating(mediaItemCode, scoreValue, experience);
         } else {
           setDemoError("Выбери оценку.");
           return;
@@ -223,7 +227,7 @@ export function AuthorRatingForm({
         action={isDemo ? undefined : formAction}
         onSubmit={isDemo ? (event) => {
           event.preventDefault();
-          const formData = new FormData(event.currentTarget);
+          const formData = new FormData(event.currentTarget, (event.nativeEvent as SubmitEvent).submitter);
           const intent = String(formData.get("intent") ?? "save");
           if (intent === "delete") {
             saveDemoRating("delete", effectiveScore);
@@ -245,12 +249,13 @@ export function AuthorRatingForm({
         } ${compact ? "p-2" : "p-3"}`}
       >
       <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
+      {partId !== null ? <input type="hidden" name="partId" value={partId} /> : null}
       {franchiseCode ? <input type="hidden" name="franchiseCode" value={franchiseCode} /> : null}
       {autoSubmitOnSelect ? (
         <input ref={autoSubmitScoreInputRef} type="hidden" name="score" />
       ) : selectedScore !== null ? (
         <input type="hidden" name="score" value={selectedScore / 10} />
-      ) : !isScoreCleared && showExperienceFields && effectiveScore !== null ? (
+      ) : !isScoreCleared && (showExperienceFields || ratingDialogLayout) && effectiveScore !== null ? (
         <input type="hidden" name="score" value={effectiveScore / 10} />
       ) : null}
 
@@ -349,7 +354,7 @@ export function AuthorRatingForm({
           ) : null}
         </div>
 
-        {showExperienceFields ? (
+        {partId === null && showExperienceFields ? (
           <RatingExperienceFields
             currentFirstExperiencedAt={effectiveFirstExperiencedAt}
             currentFirstExperiencedPrecision={effectiveFirstExperiencedPrecision}
@@ -365,7 +370,7 @@ export function AuthorRatingForm({
             name="intent"
             value={shouldDeleteScore ? "delete" : "save"}
             disabled={pending || (visibleSelectedScore === null && !shouldDeleteScore)}
-            className={`flex h-11 w-full items-center justify-center rounded-md border px-4 text-sm font-semibold transition-colors disabled:border-stone-300 disabled:bg-stone-200 disabled:text-stone-500 ${selectedScoreButtonClassName}`}
+            className={`${partId !== null || !showExperienceFields ? "mt-4 " : ""}flex h-11 w-full items-center justify-center rounded-md border px-4 text-sm font-semibold transition-colors disabled:border-stone-300 disabled:bg-stone-200 disabled:text-stone-500 ${selectedScoreButtonClassName}`}
           >
             {pending
               ? "Сохраняем…"

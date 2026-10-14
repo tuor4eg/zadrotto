@@ -206,6 +206,8 @@ export function MediaCatalogPreview({
             <AuthorMediaStatusControls
               className="mt-0"
               currentAuthorScore={item.currentAuthorScore}
+              currentAuthorHasRating={item.currentAuthorRatedAt != null}
+              isAuthorized={Boolean(currentAuthor)}
               currentAuthorStatus={item.currentAuthorStatus}
               mediaItemCode={item.code}
               variant="preview"

@@ -1,5 +1,7 @@
 "use client"
 
+import { getDemoRatedCodes } from "@/lib/user-state/demo-profile"
+
 import { useEffect, useMemo, useState } from "react"
 
 import {
@@ -30,7 +32,7 @@ export function HomeAuthorStatisticsWithDemo({
   const [loadedMetadata, setLoadedMetadata] = useState<LoadedDemoMetadata | null>(null)
   const isDemo = serverSummary === null && Boolean(profile && profile.import.importedAt == null)
   const ratedCodesKey = useMemo(
-    () => isDemo && profile ? Object.keys(profile.ratings).sort().join("\0") : "",
+    () => isDemo && profile ? getDemoRatedCodes(profile).sort().join("\0") : "",
     [isDemo, profile],
   )
 

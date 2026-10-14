@@ -8,6 +8,7 @@ import {
   foreignKey,
   index,
   integer,
+  numeric,
   jsonb,
   pgEnum,
   pgTable,
@@ -1925,6 +1926,36 @@ export const mediaItemFranchiseRemovalRequests = pgTable(
   ],
 );
 
+export const titleParts = pgTable("title_parts", {
+  id: serial("id").primaryKey(),
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id),
+  type: text("type").$type<import("@/lib/media/title-parts").TitlePartType>().notNull(),
+  number: integer("number").notNull(),
+  name: text("name"),
+  description: text("description"),
+  year: integer("year"),
+  sourceProvider: text("source_provider"),
+  externalId: text("external_id"),
+  airDate: date("air_date"),
+  episodeCount: integer("episode_count"),
+  posterSourceUrl: text("poster_source_url"),
+  coverUrl: text("cover_url"),
+  coverThumbUrl: text("cover_thumb_url"),
+  sortOrder: integer("sort_order").notNull(),
+  ...timestamps(),
+}, (table) => [
+  unique("title_parts_media_type_number_unique").on(table.mediaItemId, table.type, table.number),
+  unique("title_parts_media_id_unique").on(table.mediaItemId, table.id),
+  uniqueIndex("title_parts_provider_external_unique").on(table.mediaItemId, table.sourceProvider, table.externalId)
+    .where(sql`${table.sourceProvider} is not null and ${table.externalId} is not null`),
+  index("title_parts_media_sort_idx").on(table.mediaItemId, table.sortOrder, table.id),
+  check("title_parts_type_check", sql`${table.type} in ('season', 'issue', 'volume', 'part')`),
+  check("title_parts_number_check", sql`${table.number} >= 0`),
+  check("title_parts_episode_count_check", sql`${table.episodeCount} >= 0`),
+  check("title_parts_source_check", sql`(${table.sourceProvider} is null and ${table.externalId} is null) or
+    (nullif(btrim(${table.sourceProvider}), '') is not null and nullif(btrim(${table.externalId}), '') is not null)`),
+]);
+
 export const ratings = pgTable(
   "ratings",
   {
@@ -1935,12 +1966,16 @@ export const ratings = pgTable(
     authorId: integer("author_id")
       .notNull()
       .references(() => authors.id),
+    partId: integer("part_id"),
     score: integer("score").notNull(),
     ...timestamps(),
   },
   (table) => [
     index("ratings_author_id_idx").on(table.authorId),
-    unique("ratings_media_item_id_author_id_unique").on(table.mediaItemId, table.authorId),
+    uniqueIndex("ratings_overall_unique").on(table.mediaItemId, table.authorId).where(sql`${table.partId} is null`),
+    uniqueIndex("ratings_part_unique").on(table.mediaItemId, table.authorId, table.partId).where(sql`${table.partId} is not null`),
+    index("ratings_media_part_idx").on(table.mediaItemId, table.partId),
+    foreignKey({ columns: [table.mediaItemId, table.partId], foreignColumns: [titleParts.mediaItemId, titleParts.id], name: "ratings_part_media_fk" }),
     check(
       "ratings_score_whole_1_to_10_check",
       sql`${table.score} >= 10 and ${table.score} <= 100 and ${table.score} % 10 = 0`,
@@ -1955,7 +1990,7 @@ export const mediaItemRatingStats = pgTable(
       .primaryKey()
       .references(() => mediaItems.id, { onDelete: "cascade" }),
     ratingsCount: integer("ratings_count").notNull(),
-    scoreSum: integer("score_sum").notNull(),
+    scoreSum: numeric("score_sum", { mode: "number" }).notNull(),
   },
   (table) => [
     index("media_item_rating_stats_ratings_count_idx").on(table.ratingsCount),
@@ -2033,6 +2068,7 @@ export const contributions = pgTable(
     primaryMediaItemId: integer("primary_media_item_id")
       .notNull()
       .references(() => mediaItems.id),
+    partId: integer("part_id"),
     status: contributionStatusEnum("status").default("draft").notNull(),
     submittedAt: timestamp("submitted_at", { withTimezone: true }),
     reviewedByAdminId: integer("reviewed_by_admin_id").references(() => adminUsers.id),
@@ -2044,9 +2080,13 @@ export const contributions = pgTable(
     index("contributions_status_submitted_at_idx").on(table.status, table.submittedAt),
     index("contributions_author_id_updated_at_idx").on(table.authorId, table.updatedAt),
     index("contributions_primary_media_item_id_idx").on(table.primaryMediaItemId),
-    uniqueIndex("contributions_review_author_media_unique")
-      .on(table.authorId, table.primaryMediaItemId)
-      .where(sql`${table.type} = 'review'`),
+    uniqueIndex("contributions_review_overall_unique").on(table.authorId, table.primaryMediaItemId)
+      .where(sql`${table.type} = 'review' and ${table.partId} is null`),
+    uniqueIndex("contributions_review_part_unique").on(table.authorId, table.primaryMediaItemId, table.partId)
+      .where(sql`${table.type} = 'review' and ${table.partId} is not null`),
+    index("contributions_media_part_idx").on(table.primaryMediaItemId, table.partId),
+    foreignKey({ columns: [table.primaryMediaItemId, table.partId], foreignColumns: [titleParts.mediaItemId, titleParts.id], name: "contributions_part_media_fk" }),
+    check("contributions_review_part_check", sql`${table.partId} is null or ${table.type} = 'review'`),
   ],
 );
 
@@ -2135,6 +2175,8 @@ export type MediaItemMetadata = typeof mediaItemMetadata.$inferSelect;
 export type NewMediaItemMetadata = typeof mediaItemMetadata.$inferInsert;
 export type MediaItemFranchise = typeof mediaItemFranchises.$inferSelect;
 export type NewMediaItemFranchise = typeof mediaItemFranchises.$inferInsert;
+export type TitlePart = typeof titleParts.$inferSelect;
+export type NewTitlePart = typeof titleParts.$inferInsert;
 export type Rating = typeof ratings.$inferSelect;
 export type NewRating = typeof ratings.$inferInsert;
 export type AuthorMediaExperience = typeof authorMediaExperiences.$inferSelect;

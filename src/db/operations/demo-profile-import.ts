@@ -6,6 +6,7 @@ import {
   mediaItems,
   mediaTypes,
   ratings,
+  titleParts,
 } from "@/db/schema"
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types"
 import { runInDomainEventTransaction } from "@/db/transaction"
@@ -16,9 +17,13 @@ export async function importDemoProfile(input: {
   authorId: number
   profile: DemoProfile
 }) {
-  const ratingEntries = Object.entries(input.profile.ratings)
+  const ratingEntries = [
+    ...Object.entries(input.profile.ratings).map(([code, entry]) => ({ code, entry, partId: null as number | null })),
+    ...Object.entries(input.profile.partRatings).flatMap(([code, parts]) =>
+      Object.entries(parts).map(([id, entry]) => ({ code, entry, partId: Number(id) }))),
+  ]
   const statusEntries = Object.entries(input.profile.statuses)
-  const codes = [...new Set([...ratingEntries.map(([code]) => code), ...statusEntries.map(([code]) => code)])]
+  const codes = [...new Set([...ratingEntries.map(({ code }) => code), ...statusEntries.map(([code]) => code)])]
   if (codes.length === 0) {
     return {
       importedRatings: 0,
@@ -39,8 +44,7 @@ export async function importDemoProfile(input: {
         getMediaTypeCodeFilterSql(mediaItems.mediaType, input.accessibleMediaTypeCodes),
       ))
     const idByCode = new Map(items.map((item) => [item.code, item.id]))
-    const skippedUnavailable = ratingEntries.filter(([code]) => !idByCode.has(code)).length
-      + statusEntries.filter(([code]) => !idByCode.has(code)).length
+
     const itemIds = items.map((item) => item.id).sort((left, right) => left - right)
     if (itemIds.length > 0) {
       await tx.execute(sql`
@@ -52,31 +56,44 @@ export async function importDemoProfile(input: {
     }
 
     const existingRatings = itemIds.length === 0 ? [] : await tx
-      .select({ mediaItemId: ratings.mediaItemId }).from(ratings)
+      .select({ mediaItemId: ratings.mediaItemId, partId: ratings.partId }).from(ratings)
       .where(and(eq(ratings.authorId, input.authorId), inArray(ratings.mediaItemId, itemIds)))
     const existingStatuses = itemIds.length === 0 ? [] : await tx
       .select({ mediaItemId: authorMediaStatuses.mediaItemId }).from(authorMediaStatuses)
       .where(and(eq(authorMediaStatuses.authorId, input.authorId), inArray(authorMediaStatuses.mediaItemId, itemIds)))
-    const occupied = new Set([
-      ...existingRatings.map((row) => row.mediaItemId),
-      ...existingStatuses.map((row) => row.mediaItemId),
-    ])
-    const now = new Date()
-    const ratingRows = ratingEntries.flatMap(([code, entry]) => {
+    const occupied = new Set(existingStatuses.map((row) => row.mediaItemId))
+    const scopeKey = (mediaItemId: number, partId: number | null) => `${mediaItemId}:${partId ?? "overall"}`
+    const existingScopes = new Set(existingRatings.map((row) => scopeKey(row.mediaItemId, row.partId)))
+    const partIds = ratingEntries.flatMap(({ partId }) => partId === null ? [] : [partId])
+    const availableParts = partIds.length === 0 || itemIds.length === 0 ? [] : await tx
+      .select({ id: titleParts.id, mediaItemId: titleParts.mediaItemId }).from(titleParts)
+      .where(and(inArray(titleParts.id, partIds), inArray(titleParts.mediaItemId, itemIds), sql`NOT (${titleParts.type} = 'season' AND ${titleParts.number} = 0)`))
+    const validParts = new Set(availableParts.map((row) => scopeKey(row.mediaItemId, row.id)))
+    const unavailableRating = ({ code, partId }: typeof ratingEntries[number]) => {
       const mediaItemId = idByCode.get(code)
-      return mediaItemId == null || occupied.has(mediaItemId)
+      return mediaItemId == null || (partId !== null && !validParts.has(scopeKey(mediaItemId, partId)))
+    }
+    const skippedUnavailable = ratingEntries.filter(unavailableRating).length
+      + statusEntries.filter(([code]) => !idByCode.has(code)).length
+    const now = new Date()
+    const ratingRows = ratingEntries.flatMap((rating) => {
+      const { code, entry, partId } = rating
+      const mediaItemId = idByCode.get(code)
+      return mediaItemId == null || unavailableRating(rating) || occupied.has(mediaItemId)
+        || existingScopes.has(scopeKey(mediaItemId, partId))
         ? []
-        : [{ authorId: input.authorId, mediaItemId, score: entry.score, createdAt: now, updatedAt: now }]
-    })
+        : [{ authorId: input.authorId, mediaItemId, partId, score: entry.score, createdAt: now, updatedAt: now }]
+    }).sort((left, right) => left.mediaItemId - right.mediaItemId || (left.partId ?? 0) - (right.partId ?? 0))
     const insertedRatings = ratingRows.length === 0 ? [] : await tx.insert(ratings)
-      .values(ratingRows).onConflictDoNothing({ target: [ratings.mediaItemId, ratings.authorId] })
-      .returning({ mediaItemId: ratings.mediaItemId })
+      .values(ratingRows).onConflictDoNothing()
+      .returning({ mediaItemId: ratings.mediaItemId, partId: ratings.partId })
     const insertedRatingIds = new Set(insertedRatings.map((row) => row.mediaItemId))
+    const insertedOverallIds = new Set(insertedRatings.filter((row) => row.partId === null).map((row) => row.mediaItemId))
 
-    const experienceRows = ratingEntries.flatMap(([code, entry]) => {
+    const experienceRows = ratingEntries.flatMap(({ code, entry, partId }) => {
       const mediaItemId = idByCode.get(code)
       const experience = entry.experience
-      return mediaItemId != null && insertedRatingIds.has(mediaItemId)
+      return partId === null && mediaItemId != null && insertedOverallIds.has(mediaItemId)
         && experience?.experiencedAt
         && (experience.precision === "year" || experience.precision === "month" || experience.precision === "day")
         ? [{
@@ -96,7 +113,7 @@ export async function importDemoProfile(input: {
 
     const statusRows = statusEntries.flatMap(([code, entry]) => {
       const mediaItemId = idByCode.get(code)
-      return mediaItemId == null || occupied.has(mediaItemId) || insertedRatingIds.has(mediaItemId)
+      return mediaItemId == null || occupied.has(mediaItemId) || existingRatings.some((row) => row.mediaItemId === mediaItemId) || insertedRatingIds.has(mediaItemId)
         ? []
         : [{ authorId: input.authorId, mediaItemId, status: entry.status, createdAt: now, updatedAt: now }]
     })
@@ -104,11 +121,11 @@ export async function importDemoProfile(input: {
       .values(statusRows).onConflictDoNothing({ target: [authorMediaStatuses.authorId, authorMediaStatuses.mediaItemId] })
       .returning({ mediaItemId: authorMediaStatuses.mediaItemId })
 
-    await appendEvents(insertedRatings.map(({ mediaItemId }) => ({
+    await appendEvents(insertedRatings.map(({ mediaItemId, partId }) => ({
         actorAuthorId: input.authorId,
-        aggregateId: `${input.authorId}:${mediaItemId}`,
+        aggregateId: `${input.authorId}:${mediaItemId}${partId === null ? "" : `:part:${partId}`}`,
         aggregateType: "rating",
-        payload: { authorId: input.authorId, mediaItemId },
+        payload: { authorId: input.authorId, mediaItemId, ...(partId === null ? {} : { partId }) },
         type: "rating.created",
       })))
 

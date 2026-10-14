@@ -54,6 +54,7 @@ import {
   mediaItems,
   mediaTypes,
   ratings,
+  titleParts,
 } from "@/db/schema";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import type { AdminMediaSort } from "@/lib/media/admin-editorial-summary";
@@ -274,6 +275,7 @@ const currentAuthorScoreSql = (currentAuthorId?: number) =>
         from ${ratings}
         where ${ratings.mediaItemId} = ${mediaItems.id}
           and ${ratings.authorId} = ${currentAuthorId}
+              and ${ratings.partId} is null
         limit 1
       )`
     : sql<number | null>`null`;
@@ -292,7 +294,7 @@ const currentAuthorStatusSql = (currentAuthorId?: number) =>
 const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
   currentAuthorId
     ? sql<Date | null>`(
-        select ${ratings.createdAt}
+        select min(${ratings.createdAt})
         from ${ratings}
         where ${ratings.mediaItemId} = ${mediaItems.id}
           and ${ratings.authorId} = ${currentAuthorId}
@@ -303,7 +305,7 @@ const currentAuthorRatedAtSql = (currentAuthorId?: number) =>
 const currentAuthorRatingUpdatedAtSql = (currentAuthorId?: number) =>
   currentAuthorId
     ? sql<Date | null>`(
-        select ${ratings.updatedAt}
+        select max(${ratings.updatedAt})
         from ${ratings}
         where ${ratings.mediaItemId} = ${mediaItems.id}
           and ${ratings.authorId} = ${currentAuthorId}
@@ -1410,9 +1412,12 @@ export async function deleteAuthorDraftMediaItem(input: {
       .delete(authorMediaExperiences)
       .where(eq(authorMediaExperiences.mediaItemId, input.mediaItemId));
     await tx.delete(ratings).where(eq(ratings.mediaItemId, input.mediaItemId));
+    const partCovers = await tx.select({ coverUrl: titleParts.coverUrl, coverThumbUrl: titleParts.coverThumbUrl })
+      .from(titleParts).where(eq(titleParts.mediaItemId, input.mediaItemId));
+    await tx.delete(titleParts).where(eq(titleParts.mediaItemId, input.mediaItemId));
     await tx.delete(mediaItems).where(eq(mediaItems.id, input.mediaItemId));
 
-    return item;
+    return { ...item, partCovers };
   });
 }
 
@@ -1668,9 +1673,12 @@ export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId
       .delete(authorMediaExperiences)
       .where(eq(authorMediaExperiences.mediaItemId, mediaItemId));
     await tx.delete(ratings).where(eq(ratings.mediaItemId, mediaItemId));
+    const partCovers = await tx.select({ coverUrl: titleParts.coverUrl, coverThumbUrl: titleParts.coverThumbUrl })
+      .from(titleParts).where(eq(titleParts.mediaItemId, mediaItemId));
+    await tx.delete(titleParts).where(eq(titleParts.mediaItemId, mediaItemId));
     await tx.delete(mediaItems).where(eq(mediaItems.id, mediaItemId));
 
-    return item;
+    return { ...item, partCovers };
   });
 }
 
@@ -1683,6 +1691,10 @@ export async function canViewMediaItemCover(
   const coverKeyCondition = or(
     eq(mediaItems.coverUrl, objectKey),
     eq(mediaItems.coverThumbUrl, objectKey),
+    exists(db.select({ id: titleParts.id }).from(titleParts).where(and(
+      eq(titleParts.mediaItemId, mediaItems.id),
+      or(eq(titleParts.coverUrl, objectKey), eq(titleParts.coverThumbUrl, objectKey)),
+    ))),
   );
 
   if (options?.isAdmin) {
@@ -1855,6 +1867,7 @@ export async function getMediaItemByCode(
       ratingsCount: mediaItemRatingsCountSql,
       currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
       currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
+      currentAuthorRatedAt: currentAuthorRatedAtSql(currentAuthorId),
       currentAuthorFirstExperiencedAt: currentAuthorFirstExperiencedAtSql(currentAuthorId),
       currentAuthorFirstExperiencedPrecision: currentAuthorFirstExperiencedPrecisionSql(
         currentAuthorId,

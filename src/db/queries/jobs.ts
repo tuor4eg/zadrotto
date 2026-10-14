@@ -38,8 +38,8 @@ function jobRunValues(input: CreateJobRunInput, now: Date) {
   };
 }
 
-export async function createJobRun(input: CreateJobRunInput, now = new Date()) {
-  const [run] = await db.insert(jobRuns).values(jobRunValues(input, now)).returning();
+export async function createJobRun(input: CreateJobRunInput, now = new Date(), executor: Pick<typeof db, "insert"> = db) {
+  const [run] = await executor.insert(jobRuns).values(jobRunValues(input, now)).returning();
   return run;
 }
 

@@ -14,13 +14,14 @@ const reviewQuery = readFileSync("src/db/queries/contribution-reviews.ts", "utf8
 const mainPage = readFileSync("src/app/page.tsx", "utf8");
 
 describe("public media reviews layout", () => {
-  it("hides an empty review shelf from guests and keeps it below the archive note on mobile", () => {
+  it("hides an empty review shelf from guests and places parts before full-width reviews", () => {
     assert.match(reviews, /if \(!currentAuthor && reviews\.length === 0\) \{\s*return null/);
-    assert.match(mediaPage, /adjacentShelfSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
-    const cover = details.indexOf("<ArchiveCover");
-    const reviewShelf = details.indexOf("{adjacentShelfSlot ?", cover);
-    const archiveNote = details.indexOf("<ArchiveNote", reviewShelf);
-    assert.ok(reviewShelf > cover && archiveNote > reviewShelf);
+    assert.match(mediaPage, /reviewsSlot=\{\s*currentAuthor \|\| reviews\.length > 0 \?/);
+    const archiveNote = details.indexOf("<ArchiveNote");
+    const parts = details.indexOf("{partsSlot}", archiveNote);
+    const reviewSlot = details.indexOf("{reviewsSlot}", parts);
+    assert.ok(parts > archiveNote && reviewSlot > parts);
+    assert.match(details, /w-full min-w-0 flex-col gap-8[^\"]*lg:col-span-2/);
     assert.match(details, /contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline/);
     assert.match(details, /relative order-1 min-w-0 px-6 pt-3/);
     assert.match(details, /contents lg:relative lg:block lg:min-w-0 lg:px-6 lg:pb-6/);
@@ -39,7 +40,7 @@ describe("public media reviews layout", () => {
   it("renders three review previews and one action card", () => {
     assert.match(reviews, /reviews\.slice\(0, 3\)\.map/);
     assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} \/>/);
-    assert.match(reviews, /<ReviewAuthorStars compact score=\{review\.authorScore\} \/>/);
+    assert.match(reviews, /<ReviewAuthorScore score=\{review\.authorScore\} \/>/);
     assert.match(reviews, /hiddenReviewsCount=\{Math\.max\(0, reviews\.length - 3\)\}/);
     assert.match(reviews, /Ещё \{hiddenReviewsCount\} мнений/);
   });
@@ -62,7 +63,7 @@ describe("public media reviews layout", () => {
   it("keeps the latest review cover visible on the main page", () => {
     assert.match(mainPage, /const coverUrl = review\?\.coverThumbUrl \?\? review\?\.coverUrl/);
     assert.match(mainPage, /review\.releaseYear[\s\S]*review\.authorScore !== null \? ` · \$\{formatScore\(review\.authorScore\)\} оценка автора`/);
-    assert.match(reviewQuery, /getLatestPublishedReviewCard[\s\S]*authorScore: ratings\.score[\s\S]*leftJoin\([\s\S]*ratings\.authorId, contributions\.authorId[\s\S]*ratings\.mediaItemId, mediaItems\.id/);
+    assert.match(reviewQuery, /getLatestPublishedReviewCard[\s\S]*authorScore: reviewAuthorScoreSql\(\)[\s\S]*leftJoin\([\s\S]*ratings\.authorId, contributions\.authorId[\s\S]*ratings\.mediaItemId, mediaItems\.id/);
     assert.match(
       mainPage,
       /aria-labelledby="main-latest-review"[\s\S]*backgroundImage: `url\(\$\{JSON\.stringify\(coverUrl\)\}\)`[\s\S]*position: "absolute"/,
@@ -128,7 +129,7 @@ describe("public media reviews layout", () => {
 
   it("loads only published reviews attached to visible records", () => {
     assert.match(reviewQuery, /getPublishedReviewById[\s\S]*contributions\.status, PUBLISHED_CONTRIBUTION_STATUS[\s\S]*mediaItems\.publicationStatus, PUBLISHED_PUBLICATION_STATUS[\s\S]*inArray\(mediaItems\.mediaType/);
-    assert.match(reviewQuery, /authorScore: ratings\.score[\s\S]*\.leftJoin\([\s\S]*ratings\.authorId/);
+    assert.match(reviewQuery, /authorScore: reviewAuthorScoreSql\(\)[\s\S]*\.leftJoin\([\s\S]*ratings\.authorId/);
     assert.match(reviewPage, /if \(!review\) notFound\(\)/);
     assert.match(reviewArticle, /href=\{`\/media\/\$\{review\.mediaItemCode\}`\}/);
   });

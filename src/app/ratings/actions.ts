@@ -1,5 +1,6 @@
 "use server";
 
+import { isTitlePartRateable } from "@/lib/media/title-parts";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -10,6 +11,7 @@ import {
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
+import { getTitlePart } from "@/db/queries/title-parts";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import {
   isFirstExperienceBeforeRelease,
@@ -50,9 +52,14 @@ export async function saveAuthorRatingAction(
   }
 
   const mediaItemCode = getFormString(formData, "mediaItemCode");
+  const rawPartId = getFormString(formData, "partId");
+  const partId = rawPartId ? Number(rawPartId) : null;
+  if (partId !== null && (!/^\d+$/.test(rawPartId) || !Number.isSafeInteger(partId) || partId <= 0)) {
+    return { error: "Не удалось определить часть записи." };
+  }
   const intent = getFormString(formData, "intent");
   const score = parseRatingScoreInput(formData.get("score"));
-  const shouldUpdateExperience = formData.has("firstExperiencedValue");
+  const shouldUpdateExperience = partId === null && formData.has("firstExperiencedValue");
   const firstExperiencedValue = getFormString(formData, "firstExperiencedValue");
   const firstExperiencedPrecision = getFormString(formData, "firstExperiencedPrecision");
 
@@ -70,10 +77,18 @@ export async function saveAuthorRatingAction(
   if (!mediaItem) {
     return { error: "Запись архива не найдена." };
   }
+  const part = partId === null ? null : await getTitlePart(mediaItem.id, partId);
+  if (partId !== null && !part) {
+    return { error: "Часть записи не найдена." };
+  }
+  if (partId !== null && formData.has("firstExperiencedValue")) {
+    return { error: "Дата знакомства относится к записи целиком." };
+  }
   if (intent === "delete") {
     await deleteAuthorRating({
       mediaItemId: mediaItem.id,
       authorId: author.id,
+      partId,
     });
 
     revalidateRatingPaths({
@@ -82,6 +97,10 @@ export async function saveAuthorRatingAction(
     });
 
     return { error: null };
+  }
+
+  if (part && !isTitlePartRateable(part)) {
+    return { error: "Спецвыпуски не оцениваются." };
   }
 
   if (score === null) {
@@ -111,6 +130,7 @@ export async function saveAuthorRatingAction(
     mediaItemId: mediaItem.id,
     authorId: author.id,
     score,
+    partId,
   });
 
   if (shouldUpdateExperience) {

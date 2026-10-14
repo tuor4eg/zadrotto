@@ -9,7 +9,8 @@ export type ReviewFormError =
   | "title-too-long"
   | "body-too-short"
   | "body-too-long"
-  | "locked";
+  | "locked"
+  | "scope-conflict";
 
 export type ReviewFormInput =
   | {
@@ -81,9 +82,20 @@ export function getReviewFormErrorMessage(error?: string | null) {
     return "Текст рецензии должен быть не длиннее 12000 символов.";
   }
 
+  if (error === "scope-conflict") {
+    return "У вас уже есть рецензия на выбранную часть или всю запись. Выберите другую привязку.";
+  }
+
   if (error === "locked") {
     return "Эту рецензию сейчас нельзя редактировать.";
   }
 
   return null;
+}
+
+export function parseReviewPartId(value: FormDataEntryValue | null | string) {
+  if (value === null || value === "") return { ok: true as const, partId: null };
+  if (typeof value !== "string" || !/^[1-9]\d*$/.test(value)) return { ok: false as const };
+  const partId = Number(value);
+  return Number.isSafeInteger(partId) ? { ok: true as const, partId } : { ok: false as const };
 }

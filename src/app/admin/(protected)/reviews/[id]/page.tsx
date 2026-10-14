@@ -103,7 +103,7 @@ export default async function AdminReviewRequestPage({ params }: AdminReviewRequ
               href={`/media/${review.mediaItemCode}`}
               className="font-medium text-stone-950 underline underline-offset-2"
             >
-              {review.mediaItemTitle}
+              {review.mediaItemTitle}{review.partLabel ? ` · ${review.partLabel}` : ""}
             </Link>
           </span>
         </div>

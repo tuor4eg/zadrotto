@@ -30,6 +30,8 @@ describe("review local draft", () => {
     assert.equal(parseReviewDraftScope("42"), "42")
     assert.equal(parseReviewDraftScope("0"), null)
     assert.equal(parseReviewDraftScope("oops"), null)
+    assert.equal(parseReviewDraftScope("new-12-3"), "new-12-3")
+    assert.notEqual(getReviewLocalDraftKey(7, "new-12-3"), getReviewLocalDraftKey(7, "new-12-overall"))
   })
 
   it("accepts the current persisted shape and rejects malformed data", () => {
@@ -38,13 +40,15 @@ describe("review local draft", () => {
       mediaItem: { id: 12, title: "Запись" },
       title: "Заголовок",
       updatedAt: "2026-09-21T12:00:00.000Z",
-      version: 1,
+      version: 2,
+      partId: null,
     }), {
       body: "Длинный текст рецензии",
       mediaItem: { id: 12, title: "Запись" },
       title: "Заголовок",
       updatedAt: "2026-09-21T12:00:00.000Z",
-      version: 1,
+      version: 2,
+      partId: null,
     })
     assert.equal(parseReviewLocalDraft({ version: 2 }), null)
     assert.equal(parseReviewLocalDraft({

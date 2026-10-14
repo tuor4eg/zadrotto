@@ -6,14 +6,18 @@ import { notFound, redirect } from "next/navigation"
 import {
   deleteAuthorDraftContributionReview,
   getAuthorReviewForEdit,
+  getAuthorReviewForMediaItem,
   getPublishedMediaItemForReview,
   upsertAuthorReview,
 } from "@/db/queries/contribution-reviews"
+import { isTitlePartReviewable } from "@/lib/media/title-parts"
+import { getTitlePart, getTitlePartsForMediaItem } from "@/db/queries/title-parts"
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types"
 import { requireAuthor } from "@/lib/auth/author-auth"
 import {
   getReviewFormErrorMessage,
   parseReviewFormInput,
+  parseReviewPartId,
 } from "@/lib/forms/contribution-review"
 import { logActivity } from "@/lib/activity-logs/server"
 
@@ -77,6 +81,8 @@ export async function savePublicReviewAction(
   const author = await requireAuthor()
   const contributionId = getPositiveInteger(getFormString(formData, "contributionId"))
   const mediaItemId = getPositiveInteger(getFormString(formData, "mediaItemId"))
+  const parsedPart = parseReviewPartId(formData.get("partId"))
+  const partId = parsedPart.ok ? parsedPart.partId : null
   const intent = getFormString(formData, "intent")
   const status =
     intent === "draft"
@@ -90,7 +96,7 @@ export async function savePublicReviewAction(
     body: values.body,
   })
 
-  if (!mediaItemId) {
+  if (!mediaItemId || !parsedPart.ok) {
     return {
       error: getReviewFormErrorMessage("invalid-media-item"),
       values,
@@ -117,6 +123,15 @@ export async function savePublicReviewAction(
     }
   }
 
+  const part = partId === null ? null : await getTitlePart(mediaItemId, partId)
+  if (partId !== null && !part) {
+    return { error: getReviewFormErrorMessage("not-found"), values }
+  }
+
+  if (part && !isTitlePartReviewable(part)) {
+    return { error: "Рецензии на спецвыпуски недоступны.", values }
+  }
+
   if (contributionId) {
     const existingReview = await getAuthorReviewForEdit(
       author.id,
@@ -124,13 +139,19 @@ export async function savePublicReviewAction(
       accessibleMediaTypeCodes,
     )
 
-    if (!existingReview) {
+    if (!existingReview || existingReview.mediaItemId !== mediaItemId) {
       notFound()
     }
   }
 
+  if (!contributionId) {
+    const existing = await getAuthorReviewForMediaItem(author.id, mediaItemId, partId)
+    if (existing) redirect(`/reviews/${existing.id}/edit`)
+  }
+
   const result = await upsertAuthorReview({
     contributionId,
+    partId,
     mediaItemId,
     authorId: author.id,
     status,
@@ -168,6 +189,15 @@ export async function savePublicReviewAction(
   const toastParam =
     status === "draft" ? "saved" : status === "published" ? "published" : "submitted"
 
-  const reviewDraftScope = contributionId ? String(contributionId) : "new"
+  const reviewDraftScope = contributionId ? String(contributionId) : `new-${mediaItemId}-${partId ?? "overall"}`
   redirect(`/reviews?view=mine&${toastParam}=1&reviewDraft=${reviewDraftScope}`)
+}
+
+export async function getReviewPartOptionsAction(mediaItemId: number) {
+  const author = await requireAuthor()
+  if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) return []
+  const codes = await getAccessibleMediaTypeCodes(author.id)
+  if (!await getPublishedMediaItemForReview(mediaItemId, codes)) return []
+  const parts = await getTitlePartsForMediaItem(mediaItemId)
+  return parts.filter(isTitlePartReviewable).map(({ id, name, type, number }) => ({ id, name, type, number }))
 }

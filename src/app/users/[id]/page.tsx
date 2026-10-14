@@ -73,11 +73,11 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const statisticsMediaItemsById = new Map(statisticsMediaItems.map((item) => [item.id, item]));
   const latestRatingTiles = statistics?.latestRatings.flatMap((rating) => {
     const item = statisticsMediaItemsById.get(rating.mediaItemId);
-    return item ? [{ currentAuthorScore: rating.score, href: `/media/${item.code}`, item, key: `rating-${item.id}`, ratingDisplay: "author-only" as const }] : [];
+    return item ? [{ currentAuthorScore: rating.score, href: `/media/${item.code}`, item: { ...item, title: rating.partLabel ? `${item.title} — ${rating.partLabel}` : item.title }, key: `rating-${rating.id}`, ratingDisplay: "author-only" as const }] : [];
   }) ?? [];
   const latestReviewTiles = statistics?.latestReviews.flatMap((review) => {
     const item = statisticsMediaItemsById.get(review.mediaItemId);
-    return item ? [{ currentAuthorScore: item.currentAuthorScore, href: `/reviews/${review.id}`, item, key: `review-${review.id}`, ratingDisplay: "author-only" as const }] : [];
+    return item ? [{ currentAuthorScore: review.authorScore, href: `/reviews/${review.id}`, item: { ...item, title: review.partLabel ? `${item.title} — ${review.partLabel}` : item.title }, key: `review-${review.id}`, ratingDisplay: "author-only" as const }] : [];
   }) ?? [];
 
   return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">

@@ -1,5 +1,6 @@
+import { getRatingDistributionScore } from "@/lib/ratings/score"
 import type { HomeAuthorStatisticsData } from "@/app/main/home-author-statistics"
-import type { DemoProfile } from "@/lib/user-state/demo-profile"
+import { getDemoRatedCodes, getDemoEffectiveScore, type DemoProfile } from "@/lib/user-state/demo-profile"
 
 export const DEMO_HOME_STATISTICS_CODE_LIMIT = 2_000
 
@@ -46,8 +47,9 @@ export function buildDemoHomeStatistics(
   mediaItems: readonly DemoHomeStatisticsMediaItem[],
 ): HomeAuthorStatisticsData {
   const scoreCounts = new Map<number, number>()
-  for (const rating of Object.values(profile.ratings)) {
-    scoreCounts.set(rating.score, (scoreCounts.get(rating.score) ?? 0) + 1)
+  for (const code of getDemoRatedCodes(profile)) {
+    const score = getRatingDistributionScore(getDemoEffectiveScore(profile, code)!)
+    scoreCounts.set(score, (scoreCounts.get(score) ?? 0) + 1)
   }
   const scoreMediaTypeCounts = new Map<string, {
     mediaType: string
@@ -64,15 +66,16 @@ export function buildDemoHomeStatistics(
   const seenCodes = new Set<string>()
 
   for (const item of mediaItems) {
-    const rating = profile.ratings[item.code]
-    if (seenCodes.has(item.code) || !rating) continue
+    const effectiveScore = getDemoEffectiveScore(profile, item.code)
+    const score = effectiveScore === null ? null : getRatingDistributionScore(effectiveScore)
+    if (seenCodes.has(item.code) || score === null) continue
     seenCodes.add(item.code)
-    const scoreKey = `${item.mediaType}\0${rating.score}`
+    const scoreKey = `${item.mediaType}\0${score}`
     const currentScore = scoreMediaTypeCounts.get(scoreKey)
     scoreMediaTypeCounts.set(scoreKey, {
       mediaType: item.mediaType,
       ratingsCount: (currentScore?.ratingsCount ?? 0) + 1,
-      score: rating.score,
+      score: score,
     })
     if (item.releaseYear === null) continue
     releaseYearCounts.set(item.releaseYear, (releaseYearCounts.get(item.releaseYear) ?? 0) + 1)

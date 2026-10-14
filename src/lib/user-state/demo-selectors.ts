@@ -1,12 +1,12 @@
 import type { AuthorRatingFilter } from "@/app/media-items-catalog-logic"
-import type { DemoProfile } from "@/lib/user-state/demo-profile"
+import { hasDemoRating, type DemoProfile } from "@/lib/user-state/demo-profile"
 
 export function matchDemoAuthorRatingFilter(
   mediaItemCode: string,
   filter: AuthorRatingFilter,
   profile: DemoProfile,
 ) {
-  const rated = Boolean(profile.ratings[mediaItemCode])
+  const rated = hasDemoRating(profile, mediaItemCode)
   const status = profile.statuses[mediaItemCode]?.status ?? null
 
   switch (filter) {
@@ -26,8 +26,8 @@ export function matchDemoAuthorRatingFilter(
 }
 
 /** Account wins: import demo rating/status only into empty server slots. */
-export function shouldImportDemoRating(hasServerRating: boolean) {
-  return !hasServerRating
+export function shouldImportDemoRating(hasServerRating: boolean, hasServerStatus = false) {
+  return !hasServerRating && !hasServerStatus
 }
 
 export function shouldImportDemoStatus(input: {

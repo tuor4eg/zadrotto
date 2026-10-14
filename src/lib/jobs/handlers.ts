@@ -1,3 +1,4 @@
+import { titlePartPosterHandler } from "@/lib/media/title-part-poster-job";
 import "server-only";
 
 import { applyGenreRequest } from "@/db/queries/genre-requests";
@@ -12,6 +13,7 @@ import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/ach
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
 import { enqueueDomainEventDispatch } from "@/lib/domain-events/queue";
 import { deliverPendingNotificationTransports } from "@/lib/notifications/outbox-delivery";
+import { isMediaTypeCode } from "@/lib/media/types";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
 import { backfillAnimeFromShikimori } from "@/lib/media/anime-shikimori-backfill";
@@ -203,8 +205,12 @@ function parseMetadataJobPayloadBase(value: unknown, extraKeys: readonly string[
 }
 
 function parseMetadataBackfillPayload(value: unknown): MetadataBackfillPayload {
-  const { limit, mediaItemId, quotaReserve } = parseMetadataJobPayloadBase(value, []);
-  return { limit, mediaItemId, quotaReserve };
+  const { limit, mediaItemId, quotaReserve, source } = parseMetadataJobPayloadBase(value, ["partsOnly", "force", "mediaType"]);
+  if (source.partsOnly !== undefined && typeof source.partsOnly !== "boolean") throw new JobError("invalid-payload", "partsOnly должен быть логическим значением.", { retryable: false });
+  if (source.force !== undefined && typeof source.force !== "boolean") throw new JobError("invalid-payload", "force должен быть логическим значением.", { retryable: false });
+  if (source.mediaType !== undefined && (typeof source.mediaType !== "string" || !isMediaTypeCode(source.mediaType))) throw new JobError("invalid-payload", "Некорректный тип записи.", { retryable: false });
+  return { limit, mediaItemId, quotaReserve, partsOnly: source.partsOnly as boolean | undefined,
+    force: source.force as boolean | undefined, mediaType: source.mediaType as string | undefined };
 }
 
 const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
@@ -226,6 +232,45 @@ const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
         { retryable: true },
       );
     }
+    for (const item of result.updatedItems) {
+      await logSystemActivity({
+        action: "media.metadata-backfill.completed",
+        entityId: item.id,
+        entityLabel: item.title,
+        message: payload.partsOnly
+          ? "Части записи обновлены из источника."
+          : "Метаданные записи заполнены из источника.",
+        metadata: {
+          force: Boolean(payload.force),
+          partsOnly: Boolean(payload.partsOnly),
+          runId,
+        },
+      });
+    }
+    const updatedTitles = result.updatedItems.map((item) => item.title);
+    const updatedTitlesLabel = updatedTitles.length === 0
+      ? "нет"
+      : updatedTitles.length <= 10
+        ? updatedTitles.join(", ")
+        : `${updatedTitles.slice(0, 10).join(", ")} и ещё ${updatedTitles.length - 10}`;
+    await logSystemActivity({
+      action: "media.metadata-backfill.completed",
+      entityType: "job-run",
+      entityId: runId,
+      message: payload.partsOnly
+        ? `Бэкфилл частей завершён: обновлено ${result.updated} (${updatedTitlesLabel}), пропущено ${result.skipped}, ошибок ${result.failed}.`
+        : `Заполнение метаданных завершено: обновлено ${result.updated} (${updatedTitlesLabel}), пропущено ${result.skipped}, ошибок ${result.failed}.`,
+      metadata: {
+        failed: result.failed,
+        force: Boolean(payload.force),
+        limit: payload.limit ?? null,
+        mediaType: payload.mediaType ?? null,
+        partsOnly: Boolean(payload.partsOnly),
+        skipped: result.skipped,
+        updated: result.updated,
+        updatedItems: result.updatedItems,
+      },
+    });
   },
 };
 
@@ -518,6 +563,7 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   adminExportGenerateHandler,
   adminExportCleanupHandler,
   coverThumbnailBackfillHandler,
+  titlePartPosterHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,
   animeShikimoriBackfillHandler,

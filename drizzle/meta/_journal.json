@@ -799,6 +799,27 @@
       "when": 1792454400000,
       "tag": "0113_admin_database_dump",
       "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0114_title_parts",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1792627200000,
+      "tag": "0115_title_part_descriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0116_unrated_specials",
+      "breakpoints": true
     }
   ]
 }

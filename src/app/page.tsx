@@ -260,6 +260,7 @@ function LatestReview({
                 </h3>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
                   {mediaTypeName ?? review.mediaType}
+                  {review.partLabel ? ` · ${review.partLabel}` : ""}
                   {review.releaseYear ? ` · ${review.releaseYear}` : ""}
                   {review.authorScore !== null ? ` · ${formatScore(review.authorScore)} оценка автора` : ""}
                 </p>
@@ -341,7 +342,7 @@ export default async function MainPage() {
         code: latestAcquaintanceItem.code,
         coverUrl: latestAcquaintanceItem.coverThumbUrl ?? latestAcquaintanceItem.coverUrl,
         score: authorHeroStatistics.latestRating.score,
-        title: latestAcquaintanceItem.title,
+        title: authorHeroStatistics.latestRating.partLabel ? `${latestAcquaintanceItem.title} — ${authorHeroStatistics.latestRating.partLabel}` : latestAcquaintanceItem.title,
         updatedAt: authorHeroStatistics.latestRating.updatedAt,
       }
     : null;

@@ -10,6 +10,7 @@ import { formatScore } from "@/lib/ratings/score"
 import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone"
 
 export type ReviewCatalogRowItem = {
+  partLabel?: string | null
   id: number
   authorId: number
   authorName: string
@@ -67,7 +68,7 @@ export function ReviewCatalogRow({
           {item.title}
         </span>
         <span className="mt-1 block truncate text-xs leading-tight text-stone-600">
-          {mediaTypeLabel} · {mediaItemTitle}
+          {mediaTypeLabel} · {mediaItemTitle}{item.partLabel ? ` · ${item.partLabel}` : ""}
         </span>
         <span className="mt-1 flex min-w-0 items-baseline gap-2 text-[10px] leading-tight">
           <span className="min-w-0 truncate text-stone-800">{item.authorName}</span>
@@ -80,7 +81,7 @@ export function ReviewCatalogRow({
           {mediaItemTitle}
         </span>
         <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
-          {mediaTypeLabel}
+          {mediaTypeLabel}{item.partLabel ? ` · ${item.partLabel}` : ""}
         </span>
       </span>
 
@@ -114,6 +115,7 @@ export function ReviewCatalogRow({
           <Heart aria-hidden="true" className="size-3.5" />
           {item.reactionCounts.like}
         </span>
+        {item.authorScore !== null ? (
         <span
           className={`inline-flex size-9 shrink-0 items-center justify-center rounded-md border font-mono text-sm tabular-nums shadow-sm sm:size-10 sm:text-base ${ratingToneClassName}`}
           aria-label={
@@ -124,6 +126,7 @@ export function ReviewCatalogRow({
         >
           {formatScore(item.authorScore)}
         </span>
+        ) : null}
       </span>
     </Link>
   )

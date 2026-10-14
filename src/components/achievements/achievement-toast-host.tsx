@@ -1,4 +1,6 @@
-"use client";
+"use client"
+
+import { getDemoRatedCodes } from "@/lib/user-state/demo-profile";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
@@ -117,7 +119,7 @@ export function AchievementToastHost() {
       const profile = readDemoProfile()
       if (!profile || profile.import.importedAt != null) return
 
-      const { achievements, values } = await loadDemoAchievementState(Object.keys(profile.ratings))
+      const { achievements, values } = await loadDemoAchievementState(getDemoRatedCodes(profile))
       if (achievements.length === 0) return
 
       const toastState = readDemoAchievementToastState()

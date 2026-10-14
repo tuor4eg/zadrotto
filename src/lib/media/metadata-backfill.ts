@@ -6,6 +6,9 @@ import { createMetadataProviderJobContext } from "@/lib/media/metadata-provider-
 import { runMetadataBackfill, type MetadataJobResult } from "@/lib/media/metadata-jobs"
 
 export type MetadataBackfillPayload = {
+  force?: boolean
+  mediaType?: string
+  partsOnly?: boolean
   limit?: number
   mediaItemId?: number
   quotaReserve?: number
@@ -13,6 +16,9 @@ export type MetadataBackfillPayload = {
 
 export async function backfillMediaMetadata(input: {
   attempt?: number
+  force?: boolean
+  mediaType?: string
+  partsOnly?: boolean
   limit?: number
   mediaItemId?: number
   quotaReserve?: number
@@ -21,9 +27,12 @@ export async function backfillMediaMetadata(input: {
   const items = await getMediaItemsMissingMetadata({
     limit: input.mediaItemId ? 1 : input.limit ?? 25,
     mediaItemId: input.mediaItemId,
+    partsOnly: input.partsOnly,
+    force: input.force,
+    mediaType: input.mediaType,
   })
   if (items.length === 0) {
-    return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0 }
+    return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, updatedItems: [] }
   }
 
   const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100)

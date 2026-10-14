@@ -49,13 +49,14 @@ type ArchiveCoverProps = {
 };
 
 type MediaItemTileProps = {
+  subtitle?: string;
   currentAuthorScore?: number | null;
   href?: string;
   item: MediaItemTileItem;
   mediaTypes?: readonly MediaTypeOption[];
   onSelect?: () => void;
   onRatingClick?: () => void;
-  ratingDisplay?: "default" | "author-only";
+  ratingDisplay?: "default" | "author-only" | "none";
   profileRating?: {
     comparison: "average" | "mine";
     score: number;
@@ -664,6 +665,7 @@ export function ArchiveCover({
 
 export function MediaItemTile({
   currentAuthorScore,
+  subtitle,
   href,
   item,
   mediaTypes = [],
@@ -677,7 +679,7 @@ export function MediaItemTile({
   const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const shouldShowAuthorScore = currentAuthorScore !== undefined && currentAuthorScore !== null;
   const shouldShowAuthorOnly = ratingDisplay === "author-only" && shouldShowAuthorScore;
-  const shouldShowRating = ratingDisplay !== "author-only" || shouldShowAuthorScore;
+  const shouldShowRating = ratingDisplay !== "none" && (ratingDisplay !== "author-only" || shouldShowAuthorScore);
   const mediaTypeLabel =
     showMediaTypeLabel && mediaTypes.length > 0
       ? getMediaTypeLabel(item.mediaType, mediaTypes)
@@ -722,6 +724,7 @@ export function MediaItemTile({
         </span>
       ) : null}
       <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
+        {subtitle ? <span className="mb-1 block text-xs leading-tight text-stone-200 drop-shadow">{subtitle}</span> : null}
         <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
           {displayTitle}
         </span>

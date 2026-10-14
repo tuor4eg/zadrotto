@@ -1,5 +1,7 @@
 "use client";
 
+import { hasDemoRating } from "@/lib/user-state/demo-profile";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 
@@ -317,6 +319,8 @@ export function MediaItemsCatalog({
             key={item.id}
             {...tileProps}
             currentAuthorScore={currentAuthor ? item.currentAuthorScore : (demoRating?.score ?? null)}
+            currentAuthorHasRating={currentAuthor ? item.currentAuthorRatedAt != null : Boolean(demoProfile && hasDemoRating(demoProfile, item.code))}
+            isAuthorized={Boolean(currentAuthor)}
             currentAuthorStatus={currentAuthor
               ? item.currentAuthorStatus
               : (demoRating ? null : (demoStatus?.status ?? null))}

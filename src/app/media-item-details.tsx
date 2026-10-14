@@ -74,6 +74,8 @@ type MediaItemDetailsProps = {
   variant?: "default" | "archive";
   actions?: React.ReactNode;
   adjacentShelfSlot?: React.ReactNode;
+  partsSlot?: React.ReactNode;
+  reviewsSlot?: React.ReactNode;
   breadcrumbSlot?: React.ReactNode;
   meta?: React.ReactNode;
   mediaTypes: MediaTypeOption[];
@@ -115,6 +117,8 @@ export function MediaItemDetails({
   variant = "default",
   actions,
   adjacentShelfSlot,
+  partsSlot,
+  reviewsSlot,
   breadcrumbSlot,
   meta,
   mediaTypes,
@@ -153,6 +157,8 @@ export function MediaItemDetails({
         item={item}
         actions={actions}
         adjacentShelfSlot={adjacentShelfSlot}
+        partsSlot={partsSlot}
+        reviewsSlot={reviewsSlot}
         breadcrumbSlot={breadcrumbSlot}
         meta={meta}
         mediaTypes={mediaTypes}
@@ -339,6 +345,8 @@ function ArchiveMediaItemDetails({
   item,
   actions,
   adjacentShelfSlot,
+  partsSlot,
+  reviewsSlot,
   breadcrumbSlot,
   meta,
   mediaTypes,
@@ -617,7 +625,7 @@ function ArchiveMediaItemDetails({
               </div>
 
               {item.description?.trim() ? (
-                <div className="mt-6 w-full max-w-[584px]">
+                <div className="-mx-6 mt-6 w-[calc(100%+3rem)] sm:mx-0 sm:w-full sm:max-w-[584px]">
                   <ArchiveNote text={item.description} maxWidthClassName="max-w-none" collapsible={!item.editorialSummary} />
                 </div>
               ) : null}
@@ -630,8 +638,19 @@ function ArchiveMediaItemDetails({
 
           </div>
 
+          {partsSlot || reviewsSlot ? (
+            <div className="order-5 flex w-full min-w-0 flex-col gap-8 px-6 py-6 sm:px-8 lg:col-span-2 lg:row-start-2">
+              {partsSlot}
+              {reviewsSlot ? (
+                <div className="w-full min-w-0 max-w-[420px]">
+                  {reviewsSlot}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+
           {relatedFranchiseSections.length > 0 ? (
-            <div className="order-5 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-2">
+            <div className="order-6 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-3">
               <div className="flex flex-col gap-6">
                 {relatedFranchiseSections.map((section) => (
                   <section key={section.franchise.id}>

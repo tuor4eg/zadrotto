@@ -1,3 +1,4 @@
+import { rateableRatingSql } from "@/db/queries/effective-ratings";
 import { asc, gt, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -34,16 +35,19 @@ export async function auditMediaItemRatingStats(limit = 100) {
 
   const rows = await db.execute<RatingStatsMismatch>(sql`
     WITH actual AS (
-      SELECT media_item_id, count(*)::int AS ratings_count, sum(score)::int AS score_sum
-      FROM ratings
+      SELECT media_item_id, count(*)::int AS ratings_count, sum(effective_score) AS score_sum
+      FROM (
+        SELECT media_item_id, author_id, coalesce(max(score) FILTER (WHERE part_id IS NULL), avg(score) FILTER (WHERE part_id IS NOT NULL)) AS effective_score
+        FROM ratings WHERE ${rateableRatingSql} GROUP BY media_item_id, author_id
+      ) effective
       GROUP BY media_item_id
     )
     SELECT
       coalesce(actual.media_item_id, projected.media_item_id)::int AS "mediaItemId",
       coalesce(actual.ratings_count, 0)::int AS "actualRatingsCount",
-      coalesce(actual.score_sum, 0)::int AS "actualScoreSum",
+      coalesce(actual.score_sum, 0)::double precision AS "actualScoreSum",
       projected.ratings_count::int AS "projectedRatingsCount",
-      projected.score_sum::int AS "projectedScoreSum",
+      projected.score_sum::double precision AS "projectedScoreSum",
       count(*) over()::int AS "totalMismatchCount"
     FROM actual
     FULL JOIN media_item_rating_stats projected USING (media_item_id)
@@ -70,8 +74,11 @@ export async function rebuildMediaItemRatingStats() {
     await tx.delete(mediaItemRatingStats);
     const rebuilt = await tx.execute<{ mediaItemId: number }>(sql`
       INSERT INTO media_item_rating_stats (media_item_id, ratings_count, score_sum)
-      SELECT media_item_id, count(*)::int, sum(score)::int
-      FROM ratings
+      SELECT media_item_id, count(*)::int, sum(effective_score)
+      FROM (
+        SELECT media_item_id, author_id, coalesce(max(score) FILTER (WHERE part_id IS NULL), avg(score) FILTER (WHERE part_id IS NOT NULL)) AS effective_score
+        FROM ratings WHERE ${rateableRatingSql} GROUP BY media_item_id, author_id
+      ) effective
       GROUP BY media_item_id
       RETURNING media_item_id AS "mediaItemId"
     `);
@@ -109,9 +116,11 @@ export async function reconcileMediaItemRatingStatsBatch(
 
     const mismatches = await tx.execute<{ mediaItemId: number }>(sql`
       WITH actual AS (
-        SELECT media_item_id, count(*)::int AS ratings_count, sum(score)::int AS score_sum
-        FROM ratings
-        WHERE ${inArray(ratings.mediaItemId, mediaItemIds)}
+        SELECT media_item_id, count(*)::int AS ratings_count, sum(effective_score) AS score_sum
+        FROM (
+          SELECT media_item_id, author_id, coalesce(max(score) FILTER (WHERE part_id IS NULL), avg(score) FILTER (WHERE part_id IS NOT NULL)) AS effective_score
+          FROM ratings WHERE ${inArray(ratings.mediaItemId, mediaItemIds)} AND ${rateableRatingSql} GROUP BY media_item_id, author_id
+        ) effective
         GROUP BY media_item_id
       ), projected AS (
         SELECT media_item_id, ratings_count, score_sum
@@ -127,9 +136,11 @@ export async function reconcileMediaItemRatingStatsBatch(
 
     await tx.execute(sql`
       INSERT INTO media_item_rating_stats (media_item_id, ratings_count, score_sum)
-      SELECT media_item_id, count(*)::int, sum(score)::int
-      FROM ratings
-      WHERE ${inArray(ratings.mediaItemId, mediaItemIds)}
+      SELECT media_item_id, count(*)::int, sum(effective_score)
+      FROM (
+        SELECT media_item_id, author_id, coalesce(max(score) FILTER (WHERE part_id IS NULL), avg(score) FILTER (WHERE part_id IS NOT NULL)) AS effective_score
+        FROM ratings WHERE ${inArray(ratings.mediaItemId, mediaItemIds)} AND ${rateableRatingSql} GROUP BY media_item_id, author_id
+      ) effective
       GROUP BY media_item_id
       ON CONFLICT (media_item_id) DO UPDATE SET
         ratings_count = EXCLUDED.ratings_count,
@@ -139,7 +150,7 @@ export async function reconcileMediaItemRatingStatsBatch(
       ${inArray(mediaItemRatingStats.mediaItemId, mediaItemIds)}
       AND NOT EXISTS (
         SELECT 1 FROM ${ratings}
-        WHERE ${ratings.mediaItemId} = ${mediaItemRatingStats.mediaItemId}
+        WHERE ${ratings.mediaItemId} = ${mediaItemRatingStats.mediaItemId} AND ${rateableRatingSql}
       )
     `);
 

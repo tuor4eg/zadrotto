@@ -1,5 +1,7 @@
 import { and, desc, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
+import { effectiveRatingColumns, getEffectiveRatingsQuery } from "@/db/queries/effective-ratings";
+import { reviewAuthorScoreSql } from "@/db/queries/review-author-score";
 import { db } from "@/db";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
@@ -11,7 +13,9 @@ import {
   contributions,
   mediaItems,
   ratings,
+  titleParts,
 } from "@/db/schema";
+import { getTitlePartLabel } from "@/lib/media/title-parts";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { FRIENDS_PAGE_SIZE, type FriendshipViewState } from "@/lib/friends/model";
 import { normalizeSearchText } from "@/lib/search/normalize";
@@ -279,19 +283,24 @@ export async function getPublicReviewJournal(authorId: number, requestedPage: nu
     code: mediaItems.code,
     mediaTitle: mediaItems.title,
     reviewTitle: contributionReviews.title,
+    partType: titleParts.type, partNumber: titleParts.number, partName: titleParts.name,
     publishedAt: contributions.reviewedAt,
     updatedAt: contributions.updatedAt,
   }).from(contributions).innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
-    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId)).where(filter)
+    .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+    .leftJoin(titleParts, eq(titleParts.id, contributions.partId)).where(filter)
     .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id))
     .limit(FRIENDS_PAGE_SIZE).offset(getOffset(page, FRIENDS_PAGE_SIZE));
-  return { items, page, pageSize: FRIENDS_PAGE_SIZE, totalCount, totalPages };
+  return { items: items.map(({ partType, partNumber, partName, ...item }) => ({
+    ...item, partLabel: partType !== null && partNumber !== null ? getTitlePartLabel({ type: partType, number: partNumber, name: partName }) : null,
+  })), page, pageSize: FRIENDS_PAGE_SIZE, totalCount, totalPages };
 }
 
 export async function getPublicAuthorStatistics(authorId: number, accessibleMediaTypeCodes: readonly string[]) {
+  const effectiveRatings = getEffectiveRatingsQuery();
   const currentMoscowYear = Number(new Intl.DateTimeFormat("ru-RU", { timeZone: "Europe/Moscow", year: "numeric" }).format(new Date()));
   const ratingFilter = and(
-    eq(ratings.authorId, authorId),
+    eq(effectiveRatings.authorId, authorId),
     eq(mediaItems.publicationStatus, "published"),
     getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
   );
@@ -304,26 +313,34 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
   );
   const [totalRows, distribution, releaseYearDistribution, scoreMediaTypeDistribution, latestRatings, reviewCountRows, latestReviews, contributionCount] = await Promise.all([
     db.select({
-      ratingsCount: sql<number>`count(${ratings.id})::int`,
-      averageScore: sql<number | null>`avg(${ratings.score})::float`,
-      currentYearRatingsCount: sql<number>`count(${ratings.id}) filter (where extract(year from ${ratings.createdAt} at time zone 'Europe/Moscow') = ${currentMoscowYear})::int`,
-    }).from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter),
-    db.select({ mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
-      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(mediaItems.mediaType),
-    db.select({ year: mediaItems.releaseYear, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
-      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(and(ratingFilter, sql`${mediaItems.releaseYear} is not null`))
+      ratingsCount: sql<number>`count(${effectiveRatingColumns.id})::int`,
+      averageScore: sql<number | null>`avg(${effectiveRatingColumns.score})::float`,
+      currentYearRatingsCount: sql<number>`count(${effectiveRatingColumns.id}) filter (where extract(year from ${effectiveRatingColumns.createdAt} at time zone 'Europe/Moscow') = ${currentMoscowYear})::int`,
+    }).from(effectiveRatings).innerJoin(mediaItems, eq(mediaItems.id, effectiveRatings.mediaItemId)).where(ratingFilter),
+    db.select({ mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${effectiveRatingColumns.id})::int` })
+      .from(effectiveRatings).innerJoin(mediaItems, eq(mediaItems.id, effectiveRatings.mediaItemId)).where(ratingFilter).groupBy(mediaItems.mediaType),
+    db.select({ year: mediaItems.releaseYear, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${effectiveRatingColumns.id})::int` })
+      .from(effectiveRatings).innerJoin(mediaItems, eq(mediaItems.id, effectiveRatings.mediaItemId)).where(and(ratingFilter, sql`${mediaItems.releaseYear} is not null`))
       .groupBy(mediaItems.releaseYear, mediaItems.mediaType).orderBy(mediaItems.releaseYear),
-    db.select({ score: ratings.score, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${ratings.id})::int` })
-      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter).groupBy(ratings.score, mediaItems.mediaType),
-    db.select({ mediaItemId: mediaItems.id, score: ratings.score })
-      .from(ratings).innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(ratingFilter)
+    db.select({ score: effectiveRatingColumns.distributionScore, mediaType: mediaItems.mediaType, ratingsCount: sql<number>`count(${effectiveRatingColumns.id})::int` })
+      .from(effectiveRatings).innerJoin(mediaItems, eq(mediaItems.id, effectiveRatings.mediaItemId)).where(ratingFilter).groupBy(effectiveRatingColumns.distributionScore, mediaItems.mediaType),
+    db.select({ id: ratings.id, partId: ratings.partId, mediaItemId: mediaItems.id, score: ratings.score,
+      partType: titleParts.type, partNumber: titleParts.number, partName: titleParts.name })
+      .from(ratings).leftJoin(titleParts, eq(titleParts.id, ratings.partId))
+      .innerJoin(mediaItems, eq(mediaItems.id, ratings.mediaItemId)).where(and(
+        eq(ratings.authorId, authorId), eq(mediaItems.publicationStatus, "published"),
+        getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes)))
       .orderBy(desc(ratings.updatedAt), desc(ratings.id)).limit(5),
     db.select({ reviewsCount: sql<number>`count(${contributions.id})::int` })
       .from(contributions).innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
       .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId)).where(reviewFilter),
-    db.select({ id: contributions.id, mediaItemId: mediaItems.id })
+    db.select({ id: contributions.id, mediaItemId: mediaItems.id, authorScore: reviewAuthorScoreSql(),
+      partType: titleParts.type, partNumber: titleParts.number, partName: titleParts.name })
       .from(contributions).innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
-      .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId)).where(reviewFilter)
+      .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+      .leftJoin(titleParts, eq(titleParts.id, contributions.partId))
+      .leftJoin(ratings, and(eq(ratings.authorId, contributions.authorId), eq(ratings.mediaItemId, contributions.primaryMediaItemId),
+        sql`${ratings.partId} is not distinct from ${contributions.partId}`)).where(reviewFilter)
       .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id)).limit(5),
     getAuthorPublishedMediaItemCount(authorId, accessibleMediaTypeCodes),
   ]);
@@ -352,7 +369,11 @@ export async function getPublicAuthorStatistics(authorId: number, accessibleMedi
     },
     reviewCount: reviewCountRows[0]?.reviewsCount ?? 0,
     contributionCount,
-    latestRatings,
-    latestReviews,
+    latestRatings: latestRatings.map(({ partType, partNumber, partName, ...rating }) => ({
+      ...rating, partLabel: partType !== null && partNumber !== null ? getTitlePartLabel({ type: partType, number: partNumber, name: partName }) : null,
+    })),
+    latestReviews: latestReviews.map(({ partType, partNumber, partName, ...review }) => ({
+      ...review, partLabel: partType !== null && partNumber !== null ? getTitlePartLabel({ type: partType, number: partNumber, name: partName }) : null,
+    })),
   };
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useId, useState } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 
@@ -24,10 +24,12 @@ import { MEDIA_IDENTITY_FONT_CLASS_NAME, type MediaCarrierRatingPanelVariant } f
 import { formatScore } from "@/lib/ratings/score";
 import { RATING_PANEL_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
+import { getDemoPartRating } from "@/lib/user-state/demo-actions";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 type MediaItemRatingDialogProps = {
   mediaItemCode: string;
+  partId?: number | null;
   openRequestKey?: number | null;
   franchiseCode?: string | null;
   title: string;
@@ -265,6 +267,7 @@ export function MediaItemRatingPanel({
 }
 
 export function MediaItemRatingModal({
+  partId = null,
   currentAuthor,
   currentAuthorFirstExperiencedAt,
   currentAuthorFirstExperiencedPrecision,
@@ -278,7 +281,7 @@ export function MediaItemRatingModal({
 }: MediaItemRatingModalProps) {
   return (
     <div
-      aria-labelledby="rating-dialog-title"
+      aria-labelledby={`${formId}-title`}
       aria-modal="true"
       className="fixed inset-0 z-50 grid items-start justify-items-center overflow-y-auto bg-stone-950/45 p-4"
       role="dialog"
@@ -289,7 +292,7 @@ export function MediaItemRatingModal({
       >
         <div className="flex items-start justify-between gap-4">
           <h2
-            id="rating-dialog-title"
+            id={`${formId}-title`}
             className="min-w-0 break-words text-xl font-normal uppercase leading-tight text-stone-950 sm:text-2xl"
           >
             {title}
@@ -311,6 +314,7 @@ export function MediaItemRatingModal({
         <div className="mt-5">
           <AuthorRatingForm
             mediaItemCode={mediaItemCode}
+            partId={partId}
             franchiseCode={franchiseCode}
             currentAuthor={currentAuthor}
             currentAuthorFirstExperiencedAt={currentAuthorFirstExperiencedAt}
@@ -320,7 +324,7 @@ export function MediaItemRatingModal({
             variant="archive"
             inlineSaveButton={false}
             showLabel={false}
-            showExperienceFields
+            showExperienceFields={partId === null}
             formId={formId}
             ratingDialogLayout
             onSaved={onClose}
@@ -333,6 +337,7 @@ export function MediaItemRatingModal({
 
 export function MediaItemRatingDialog({
   mediaItemCode,
+  partId = null,
   openRequestKey,
   franchiseCode,
   title,
@@ -347,13 +352,14 @@ export function MediaItemRatingDialog({
   size = "card",
 }: MediaItemRatingDialogProps) {
   const router = useRouter();
+  const formId = useId();
   const demoProfile = useDemoProfile();
   const hasRealAuthor = Boolean(currentAuthor && currentAuthor.code !== "demo");
   const isDemo = Boolean(
     demoProfile && demoProfile.import.importedAt == null && !hasRealAuthor,
   );
   const demoOverlay = useDemoMediaOverlay(mediaItemCode, currentAuthorScore, null);
-  const effectiveScore = hasRealAuthor ? currentAuthorScore : demoOverlay.score;
+  const effectiveScore = hasRealAuthor ? currentAuthorScore : partId !== null ? getDemoPartRating(mediaItemCode, partId, demoProfile)?.score ?? null : demoOverlay.score;
   const effectiveFirstExperiencedAt = hasRealAuthor
     ? currentAuthorFirstExperiencedAt
     : demoOverlay.firstExperiencedAt;
@@ -393,6 +399,7 @@ export function MediaItemRatingDialog({
         ? createPortal(
             <MediaItemRatingModal
               mediaItemCode={mediaItemCode}
+              partId={partId}
               franchiseCode={franchiseCode}
               title={title}
               currentAuthor={hasRealAuthor ? currentAuthor : null}
@@ -400,7 +407,7 @@ export function MediaItemRatingDialog({
               currentAuthorFirstExperiencedPrecision={effectiveFirstExperiencedPrecision}
               currentAuthorScore={effectiveScore}
               releaseYear={releaseYear}
-              formId="media-item-rating-form"
+              formId={`${formId}-rating-form`}
               onClose={() => {
                 setIsOpen(false);
                 setOpenRatingAfterLogin(false);

@@ -52,7 +52,7 @@ export async function importDemoProfileAction(
     console.error("Failed to import demo profile", {
       authorId: author.id,
       error,
-      ratingsCount: Object.keys(profile.ratings).length,
+      ratingsCount: Object.keys(profile.ratings).length + Object.values(profile.partRatings).reduce((sum, parts) => sum + Object.keys(parts).length, 0),
       statusesCount: Object.keys(profile.statuses).length,
     })
     return {

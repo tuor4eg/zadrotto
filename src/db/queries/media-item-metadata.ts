@@ -1,7 +1,10 @@
+import type { TitlePartProviderInput } from "@/lib/media/title-parts"
+import { syncProviderTitleParts } from "@/db/queries/title-parts-sync"
+import { createJobRun } from "@/db/queries/jobs"
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
-import { mediaCarriers, mediaItemMetadata, mediaItems } from "@/db/schema"
+import { mediaCarriers, mediaItemMetadata, mediaItems, titleParts } from "@/db/schema"
 import type { MetadataIssueCode } from "@/lib/media/metadata-issue"
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status"
 import { logSystemActivity } from "@/lib/activity-logs/system"
@@ -24,6 +27,8 @@ export type MediaItemMetadataValue = {
 };
 
 export type UpsertMediaItemMetadataInput = {
+  parts?: TitlePartProviderInput[];
+  requestProviderParts?: boolean;
   mediaItemId: number;
   facts: MediaItemMetadataFacts;
   sourceProvider?: string | null;
@@ -95,6 +100,19 @@ export async function upsertMediaItemMetadata(
       })
       .returning();
 
+    const partsResult = input.parts !== undefined && provider
+      ? await syncProviderTitleParts(tx, { mediaItemId: input.mediaItemId, provider, parts: input.parts })
+      : { posters: [], conflicts: [] };
+    for (const poster of partsResult.posters) {
+      await createJobRun({ type: "media.title-part-poster", payload: poster, source: "event",
+        maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 3600, timeoutSeconds: 120 }, now, tx);
+    }
+    // Client candidates do not carry parts. Refresh the trusted provider response after source selection.
+    if (input.requestProviderParts && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId) {
+      await createJobRun({ type: "media.metadata-backfill", payload: { mediaItemId: input.mediaItemId, partsOnly: true }, source: "event",
+        maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 3600, timeoutSeconds: 300 }, now, tx);
+    }
+
     await syncMediaItemProviderGenres(tx, { mediaItemId: input.mediaItemId, provider, genres: resolved.genres });
     await syncGenreRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
       externalGenres: extractExternalGenres(input.facts) });
@@ -107,6 +125,7 @@ export async function upsertMediaItemMetadata(
     const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql() }).from(mediaItems)
       .where(eq(mediaItems.id, input.mediaItemId));
     return {
+      partConflicts: partsResult.conflicts,
       metadata: mapMediaItemMetadata(row, genreRow.genres),
       title: item.title, mediaType: item.mediaType, unmapped: resolved.unmapped,
       shouldWarn: hasNewUnmappedGenres({
@@ -115,6 +134,11 @@ export async function upsertMediaItemMetadata(
       }),
     };
   });
+  if (result.partConflicts.length) {
+    await logSystemActivity({ action: "media.parts.sync-conflict", entityId: input.mediaItemId, entityLabel: result.title,
+      message: "При обновлении частей записи обнаружен конфликт источников или нумерации.", severity: "warning",
+      metadata: { provider, conflicts: result.partConflicts } });
+  }
   if (result.shouldWarn && !provider) {
     await logSystemActivity({
       action: "media.genres.unmapped", entityId: input.mediaItemId, entityLabel: result.title,
@@ -200,12 +224,17 @@ const metadataJobItemSelect = {
 export async function getMediaItemsMissingMetadata(input: {
   limit?: number
   mediaItemId?: number
+  partsOnly?: boolean
+  force?: boolean
+  mediaType?: string
 } = {}) {
   const knownMissing = and(hasMetadataSourceSql, missingMetadataFactsSql)
   const unmatched = sql`not ${hasMetadataSourceSql}`
   const conditions = [
-    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-    or(knownMissing, unmatched),
+    input.partsOnly && input.mediaItemId ? undefined : eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+    input.partsOnly ? and(eq(mediaItems.mediaType, "series"), eq(mediaItemMetadata.sourceProvider, "tmdb"), hasMetadataSourceSql,
+      input.mediaItemId || input.force ? undefined : sql`not exists (select 1 from ${titleParts} where ${titleParts.mediaItemId} = ${mediaItems.id} and ${titleParts.sourceProvider} = 'tmdb')`) : input.force ? undefined : or(knownMissing, unmatched),
+    input.mediaType ? eq(mediaItems.mediaType, input.mediaType) : undefined,
   ]
 
   if (input.mediaItemId) {

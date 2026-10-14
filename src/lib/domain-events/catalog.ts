@@ -33,7 +33,7 @@ export const DOMAIN_EVENT_TYPES = [
 export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
 
 export type DomainEventPayloads = {
-  "rating.created": { authorId: number; mediaItemId: number };
+  "rating.created": { authorId: number; mediaItemId: number; partId?: number };
   "review.published": { authorId: number; mediaItemId: number };
   "review.submitted": { authorId: number; contributionId: number; mediaItemId: number };
   "review.approved": { authorId: number; contributionId: number; mediaItemId: number };

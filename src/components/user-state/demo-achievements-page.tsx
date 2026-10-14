@@ -1,5 +1,7 @@
 "use client"
 
+import { getDemoRatedCodes } from "@/lib/user-state/demo-profile"
+
 import Image from "next/image"
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react"
 import { useRouter } from "next/navigation"
@@ -37,7 +39,7 @@ export function DemoAchievementsPage({
   const ready = useSyncExternalStore(subscribeToHydration, () => true, () => false)
   const isDemo = Boolean(profile && profile.import.importedAt == null)
   const ratedCodesKey = profile
-    ? Object.keys(profile.ratings).sort().join("\0")
+    ? getDemoRatedCodes(profile).sort().join("\0")
     : ""
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function DemoAchievementsPage({
   useEffect(() => {
     if (!isDemo || !profile) return
     let cancelled = false
-    const mediaItemCodes = Object.keys(profile.ratings)
+    const mediaItemCodes = getDemoRatedCodes(profile)
     void fetch("/api/demo-achievements", {
       method: "POST",
       headers: { "content-type": "application/json" },

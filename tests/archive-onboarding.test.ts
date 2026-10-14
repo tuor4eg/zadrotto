@@ -308,7 +308,7 @@ describe("archive onboarding HUD wiring", () => {
     assert.match(hudApiSource, /authorId: author\.id/)
     assert.match(hudApiSource, /ratingsCount: 0/)
     assert.match(ratingsQuerySource, /export async function getAuthorRatingsCount/)
-    assert.match(ratingsQuerySource, /count\(\$\{ratings\.id\}\)::int/)
+    assert.match(ratingsQuerySource, /count\(distinct \$\{ratings\.mediaItemId\}\)::int/)
     assert.match(layerSource, /refreshUserHud/)
     assert.match(layerSource, /USER_HUD_REFRESH_EVENT/)
     assert.match(layerSource, /ARCHIVE_ONBOARDING_RATING_SAVED_EVENT/)

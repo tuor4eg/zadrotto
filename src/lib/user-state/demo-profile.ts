@@ -1,6 +1,7 @@
+import { getEffectiveRating } from "@/lib/media/title-parts"
 export const DEMO_PROFILE_STORAGE_KEY = "zadrotto.demo-profile"
 export const DEMO_PROFILE_STORAGE_EVENT = "zadrotto:demo-profile"
-export const DEMO_PROFILE_SCHEMA_VERSION = 1
+export const DEMO_PROFILE_SCHEMA_VERSION = 2
 export const DEMO_LOGIN_PROMPT_RATING_THRESHOLD = 12
 export const DEMO_ONBOARDING_STORAGE_AUTHOR_KEY = "demo"
 
@@ -39,6 +40,7 @@ export type DemoProfile = {
     mediaTypeOverrides: Record<string, boolean>
   }
   loginPrompt: DemoLoginPromptState
+  partRatings: Record<string, Record<string, DemoRatingEntry>>
   ratings: Record<string, DemoRatingEntry>
   schemaVersion: number
   statuses: Record<string, DemoStatusEntry>
@@ -58,6 +60,7 @@ export function createEmptyDemoProfile(now = new Date().toISOString()): DemoProf
       dismissCount: 0,
       lastShownAt: null,
     },
+    partRatings: {},
     ratings: {},
     schemaVersion: DEMO_PROFILE_SCHEMA_VERSION,
     statuses: {},
@@ -131,7 +134,7 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
   const value = raw as Record<string, unknown>
   // Unknown versions require an explicit migration. Silently interpreting a
   // future shape as the current one can corrupt or discard local demo data.
-  if (value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) return null
+  if (value.schemaVersion !== 1 && value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) return null
 
   const base = createEmptyDemoProfile(
     typeof value.createdAt === "string" ? value.createdAt : undefined,
@@ -145,11 +148,25 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
     }
   }
 
+  const partRatings: DemoProfile["partRatings"] = {}
+  if (value.schemaVersion === DEMO_PROFILE_SCHEMA_VERSION && value.partRatings && typeof value.partRatings === "object") {
+    for (const [code, rawParts] of Object.entries(value.partRatings as Record<string, unknown>)) {
+      if (!rawParts || typeof rawParts !== "object") continue
+      const parts: Record<string, DemoRatingEntry> = {}
+      for (const [id, entry] of Object.entries(rawParts)) {
+        if (!/^[1-9]\d*$/.test(id) || !Number.isSafeInteger(Number(id))) continue
+        const parsed = parseRatingEntry(entry)
+        if (parsed) parts[id] = { score: parsed.score, updatedAt: parsed.updatedAt }
+      }
+      if (Object.keys(parts).length > 0) partRatings[code] = parts
+    }
+  }
+
   const statuses: Record<string, DemoStatusEntry> = {}
   if (value.statuses && typeof value.statuses === "object") {
     for (const [mediaItemId, entry] of Object.entries(value.statuses as Record<string, unknown>)) {
       const parsed = parseStatusEntry(entry)
-      if (parsed && !ratings[mediaItemId]) statuses[mediaItemId] = parsed
+      if (parsed && !ratings[mediaItemId] && !partRatings[mediaItemId]) statuses[mediaItemId] = parsed
     }
   }
 
@@ -193,6 +210,7 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
     import: importState,
     interests: { mediaTypeOverrides },
     loginPrompt,
+    partRatings,
     ratings,
     schemaVersion: DEMO_PROFILE_SCHEMA_VERSION,
     statuses,
@@ -200,7 +218,7 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
 }
 
 export function getDemoRatingsCount(profile: DemoProfile) {
-  return Object.keys(profile.ratings).length
+  return getDemoRatedCodes(profile).length
 }
 
 export function shouldShowDemoLoginPrompt(
@@ -219,4 +237,18 @@ export function shouldShowDemoLoginPrompt(
   const dayMs = 24 * 60 * 60 * 1000
   const intervalMs = Math.min(7 * dayMs, dayMs * (2 ** dismissCount))
   return now - lastShownMs >= intervalMs
+}
+
+export function getDemoRatedCodes(profile: DemoProfile) {
+  return [...new Set([...Object.keys(profile.ratings), ...Object.keys(profile.partRatings)])]
+}
+
+export function hasDemoRating(profile: DemoProfile, code: string) {
+  return Boolean(profile.ratings[code] || Object.keys(profile.partRatings[code] ?? {}).length)
+}
+
+/** Derived fallback only; never persisted as an overall rating. */
+export function getDemoEffectiveScore(profile: DemoProfile, code: string): number | null {
+  return getEffectiveRating(profile.ratings[code]?.score ?? null,
+    Object.values(profile.partRatings[code] ?? {}).map((entry) => entry.score))
 }

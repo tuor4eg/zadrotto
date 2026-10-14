@@ -392,6 +392,7 @@ async function saveMediaItemMetadataMutation(
   }
 
   await upsertMediaItemMetadata({
+    requestProviderParts: true,
     mediaItemId,
     facts: mutation.facts,
     sourceProvider: mutation.sourceProvider,
@@ -1116,6 +1117,8 @@ export async function deleteAuthorMediaItemAction(formData: FormData) {
     coverUrl: deletedItem.coverUrl,
     coverThumbUrl: deletedItem.coverThumbUrl,
   }).catch(console.error);
+
+  await Promise.all(deletedItem.partCovers.map((cover) => deleteUploadedCoverFilesIfNeeded(cover).catch(console.error)));
 
   revalidatePath("/author/media");
   await logActivity({

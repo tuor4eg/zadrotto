@@ -25,6 +25,7 @@ export type MyReviewCatalogRowItem = {
   authorScore: number | null
   title: string
   mediaItemCode: string
+  partLabel?: string | null
   mediaItemTitle: string
   mediaItemOriginalTitle?: string | null;
   mediaItemAliases?: string[] | null
@@ -96,6 +97,7 @@ function MyReviewActions({ item }: { item: MyReviewCatalogRowItem }) {
 }
 
 function MyReviewScore({ score }: { score: number | null }) {
+  if (score === null) return null
   const ratingToneClassName = AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
 
   return (
@@ -143,7 +145,7 @@ export function MyReviewCatalogRow({
 
         <div className="min-w-0">
           <p className="truncate text-sm font-semibold leading-tight text-stone-950">
-            {mediaItemTitle}
+            {mediaItemTitle}{item.partLabel ? ` · ${item.partLabel}` : ""}
           </p>
           <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
             {mediaTypeLabel}
@@ -205,7 +207,7 @@ export function MyReviewCatalogRow({
               <MyReviewScore score={item.authorScore} />
             </div>
             <p className="mt-2 truncate text-sm font-semibold text-stone-950">
-              {mediaItemTitle}
+              {mediaItemTitle}{item.partLabel ? ` · ${item.partLabel}` : ""}
             </p>
             <p className="mt-0.5 truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
               {mediaTypeLabel}

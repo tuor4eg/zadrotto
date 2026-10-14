@@ -31,7 +31,7 @@ function ArchiveFeedCard({
 }) {
   const displayTitle = item.kind === "media" ? resolveMediaItemDisplayTitles(item).displayTitle : item.title;
   const meta = item.kind === "review" && item.mediaItemTitle
-    ? `${resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle }).displayTitle} · ${item.authorName}`
+    ? `${resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle }).displayTitle}${item.partLabel ? ` · ${item.partLabel}` : ""} · ${item.authorName}`
     : item.meta;
   const { icon: KindIcon, label } = KIND_DETAILS[item.kind];
 

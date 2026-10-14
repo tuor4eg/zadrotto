@@ -174,6 +174,8 @@ test("achievement backfill is enqueue-only and cannot be created as a periodic s
   assert.match(schedules, /schedulable: schedulable !== false/);
   assert.match(manager, /handlers\.filter\(\(item\) => item\.schedulable \|\| item\.type === job\?\.type\)/);
   assert.match(manager, /AdHocJobButton[\s\S]*handlers\.filter\(\(item\) => item\.type !== EDITORIAL_SUMMARY_GENERATE_TYPE\)\.map\(\(item\) => <option key=\{item\.type\}/);
+  assert.match(manager, /partsOnly: true/);
+  assert.match(manager, /Только части сериалов без сезонов/);
 });
 
 test("jobs admin separates schedules from paginated run history", async () => {

@@ -88,7 +88,10 @@ export type SignedMediaTitleCandidate = MediaTitleCandidate & {
   titleSourceToken: string;
 };
 
+export type ProviderTitlePart = import("@/lib/media/title-parts").TitlePartProviderInput;
+
 export type MediaTitleMetadata = {
+  parts?: ProviderTitlePart[];
   provider: MediaProviderCode;
   externalId: string;
   sourceUrl: string | null;

@@ -1,4 +1,5 @@
 import { Alert } from "@/components/ui/alert";
+import { getAllMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminJobs, getLatestJobRuns } from "@/db/queries/jobs";
 import { getRegisteredJobHandlers } from "@/lib/jobs/queue";
 
@@ -10,10 +11,11 @@ export default async function JobSchedulesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const query = await searchParams;
-  const [jobs, latestRuns, handlerDefinitions] = await Promise.all([
+  const [jobs, latestRuns, handlerDefinitions, mediaTypes] = await Promise.all([
     getAdminJobs(),
     getLatestJobRuns(),
     Promise.resolve(getRegisteredJobHandlers()),
+    getAllMediaTypeOptions(),
   ]);
   const handlers = handlerDefinitions.map(({ label, schedulable, type }) => ({
     label,
@@ -28,7 +30,7 @@ export default async function JobSchedulesPage({
           Не удалось выполнить действие: проверьте заполненные поля и расписание.
         </Alert>
       ) : null}
-      <JobsManager handlers={handlers} jobs={jobs} latestRuns={latestRuns} />
+      <JobsManager handlers={handlers} jobs={jobs} latestRuns={latestRuns} mediaTypes={mediaTypes} />
     </section>
   );
 }

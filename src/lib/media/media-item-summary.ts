@@ -46,7 +46,7 @@ export function getArchiveMediaItemInfoLabels(item: MediaItemSummaryInput) {
   );
 }
 
-function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
+export function formatPluralCount(value: number, labels: { one: string; few: string; many: string }) {
   const plural = new Intl.PluralRules("ru-RU").select(value);
   const label = plural === "one" ? labels.one : plural === "few" ? labels.few : labels.many;
 

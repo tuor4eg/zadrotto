@@ -11,10 +11,12 @@ import {
   franchises,
   mediaItemFranchises,
   mediaItems,
+  titleParts,
 } from "@/db/schema";
 import { PUBLISHED_CONTRIBUTION_STATUS } from "@/lib/contributions/model";
 import { resolveCollectionImageUrl } from "@/lib/collections/images";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
+import { getTitlePartLabel } from "@/lib/media/title-parts";
 import { resolveCoverUrl } from "@/lib/services/minio";
 
 const ARCHIVE_FEED_SIZE = 12;
@@ -29,6 +31,7 @@ export type ArchiveFeedItem = {
   title: string;
   originalTitle?: string | null;
   aliases?: string[];
+  partLabel?: string | null;
   mediaItemTitle?: string;
   mediaItemOriginalTitle?: string | null;
   mediaItemAliases?: string[];
@@ -72,11 +75,13 @@ export async function getLatestArchiveFeed(
         mediaItemOriginalTitle: mediaItems.originalTitle,
         mediaItemAliases: mediaItemDisplayAliasesSql(),
         reviewTitle: contributionReviews.title,
+        partType: titleParts.type, partNumber: titleParts.number, partName: titleParts.name,
       })
       .from(contributions)
       .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
       .innerJoin(authors, eq(authors.id, contributions.authorId))
       .innerJoin(mediaItems, eq(mediaItems.id, contributions.primaryMediaItemId))
+      .leftJoin(titleParts, eq(titleParts.id, contributions.partId))
       .where(and(
         eq(contributions.type, "review"),
         eq(contributions.status, PUBLISHED_CONTRIBUTION_STATUS),
@@ -172,6 +177,7 @@ export async function getLatestArchiveFeed(
       kind: "review",
       meta: `${item.mediaItemTitle} · ${item.authorName}`,
       mediaItemTitle: item.mediaItemTitle,
+      partLabel: item.partType !== null && item.partNumber !== null ? getTitlePartLabel({ type: item.partType, number: item.partNumber, name: item.partName }) : null,
       mediaItemAliases: item.mediaItemAliases,
       mediaItemOriginalTitle: item.mediaItemOriginalTitle,
       authorName: item.authorName,

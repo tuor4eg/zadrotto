@@ -65,6 +65,7 @@ type TmdbSeriesDetailsResponse = {
   }>;
   number_of_episodes?: number | null;
   number_of_seasons?: number | null;
+  seasons?: Array<{ id?: number; season_number?: number; name?: string | null; overview?: string | null; air_date?: string | null; poster_path?: string | null; episode_count?: number | null }>;
   status?: string | null;
 };
 
@@ -298,6 +299,7 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
         provider: "tmdb",
         externalId: input.externalId,
         sourceUrl: client.sourcePageUrl(id),
+        ...(mediaType === "series" && Array.isArray(seriesDetails.seasons) ? { parts: mapTmdbSeasons(seriesDetails.seasons) } : {}),
         facts: {
           seasonCount: seriesDetails.number_of_seasons ?? null,
           episodeCount: seriesDetails.number_of_episodes ?? null,
@@ -461,4 +463,29 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
       return candidates;
     },
   };
+}
+
+export function mapTmdbSeasons(seasons: NonNullable<TmdbSeriesDetailsResponse["seasons"]>): import("@/lib/covers/types").ProviderTitlePart[] {
+  const seenNumbers = new Set<number>();
+  const seenIds = new Set<number>();
+  return seasons.flatMap((season) => {
+    const number = season.season_number;
+    const id = season.id;
+    if (!Number.isSafeInteger(number) || number! <= 0 || !Number.isSafeInteger(id) || id! <= 0
+      || seenNumbers.has(number!) || seenIds.has(id!)) return [];
+    seenNumbers.add(number!);
+    seenIds.add(id!);
+    const rawDate = season.air_date ?? "";
+    const parsedDate = /^\d{4}-\d{2}-\d{2}$/.test(rawDate) ? new Date(`${rawDate}T00:00:00Z`) : null;
+    const airDate = parsedDate && !Number.isNaN(parsedDate.getTime()) && parsedDate.toISOString().slice(0, 10) === rawDate ? rawDate : null;
+    // Metadata is requested in ru-RU; ignore a blank or Latin-only fallback.
+    const overview = typeof season.overview === "string" ? season.overview.trim() : "";
+    const description = /[А-Яа-яЁё]/.test(overview) ? overview : undefined;
+    return [{ type: "season" as const, number: number!, externalId: String(id),
+      ...(description ? { description } : {}),
+      name: season.name?.trim() || null, airDate, year: airDate ? Number(airDate.slice(0, 4)) : null,
+      episodeCount: Number.isSafeInteger(season.episode_count) && season.episode_count! >= 0 ? season.episode_count! : null,
+      posterSourceUrl: season.poster_path?.startsWith("/") ? `https://image.tmdb.org/t/p/w500${season.poster_path}` : null,
+      sortOrder: number! }];
+  });
 }

@@ -2,6 +2,7 @@
 
 import { usePathname } from "next/navigation";
 
+import { usePageUnavailable } from "@/components/external-interface/page-availability";
 import { ArchiveSiteFooter } from "@/components/archive/archive-site-footer";
 
 function usesPublicSiteShell(pathname: string) {
@@ -13,8 +14,9 @@ function usesPublicSiteShell(pathname: string) {
 
 export function PublicSiteFooterLayer() {
   const pathname = usePathname();
+  const pageUnavailable = usePageUnavailable();
 
-  if (!usesPublicSiteShell(pathname)) return null;
+  if (pageUnavailable || !usesPublicSiteShell(pathname)) return null;
 
   return (
     <div className="public-site-footer-layer shrink-0 bg-[var(--archive-bg-end)] px-3 pb-3 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">

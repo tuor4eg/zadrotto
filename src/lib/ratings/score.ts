@@ -53,3 +53,8 @@ export function parseRatingScoreInput(value: FormDataEntryValue | null) {
 
   return score;
 }
+
+/** Histogram bucket only; the effective average itself stays precise. */
+export function getRatingDistributionScore(score: number) {
+  return Math.max(10, Math.min(100, Math.round(score / 10) * 10));
+}

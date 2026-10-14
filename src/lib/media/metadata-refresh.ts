@@ -26,7 +26,7 @@ export async function refreshStaleMediaMetadata(input: {
     staleDays: input.staleDays ?? 90,
   })
   if (items.length === 0) {
-    return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0 }
+    return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, updatedItems: [] }
   }
 
   const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100)

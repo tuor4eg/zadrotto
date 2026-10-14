@@ -1,7 +1,7 @@
 "use client"
 
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles"
-import { ArrowRight, Plus, Star } from "lucide-react"
+import { ArrowRight, Plus } from "lucide-react"
 import Link from "next/link"
 import { useRouter } from "next/navigation"
 import { useEffect, useRef, useState } from "react"
@@ -11,8 +11,10 @@ import { AuthorLoginModal } from "@/app/author/login/author-login-modal"
 import { ArchiveCover } from "@/app/media-item-tile"
 import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup"
 import { formatScore } from "@/lib/ratings/score"
+import { LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES, RATING_TEXT_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone"
 
 export type MediaItemReview = {
+  partLabel?: string | null
   id: number
   authorId: number
   authorName: string
@@ -61,39 +63,21 @@ function formatDate(value: Date | string | null) {
   }).format(date)
 }
 
-export function ReviewAuthorStars({
-  compact = false,
+export function ReviewAuthorScore({
   score,
   tone = "dark",
 }: {
-  compact?: boolean
   score: number | null
   tone?: "dark" | "light"
 }) {
-  const starRating = (score ?? 0) / 20
-  const iconClassName = compact ? "size-3" : "size-6 sm:size-7"
-  const starClassName = compact ? "size-3" : "size-6 sm:size-7"
-  const emptyClassName = tone === "light" ? "text-stone-50/35" : "text-stone-400/70"
-  const filledClassName = tone === "light" ? "text-stone-50" : "text-stone-950"
-
+  if (score === null) return null
+  const toneClassName = (tone === "light" ? RATING_TEXT_TONE_CLASS_NAMES : LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES)[getRatingTone(score)]
   return (
     <div
       aria-label={score === null ? "Оценка автора не указана" : `Оценка автора: ${formatScore(score)} из 10`}
-      className={`flex items-center justify-center gap-0.5 ${filledClassName}`}
-      role="img"
+      className={`text-center text-xs font-semibold tabular-nums ${toneClassName}`}
     >
-      {Array.from({ length: 5 }, (_, index) => {
-        const fillPercent = Math.max(0, Math.min(100, (starRating - index) * 100))
-
-        return (
-          <span key={index} className={`relative ${starClassName}`}>
-            <Star className={`absolute inset-0 ${emptyClassName} ${iconClassName}`} />
-            <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
-              <Star className={`fill-current ${iconClassName}`} />
-            </span>
-          </span>
-        )
-      })}
+      {formatScore(score)}/10
     </div>
   )
 }
@@ -197,7 +181,7 @@ function MediaItemReviewCoverCard({
   return (
     <Link
       href={`/reviews/${review.id}`}
-      className={`relative flex aspect-square min-w-0 cursor-pointer flex-col overflow-hidden border border-stone-300/80 bg-white text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${polaroidTiltClassName(index)}`}
+      className={`media-carrier-font-streaming relative flex aspect-square min-w-0 cursor-pointer flex-col overflow-hidden border border-stone-300/80 bg-white text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${polaroidTiltClassName(index)}`}
       aria-label={`Открыть рецензию на «${mediaItemTitle}», автор ${review.authorName}`}
     >
       <span
@@ -220,7 +204,7 @@ function MediaItemReviewCoverCard({
         <span className="absolute inset-x-0 bottom-0 h-4/5 bg-gradient-to-t from-black/95 via-black/70 to-transparent" />
       </span>
       <div className="absolute inset-[7px] z-10 flex flex-col justify-end px-2.5 pb-1.5 pt-2.5 text-stone-50 sm:px-3 sm:pb-2 sm:pt-3">
-        <h3 className="line-clamp-2 font-serif text-sm leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-[15px]">
+        <h3 className="line-clamp-2 text-sm leading-tight drop-shadow-[0_1px_2px_rgba(0,0,0,0.65)] sm:text-[15px]">
           {mediaItemTitle}
         </h3>
         <ReviewQuotePreview
@@ -231,9 +215,9 @@ function MediaItemReviewCoverCard({
           <span className="min-w-0 truncate drop-shadow">{review.authorName}</span>
           <span className="shrink-0 drop-shadow">{publishedAt ?? "Рецензия"}</span>
         </div>
-        <div className="mt-1.5 border-t border-stone-50/25 pt-1">
-          <ReviewAuthorStars compact score={review.authorScore} tone="light" />
-        </div>
+        {review.authorScore !== null ? <div className="mt-1.5 border-t border-stone-50/25 pt-1">
+          <ReviewAuthorScore score={review.authorScore} tone="light" />
+        </div> : null}
       </div>
     </Link>
   )
@@ -262,7 +246,7 @@ export function MediaItemReviewCard({
   return (
     <Link
       href={`/reviews/${review.id}`}
-      className={`archive-typewriter-text relative flex aspect-square min-w-0 cursor-pointer flex-col border border-stone-300/80 bg-white text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
+      className={`media-carrier-font-streaming relative flex aspect-square min-w-0 cursor-pointer flex-col border border-stone-300/80 bg-white text-left shadow-[0_7px_14px_rgba(68,64,60,0.18)] transition-transform hover:-translate-y-1 focus-visible:-translate-y-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-stone-950 ${
         compact
           ? "px-2.5 pb-1.5 pt-2.5"
           : "px-4 pb-2.5 pt-4 sm:px-[18px] sm:pb-2.5 sm:pt-4"
@@ -283,7 +267,7 @@ export function MediaItemReviewCard({
       />
       {showMediaItemTitle && review.mediaItemTitle ? (
         <div
-          className={`relative z-10 mb-1.5 line-clamp-2 shrink-0 font-serif font-semibold text-stone-950 ${
+          className={`relative z-10 mb-1.5 line-clamp-2 shrink-0 font-semibold text-stone-950 ${
             compact ? "text-[9px] leading-3" : "text-xs leading-4 sm:text-sm"
           }`}
         >
@@ -297,6 +281,7 @@ export function MediaItemReviewCard({
             compact ? "text-[9px] leading-3" : "text-[11px] leading-4 sm:text-xs"
           }`}
         >
+          {review.partLabel ? <span className="mb-1 block">{review.partLabel}</span> : null}
           {review.title}
         </div>
         <div
@@ -307,9 +292,9 @@ export function MediaItemReviewCard({
           <span className="min-w-0 truncate">{review.authorName}</span>
           <span className="shrink-0">{publishedAt ?? "Рецензия"}</span>
         </div>
-        <div className="mt-0 border-t border-stone-200 pt-0.5">
-          <ReviewAuthorStars compact score={review.authorScore} />
-        </div>
+        {review.authorScore !== null ? <div className="mt-0 border-t border-stone-200 pt-0.5">
+          <ReviewAuthorScore score={review.authorScore} />
+        </div> : null}
       </div>
     </Link>
   )

@@ -113,6 +113,8 @@ export default async function EditReviewPage({
                   authorId={author.id}
                   canPublishWithoutReview={author.canPublishMediaWithoutReview}
                   contributionId={review.id}
+                  partId={review.partId}
+                  partLabel={review.partLabel}
                   mediaItem={{ id: review.mediaItemId, title: review.mediaItemTitle }}
                   mediaItemLocked
                   status={review.status}

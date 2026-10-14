@@ -3,6 +3,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 
+import { TitlePartsSection } from "@/components/archive/title-parts-section";
+import { getTitlePartsForMediaItem } from "@/db/queries/title-parts";
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
 import { AuthorMediaStatusControls } from "@/app/author-media-status-controls";
@@ -101,7 +103,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz] = await Promise.all([
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts] = await Promise.all([
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -115,6 +117,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
       ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
       : Promise.resolve(false),
     currentAuthor ? getParticipatingActiveQuiz(currentAuthor.id) : Promise.resolve(null),
+    getTitlePartsForMediaItem(item.id, currentAuthor?.id),
   ]);
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -190,7 +193,9 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               />
             ) : null
           }
-          adjacentShelfSlot={
+          partsSlot={parts.length ? <TitlePartsSection parts={parts} mediaItemCode={item.code} mediaType={item.mediaType} title={displayTitle}
+            currentAuthor={currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null} /> : null}
+          reviewsSlot={
             currentAuthor || reviews.length > 0 ? (
               <MediaItemReviews
                 mediaItemId={item.id}
@@ -207,6 +212,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
                 <AuthorMediaStatusControls
                   className="mt-0"
                   currentAuthorScore={item.currentAuthorScore}
+                  currentAuthorHasRating={item.currentAuthorRatedAt !== null}
+                  isAuthorized
                   currentAuthorStatus={item.currentAuthorStatus}
                   mediaItemCode={item.code}
                 />

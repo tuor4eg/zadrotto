@@ -226,6 +226,7 @@ async function saveMediaItemMetadataMutation(
   }
 
   await upsertMediaItemMetadata({
+    requestProviderParts: true,
     mediaItemId,
     facts: mutation.facts,
     sourceProvider: mutation.sourceProvider,
@@ -535,6 +536,8 @@ export async function deleteAdminMediaItemAction(formData: FormData) {
       console.error(error);
     }
   }
+
+  await Promise.all(deletedItem.partCovers.map((cover) => deleteUploadedCoverFilesIfNeeded(cover).catch(console.error)));
 
   revalidateMediaSurfaces(existingItem);
   await logActivity({

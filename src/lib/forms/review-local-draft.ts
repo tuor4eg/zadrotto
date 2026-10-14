@@ -3,12 +3,13 @@ import {
   REVIEW_TITLE_MAX_LENGTH,
 } from "@/lib/forms/contribution-review"
 
-const REVIEW_LOCAL_DRAFT_VERSION = 1
+const REVIEW_LOCAL_DRAFT_VERSION = 2
 const REVIEW_LOCAL_DRAFT_PREFIX = "zadrotto.review-draft"
 
-export type ReviewDraftScope = "new" | `${number}`
+export type ReviewDraftScope = "new" | `new-${number}-${number | "overall"}` | `${number}`
 
 export type ReviewLocalDraft = {
+  partId: number | null
   body: string
   mediaItem: {
     id: number
@@ -21,6 +22,7 @@ export type ReviewLocalDraft = {
 
 export function parseReviewDraftScope(value: string | null | undefined): ReviewDraftScope | null {
   if (value === "new") return value
+  if (value && /^new-[1-9]\d*-(overall|[1-9]\d*)$/.test(value)) return value as ReviewDraftScope
   if (!value || !/^\d+$/.test(value) || Number(value) <= 0) return null
   return value as ReviewDraftScope
 }
@@ -32,7 +34,9 @@ export function getReviewLocalDraftKey(authorId: number, scope: ReviewDraftScope
 export function parseReviewLocalDraft(raw: unknown): ReviewLocalDraft | null {
   if (!raw || typeof raw !== "object") return null
   const value = raw as Record<string, unknown>
-  if (value.version !== REVIEW_LOCAL_DRAFT_VERSION) return null
+  if (value.version !== 1 && value.version !== REVIEW_LOCAL_DRAFT_VERSION) return null
+  const partId = value.version === 1 ? null : value.partId
+  if (partId !== null && (typeof partId !== "number" || !Number.isInteger(partId) || partId <= 0)) return null
   if (typeof value.title !== "string" || value.title.length > REVIEW_TITLE_MAX_LENGTH) return null
   if (typeof value.body !== "string" || value.body.length > REVIEW_BODY_MAX_LENGTH) return null
   if (typeof value.updatedAt !== "string" || !Number.isFinite(Date.parse(value.updatedAt))) return null
@@ -54,6 +58,7 @@ export function parseReviewLocalDraft(raw: unknown): ReviewLocalDraft | null {
   }
 
   return {
+    partId,
     body: value.body,
     mediaItem,
     title: value.title,
@@ -74,7 +79,7 @@ export function readReviewLocalDraft(key: string) {
 
 export function writeReviewLocalDraft(
   key: string,
-  input: Pick<ReviewLocalDraft, "body" | "mediaItem" | "title">,
+  input: Pick<ReviewLocalDraft, "body" | "mediaItem" | "title"> & { partId?: number | null },
 ) {
   if (typeof window === "undefined") return
   try {
@@ -84,6 +89,7 @@ export function writeReviewLocalDraft(
     }
     const draft: ReviewLocalDraft = {
       ...input,
+      partId: input.partId ?? null,
       updatedAt: new Date().toISOString(),
       version: REVIEW_LOCAL_DRAFT_VERSION,
     }

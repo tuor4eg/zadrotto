@@ -16,6 +16,8 @@ import {
 } from "@/db/queries/media-types"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
 import { requireAuthor } from "@/lib/auth/author-auth"
+import { isTitlePartReviewable } from "@/lib/media/title-parts"
+import { getTitlePart } from "@/db/queries/title-parts"
 import { getReviewFormErrorMessage } from "@/lib/forms/contribution-review"
 
 import { PublicReviewForm } from "../review-form"
@@ -30,6 +32,7 @@ export const dynamic = "force-dynamic"
 type NewReviewPageProps = {
   searchParams: Promise<{
     error?: string
+    partId?: string
     mediaItemId?: string
   }>
 }
@@ -48,6 +51,7 @@ export default async function NewReviewPage({ searchParams }: NewReviewPageProps
     getEffectiveMediaTypeOptions(author.id),
   ])
   const mediaItemId = parsePositiveInteger(params.mediaItemId)
+  const partId = parsePositiveInteger(params.partId)
   const errorMessage = getReviewFormErrorMessage(params.error)
   const toastMessages: ArchiveToast[] = errorMessage
     ? [{ id: params.error ?? "review-error", tone: "error", text: errorMessage }]
@@ -59,10 +63,15 @@ export default async function NewReviewPage({ searchParams }: NewReviewPageProps
     const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id)
     const [mediaItem, existingReview] = await Promise.all([
       getPublishedMediaItemForReview(mediaItemId, accessibleMediaTypeCodes),
-      getAuthorReviewForMediaItem(author.id, mediaItemId),
+      getAuthorReviewForMediaItem(author.id, mediaItemId, partId),
     ])
 
     if (!mediaItem) {
+      redirect("/reviews/new?error=not-found")
+    }
+
+    const part = partId ? await getTitlePart(mediaItemId, partId) : null
+    if ((params.partId && !partId) || (partId && (!part || !isTitlePartReviewable(part)))) {
       redirect("/reviews/new?error=not-found")
     }
 
@@ -105,6 +114,7 @@ export default async function NewReviewPage({ searchParams }: NewReviewPageProps
             <div className="mt-5">
               <PublicReviewForm
                 authorId={author.id}
+                partId={partId}
                 canPublishWithoutReview={author.canPublishMediaWithoutReview}
                 mediaItem={initialMediaItem}
                 mediaItemLocked={false}

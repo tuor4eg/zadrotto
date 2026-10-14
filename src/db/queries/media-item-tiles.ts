@@ -64,6 +64,7 @@ export async function getMediaItemTilesByIds(
             from ${ratings}
             where ${ratings.mediaItemId} = ${mediaItems.id}
               and ${ratings.authorId} = ${currentAuthorId}
+              and ${ratings.partId} is null
             limit 1
           )`
         : sql<number | null>`null`,

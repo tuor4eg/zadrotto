@@ -1,6 +1,6 @@
 import type { AuthorDigitalProfile } from "@/db/queries/author-digital-profile"
 import type { DemoProfile } from "@/lib/user-state/demo-profile"
-import { getDemoRatingsCount } from "@/lib/user-state/demo-profile"
+import { getDemoRatingsCount, getDemoRatedCodes, getDemoEffectiveScore } from "@/lib/user-state/demo-profile"
 import {
   getAuthorResearchMessage,
   type AuthorResearchMessage,
@@ -58,11 +58,11 @@ export function buildHomeResearchSnapshotFromAuthor(input: {
 }
 
 export function buildHomeResearchSnapshotFromDemo(profile: DemoProfile): HomeResearchSnapshot {
-  const ratings = Object.values(profile.ratings)
+  const scores = getDemoRatedCodes(profile).map((code) => getDemoEffectiveScore(profile, code)!)
   const ratingsCount = getDemoRatingsCount(profile)
   const averageScore = ratingsCount === 0
     ? null
-    : Math.round(ratings.reduce((sum, entry) => sum + entry.score, 0) / ratingsCount)
+    : Math.round(scores.reduce((sum, score) => sum + score, 0) / ratingsCount)
 
   return {
     averageScore,

@@ -87,3 +87,15 @@ describe("admin review deletion query", () => {
     assert.match(source, /\.delete\(contributions\)/);
   });
 });
+
+import { parseReviewPartId } from "../src/lib/forms/contribution-review";
+
+describe("review scope input", () => {
+  it("keeps overall scope nullable and rejects invalid part identifiers", () => {
+    assert.deepEqual(parseReviewPartId(null), { ok: true, partId: null });
+    assert.deepEqual(parseReviewPartId("7"), { ok: true, partId: 7 });
+    for (const value of ["0", "-1", "1.5", "1e2", "9007199254740992"]) {
+      assert.deepEqual(parseReviewPartId(value), { ok: false });
+    }
+  });
+});

@@ -1,7 +1,6 @@
 "use client"
 
 import { useActionState, useEffect, useRef, useState } from "react"
-import { useRouter } from "next/navigation"
 import { Loader2, Search } from "lucide-react"
 
 import { ArchiveToasts } from "@/components/ui/archive-toasts"
@@ -18,10 +17,11 @@ import {
   writeReviewLocalDraft,
   type ReviewDraftScope,
 } from "@/lib/forms/review-local-draft"
+import { getTitlePartLabel } from "@/lib/media/title-parts"
 import type { ContributionStatus } from "@/lib/contributions/model"
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types"
 
-import { savePublicReviewAction, type SavePublicReviewState } from "./actions"
+import { getReviewPartOptionsAction, savePublicReviewAction, type SavePublicReviewState } from "./actions"
 
 type MediaSearchItem = {
   id: number
@@ -39,6 +39,8 @@ type SelectedMediaItem = {
 }
 
 type PublicReviewFormProps = {
+  partId?: number | null
+  partLabel?: string | null
   authorId: number
   canPublishWithoutReview?: boolean
   contributionId?: number
@@ -67,6 +69,7 @@ function formatMediaSearchMeta(
 
 export function PublicReviewForm({
   authorId,
+  partId: initialPartId = null,
   canPublishWithoutReview = false,
   contributionId,
   mediaItem = null,
@@ -75,7 +78,8 @@ export function PublicReviewForm({
   status,
   values,
 }: PublicReviewFormProps) {
-  const router = useRouter()
+  const [partId, setPartId] = useState(initialPartId)
+  const [parts, setParts] = useState<Awaited<ReturnType<typeof getReviewPartOptionsAction>>>([])
   const isExistingReview = Boolean(contributionId)
   const canSaveDraft = !isExistingReview || status === "draft"
   const isPublishedReview = status === "published"
@@ -108,7 +112,7 @@ export function PublicReviewForm({
     },
   }
   const [state, formAction, isPending] = useActionState(savePublicReviewAction, initialState)
-  const draftScope: ReviewDraftScope = contributionId ? String(contributionId) as `${number}` : "new"
+  const draftScope: ReviewDraftScope = contributionId ? String(contributionId) as `${number}` : selectedMedia ? `new-${selectedMedia.id}-${partId ?? "overall"}` : "new"
   const draftKey = getReviewLocalDraftKey(authorId, draftScope)
 
   useEffect(() => {
@@ -120,29 +124,30 @@ export function PublicReviewForm({
         const restoredMediaItem = mediaItemLocked ? mediaItem : draft.mediaItem ?? mediaItem
         setSelectedMedia(restoredMediaItem)
         setMediaQuery(restoredMediaItem?.title ?? "")
+        setPartId(draft.partId)
         setRestoredDraft(true)
       }
       setDraftReady(true)
     }, 0)
     return () => window.clearTimeout(timeoutId)
-  }, [draftKey, mediaItem, mediaItemLocked])
+  }, [contributionId, draftKey, mediaItem, mediaItemLocked])
 
   useEffect(() => {
     if (!draftReady) return
     const timeoutId = window.setTimeout(() => {
-      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title })
+      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title, partId })
     }, 300)
     return () => window.clearTimeout(timeoutId)
-  }, [body, draftKey, draftReady, selectedMedia, title])
+  }, [body, draftKey, draftReady, selectedMedia, title, partId])
 
   useEffect(() => {
     if (!draftReady) return
     const saveBeforeLeaving = () => {
-      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title })
+      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title, partId })
     }
     window.addEventListener("pagehide", saveBeforeLeaving)
     return () => window.removeEventListener("pagehide", saveBeforeLeaving)
-  }, [body, draftKey, draftReady, selectedMedia, title])
+  }, [body, draftKey, draftReady, selectedMedia, title, partId])
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -219,6 +224,15 @@ export function PublicReviewForm({
     }
   }, [mediaItemLocked, mediaQuery, selectedMedia?.title])
 
+  useEffect(() => {
+    if (!selectedMedia) return
+    let cancelled = false
+    void getReviewPartOptionsAction(selectedMedia.id).then((items) => {
+      if (!cancelled) setParts(items)
+    }).catch(() => { if (!cancelled) setSearchError("Не удалось загрузить части записи. Попробуйте ещё раз.") })
+    return () => { cancelled = true }
+  }, [selectedMedia, mediaItemLocked])
+
   function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     if (!selectedMedia) {
       event.preventDefault()
@@ -254,11 +268,8 @@ export function PublicReviewForm({
   }
 
   function selectMediaItem(item: MediaSearchItem) {
-    if (item.existingReviewId) {
-      router.push(`/reviews/${item.existingReviewId}/edit`)
-      return
-    }
-
+    setPartId(null)
+    setParts([])
     setSelectedMedia({ id: item.id, title: item.title })
     setMediaQuery(item.title)
     setSearchItems([])
@@ -275,6 +286,8 @@ export function PublicReviewForm({
       {selectedMedia ? (
         <input type="hidden" name="mediaItemId" value={selectedMedia.id} />
       ) : null}
+
+      <input type="hidden" name="partId" value={partId ?? ""} />
 
       <ArchiveToasts
         messages={
@@ -309,6 +322,8 @@ export function PublicReviewForm({
 
                 if (selectedMedia && nextQuery !== selectedMedia.title) {
                   setSelectedMedia(null)
+                  setPartId(null)
+                  setParts([])
                 }
 
                 const canSearch = normalizedQuery.length >= 2
@@ -368,6 +383,21 @@ export function PublicReviewForm({
           <p className="text-xs text-stone-500">Выберите запись, прежде чем сохранять рецензию.</p>
         ) : null}
       </div>
+
+      {selectedMedia ? (
+        <div className="grid gap-2">
+          <Label htmlFor="review-part">Рецензия на</Label>
+          <select id="review-part" className="rounded-md border border-stone-200 bg-white px-3 py-2 text-sm" value={partId ?? ""} onChange={(event) => setPartId(event.target.value ? Number(event.target.value) : null)}>
+              <option value="">Всю запись</option>
+              {parts.map((part) => {
+                const numberedLabel = getTitlePartLabel({ ...part, name: null })
+                const name = part.name?.trim()
+                const label = name && name !== numberedLabel ? `${numberedLabel} (${name})` : numberedLabel
+                return <option key={part.id} value={part.id}>{label}</option>
+              })}
+          </select>
+        </div>
+      ) : null}
 
       <div className="grid gap-2">
         <Label htmlFor="title">Заголовок</Label>

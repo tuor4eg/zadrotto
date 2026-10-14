@@ -250,7 +250,13 @@ describe("metadata backfill and refresh runs", () => {
       store,
     })
 
-    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 1 })
+    assert.deepEqual(result, {
+      failed: 0,
+      retryableFailed: 0,
+      skipped: 0,
+      updated: 1,
+      updatedItems: [{ id: 11, title: "Known" }],
+    })
     assert.equal(searches.length, 0)
     assert.deepEqual(attempts, [11])
     assert.deepEqual(issueCodes, [null])
@@ -278,7 +284,7 @@ describe("metadata backfill and refresh runs", () => {
       store,
     })
 
-    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 1, updated: 0 })
+    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 1, updated: 0, updatedItems: [] })
     assert.deepEqual(attempts, [12])
     assert.deepEqual(upserts, [])
     assert.deepEqual(issueCodes, ["year-mismatch"])
@@ -361,7 +367,7 @@ describe("metadata backfill and refresh runs", () => {
       store,
     })
 
-    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, stopError: "provider-daily-limit" })
+    assert.deepEqual(result, { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, updatedItems: [], stopError: "provider-daily-limit" })
     assert.equal(fetched.length, 1)
     assert.deepEqual(attempts, [])
     assert.deepEqual(upserts, [])
@@ -412,7 +418,13 @@ describe("metadata backfill and refresh runs", () => {
       store,
     })
 
-    assert.deepEqual(result, { failed: 1, retryableFailed: 1, skipped: 0, updated: 1 })
+    assert.deepEqual(result, {
+      failed: 1,
+      retryableFailed: 1,
+      skipped: 0,
+      updated: 1,
+      updatedItems: [{ id: 32, title: "Ok" }],
+    })
     assert.deepEqual(attempts, [31, 32])
     assert.equal(failures[0]?.action, "media.metadata-backfill.failed")
     assert.equal(upserts.length, 1)

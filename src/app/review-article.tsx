@@ -30,6 +30,7 @@ type ReviewArticleProps = {
     mediaItemCarrierCode: string | null;
     mediaItemCode: string;
     mediaItemMediaType: MediaType;
+    partLabel?: string | null;
     mediaItemTitle: string;
     reactions: ReviewReactionSummary;
   };
@@ -167,10 +168,11 @@ export function ReviewArticle({
         {mediaItemIdentity}
 
         <section className="relative mt-5 flex flex-1 flex-col">
-          <div className="relative -mx-6 flex flex-1 flex-col sm:mx-0">
+          <div className="media-carrier-font-streaming relative -mx-6 flex flex-1 flex-col sm:mx-0">
             <div className="archive-review-paper relative flex flex-1 flex-col border border-stone-300/70 px-6 pb-28 pt-4 sm:px-10 sm:pb-32 sm:pt-5">
             <div className="flex items-start justify-between gap-4">
-              <h1 className="archive-typewriter-text min-w-0 max-w-3xl flex-1 break-words text-2xl font-semibold leading-tight text-stone-950 sm:text-4xl">
+              <h1 className="min-w-0 max-w-3xl flex-1 break-words text-2xl font-semibold leading-tight text-stone-950 sm:text-4xl">
+                {review.partLabel ? <span className="mb-2 block text-sm text-stone-600">{review.partLabel}</span> : null}
                 {review.title}
               </h1>
               <div className="flex shrink-0 gap-2">
@@ -193,15 +195,15 @@ export function ReviewArticle({
                 ) : null}
               </div>
             </div>
-            <div className="archive-typewriter-text mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-600 sm:text-sm">
+            <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-stone-600 sm:text-sm">
               <Link href={`/users/${review.authorId}`} className="group flex items-center gap-2 rounded-sm hover:text-stone-950">
-                <Avatar name={review.authorName} objectKey={review.authorAvatarObjectKey} className="size-8 shrink-0 font-sans text-[10px]" />
+                <Avatar name={review.authorName} objectKey={review.authorAvatarObjectKey} className="size-8 shrink-0 text-[10px]" />
                 <span className="underline decoration-stone-400/60 underline-offset-2 group-hover:decoration-stone-950">{review.authorName}</span>
               </Link>
               {publishedAt ? <span>{publishedAt}</span> : null}
             </div>
             <div className="mt-8 w-full">
-              <p className="media-carrier-font-streaming whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-8 text-stone-800 sm:text-base sm:leading-9">
+              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-7 text-stone-800 sm:text-base sm:leading-8">
                 <InlineMentionText
                   nodes={inlineNodes}
                   resolvedEntities={resolvedInlineEntities}
@@ -211,7 +213,7 @@ export function ReviewArticle({
               <div className="absolute bottom-5 left-6 z-20 sm:bottom-6 sm:left-10">
                 {canEdit ? (
                   <span
-                    className="inline-flex h-9 items-center gap-2 rounded-full bg-stone-100/70 px-3 font-mono text-xs tabular-nums text-stone-600"
+                    className="inline-flex h-9 items-center gap-2 rounded-full bg-stone-100/70 px-3 text-xs tabular-nums text-stone-600"
                     aria-label={`Лайков: ${reactions.like.count}`}
                   >
                     <Heart aria-hidden="true" className="size-4" />
@@ -228,7 +230,7 @@ export function ReviewArticle({
                         ? "Убрать лайк"
                         : "Поставить лайк"
                       : "Войти, чтобы поставить лайк"}
-                    className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 font-mono text-xs tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-900 disabled:cursor-wait disabled:opacity-65 ${
+                    className={`inline-flex h-9 items-center gap-2 rounded-full border px-3 text-xs tabular-nums transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-900 disabled:cursor-wait disabled:opacity-65 ${
                       reactions.like.reactedByCurrentUser
                         ? "border-red-900/35 bg-red-900/10 text-red-950"
                         : "border-stone-300/80 bg-stone-50/80 text-stone-700 hover:border-red-900/50 hover:text-red-950"
@@ -250,8 +252,8 @@ export function ReviewArticle({
             {review.authorScore !== null ? (
               <div className="absolute bottom-4 right-3 z-20 w-48 rotate-[0.8deg] border border-stone-400/20 bg-[#ead8b5] px-4 pb-3 pt-4 text-stone-800 shadow-[0_5px_10px_rgba(68,64,60,0.2)] sm:bottom-6 sm:right-5">
                 <span className="absolute left-1/2 top-0 h-5 w-16 -translate-x-1/2 -translate-y-1/2 rotate-[-2deg] border border-stone-400/10 bg-[#dfcda8]/90 shadow-sm" aria-hidden="true" />
-                <div className="archive-typewriter-text text-sm font-semibold">Оценка автора</div>
-                <div className="archive-typewriter-text mt-1 text-right text-xl font-semibold leading-none">{formatScore(review.authorScore)} / 10</div>
+                <div className="text-sm font-semibold">Оценка автора</div>
+                <div className="mt-1 text-right text-xl font-semibold leading-none">{formatScore(review.authorScore)} / 10</div>
               </div>
             ) : null}
           </div>
