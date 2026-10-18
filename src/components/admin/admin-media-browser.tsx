@@ -96,7 +96,7 @@ function getCompactMetadata(item: AdminMediaBrowserItem) {
     item.genres.map((genre) => genre.name),
     getStringListFact(item.metadataFacts, "authors"),
     getStringListFact(item.metadataFacts, "developers"),
-    getStringListFact(item.metadataFacts, "platforms"),
+    (item.platforms ?? []).map((platform) => platform.name),
   ];
   const values = candidates.find((candidate) => candidate.length > 0) ?? [];
 

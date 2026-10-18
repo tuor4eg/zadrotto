@@ -5,6 +5,7 @@ import { describe, it } from "node:test"
 import {
   getAdminSubmissionStatusLabel,
   getNotificationHref,
+  getNotificationEntityType,
   getNotificationRecipientType,
   getNotificationTitle,
   isAdminSubmissionNotificationType,
@@ -74,6 +75,10 @@ describe("notification domain events", () => {
       "media-franchise.removal.approved",
       "review.submitted",
       "review.approved",
+      "genre-request.created",
+      "platform-request.created",
+      "creator-request.created",
+      "author.registration.submitted",
     ]) {
       assert.match(catalogSource, new RegExp(`"${type.replaceAll(".", "\\.")}"`))
     }
@@ -175,6 +180,32 @@ describe("notification consumer", () => {
 })
 
 describe("notification catalog", () => {
+  it("routes provider requests and confirmed registrations to the admin inbox and submission transport", () => {
+    const cases = [
+      ["genre-request.created", "Новая заявка на жанр", "genre-request", "/admin/genre-requests/42"],
+      ["platform-request.created", "Новая заявка на платформу", "platform-request", "/admin/platform-requests/42"],
+      ["creator-request.created", "Новая заявка на создателя", "creator-request", "/admin/creator-requests/42"],
+      ["author.registration.submitted", "Новая заявка на регистрацию автора", "author-registration", "/admin/authors/42/edit"],
+    ] as const
+
+    for (const [type, title, entityType, href] of cases) {
+      assert.equal(getNotificationRecipientType(type), "admin", type)
+      assert.equal(getNotificationTitle(type), title, type)
+      assert.equal(getNotificationEntityType(type), entityType, type)
+      assert.equal(getNotificationHref({ type, entityId: "42", franchiseCode: null, mediaItemCode: null }), href, type)
+      assert.equal(getExternalNotificationRoute(type)?.code, "submission_created", type)
+      assert.equal(
+        formatExternalNotificationText({ title, body: "Имя из базы", href, siteOrigin: "https://zadrotto.example" }),
+        `${title}\nИмя из базы\nhttps://zadrotto.example${href}`,
+        type,
+      )
+    }
+
+    assert.equal(isAdminSubmissionNotificationType("genre-request.created"), true)
+    assert.equal(isAdminSubmissionNotificationType("creator-request.created"), true)
+    assert.equal(isAdminSubmissionNotificationType("author.registration.submitted"), false, "registration is informational after activation")
+  })
+
   it("maps each type to copy, audience, and href", () => {
     assert.equal(getNotificationTitle("media.submitted"), "Новая заявка на запись")
     assert.equal(getNotificationTitle("review.approved"), "Рецензия одобрена")
@@ -252,10 +283,14 @@ describe("notification catalog", () => {
     assert.deepEqual(
       [...SUBMISSION_CREATED_NOTIFICATION_TYPES].sort(),
       [
+        "author.registration.submitted",
+        "creator-request.created",
         "franchise.submitted",
+        "genre-request.created",
         "media-franchise.removal.requested",
         "media-franchise.submitted",
         "media.submitted",
+        "platform-request.created",
         "review.submitted",
       ],
     )
@@ -307,7 +342,7 @@ describe("notification catalog", () => {
       submission_created: [],
     })
     assert.match(routesSource, /label: "Новая заявка"/)
-    assert.match(routesSource, /связь с серией/)
+    assert.match(routesSource, /связи/)
     assert.doesNotMatch(routesSource, /тайтл/i)
     assert.doesNotMatch(routesSource, /getNotificationRecipientType/)
     assert.match(routesQuerySource, /saveNotificationTransportRoutes[\s\S]*insert\(notificationTransportRoutes\)[\s\S]*insert\(adminActivityLogs\)/)

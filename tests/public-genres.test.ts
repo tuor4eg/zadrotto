@@ -46,4 +46,10 @@ test("selected genre banner renders the current name and a separate clear link",
   assert.ok(html.includes("Жанр: Новое название"));
   assert.ok(html.includes('href="/archive?type=film"'));
   assert.ok(html.includes("Сбросить выбранный жанр"));
+  assert.doesNotMatch(html, /href="\/admin\/genres\//);
+  const adminHtml = renderToStaticMarkup(createElement(ArchiveSelectedGenre, {
+    genre: { id: 1, slug: "drama", name: "Драма" }, clearHref: "/archive", adminCanEdit: true,
+  }));
+  assert.match(adminHtml, /href="\/admin\/genres\/1\/edit"/);
+  assert.match(adminHtml, /aria-label="Редактировать жанр Драма"/);
 });

@@ -2,6 +2,9 @@ import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import {
+  creatorRequests,
+  genreRequests,
+  platformRequests,
   contributions,
   bugReports,
   franchises,
@@ -66,6 +69,21 @@ export const adminSubmissionStillOpenSql = sql`(
       select 1 from ${contributions}
       where ${contributions.id} = ${notificationEntityIdIntSql}
         and ${contributions.status} = 'submitted'
+    )
+    when 'genre-request.created' then exists (
+      select 1 from ${genreRequests}
+      where ${genreRequests.id} = ${notificationEntityIdIntSql}
+        and ${genreRequests.decision} is null
+    )
+    when 'platform-request.created' then exists (
+      select 1 from ${platformRequests}
+      where ${platformRequests.id} = ${notificationEntityIdIntSql}
+        and ${platformRequests.decision} is null
+    )
+    when 'creator-request.created' then exists (
+      select 1 from ${creatorRequests}
+      where ${creatorRequests.id} = ${notificationEntityIdIntSql}
+        and ${creatorRequests.decision} is null
     )
     when 'bug-report.created' then exists (
       select 1 from ${bugReports}
@@ -149,6 +167,9 @@ export async function listRecipientNotifications(input: {
   const mediaItemIds = new Set<number>()
   const franchiseIds = new Set<number>()
   const reviewIds = new Set<number>()
+  const platformRequestIds = new Set<number>()
+  const genreRequestIds = new Set<number>()
+  const creatorRequestIds = new Set<number>()
   const mediaFranchisePairs: MediaFranchisePair[] = []
   const removalPairs: MediaFranchisePair[] = []
   const seenMediaFranchiseKeys = new Set<string>()
@@ -172,6 +193,16 @@ export async function listRecipientNotifications(input: {
       if (contributionId) reviewIds.add(contributionId)
       continue
     }
+    if (row.type === "platform-request.created") {
+      const requestId = parsePositiveInt(row.entityId)
+      if (requestId) platformRequestIds.add(requestId)
+      continue
+    }
+    if (row.type === "genre-request.created" || row.type === "creator-request.created") {
+      const requestId = parsePositiveInt(row.entityId)
+      if (requestId) (row.type === "genre-request.created" ? genreRequestIds : creatorRequestIds).add(requestId)
+      continue
+    }
     const mediaFranchise = parseMediaFranchiseEntityId(row.entityId)
     if (!mediaFranchise) continue
     mediaItemIds.add(mediaFranchise.mediaItemId)
@@ -188,7 +219,7 @@ export async function listRecipientNotifications(input: {
     mediaFranchisePairs.push(mediaFranchise)
   }
 
-  const [mediaItemRows, franchiseRows, reviewRows, mediaFranchiseRows, removalRows] = await Promise.all([
+  const [mediaItemRows, franchiseRows, reviewRows, mediaFranchiseRows, removalRows, genreRequestRows, creatorRequestRows, platformRequestRows] = await Promise.all([
     mediaItemIds.size > 0
       ? db
           .select({
@@ -239,8 +270,23 @@ export async function listRecipientNotifications(input: {
           .from(mediaItemFranchiseRemovalRequests)
           .where(anyPair(mediaItemFranchiseRemovalRequests, removalPairs))
       : Promise.resolve([]),
+    genreRequestIds.size > 0
+      ? db.select({ id: genreRequests.id, decision: genreRequests.decision })
+          .from(genreRequests).where(inArray(genreRequests.id, [...genreRequestIds]))
+      : Promise.resolve([]),
+    creatorRequestIds.size > 0
+      ? db.select({ id: creatorRequests.id, decision: creatorRequests.decision })
+          .from(creatorRequests).where(inArray(creatorRequests.id, [...creatorRequestIds]))
+      : Promise.resolve([]),
+    platformRequestIds.size > 0
+      ? db.select({ id: platformRequests.id, decision: platformRequests.decision })
+          .from(platformRequests).where(inArray(platformRequests.id, [...platformRequestIds]))
+      : Promise.resolve([]),
   ])
 
+  const openPlatformRequestIds = new Set(platformRequestRows.filter((row) => row.decision === null).map((row) => row.id))
+  const openGenreRequestIds = new Set(genreRequestRows.filter((row) => row.decision === null).map((row) => row.id))
+  const openCreatorRequestIds = new Set(creatorRequestRows.filter((row) => row.decision === null).map((row) => row.id))
   const mediaItemById = new Map(mediaItemRows.map((row) => [row.id, row]))
   const franchiseById = new Map(franchiseRows.map((row) => [row.id, row]))
   const reviewByContributionId = new Map(reviewRows.map((row) => [row.contributionId, row]))
@@ -277,6 +323,9 @@ export async function listRecipientNotifications(input: {
         mediaFranchiseStatusByKey,
         mediaItemById,
         openRemovalKeys,
+        openGenreRequestIds,
+        openPlatformRequestIds,
+        openCreatorRequestIds,
         reviewByContributionId,
         type: row.type,
       }),
@@ -294,10 +343,24 @@ function resolveNotificationStatusLabel(input: {
   mediaFranchiseStatusByKey: Map<string, string>
   mediaItemById: Map<number, { publicationStatus: string }>
   openRemovalKeys: Set<string>
+  openPlatformRequestIds: Set<number>
+  openGenreRequestIds: Set<number>
+  openCreatorRequestIds: Set<number>
   reviewByContributionId: Map<number, { status: string }>
   type: NotificationType
 }) {
   if (!isAdminSubmissionNotificationType(input.type)) return null
+
+  if (input.type === "platform-request.created") {
+    const requestId = parsePositiveInt(input.entityId)
+    return getAdminSubmissionStatusLabel(requestId && input.openPlatformRequestIds.has(requestId) ? "submitted" : null)
+  }
+
+  if (input.type === "genre-request.created" || input.type === "creator-request.created") {
+    const requestId = parsePositiveInt(input.entityId)
+    const openIds = input.type === "genre-request.created" ? input.openGenreRequestIds : input.openCreatorRequestIds
+    return getAdminSubmissionStatusLabel(requestId && openIds.has(requestId) ? "submitted" : null)
+  }
 
   if (input.type === "media.submitted") {
     const mediaItemId = parsePositiveInt(input.entityId)

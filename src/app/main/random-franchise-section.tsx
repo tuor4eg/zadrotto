@@ -2,7 +2,7 @@ import Link from "next/link"
 import type { ReactNode } from "react"
 import { Layers3 } from "lucide-react"
 
-import { MediaItemTile } from "@/app/media-item-tile"
+import { RateableMediaItemTile, TileRatingScope } from "@/components/archive/tile-rating-scope"
 import { ResponsiveTileGrid } from "@/components/archive/responsive-tile-grid"
 import type { getRandomPublishedFranchisePreview } from "@/db/queries/franchises"
 import {
@@ -33,7 +33,7 @@ export function RandomFranchiseSectionFallback() {
       <div className="mb-3 flex items-center justify-between gap-4">
         <div className="flex items-center gap-2">
           <Layers3 className="size-5 text-red-950/70" aria-hidden="true" />
-          <h2 className="font-serif text-2xl leading-none text-stone-950">Случайная серия</h2>
+          <h2 className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">Случайная серия</h2>
         </div>
       </div>
       <RandomFranchiseMobileStrip>
@@ -66,7 +66,7 @@ export async function RandomFranchiseSection({
       <section className="archive-paper archive-panel p-4 sm:p-5" aria-labelledby="main-random-series-title">
         <div className="flex items-center gap-2">
           <Layers3 className="size-5 text-red-950/70" aria-hidden="true" />
-          <h2 id="main-random-series-title" className="font-serif text-2xl leading-none text-stone-950">
+          <h2 id="main-random-series-title" className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">
             Случайная серия
           </h2>
         </div>
@@ -85,12 +85,13 @@ export async function RandomFranchiseSection({
   }))
 
   return (
+    <TileRatingScope>
     <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-labelledby="main-random-series-title">
       <div className="mb-3 flex min-w-0 items-start gap-2 md:items-center">
         <Layers3 className="size-5 shrink-0 text-red-950/70" aria-hidden="true" />
         <h2
           id="main-random-series-title"
-          className="flex min-w-0 flex-col items-start gap-1 font-serif text-2xl leading-none text-stone-950 md:flex-row md:items-baseline md:gap-2"
+          className="flex min-w-0 flex-col items-start gap-1 media-carrier-font-pc-steam text-2xl leading-none text-stone-950 md:flex-row md:items-baseline md:gap-2"
         >
           <span className="shrink-0">Случайная серия</span>
           <Link
@@ -108,7 +109,7 @@ export async function RandomFranchiseSection({
             className="shrink-0"
             style={{ width: ARCHIVE_LIST_TARGET_TILE_WIDTH }}
           >
-            <MediaItemTile
+            <RateableMediaItemTile
               currentAuthorScore={descriptor.currentAuthorScore}
               href={descriptor.href}
               item={descriptor.item}
@@ -117,8 +118,9 @@ export async function RandomFranchiseSection({
         ))}
       </RandomFranchiseMobileStrip>
       <div className="hidden md:block">
-        <ResponsiveTileGrid items={tiles} variant="archive" />
+        <ResponsiveTileGrid items={tiles} variant="archive" rateable />
       </div>
     </section>
+    </TileRatingScope>
   )
 }

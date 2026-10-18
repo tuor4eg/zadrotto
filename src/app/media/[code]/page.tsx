@@ -193,7 +193,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               />
             ) : null
           }
-          partsSlot={parts.length ? <TitlePartsSection parts={parts} mediaItemCode={item.code} mediaType={item.mediaType} title={displayTitle}
+          partsSlot={parts.some(part => part.type !== "season" || part.number !== 0) ? <TitlePartsSection parts={parts} mediaItemCode={item.code} mediaType={item.mediaType} title={displayTitle}
             currentAuthor={currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null} /> : null}
           reviewsSlot={
             currentAuthor || reviews.length > 0 ? (

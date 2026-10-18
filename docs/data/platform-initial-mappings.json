@@ -1,0 +1,747 @@
+{
+  "records": 1456,
+  "values": [
+    {
+      "name": "3DO Interactive Multiplayer",
+      "count": 4,
+      "canonicalName": "3DO Interactive Multiplayer",
+      "slug": "3do-interactive-multiplayer",
+      "normalizedName": "3do interactive multiplayer"
+    },
+    {
+      "name": "Acorn Archimedes",
+      "count": 4,
+      "canonicalName": "Acorn Archimedes",
+      "slug": "acorn-archimedes",
+      "normalizedName": "acorn archimedes"
+    },
+    {
+      "name": "Acorn Electron",
+      "count": 1,
+      "canonicalName": "Acorn Electron",
+      "slug": "acorn-electron",
+      "normalizedName": "acorn electron"
+    },
+    {
+      "name": "Amiga",
+      "count": 32,
+      "canonicalName": "Amiga",
+      "slug": "amiga",
+      "normalizedName": "amiga"
+    },
+    {
+      "name": "Amiga CD32",
+      "count": 6,
+      "canonicalName": "Amiga CD32",
+      "slug": "amiga-cd32",
+      "normalizedName": "amiga cd32"
+    },
+    {
+      "name": "Amstrad CPC",
+      "count": 9,
+      "canonicalName": "Amstrad CPC",
+      "slug": "amstrad-cpc",
+      "normalizedName": "amstrad cpc"
+    },
+    {
+      "name": "Android",
+      "count": 186,
+      "canonicalName": "Android",
+      "slug": "android",
+      "normalizedName": "android"
+    },
+    {
+      "name": "Apple II",
+      "count": 7,
+      "canonicalName": "Apple II",
+      "slug": "apple-ii",
+      "normalizedName": "apple ii"
+    },
+    {
+      "name": "Apple IIGS",
+      "count": 2,
+      "canonicalName": "Apple IIGS",
+      "slug": "apple-iigs",
+      "normalizedName": "apple iigs"
+    },
+    {
+      "name": "Arcade",
+      "count": 38,
+      "canonicalName": "Arcade",
+      "slug": "arcade",
+      "normalizedName": "arcade"
+    },
+    {
+      "name": "Atari 2600",
+      "count": 2,
+      "canonicalName": "Atari 2600",
+      "slug": "atari-2600",
+      "normalizedName": "atari 2600"
+    },
+    {
+      "name": "Atari 8-bit",
+      "count": 3,
+      "canonicalName": "Atari 8-bit",
+      "slug": "atari-8-bit",
+      "normalizedName": "atari 8-bit"
+    },
+    {
+      "name": "Atari Jaguar",
+      "count": 6,
+      "canonicalName": "Atari Jaguar",
+      "slug": "atari-jaguar",
+      "normalizedName": "atari jaguar"
+    },
+    {
+      "name": "Atari Jaguar CD",
+      "count": 1,
+      "canonicalName": "Atari Jaguar CD",
+      "slug": "atari-jaguar-cd",
+      "normalizedName": "atari jaguar cd"
+    },
+    {
+      "name": "Atari ST/STE",
+      "count": 10,
+      "canonicalName": "Atari ST/STE",
+      "slug": "atari-st-ste",
+      "normalizedName": "atari st/ste"
+    },
+    {
+      "name": "BBC Microcomputer System",
+      "count": 1,
+      "canonicalName": "BBC Microcomputer System",
+      "slug": "bbc-microcomputer-system",
+      "normalizedName": "bbc microcomputer system"
+    },
+    {
+      "name": "BlackBerry OS",
+      "count": 6,
+      "canonicalName": "BlackBerry OS",
+      "slug": "blackberry-os",
+      "normalizedName": "blackberry os"
+    },
+    {
+      "name": "Classic Macintosh",
+      "count": 2,
+      "canonicalName": "Classic Macintosh",
+      "slug": "classic-macintosh",
+      "normalizedName": "classic macintosh"
+    },
+    {
+      "name": "Commodore 16",
+      "count": 1,
+      "canonicalName": "Commodore 16",
+      "slug": "commodore-16",
+      "normalizedName": "commodore 16"
+    },
+    {
+      "name": "Commodore C64/128/MAX",
+      "count": 11,
+      "canonicalName": "Commodore C64/128/MAX",
+      "slug": "commodore-c64-128-max",
+      "normalizedName": "commodore c64/128/max"
+    },
+    {
+      "name": "DOS",
+      "count": 42,
+      "canonicalName": "DOS",
+      "slug": "dos",
+      "normalizedName": "dos"
+    },
+    {
+      "name": "Dreamcast",
+      "count": 16,
+      "canonicalName": "Dreamcast",
+      "slug": "dreamcast",
+      "normalizedName": "dreamcast"
+    },
+    {
+      "name": "FM Towns",
+      "count": 3,
+      "canonicalName": "FM Towns",
+      "slug": "fm-towns",
+      "normalizedName": "fm towns"
+    },
+    {
+      "name": "FM-7",
+      "count": 2,
+      "canonicalName": "FM-7",
+      "slug": "fm-7",
+      "normalizedName": "fm-7"
+    },
+    {
+      "name": "Family Computer",
+      "count": 22,
+      "canonicalName": "Family Computer",
+      "slug": "family-computer",
+      "normalizedName": "family computer"
+    },
+    {
+      "name": "Family Computer Disk System",
+      "count": 1,
+      "canonicalName": "Family Computer Disk System",
+      "slug": "family-computer-disk-system",
+      "normalizedName": "family computer disk system"
+    },
+    {
+      "name": "Game Boy",
+      "count": 1,
+      "canonicalName": "Game Boy",
+      "slug": "game-boy",
+      "normalizedName": "game boy"
+    },
+    {
+      "name": "Game Boy Advance",
+      "count": 5,
+      "canonicalName": "Game Boy Advance",
+      "slug": "game-boy-advance",
+      "normalizedName": "game boy advance"
+    },
+    {
+      "name": "Game Boy Color",
+      "count": 1,
+      "canonicalName": "Game Boy Color",
+      "slug": "game-boy-color",
+      "normalizedName": "game boy color"
+    },
+    {
+      "name": "Gizmondo",
+      "count": 1,
+      "canonicalName": "Gizmondo",
+      "slug": "gizmondo",
+      "normalizedName": "gizmondo"
+    },
+    {
+      "name": "Google Stadia",
+      "count": 51,
+      "canonicalName": "Google Stadia",
+      "slug": "google-stadia",
+      "normalizedName": "google stadia"
+    },
+    {
+      "name": "Handheld Electronic LCD",
+      "count": 4,
+      "canonicalName": "Handheld Electronic LCD",
+      "slug": "handheld-electronic-lcd",
+      "normalizedName": "handheld electronic lcd"
+    },
+    {
+      "name": "LaserActive",
+      "count": 1,
+      "canonicalName": "LaserActive",
+      "slug": "laseractive",
+      "normalizedName": "laseractive"
+    },
+    {
+      "name": "Legacy Mobile Device",
+      "count": 8,
+      "canonicalName": "Legacy Mobile Device",
+      "slug": "legacy-mobile-device",
+      "normalizedName": "legacy mobile device"
+    },
+    {
+      "name": "Linux",
+      "count": 296,
+      "canonicalName": "PC",
+      "slug": "pc",
+      "normalizedName": "linux"
+    },
+    {
+      "name": "MSX",
+      "count": 5,
+      "canonicalName": "MSX",
+      "slug": "msx",
+      "normalizedName": "msx"
+    },
+    {
+      "name": "Mac",
+      "count": 511,
+      "canonicalName": "Mac",
+      "slug": "mac",
+      "normalizedName": "mac"
+    },
+    {
+      "name": "Meta Quest 2",
+      "count": 2,
+      "canonicalName": "Meta Quest 2",
+      "slug": "meta-quest-2",
+      "normalizedName": "meta quest 2"
+    },
+    {
+      "name": "Meta Quest 3",
+      "count": 1,
+      "canonicalName": "Meta Quest 3",
+      "slug": "meta-quest-3",
+      "normalizedName": "meta quest 3"
+    },
+    {
+      "name": "N-Gage",
+      "count": 1,
+      "canonicalName": "N-Gage",
+      "slug": "n-gage",
+      "normalizedName": "n-gage"
+    },
+    {
+      "name": "NES",
+      "count": 4,
+      "canonicalName": "NES",
+      "slug": "nes",
+      "normalizedName": "nes"
+    },
+    {
+      "name": "Neo Geo AES",
+      "count": 4,
+      "canonicalName": "Neo Geo AES",
+      "slug": "neo-geo-aes",
+      "normalizedName": "neo geo aes"
+    },
+    {
+      "name": "Neo Geo CD",
+      "count": 2,
+      "canonicalName": "Neo Geo CD",
+      "slug": "neo-geo-cd",
+      "normalizedName": "neo geo cd"
+    },
+    {
+      "name": "Neo Geo MVS",
+      "count": 3,
+      "canonicalName": "Neo Geo MVS",
+      "slug": "neo-geo-mvs",
+      "normalizedName": "neo geo mvs"
+    },
+    {
+      "name": "New Nintendo 3DS",
+      "count": 1,
+      "canonicalName": "New Nintendo 3DS",
+      "slug": "new-nintendo-3ds",
+      "normalizedName": "new nintendo 3ds"
+    },
+    {
+      "name": "Nintendo 3DS",
+      "count": 21,
+      "canonicalName": "Nintendo 3DS",
+      "slug": "nintendo-3ds",
+      "normalizedName": "nintendo 3ds"
+    },
+    {
+      "name": "Nintendo 64",
+      "count": 3,
+      "canonicalName": "Nintendo 64",
+      "slug": "nintendo-64",
+      "normalizedName": "nintendo 64"
+    },
+    {
+      "name": "Nintendo DS",
+      "count": 3,
+      "canonicalName": "Nintendo DS",
+      "slug": "nintendo-ds",
+      "normalizedName": "nintendo ds"
+    },
+    {
+      "name": "Nintendo DSi",
+      "count": 3,
+      "canonicalName": "Nintendo DSi",
+      "slug": "nintendo-dsi",
+      "normalizedName": "nintendo dsi"
+    },
+    {
+      "name": "Nintendo Entertainment System",
+      "count": 44,
+      "canonicalName": "Nintendo Entertainment System",
+      "slug": "nintendo-entertainment-system",
+      "normalizedName": "nintendo entertainment system"
+    },
+    {
+      "name": "Nintendo GameCube",
+      "count": 27,
+      "canonicalName": "Nintendo GameCube",
+      "slug": "nintendo-gamecube",
+      "normalizedName": "nintendo gamecube"
+    },
+    {
+      "name": "Nintendo Switch",
+      "count": 368,
+      "canonicalName": "Nintendo Switch",
+      "slug": "nintendo-switch",
+      "normalizedName": "nintendo switch"
+    },
+    {
+      "name": "Nintendo Switch 2",
+      "count": 67,
+      "canonicalName": "Nintendo Switch 2",
+      "slug": "nintendo-switch-2",
+      "normalizedName": "nintendo switch 2"
+    },
+    {
+      "name": "Oculus Rift",
+      "count": 3,
+      "canonicalName": "Oculus Rift",
+      "slug": "oculus-rift",
+      "normalizedName": "oculus rift"
+    },
+    {
+      "name": "Odyssey 2 / Videopac G7000",
+      "count": 1,
+      "canonicalName": "Odyssey 2 / Videopac G7000",
+      "slug": "odyssey-2-videopac-g7000",
+      "normalizedName": "odyssey 2 / videopac g7000"
+    },
+    {
+      "name": "OnLive Game System",
+      "count": 5,
+      "canonicalName": "OnLive Game System",
+      "slug": "onlive-game-system",
+      "normalizedName": "onlive game system"
+    },
+    {
+      "name": "Ouya",
+      "count": 5,
+      "canonicalName": "Ouya",
+      "slug": "ouya",
+      "normalizedName": "ouya"
+    },
+    {
+      "name": "PC",
+      "count": 20,
+      "canonicalName": "PC",
+      "slug": "pc",
+      "normalizedName": "pc"
+    },
+    {
+      "name": "PC (Microsoft Windows)",
+      "count": 1228,
+      "canonicalName": "PC",
+      "slug": "pc",
+      "normalizedName": "pc (microsoft windows)"
+    },
+    {
+      "name": "PC-8800 Series",
+      "count": 1,
+      "canonicalName": "PC-8800 Series",
+      "slug": "pc-8800-series",
+      "normalizedName": "pc-8800 series"
+    },
+    {
+      "name": "PC-9800 Series",
+      "count": 4,
+      "canonicalName": "PC-9800 Series",
+      "slug": "pc-9800-series",
+      "normalizedName": "pc-9800 series"
+    },
+    {
+      "name": "Philips CD-i",
+      "count": 2,
+      "canonicalName": "Philips CD-i",
+      "slug": "philips-cd-i",
+      "normalizedName": "philips cd-i"
+    },
+    {
+      "name": "PlayStation",
+      "count": 39,
+      "canonicalName": "PlayStation",
+      "slug": "playstation",
+      "normalizedName": "playstation"
+    },
+    {
+      "name": "PlayStation 2",
+      "count": 79,
+      "canonicalName": "PlayStation 2",
+      "slug": "playstation-2",
+      "normalizedName": "playstation 2"
+    },
+    {
+      "name": "PlayStation 3",
+      "count": 242,
+      "canonicalName": "PlayStation 3",
+      "slug": "playstation-3",
+      "normalizedName": "playstation 3"
+    },
+    {
+      "name": "PlayStation 4",
+      "count": 431,
+      "canonicalName": "PlayStation 4",
+      "slug": "playstation-4",
+      "normalizedName": "playstation 4"
+    },
+    {
+      "name": "PlayStation 5",
+      "count": 308,
+      "canonicalName": "PlayStation 5",
+      "slug": "playstation-5",
+      "normalizedName": "playstation 5"
+    },
+    {
+      "name": "PlayStation Portable",
+      "count": 28,
+      "canonicalName": "PlayStation Portable",
+      "slug": "playstation-portable",
+      "normalizedName": "playstation portable"
+    },
+    {
+      "name": "PlayStation VR",
+      "count": 4,
+      "canonicalName": "PlayStation VR",
+      "slug": "playstation-vr",
+      "normalizedName": "playstation vr"
+    },
+    {
+      "name": "PlayStation VR2",
+      "count": 4,
+      "canonicalName": "PlayStation VR2",
+      "slug": "playstation-vr2",
+      "normalizedName": "playstation vr2"
+    },
+    {
+      "name": "PlayStation Vita",
+      "count": 46,
+      "canonicalName": "PlayStation Vita",
+      "slug": "playstation-vita",
+      "normalizedName": "playstation vita"
+    },
+    {
+      "name": "Plug & Play",
+      "count": 1,
+      "canonicalName": "Plug & Play",
+      "slug": "plug-play",
+      "normalizedName": "plug & play"
+    },
+    {
+      "name": "SG-1000",
+      "count": 3,
+      "canonicalName": "SG-1000",
+      "slug": "sg-1000",
+      "normalizedName": "sg-1000"
+    },
+    {
+      "name": "Sega 32X",
+      "count": 4,
+      "canonicalName": "Sega 32X",
+      "slug": "sega-32x",
+      "normalizedName": "sega 32x"
+    },
+    {
+      "name": "Sega CD",
+      "count": 9,
+      "canonicalName": "Sega CD",
+      "slug": "sega-cd",
+      "normalizedName": "sega cd"
+    },
+    {
+      "name": "Sega Game Gear",
+      "count": 10,
+      "canonicalName": "Sega Game Gear",
+      "slug": "sega-game-gear",
+      "normalizedName": "sega game gear"
+    },
+    {
+      "name": "Sega Master System/Mark III",
+      "count": 10,
+      "canonicalName": "Sega Master System/Mark III",
+      "slug": "sega-master-system-mark-iii",
+      "normalizedName": "sega master system/mark iii"
+    },
+    {
+      "name": "Sega Mega Drive/Genesis",
+      "count": 100,
+      "canonicalName": "Sega Mega Drive/Genesis",
+      "slug": "sega-mega-drive-genesis",
+      "normalizedName": "sega mega drive/genesis"
+    },
+    {
+      "name": "Sega Saturn",
+      "count": 6,
+      "canonicalName": "Sega Saturn",
+      "slug": "sega-saturn",
+      "normalizedName": "sega saturn"
+    },
+    {
+      "name": "Sharp X1",
+      "count": 3,
+      "canonicalName": "Sharp X1",
+      "slug": "sharp-x1",
+      "normalizedName": "sharp x1"
+    },
+    {
+      "name": "Sharp X68000",
+      "count": 2,
+      "canonicalName": "Sharp X68000",
+      "slug": "sharp-x68000",
+      "normalizedName": "sharp x68000"
+    },
+    {
+      "name": "Sinclair ZX81",
+      "count": 1,
+      "canonicalName": "Sinclair ZX81",
+      "slug": "sinclair-zx81",
+      "normalizedName": "sinclair zx81"
+    },
+    {
+      "name": "SteamVR",
+      "count": 8,
+      "canonicalName": "SteamVR",
+      "slug": "steamvr",
+      "normalizedName": "steamvr"
+    },
+    {
+      "name": "Super Famicom",
+      "count": 17,
+      "canonicalName": "Super Famicom",
+      "slug": "super-famicom",
+      "normalizedName": "super famicom"
+    },
+    {
+      "name": "Super Nintendo Entertainment System",
+      "count": 44,
+      "canonicalName": "Super Nintendo Entertainment System",
+      "slug": "super-nintendo-entertainment-system",
+      "normalizedName": "super nintendo entertainment system"
+    },
+    {
+      "name": "TRS-80",
+      "count": 1,
+      "canonicalName": "TRS-80",
+      "slug": "trs-80",
+      "normalizedName": "trs-80"
+    },
+    {
+      "name": "TRS-80 Color Computer",
+      "count": 1,
+      "canonicalName": "TRS-80 Color Computer",
+      "slug": "trs-80-color-computer",
+      "normalizedName": "trs-80 color computer"
+    },
+    {
+      "name": "Tapwave Zodiac",
+      "count": 1,
+      "canonicalName": "Tapwave Zodiac",
+      "slug": "tapwave-zodiac",
+      "normalizedName": "tapwave zodiac"
+    },
+    {
+      "name": "Tatung Einstein",
+      "count": 1,
+      "canonicalName": "Tatung Einstein",
+      "slug": "tatung-einstein",
+      "normalizedName": "tatung einstein"
+    },
+    {
+      "name": "TurboGrafx-16/PC Engine",
+      "count": 3,
+      "canonicalName": "TurboGrafx-16/PC Engine",
+      "slug": "turbografx-16-pc-engine",
+      "normalizedName": "turbografx-16/pc engine"
+    },
+    {
+      "name": "Web browser",
+      "count": 10,
+      "canonicalName": "Web browser",
+      "slug": "web-browser",
+      "normalizedName": "web browser"
+    },
+    {
+      "name": "Wii",
+      "count": 55,
+      "canonicalName": "Wii",
+      "slug": "wii",
+      "normalizedName": "wii"
+    },
+    {
+      "name": "Wii U",
+      "count": 48,
+      "canonicalName": "Wii U",
+      "slug": "wii-u",
+      "normalizedName": "wii u"
+    },
+    {
+      "name": "Windows Mixed Reality",
+      "count": 1,
+      "canonicalName": "Windows Mixed Reality",
+      "slug": "windows-mixed-reality",
+      "normalizedName": "windows mixed reality"
+    },
+    {
+      "name": "Windows Mobile",
+      "count": 5,
+      "canonicalName": "Windows Mobile",
+      "slug": "windows-mobile",
+      "normalizedName": "windows mobile"
+    },
+    {
+      "name": "Windows Phone",
+      "count": 21,
+      "canonicalName": "Windows Phone",
+      "slug": "windows-phone",
+      "normalizedName": "windows phone"
+    },
+    {
+      "name": "Xbox",
+      "count": 82,
+      "canonicalName": "Xbox",
+      "slug": "xbox",
+      "normalizedName": "xbox"
+    },
+    {
+      "name": "Xbox 360",
+      "count": 238,
+      "canonicalName": "Xbox 360",
+      "slug": "xbox-360",
+      "normalizedName": "xbox 360"
+    },
+    {
+      "name": "Xbox One",
+      "count": 395,
+      "canonicalName": "Xbox One",
+      "slug": "xbox-one",
+      "normalizedName": "xbox one"
+    },
+    {
+      "name": "Xbox Series S/X",
+      "count": 1,
+      "canonicalName": "Xbox Series X|S",
+      "slug": "xbox-series-x-s",
+      "normalizedName": "xbox series s/x"
+    },
+    {
+      "name": "Xbox Series X|S",
+      "count": 271,
+      "canonicalName": "Xbox Series X|S",
+      "slug": "xbox-series-x-s",
+      "normalizedName": "xbox series x|s"
+    },
+    {
+      "name": "ZX Spectrum",
+      "count": 10,
+      "canonicalName": "ZX Spectrum",
+      "slug": "zx-spectrum",
+      "normalizedName": "zx spectrum"
+    },
+    {
+      "name": "Zeebo",
+      "count": 3,
+      "canonicalName": "Zeebo",
+      "slug": "zeebo",
+      "normalizedName": "zeebo"
+    },
+    {
+      "name": "iOS",
+      "count": 221,
+      "canonicalName": "iOS",
+      "slug": "ios",
+      "normalizedName": "ios"
+    },
+    {
+      "name": "macOS",
+      "count": 4,
+      "canonicalName": "Mac",
+      "slug": "mac",
+      "normalizedName": "macos"
+    },
+    {
+      "name": "visionOS",
+      "count": 1,
+      "canonicalName": "visionOS",
+      "slug": "visionos",
+      "normalizedName": "visionos"
+    }
+  ]
+}

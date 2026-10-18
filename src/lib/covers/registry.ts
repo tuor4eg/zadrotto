@@ -526,7 +526,9 @@ function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
   }
 
   const facts = Object.fromEntries(
-    Object.entries(metadata.facts).filter(([, value]) => {
+    Object.entries(metadata.facts).filter(([key, value]) => {
+      // A complete empty participant list is meaningful: it removes old provider links.
+      if ((key === "bggCreators" || key === "fantlabAuthors") && Array.isArray(value)) return true;
       if (value === null || value === undefined) {
         return false;
       }

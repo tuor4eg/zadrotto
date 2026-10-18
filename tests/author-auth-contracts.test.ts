@@ -44,6 +44,27 @@ function functionSource(source: string, name: string, nextName?: string) {
 }
 
 describe("author auth persistence contracts", () => {
+  it("emits registration only after activation and atomically with the account", () => {
+    const register = functionSource(operations, "registerAuthorAccount", "replacePendingAuthorRegistrationEmail");
+    const verify = functionSource(operations, "verifyAuthorEmailChallenge", "requestAuthorEmailChange");
+    for (const source of [register, verify]) {
+      assert.match(source, /runInDomainEventTransaction\(async \(tx, appendEvent\)/);
+      assert.equal(source.match(/type: "author\.registration\.submitted"/g)?.length, 1);
+    }
+    assert.match(register, /if \(!bypassEmailVerification\) \{[\s\S]*insertVerificationChallenge[\s\S]*\} else \{\s*await appendEvent/);
+    assert.match(register, /payload: \{ authorId: author\.id \}/);
+    assert.match(verify, /if \(!activatedAccount\) return null;\s*await appendEvent/);
+    assert.match(verify, /payload: \{ authorId: activatedAccount\.authorId \}/);
+    const emailChange = verify.slice(verify.indexOf('if (challenge.purpose === "change_email")'), verify.indexOf('purpose: "change_email" as const'));
+    assert.doesNotMatch(emailChange, /appendEvent/);
+    for (const source of [
+      functionSource(operations, "replacePendingAuthorRegistrationEmail", "verifyAuthorEmailChallenge"),
+      functionSource(operations, "resendAuthorEmailVerification", "resetAuthorPassword"),
+    ]) {
+      assert.doesNotMatch(source, /appendEvent|author\.registration\.submitted/);
+    }
+  });
+
   it("gates sessions by expiry, revocation and account state", () => {
     const source = functionSource(queries, "getActiveAuthorSessionByTokenHash", "touchAuthorSession");
 

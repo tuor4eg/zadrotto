@@ -1,9 +1,13 @@
+import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
+import type { MediaItemPlatform } from "@/lib/media/platforms";
+import { MediaItemWriterLinks, type WriterCreatorLink } from "@/components/archive/media-item-creator-links";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react"
 import Link from "next/link"
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title"
 import { ArchiveMediaItemIdentityLayout } from "@/components/archive/archive-media-item-identity-layout"
+import { RateableMediaItemTile, TileRatingScope } from "@/components/archive/tile-rating-scope"
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links"
 import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links"
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items"
@@ -13,8 +17,13 @@ import type { MediaItemGenre } from "@/lib/media/genres"
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types"
 
 type ArchiveMediaItemIdentityProps = {
+  ratingPartId?: number | null
   franchiseActions?: React.ReactNode
   item: {
+    id: number
+    averageScore: number | null
+    ratingsCount: number
+    currentAuthorScore: number | null
     aliases?: string[]
     code: string
     coverThumbUrl?: string | null
@@ -24,6 +33,8 @@ type ArchiveMediaItemIdentityProps = {
     mediaType: MediaType
     metadataFacts?: Record<string, unknown> | null
     genres: MediaItemGenre[]
+    platforms?: MediaItemPlatform[]
+    writerCreators?: WriterCreatorLink[]
     originalTitle: string | null
     releaseYear: number | null
     title: string
@@ -33,6 +44,7 @@ type ArchiveMediaItemIdentityProps = {
 }
 
 export function ArchiveMediaItemIdentity({
+  ratingPartId,
   franchiseActions,
   item,
   mediaTypes,
@@ -49,14 +61,21 @@ export function ArchiveMediaItemIdentity({
     genres: [],
     releaseYear: item.releaseYear,
   })
-  const coverUrl = item.coverThumbUrl ?? item.coverUrl ?? null
-  const viewerCoverUrl = item.coverUrl ?? item.coverThumbUrl ?? null
 
   return (
     <ArchiveMediaItemIdentityLayout
-      coverUrl={coverUrl}
-      title={displayTitle}
-      viewerCoverUrl={viewerCoverUrl}
+      cover={
+        <TileRatingScope>
+          <RateableMediaItemTile
+            item={{ ...item, coverUrl: item.coverUrl ?? null }}
+            href={`/media/${item.code}`}
+            currentAuthorScore={item.currentAuthorScore}
+            partId={ratingPartId}
+            showTitle={false}
+            hoverEffect={false}
+          />
+        </TileRatingScope>
+      }
       breadcrumb={
         <nav aria-label="Хлебные крошки" className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} min-w-0 pr-16 text-xs leading-5 text-stone-600 sm:pr-24`}>
         <ol className="flex min-w-0 flex-wrap items-start gap-x-2 gap-y-1">
@@ -130,6 +149,11 @@ export function ArchiveMediaItemIdentity({
             ) : <span>{label}</span>}
           </Fragment>
         ))}
+        {item.mediaType === "book" && item.writerCreators?.length ? <>
+          {infoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
+          <MediaItemWriterLinks creators={item.writerCreators} />
+        </> : null}
+        {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
         {item.genres.length > 0 ? <>
           {infoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
           <MediaItemGenreLinks genres={item.genres} />

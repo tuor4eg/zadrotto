@@ -29,7 +29,7 @@ describe("admin entity edit action", () => {
     );
     assert.match(
       previewSource,
-      /currentAdmin \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать запись \$\{item\.title\}`\}[\s\S]*href=\{`\/admin\/media\/\$\{item\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать запись"[\s\S]*\) : null/,
+      /currentAdmin \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать запись \$\{displayTitle\}`\}[\s\S]*href=\{`\/admin\/media\/\$\{item\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать запись"[\s\S]*\) : null/,
     );
   });
 
@@ -40,7 +40,7 @@ describe("admin entity edit action", () => {
     );
     assert.match(
       mediaPageSource,
-      /headerActions=\{[\s\S]*currentAdminUser \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать запись \$\{item\.title\}`\}[\s\S]*href=\{`\/admin\/media\/\$\{item\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать запись"[\s\S]*\) : null[\s\S]*\}/,
+      /headerActions=\{[\s\S]*currentAdminUser \? \([\s\S]*<AdminEntityEditLink[\s\S]*ariaLabel=\{`Редактировать запись \$\{displayTitle\}`\}[\s\S]*href=\{`\/admin\/media\/\$\{item\.id\}\/edit`\}[\s\S]*tooltipLabel="Редактировать запись"[\s\S]*\) : null[\s\S]*\}/,
     );
     assert.match(detailsSource, /headerActions=\{headerActions\}/);
     assert.match(

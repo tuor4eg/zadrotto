@@ -131,11 +131,11 @@ describe("public reviews catalog page", () => {
     assert.doesNotMatch(row, /comment|комментар/i)
   })
 
-  it("uses the streaming font for the review body without changing its size", () => {
+  it("inherits the streaming font and keeps the review body readable", () => {
     const article = read("src/app/review-article.tsx")
     assert.match(
       article,
-      /<p className="media-carrier-font-streaming whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-8 text-stone-800 sm:text-base sm:leading-9">[\s\S]*<InlineMentionText/,
+      /<div className="media-carrier-font-streaming[^\"]*">[\s\S]*<p className="whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-7 text-stone-800 sm:text-base sm:leading-8">[\s\S]*<InlineMentionText/,
     )
   })
 

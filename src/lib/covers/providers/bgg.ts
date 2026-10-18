@@ -67,9 +67,14 @@ function parseItem(node: XmlNode, full: boolean): BggItem {
   const alternateNames = normalizeMediaItemTitleAliases(names.filter((name) => name["@_type"] === "alternate").map((name) => text(name["@_value"])), { title, originalTitle: title });
   const links = list(node.link);
   const values = (kind: string) => [...new Set(links.filter((link) => link["@_type"] === kind).map((link) => text(link["@_value"])).filter(Boolean))];
+  const participants = links.filter(link => link["@_type"] === "boardgamedesigner" || link["@_type"] === "boardgameartist");
+  const validParticipants = participants.every(link => normalizeBggId(text(link["@_id"])) && text(link["@_value"]));
+  if (full && !validParticipants) throw new BggRequestError("provider-unavailable");
+  const bggCreators = participants.map(link => ({ externalId: normalizeBggId(text(link["@_id"]))!, name: text(link["@_value"]), roleCode: link["@_type"] === "boardgamedesigner" ? "designer" : "artist" }));
   const genres = values("boardgamecategory");
   const year = positive(record(node.yearpublished)["@_value"]);
   const facts: Record<string, unknown> = full ? {
+    ...(validParticipants ? { bggCreators } : {}),
     bggItemType: type, authors: values("boardgamedesigner"), artists: values("boardgameartist"),
     publishers: values("boardgamepublisher"), mechanics: values("boardgamemechanic"), genres,
     genreReferences: genres.flatMap((name) => {
@@ -141,8 +146,8 @@ export function createBggProvider(dependencies: { fetch?: typeof fetch; runtime?
     if (ctx.bypassCache) return fetchBatch();
     // Per-ID leases can be acquired by different workers during simultaneous batches.
     // A short batch lease/cache prevents both workers from fetching the same ID set.
-    const loadBatch = () => runtime.cached(ctx.token, `thing-batch:${[...ids].sort().join(",")}`, 60, ctx.signal, fetchBatch);
-    const items = await Promise.all(ids.map((id) => runtime.cached(ctx.token, `thing:${id}`, (item: BggItem | null) => item ? 86_400 : 60, ctx.signal, async () => {
+    const loadBatch = () => runtime.cached(ctx.token, `thing-creators-v1-batch:${[...ids].sort().join(",")}`, 60, ctx.signal, fetchBatch);
+    const items = await Promise.all(ids.map((id) => runtime.cached(ctx.token, `thing-creators-v1:${id}`, (item: BggItem | null) => item ? 86_400 : 60, ctx.signal, async () => {
       batch ??= loadBatch();
       return (await batch).find((item) => item.id === id) ?? null;
     })));

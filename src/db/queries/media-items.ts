@@ -1,3 +1,5 @@
+import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
+import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition, entryCreatorSearchCondition } from "@/db/queries/creators";
 import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
 import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { hasUnifiedGenresSql, missingGenreSeriesBindingSql, publicMediaItemGenresJsonSql, visibleGenreSql, mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
@@ -47,6 +49,8 @@ import {
   mediaItemFranchises,
   mediaItemMetadata,
   mediaItemGenres,
+  mediaItemPlatforms,
+  platforms,
   mediaItemProviderSnapshots,
   mediaItemTitleAliases,
   mediaCarriers,
@@ -346,6 +350,7 @@ const catalogSearchCondition = (searchQuery: string) => {
 
   return or(
     containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
+    entryCreatorSearchCondition(normalizedSearchQuery),
     containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
     sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
     exists(
@@ -395,6 +400,12 @@ function catalogGenreCondition(genreId: number) {
         and ${visibleGenreSql(sql`"media_items"."id"`, sql`filter_genre.replacement_franchise_id`)})`)));
 }
 
+function catalogPlatformCondition(platformId: number) {
+  return and(eq(mediaItems.mediaType, "game"), exists(db.select({ id: mediaItemPlatforms.platformId }).from(mediaItemPlatforms)
+    .innerJoin(platforms, eq(platforms.id, mediaItemPlatforms.platformId))
+    .where(and(eq(mediaItemPlatforms.mediaItemId, mediaItems.id), eq(mediaItemPlatforms.platformId, platformId), eq(platforms.isActive, true)))));
+}
+
 function catalogFilterConditions(input: {
   authorRatingFilter: AuthorRatingFilter;
   currentAuthorId?: number;
@@ -403,6 +414,8 @@ function catalogFilterConditions(input: {
   mediaTypeFilter: MediaTypeFilter;
   seriesId?: number;
   genreId?: number;
+  platformId?: number;
+  creatorId?: number;
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -421,7 +434,9 @@ function catalogFilterConditions(input: {
     conditions.push(eq(mediaItems.mediaType, input.mediaTypeFilter));
   }
 
+  if (input.platformId) conditions.push(catalogPlatformCondition(input.platformId)!);
   if (input.genreId) conditions.push(catalogGenreCondition(input.genreId));
+  if (input.creatorId) conditions.push(creatorCondition(input.creatorId));
 
   if (input.seriesId) {
     conditions.push(catalogSeriesCondition(input.seriesId));
@@ -608,6 +623,9 @@ const catalogMediaItemsQuery = (input: {
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       metadataFacts: mediaItemMetadata.facts,
+      platforms: publicMediaItemPlatformsJsonSql(),
+      writerCreators: entryWriterCreatorsJsonSql(),
+      entryCreators: entryCreatorsJsonSql(),
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,
@@ -654,6 +672,8 @@ export async function getCatalogMediaItems(input: {
   searchQuery: string;
   seriesId?: number;
   genreId?: number;
+  platformId?: number;
+  creatorId?: number;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   yearFilter: CatalogYearFilter;
@@ -689,6 +709,8 @@ export async function getCatalogMediaTypeCounts(input: {
   searchQuery: string;
   seriesId?: number;
   genreId?: number;
+  platformId?: number;
+  creatorId?: number;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {
@@ -718,7 +740,7 @@ export async function getPublishedMediaTypeCounts() {
     .groupBy(mediaItems.mediaType);
 }
 
-export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number) {
+export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number, creatorId?: number, platformId?: number) {
   const [bounds] = await db
     .select({
       minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
@@ -728,6 +750,8 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
       publishedMediaItemCondition,
       getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       genreId ? catalogGenreCondition(genreId) : undefined,
+      platformId ? catalogPlatformCondition(platformId) : undefined,
+      creatorId ? creatorCondition(creatorId) : undefined,
     ));
 
   return {
@@ -858,6 +882,9 @@ export async function getAdminMediaItems(input: {
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
       metadataFacts: mediaItemMetadata.facts,
+      platforms: publicMediaItemPlatformsJsonSql(),
+      writerCreators: entryWriterCreatorsJsonSql(),
+      entryCreators: entryCreatorsJsonSql(),
       metadataAttemptedAt: mediaItems.metadataAttemptedAt,
       metadataIssueCode: mediaItems.metadataIssueCode,
       editorialSummaryStatus: mediaItemEditorialSummaries.status,
@@ -1105,6 +1132,7 @@ export async function getAuthorMediaItemForEdit(authorId: number, mediaItemId: n
   const [item] = await db
     .select({
       genres: mediaItemGenresJsonSql(),
+      platforms: mediaItemPlatformsJsonSql(),
       id: mediaItems.id,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
@@ -1133,6 +1161,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
   const [item] = await db
     .select({
       genres: mediaItemGenresJsonSql(),
+      platforms: mediaItemPlatformsJsonSql(),
       id: mediaItems.id,
       code: mediaItems.code,
       title: mediaItems.title,
@@ -1776,6 +1805,7 @@ export async function getPublicMediaItemMetadataByCode(
   const [item] = await db
     .select({
       genres: publicMediaItemGenresJsonSql(),
+      platforms: publicMediaItemPlatformsJsonSql(),
       hasUnifiedGenres: hasUnifiedGenresSql(),
       title: mediaItems.title,
       aliases: mediaItemTitleAliasesSql(),
@@ -1786,6 +1816,8 @@ export async function getPublicMediaItemMetadataByCode(
       mediaType: mediaItems.mediaType,
       mediaTypeLabel: mediaTypes.name,
       metadataFacts: mediaItemMetadata.facts,
+      writerCreators: entryWriterCreatorsJsonSql(),
+      entryCreators: entryCreatorsJsonSql(),
       releaseYear: mediaItems.releaseYear,
     })
     .from(mediaItems)
@@ -1844,6 +1876,7 @@ export async function getMediaItemByCode(
   const [item] = await db
     .select({
       genres: publicMediaItemGenresJsonSql(),
+      platforms: publicMediaItemPlatformsJsonSql(),
       hasUnifiedGenres: hasUnifiedGenresSql(),
       id: mediaItems.id,
       code: mediaItems.code,
@@ -1859,6 +1892,8 @@ export async function getMediaItemByCode(
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
       metadataFacts: mediaItemMetadata.facts,
+      writerCreators: entryWriterCreatorsJsonSql(),
+      entryCreators: entryCreatorsJsonSql(),
       coverUrl: mediaItems.coverUrl,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverSourceProvider: mediaItems.coverSourceProvider,

@@ -49,6 +49,8 @@ type ArchiveCoverProps = {
 };
 
 type MediaItemTileProps = {
+  showTitle?: boolean;
+  hoverEffect?: boolean;
   subtitle?: string;
   currentAuthorScore?: number | null;
   href?: string;
@@ -664,6 +666,8 @@ export function ArchiveCover({
 }
 
 export function MediaItemTile({
+  showTitle = true,
+  hoverEffect = true,
   currentAuthorScore,
   subtitle,
   href,
@@ -697,7 +701,7 @@ export function MediaItemTile({
     ? "right-2 sm:right-2.5"
     : "right-1.5 sm:right-2";
   const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] ${RATING_PILL_SHADOW_CLASS_NAME} sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
-  const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5 focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
+  const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] ${hoverEffect ? "transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5" : ""} focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
   const tileCoverItem = {
     ...item,
     title: displayTitle,
@@ -708,13 +712,13 @@ export function MediaItemTile({
       <ArchiveCover
         carrierFrame={false}
         item={tileCoverItem}
-        className="absolute inset-0 h-full w-full transition-transform duration-300 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]"
+        className={`absolute inset-0 h-full w-full ${hoverEffect ? "transition-transform duration-300 group-hover:scale-[1.03] group-focus-visible:scale-[1.03]" : ""}`}
       />
       <span aria-hidden="true" className="absolute inset-0 bg-stone-950/10" />
-      <span
+      {showTitle ? <span
         aria-hidden="true"
         className="absolute inset-x-0 bottom-0 h-3/5 bg-gradient-to-t from-stone-950/88 via-stone-950/44 to-transparent"
-      />
+      /> : null}
       {mediaTypeLabel ? (
         <span
           className="absolute left-2 top-2 max-w-[calc(100%-3.5rem)] truncate rounded-sm border border-stone-50/30 bg-stone-950/62 px-1.5 py-1 font-mono text-[10px] font-semibold uppercase leading-none tracking-[0.08em] text-stone-50 shadow-sm backdrop-blur-[1px]"
@@ -723,12 +727,12 @@ export function MediaItemTile({
           {mediaTypeLabel}
         </span>
       ) : null}
-      <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
+      {showTitle ? <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
         {subtitle ? <span className="mb-1 block text-xs leading-tight text-stone-200 drop-shadow">{subtitle}</span> : null}
         <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
           {displayTitle}
         </span>
-      </span>
+      </span> : null}
       {profileRating ? (
         <span
           aria-label={`Оценка пользователя ${formatScore(profileRating.score)}, ${profileRating.comparison === "mine" ? "моя оценка" : "средняя оценка"} ${formatScore(comparisonScore)}`}
@@ -788,7 +792,7 @@ export function MediaItemTile({
 
   if (href) {
     return (
-      <Link href={href} className={`block ${className}`}>
+      <Link href={href} aria-label={showTitle ? undefined : `Открыть запись «${displayTitle}»`} className={`block ${className}`}>
         {content}
       </Link>
     );

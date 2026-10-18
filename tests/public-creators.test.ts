@@ -1,0 +1,83 @@
+import assert from "node:assert/strict";
+import { test } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { paginatePublicCreators } from "../src/lib/media/public-creators";
+import { CreatorCatalog } from "../src/app/creators/creators-catalog";
+import { ArchiveSelectedCreator } from "../src/app/archive/archive-creator-context";
+
+const rows = ["Достоевский", "Frank Herbert", "Кинг", "12 авторов", "# Псевдоним", "Достоевский"].map((name, index) => ({
+  id: index + 1, slug: `creator-${index}`, name, mediaItemsCount: index + 1, nameMatches: true,
+}));
+
+test("creator alphabet filters before pagination and keeps distinct namesakes", () => {
+  const first = paginatePublicCreators(rows, { page: 1, pageSize: 2, searchQuery: "" });
+  assert.deepEqual(first.availableLetters, ["0-9", "Д", "К", "F", "#"]);
+  assert.deepEqual(first.items.map(row => row.id), [4, 1]);
+  assert.equal(first.totalPages, 3);
+  const letter = paginatePublicCreators(rows, { page: 99, pageSize: 24, letter: "Д", searchQuery: "" });
+  assert.deepEqual(letter.items.map(row => row.id), [1, 6]);
+  assert.equal(letter.page, 1);
+  assert.equal(letter.paginationTotalCount, 2);
+  assert.equal(paginatePublicCreators(rows, { page: 1, pageSize: 24, letter: "Z", searchQuery: "" }).selectedLetter, undefined);
+  const search = paginatePublicCreators(rows.map(row => ({ ...row, nameMatches: row.id === 2 })), {
+    page: 1, pageSize: 24, letter: "Д", searchQuery: "herbert",
+  });
+  assert.equal(search.selectedLetter, undefined);
+  assert.deepEqual(search.items.map(row => row.id), [2]);
+  assert.equal(paginatePublicCreators([], { page: 3, pageSize: 24, searchQuery: "" }).page, 1);
+});
+
+test("creator catalog renders alphabet groups, archive links and record counts", () => {
+  const html = renderToStaticMarkup(createElement(CreatorCatalog, { items: rows }));
+  assert.match(html, /lg:columns-2/);
+  assert.match(html, /href="\/archive\?creator=creator-0"/);
+  assert.match(html, /aria-label="1 запись"/);
+  assert.match(html, /aria-label="6 записей"/);
+  assert.equal((html.match(/>Д<\/h2>/g) ?? []).length, 1);
+});
+
+test("creator images survive pagination and use the local route in catalog and selected banner", () => {
+  const avatarObjectKey = "avatars/creators/1/00000000-0000-4000-8000-000000000001.webp";
+  const creator = { id: 1, slug: "king", name: "Стивен Кинг", mediaItemsCount: 3, avatarObjectKey, nameMatches: true };
+  const page = paginatePublicCreators([creator], { page: 1, pageSize: 24, searchQuery: "" });
+  assert.equal(page.items[0].avatarObjectKey, avatarObjectKey);
+  const catalog = renderToStaticMarkup(createElement(CreatorCatalog, { items: page.items }));
+  const banner = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator, series: [] }, clearHref: "/archive" }));
+  for (const html of [catalog, banner]) {
+    assert.match(html, /src="\/creator-avatars\/1\/00000000-0000-4000-8000-000000000001.webp"/);
+    assert.doesNotMatch(html, /fantlab\.ru/);
+  }
+  const fallback = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator, avatarObjectKey: null, series: [] }, clearHref: "/archive" }));
+  assert.match(fallback, />СК<\/span>/);
+  assert.doesNotMatch(fallback, /<img/);
+});
+
+test("system roles survive pagination and filter creators before alphabet and pages", () => {
+  const roles = [{ code: "custom-role", name: "Новая роль" }, { code: "artist", name: "Художник" }];
+  const input = rows.map((row, index) => ({ ...row, roles: index === 1 ? roles : [] }));
+  const page = paginatePublicCreators(input, { page: 99, pageSize: 1, searchQuery: "", role: "custom-role" });
+  assert.equal(page.paginationTotalCount, 1);
+  assert.equal(page.page, 1);
+  assert.deepEqual(page.availableLetters, ["F"]);
+  assert.deepEqual(page.items[0].roles, roles);
+  const html = renderToStaticMarkup(createElement(CreatorCatalog, { items: page.items }));
+  assert.match(html, />Новая роль<\/span>/);
+  assert.match(html, />Художник<\/span>/);
+});
+
+test("selected creator shows every supplied system role with its shared icon", () => {
+  const html = renderToStaticMarkup(createElement(ArchiveSelectedCreator, {
+    creator: { id: 1, name: "Создатель", series: [], roles: [{ code: "designer", name: "Дизайнер" }, { code: "artist", name: "Художник" }, { code: "custom", name: "Новая роль" }] },
+    clearHref: "/archive",
+  }));
+  assert.match(html, /aria-label="Роли создателя"/);
+  for (const name of ["Дизайнер", "Художник", "Новая роль"]) assert.ok(html.includes(name));
+  for (const icon of ["lucide-dices", "lucide-palette", "lucide-user-round"]) assert.ok(html.includes(icon));
+});
+
+
+test("creator catalog preserves the selected media type when opening archive", () => {
+  const html = renderToStaticMarkup(createElement(CreatorCatalog, { items: rows, mediaType: "boardgame" }));
+  assert.match(html, /href="\/archive\?creator=creator-0&amp;type=boardgame"/);
+});

@@ -19,12 +19,16 @@ export const SUBMISSION_CREATED_NOTIFICATION_TYPES = [
   "media-franchise.submitted",
   "media-franchise.removal.requested",
   "review.submitted",
+  "genre-request.created",
+  "platform-request.created",
+  "creator-request.created",
+  "author.registration.submitted",
 ] as const satisfies readonly NotificationType[]
 
 export const EXTERNAL_NOTIFICATION_ROUTES = [
   {
     code: SUBMISSION_CREATED_ROUTE_CODE,
-    description: "Запись, серия, связь с серией или рецензия отправлены на модерацию.",
+    description: "Новые заявки на записи, серии, связи, рецензии, жанры, платформы, создателей и регистрацию авторов.",
     label: "Новая заявка",
     notificationTypes: SUBMISSION_CREATED_NOTIFICATION_TYPES,
   },

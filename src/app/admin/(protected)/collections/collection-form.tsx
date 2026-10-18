@@ -14,6 +14,7 @@ import { cn } from "@/lib/common/utils";
 import type { EditorialDocumentLimits } from "@/lib/editorial-documents/model";
 import type { MediaTypeOption } from "@/lib/media/types";
 import type { CollectionFormState } from "./actions";
+import { AdminToasts } from "../admin-toasts";
 
 export function CollectionForm({ action, initial, mediaTypes, series, limits }: {
   action: (state: CollectionFormState, form: FormData) => Promise<CollectionFormState>;
@@ -66,7 +67,7 @@ export function CollectionForm({ action, initial, mediaTypes, series, limits }: 
     {initial ? <input type="hidden" name="collectionId" value={initial.id} /> : null}
     <input type="hidden" name="removeImage" value={removeImage ? "1" : "0"} />
     <input type="hidden" name="blocks" value={JSON.stringify(serializedBlocks)} />
-    {state.error ? <p role="alert" className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">{state.error}</p> : null}
+    <AdminToasts messages={state.error ? [{ id: `save-error-${state.submissionId}`, tone: "error", text: state.error }] : []} />
     <section className="grid w-full gap-4 rounded-md border bg-white p-5">
       <label className="grid gap-2 text-sm font-medium">Название<Input name="title" required maxLength={200} defaultValue={initial?.title ?? ""} /></label>
       <label className="grid gap-2 text-sm font-medium">Описание<textarea name="description" maxLength={10000} defaultValue={initial?.description ?? ""} className="min-h-36 rounded-md border border-stone-300 p-3 font-normal" /></label>

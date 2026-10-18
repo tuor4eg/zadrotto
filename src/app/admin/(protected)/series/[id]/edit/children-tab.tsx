@@ -14,6 +14,7 @@ import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/tabl
 import { Tooltip } from "@/components/ui/tooltip";
 import { createFranchiseChildAction, deleteFranchiseChildAction, moveFranchiseChildAction } from "../../actions";
 import { ChildPicker } from "./child-picker";
+import { AdminToasts } from "../../../admin-toasts";
 
 type ChildCandidate = { id: number; title: string; path: string; originalTitle: string | null };
 type Descendant = { id: number; code: string; title: string; mediaItemsCount: number; children: Descendant[] };
@@ -109,8 +110,10 @@ export function FranchiseChildrenTab({
   const [duplicateBlocked, setDuplicateBlocked] = useState(false);
 
   return <div className="grid gap-5">
-    {successMessage ? <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">{successMessage}</p> : null}
-    {errorMessage ? <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{errorMessage}</p> : null}
+    <AdminToasts clearParams={["childCreated", "childDeleted", "childMoved", "error"]} messages={[
+      ...(successMessage ? [{ id: "success", tone: "success" as const, text: successMessage }] : []),
+      ...(errorMessage ? [{ id: "error", tone: "error" as const, text: errorMessage }] : []),
+    ]} />
     <Card><CardHeader><CardTitle className="text-base">Текущие потомки</CardTitle></CardHeader><CardContent>{descendants.length > 0 ? <DescendantTable franchiseId={franchiseId} nodes={descendants} /> : <p className="text-sm text-stone-500">У этой серии пока нет потомков.</p>}</CardContent></Card>
     <Card><CardHeader><CardTitle className="text-base">Перенести существующую серию</CardTitle></CardHeader><CardContent>
       <form action={moveFranchiseChildAction} className="grid gap-3"><input type="hidden" name="parentId" value={franchiseId} /><Label htmlFor="child-id">Серия</Label><ChildPicker options={candidates} /><Button type="submit" className="w-fit">Перенести в эту ветку</Button></form>

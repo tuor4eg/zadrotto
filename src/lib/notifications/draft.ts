@@ -1,6 +1,10 @@
 import { and, eq } from "drizzle-orm"
 
 import {
+  authors,
+  creatorRequests,
+  genreRequests,
+  platformRequests,
   contributionReviews,
   contributions,
   bugReports,
@@ -75,7 +79,33 @@ export async function resolveNotificationDraft(tx: DbTransaction, event: Persist
   let entityId: string | null = null
   let authorId = 0
 
-  if (event.type === "author.level-achieved") {
+  if (event.type === "platform-request.created") {
+    const { requestId } = event.payload as { requestId: number }
+    const [request] = await tx.select({ name: platformRequests.externalPlatformName })
+      .from(platformRequests).where(eq(platformRequests.id, requestId)).limit(1)
+    body = request?.name ?? null
+    entityId = String(requestId)
+  } else if (event.type === "genre-request.created") {
+    const { requestId } = event.payload as { requestId: number }
+    const [request] = await tx.select({ name: genreRequests.externalGenreName })
+      .from(genreRequests).where(eq(genreRequests.id, requestId)).limit(1)
+    body = request?.name ?? null
+    entityId = String(requestId)
+  } else if (event.type === "creator-request.created") {
+    const { requestId } = event.payload as { requestId: number }
+    const [request] = await tx.select({ name: creatorRequests.externalCreatorName })
+      .from(creatorRequests).where(eq(creatorRequests.id, requestId)).limit(1)
+    body = request?.name ?? null
+    entityId = String(requestId)
+  } else if (event.type === "author.registration.submitted") {
+    const payload = event.payload as { authorId: number }
+    const [author] = await tx.select({ name: authors.name })
+      .from(authors).where(eq(authors.id, payload.authorId))
+      .limit(1)
+    body = author?.name ?? null
+    entityId = String(payload.authorId)
+    authorId = payload.authorId
+  } else if (event.type === "author.level-achieved") {
     const payload = event.payload as { authorId: number; level: number }
     body = `Теперь у вас уровень ${payload.level}.`
     entityId = String(payload.authorId)

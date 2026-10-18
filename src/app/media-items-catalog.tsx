@@ -57,6 +57,8 @@ type MediaItemsCatalogProps = {
   searchQuery: string;
   seriesCode: string | null;
   genreSlug?: string | null;
+  platformSlug?: string | null;
+  creatorSlug?: string | null;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   totalCount: number;
@@ -105,6 +107,8 @@ export function MediaItemsCatalog({
   searchQuery,
   seriesCode,
   genreSlug = null,
+  platformSlug = null,
+  creatorSlug = null,
   sort,
   sortDirection,
   totalCount,
@@ -151,6 +155,8 @@ export function MediaItemsCatalog({
     searchQuery !== "" ||
     seriesCode !== null ||
     genreSlug !== null ||
+    platformSlug !== null ||
+    creatorSlug !== null ||
     yearFilter !== null;
   const paginationSearchParams = {
     mine: (currentAuthor || isDemo) && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
@@ -160,6 +166,8 @@ export function MediaItemsCatalog({
     q: searchQuery || undefined,
     series: seriesCode ?? undefined,
     genre: genreSlug ?? undefined,
+    platform: platformSlug ?? undefined,
+    creator: creatorSlug ?? undefined,
     dir:
       sortDirection !== DEFAULT_CATALOG_SORT_DIRECTIONS[sort]
         ? sortDirection

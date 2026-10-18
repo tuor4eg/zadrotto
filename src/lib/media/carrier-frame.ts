@@ -188,9 +188,9 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(58vh,520px)]",
   },
   "game/pc": {
-    assetPath: "/mediaCarriers/game/pc/dos/disk35.webp",
-    aspectRatioClassName: "aspect-square",
-    coverAreaClassName: "left-[12%] top-[61%] h-[35%] w-[76.5%]",
+    assetPath: "/mediaCarriers/game/pc/dos/diskette.webp",
+    aspectRatioClassName: "aspect-[1228/1281]",
+    coverAreaClassName: "left-[12.6%] top-[35.3%] h-[54.2%] w-[75%]",
     displayFontClassName: "media-carrier-font-pc-dos",
     fontClassName: "media-carrier-font-pc-dos",
     labelFontClassName: "media-carrier-font-pc-dos",

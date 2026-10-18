@@ -14,6 +14,8 @@ import { NotificationBell } from "@/components/notifications/notification-inbox"
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
 import { getSubmittedFranchisesCountForAdmin } from "@/db/queries/franchises";
+import { getPendingCreatorRequestCount } from "@/db/queries/creator-requests";
+import { getPendingPlatformRequestCount } from "@/db/queries/platform-requests";
 import { getPendingGenreRequestCount } from "@/db/queries/genre-requests";
 import { getOpenBugReportCount } from "@/db/queries/bug-reports";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
@@ -34,13 +36,15 @@ type AdminLayoutProps = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount] = await Promise.all([
+  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount, pendingPlatformRequestsCount, pendingCreatorRequestsCount] = await Promise.all([
     requireAdminUser(),
     getSubmittedAuthorMediaItemsCountForAdmin(),
     getSubmittedFranchisesCountForAdmin(),
     getSubmittedContributionReviewCountForAdmin(),
     getOpenBugReportCount(),
     getPendingGenreRequestCount(),
+    getPendingPlatformRequestCount(),
+    getPendingCreatorRequestCount(),
   ]);
   return (
     <main className="min-h-screen bg-[linear-gradient(180deg,#f7f4ef_0%,#f3f0ea_45%,#ece9e2_100%)] px-4 py-6 text-stone-950 sm:px-6 lg:px-10">
@@ -68,6 +72,8 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             submittedReviewsCount={submittedReviewsCount}
             openBugReportsCount={openBugReportsCount}
             pendingGenreRequestsCount={pendingGenreRequestsCount}
+            pendingPlatformRequestsCount={pendingPlatformRequestsCount}
+            pendingCreatorRequestsCount={pendingCreatorRequestsCount}
             logoutSlot={
               <form action={logoutAdmin}>
                 <button
@@ -101,6 +107,8 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
               submittedReviewsCount={submittedReviewsCount}
               openBugReportsCount={openBugReportsCount}
               pendingGenreRequestsCount={pendingGenreRequestsCount}
+              pendingPlatformRequestsCount={pendingPlatformRequestsCount}
+              pendingCreatorRequestsCount={pendingCreatorRequestsCount}
             />
             <AdminToolsMenu />
             <Link

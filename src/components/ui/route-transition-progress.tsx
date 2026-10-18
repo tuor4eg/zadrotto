@@ -2,7 +2,6 @@
 
 import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { flushSync } from "react-dom";
 
 const ROUTE_PROGRESS_TIMEOUT_MS = 15_000;
 export const ROUTE_TRANSITION_START_EVENT = "route-transition-start";
@@ -51,7 +50,7 @@ export function RouteTransitionProgress() {
 
   useEffect(() => {
     function startProgress() {
-      flushSync(() => setIsVisible(true));
+      setIsVisible(true);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       timeoutRef.current = setTimeout(() => setIsVisible(false), ROUTE_PROGRESS_TIMEOUT_MS);
     }

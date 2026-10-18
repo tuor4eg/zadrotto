@@ -133,12 +133,12 @@ describe("FantLab provider", () => {
           image: "/images/work42.jpg",
           creators: {
             authors: [
-              { name: "Фрэнк Герберт" },
-              { name: "Фрэнк Герберт" },
+              { id: 100, type: "autor", name: "Фрэнк Герберт" },
+              { id: 100, type: "autor", name: "Фрэнк Герберт" },
               { name: "" },
             ],
           },
-          authors: [{ name: "Другой автор" }],
+          authors: [{ id: "101", type: "autor", name: "Другой автор" }, { id: 102, type: "translator", name: "Переводчик" }],
           year: "1965",
         },
       ]);
@@ -155,7 +155,8 @@ describe("FantLab provider", () => {
           externalId: "42",
           sourceUrl: "https://fantlab.ru/work42",
           facts: {
-            authors: ["Фрэнк Герберт", "Другой автор"],
+            authors: ["Фрэнк Герберт", "Другой автор", "Переводчик"],
+            fantlabAuthors: [{ id: "100", name: "Фрэнк Герберт" }, { id: "101", name: "Другой автор" }],
           },
         },
       );

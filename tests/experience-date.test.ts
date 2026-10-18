@@ -12,13 +12,14 @@ import {
 } from "../src/lib/authors/experience-date";
 
 describe("formatFirstExperiencedDate", () => {
-  it("keeps year and day selectors compact so the adjacent labels fit", () => {
+  it("adapts date selector columns to the selected precision", () => {
     const fields = readFileSync("src/components/ui/rating-experience-fields.tsx", "utf8");
 
-    assert.match(fields, /sm:grid-cols-\[88px_minmax\(0,1fr\)_64px\]/);
-    assert.match(fields, /"grid-cols-\[minmax\(0,1fr\)_160px\]"/);
+    assert.match(fields, /selectedExperiencePrecision === "year"[\s\S]*"grid-cols-1"[\s\S]*selectedExperiencePrecision === "month"[\s\S]*"sm:grid-cols-2"[\s\S]*"sm:grid-cols-3"/);
     assert.match(fields, /\[&>button>span:first-child\]:hidden/);
-    assert.match(fields, /sm:grid-cols-\[minmax\(0,1fr\)_160px\]/);
+    for (const label of ["Год знакомства", "Месяц знакомства", "День знакомства"]) {
+      assert.ok(fields.includes(`ariaLabel="${label}"`));
+    }
   });
 
   it("formats first experience dates by stored precision", () => {

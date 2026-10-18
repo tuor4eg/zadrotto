@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { CircleHelp, Menu, Search, Shield, UserRound, X } from "lucide-react";
+import { ChevronDown, CircleHelp, Menu, Search, Shield, UserRound, X } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -34,13 +34,65 @@ export type PublicSiteHeaderProps = {
 
 const BASE_MENU_ITEMS = [
   { href: "/archive", label: "Архив" },
-  { href: "/series", label: "Серии" },
-  { href: "/genres", label: "Жанры" },
+  { href: null, label: "Путеводитель" },
   { href: "/collections", label: "Подборки" },
   { href: "/reviews", label: "Рецензии" },
 ] as const;
 
+const GUIDE_MENU_ITEMS = [
+  { href: "/series", label: "Серии" },
+  { href: "/genres", label: "Жанры" },
+  { href: "/platforms", label: "Платформы" },
+  { href: "/creators", label: "Создатели" },
+] as const;
+
 const QUIZZES_MENU_ITEM = { href: "/quizzes", label: "Квизы" } as const;
+
+function GuideMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+  return (
+    <details
+      className="group relative"
+      onMouseEnter={(event) => {
+        if (!mobile && window.matchMedia("(hover: hover) and (pointer: fine)").matches) event.currentTarget.open = true;
+      }}
+      onMouseLeave={(event) => {
+        if (!mobile && window.matchMedia("(hover: hover) and (pointer: fine)").matches) event.currentTarget.open = false;
+      }}
+      onBlur={(event) => {
+        // Safari can report no next focus target when a touch activates a link.
+        // Keep the link visible until its click has had a chance to navigate.
+        if (event.relatedTarget && !event.currentTarget.contains(event.relatedTarget)) {
+          event.currentTarget.open = false;
+        }
+      }}
+      onKeyDown={(event) => {
+        if (event.key === "Escape") {
+          event.currentTarget.open = false;
+          event.currentTarget.querySelector("summary")?.focus();
+        }
+      }}
+    >
+      <summary className={`flex cursor-pointer list-none items-center gap-1 font-mono uppercase [&::-webkit-details-marker]:hidden ${mobile ? "rounded-md px-3 py-2 text-xs tracking-wide text-stone-100 hover:bg-white/10" : "text-[10px] tracking-[0.12em] text-stone-300 hover:text-white"}`}>
+        Путеводитель
+        <ChevronDown aria-hidden="true" className="size-3 transition-transform group-open:rotate-180" />
+      </summary>
+      <div className={mobile ? "pl-3" : "absolute left-0 top-full z-50 min-w-44 pt-2"}>
+        <div className={mobile ? "grid gap-1" : "grid gap-1 rounded-lg border border-stone-700 bg-stone-900 p-2 shadow-xl"}>
+          {GUIDE_MENU_ITEMS.map((item) => (
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={onNavigate}
+              className={`rounded-md px-3 py-2 font-mono uppercase text-stone-100 hover:bg-white/10 ${mobile ? "text-xs tracking-wide" : "text-[10px] tracking-[0.12em]"}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+      </div>
+    </details>
+  );
+}
 
 export function PublicSiteHeader({
   adminNotificationCount,
@@ -120,7 +172,9 @@ export function PublicSiteHeader({
           </button>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
-            {MENU_ITEMS.map((item) => (
+            {MENU_ITEMS.map((item) => item.href === null ? (
+              <GuideMenu key={item.label} />
+            ) : (
               <Link
                 key={item.href}
                 href={item.href}
@@ -157,7 +211,9 @@ export function PublicSiteHeader({
               aria-label="Мобильная навигация"
               className="absolute right-0 top-14 z-50 grid min-w-44 gap-1 rounded-lg border border-stone-700 bg-stone-900 p-2 shadow-xl lg:hidden"
             >
-              {MENU_ITEMS.map((item) => (
+              {MENU_ITEMS.map((item) => item.href === null ? (
+                <GuideMenu key={item.label} mobile onNavigate={() => setIsMenuOpen(false)} />
+              ) : (
                 <Link
                   key={item.href}
                   href={item.href}

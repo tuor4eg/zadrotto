@@ -1,4 +1,5 @@
 import { isMediaTypeCode } from "@/lib/media/types";
+import type { MediaItemPlatform } from "@/lib/media/platforms";
 import type { MediaItemGenre } from "@/lib/media/genres";
 
 export const ADMIN_MEDIA_BROWSER_SORTS = [
@@ -49,6 +50,7 @@ export type AdminMediaBrowserItem = {
   mediaTypeLabel: string;
   metadataFacts: Record<string, unknown> | null;
   genres: MediaItemGenre[];
+  platforms?: MediaItemPlatform[];
   originalTitle: string | null;
   ratingsCount: number;
   releaseYear: number | null;

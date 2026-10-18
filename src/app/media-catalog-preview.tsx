@@ -13,6 +13,8 @@ import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
+import { MediaItemWriterLinks } from "@/components/archive/media-item-creator-links";
+import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { buttonVariants } from "@/components/ui/button";
 import { ImageViewer } from "@/components/ui/image-viewer";
@@ -81,7 +83,7 @@ export function MediaCatalogPreview({
   const metaItems = [
     getMediaTypeLabel(item.mediaType, mediaTypes).toLowerCase(),
     yearLabel,
-    formatAuthorsFact(item.metadataFacts),
+    item.mediaType === "book" || item.mediaType === "boardgame" ? null : formatAuthorsFact(item.metadataFacts),
   ].filter((value): value is string => Boolean(value));
   const franchiseAction = currentAuthor ? (
     <MediaItemFranchiseSuggestionDialog
@@ -187,6 +189,11 @@ export function MediaCatalogPreview({
               ) : <span className="break-words">{metaItem}</span>}
             </Fragment>
           ))}
+          {item.mediaType === "book" && item.writerCreators.length ? <>
+            {metaItems.length ? <span className="mx-1.5">•</span> : null}
+            <MediaItemWriterLinks creators={item.writerCreators} />
+          </> : null}
+          {item.mediaType === "boardgame" ? <BoardgameDetailsFacts facts={{ authors: item.metadataFacts?.authors, artists: item.metadataFacts?.artists, bggCreators: item.metadataFacts?.bggCreators }} creators={item.entryCreators} genres={[]} hasUnifiedGenres separatorBefore={metaItems.length > 0} /> : null}
         </div>
 
         <div className="mt-3 grid gap-2">

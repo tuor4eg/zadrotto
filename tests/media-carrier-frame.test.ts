@@ -94,6 +94,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "mobile" }),
       {
         assetPath: "/mediaCarriers/game/mobile/phone.png",
+        ratingPanelVariant: "smartphone",
         aspectRatioClassName: "aspect-[133/260]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
@@ -135,6 +136,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "sega" }),
       {
         assetPath: "/mediaCarriers/game/sega/cartridge.webp",
+        ratingPanelVariant: "standard",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[15.2%] top-[7.8%] h-[79.5%] w-[69.6%]",
         displayFontClassName: "media-carrier-font-sega",
@@ -148,6 +150,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "snes" }),
       {
         assetPath: "/mediaCarriers/game/snes/cartridge.webp",
+        ratingPanelVariant: "standard",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[14.6%] top-[4.5%] h-[41.5%] w-[70.8%]",
         displayFontClassName: "media-carrier-font-sega",
@@ -170,7 +173,7 @@ describe("media carrier frames", () => {
         fontClassName: "media-carrier-font-ps1",
         labelFontClassName: "media-carrier-font-ps1",
         placeholderVariant: "win9x-jewel-label",
-        ratingPanelVariant: "ps1-memory-card",
+        ratingPanelVariant: "standard",
         renderKind: "cartridge",
       },
     );
@@ -188,9 +191,9 @@ describe("media carrier frames", () => {
         releaseYear: 1981,
       }),
       {
-        assetPath: "/mediaCarriers/game/pc/dos/disk35.webp",
-        aspectRatioClassName: "aspect-square",
-        coverAreaClassName: "left-[12%] top-[61%] h-[35%] w-[76.5%]",
+        assetPath: "/mediaCarriers/game/pc/dos/diskette.webp",
+        aspectRatioClassName: "aspect-[1228/1281]",
+        coverAreaClassName: "left-[12.6%] top-[35.3%] h-[54.2%] w-[75%]",
         displayFontClassName: "media-carrier-font-pc-dos",
         fontClassName: "media-carrier-font-pc-dos",
         labelFontClassName: "media-carrier-font-pc-dos",

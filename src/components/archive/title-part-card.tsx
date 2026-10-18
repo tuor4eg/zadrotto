@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { MediaItemTile } from "@/app/media-item-tile";
+import { ImageViewer } from "@/components/ui/image-viewer";
 import type { TitlePartView } from "@/db/queries/title-parts";
 import { formatPluralCount } from "@/lib/media/media-item-summary";
 import { getTitlePartLabel, isTitlePartRateable, isTitlePartReviewable } from "@/lib/media/title-parts";
@@ -17,7 +18,8 @@ export function TitlePartCard({ part, mediaType, myRating, onRate, onDescribe }:
   const rateable = isTitlePartRateable(part);
   const label = getTitlePartLabel(part);
   const numberedLabel = getTitlePartLabel({ ...part, name: null });
-  return <article className="min-w-0 [&>button]:w-full">
+  const posterUrl = part.coverUrl ?? part.coverThumbUrl;
+  const renderTile = (openPoster?: () => void) => (
     <MediaItemTile
       item={{
         id: part.id,
@@ -34,8 +36,15 @@ export function TitlePartCard({ part, mediaType, myRating, onRate, onDescribe }:
       currentAuthorScore={myRating}
       ratingDisplay={rateable ? "default" : "none"}
       onRatingClick={rateable ? onRate : undefined}
-      onSelect={rateable ? onRate : part.description?.trim() ? onDescribe : undefined}
+      onSelect={openPoster ?? (part.description?.trim() ? onDescribe : undefined)}
     />
+  );
+  return <article className="min-w-0 [&>button]:w-full">
+    {posterUrl ? (
+      <ImageViewer src={posterUrl} alt={`Обложка: ${label}`} title={label}>
+        {renderTile}
+      </ImageViewer>
+    ) : renderTile()}
     <p className="mt-2 flex flex-wrap items-center justify-between gap-x-2 text-xs text-stone-600">
       <span>{part.year ?? "—"}</span>
       {part.type === "season" && rateable && part.episodeCount !== null ? (

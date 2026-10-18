@@ -11,6 +11,7 @@ type MediaItemSummaryInput = {
   mediaTypeLabel: string;
   metadataFacts?: Record<string, unknown> | null;
   genres?: readonly MediaItemGenre[];
+  writerCreators?: readonly { name: string }[];
   releaseYear: number | null;
 };
 
@@ -92,8 +93,8 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
       genreNames.length > 0 ? genreNames.join(", ") : null,
     ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "book") {
-    const authors = formatAuthorsFact(facts);
-    details = authors ? [authors] : [];
+    const names = (item.writerCreators ?? []).map((creator) => creator.name);
+    details = names.length ? [formatFactList(names)] : [];
   } else if (item.mediaType === "comic") {
     const authors = formatAuthorsFact(facts);
     const issues = getPositiveIntegerFact(facts, "issueCount");

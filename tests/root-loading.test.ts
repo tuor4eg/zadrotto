@@ -24,7 +24,8 @@ describe("root route loading feedback", () => {
     assert.match(loadingSource, /window\.addEventListener\("popstate", handlePopState\)/);
     assert.match(loadingSource, /window\.addEventListener\(ROUTE_TRANSITION_START_EVENT, startProgress\)/);
     assert.match(loadingSource, /document\.addEventListener\("submit", handleSubmit, \{ capture: true \}\)/);
-    assert.match(loadingSource, /flushSync\(\(\) => setIsVisible\(true\)\)/);
+    assert.match(loadingSource, /function startProgress\(\) \{\s*setIsVisible\(true\);/);
+    assert.doesNotMatch(loadingSource, /flushSync/);
     assert.match(loadingSource, /const routeKey = `\$\{pathname\}\?\$\{searchParams\.toString\(\)\}`/);
     assert.match(loadingSource, /\}, \[routeKey\]\)/);
   });

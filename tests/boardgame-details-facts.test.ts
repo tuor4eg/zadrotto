@@ -3,6 +3,7 @@ import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
+import { MediaMetadataFacts } from "@/components/ui/media-metadata-facts";
 
 import { formatBoardgameRange, getBoardgameFactValues, getStringListFact } from "@/lib/media/metadata-facts";
 
@@ -57,4 +58,25 @@ test("hidden unified boardgame genres do not return through provider fallback", 
   }));
   assert.match(visible, /Дикий запад/);
   assert.doesNotMatch(visible, /Western/);
+});
+
+test("structured BGG creator roles display approved links and suppress raw fallback independently", () => {
+  const facts = { bggCreators: [], authors: ["Raw Designer"], artists: ["Raw Artist"], minAge: 8 };
+  const creators = [
+    { id: 1, name: "Принятый дизайнер", slug: "designer", roleCode: "designer", roleName: "Геймдизайнер" },
+    { id: 1, name: "Принятый дизайнер", slug: "designer", roleCode: "artist", roleName: "Художник" },
+  ];
+  const html = renderToStaticMarkup(createElement(BoardgameDetailsFacts, { facts, genres: [], creators }));
+  assert.equal((html.match(/href="\/archive\?creator=designer"/g) ?? []).length, 2);
+  assert.match(html, /Геймдизайнеры/);
+  assert.match(html, /Художники/);
+  assert.doesNotMatch(html, /Raw Designer|Raw Artist/);
+  const pending = renderToStaticMarkup(createElement(BoardgameDetailsFacts, { facts, genres: [], creators: [] }));
+  assert.doesNotMatch(pending, /Raw Designer|Raw Artist|Геймдизайнеры|Художники/);
+  assert.match(pending, /8\+/);
+  const legacy = renderToStaticMarkup(createElement(BoardgameDetailsFacts, { facts: { authors: ["Raw Designer"], artists: ["Raw Artist"] }, genres: [] }));
+  assert.match(legacy, /Raw Designer/);
+  assert.match(legacy, /Raw Artist/);
+  const metadata = renderToStaticMarkup(createElement(MediaMetadataFacts, { metadata: { facts, sourceProvider: "bgg", sourceExternalId: "1", sourceUrl: null } }));
+  assert.doesNotMatch(metadata, /bggCreators|Raw Designer|Raw Artist/);
 });

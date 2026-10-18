@@ -71,6 +71,18 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     getEnabledMediaTypeCodes(currentAuthor?.id),
   ]);
   if (!item) notFound();
+  const reviewSeason = review.partId == null ? null
+    : (await getTitlePartsForMediaItem(item.id, currentAuthor?.id))
+      .find((part) => part.id === review.partId && part.type === "season") ?? null;
+  const seasonCoverUrl = reviewSeason?.coverThumbUrl ?? reviewSeason?.coverUrl;
+  const identityItem = reviewSeason ? {
+    ...item,
+    coverThumbUrl: seasonCoverUrl ?? item.coverThumbUrl,
+    coverUrl: reviewSeason.coverUrl ?? item.coverUrl,
+    averageScore: reviewSeason.archiveRating ?? item.averageScore,
+    ratingsCount: reviewSeason.archiveRating != null ? reviewSeason.ratingsCount : item.ratingsCount,
+    currentAuthorScore: reviewSeason.myRating ?? item.currentAuthorScore,
+  } : item;
   const inlineNodes = parseInlineMarkup(review.body);
   const [
     resolvedInlineEntities,
@@ -137,7 +149,8 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
           mediaItemIdentity={
             <ArchiveMediaItemIdentity
               franchiseActions={franchiseActions}
-              item={item}
+              item={identityItem}
+              ratingPartId={reviewSeason && isTitlePartRateable(reviewSeason) ? reviewSeason.id : null}
               mediaTypes={mediaTypes}
               showFranchiseSection={Boolean(currentAuthor)}
             />
@@ -152,3 +165,5 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     </main>
   );
 }
+import { getTitlePartsForMediaItem } from "@/db/queries/title-parts";
+import { isTitlePartRateable } from "@/lib/media/title-parts";

@@ -100,6 +100,19 @@ function getFantLabAuthors(item: FantLabRecord) {
   ];
 }
 
+function getFantLabAuthorReferences(item: FantLabRecord) {
+  const creators = asRecord(item.creators);
+  const authors = [...(Array.isArray(creators?.authors) ? creators.authors : []), ...(Array.isArray(item.authors) ? item.authors : [])];
+  const references = new Map<string, { id: string; name: string }>();
+  for (const value of authors) {
+    const author = asRecord(value);
+    const id = asPositiveInteger(author?.id);
+    const name = asString(author?.name);
+    if (author?.type === "autor" && id && Number.isSafeInteger(id) && name && !references.has(String(id))) references.set(String(id), { id: String(id), name });
+  }
+  return [...references.values()];
+}
+
 function getFantLabWorks(response: unknown) {
   if (Array.isArray(response)) {
     return response.map(asRecord).filter((item): item is FantLabRecord => Boolean(item));
@@ -294,6 +307,7 @@ export const fantLabProvider: MediaProvider = {
       sourceUrl: getFantLabWorkUrl(workId),
       facts: {
         authors: getFantLabAuthors(work),
+        ...(getFantLabAuthorReferences(work).length ? { fantlabAuthors: getFantLabAuthorReferences(work) } : {}),
       },
     };
   },

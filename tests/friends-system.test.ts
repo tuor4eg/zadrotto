@@ -69,7 +69,10 @@ test("friends journal exposes ratings through the shared archive", () => {
   assert.match(archiveRatedAuthor, />\s*Средней\s*</);
   assert.match(archiveRatedAuthor, />\s*Моей\s*</);
   assert.match(mediaItemTile, /ratingDisplay\?: "default" \| "author-only"/);
-  assert.match(mediaItemTile, /shouldShowAuthorOnly \? currentAuthorScore : item\.averageScore/);
+  assert.match(mediaItemTile, /const shouldShowAuthorScore = currentAuthorScore !== undefined && currentAuthorScore !== null/);
+  assert.match(mediaItemTile, /const shouldShowAuthorOnly = ratingDisplay === "author-only" && shouldShowAuthorScore/);
+  assert.match(mediaItemTile, /!shouldShowAuthorOnly \? \([\s\S]*formatScore\(item\.averageScore\)[\s\S]*\) : null/);
+  assert.match(mediaItemTile, /shouldShowAuthorScore \? \([\s\S]*formatScore\(currentAuthorScore\)/);
   assert.match(queries, /getPublicAuthorStatistics/);
   assert.match(queries, /const ratingFilter = and\([\s\S]*mediaItems\.publicationStatus, "published"/);
   assert.match(queries, /const reviewFilter = and\([\s\S]*contributions\.status, "published"/);

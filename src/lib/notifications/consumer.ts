@@ -34,6 +34,10 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
     "media-franchise.removal.approved",
     "review.submitted",
     "review.approved",
+    "genre-request.created",
+    "platform-request.created",
+    "creator-request.created",
+    "author.registration.submitted",
     "bug-report.created",
     "author.level-achieved",
     "author.trusted-granted",
@@ -49,8 +53,6 @@ export const notificationDomainEventConsumer: DomainEventConsumer = {
       : Number.isInteger(draft.authorId) && draft.authorId > 0
         ? [draft.authorId]
         : []
-
-    if (recipientIds.length === 0) return
 
     await insertNotifications(
       tx,

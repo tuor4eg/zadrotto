@@ -54,6 +54,7 @@ describe("media item summary", () => {
           mediaType,
           mediaTypeLabel,
           releaseYear: 1986,
+          ...(mediaType === "book" ? { writerCreators: [{ name: "Алан Мур" }, { name: "Дэйв Гиббонс" }] } : {}),
           metadataFacts: { authors: ["Алан Мур", "Дэйв Гиббонс"] },
         }),
         `${mediaTypeLabel} · 1986 · Алан Мур, Дэйв Гиббонс`,

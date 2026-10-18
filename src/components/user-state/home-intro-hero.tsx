@@ -14,7 +14,7 @@ export function HomeIntroHero({
     <div className="w-full lg:max-w-[66%]">
       <h1
         id="main-intro-title"
-        className="font-serif text-3xl leading-tight tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+        className="media-carrier-font-pc-steam text-2xl leading-tight tracking-tight text-stone-950 sm:text-4xl lg:text-5xl"
       >
         {message.title}
       </h1>

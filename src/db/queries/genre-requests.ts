@@ -1,3 +1,5 @@
+import { appendDomainEvent } from "@/lib/domain-events/persistence";
+import { createJobRun } from "@/db/queries/jobs";
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -85,6 +87,13 @@ export async function lockGenreRequestsForMetadata(tx: GenreTransaction, input: 
     if (unknown.has(genre.normalizedName)) {
       const [created] = await tx.insert(genreRequests).values({ provider: input.provider, mediaType: input.mediaType,
         externalGenreName: genre.name, normalizedExternalGenreName: genre.normalizedName }).onConflictDoNothing().returning({ id: genreRequests.id });
+      if (created) {
+        const event = await appendDomainEvent(tx, { type: "genre-request.created", actorAuthorId: null,
+          aggregateType: "genre-request", aggregateId: String(created.id), payload: { requestId: created.id } });
+        // The job and outbox become visible together after the provider transaction commits.
+        await createJobRun({ type: "domain-events.dispatch", payload: { eventId: event.id }, source: "event",
+          maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx);
+      }
       if (created) await tx.insert(adminActivityLogs).values({ action: "genre-request.detected", actorType: "system",
         entityType: "genre-request", entityId: created.id, entityLabel: genre.name, status: "success", severity: "warning",
         message: "Обнаружен неизвестный жанр записи.", metadata: { mediaItemId: input.mediaItemId, provider: input.provider, mediaType: input.mediaType, externalName: genre.name, externalId: genre.id, reason: "unmapped-value" } });

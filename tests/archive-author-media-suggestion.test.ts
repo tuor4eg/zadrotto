@@ -57,7 +57,7 @@ describe("archive author media suggestion placement", () => {
     ]);
     assert.match(homePageSource, /<ArchiveAuthorMediaSuggestion/);
     assert.match(homePageSource, /mediaTypeFilter=\{mediaTypeFilter\}/);
-    assert.match(homePageSource, /searchQuery=\{searchQuery\}/);
+    assert.match(homePageSource, /searchQuery=\{!selectedCreator && selectedGenre \? "" : searchQuery\}/);
     assert.match(homePageSource, /defaultFranchiseIds=\{selectedSeries \? \[selectedSeries\.id\] : \[\]\}/);
     assert.match(suggestionSource, /franchiseIds: defaultFranchiseIds/);
   });

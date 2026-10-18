@@ -61,6 +61,26 @@ describe("BGG XML and identity", () => {
 });
 
 describe("BGG adapter", () => {
+  it("preserves person IDs independently of designer and artist roles", async () => {
+    const { provider } = setup(async () => response(xml(item("1", '<link type="boardgamedesigner" id="12" value="A Person"/><link type="boardgameartist" id="12" value="A Person"/><link type="boardgameartist" id="13" value="Another Artist"/>'))));
+    const metadata = await provider.getTitleMetadata!(metadataInput, options);
+    assert.deepEqual(metadata?.facts.bggCreators, [
+      { externalId: "12", name: "A Person", roleCode: "designer" },
+      { externalId: "12", name: "A Person", roleCode: "artist" },
+      { externalId: "13", name: "Another Artist", roleCode: "artist" },
+    ]);
+    assert.deepEqual(metadata?.facts.authors, ["A Person"]);
+    assert.deepEqual(metadata?.facts.artists, ["A Person", "Another Artist"]);
+  });
+  it("distinguishes a complete empty roster from links with missing person IDs", async () => {
+    const empty = setup(async () => response(xml(item())));
+    assert.deepEqual((await empty.provider.getTitleMetadata!(metadataInput, options))?.facts.bggCreators, []);
+    const normalized = await getTitleMetadata(metadataInput, [empty.provider], options);
+    assert.deepEqual(normalized.metadata?.facts.bggCreators, [], "registry must preserve the explicit empty roster");
+    const broken = setup(async () => response(xml(item("1", '<link type="boardgamedesigner" value="Person without ID"/>'))));
+    await assert.rejects(broken.provider.getTitleMetadata!(metadataInput, options), BggRequestError);
+  });
+
   it("decodes numeric entities in category names and references", async () => {
     const { provider } = setup(async () => response(xml(item("1", '<link type="boardgamecategory" id="7" value="Children&#039;s Game"/><link type="boardgamemechanic" value="Pick &#x26; Pass"/>'))));
     const result = await provider.getTitleMetadata!(metadataInput, options);
@@ -78,13 +98,13 @@ describe("BGG adapter", () => {
     assert.equal(calls, 2);
   });
   it("maps metadata without mixing mechanics and categories; keeps only Cyrillic aliases", async () => {
-    const fixture = item("1", `<name type="alternate" value="Other"/><name type="alternate" value="Крылья"/><name type="alternate" value="крылья"/><name type="alternate" value="Autre"/><name type="alternate" value="Altro"/><description><![CDATA[Birds & friends]]></description><minplayers value="1"/><maxplayers value="5"/><playingtime value="60"/><minplaytime value="40"/><maxplaytime value="70"/><minage value="10"/><link type="boardgamedesigner" value="Designer"/><link type="boardgameartist" value="Artist"/><link type="boardgamepublisher" value="Publisher"/><link type="boardgamecategory" id="7" value="Animals"/><link type="boardgamemechanic" id="8" value="Drafting"/>`, "boardgameexpansion");
+    const fixture = item("1", `<name type="alternate" value="Other"/><name type="alternate" value="Крылья"/><name type="alternate" value="крылья"/><name type="alternate" value="Autre"/><name type="alternate" value="Altro"/><description><![CDATA[Birds & friends]]></description><minplayers value="1"/><maxplayers value="5"/><playingtime value="60"/><minplaytime value="40"/><maxplaytime value="70"/><minage value="10"/><link type="boardgamedesigner" id="11" value="Designer"/><link type="boardgameartist" id="12" value="Artist"/><link type="boardgamepublisher" value="Publisher"/><link type="boardgamecategory" id="7" value="Animals"/><link type="boardgamemechanic" id="8" value="Drafting"/>`, "boardgameexpansion");
     const { provider } = setup(async () => response(xml(fixture)));
     const result = await provider.getTitleMetadata!(metadataInput, options);
     assert.equal(result?.fields?.title, "Game & Friends");
     assert.equal(result?.fields?.description, "Birds & friends");
     assert.deepEqual(result?.fields?.aliases, ["Крылья"]);
-    assert.deepEqual(result?.facts, { bggItemType: "boardgameexpansion", authors: ["Designer"], artists: ["Artist"], publishers: ["Publisher"], mechanics: ["Drafting"], genres: ["Animals"], genreReferences: [{ name: "Animals", id: "7" }], minPlayers: 1, maxPlayers: 5, runtimeMinutes: 60, minPlayingTimeMinutes: 40, maxPlayingTimeMinutes: 70, minAge: 10 });
+    assert.deepEqual(result?.facts, { bggCreators: [{ externalId: "11", name: "Designer", roleCode: "designer" }, { externalId: "12", name: "Artist", roleCode: "artist" }], bggItemType: "boardgameexpansion", authors: ["Designer"], artists: ["Artist"], publishers: ["Publisher"], mechanics: ["Drafting"], genres: ["Animals"], genreReferences: [{ name: "Animals", id: "7" }], minPlayers: 1, maxPlayers: 5, runtimeMinutes: 60, minPlayingTimeMinutes: 40, maxPlayingTimeMinutes: 70, minAge: 10 });
     assert.equal(JSON.stringify(result).includes("secret"), false);
   });
   it("treats zero year and absent optional fields as missing", async () => {

@@ -25,6 +25,7 @@ import {
   updateFranchiseAction,
 } from "../../actions";
 import { EmptyState, PageHeader } from "../../../admin-ui";
+import { AdminToasts } from "../../../admin-toasts";
 import { FranchiseForm } from "../../franchise-form";
 import { MediaItemFranchisePicker } from "../../media-item-franchise-picker";
 import { formatMediaItemsCount, getFranchiseErrorMessage } from "../../messages";
@@ -182,9 +183,11 @@ export default async function EditFranchisePage({
         </CardHeader>
 
         <CardContent>
-          {query.attached === "1" ? <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">Запись добавлена в серию.</p> : null}
-          {query.detached === "1" ? <p className="mb-4 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800" role="status">Запись убрана из серии.</p> : null}
-          {query.error ? <p className="mb-4 rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800" role="alert">{getFranchiseErrorMessage(query.error)}</p> : null}
+          <AdminToasts clearParams={["attached", "detached", "error"]} messages={[
+            ...(query.attached === "1" ? [{ id: "attached", tone: "success" as const, text: "Запись добавлена в серию." }] : []),
+            ...(query.detached === "1" ? [{ id: "detached", tone: "success" as const, text: "Запись убрана из серии." }] : []),
+            ...(getFranchiseErrorMessage(query.error) ? [{ id: "error", tone: "error" as const, text: getFranchiseErrorMessage(query.error)! }] : []),
+          ]} />
           <MediaItemFranchisePicker
             franchiseId={franchise.id}
             items={availableMediaItems}

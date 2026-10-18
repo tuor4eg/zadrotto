@@ -98,7 +98,7 @@ describe("about page contracts", () => {
 
     for (const publicComponentSource of [mediaItemDetailsSource, mediaCatalogPreviewSource]) {
       assert.match(publicComponentSource, /import \{ CoverSourceAttribution \}/);
-      assert.match(publicComponentSource, /provider=\{item\.coverSourceProvider\}/);
+      assert.match(publicComponentSource, /provider=\{(?:item\.metadataFacts\?\.bggItemType \? "bgg" : )?item\.coverSourceProvider\}/);
       assert.match(publicComponentSource, /pageUrl=\{item\.coverSourcePageUrl\}/);
     }
   });

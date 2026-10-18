@@ -39,10 +39,10 @@ describe("archive series search", () => {
     assert.match(archivePage, /getFranchiseByCode\(requestedSeriesCode\)/);
     assert.match(
       archivePage,
-      /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"\]/,
+      /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "platform"\]/,
     );
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
-    assert.match(archivePage, /const catalogSearchQuery = selectedGenre \|\| selectedSeries \? "" : searchQuery/);
+    assert.match(archivePage, /const catalogSearchQuery = !selectedCreator && \(selectedGenre \|\| selectedSeries\) \? "" : searchQuery/);
     assert.match(archivePage, /const parsedSort = selectedSeries[\s\S]*\? "release_year"/);
     assert.match(archivePage, /const sortDirection = selectedSeries[\s\S]*\? "asc"/);
     assert.match(seriesContext, /aria-label="Сбросить выбранную серию"/);

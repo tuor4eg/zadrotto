@@ -1,3 +1,8 @@
+import { getActivePlatformBySlug, searchArchivePlatformMatches } from "@/db/queries/platforms";
+import { ArchiveSelectedPlatform } from "./archive-platform-context";
+import { notFound } from "next/navigation";
+import { getCreatorBySlug, searchArchiveCreatorMatches } from "@/db/queries/creators";
+import { ArchiveSelectedCreator } from "./archive-creator-context";
 import { getActiveGenreBySlug, searchArchiveGenreMatches } from "@/db/queries/genres";
 import { ArchiveSelectedGenre } from "./archive-genre-context";
 import { connection } from "next/server";
@@ -64,6 +69,8 @@ type HomeProps = {
     compare?: string;
     series?: string;
     genre?: string;
+    platform?: string;
+    creator?: string;
     dir?: string;
     sort?: string;
     suggested?: string;
@@ -88,11 +95,14 @@ export default async function Home({ searchParams }: HomeProps) {
   const currentAdminUser = headerState.currentAdminUser;
   const requestedSeriesCode = params.series?.trim() ?? "";
   const requestedRatedByAuthorId = parseRatedByAuthorId(params.ratedBy);
+  const selectedCreator = params.creator ? await getCreatorBySlug(params.creator.trim()) : null;
+  if (params.creator && !selectedCreator) notFound();
+  const selectedPlatform = params.platform ? await getActivePlatformBySlug(params.platform.trim()) : null;
   const selectedGenre = params.genre ? await getActiveGenreBySlug(params.genre.trim()) : null;
   const [effectiveMediaTypes, activeQuiz, selectedSeries, requestedRatedProfile] = await Promise.all([
     getEffectiveMediaTypeOptions(currentAuthor?.id),
     currentAuthor ? getActiveQuiz() : Promise.resolve(null),
-    !selectedGenre && requestedSeriesCode ? getFranchiseByCode(requestedSeriesCode) : Promise.resolve(null),
+    (!selectedGenre || selectedCreator) && requestedSeriesCode ? getFranchiseByCode(requestedSeriesCode) : Promise.resolve(null),
     requestedRatedByAuthorId
       ? getPublicUserProfile(
           requestedRatedByAuthorId,
@@ -117,7 +127,7 @@ export default async function Home({ searchParams }: HomeProps) {
   const mediaTypes = effectiveMediaTypes.filter(({ isEnabled }) => isEnabled);
   const enabledMediaTypeCodes = mediaTypes.map(({ code }) => code);
   const searchQuery = params.q?.trim() ?? "";
-  const catalogSearchQuery = selectedGenre || selectedSeries ? "" : searchQuery;
+  const catalogSearchQuery = !selectedCreator && (selectedGenre || selectedSeries) ? "" : searchQuery;
   const mediaTypeFilter = parseMediaTypeFilter(params.type ?? null, mediaTypes);
   const pageSize = parsePageSize(
     params.pageSize,
@@ -128,7 +138,7 @@ export default async function Home({ searchParams }: HomeProps) {
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
   const urlAuthorRatingFilter = parseAuthorRatingFilter(params.mine ?? null);
-  const parsedSort = selectedSeries
+  const parsedSort = selectedSeries && !selectedCreator
     ? "release_year"
     : parseCatalogSort(params.sort ?? null);
   const sort = (
@@ -136,7 +146,7 @@ export default async function Home({ searchParams }: HomeProps) {
   ) || (
     ratedByAuthorId && parsedSort === "my_first_experience_year"
   ) ? "title" : parsedSort;
-  const sortDirection = selectedSeries
+  const sortDirection = selectedSeries && !selectedCreator
     ? "asc"
     : parseCatalogSortDirection(params.dir ?? null, sort);
   const yearFilter = parseCatalogYear(params.year ?? null);
@@ -154,6 +164,8 @@ export default async function Home({ searchParams }: HomeProps) {
     seriesMatches,
     selectedSeriesBranch,
     genreMatches,
+    creatorMatches,
+    platformMatches,
   ] =
     await Promise.all([
       getCatalogMediaItems({
@@ -167,6 +179,8 @@ export default async function Home({ searchParams }: HomeProps) {
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
         genreId: selectedGenre?.id,
+        platformId: selectedPlatform?.id,
+        creatorId: selectedCreator?.id,
         sort,
         sortDirection,
         yearFilter,
@@ -180,10 +194,12 @@ export default async function Home({ searchParams }: HomeProps) {
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
         genreId: selectedGenre?.id,
+        platformId: selectedPlatform?.id,
+        creatorId: selectedCreator?.id,
         yearFilter,
         yearMode,
       }),
-      getCatalogReleaseYearBounds(enabledMediaTypeCodes, selectedGenre?.id),
+      getCatalogReleaseYearBounds(enabledMediaTypeCodes, selectedGenre?.id, selectedCreator?.id, selectedPlatform?.id),
       currentAuthor
           ? Promise.all([
             getFranchiseOptions(currentAuthor.id),
@@ -218,14 +234,24 @@ export default async function Home({ searchParams }: HomeProps) {
       searchQuery && !selectedSeries && !selectedGenre
         ? searchArchiveGenreMatches(searchQuery, enabledMediaTypeCodes)
         : Promise.resolve({ items: [], totalCount: 0 }),
+      searchQuery && !selectedSeries && !selectedGenre && !selectedCreator
+        ? searchArchiveCreatorMatches(searchQuery, enabledMediaTypeCodes)
+        : Promise.resolve({ items: [], totalCount: 0 }),
+      searchQuery && !selectedPlatform
+        ? searchArchivePlatformMatches(searchQuery, enabledMediaTypeCodes)
+        : Promise.resolve({ items: [], totalCount: 0 }),
     ]);
   const preservedCatalogParams = new URLSearchParams();
-  for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
+  for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "platform"] as const) {
     const value = params[key];
     if (value) preservedCatalogParams.set(key, value);
   }
   const getArchiveSeriesHref = (seriesCode?: string) => {
     const nextParams = new URLSearchParams(preservedCatalogParams);
+    if (selectedCreator) {
+      if (params.q) nextParams.set("q", params.q);
+      if (selectedGenre) nextParams.set("genre", selectedGenre.slug);
+    }
     if (seriesCode) nextParams.set("series", seriesCode);
     const queryString = nextParams.toString();
     return queryString ? `/archive?${queryString}` : "/archive";
@@ -241,8 +267,8 @@ export default async function Home({ searchParams }: HomeProps) {
   );
   const getRatedContextHref = (comparison: ArchiveRatingComparison | null) => {
     const nextParams = new URLSearchParams();
-    for (const key of ["mine", "pageSize", "q", "series", "genre", "dir", "sort", "type", "year", "yearMode"] as const) {
-      if (selectedGenre && (key === "q" || key === "series")) continue;
+    for (const key of ["mine", "pageSize", "q", "series", "genre", "platform", "creator", "dir", "sort", "type", "year", "yearMode"] as const) {
+      if (!selectedCreator && selectedGenre && (key === "q" || key === "series")) continue;
       const value = params[key];
       if (value) nextParams.set(key, value);
     }
@@ -327,7 +353,7 @@ export default async function Home({ searchParams }: HomeProps) {
             mediaTypeFilter={mediaTypeFilter}
             minReleaseYear={releaseYearBounds.minReleaseYear}
             ratedByAuthor={Boolean(ratedByAuthorId)}
-            searchQuery={selectedGenre ? "" : searchQuery}
+            searchQuery={!selectedCreator && selectedGenre ? "" : searchQuery}
             sort={sort}
             sortDirection={sortDirection}
             yearFilter={yearFilter}
@@ -336,7 +362,26 @@ export default async function Home({ searchParams }: HomeProps) {
         }
         />
         <div className="archive-catalog-shell flex min-h-0 w-full flex-1 flex-col gap-3">
-          {selectedGenre ? <ArchiveSelectedGenre genre={selectedGenre} clearHref={getArchiveSeriesHref()} /> : null}
+          {selectedPlatform ? <ArchiveSelectedPlatform adminCanEdit={Boolean(currentAdminUser)} platform={selectedPlatform} clearHref={(() => {
+            const next = new URLSearchParams();
+            for (const [key, value] of Object.entries(params)) {
+              if (value && key !== "platform" && key !== "page") next.set(key, value);
+            }
+            return next.size ? `/archive?${next.toString()}` : "/archive";
+          })()} /> : null}
+          {selectedCreator ? <ArchiveSelectedCreator adminCanEdit={Boolean(currentAdminUser)} creator={selectedCreator} clearHref={(() => {
+            const next = new URLSearchParams();
+            for (const key of ["mine", "pageSize", "q", "series", "genre", "platform", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
+              const value = params[key];
+              if (value) next.set(key, value);
+            }
+            return next.size ? `/archive?${next.toString()}` : "/archive";
+          })()} /> : null}
+          {selectedGenre ? <ArchiveSelectedGenre adminCanEdit={Boolean(currentAdminUser)} genre={selectedGenre} clearHref={(() => {
+            const next = new URLSearchParams(getArchiveSeriesHref(selectedSeries?.code).split("?")[1] ?? "");
+            next.delete("genre");
+            return next.size ? `/archive?${next.toString()}` : "/archive";
+          })()} /> : null}
           {selectedSeries ? (
             <ArchiveSelectedSeries
               adminCanEdit={Boolean(currentAdminUser)}
@@ -368,9 +413,26 @@ export default async function Home({ searchParams }: HomeProps) {
               moreHref={`/series?q=${encodeURIComponent(searchQuery)}`}
               selectionHrefs={seriesSelectionHrefs}
               totalCount={seriesMatches.totalCount}
+              platforms={platformMatches.items}
+              platformTotalCount={platformMatches.totalCount}
+              platformMoreHref={`/platforms?q=${encodeURIComponent(searchQuery)}`}
+              platformSelectionHrefs={Object.fromEntries(platformMatches.items.map((platform) => {
+                const next = new URLSearchParams(preservedCatalogParams);
+                if (selectedGenre) next.set("genre", selectedGenre.slug);
+                next.set("platform", platform.slug);
+                return [platform.id, `/archive?${next.toString()}`];
+              }))}
               genres={genreMatches.items}
               genreTotalCount={genreMatches.totalCount}
               genreMoreHref={`/genres?q=${encodeURIComponent(searchQuery)}`}
+              creators={creatorMatches.items}
+              creatorTotalCount={creatorMatches.totalCount}
+              creatorMoreHref={`/creators?q=${encodeURIComponent(searchQuery)}`}
+              creatorSelectionHrefs={Object.fromEntries(creatorMatches.items.map((creator) => {
+                const nextParams = new URLSearchParams(preservedCatalogParams);
+                nextParams.set("creator", creator.slug);
+                return [creator.id, `/archive?${nextParams.toString()}`];
+              }))}
               genreSelectionHrefs={Object.fromEntries(genreMatches.items.map((genre) => {
                 const nextParams = new URLSearchParams(preservedCatalogParams);
                 nextParams.set("genre", genre.slug);
@@ -409,9 +471,11 @@ export default async function Home({ searchParams }: HomeProps) {
           publishedFranchises={authorMediaSuggestionData?.publishedFranchises ?? []}
           ratedAuthorComparison={ratingComparison}
           ratedByAuthorId={ratedByAuthorId ?? null}
-          searchQuery={selectedGenre ? "" : searchQuery}
+          searchQuery={!selectedCreator && selectedGenre ? "" : searchQuery}
           seriesCode={selectedSeries?.code ?? null}
           genreSlug={selectedGenre?.slug ?? null}
+          platformSlug={selectedPlatform?.slug ?? null}
+          creatorSlug={selectedCreator?.slug ?? null}
           sort={sort}
           sortDirection={sortDirection}
           totalCount={catalog.totalCount}
@@ -433,7 +497,7 @@ export default async function Home({ searchParams }: HomeProps) {
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypesByCount}
-          searchQuery={selectedGenre ? "" : searchQuery}
+          searchQuery={!selectedCreator && selectedGenre ? "" : searchQuery}
         />
       ) : null}
     </main>

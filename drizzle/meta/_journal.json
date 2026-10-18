@@ -820,6 +820,62 @@
       "when": 1792713600000,
       "tag": "0116_unrated_specials",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0117_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1792886400000,
+      "tag": "0118_creator_original_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1792972800000,
+      "tag": "0119_creator_relations",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1793059200000,
+      "tag": "0120_normalized_platforms",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1793145600000,
+      "tag": "0121_platform_initial_mappings",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1793232000000,
+      "tag": "0122_platform_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1793318400000,
+      "tag": "0123_creator_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1793404800000,
+      "tag": "0124_bgg_creators",
+      "breakpoints": true
     }
   ]
 }

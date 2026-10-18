@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { and, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { runInDomainEventTransaction } from "@/db/transaction";
 import {
   authorAccounts,
   authorAuthChallenges,
@@ -162,7 +163,7 @@ export async function registerAuthorAccount(input: {
     throw new Error("Author email delivery is unavailable");
   }
   const now = new Date();
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const { profile: registrationProfile } = await resolveAuthorRegistrationAccessProfile(tx);
     const [author] = await tx
       .insert(authors)
@@ -194,6 +195,14 @@ export async function registerAuthorAccount(input: {
         authorId: author.id,
         emailId: email.id,
         recipient: input.email,
+      });
+    } else {
+      await appendEvent({
+        type: "author.registration.submitted",
+        aggregateType: "author",
+        aggregateId: String(author.id),
+        actorAuthorId: author.id,
+        payload: { authorId: author.id },
       });
     }
     return author;
@@ -242,7 +251,7 @@ export async function replacePendingAuthorRegistrationEmail(input: {
 }
 
 export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Date()) {
-  return db.transaction(async (tx) => {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
     const [challenge] = await tx
       .update(authorAuthChallenges)
       .set({ consumedAt: now })
@@ -298,6 +307,13 @@ export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Da
       ))
       .returning({ authorId: authorAccounts.authorId });
     if (!activatedAccount) return null;
+    await appendEvent({
+      type: "author.registration.submitted",
+      aggregateType: "author",
+      aggregateId: String(activatedAccount.authorId),
+      actorAuthorId: activatedAccount.authorId,
+      payload: { authorId: activatedAccount.authorId },
+    });
     return { authorId: challenge.authorId, status: "active" as const, purpose: "verify_email" as const };
   });
 }

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Alert } from "@/components/ui/alert";
+import { AdminToasts } from "../../../admin-toasts";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
@@ -21,7 +21,7 @@ export default async function EmailQueuePage({ searchParams }: { searchParams: P
   const [result, counts] = await Promise.all([getAdminEmailOutbox({ page, pageSize, status, template }), getEmailOutboxStatusCounts()]);
   const href = (targetPage: number) => `/admin/tools/email/queue?page=${targetPage}&pageSize=${pageSize}${status ? `&status=${status}` : ""}${template ? `&template=${template}` : ""}`;
   return <section className="space-y-5"><div><h2 className="font-serif text-3xl">Очередь</h2><p className="text-sm text-stone-600">Системные письма без содержимого и секретных данных.</p></div>
-    {query.error ? <Alert variant="destructive">Не удалось повторить отправку.</Alert> : query.retried !== undefined ? <Alert>Возвращено в очередь: {query.retried}.</Alert> : null}
+    <AdminToasts clearParams={["error", "retried"]} messages={query.error ? [{ id: "error", tone: "error", text: "Не удалось повторить отправку." }] : query.retried !== undefined ? [{ id: "success", tone: "success", text: `Возвращено в очередь: ${query.retried}.` }] : []} />
     <div className="flex flex-wrap gap-2">{counts.map((item) => <Badge key={item.status} variant="outline">{STATUS_LABELS[item.status as EmailOutboxStatus] ?? item.status}: {item.count}</Badge>)}</div>
     <EmailQueueFilters pageSize={pageSize} status={status} template={template} />
     {result.items.length === 0 ? <div className="rounded-md border border-dashed p-8 text-center text-sm text-stone-500">Писем по выбранным фильтрам нет.</div> : <TableWrap className="overflow-x-auto"><Table><THead><tr><TH>ID</TH><TH>Шаблон / получатель</TH><TH>Статус</TH><TH>Попытки</TH><TH>Создано / следующий запуск</TH><TH>Отправлено / ошибка</TH><TH /></tr></THead><TBody>{result.items.map((item) => <TR key={item.id}><TD>{item.id}</TD><TD><div>{TEMPLATE_LABELS[item.template as EmailOutboxTemplate] ?? item.template}</div><div className="text-xs text-stone-500">{item.recipient}</div></TD><TD>{STATUS_LABELS[item.status as EmailOutboxStatus] ?? item.status}</TD><TD>{item.attempts}</TD><TD><div><ActivityLogTime value={item.createdAt.toISOString()} /></div><div className="text-xs"><ActivityLogTime value={item.nextAttemptAt.toISOString()} /></div></TD><TD><div>{item.sentAt ? <ActivityLogTime value={item.sentAt.toISOString()} /> : "—"}</div>{item.lastError ? <div className="max-w-64 break-words text-xs text-red-700">{item.lastError}</div> : null}</TD><TD>{item.status === "failed" ? <form action={retryEmailOutboxAction}><input type="hidden" name="id" value={item.id} /><Button type="submit" size="sm" variant="outline">Повторить</Button></form> : null}</TD></TR>)}</TBody></Table></TableWrap>}

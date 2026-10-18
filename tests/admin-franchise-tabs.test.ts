@@ -91,6 +91,9 @@ test("media mutations retain the media tab and report their result there", () =>
   assert.match(removeMedia, /edit\?tab=media&error=\$\{getAdminFormErrorCode\(error\)\}/);
   assert.match(page, /query\.attached === "1"[\s\S]*Запись добавлена в серию\./);
   assert.match(page, /query\.detached === "1"[\s\S]*Запись убрана из серии\./);
-  assert.match(page, /query\.error \? <p[\s\S]*getFranchiseErrorMessage\(query\.error\)/);
+  assert.match(page, /<AdminToasts clearParams=\{\["attached", "detached", "error"\]\} messages=\{\[/);
+  assert.match(page, /tone: "error" as const, text: getFranchiseErrorMessage\(query\.error\)/);
+  assert.doesNotMatch(page, /query\.error \? <p/);
+  assert.match(childrenTab, /<AdminToasts clearParams=\{\["childCreated", "childDeleted", "childMoved", "error"\]\}/);
   assert.match(page, /query\.childDeleted === "1" \? "Дочерняя серия удалена\."/);
 });

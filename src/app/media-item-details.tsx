@@ -1,9 +1,13 @@
+import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
+import type { MediaItemPlatform } from "@/lib/media/platforms";
+import { MediaItemWriterLinks, type WriterCreatorLink } from "@/components/archive/media-item-creator-links";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react";
 import Link from "next/link";
 
 import { MediaCarrierDisplayTitle } from "@/app/media-carrier-display-title";
-import { ArchiveCover, MediaItemTile } from "@/app/media-item-tile";
+import { ArchiveCover } from "@/app/media-item-tile";
+import { RateableMediaItemTile, TileRatingScope } from "@/components/archive/tile-rating-scope";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
@@ -12,6 +16,7 @@ import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { ImageViewer } from "@/components/ui/image-viewer";
 import type { MediaItemFranchiseLink } from "@/db/queries/media-items";
+import type { EntryRoleCreatorLink } from "@/db/queries/creators";
 import {
   getMediaCarrierDetailViewportClassName,
   getMediaCarrierFrame,
@@ -38,6 +43,9 @@ type MediaItemDetailsItem = {
   releaseYear: number | null;
   metadataFacts?: Record<string, unknown> | null;
   genres: MediaItemGenre[];
+  platforms?: MediaItemPlatform[];
+  writerCreators?: WriterCreatorLink[];
+  entryCreators?: EntryRoleCreatorLink[];
   hasUnifiedGenres?: boolean;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
@@ -136,6 +144,7 @@ export function MediaItemDetails({
   const [detailsYearLabel, ...detailsMetaLabels] = getArchiveMediaItemInfoLabels({
     ...item,
     genres: [],
+    writerCreators: [],
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
@@ -232,7 +241,9 @@ export function MediaItemDetails({
                   <span key={label} className="mr-2">{label}</span>
                 ))}
                 {!isBoardgame && item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
-                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
+                {item.mediaType === "game" && item.platforms?.length ? <span className="mr-2"><MediaItemPlatformLinks platforms={item.platforms} /></span> : null}
+                {item.mediaType === "book" && item.writerCreators?.length ? <div className="mt-1"><MediaItemWriterLinks creators={item.writerCreators} /></div> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
 
@@ -365,12 +376,18 @@ function ArchiveMediaItemDetails({
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const hasCarrierFrame = mediaCarrierFrame !== null;
   const isBoardgame = mediaCarrierFrame?.ratingPanelVariant === "boardgame-meeples";
-  const hasBoardgameFacts = isBoardgame && (item.genres.length > 0 || (!item.hasUnifiedGenres && getStringListFact(item.metadataFacts, "genres").length > 0) || Object.values(getBoardgameFactValues(item.metadataFacts)).some(Boolean));
+  const hasStructuredBoardgameCreators = item.metadataFacts?.bggCreators !== undefined;
+  const hasBoardgameFacts = isBoardgame && (item.genres.length > 0
+    || (!item.hasUnifiedGenres && getStringListFact(item.metadataFacts, "genres").length > 0)
+    || item.entryCreators?.some(creator => creator.roleCode === "designer" || creator.roleCode === "artist")
+    || (!hasStructuredBoardgameCreators && getStringListFact(item.metadataFacts, "artists").length > 0)
+    || Object.entries(getBoardgameFactValues(item.metadataFacts)).some(([key, value]) => Boolean(value) && (key !== "authors" || !hasStructuredBoardgameCreators)));
   const ratingLabelFontClassName = mediaCarrierFrame?.labelFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const ratingDisplayFontClassName = mediaCarrierFrame?.displayFontClassName ?? MEDIA_IDENTITY_FONT_CLASS_NAME;
   const archiveInfoLabels = getArchiveMediaItemInfoLabels({
     ...item,
     genres: [],
+    writerCreators: [],
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
 
@@ -486,6 +503,13 @@ function ArchiveMediaItemDetails({
                 />
               </div>
             </div>
+            {!partsSlot && reviewsSlot ? (
+              <div className="order-5 w-full min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
+                <div className="mt-2 w-full max-w-[420px] sm:ml-2">
+                  {reviewsSlot}
+                </div>
+              </div>
+            ) : null}
             {adjacentShelfSlot ? (
               <div className="order-5 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
                 <div className="mt-7 w-full max-w-full sm:ml-2 sm:max-w-[420px]">
@@ -536,11 +560,16 @@ function ArchiveMediaItemDetails({
                     ) : <span className="break-words">{label}</span>}
                   </Fragment>
                 ))}
+                {item.mediaType === "book" && item.writerCreators?.length ? <>
+                  {archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
+                  <MediaItemWriterLinks creators={item.writerCreators} />
+                </> : null}
                 {!isBoardgame && item.genres.length > 0 ? <>
                   {archiveInfoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
                   <MediaItemGenreLinks genres={item.genres} />
                 </> : null}
-                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
+                {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
+                {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}
               </div>
@@ -638,7 +667,7 @@ function ArchiveMediaItemDetails({
 
           </div>
 
-          {partsSlot || reviewsSlot ? (
+          {partsSlot ? (
             <div className="order-5 flex w-full min-w-0 flex-col gap-8 px-6 py-6 sm:px-8 lg:col-span-2 lg:row-start-2">
               {partsSlot}
               {reviewsSlot ? (
@@ -650,7 +679,8 @@ function ArchiveMediaItemDetails({
           ) : null}
 
           {relatedFranchiseSections.length > 0 ? (
-            <div className="order-6 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 lg:row-start-3">
+            <TileRatingScope>
+            <div className={`order-6 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 ${partsSlot ? "lg:row-start-3" : "lg:row-start-2"}`}>
               <div className="flex flex-col gap-6">
                 {relatedFranchiseSections.map((section) => (
                   <section key={section.franchise.id}>
@@ -663,7 +693,7 @@ function ArchiveMediaItemDetails({
                     {section.items.length > 0 ? (
                       <div className="mt-4 grid grid-cols-3 content-start gap-2.5 [&>*:nth-child(n+4)]:hidden md:grid-cols-4 md:[&>*:nth-child(n+4)]:block md:[&>*:nth-child(n+5)]:hidden xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] xl:[&>*:nth-child(n+5)]:block">
                         {section.items.map((relatedItem) => (
-                          <MediaItemTile
+                          <RateableMediaItemTile
                             key={relatedItem.id}
                             currentAuthorScore={relatedItem.currentAuthorScore}
                             item={relatedItem}
@@ -680,6 +710,7 @@ function ArchiveMediaItemDetails({
                 ))}
               </div>
             </div>
+            </TileRatingScope>
           ) : null}
         </div>
       </article>

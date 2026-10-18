@@ -85,7 +85,7 @@ describe("public franchise links", () => {
     assert.match(preview, />\s*Серии\s*</);
     assert.match(preview, /item\.franchises\.length > 0[\s\S]*Не указаны/);
     assert.match(preview, /<MediaItemFranchiseLinks[\s\S]*franchises=\{item\.franchises\}/);
-    assert.match(franchiseLinks, /\(franchise\.path \?\? \[franchise\]\)\.map/);
+    assert.match(franchiseLinks, /franchise\.path\?\.length \? franchise\.path : \[franchise\]/);
     assert.match(
       preview,
       /currentAuthor \? \([\s\S]*<MediaItemFranchiseSuggestionDialog[\s\S]*mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/,

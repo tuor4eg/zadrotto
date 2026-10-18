@@ -10,6 +10,7 @@ export const metadata: Metadata = {
 };
 
 const DATA_PROVIDERS = [
+  ["BoardGameGeek", "https://boardgamegeek.com/"],
   ["TMDB", "https://www.themoviedb.org/"],
   ["Comic Vine", "https://comicvine.gamespot.com/"],
   ["Open Library", "https://openlibrary.org/"],

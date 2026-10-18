@@ -14,6 +14,10 @@ export const NOTIFICATION_TYPES = [
   "media-franchise.removal.approved",
   "review.submitted",
   "review.approved",
+  "genre-request.created",
+  "platform-request.created",
+  "creator-request.created",
+  "author.registration.submitted",
   "bug-report.created",
   "author.level-achieved",
   "author.trusted-granted",
@@ -26,6 +30,10 @@ export const NOTIFICATION_ENTITY_TYPES = [
   "franchise",
   "media-franchise",
   "review",
+  "genre-request",
+  "platform-request",
+  "creator-request",
+  "author-registration",
   "bug-report",
   "author-level",
 ] as const
@@ -44,6 +52,10 @@ const NOTIFICATION_TITLES: Record<NotificationType, string> = {
   "media-franchise.removal.approved": "Заявка на удаление связи одобрена",
   "review.submitted": "Новая заявка на рецензию",
   "review.approved": "Рецензия одобрена",
+  "genre-request.created": "Новая заявка на жанр",
+  "platform-request.created": "Новая заявка на платформу",
+  "creator-request.created": "Новая заявка на создателя",
+  "author.registration.submitted": "Новая заявка на регистрацию автора",
   "bug-report.created": "Новый багрепорт",
   "author.level-achieved": "Новый уровень",
   "author.trusted-granted": "Получен статус Trusted",
@@ -61,6 +73,10 @@ const NOTIFICATION_ENTITY_TYPE_BY_TYPE: Record<NotificationType, NotificationEnt
   "media-franchise.removal.approved": "media-franchise",
   "review.submitted": "review",
   "review.approved": "review",
+  "genre-request.created": "genre-request",
+  "platform-request.created": "platform-request",
+  "creator-request.created": "creator-request",
+  "author.registration.submitted": "author-registration",
   "bug-report.created": "bug-report",
   "author.level-achieved": "author-level",
   "author.trusted-granted": "author-level",
@@ -85,7 +101,9 @@ export function getNotificationRecipientType(type: NotificationType): Notificati
 }
 
 export function isAdminSubmissionNotificationType(type: NotificationType) {
-  return getNotificationRecipientType(type) === "admin" && type !== "bug-report.created"
+  return getNotificationRecipientType(type) === "admin"
+    && type !== "bug-report.created"
+    && type !== "author.registration.submitted"
 }
 
 export function getAdminSubmissionStatusLabel(status: string | null | undefined) {
@@ -143,6 +161,14 @@ export function getNotificationHref(input: {
       return `/admin/reviews/${input.entityId}`
     case "review.approved":
       return input.mediaItemCode ? `/media/${input.mediaItemCode}` : null
+    case "genre-request.created":
+      return `/admin/genre-requests/${input.entityId}`
+    case "platform-request.created":
+      return `/admin/platform-requests/${input.entityId}`
+    case "creator-request.created":
+      return `/admin/creator-requests/${input.entityId}`
+    case "author.registration.submitted":
+      return `/admin/authors/${input.entityId}/edit`
     case "bug-report.created":
       return `/admin/bug-reports/${input.entityId}`
   }

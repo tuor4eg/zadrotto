@@ -37,6 +37,15 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviews, /grid-cols-2 gap-3 px-1/);
   });
 
+  it("places reviews in the poster column when no visible parts exist", () => {
+    assert.match(mediaPage, /partsSlot=\{parts\.some\(part => part\.type !== "season" \|\| part\.number !== 0\)/);
+    const inlineReviews = details.indexOf("{!partsSlot && reviewsSlot ? (");
+    const rightColumn = details.indexOf("contents lg:col-start-2 lg:row-start-1 lg:flex", inlineReviews);
+    assert.ok(inlineReviews > 0 && rightColumn > inlineReviews);
+    assert.match(details, /\{partsSlot \? \([\s\S]*lg:col-span-2 lg:row-start-2/);
+    assert.doesNotMatch(details, /\{partsSlot \|\| reviewsSlot \?/);
+  });
+
   it("renders three review previews and one action card", () => {
     assert.match(reviews, /reviews\.slice\(0, 3\)\.map/);
     assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} \/>/);
@@ -85,20 +94,19 @@ describe("public media reviews layout", () => {
     assert.doesNotMatch(reviewArticle, />Досье</);
     assert.match(mediaIdentity, /resolveMediaItemDisplayTitles\(item\)/);
     assert.match(mediaIdentity, /aria-label="Хлебные крошки"[\s\S]*<MediaCarrierDisplayTitle title=\{displayTitle\}/);
-    assert.match(mediaIdentity, /ArchiveMediaItemIdentityLayout[\s\S]*coverUrl=\{coverUrl\}[\s\S]*viewerCoverUrl=\{viewerCoverUrl\}/);
-    assert.match(mediaIdentity, /item\.coverThumbUrl \?\? item\.coverUrl/);
-    assert.doesNotMatch(mediaIdentity, /aspect-\[2\/3\]|<ArchiveCover|h-0 min-h-full|max-h-\[9\.5rem\]/);
+    assert.match(mediaIdentity, /cover=\{[\s\S]*<TileRatingScope>[\s\S]*<RateableMediaItemTile/);
+    assert.match(mediaIdentity, /href=\{`\/media\/\$\{item\.code\}`\}/);
+    assert.match(mediaIdentity, /currentAuthorScore=\{item\.currentAuthorScore\}/);
+    assert.match(mediaIdentity, /showTitle=\{false\}[\s\S]*hoverEffect=\{false\}/);
     const identityLayout = readFileSync(
       "src/components/archive/archive-media-item-identity-layout.tsx",
       "utf8",
     );
     assert.match(identityLayout, /ResizeObserver\(updateHeight\)/);
-    assert.match(identityLayout, /ImageViewer[\s\S]*cursor-zoom-in/);
-    assert.match(identityLayout, /overflow-hidden rounded-md/);
+    assert.doesNotMatch(identityLayout, /ImageViewer|cursor-zoom-in|media-image-lift-trigger/);
+    assert.match(identityLayout, /\{cover\}/);
     assert.match(identityLayout, /grid-cols-\[auto_minmax\(0,1fr\)\]/);
     assert.match(identityLayout, /breadcrumb[\s\S]*col-span-2[\s\S]*bodyRef[\s\S]*row-start-2[\s\S]*footer[\s\S]*col-span-2 row-start-3/);
-    assert.match(identityLayout, /h-\[var\(--identity-cover-height\)\][^"\n]*w-fit[^"\n]*max-w-\[40vw\]/);
-    assert.match(identityLayout, /h-full w-auto max-w-full object-contain object-left/);
     assert.doesNotMatch(identityLayout, /from "next\/link"|href=\{href\}/);
     assert.match(mediaIdentity, /\{displayOriginalTitle\}[\s\S]*displayAliases\.join/);
     assert.match(mediaIdentity, /<MediaItemFranchiseLinks[\s\S]*franchiseActions/);

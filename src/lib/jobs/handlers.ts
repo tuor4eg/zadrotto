@@ -1,3 +1,7 @@
+import { bggCreatorsBackfillHandler } from "@/lib/creators/bgg-backfill";
+import { creatorFantlabBindingHandler, creatorFantlabAvatarHandler } from "@/lib/creators/fantlab-jobs";
+import { applyPlatformRequest } from "@/db/queries/platform-requests";
+import { applyCreatorRequest, backfillCreators } from "@/db/queries/creator-requests";
 import { titlePartPosterHandler } from "@/lib/media/title-part-poster-job";
 import "server-only";
 
@@ -536,6 +540,13 @@ const genreRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
   },
 };
 
+const platformRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
+  ...genreRequestApplyHandler, type: "media.platform-request-apply", label: "Применение решения по платформе",
+  async execute({ payload, signal, runId }) {
+    await applyPlatformRequest(payload.requestId, { signal, jobRunId: runId });
+  },
+};
+
 const genreSeriesBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "media.genre-series-backfill",
   label: "Привязка серий по жанрам опубликованных записей",
@@ -554,9 +565,43 @@ const genreSeriesBackfillHandler: JobHandlerDefinition<Record<string, never>> = 
   },
 };
 
+const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
+  ...genreRequestApplyHandler, type: "media.creator-request-apply", label: "Применение решения по создателю",
+  parsePayload(value) {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      throw new JobError("invalid-payload", "Ожидался объект параметров.", { retryable: false });
+    }
+    const { orphanCreatorId, ...rest } = value as Record<string, unknown>;
+    if (orphanCreatorId !== undefined && (typeof orphanCreatorId !== "number" || !Number.isSafeInteger(orphanCreatorId) || orphanCreatorId <= 0 || orphanCreatorId > 2_147_483_647)) {
+      throw new JobError("invalid-payload", "Некорректный ID создателя.", { retryable: false });
+    }
+    if (Object.keys(rest).length !== 1 || typeof rest.requestId !== "number" || !Number.isSafeInteger(rest.requestId) || rest.requestId <= 0 || rest.requestId > 2_147_483_647) {
+      throw new JobError("invalid-payload", "Некорректный ID заявки на создателя.", { retryable: false });
+    }
+    return { requestId: rest.requestId, ...(orphanCreatorId !== undefined ? { orphanCreatorId } : {}) };
+  },
+  async execute({ payload, signal, runId }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId }); },
+};
+const creatorBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
+  type: "media.creators-backfill", label: "Импорт создателей книг с автоматическим апрувом", schedulable: false,
+  defaultMaxAttempts: 1, defaultTimeoutSeconds: 900, parsePayload: parseEmptyPayload,
+  async execute({ source, signal, runId, jobId }) {
+    if (source !== "manual" || jobId !== null) throw new JobError("manual-only", "Импорт доступен только разовым ручным запуском.", { retryable: false });
+    const result = await backfillCreators(signal);
+    await logSystemActivity({ action: "media.creators-backfill.completed", entityType: "job-run", entityId: runId,
+      message: `Импорт создателей завершён: записей — ${result.processed}, создателей — ${result.createdCreators}, связей — ${result.createdLinks}, ошибок — ${result.errors.length}.`, metadata: result });
+  },
+};
+
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  bggCreatorsBackfillHandler,
+  creatorFantlabBindingHandler,
+  creatorFantlabAvatarHandler,
+  creatorRequestApplyHandler,
+  creatorBackfillHandler,
   genreSeriesBackfillHandler,
   genreRequestApplyHandler,
+  platformRequestApplyHandler,
   emailOutboxDeliveryHandler,
   authCleanupHandler,
   jobHistoryCleanupHandler,

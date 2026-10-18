@@ -21,12 +21,16 @@ function getAvatarSrc(objectKey: string) {
 export function Avatar({
   name,
   objectKey,
+  src,
   className,
 }: {
   name: string;
   objectKey?: string | null;
+  src?: string | null;
   className?: string;
 }) {
+  const imageSrc = src || (objectKey ? getAvatarSrc(objectKey) : null);
+
   return (
     <span
       className={cn(
@@ -35,9 +39,9 @@ export function Avatar({
       )}
       aria-label={`Аватар автора ${name}`}
     >
-      {objectKey ? (
+      {imageSrc ? (
         // eslint-disable-next-line @next/next/no-img-element
-        <img src={getAvatarSrc(objectKey)} alt="" className="size-full object-cover" />
+        <img src={imageSrc} alt="" className="size-full object-cover" />
       ) : (
         <span aria-hidden="true">{getInitials(name)}</span>
       )}

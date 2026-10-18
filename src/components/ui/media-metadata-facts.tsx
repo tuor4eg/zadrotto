@@ -1,3 +1,6 @@
+import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
+import type { MediaItemPlatform } from "@/lib/media/platforms";
+import { MediaItemCreatorLinks, type WriterCreatorLink } from "@/components/archive/media-item-creator-links";
 import { BggAttribution } from "@/components/ui/bgg-attribution";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import { getStringListFact } from "@/lib/media/metadata-facts";
@@ -9,6 +12,8 @@ export type MediaMetadataFactsValue = {
   sourceUrl: string | null;
   fetchedAt?: Date | string | null;
   genres?: MediaItemGenre[];
+  platforms?: MediaItemPlatform[];
+  writerCreators?: WriterCreatorLink[];
   suggestedFranchiseIds?: number[];
 };
 
@@ -106,9 +111,9 @@ function formatFactEntry(key: string, value: unknown) {
 
 const RAW_GENRE_KEYS = new Set(["genres", "genreReferences", "genre", "genreLevel1", "genreLevel2"]);
 
-function getFactEntries(facts: Record<string, unknown>) {
+function getFactEntries(facts: Record<string, unknown>, hasCreatorLinks: boolean) {
   return Object.entries(facts)
-    .filter(([key, value]) => !RAW_GENRE_KEYS.has(key) && isPresentFactValue(value))
+    .filter(([key, value]) => !RAW_GENRE_KEYS.has(key) && key !== "platforms" && key !== "fantlabAuthors" && key !== "bggCreators" && !(facts.bggCreators !== undefined && (key === "authors" || key === "artists")) && !(hasCreatorLinks && key === "authors") && isPresentFactValue(value))
     .map(([key, value]) => ({
       key,
       label: getFactLabel(key),
@@ -125,12 +130,14 @@ export function MediaMetadataFacts({
   genres?: readonly MediaItemGenre[];
   showProviderGenres?: boolean;
 }) {
-  const entries = metadata ? getFactEntries(metadata.facts) : [];
+  const entries = metadata ? getFactEntries(metadata.facts, metadata.writerCreators !== undefined) : [];
   if (genres.length > 0) entries.push({ key: "genres", label: "Жанры", value: genres.map((genre) => genre.name).join(", ") });
+  const providerPlatforms = showProviderGenres ? getStringListFact(metadata?.facts, "platforms") : [];
+  if (providerPlatforms.length > 0) entries.push({ key: "providerPlatforms", label: "Платформы провайдера", value: providerPlatforms.join(", ") });
   const providerGenres = showProviderGenres ? getStringListFact(metadata?.facts, "genres") : [];
   if (providerGenres.length > 0) entries.push({ key: "providerGenres", label: "Жанры провайдера", value: providerGenres.join(", ") });
 
-  if (entries.length === 0 && !metadata?.sourceProvider && !metadata?.sourceUrl) {
+  if (entries.length === 0 && !metadata?.platforms?.length && !metadata?.writerCreators?.length && !metadata?.sourceProvider && !metadata?.sourceUrl) {
     return null;
   }
 
@@ -145,6 +152,8 @@ export function MediaMetadataFacts({
         ) : null}
       </div>
 
+      {metadata?.writerCreators?.length ? <dl className="mt-4"><dt className="text-xs text-stone-500">Авторы</dt><dd className="mt-0.5 text-sm text-stone-900"><MediaItemCreatorLinks creators={metadata.writerCreators} /></dd></dl> : null}
+      {metadata?.platforms?.length ? <dl className="mt-4"><dt className="text-xs text-stone-500">Платформы</dt><dd className="mt-0.5 text-sm text-stone-900"><MediaItemPlatformLinks platforms={metadata.platforms} /></dd></dl> : null}
       {entries.length > 0 ? (
         <dl className="mt-4 grid gap-3 sm:grid-cols-2">
           {entries.map((entry) => (

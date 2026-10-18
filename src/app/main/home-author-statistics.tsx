@@ -280,7 +280,7 @@ export function HomeAuthorStatistics({
       <div className="grid min-w-0 grid-cols-1 gap-5 lg:grid-cols-3 lg:gap-3">
         <div className="min-w-0 lg:col-span-2">
           <div className="mb-3 flex min-h-9 items-center justify-between gap-3">
-            <h3 className="flex min-w-0 items-center gap-2 font-serif text-2xl leading-none text-stone-900">
+            <h3 className="flex min-w-0 items-center gap-2 media-carrier-font-pc-steam text-2xl leading-none text-stone-900">
               <CalendarRange className="size-5 shrink-0 text-red-950/65" aria-hidden="true" />
               {title}
             </h3>
@@ -298,7 +298,7 @@ export function HomeAuthorStatistics({
           <RatingsByReleaseYearBars items={releaseYearItems} />
         </div>
         <div className="min-w-0 border-t border-stone-400/25 pt-5 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
-          <h3 className="mb-3 flex min-h-9 items-center gap-2 font-serif text-2xl leading-none text-stone-900">
+          <h3 className="mb-3 flex min-h-9 items-center gap-2 media-carrier-font-pc-steam text-2xl leading-none text-stone-900">
             <ChartNoAxesColumn className="size-5 text-red-950/65" aria-hidden="true" />
             Распределение оценок
           </h3>

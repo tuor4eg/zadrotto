@@ -66,12 +66,16 @@ function getAdminNavGroups({
   submittedReviewsCount = 0,
   openBugReportsCount = 0,
   pendingGenreRequestsCount = 0,
+  pendingPlatformRequestsCount = 0,
+  pendingCreatorRequestsCount = 0,
 }: {
   submittedMediaItemsCount?: number;
   submittedFranchisesCount?: number;
   submittedReviewsCount?: number;
   openBugReportsCount?: number;
   pendingGenreRequestsCount?: number;
+  pendingPlatformRequestsCount?: number;
+  pendingCreatorRequestsCount?: number;
 } = {}): AdminNavGroup[] {
   return [
     {
@@ -81,6 +85,8 @@ function getAdminNavGroups({
       items: [
         { href: "/admin/media", icon: FileText, label: "Записи" },
         { href: "/admin/genres", icon: Tags, label: "Жанры" },
+        { href: "/admin/platforms", icon: Tags, label: "Платформы" },
+        { href: "/admin/creators", icon: UserRound, label: "Создатели" },
         { href: "/admin/media-types", icon: Tags, label: "Типы" },
         { href: "/admin/series", icon: Layers3, label: "Серии" },
         { href: "/admin/exports", icon: Download, label: "Экспорты" },
@@ -111,11 +117,13 @@ function getAdminNavGroups({
     },
     {
       key: "requests",
-      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0),
+      count: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0) + (pendingPlatformRequestsCount ?? 0) + (pendingCreatorRequestsCount ?? 0),
       icon: FileClock,
       label: "Заявки",
       items: [
         { href: "/admin/genre-requests", icon: Tags, label: "Жанры", count: pendingGenreRequestsCount },
+        { href: "/admin/platform-requests", icon: Tags, label: "Платформы", count: pendingPlatformRequestsCount },
+        { href: "/admin/creator-requests", icon: UserRound, label: "Создатели", count: pendingCreatorRequestsCount },
         {
           href: "/admin/media-review",
           icon: FileText,
@@ -248,6 +256,8 @@ export function AdminMobileNavMenu({
   submittedReviewsCount,
   openBugReportsCount,
   pendingGenreRequestsCount,
+  pendingPlatformRequestsCount,
+  pendingCreatorRequestsCount,
 }: {
   logoutSlot: React.ReactNode;
   submittedMediaItemsCount: number;
@@ -255,14 +265,16 @@ export function AdminMobileNavMenu({
   submittedReviewsCount: number;
   openBugReportsCount: number;
   pendingGenreRequestsCount?: number;
+  pendingPlatformRequestsCount?: number;
+  pendingCreatorRequestsCount?: number;
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>({
     content: true,
-    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0) > 0,
+    requests: submittedMediaItemsCount + submittedFranchisesCount + submittedReviewsCount + openBugReportsCount + (pendingGenreRequestsCount ?? 0) + (pendingPlatformRequestsCount ?? 0) + (pendingCreatorRequestsCount ?? 0) > 0,
   });
   const rootRef = useRef<HTMLDivElement>(null);
-  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount });
+  const groups = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount, pendingPlatformRequestsCount, pendingCreatorRequestsCount });
 
   useEffect(() => {
     if (!isOpen) {
@@ -411,14 +423,18 @@ export function AdminRequestsMenu({
   submittedReviewsCount,
   openBugReportsCount,
   pendingGenreRequestsCount,
+  pendingPlatformRequestsCount,
+  pendingCreatorRequestsCount,
 }: {
   submittedMediaItemsCount: number;
   submittedFranchisesCount: number;
   submittedReviewsCount: number;
   openBugReportsCount: number;
   pendingGenreRequestsCount?: number;
+  pendingPlatformRequestsCount?: number;
+  pendingCreatorRequestsCount?: number;
 }) {
-  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount })
+  const group = getAdminNavGroups({ submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount, pendingPlatformRequestsCount, pendingCreatorRequestsCount })
     .find((item) => item.key === "requests");
 
   return (

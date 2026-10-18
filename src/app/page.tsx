@@ -56,7 +56,7 @@ function EditorialCollectionsStrip({ collections }: { collections: PublishedColl
 
   return <section className="archive-paper archive-panel overflow-hidden p-3 sm:p-4" aria-labelledby="main-collections-title">
     <div className="mb-3 flex items-center justify-between gap-4">
-      <h2 id="main-collections-title" className="flex items-center gap-2 font-serif text-2xl leading-none text-stone-950"><Layers3 className="size-5 text-red-950/70" aria-hidden="true" />Подборки</h2>
+      <h2 id="main-collections-title" className="flex items-center gap-2 media-carrier-font-pc-steam text-2xl leading-none text-stone-950"><Layers3 className="size-5 text-red-950/70" aria-hidden="true" />Подборки</h2>
       <Link href="/collections" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link>
     </div>
     <HomeCollectionsRow>
@@ -161,7 +161,7 @@ function DailyRecommendation({
       <div className="relative z-10 flex w-full flex-1 flex-col md:max-w-[72%]">
         <div className="flex shrink-0 items-start gap-2 md:h-8">
           <Sparkles aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
-          <h2 id="main-daily-recommendation" className="font-serif text-2xl leading-none text-stone-950">
+          <h2 id="main-daily-recommendation" className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">
             Рекомендуем сегодня
           </h2>
         </div>
@@ -238,7 +238,7 @@ function LatestReview({
         <div className="flex shrink-0 items-start gap-2 md:h-8">
           <div className="flex min-w-0 items-center gap-2">
             <MessageSquareQuote aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
-            <h2 id="main-latest-review" className="font-serif text-2xl leading-none text-stone-950">
+            <h2 id="main-latest-review" className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">
               Мнение из архива
             </h2>
           </div>
@@ -337,12 +337,15 @@ export default async function MainPage() {
   const latestAcquaintanceItem = author && authorHeroStatistics?.latestRating
     ? (await getMediaItemTilesByIds([authorHeroStatistics.latestRating.mediaItemId], author.id))[0] ?? null
     : null;
+  const latestAcquaintanceTitle = latestAcquaintanceItem
+    ? resolveMediaItemDisplayTitles(latestAcquaintanceItem).displayTitle
+    : "";
   const latestAcquaintance = latestAcquaintanceItem && authorHeroStatistics?.latestRating
     ? {
         code: latestAcquaintanceItem.code,
         coverUrl: latestAcquaintanceItem.coverThumbUrl ?? latestAcquaintanceItem.coverUrl,
         score: authorHeroStatistics.latestRating.score,
-        title: authorHeroStatistics.latestRating.partLabel ? `${latestAcquaintanceItem.title} — ${authorHeroStatistics.latestRating.partLabel}` : latestAcquaintanceItem.title,
+        title: authorHeroStatistics.latestRating.partLabel ? `${latestAcquaintanceTitle} — ${authorHeroStatistics.latestRating.partLabel}` : latestAcquaintanceTitle,
         updatedAt: authorHeroStatistics.latestRating.updatedAt,
       }
     : null;
@@ -425,7 +428,7 @@ export default async function MainPage() {
                 <div className="max-w-2xl">
                   <h1
                     id="main-intro-title"
-                    className="font-serif text-3xl leading-tight tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+                    className="media-carrier-font-pc-steam text-2xl leading-tight tracking-tight text-stone-950 sm:text-4xl lg:text-5xl"
                   >
                     Начни свою историю
                   </h1>

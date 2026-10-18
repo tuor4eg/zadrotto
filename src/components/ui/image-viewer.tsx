@@ -6,7 +6,7 @@ import { createPortal } from "react-dom";
 
 type ImageViewerProps = {
   alt: string;
-  children: React.ReactNode;
+  children: React.ReactNode | ((open: () => void) => React.ReactNode);
   overlayZIndex?: number;
   src: string;
   title?: string;
@@ -47,13 +47,13 @@ export function ImageViewer({
 
   return (
     <>
-      <button
+      {typeof children === "function" ? children(() => setIsOpen(true)) : <button
         type="button"
         className={`border-0 bg-transparent p-0 ${triggerClassName ?? ""}`}
         onClick={() => setIsOpen(true)}
       >
         {children}
-      </button>
+      </button>}
 
       {isOpen
         ? createPortal(

@@ -890,7 +890,7 @@ describe("AI persistence and UI security contracts", () => {
       /setSelectedFranchiseIds\(\(current\) =>\s*appendUniqueFranchiseIds\(current, suggested\.map/,
     );
     assert.match(mediaForm, /<fieldset[\s\S]*disabled=\{isSuggestingFranchises\}/);
-    assert.match(mediaForm, /canSuggestFranchises \? \(\s*<Tooltip/);
+    assert.match(mediaForm, /canSuggestFranchises && selectedMediaType !== "boardgame" \? \(\s*<Tooltip/);
     assert.match(mediaForm, /disabled=\{!title\.trim\(\) \|\| isSuggestingFranchises\}/);
     assert.match(mediaForm, /aria-label="Предложить серии"/);
     assert.match(mediaForm, /<Sparkles className=\{isSuggestingFranchises \? "animate-pulse"/);
@@ -915,7 +915,7 @@ describe("AI persistence and UI security contracts", () => {
       authorMediaForm,
       /<fieldset[\s\S]*disabled=\{isSuggestingFranchises \|\| isSubmitting\}/,
     );
-    assert.match(authorMediaForm, /canSuggestFranchises \? \(\s*<Tooltip/);
+    assert.match(authorMediaForm, /canSuggestFranchises && selectedMediaType !== "boardgame" \? \(\s*<Tooltip/);
     assert.match(
       authorMediaForm,
       /disabled=\{!title\.trim\(\) \|\| isSuggestingFranchises\}/,

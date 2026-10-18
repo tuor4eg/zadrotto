@@ -1,6 +1,7 @@
+import type { MediaItemPlatform } from "@/lib/media/platforms";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import Link from "next/link";
-import { ArrowRight, FolderOpen, Shapes, Tag, X } from "lucide-react";
+import { ArrowRight, FolderOpen, Shapes, Tag, Users, X } from "lucide-react";
 
 import type { ArchiveSeriesMatch } from "@/db/queries/franchises";
 import { ArchiveChildSeries } from "@/app/archive/archive-child-series";
@@ -57,6 +58,14 @@ export function ArchiveSeriesMatches({
   genreTotalCount = 0,
   genreMoreHref = "/genres",
   genreSelectionHrefs = {},
+  platforms = [],
+  platformTotalCount = 0,
+  platformMoreHref = "/platforms",
+  platformSelectionHrefs = {},
+  creators = [],
+  creatorTotalCount = 0,
+  creatorMoreHref = "/creators",
+  creatorSelectionHrefs = {},
 }: {
   items: ArchiveSeriesMatch[];
   moreHref: string;
@@ -66,11 +75,19 @@ export function ArchiveSeriesMatches({
   genreTotalCount?: number;
   genreMoreHref?: string;
   genreSelectionHrefs?: Record<number, string>;
+  platforms?: readonly MediaItemPlatform[];
+  platformTotalCount?: number;
+  platformMoreHref?: string;
+  platformSelectionHrefs?: Record<number, string>;
+  creators?: readonly { id: number; name: string; slug: string }[];
+  creatorTotalCount?: number;
+  creatorMoreHref?: string;
+  creatorSelectionHrefs?: Record<number, string>;
 }) {
-  if (items.length === 0 && genres.length === 0) return null;
+  if (items.length === 0 && genres.length === 0 && creators.length === 0 && platforms.length === 0) return null;
 
   return (
-    <section className="archive-paper archive-panel grid gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-3 text-sm shadow-md" aria-label={genres.length ? (items.length ? "Совпадения в сериях и жанрах" : "Совпадения в жанрах") : "Совпадения в сериях"}>
+    <section className="archive-paper archive-panel grid gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-3 text-sm shadow-md" aria-label="Совпадения по поиску">
       {items.length ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
       <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
         <FolderOpen className="size-5" />
@@ -104,6 +121,32 @@ export function ArchiveSeriesMatches({
         </ul>
         {genreTotalCount > genres.length ? <Link href={genreMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
           Посмотреть в жанрах <ArrowRight className="size-4" />
+        </Link> : null}
+      </div> : null}
+      {platforms.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+        <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
+          <Shapes className="size-5" aria-hidden="true" /><span>Совпадения в платформах: {platformTotalCount}</span>
+        </div>
+        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+          {platforms.map((platform) => <li key={platform.id} className="min-w-0">
+            <Link href={platformSelectionHrefs[platform.id] ?? `/archive?platform=${encodeURIComponent(platform.slug)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{platform.name}</Link>
+          </li>)}
+        </ul>
+        {platformTotalCount > platforms.length ? <Link href={platformMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
+          Посмотреть в платформах <ArrowRight className="size-4" />
+        </Link> : null}
+      </div> : null}
+      {creators.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+        <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
+          <Users className="size-5" aria-hidden="true" /><span>Совпадения в создателях: {creatorTotalCount}</span>
+        </div>
+        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+          {creators.map((creator) => <li key={creator.id} className="min-w-0">
+            <Link href={creatorSelectionHrefs[creator.id] ?? `/archive?creator=${encodeURIComponent(creator.slug)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{creator.name}</Link>
+          </li>)}
+        </ul>
+        {creatorTotalCount > creators.length ? <Link href={creatorMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
+          Посмотреть в создателях <ArrowRight className="size-4" />
         </Link> : null}
       </div> : null}
     </section>

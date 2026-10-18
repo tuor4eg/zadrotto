@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 
 import { MediaItemTile, type MediaItemTileItem } from "@/app/media-item-tile";
+import { RateableMediaItemTile } from "@/components/archive/tile-rating-scope";
 import {
   ARCHIVE_LIST_TARGET_TILE_WIDTH,
   ARCHIVE_LIST_TILE_GAP,
@@ -26,6 +27,7 @@ export type ResponsiveTileDescriptor = {
 };
 
 type ResponsiveTileGridProps = {
+  rateable?: boolean;
   initialColumnCount?: number;
   items: ResponsiveTileDescriptor[];
   variant?: ResponsiveTileGridVariant;
@@ -52,6 +54,7 @@ export function getInitialTileGridColumnCount(
 }
 
 export function ResponsiveTileGrid({
+  rateable = false,
   initialColumnCount,
   items,
   variant = "compact",
@@ -90,6 +93,7 @@ export function ResponsiveTileGrid({
   }
 
   const visibleItems = items.slice(0, columnCount);
+  const Tile = rateable ? RateableMediaItemTile : MediaItemTile;
 
   return (
     <div
@@ -101,7 +105,7 @@ export function ResponsiveTileGrid({
       }}
     >
       {visibleItems.map((descriptor) => (
-        <MediaItemTile
+        <Tile
           key={descriptor.key}
           currentAuthorScore={descriptor.currentAuthorScore}
           href={descriptor.href}

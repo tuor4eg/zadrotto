@@ -1,3 +1,5 @@
+import { syncProviderCreators } from "@/db/queries/creator-requests"
+import { entryProviderWriterCreatorsJsonSql } from "@/db/queries/creators"
 import type { TitlePartProviderInput } from "@/lib/media/title-parts"
 import { syncProviderTitleParts } from "@/db/queries/title-parts-sync"
 import { createJobRun } from "@/db/queries/jobs"
@@ -12,6 +14,9 @@ import { hasNewUnmappedGenres, mediaItemGenresJsonSql, resolveProviderGenres, sy
 import { lockGenreRequestsForMetadata, syncGenreRequestOccurrences } from "@/db/queries/genre-requests"
 import { extractExternalGenres } from "@/lib/media/genres"
 import type { MediaItemGenre } from "@/lib/media/genres"
+import { hasNewUnmappedPlatforms, mediaItemPlatformsJsonSql, resolveProviderPlatforms, syncMediaItemProviderPlatforms } from "@/db/queries/media-item-platforms"
+import { lockPlatformRequestsForMetadata, syncPlatformRequestOccurrences } from "@/db/queries/platform-requests"
+import { extractExternalPlatforms, type MediaItemPlatform } from "@/lib/media/platforms"
 
 export type MediaItemMetadataFacts = Record<string, unknown>;
 
@@ -24,6 +29,8 @@ export type MediaItemMetadataValue = {
   fetchedAt: Date | null;
   updatedAt: Date;
   genres: MediaItemGenre[];
+  platforms: MediaItemPlatform[];
+  writerCreators?: { id: number; name: string; slug: string }[];
 };
 
 export type UpsertMediaItemMetadataInput = {
@@ -37,7 +44,7 @@ export type UpsertMediaItemMetadataInput = {
   fetchedAt?: Date | null;
 };
 
-function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect, genres: MediaItemGenre[]): MediaItemMetadataValue {
+function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect, genres: MediaItemGenre[], platforms: MediaItemPlatform[], writerCreators?: { id: number; name: string; slug: string }[]): MediaItemMetadataValue {
   return {
     mediaItemId: row.mediaItemId,
     facts: row.facts,
@@ -47,6 +54,8 @@ function mapMediaItemMetadata(row: typeof mediaItemMetadata.$inferSelect, genres
     fetchedAt: row.fetchedAt,
     updatedAt: row.updatedAt,
     genres,
+    platforms,
+    writerCreators,
   };
 }
 
@@ -54,12 +63,13 @@ export async function getMediaItemMetadata(
   mediaItemId: number,
 ): Promise<MediaItemMetadataValue | null> {
   const [row] = await db
-    .select({ metadata: mediaItemMetadata, genres: mediaItemGenresJsonSql(mediaItemMetadata.mediaItemId) })
+    .select({ mediaType: mediaItems.mediaType, metadata: mediaItemMetadata, genres: mediaItemGenresJsonSql(mediaItemMetadata.mediaItemId), platforms: mediaItemPlatformsJsonSql(mediaItemMetadata.mediaItemId), writerCreators: entryProviderWriterCreatorsJsonSql(sql`"media_item_metadata"."media_item_id"`) })
     .from(mediaItemMetadata)
+    .innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
     .where(eq(mediaItemMetadata.mediaItemId, mediaItemId))
     .limit(1);
 
-  return row ? mapMediaItemMetadata(row.metadata, row.genres) : null;
+  return row ? mapMediaItemMetadata(row.metadata, row.genres, row.platforms, row.mediaType === "book" ? row.writerCreators : undefined) : null;
 }
 
 export async function upsertMediaItemMetadata(
@@ -75,7 +85,10 @@ export async function upsertMediaItemMetadata(
     const [previous] = await tx.select().from(mediaItemMetadata)
       .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId));
     await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: input.facts, provider, mediaType: item.mediaType });
+    // Global order: media item → genre request keys → platform request keys.
+    await lockPlatformRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: input.facts, provider, mediaType: item.mediaType });
     const resolved = await resolveProviderGenres({ facts: input.facts, provider, mediaType: item.mediaType }, tx);
+    const resolvedPlatforms = await resolveProviderPlatforms({ facts: input.facts, provider, mediaType: item.mediaType }, tx);
     const [row] = await tx
       .insert(mediaItemMetadata)
       .values({
@@ -117,17 +130,27 @@ export async function upsertMediaItemMetadata(
     await syncGenreRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
       externalGenres: extractExternalGenres(input.facts) });
 
+    await syncMediaItemProviderPlatforms(tx, { mediaItemId: input.mediaItemId, provider, platforms: resolvedPlatforms.platforms });
+    await syncPlatformRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
+      externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(input.facts) : [] });
+
     if (Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
 
-    const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql() }).from(mediaItems)
+    await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: input.facts });
+    const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql(), platforms: mediaItemPlatformsJsonSql(), writerCreators: entryProviderWriterCreatorsJsonSql() }).from(mediaItems)
       .where(eq(mediaItems.id, input.mediaItemId));
     return {
       partConflicts: partsResult.conflicts,
-      metadata: mapMediaItemMetadata(row, genreRow.genres),
+      metadata: mapMediaItemMetadata(row, genreRow.genres, genreRow.platforms, item.mediaType === "book" ? genreRow.writerCreators : undefined),
       title: item.title, mediaType: item.mediaType, unmapped: resolved.unmapped,
+      unmappedPlatforms: resolvedPlatforms.unmapped,
+      shouldWarnPlatforms: hasNewUnmappedPlatforms({
+        unmapped: resolvedPlatforms.unmapped, provider,
+        previousProvider: previous?.sourceProvider ?? null, previousFacts: previous?.facts ?? null,
+      }),
       shouldWarn: hasNewUnmappedGenres({
         unmapped: resolved.unmapped, provider,
         previousProvider: previous?.sourceProvider ?? null, previousFacts: previous?.facts ?? null,
@@ -147,6 +170,14 @@ export async function upsertMediaItemMetadata(
         genres: result.unmapped.map((genre) => ({ name: genre.name, id: genre.id })) },
     });
   }
+  if (result.shouldWarnPlatforms && !provider) {
+    await logSystemActivity({
+      action: "media.platforms.unmapped", entityId: input.mediaItemId, entityLabel: result.title,
+      message: "Для части платформ записи не найдены внутренние соответствия.", severity: "warning",
+      metadata: { provider, mediaType: result.mediaType, reason: "missing-provider",
+        platforms: result.unmappedPlatforms.map((platform) => ({ name: platform.name })) },
+    });
+  }
   return result.metadata;
 }
 
@@ -154,8 +185,11 @@ export async function deleteMediaItemMetadata(mediaItemId: number) {
   await db.transaction(async (tx) => {
     await tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
     await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
+    await syncProviderCreators(tx, { mediaItemId, provider: null, mediaType: "", facts: {} });
     await syncGenreRequestOccurrences(tx, { mediaItemId, provider: null, mediaType: "", externalGenres: [] });
     await syncMediaItemProviderGenres(tx, { mediaItemId, provider: null, genres: [] });
+    await syncPlatformRequestOccurrences(tx, { mediaItemId, provider: null, mediaType: "", externalPlatforms: [] });
+    await syncMediaItemProviderPlatforms(tx, { mediaItemId, provider: null, platforms: [] });
   });
 }
 

@@ -23,6 +23,10 @@ export const DOMAIN_EVENT_TYPES = [
   "franchise.submitted",
   "franchise.approved",
   "franchise.rejected",
+  "genre-request.created",
+  "platform-request.created",
+  "creator-request.created",
+  "author.registration.submitted",
   "bug-report.created",
   "bug-report.confirmed",
   "bug-report.rejected",
@@ -79,6 +83,10 @@ export type DomainEventPayloads = {
   "franchise.submitted": { authorId: number; franchiseId: number };
   "franchise.approved": { authorId: number; franchiseId: number };
   "franchise.rejected": { authorId: number; franchiseId: number };
+  "genre-request.created": { requestId: number };
+  "platform-request.created": { requestId: number };
+  "creator-request.created": { requestId: number };
+  "author.registration.submitted": { authorId: number };
   "bug-report.created": { authorId: number; bugReportId: number };
   "bug-report.confirmed": { authorId: number; bugReportId: number };
   "bug-report.rejected": { authorId: number; bugReportId: number };

@@ -959,6 +959,8 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_genre_request_apply_active_unique")
       .on(sql`(${table.payload}->>'requestId')`)
       .where(sql`${table.type} = 'media.genre-request-apply' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_platform_request_apply_active_unique").on(sql`(${table.payload}->>'requestId')`).where(sql`${table.type} = 'media.platform-request-apply' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_creator_request_apply_active_unique").on(sql`(${table.payload}->>'requestId')`).where(sql`${table.type} = 'media.creator-request-apply' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
     check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
@@ -1809,6 +1811,207 @@ export const providerGenreExclusions = pgTable("provider_genre_exclusions", {
   check("provider_genre_exclusions_provider_check", sql`btrim(${table.provider}) <> ''`),
   check("provider_genre_exclusions_name_check", sql`btrim(${table.externalGenreName}) <> '' and btrim(${table.normalizedExternalGenreName}) <> ''`),
 ]);
+
+export const platforms = pgTable("platforms", {
+  id: serial("id").primaryKey(),
+  slug: text("slug").notNull().unique(),
+  name: text("name").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  ...timestamps(),
+}, (table) => [
+  check("platforms_slug_check", sql`btrim(${table.slug}) <> ''`),
+  check("platforms_name_check", sql`btrim(${table.name}) <> ''`),
+]);
+
+export const mediaItemPlatforms = pgTable("media_item_platforms", {
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  platformId: integer("platform_id").notNull().references(() => platforms.id, { onDelete: "restrict" }),
+  provider: text("provider"),
+  isManual: boolean("is_manual").notNull().default(false),
+  ...timestamps(),
+}, (table) => [
+  primaryKey({ columns: [table.mediaItemId, table.platformId] }),
+  index("media_item_platforms_platform_id_idx").on(table.platformId),
+  check("media_item_platforms_source_check", sql`${table.provider} is not null or ${table.isManual}`),
+  check("media_item_platforms_provider_check", sql`${table.provider} is null or btrim(${table.provider}) <> ''`),
+]);
+
+export const providerPlatformMappings = pgTable("provider_platform_mappings", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalPlatformName: text("external_platform_name").notNull(),
+  normalizedExternalPlatformName: text("normalized_external_platform_name").notNull(),
+  platformId: integer("platform_id").notNull().references(() => platforms.id, { onDelete: "restrict" }),
+  ...timestamps(),
+}, (table) => [
+  index("provider_platform_mappings_platform_id_idx").on(table.platformId),
+  uniqueIndex("provider_platform_mappings_name_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName, table.platformId),
+  check("provider_platform_mappings_game_check", sql`${table.mediaType} = 'game'`),
+  check("provider_platform_mappings_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("provider_platform_mappings_name_check", sql`btrim(${table.externalPlatformName}) <> ''`),
+  check("provider_platform_mappings_normalized_name_check", sql`btrim(${table.normalizedExternalPlatformName}) <> ''`),
+]);
+
+export const platformRequests = pgTable("platform_requests", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalPlatformName: text("external_platform_name").notNull(),
+  normalizedExternalPlatformName: text("normalized_external_platform_name").notNull(),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  decision: text("decision").$type<"create" | "map" | "exclude">(),
+  resolvedByAdminId: integer("resolved_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  jobRunId: integer("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
+  applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(),
+  jobError: text("job_error"),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("platform_requests_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName),
+  index("platform_requests_pending_idx").on(table.firstSeenAt, table.id).where(sql`${table.decision} is null`),
+  index("platform_requests_job_run_id_idx").on(table.jobRunId),
+  check("platform_requests_game_check", sql`${table.mediaType} = 'game'`),
+  check("platform_requests_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("platform_requests_name_check", sql`btrim(${table.externalPlatformName}) <> '' and btrim(${table.normalizedExternalPlatformName}) <> ''`),
+  check("platform_requests_decision_check", sql`${table.decision} is null or ${table.decision} in ('create', 'map', 'exclude')`),
+  check("platform_requests_apply_status_check", sql`${table.applyStatus} in ('pending', 'applying', 'processed', 'failed')`),
+  check("platform_requests_resolution_check", sql`(${table.decision} is null and ${table.resolvedAt} is null and ${table.applyStatus} in ('pending', 'applying', 'failed')) or (${table.decision} is not null and ${table.resolvedAt} is not null and ${table.applyStatus} <> 'pending')`),
+]);
+
+export const platformRequestMediaItems = pgTable("platform_request_media_items", {
+  requestId: integer("request_id").notNull().references(() => platformRequests.id, { onDelete: "cascade" }),
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  externalPlatformName: text("external_platform_name").notNull(),
+  ...timestamps(),
+}, (table) => [
+  primaryKey({ columns: [table.requestId, table.mediaItemId] }),
+  index("platform_request_media_items_item_idx").on(table.mediaItemId),
+  check("platform_request_media_items_name_check", sql`btrim(${table.externalPlatformName}) <> ''`),
+]);
+
+export const providerPlatformExclusions = pgTable("provider_platform_exclusions", {
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalPlatformName: text("external_platform_name").notNull(),
+  normalizedExternalPlatformName: text("normalized_external_platform_name").notNull(),
+  ...timestamps(),
+}, (table) => [
+  uniqueIndex("provider_platform_exclusions_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName),
+  check("provider_platform_exclusions_game_check", sql`${table.mediaType} = 'game'`),
+  check("provider_platform_exclusions_provider_check", sql`btrim(${table.provider}) <> ''`),
+  check("provider_platform_exclusions_name_check", sql`btrim(${table.externalPlatformName}) <> '' and btrim(${table.normalizedExternalPlatformName}) <> ''`),
+]);
+
+
+export const creatorTypes = pgTable("creator_types", {
+  id: serial("id").primaryKey(), name: text("name").notNull(), code: text("code").notNull().unique(), ...timestamps(),
+}, (t) => [check("creator_types_values_check", sql`btrim(${t.name}) <> '' and ${t.code} ~ '^[a-z][a-z0-9_]*$'`)]);
+export const creatorRoles = pgTable("creator_roles", {
+  id: serial("id").primaryKey(), name: text("name").notNull(), code: text("code").notNull().unique(), ...timestamps(),
+}, (t) => [check("creator_roles_values_check", sql`btrim(${t.name}) <> '' and ${t.code} ~ '^[a-z][a-z0-9_]*$'`)]);
+export const creators = pgTable("creators", {
+  id: serial("id").primaryKey(), name: text("name").notNull(), slug: text("slug").notNull().unique(),
+  originalName: text("original_name"),
+  avatarObjectKey: text("avatar_object_key"),
+  avatarSource: text("avatar_source").$type<"manual" | "fantlab">(),
+  avatarSourceExternalId: text("avatar_source_external_id"),
+  avatarSourceUrl: text("avatar_source_url"),
+  avatarOriginalUrl: text("avatar_original_url"),
+  avatarFetchedAt: timestamp("avatar_fetched_at", { withTimezone: true }),
+  avatarContentHash: text("avatar_content_hash"),
+  avatarVersion: integer("avatar_version").notNull().default(0),
+  typeId: integer("type_id").notNull().references(() => creatorTypes.id, { onDelete: "restrict" }), ...timestamps(),
+}, (t) => [index("creators_type_id_idx").on(t.typeId), check("creators_values_check", sql`btrim(${t.name}) <> '' and btrim(${t.slug}) <> ''`),
+  check("creators_avatar_check", sql`(
+    (${t.avatarObjectKey} is null and ${t.avatarSource} is null and ${t.avatarContentHash} is null
+      and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
+    or (${t.avatarObjectKey} is not null and ${t.avatarSource} is not null and ${t.avatarSource} in ('manual','fantlab')
+      and ${t.avatarContentHash} is not null and ${t.avatarContentHash} ~ '^[0-9a-f]{64}$'
+      and ${t.avatarObjectKey} ~ '^avatars/creators/[1-9][0-9]*/[0-9a-f-]{36}[.]webp$'
+      and ((${t.avatarSource} = 'manual' and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
+        or (${t.avatarSource} = 'fantlab' and ${t.avatarSourceExternalId} is not null and ${t.avatarSourceExternalId} ~ '^[1-9][0-9]*$'
+          and ${t.avatarSourceUrl} is not null and ${t.avatarOriginalUrl} is not null and ${t.avatarFetchedAt} is not null)))
+  ) and ${t.avatarVersion} >= 0`),
+  uniqueIndex("creators_avatar_object_key_unique").on(t.avatarObjectKey).where(sql`${t.avatarObjectKey} is not null`),
+]);
+export const entryCreators = pgTable("entry_creators", {
+  entryId: integer("entry_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
+  roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
+  isManual: boolean("is_manual").notNull().default(false), ...timestamps(),
+}, (t) => [primaryKey({ columns: [t.entryId, t.creatorId, t.roleId] }), index("entry_creators_creator_role_idx").on(t.creatorId, t.roleId, t.entryId), index("entry_creators_role_idx").on(t.roleId)]);
+export const creatorRelations = pgTable("creator_relations", {
+  sourceCreatorId: integer("source_creator_id").notNull().references(() => creators.id, { onDelete: "cascade" }),
+  targetCreatorId: integer("target_creator_id").notNull().references(() => creators.id, { onDelete: "cascade" }),
+  relationType: text("relation_type").$type<"pseudonym_of">().notNull(),
+}, (t) => [primaryKey({ columns: [t.sourceCreatorId, t.targetCreatorId, t.relationType] }),
+  index("creator_relations_target_idx").on(t.targetCreatorId),
+  check("creator_relations_distinct_check", sql`${t.sourceCreatorId} <> ${t.targetCreatorId}`),
+  check("creator_relations_type_check", sql`${t.relationType} = 'pseudonym_of'`)]);
+export const entryCreatorPseudonyms = pgTable("entry_creator_pseudonyms", {
+  entryId: integer("entry_id").primaryKey().references(() => mediaItems.id, { onDelete: "cascade" }),
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
+  roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
+}, (t) => [index("entry_creator_pseudonyms_creator_idx").on(t.creatorId), index("entry_creator_pseudonyms_role_idx").on(t.roleId)]);
+export const creatorSeries = pgTable("creator_series", {
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
+  seriesId: integer("series_id").notNull().references(() => franchises.id, { onDelete: "cascade" }),
+}, (t) => [primaryKey({ columns: [t.creatorId, t.seriesId] }), index("creator_series_series_idx").on(t.seriesId)]);
+export const providerCreatorBindings = pgTable("provider_creator_bindings", {
+  externalCreatorName: text("external_creator_name"),
+  id: serial("id").primaryKey(),
+  provider: text("provider").notNull(),
+  externalCreatorId: text("external_creator_id").notNull(),
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
+  ...timestamps(),
+}, (t) => [
+  uniqueIndex("provider_creator_bindings_identity_unique").on(t.provider, t.externalCreatorId),
+  unique("provider_creator_bindings_owner_unique").on(t.id, t.creatorId, t.provider),
+  index("provider_creator_bindings_creator_idx").on(t.creatorId),
+  check("provider_creator_bindings_values_check", sql`${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$' and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
+]);
+export const providerCreatorMappings = pgTable("provider_creator_mappings", {
+  bindingId: integer("binding_id"),
+  id: serial("id").primaryKey(), provider: text("provider").notNull(),
+  mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalCreatorName: text("external_creator_name").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(),
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }), ...timestamps(),
+}, (t) => [uniqueIndex("provider_creator_mappings_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName), index("provider_creator_mappings_creator_idx").on(t.creatorId),
+  index("provider_creator_mappings_binding_idx").on(t.bindingId),
+  foreignKey({ name: "provider_creator_mappings_binding_owner_fk", columns: [t.bindingId, t.creatorId, t.provider], foreignColumns: [providerCreatorBindings.id, providerCreatorBindings.creatorId, providerCreatorBindings.provider] }).onDelete("restrict"),
+]);
+export const creatorRequests = pgTable("creator_requests", {
+  externalCreatorId: text("external_creator_id"),
+  id: serial("id").primaryKey(), provider: text("provider").notNull(), mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalCreatorName: text("external_creator_name").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(),
+  decision: text("decision").$type<"create" | "map" | "exclude">(),
+  resolvedByAdminId: integer("resolved_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  resolvedAt: timestamp("resolved_at", { withTimezone: true }),
+  jobRunId: integer("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
+  applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(), jobError: text("job_error"),
+  firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(), lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
+  manuallyReopened: boolean("manually_reopened").notNull().default(false), ...timestamps(),
+}, (t) => [uniqueIndex("creator_requests_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("creator_requests_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("creator_requests_identity_check", sql`${t.externalCreatorId} is null or (${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$')`), index("creator_requests_pending_idx").on(t.firstSeenAt, t.id).where(sql`${t.decision} is null`), index("creator_requests_job_idx").on(t.jobRunId), check("creator_requests_decision_check", sql`${t.decision} is null or ${t.decision} in ('create','map','exclude')`), check("creator_requests_status_check", sql`${t.applyStatus} in ('pending','applying','processed','failed')`)]);
+export const creatorRequestMediaItems = pgTable("creator_request_media_items", {
+  roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
+  requestId: integer("request_id").notNull().references(() => creatorRequests.id, { onDelete: "cascade" }),
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  externalCreatorName: text("external_creator_name").notNull(), ...timestamps(),
+}, (t) => [primaryKey({ columns: [t.requestId, t.mediaItemId, t.roleId] }), index("creator_request_media_items_entry_idx").on(t.mediaItemId)]);
+export const providerCreatorExclusions = pgTable("provider_creator_exclusions", {
+  externalCreatorId: text("external_creator_id"),
+  id: serial("id").primaryKey(), provider: text("provider").notNull(), mediaType: text("media_type").notNull().references(() => mediaTypes.code),
+  externalCreatorName: text("external_creator_name").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(), ...timestamps(),
+}, (t) => [uniqueIndex("provider_creator_exclusions_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("provider_creator_exclusions_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("provider_creator_exclusions_identity_check", sql`${t.externalCreatorId} is null or (${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$')`)]);
+// One source per provider value preserves aliases mapped to the same creator.
+export const entryCreatorSources = pgTable("entry_creator_sources", {
+  bindingId: integer("binding_id"),
+  entryId: integer("entry_id").notNull(), creatorId: integer("creator_id").notNull(), roleId: integer("role_id").notNull(),
+  provider: text("provider").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(),
+}, (t) => [primaryKey({ columns: [t.entryId, t.creatorId, t.roleId, t.provider, t.normalizedExternalCreatorName] }), foreignKey({ columns: [t.entryId, t.creatorId, t.roleId], foreignColumns: [entryCreators.entryId, entryCreators.creatorId, entryCreators.roleId] }).onDelete("cascade"), index("entry_creator_sources_binding_idx").on(t.bindingId), foreignKey({name: "entry_creator_sources_binding_owner_fk", columns: [t.bindingId,t.creatorId,t.provider], foreignColumns: [providerCreatorBindings.id,providerCreatorBindings.creatorId,providerCreatorBindings.provider]}).onDelete("restrict")]);
 
 export const mediaItemMetadata = pgTable("media_item_metadata", {
   mediaItemId: integer("media_item_id")

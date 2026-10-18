@@ -59,26 +59,26 @@ describe("archive route split", () => {
       mediaItemDetails,
       /archive-paper archive-panel archive-panel-overflow-visible[^"]*flex-1/,
     );
-    assert.match(mediaItemDetails, /lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
+    assert.match(mediaItemDetails, /lg:grid-rows-\[minmax\(0,1fr\)\]/);
   });
 
   it("keeps the desktop dossier identity within the rating-column width", () => {
     assert.match(
       mediaItemDetails,
-      /break-words lg:max-w-\[584px\][\s\S]*<MediaCarrierDisplayTitle title=\{item\.title\}/,
+      /break-words lg:max-w-\[584px\][\s\S]*<MediaCarrierDisplayTitle title=\{displayTitle\}/,
     );
     assert.match(mediaItemDetails, /mt-5 w-full[^"`]*lg:max-w-\[584px\]/);
-    assert.match(mediaItemDetails, /mt-8 grid w-full[^"`]*lg:max-w-\[584px\]/);
+    assert.match(mediaItemDetails, /mt-5 grid w-full[^"`]*lg:max-w-\[584px\]/);
     assert.match(mediaItemDetails, /className="break-words">\{label\}/);
   });
 
-  it("does not let a wrapped desktop title increase the breadcrumb row", () => {
+  it("keeps breadcrumbs and the title in independent desktop columns", () => {
     assert.match(
       mediaItemDetails,
-      /order-1 min-w-0 lg:col-start-1 lg:row-start-1 lg:row-span-2[\s\S]*\{breadcrumbSlot\}[\s\S]*<ArchiveCover/,
+      /contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline[\s\S]*\{breadcrumbSlot\}[\s\S]*<ArchiveCover/,
     );
-    assert.match(mediaItemDetails, /lg:col-start-2 lg:row-start-1 lg:self-baseline/);
-    assert.match(mediaItemDetails, /lg:col-start-2 lg:row-start-2 lg:min-h-\[560px\]/);
+    assert.match(mediaItemDetails, /contents lg:col-start-2 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:self-baseline/);
+    assert.match(mediaItemDetails, /order-4 flex flex-col[^"\n]*lg:flex-1 lg:min-h-\[560px\]/);
   });
 
   it("submits the main-page search to the archive only on form submission", () => {
@@ -130,7 +130,7 @@ describe("archive route split", () => {
     for (const file of catalogRevalidationFiles) {
       const source = readFileSync(file, "utf8");
 
-      assert.match(source, /revalidatePath\("\/"\)/, `${file} must revalidate the journal`);
+      assert.match(source, /revalidatePath\("\/"(?:, "layout")?\)/, `${file} must revalidate the journal directly or through its layout`);
       assert.match(
         source,
         /revalidatePath\("\/archive"\)/,

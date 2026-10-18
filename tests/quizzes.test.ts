@@ -272,7 +272,7 @@ describe("quizzes", () => {
     assert.match(modal, /Раз в день в 12:00 \(MSK\)/);
     assert.match(modal, /disabled[\s\S]*Искать ответ в архиве/);
     assert.match(modal, /disabled[\s\S]*Проверить догадку[\s\S]*<CircleHelp/);
-    assert.match(modal, /Array\.from\(\{ length: 3 \}/);
+    assert.match(modal, /<Heart aria-hidden="true"[\s\S]*<span aria-hidden="true"[^>]*>× 3<\/span>/);
     assert.doesNotMatch(modal, /Предыдущий вопрос|Открыть предыдущий вопрос/);
     assert.doesNotMatch(query, /getPreviousQuizHistory/);
   });
@@ -350,10 +350,11 @@ describe("quizzes", () => {
     assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
     assert.match(layer, /Осталось попыток:/);
+    assert.match(layer, /aria-label=\{`Осталось попыток: \$\{visibleParticipant\.attemptsRemaining\} из \$\{visibleParticipant\.attemptLimit\}`\}/);
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\]/);
     assert.match(layer, /sm:bottom-\[max\(1\.75rem,env\(safe-area-inset-bottom\)\)\]/);
     assert.match(layer, /min-\[1800px\]:contents[\s\S]*min-\[1800px\]:fixed[\s\S]*min-\[1800px\]:top-\[calc\(env\(safe-area-inset-top\)\+1\.25rem\)\]/);
-    assert.match(layer, /Array\.from\(\{ length: visibleParticipant\.attemptLimit \}/);
+    assert.match(layer, /<Heart aria-hidden="true"[\s\S]*<span aria-hidden="true"[^>]*>× \{visibleParticipant\.attemptsRemaining\}<\/span>/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);
     assert.match(archiveRiddle, /window\.dispatchEvent\(new Event\(OPEN_QUIZ_MODAL_EVENT\)\)/);

@@ -1,4 +1,4 @@
-import { Alert } from "@/components/ui/alert";
+import { AdminToasts } from "../../../admin-toasts";
 import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
@@ -19,7 +19,7 @@ const FIELDS = [
 export default async function EmailGeneralPage({ searchParams }: { searchParams: Promise<{ error?: string; updated?: string }> }) {
   const [settings, query] = await Promise.all([getEmailAutomationSettings(), searchParams]);
   return <section className="space-y-5"><div><h2 className="font-serif text-3xl">Общие настройки</h2><p className="text-sm text-stone-600">Размер очереди, повторы и сроки хранения. Расписание настраивается в разделе фоновых задач.</p></div>
-    {query.error ? <Alert variant="destructive">Проверь диапазоны значений. Максимальная задержка повтора не может быть меньше базовой.</Alert> : query.updated ? <Alert>Настройки сохранены.</Alert> : null}
+    <AdminToasts clearParams={["error", "updated"]} messages={query.error ? [{ id: "error", tone: "error", text: "Проверь диапазоны значений. Максимальная задержка повтора не может быть меньше базовой." }] : query.updated ? [{ id: "success", tone: "success", text: "Настройки сохранены." }] : []} />
     <form action={saveEmailAutomationSettingsAction} className="grid gap-4 rounded-md border bg-white p-5 sm:grid-cols-2">{FIELDS.map(([name, label, min, max]) => <div key={name} className="grid gap-2"><Label htmlFor={name}>{label}</Label><Input id={name} name={name} type="number" min={min} max={max} defaultValue={settings[name]} required /></div>)}<div className="sm:col-span-2"><Button type="submit">Сохранить</Button></div></form>
   </section>;
 }

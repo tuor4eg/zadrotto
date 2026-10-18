@@ -34,6 +34,11 @@ import { getMediaItemCollectionReferences } from "@/db/queries/editorial-collect
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getMediaTypeLabel } from "@/lib/media/types";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
+import { getCreatorOptions, getCreatorRoles, getEntryCreators, getEntryPseudonymState } from "@/db/queries/creators";
+import { saveEntryPseudonymAction } from "../../../creators/actions";
+import { EntryPseudonymPicker } from "../../../creators/entry-pseudonym-picker";
+import { AdminToasts } from "../../../admin-toasts";
+import { EntryCreatorsForm } from "../../../creators/entry-creators-form";
 
 type EditAdminMediaPageProps = {
   params: Promise<{
@@ -47,6 +52,10 @@ type EditAdminMediaPageProps = {
     summaryQueued?: string;
     summarySaved?: string;
     summarySkipped?: string;
+    creatorError?: string;
+    creatorsSaved?: string;
+    pseudonymError?: string;
+    pseudonymSaved?: string;
   }>;
 };
 
@@ -115,6 +124,25 @@ function ReviewButton({
       </Button>
     </form>
   );
+}
+
+async function CreatorsEditor({ entryId }: { entryId: number }) {
+  const [creators, roles, links, pseudonym] = await Promise.all([getCreatorOptions(), getCreatorRoles(), getEntryCreators(entryId), getEntryPseudonymState(entryId)]);
+  return <div className="grid gap-5">
+    {!pseudonym.selected ? pseudonym.candidates.map(candidate => <form key={candidate.id} action={saveEntryPseudonymAction} className="flex flex-wrap items-center justify-between gap-3 rounded-md border p-4">
+      <input type="hidden" name="entryId" value={entryId}/><input type="hidden" name="creatorId" value={candidate.id}/>
+      <p className="text-sm">Для авторов записи доступен псевдоним: <Link href={`/admin/creators/${candidate.id}/edit`} className="font-medium underline">{candidate.name}</Link></p>
+      <Button type="submit" variant="outline">Использовать</Button>
+    </form>) : null}
+    <details>
+      <summary className="cursor-pointer text-lg font-semibold">Создатели записи</summary>
+      <div className="grid gap-5 pt-4">
+        <EntryCreatorsForm entryId={entryId} creators={creators} roles={roles} links={links}/>
+        <EntryPseudonymPicker key={entryId} entryId={entryId} selected={pseudonym.selected}/>
+        <div><Button type="submit" form={`entry-creators-${entryId}`}>Сохранить</Button></div>
+      </div>
+    </details>
+  </div>;
 }
 
 export default async function EditAdminMediaPage({
@@ -220,16 +248,26 @@ export default async function EditAdminMediaPage({
           </CardContent>
         </Card>
 
+        <Card className="mt-5"><CardContent className="grid gap-3 pt-5">
+          <AdminToasts clearParams={["pseudonymError", "pseudonymSaved", "creatorError", "creatorsSaved", "summaryError", "summaryQueued", "summarySaved", "summarySkipped"]} messages={[
+            ...(query.pseudonymError ? [{ id: "pseudonymError", tone: "error" as const, text: "Не удалось изменить псевдоним. Проверьте состав авторов и повторите попытку." }] : []),
+            ...(query.pseudonymSaved ? [{ id: "pseudonymSaved", tone: "success" as const, text: "Выбор псевдонима сохранён." }] : []),
+            ...(query.creatorError ? [{ id: "creatorError", tone: "error" as const, text: "Не удалось сохранить создателей записи." }] : []),
+            ...(query.creatorsSaved ? [{ id: "creatorsSaved", tone: "success" as const, text: "Создатели сохранены." }] : []),
+            ...(query.summaryError ? [{ id: "summaryError", tone: "error" as const, text: "Не удалось выполнить действие со справкой." }] : []),
+            ...(query.summaryQueued ? [{ id: "summaryQueued", tone: "success" as const, text: "Генерация поставлена в очередь." }] : []),
+            ...(query.summarySaved ? [{ id: "summarySaved", tone: "success" as const, text: "Справка сохранена и защищена от автозамены." }] : []),
+            ...(query.summarySkipped ? [{ id: "summarySkipped", tone: "success" as const, text: "Русскоязычное исходное описание сохранено без изменений." }] : []),
+          ]}/>
+          <CreatorsEditor entryId={item.id}/>
+        </CardContent></Card>
+
         <Card className="mt-5">
           <CardContent className="grid gap-4 pt-5">
             <div>
               <h2 className="text-lg font-semibold">Редакционная справка</h2>
               <p className="text-sm text-stone-600">Короткое описание для публичной страницы. Исходное описание хранится отдельно.</p>
             </div>
-            {query.summaryError ? <Alert variant="destructive">Не удалось выполнить действие со справкой.</Alert> : null}
-            {query.summaryQueued ? <Alert>Генерация поставлена в очередь.</Alert> : null}
-            {query.summarySaved ? <Alert>Справка сохранена и защищена от автозамены.</Alert> : null}
-            {query.summarySkipped ? <Alert>Русскоязычное исходное описание сохранено без изменений.</Alert> : null}
             <div className="text-sm text-stone-600">
               {editorialSummary?.locked ? "Защищена от автозамены" : summaryStale ? "Устарела — ожидает обновления" : editorialSummary?.status === "unusable" ? "AI не подготовил справку" : editorialSummary?.summary ? "Актуальна" : "Ещё не создана"}
               {editorialSummary?.generatedAt ? ` · Последняя генерация: ${editorialSummary.generatedAt.toLocaleString("ru-RU")}` : ""}
