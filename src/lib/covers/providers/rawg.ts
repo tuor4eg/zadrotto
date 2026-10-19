@@ -1,9 +1,9 @@
+import { fetchRawgJson } from "@/lib/creators/game-company-api";
+import { getRawgCompanyReferences } from "@/lib/creators/game-company-references";
 import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
-  fetchJson,
-  fetchSearchJson,
   getFirstYear,
   normalizeSearchQuery,
 } from "@/lib/covers/providers/shared";
@@ -34,9 +34,13 @@ type RawgGameDetailsResponse = {
     };
   }>;
   developers?: Array<{
+    id?: number;
+    slug?: string;
     name?: string;
   }>;
   publishers?: Array<{
+    id?: number;
+    slug?: string;
     name?: string;
   }>;
   genres?: Array<{
@@ -53,7 +57,8 @@ function getPlatformNames(values: RawgGameDetailsResponse["platforms"]) {
   return [...new Set((values ?? []).map((value) => value.platform?.name?.trim()).filter((name): name is string => Boolean(name)))];
 }
 
-export const rawgProvider: MediaProvider = {
+export function createRawgProvider(request = fetchRawgJson): MediaProvider {
+return {
   code: "rawg",
   mediaTypes: ["game"],
   async searchTitleCandidates(input, options) {
@@ -69,7 +74,7 @@ export const rawgProvider: MediaProvider = {
       search: query,
       page_size: options.candidateLimit,
     });
-    const data = await fetchSearchJson<RawgResponse>(url);
+    const data = await request<RawgResponse>(url);
 
     return (data?.results ?? [])
       .filter((item) => item.id)
@@ -99,7 +104,7 @@ export const rawgProvider: MediaProvider = {
     const url = buildUrl(`https://api.rawg.io/api/games/${input.externalId}`, {
       key: apiKey,
     });
-    const details = await fetchSearchJson<RawgGameDetailsResponse>(url);
+    const details = await request<RawgGameDetailsResponse>(url);
 
     if (!details?.id) {
       return null;
@@ -111,6 +116,7 @@ export const rawgProvider: MediaProvider = {
       externalId: input.externalId,
       sourceUrl: details.slug ? `https://rawg.io/games/${details.slug}` : `https://rawg.io/games/${details.id}`,
       facts: {
+        ...(getRawgCompanyReferences(details) !== undefined ? {gameCompanyReferences:getRawgCompanyReferences(details)} : {}),
         platforms: getPlatformNames(details.platforms),
         developers: getNames(details.developers),
         publishers: getNames(details.publishers),
@@ -122,7 +128,7 @@ export const rawgProvider: MediaProvider = {
   async getCoverCandidatesByTitleSource(input, options) {
     const apiKey = options.providerCredentials?.rawg?.apiKey?.trim();
     if (!apiKey || !input.titleSource?.externalId.trim()) return [];
-    const details = await fetchJson<RawgGameDetailsResponse>(buildUrl(`https://api.rawg.io/api/games/${input.titleSource.externalId}`, { key: apiKey }));
+    const details = await request<RawgGameDetailsResponse>(buildUrl(`https://api.rawg.io/api/games/${input.titleSource.externalId}`, { key: apiKey }));
     if (!details?.id || !details.background_image) return [];
     return [{ id: `game:${details.id}`, provider: "rawg", title: details.name ?? input.title, imageUrl: details.background_image, sourcePageUrl: details.slug ? `https://rawg.io/games/${details.slug}` : `https://rawg.io/games/${details.id}`, year: getFirstYear(details.released) ?? undefined, confidence: details.rating }];
   },
@@ -139,7 +145,7 @@ export const rawgProvider: MediaProvider = {
       search: query,
       page_size: options.candidateLimit,
     });
-    const data = await fetchSearchJson<RawgResponse>(url);
+    const data = await request<RawgResponse>(url);
 
     return (data?.results ?? [])
       .filter((item) => item.id && item.background_image)
@@ -155,3 +161,6 @@ export const rawgProvider: MediaProvider = {
       }));
   },
 };
+
+}
+export const rawgProvider = createRawgProvider();

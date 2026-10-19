@@ -2808,7 +2808,7 @@ describe("cover provider credential validation", () => {
         await validateCoverProviderCredentials({
           providerCode: "igdb",
           values: { clientId: "client-id", clientSecret: "client-secret" },
-        }),
+        }, (_provider, input, init) => globalThis.fetch(input, init)),
         { ok: true },
       );
     } finally {

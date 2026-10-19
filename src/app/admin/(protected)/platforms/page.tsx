@@ -1,3 +1,4 @@
+import { PlatformLogo } from "@/components/archive/platform-logo";
 import { reopenPlatformMappingAction } from "./actions";
 import Link from "next/link";
 import { Edit3 } from "lucide-react";
@@ -14,11 +15,11 @@ import { PlatformSearch } from "./platform-search";
 import { CancelledPlatforms } from "./cancelled-platforms";
 
 function PlatformIdentity({ platform }: { platform: AdminPlatform }) {
-  return <div className="min-w-0">
+  return <div className="flex min-w-0 items-start gap-3"><PlatformLogo name={platform.name} logoUrl={platform.logoUrl} /><div className="min-w-0">
     <div className="break-words font-medium text-stone-950">{platform.name}</div>
     <div className="mt-1 break-all font-mono text-xs text-stone-500">{platform.slug}</div>
     {!platform.isActive ? <Badge variant="warning" className="mt-2">Неактивна</Badge> : null}
-  </div>;
+  </div></div>;
 }
 
 function PlatformEditLink({ platform }: { platform: AdminPlatform }) {

@@ -1,3 +1,6 @@
+import { saveGameCompanyRoster } from "./game-companies";
+import { extractGameCompanyReferences, isGameCompanyProvider } from "@/lib/creators/game-companies";
+import { gameCompanyRosters } from "@/db/schema";
 import { syncProviderCreators } from "@/db/queries/creator-requests"
 import { entryProviderWriterCreatorsJsonSql } from "@/db/queries/creators"
 import type { TitlePartProviderInput } from "@/lib/media/title-parts"
@@ -139,7 +142,10 @@ export async function upsertMediaItemMetadata(
         .where(eq(mediaItems.id, input.mediaItemId));
     }
 
-    await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: input.facts });
+    if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
+      const references = extractGameCompanyReferences(input.facts, provider);
+      if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references });
+    } else await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: input.facts });
     const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql(), platforms: mediaItemPlatformsJsonSql(), writerCreators: entryProviderWriterCreatorsJsonSql() }).from(mediaItems)
       .where(eq(mediaItems.id, input.mediaItemId));
     return {
@@ -185,6 +191,7 @@ export async function deleteMediaItemMetadata(mediaItemId: number) {
   await db.transaction(async (tx) => {
     await tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
     await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
+    await tx.delete(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, mediaItemId));
     await syncProviderCreators(tx, { mediaItemId, provider: null, mediaType: "", facts: {} });
     await syncGenreRequestOccurrences(tx, { mediaItemId, provider: null, mediaType: "", externalGenres: [] });
     await syncMediaItemProviderGenres(tx, { mediaItemId, provider: null, genres: [] });

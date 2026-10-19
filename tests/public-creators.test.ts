@@ -4,6 +4,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { paginatePublicCreators } from "../src/lib/media/public-creators";
 import { CreatorCatalog } from "../src/app/creators/creators-catalog";
+import { buildCreatorArchiveHref } from "../src/lib/media/creator-role-filter";
 import { ArchiveSelectedCreator } from "../src/app/archive/archive-creator-context";
 
 const rows = ["Достоевский", "Frank Herbert", "Кинг", "12 авторов", "# Псевдоним", "Достоевский"].map((name, index) => ({
@@ -62,8 +63,8 @@ test("system roles survive pagination and filter creators before alphabet and pa
   assert.deepEqual(page.availableLetters, ["F"]);
   assert.deepEqual(page.items[0].roles, roles);
   const html = renderToStaticMarkup(createElement(CreatorCatalog, { items: page.items }));
-  assert.match(html, />Новая роль<\/span>/);
-  assert.match(html, />Художник<\/span>/);
+  assert.match(html, />Новая роль<\/a>/);
+  assert.match(html, />Художник<\/a>/);
 });
 
 test("selected creator shows every supplied system role with its shared icon", () => {
@@ -80,4 +81,35 @@ test("selected creator shows every supplied system role with its shared icon", (
 test("creator catalog preserves the selected media type when opening archive", () => {
   const html = renderToStaticMarkup(createElement(CreatorCatalog, { items: rows, mediaType: "boardgame" }));
   assert.match(html, /href="\/archive\?creator=creator-0&amp;type=boardgame"/);
+});
+
+
+test("creator role links open the archive with creator and role, preserving the media type",()=>{
+  const creator={...rows[0],roles:[{code:"developer",name:"Разработчик"},{code:"publisher",name:"Издатель"}]};
+  const html=renderToStaticMarkup(createElement(CreatorCatalog,{items:[creator],mediaType:"game"}));
+  assert.match(html,/href="\/archive\?creator=creator-0&amp;creatorRole=developer&amp;type=game"/);
+  assert.match(html,/href="\/archive\?creator=creator-0&amp;creatorRole=publisher&amp;type=game"/);
+  assert.match(html,/>Разработчик<\/a>/);
+  assert.match(html,/>Издатель<\/a>/);
+});
+
+test("role switching preserves archive filters, resets pagination, and all roles removes only the role",()=>{
+  const searchParams="creator=old&creatorRole=publisher&page=7&type=game&q=space&series=series-1&genre=strategy&year=2001&sort=title&mine=rated&pageSize=24";
+  const href=buildCreatorArchiveHref({creatorSlug:"ic-company",roleCode:"developer",searchParams});
+  const params=new URL(href,"https://example.test").searchParams;
+  assert.equal(params.get("creator"),"ic-company");assert.equal(params.get("creatorRole"),"developer");
+  assert.equal(params.has("page"),false);
+  for(const [key,value] of new URLSearchParams(searchParams))if(!["creator","creatorRole","page"].includes(key))assert.equal(params.get(key),value);
+  const all=new URL(buildCreatorArchiveHref({creatorSlug:"ic-company",searchParams:params.toString()}),"https://example.test").searchParams;
+  assert.equal(all.has("creatorRole"),false);assert.equal(all.get("creator"),"ic-company");assert.equal(all.get("year"),"2001");
+});
+
+test("selected creator roles highlight the active role and provide an all-roles link",()=>{
+  const creator={id:1,name:"IC Company",series:[],roles:[{code:"publisher",name:"Издатель"},{code:"developer",name:"Разработчик"}]};
+  const html=renderToStaticMarkup(createElement(ArchiveSelectedCreator,{creator,clearHref:"/archive",selectedRole:"developer",
+    allRolesHref:"/archive?creator=ic-company",roleHrefs:{developer:"/archive?creator=ic-company&creatorRole=developer",publisher:"/archive?creator=ic-company&creatorRole=publisher"}}));
+  const selected=html.match(/<a\b[^>]*href="\/archive\?creator=ic-company&amp;creatorRole=developer"[^>]*>/)?.[0];
+  assert.ok(selected);assert.match(selected,/aria-current="page"/);
+  assert.match(html,/href="\/archive\?creator=ic-company"[^>]*>Все<\/a>/);
+  assert.doesNotMatch(html,/creatorRole=publisher"[^>]*aria-current/);
 });

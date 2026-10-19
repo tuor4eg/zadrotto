@@ -53,3 +53,35 @@ export async function retryPlatformRequestAction(formData: FormData) {
   invalidatePlatformViews();
   redirect(`/admin/platform-requests/${requestId}?retried=1`);
 }
+
+export async function resolvePlatformAssetRequestAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const requestId = parsePlatformId(formData.get("requestId"));
+  if (!requestId) redirect("/admin/platform-requests?error=invalid");
+  const decision = formData.get("decision");
+  if (decision !== "map" && decision !== "exclude") redirect(`/admin/platform-requests/${requestId}?error=invalid`);
+  const candidateKey = formData.get("candidateKey");
+  try {
+    await resolvePlatformRequest({requestId,adminId:admin.id,decision,
+      candidateKey:typeof candidateKey==="string"?candidateKey:undefined});
+  } catch(error) {
+    console.error("Не удалось принять решение по изображению платформы.",error);
+    redirect(`/admin/platform-requests/${requestId}?error=changed`);
+  }
+  revalidatePath("/admin/platforms");
+  revalidatePath("/platforms");
+  revalidatePath("/admin/platform-requests");
+  redirect(`/admin/platform-requests/${requestId}?saved=1`);
+}
+
+export async function reopenPlatformAssetRequestAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const requestId = parsePlatformId(formData.get("requestId"));
+  if (!requestId) redirect("/admin/platform-requests?error=invalid");
+  const {reopenPlatformAssetRequest}=await import("@/db/queries/platform-logo-requests");
+  try {await reopenPlatformAssetRequest({requestId,adminId:admin.id});}
+  catch {redirect(`/admin/platform-requests/${requestId}?error=changed`);}
+  revalidatePath("/platforms");
+  revalidatePath("/admin/platforms");
+  redirect(`/admin/platform-requests/${requestId}?reopened=1`);
+}

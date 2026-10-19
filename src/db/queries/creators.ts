@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, asc, eq, inArray, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { db } from "@/db";
 import { adminActivityLogs, creatorRelations, entryCreatorPseudonyms, creators, creatorTypes, creatorRoles, creatorSeries, franchises, entryCreators, entryCreatorSources, providerCreatorMappings, providerCreatorBindings, mediaItems, mediaItemFranchises } from "@/db/schema";
 import { normalizeSearchSql, containsNormalizedSearchSql } from "@/db/search";
@@ -115,7 +115,7 @@ export function entryCreatorsJsonSql(column: SQLWrapper = sql`"media_items"."id"
 export async function getCreatorProviderBindings(creatorId: number | readonly number[]) {
     const ids = typeof creatorId === "number" ? [creatorId] : [...creatorId];
     if (!ids.length) return [];
-    return db.select().from(providerCreatorBindings).where(inArray(providerCreatorBindings.creatorId, ids))
+    return db.select().from(providerCreatorBindings).where(and(inArray(providerCreatorBindings.creatorId, ids), eq(providerCreatorBindings.active, true)))
       .orderBy(asc(providerCreatorBindings.provider), asc(providerCreatorBindings.externalCreatorId));
 }
 
@@ -167,9 +167,27 @@ export async function getCreators(input: {
     page?: number;
     pageSize?: number;
     publicOnly?: boolean;
+    typeCode?: string;
+    roleCode?: string;
 } = {}) {
     const q = normalizeSearchText(input.q ?? "");
-    const filter = and(q ? containsNormalizedSearchSql(creators.name, q) : undefined, input.publicOnly ? sql `exists (select 1 from media_items m join media_types mt on mt.code=m.media_type where ${creatorCondition(creators.id, sql`m.id`)} and m.publication_status = 'published' and mt.is_publicly_available)` : undefined);
+    const filter = and(
+        q ? containsNormalizedSearchSql(creators.name, q) : undefined,
+        input.typeCode ? eq(creatorTypes.code, input.typeCode) : undefined,
+        input.roleCode ? sql`${creators.id} in (
+            select ec.creator_id from entry_creators ec join creator_roles r on r.id=ec.role_id where r.code=${input.roleCode}
+            union
+            select p.creator_id from entry_creator_pseudonyms p join creator_roles r on r.id=p.role_id where r.code='writer' and r.code=${input.roleCode}
+            union
+            select cr.target_creator_id from (
+                select ec.creator_id, ec.role_id from entry_creators ec
+                union select p.creator_id, p.role_id from entry_creator_pseudonyms p
+            ) a join creator_roles r on r.id=a.role_id
+            join creator_relations cr on cr.source_creator_id=a.creator_id and cr.relation_type='pseudonym_of'
+            where r.code='writer' and r.code=${input.roleCode}
+        )` : undefined,
+        input.publicOnly ? sql `exists (select 1 from media_items m join media_types mt on mt.code=m.media_type where ${creatorCondition(creators.id, sql`m.id`)} and m.publication_status = 'published' and mt.is_publicly_available)` : undefined,
+    );
     const [count] = await db.select({ totalCount: sql<number> `count(*)::int` }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(filter);
     const pageSize = Math.max(1, Math.min(100, input.pageSize ?? 25));
     const totalPages = Math.max(1, Math.ceil(count.totalCount / pageSize));
@@ -385,13 +403,32 @@ export async function deleteCreatorRole(id: number, adminId?: number) {
     return deleteReference(creatorRoles, id, adminId);
 }
 /** Shared archive membership covers all roles, plus the established writer pseudonym expansion. */
-export function creatorCondition(creatorId: number | SQLWrapper, entryId: SQLWrapper = sql`"media_items"."id"`) {
-    return sql`(exists (select 1 from entry_creators ec where ec.entry_id=${entryId} and ec.creator_id=${creatorId})
-      or ${creatorWriterCondition(creatorId, entryId)})`;
+/** Constant creator IDs build a matching-entry set once, rather than expanding writers per record. */
+export function creatorCondition(creatorId: number | SQLWrapper, entryId: SQLWrapper = sql`"media_items"."id"`, roleCode?:string):SQL {
+    if(typeof creatorId !== "number") {
+        return sql`(exists (select 1 from entry_creators ec where ec.entry_id=${entryId} and ec.creator_id=${creatorId})
+          or ${creatorWriterCondition(creatorId,entryId)})`;
+    }
+    const roleId=roleCode?sql`(select id from creator_roles where code=${roleCode})`:undefined;
+    const direct=sql`select ec.entry_id from entry_creators ec where ec.creator_id=${creatorId}
+        ${roleId?sql`and ec.role_id=${roleId}`:sql``}`;
+    if(roleCode&&roleCode!=="writer")return sql`${entryId} in (${direct})`;
+    const writerRole=roleId??sql`(select id from creator_roles where code='writer')`;
+    return sql`${entryId} in (
+        ${direct}
+        union select p.entry_id from entry_creator_pseudonyms p where p.creator_id=${creatorId} and p.role_id=${writerRole}
+        union select ec.entry_id from creator_relations cr
+            join entry_creators ec on ec.creator_id=cr.source_creator_id and ec.role_id=${writerRole}
+            where cr.target_creator_id=${creatorId} and cr.relation_type='pseudonym_of'
+        union select p.entry_id from creator_relations cr
+            join entry_creator_pseudonyms p on p.creator_id=cr.source_creator_id and p.role_id=${writerRole}
+            where cr.target_creator_id=${creatorId} and cr.relation_type='pseudonym_of'
+    )`;
 }
 
-/** Search membership includes raw provenance and directly related authors, never reverse expansion. */
-export function creatorWriterCondition(creatorId: number | SQLWrapper, entryId: SQLWrapper = sql`"media_items"."id"`) {
+/** Selected pseudonyms and their directly related writers, never reverse expansion. */
+export function creatorWriterCondition(creatorId: number | SQLWrapper, entryId: SQLWrapper = sql`"media_items"."id"`):SQL {
+    if(typeof creatorId==="number")return creatorCondition(creatorId,entryId,"writer");
     return sql`exists (select 1 from (${entryWriterMembershipSql(entryId)}) membership
         where membership.creator_id = ${creatorId})`;
 }
@@ -453,7 +490,26 @@ export async function setEntryPseudonym(entryId: number, creatorId: number | nul
 }
 
 export function entryCreatorSearchCondition(query: string, entryId: SQLWrapper = sql`"media_items"."id"`) {
-    return sql`exists (select 1 from creators search_creator where
-        ${containsNormalizedSearchSql(sql`search_creator.name`, query)}
-        and ${creatorCondition(sql`search_creator.id`, entryId)})`;
+    // Build the matching entry set once. Correlating the writer expansion with
+    // every entry and every matching creator makes catalog search trigger JIT.
+    return sql`${entryId} in (
+        with matching_creators as materialized (
+            select c.id from creators c where ${containsNormalizedSearchSql(sql`c.name`, query)}
+        ), assigned_writers as materialized (
+            select ec.entry_id, ec.creator_id from entry_creators ec
+            join creator_roles r on r.id=ec.role_id and r.code='writer'
+            union
+            select p.entry_id, p.creator_id from entry_creator_pseudonyms p
+            join creator_roles r on r.id=p.role_id and r.code='writer'
+        )
+        select ec.entry_id from entry_creators ec
+        join matching_creators c on c.id=ec.creator_id
+        union
+        select a.entry_id from assigned_writers a
+        join matching_creators c on c.id=a.creator_id
+        union
+        select a.entry_id from assigned_writers a
+        join creator_relations cr on cr.source_creator_id=a.creator_id and cr.relation_type='pseudonym_of'
+        join matching_creators c on c.id=cr.target_creator_id
+    )`;
 }

@@ -8,8 +8,8 @@ import { formatMediaItemSummary } from "../src/lib/media/media-item-summary";
 import { MediaMetadataFacts } from "../src/components/ui/media-metadata-facts";
 import { createMediaMetadataCandidateToken, verifyMediaMetadataCandidateToken } from "../src/lib/media/metadata-candidates";
 import { createTmdbProvider } from "../src/lib/covers/providers/tmdb";
-import { igdbProvider } from "../src/lib/covers/providers/igdb";
-import { rawgProvider } from "../src/lib/covers/providers/rawg";
+import { createIgdbProvider } from "../src/lib/covers/providers/igdb";
+import { createRawgProvider } from "../src/lib/covers/providers/rawg";
 
 describe("provider genres", () => {
   it("normalizes names, deduplicates, and never splits compound names", () => {
@@ -87,6 +87,8 @@ it("accepts old signed metadata and valid references, rejects malformed signed r
 });
 
 it("TMDB, IGDB and RAWG preserve genre IDs from the existing metadata request", async () => {
+  const igdbProvider = createIgdbProvider(async (_provider, url, init) => fetch(url, init));
+  const rawgProvider = createRawgProvider(async <T>(url: URL, init?: RequestInit) => (await fetch(url, init)).json() as Promise<T>);
   const previousFetch = globalThis.fetch;
   const requests: string[] = [];
   globalThis.fetch = async (input) => {

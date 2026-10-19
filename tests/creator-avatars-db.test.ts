@@ -20,7 +20,7 @@ test("creator avatar migration and assignments preserve data, identity ownership
     const before = await sql`SELECT id,name,slug,original_name,type_id,created_at,updated_at FROM creators ORDER BY id`;
     for (const statement of readFileSync("drizzle/0123_creator_avatars.sql", "utf8").split("--> statement-breakpoint")) await sql.unsafe(statement);
     // Later migration 0124 adds a diagnostic name to the binding projection.
-    await sql.unsafe("ALTER TABLE provider_creator_bindings ADD COLUMN external_creator_name text");
+    await sql.unsafe("ALTER TABLE provider_creator_bindings ADD COLUMN external_creator_name text, ADD COLUMN active boolean NOT NULL DEFAULT true");
     assert.deepEqual(await sql`SELECT id,name,slug,original_name,type_id,created_at,updated_at FROM creators ORDER BY id`, before);
     assert.equal((await queries.getFantlabCreatorBatch(0)).length, 2);
     assert.equal((await queries.getCreatorAvatarState(3))?.avatarObjectKey, null);

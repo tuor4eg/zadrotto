@@ -1,10 +1,37 @@
 import assert from "node:assert/strict";
-import { test } from "node:test";
+import { after, before, test } from "node:test";
+import Module, { createRequire } from "node:module";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
-import { CreatorForm } from "../src/app/admin/(protected)/creators/creator-form";
-import { CreatorDecisionForm } from "../src/app/admin/(protected)/creator-requests/decision-form";
-import { CreatorProviderVariants } from "../src/app/admin/(protected)/creators/provider-variants";
+let CreatorForm: typeof import("../src/app/admin/(protected)/creators/creator-form").CreatorForm;
+let CreatorDecisionForm: typeof import("../src/app/admin/(protected)/creator-requests/decision-form").CreatorDecisionForm;
+let CreatorProviderVariants: typeof import("../src/app/admin/(protected)/creators/provider-variants").CreatorProviderVariants;
+const require = createRequire(import.meta.url);
+const actionsPath = require.resolve("../src/app/admin/(protected)/creators/actions");
+const previousActions = require.cache[actionsPath];
+
+before(async () => {
+  // Next replaces server actions with references at the client boundary. Static rendering
+  // tests reproduce that boundary without evaluating database/authentication modules.
+  const actions = new Module(actionsPath);
+  actions.filename = actionsPath;
+  actions.loaded = true;
+  const unexpectedAction = () => assert.fail("Static rendering must not execute a server action");
+  actions.exports = {
+    saveCreatorAction: unexpectedAction,
+    findCreatorRelatedSeriesAction: unexpectedAction,
+    resolveCreatorAction: unexpectedAction,
+    reopenCreatorAction: unexpectedAction,
+  };
+  require.cache[actionsPath] = actions;
+  ({ CreatorForm } = await import("../src/app/admin/(protected)/creators/creator-form"));
+  ({ CreatorDecisionForm } = await import("../src/app/admin/(protected)/creator-requests/decision-form"));
+  ({ CreatorProviderVariants } = await import("../src/app/admin/(protected)/creators/provider-variants"));
+});
+after(() => {
+  if (previousActions) require.cache[actionsPath] = previousActions;
+  else delete require.cache[actionsPath];
+});
 
 const types = [{ id: 1, name: "Человек", code: "person" }];
 
@@ -60,4 +87,27 @@ test("BGG identity bindings display external ID and reopen the whole identity", 
   assert.match(html, /boardgamegeek\.com\/boardgamedesigner\/42/);
   const approval = renderToStaticMarkup(createElement(CreatorDecisionForm, { requestId: 1, name: "Studio", provider: "bgg", people: [{ id: 10, name: "Коллектив" }] }));
   assert.match(approval, /Коллектив/);
+});
+
+test("organization approval shows existing provider identities without merging candidates", () => {
+  const html = renderToStaticMarkup(createElement(CreatorDecisionForm, {
+    requestId: 9, name: "Studio", provider: "rawg", people: [
+      { id: 10, name: "Studio", bindings: [{ provider: "igdb", externalCreatorId: "company:70" }] },
+      { id: 11, name: "Studio", bindings: [{ provider: "rawg", externalCreatorId: "publisher:7" }] },
+    ],
+  }));
+  assert.match(html, /igdb · company:70/);
+  assert.match(html, /rawg · publisher:7/);
+  assert.equal((html.match(/name="creator-choice"/g) ?? []).length, 2);
+});
+
+test("game company bindings expose reopening for the exact namespaced identity", () => {
+  for (const [provider, externalCreatorId] of [["igdb", "company:70"], ["rawg", "developer:7"], ["rawg", "publisher:7"]]) {
+    const html = renderToStaticMarkup(createElement(CreatorProviderVariants, {
+      variants: [], bindings: [{ id: 91, provider, externalCreatorId, externalCreatorName: "Studio" }],
+    }));
+    assert.match(html, /name="bindingId" value="91"/);
+    assert.ok(html.includes(externalCreatorId));
+    assert.match(html, /Вернуть в заявки/);
+  }
 });

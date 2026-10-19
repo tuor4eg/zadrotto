@@ -63,9 +63,10 @@ describe("author dashboard media tiles", () => {
     assert.equal(existsSync("src/app/main/responsive-tile-grid.tsx"), false);
     assert.match(gridSource, /items: ResponsiveTileDescriptor\[\]/);
     assert.match(gridSource, /visibleItems\.map\(\(descriptor\)/);
+    assert.match(gridSource, /const Tile = rateable \? RateableMediaItemTile : MediaItemTile/);
     assert.match(
       gridSource,
-      /<MediaItemTile[\s\S]*key=\{descriptor\.key\}[\s\S]*currentAuthorScore=\{descriptor\.currentAuthorScore\}[\s\S]*href=\{descriptor\.href\}[\s\S]*item=\{descriptor\.item\}/,
+      /<Tile[\s\S]*key=\{descriptor\.key\}[\s\S]*currentAuthorScore=\{descriptor\.currentAuthorScore\}[\s\S]*href=\{descriptor\.href\}[\s\S]*item=\{descriptor\.item\}[\s\S]*ratingDisplay=\{descriptor\.ratingDisplay\}/,
     );
     assert.match(gridSource, /if \(items\.length === 0\)[\s\S]*Здесь пока пусто/);
     assert.match(statisticsSource, /tileGridInitialColumnCount = 3/);

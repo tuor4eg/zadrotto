@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import {
-  getFranchiseByCode,
+  getPublishedFranchiseIdentityByCode,
   searchPublishedMediaItemsForFranchise,
 } from "@/db/queries/franchises";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -17,7 +17,6 @@ export async function GET(request: Request, { params }: RouteContext) {
   if (!author) {
     return NextResponse.json({ items: [] }, { status: 401 });
   }
-  const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(author.id);
 
   const searchQuery = new URL(request.url).searchParams.get("q")?.trim() ?? "";
 
@@ -25,7 +24,10 @@ export async function GET(request: Request, { params }: RouteContext) {
     return NextResponse.json({ items: [] });
   }
 
-  const franchise = await getFranchiseByCode(code);
+  const [enabledMediaTypeCodes, franchise] = await Promise.all([
+    getEnabledMediaTypeCodes(author.id),
+    getPublishedFranchiseIdentityByCode(code),
+  ]);
 
   if (!franchise) {
     return NextResponse.json({ items: [] }, { status: 404 });

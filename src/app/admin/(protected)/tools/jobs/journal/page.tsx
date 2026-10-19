@@ -50,7 +50,7 @@ export default async function JobJournalPage({
       <div>
         <h2 className="font-serif text-2xl">Журнал запусков</h2>
         <p className="text-sm text-stone-600">
-          По умолчанию видны все запуски. Можно сузить список до расписания или разовых запусков.
+          Активные запуски показаны первыми. Можно сузить список до расписания или разовых запусков.
         </p>
       </div>
       <JobJournalFilters jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />

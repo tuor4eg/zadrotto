@@ -80,7 +80,7 @@ export async function resolveCreatorAction(formData: FormData) {
     const decision = formData.get("decision");
     if (decision !== "create" && decision !== "map" && decision !== "exclude") throw new Error("invalid-decision");
     const typeCode = formData.get("typeCode");
-    if (typeCode !== null && typeCode !== "person" && typeCode !== "collective") throw new Error("invalid-creator-type");
+    if (typeCode !== null && typeCode !== "person" && typeCode !== "collective" && typeCode !== "organization") throw new Error("invalid-creator-type");
     await requests.resolveCreatorRequest({requestId: id(formData.get("requestId")), adminId: admin.id, decision,
       ...(decision === "map" ? { creatorId: id(formData.get("creatorId")) } : {}),
       ...(decision === "create" ? { name: text(formData.get("name")), ...(typeCode ? { typeCode } : {}) } : {}) });

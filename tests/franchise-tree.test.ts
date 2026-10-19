@@ -1,16 +1,15 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
+import { createElement } from "react";
+import { renderToStaticMarkup } from "react-dom/server";
+import { MediaItemFranchiseLinks } from "../src/components/archive/media-item-franchise-links";
 
 const migrationSource = readFileSync("drizzle/0038_franchise_tree.sql", "utf8");
 const schemaSource = readFileSync("src/db/schema.ts", "utf8");
 const franchisesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const mediaItemsQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
 const mediaItemDetailsSource = readFileSync("src/app/media-item-details.tsx", "utf8");
-const mediaItemFranchiseLinksSource = readFileSync(
-  "src/components/archive/media-item-franchise-links.tsx",
-  "utf8",
-);
 const adminSeriesPageSource = readFileSync("src/app/admin/(protected)/series/page.tsx", "utf8");
 
 function getFunctionSource(source: string, name: string, nextName: string) {
@@ -149,9 +148,28 @@ describe("franchise tree display and traversal", () => {
     assert.match(mediaItemsQuerySource, /where parent\.publication_status = \$\{PUBLISHED_PUBLICATION_STATUS\}/);
     assert.match(mediaItemsQuerySource, /order by depth desc/);
     assert.match(mediaItemDetailsSource, /<MediaItemFranchiseLinks/);
-    assert.match(mediaItemFranchiseLinksSource, /\(franchise\.path \?\? \[franchise\]\)\.map\(\(part, index\) => \(/);
-    assert.match(mediaItemFranchiseLinksSource, /index > 0 \? <span aria-hidden="true">\/<\/span> : null/);
-    assert.match(mediaItemFranchiseLinksSource, /<Link href=\{`\/archive\?series=\$\{encodeURIComponent\(part\.code\)\}`\} className=\{className\}>/);
+    const root = { id: 1, code: "shared root", title: "Общая серия" };
+    const first = { id: 2, code: "first", title: "Первая ветка" };
+    const second = { id: 3, code: "second", title: "Вторая ветка" };
+    const standalone = { id: 4, code: "standalone", title: "Без родителей" };
+    const html = renderToStaticMarkup(createElement(MediaItemFranchiseLinks, {
+      className: "series-link", containerClassName: "series-paths",
+      franchises: [
+        { ...first, publicationStatus: "published", path: [root, first] },
+        { ...second, publicationStatus: "published", path: [root, second] },
+        { ...standalone, publicationStatus: "published" },
+      ],
+    }));
+    const links = [...html.matchAll(/<a\b([^>]*)>(.*?)<\/a>/g)];
+    for (const part of [root, first, second, standalone]) {
+      const href = `/archive?series=${encodeURIComponent(part.code)}`;
+      const matching = links.filter(([, attributes]) => attributes.includes(`href="${href}"`));
+      assert.equal(matching.length, 1, `${part.title} has exactly one link`);
+      assert.match(matching[0][1], /class="series-link"/);
+      assert.equal(matching[0][2], part.title);
+    }
+    assert.match(html, /aria-hidden="true">\/<\/span>/);
+
   });
 
   it("keeps every matching admin branch readable through all parents and descendants", () => {

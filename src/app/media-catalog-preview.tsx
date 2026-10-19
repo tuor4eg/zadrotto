@@ -13,7 +13,8 @@ import { ArchiveCover } from "@/app/media-item-tile";
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
-import { MediaItemWriterLinks } from "@/components/archive/media-item-creator-links";
+import { MediaItemCreatorLinks, MediaItemWriterLinks } from "@/components/archive/media-item-creator-links";
+import { CreatorRoleIcon } from "@/components/archive/creator-role-icon";
 import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
 import { buttonVariants } from "@/components/ui/button";
@@ -23,7 +24,7 @@ import type { CatalogMediaItem } from "@/db/queries/media-items";
 import { cn } from "@/lib/common/utils";
 import { getMediaCarrierFrame, MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
-import { formatAuthorsFact, getDateFactYear } from "@/lib/media/metadata-facts";
+import { formatAuthorsFact, getDateFactYear, getStringListFact } from "@/lib/media/metadata-facts";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
 import { isQuizMediaTypeAllowed } from "@/lib/quizzes/model";
 import { QuizGuessButton } from "@/components/quizzes/quiz-guess-button";
@@ -193,7 +194,20 @@ export function MediaCatalogPreview({
             {metaItems.length ? <span className="mx-1.5">•</span> : null}
             <MediaItemWriterLinks creators={item.writerCreators} />
           </> : null}
-          {item.mediaType === "boardgame" ? <BoardgameDetailsFacts facts={{ authors: item.metadataFacts?.authors, artists: item.metadataFacts?.artists, bggCreators: item.metadataFacts?.bggCreators }} creators={item.entryCreators} genres={[]} hasUnifiedGenres separatorBefore={metaItems.length > 0} /> : null}
+          {item.mediaType === "boardgame" ? <BoardgameDetailsFacts facts={{ authors: item.metadataFacts?.authors, bggCreators: item.metadataFacts?.bggCreators }} creators={item.entryCreators.filter(creator => creator.roleCode === "designer")} genres={[]} hasUnifiedGenres separatorBefore={metaItems.length > 0} /> : null}
+          {item.mediaType === "game" ? (() => {
+            const developers = item.entryCreators.filter(creator => creator.roleCode === "developer");
+            const fallback = getStringListFact(item.metadataFacts, "developers").join(", ");
+            if (!developers.length && !fallback) return null;
+            return <>
+              {metaItems.length ? <span className="mx-1.5" aria-hidden="true">•</span> : null}
+              <span title="Разработчики" className="break-words">
+                <CreatorRoleIcon code="developer" className="mr-1 inline-block size-3.5 align-text-bottom text-stone-500" />
+                <span className="sr-only">Разработчики: </span>
+                {developers.length ? <MediaItemCreatorLinks creators={developers} /> : fallback}
+              </span>
+            </>;
+          })() : null}
         </div>
 
         <div className="mt-3 grid gap-2">

@@ -26,7 +26,7 @@ describe("archive series media search access", () => {
 
   it("requires a meaningful query and a published series", () => {
     assert.match(routeSource, /searchQuery\.length < 2/);
-    assert.match(routeSource, /getFranchiseByCode\(code\)/);
+    assert.match(routeSource, /getPublishedFranchiseIdentityByCode\(code\)/);
     assert.match(routeSource, /if \(!franchise\)[\s\S]*status: 404/);
   });
 

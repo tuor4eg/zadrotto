@@ -69,9 +69,9 @@ function getProviderExecutionError(error: unknown): ProviderSearchError {
     error &&
     typeof error === "object" &&
     "code" in error &&
-    error.code === "provider-rate-limit"
+    (error.code === "provider-rate-limit" || error.code === "provider-daily-limit")
   ) {
-    return "provider-rate-limit";
+    return error.code as "provider-rate-limit" | "provider-daily-limit";
   }
 
   return "provider-unavailable";
@@ -528,7 +528,7 @@ function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
   const facts = Object.fromEntries(
     Object.entries(metadata.facts).filter(([key, value]) => {
       // A complete empty participant list is meaningful: it removes old provider links.
-      if ((key === "bggCreators" || key === "fantlabAuthors") && Array.isArray(value)) return true;
+      if ((key === "bggCreators" || key === "fantlabAuthors" || key === "gameCompanyReferences") && Array.isArray(value)) return true;
       if (value === null || value === undefined) {
         return false;
       }

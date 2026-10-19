@@ -1,3 +1,6 @@
+import { platformLogosSyncHandler } from "@/lib/platforms/logo-sync-job";
+import { gameCompanyEnrichHandler } from "@/lib/creators/game-company-images";
+import { gameCompanyBackfillHandler } from "@/lib/creators/game-company-backfill";
 import { bggCreatorsBackfillHandler } from "@/lib/creators/bgg-backfill";
 import { creatorFantlabBindingHandler, creatorFantlabAvatarHandler } from "@/lib/creators/fantlab-jobs";
 import { applyPlatformRequest } from "@/db/queries/platform-requests";
@@ -594,7 +597,10 @@ const creatorBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
 };
 
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  platformLogosSyncHandler,
+  gameCompanyBackfillHandler,
   bggCreatorsBackfillHandler,
+  gameCompanyEnrichHandler,
   creatorFantlabBindingHandler,
   creatorFantlabAvatarHandler,
   creatorRequestApplyHandler,

@@ -416,6 +416,7 @@ function catalogFilterConditions(input: {
   genreId?: number;
   platformId?: number;
   creatorId?: number;
+  creatorRole?: string;
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -436,7 +437,7 @@ function catalogFilterConditions(input: {
 
   if (input.platformId) conditions.push(catalogPlatformCondition(input.platformId)!);
   if (input.genreId) conditions.push(catalogGenreCondition(input.genreId));
-  if (input.creatorId) conditions.push(creatorCondition(input.creatorId));
+  if (input.creatorId) conditions.push(creatorCondition(input.creatorId,undefined,input.creatorRole));
 
   if (input.seriesId) {
     conditions.push(catalogSeriesCondition(input.seriesId));
@@ -674,6 +675,7 @@ export async function getCatalogMediaItems(input: {
   genreId?: number;
   platformId?: number;
   creatorId?: number;
+  creatorRole?: string;
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   yearFilter: CatalogYearFilter;
@@ -711,6 +713,7 @@ export async function getCatalogMediaTypeCounts(input: {
   genreId?: number;
   platformId?: number;
   creatorId?: number;
+  creatorRole?: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {
@@ -740,7 +743,7 @@ export async function getPublishedMediaTypeCounts() {
     .groupBy(mediaItems.mediaType);
 }
 
-export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number, creatorId?: number, platformId?: number) {
+export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number, creatorId?: number, platformId?: number, creatorRole?: string) {
   const [bounds] = await db
     .select({
       minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
@@ -751,7 +754,7 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
       getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       genreId ? catalogGenreCondition(genreId) : undefined,
       platformId ? catalogPlatformCondition(platformId) : undefined,
-      creatorId ? creatorCondition(creatorId) : undefined,
+      creatorId ? creatorCondition(creatorId,undefined,creatorRole) : undefined,
     ));
 
   return {

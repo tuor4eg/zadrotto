@@ -15,6 +15,7 @@ export class JobError extends Error {
 }
 
 export type JobHandlerContext<TPayload> = {
+  lockToken?: string;
   attempt: number;
   jobId: number | null;
   payload: TPayload;

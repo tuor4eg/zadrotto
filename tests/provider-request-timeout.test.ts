@@ -164,7 +164,7 @@ describe("provider request timeout runtime", () => {
     const igdbSource = readProjectFile("src/lib/covers/providers/igdb.ts")
 
     assert.match(igdbSource, /withProviderTimeout\(getActiveProviderRequestTimeoutMs\(\)\)/)
-    assert.match(igdbSource, /fetch\("https:\/\/api\.igdb\.com\/v4\/games"/)
+    assert.match(igdbSource, /request\("igdb", "https:\/\/api\.igdb\.com\/v4\/games"/)
   })
 })
 

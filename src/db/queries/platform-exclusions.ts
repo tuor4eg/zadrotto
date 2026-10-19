@@ -14,7 +14,7 @@ export async function getPlatformExclusionsPage(input: { searchQuery: string; pa
   const items = await db.select({ id: providerPlatformExclusions.id, provider: providerPlatformExclusions.provider,
     name: providerPlatformExclusions.externalPlatformName, mediaTypeName: mediaTypes.name,
     applying: sql<boolean>`exists (select 1 from ${platformRequests} left join ${jobRuns} on ${jobRuns.id} = ${platformRequests.jobRunId}
-      where ${platformRequests.provider} = ${providerPlatformExclusions.provider}
+      where ${platformRequests.kind} = 'mapping' and ${platformRequests.provider} = ${providerPlatformExclusions.provider}
       and ${platformRequests.mediaType} = ${providerPlatformExclusions.mediaType}
       and ${platformRequests.normalizedExternalPlatformName} = ${providerPlatformExclusions.normalizedExternalPlatformName}
       and (${jobRuns.status} in ('queued', 'running') or (${platformRequests.jobRunId} is null and ${platformRequests.applyStatus} = 'applying')))`,
@@ -28,7 +28,7 @@ export async function restorePlatformExclusion(id: number, adminId: number) {
   return db.transaction(async (tx) => {
     const [exclusion] = await tx.select().from(providerPlatformExclusions).where(eq(providerPlatformExclusions.id, id));
     if (!exclusion) throw new Error("not-found");
-    const key = and(eq(platformRequests.provider, exclusion.provider), eq(platformRequests.mediaType, exclusion.mediaType),
+    const key = and(eq(platformRequests.kind, "mapping"), eq(platformRequests.provider, exclusion.provider), eq(platformRequests.mediaType, exclusion.mediaType),
       eq(platformRequests.normalizedExternalPlatformName, exclusion.normalizedExternalPlatformName));
     await tx.insert(platformRequests).values({ provider: exclusion.provider, mediaType: exclusion.mediaType,
       externalPlatformName: exclusion.externalPlatformName, normalizedExternalPlatformName: exclusion.normalizedExternalPlatformName }).onConflictDoNothing();

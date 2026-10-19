@@ -40,7 +40,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
         timeout_seconds integer,retry_base_seconds integer,retry_max_seconds integer,locked_at timestamptz,locked_by text,lock_token text,
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql"]) {
+    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
@@ -230,6 +230,12 @@ test("creator approval, provenance, backfill and stable codes persist through re
     assert.deepEqual(await client`SELECT * FROM entry_creator_sources WHERE entry_id=1 ORDER BY creator_id,role_id,provider,normalized_external_creator_name`, sourcesBefore);
     const matchedIds = async (creatorId: number) => (await db.select({ id: mediaItems.id }).from(mediaItems).where(creators.creatorWriterCondition(creatorId))).map(row => row.id);
     for (const author of [corey, daniel, ty]) assert.ok((await matchedIds(author.id)).includes(1));
+    for(const author of [corey,daniel,ty]) {
+      const roleRows=await db.select({id:mediaItems.id}).from(mediaItems).where(creators.creatorCondition(author.id,undefined,"writer"));
+      assert.deepEqual(roleRows.map(row=>row.id).sort(),(await matchedIds(author.id)).sort(),"writer role preserves selected pseudonym and one-way author membership");
+      assert.deepEqual(await db.select({id:mediaItems.id}).from(mediaItems).where(creators.creatorCondition(author.id,undefined,"publisher")),[]);
+    }
+
     const textMatchedIds = async (query: string) => (await db.select({ id: mediaItems.id }).from(mediaItems).where(creators.entryCreatorSearchCondition(query))).map(row => row.id);
     for (const query of ["James S. A. Corey", "Daniel Abraham", "Ty Franck", "  JAMES   s. a. COREY  ", "  DANIEL   abraham "]) {
       assert.ok((await textMatchedIds(query)).includes(1), "text search includes the selected pseudonym and its real authors with normalization");
@@ -246,6 +252,8 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await creators.setEntryPseudonym(1, corey.id, 1);
     await creators.setManualEntryCreators(1, []);
     await syncRelationAuthors(1, [daniel.name]);
+    assert.equal((await creators.getEntryPseudonymState(1)).selected!.isComplete, true, "another provider still confirms the second member");
+    await db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 1, provider: "open-library", mediaType: "book", facts: { authors: [] } }));
     assert.deepEqual((await creators.getEntryPseudonymState(1)).selected, { id: corey.id, name: corey.name, isComplete: false });
     assert.deepEqual(await displayedIds(1), [corey.id]);
     await assert.rejects(creators.setEntryPseudonym(1, other.id, 1));

@@ -1,3 +1,5 @@
+import { eligibleImportedPlatformLogoSql } from "@/db/queries/platform-logos";
+import { resolvePlatformLogoUrl } from "@/lib/platforms/logo-url";
 import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { normalizeSearchText } from "@/lib/search/normalize";
@@ -14,6 +16,8 @@ async function getPlatformsWithVariants(id?: number | number[]) {
   const [rows, variants] = await Promise.all([
     db.select({
       id: platforms.id, slug: platforms.slug, name: platforms.name, isActive: platforms.isActive,
+      importedLogoProvider: platforms.importedLogoProvider, importedLogoExternalId: platforms.importedLogoExternalId,
+      logoMode: platforms.logoMode, logoVersion: platforms.logoVersion, manualLogoObjectKey: platforms.manualLogoObjectKey, importedLogoObjectKey: eligibleImportedPlatformLogoSql(),
       mediaItemsCount: sql<number>`(select count(*)::int from ${mediaItemPlatforms} platform_link
         where platform_link.platform_id = "platforms"."id")`,
     }).from(platforms)
@@ -22,7 +26,7 @@ async function getPlatformsWithVariants(id?: number | number[]) {
     db.select({
       mappingId: providerPlatformMappings.id,
       applying: sql<boolean>`exists (select 1 from ${platformRequests} left join ${jobRuns} on ${jobRuns.id} = ${platformRequests.jobRunId}
-        where ${platformRequests.provider} = ${providerPlatformMappings.provider}
+        where ${platformRequests.kind} = 'mapping' and ${platformRequests.provider} = ${providerPlatformMappings.provider}
         and ${platformRequests.mediaType} = ${providerPlatformMappings.mediaType}
         and ${platformRequests.normalizedExternalPlatformName} = ${providerPlatformMappings.normalizedExternalPlatformName}
         and (${jobRuns.status} in ('queued', 'running') or (${platformRequests.jobRunId} is null and ${platformRequests.applyStatus} = 'applying')))`,
@@ -40,7 +44,7 @@ async function getPlatformsWithVariants(id?: number | number[]) {
     variantsByPlatform.set(variant.platformId, group);
   }
   return rows.map((row) => ({
-    ...row, providerVariants: groupPlatformProviderVariants(variantsByPlatform.get(row.id) ?? []),
+    ...row, logoUrl: resolvePlatformLogoUrl(row), providerVariants: groupPlatformProviderVariants(variantsByPlatform.get(row.id) ?? []),
   }));
 }
 
@@ -86,6 +90,8 @@ export async function getPublicPlatformsPage(input: {
   if (!input.enabledMediaTypeCodes.includes("game")) return paginatePublicPlatforms([], input);
   const search = normalizeSearchText(input.searchQuery);
   const rows = await db.select({ id: platforms.id, slug: platforms.slug, name: platforms.name,
+    importedLogoProvider: platforms.importedLogoProvider, importedLogoExternalId: platforms.importedLogoExternalId,
+      logoMode: platforms.logoMode, manualLogoObjectKey: platforms.manualLogoObjectKey, importedLogoObjectKey: eligibleImportedPlatformLogoSql(),
     mediaItemsCount: sql<number>`count(${mediaItems.id})::int`,
     nameMatches: search ? sql<boolean>`${containsNormalizedSearchSql(platforms.name, search)}` : sql<boolean>`true`,
   }).from(platforms).innerJoin(mediaItemPlatforms, eq(mediaItemPlatforms.platformId, platforms.id))
@@ -94,13 +100,15 @@ export async function getPublicPlatformsPage(input: {
       eq(mediaItems.mediaType, "game"),
       inArray(mediaItems.mediaType, [...input.enabledMediaTypeCodes])))
     .groupBy(platforms.id);
-  return paginatePublicPlatforms(rows, input);
+  return paginatePublicPlatforms(rows.map(row => ({ ...row, logoUrl: resolvePlatformLogoUrl(row) })), input);
 }
 
 export async function getActivePlatformBySlug(slug: string) {
-  const [platform] = await db.select({ id: platforms.id, slug: platforms.slug, name: platforms.name }).from(platforms)
+  const [platform] = await db.select({ id: platforms.id, slug: platforms.slug, name: platforms.name,
+    logoMode: platforms.logoMode, manualLogoObjectKey: platforms.manualLogoObjectKey,
+    importedLogoObjectKey: eligibleImportedPlatformLogoSql(), }).from(platforms)
     .where(and(eq(platforms.slug, slug), eq(platforms.isActive, true))).limit(1);
-  return platform ?? null;
+  return platform ? { id: platform.id, slug: platform.slug, name: platform.name, logoUrl: resolvePlatformLogoUrl(platform) } : null;
 }
 
 export async function searchArchivePlatformMatches(searchQuery: string, enabledMediaTypeCodes: readonly string[]) {

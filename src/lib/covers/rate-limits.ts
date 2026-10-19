@@ -131,6 +131,8 @@ export function createProviderCoverSearchRateLimiter(
       return blockedError === "rate-limit-unavailable";
     },
     async canSearchProvider(providerCode: CoverProviderCode) {
+      // Game providers account for every HTTP request at the transport boundary.
+      if (providerCode === "igdb" || providerCode === "rawg") return true;
       const result = await checkFixedWindowRateLimit({
         keyPrefix: "cover-search:provider",
         subject: providerCode,

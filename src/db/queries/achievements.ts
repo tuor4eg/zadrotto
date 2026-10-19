@@ -163,6 +163,27 @@ export async function getDemoRatingAchievementState(mediaItemCodes: readonly str
 }
 
 export async function getAchievementShowcase(authorId: number) {
+  return loadAchievementShowcase(authorId, false);
+}
+
+/** Award history only: no live mechanic evaluation on the public profile. */
+export async function getRecentAwardedAchievements(authorId: number) {
+  return loadAchievementShowcase(authorId, true);
+}
+
+async function loadAchievementShowcase(authorId: number, recentOnly: boolean) {
+  // Preserve the full showcase ordering: the date belongs to the highest
+  // awarded level, even if lower levels were backfilled more recently.
+  const highestAwards = db.selectDistinctOn([achievementLevels.achievementId], {
+    achievementId: achievementLevels.achievementId,
+    awardedAt: userAchievements.awardedAt,
+  }).from(userAchievements)
+    .innerJoin(achievementLevels, eq(achievementLevels.id, userAchievements.achievementLevelId))
+    .where(eq(userAchievements.authorId, authorId))
+    .orderBy(achievementLevels.achievementId, desc(achievementLevels.level))
+    .as("highest_awards");
+  const recentIds = db.select({ achievementId: highestAwards.achievementId }).from(highestAwards)
+    .orderBy(desc(highestAwards.awardedAt), asc(highestAwards.achievementId)).limit(5);
   const [rows, settings] = await Promise.all([
     db
     .select({
@@ -190,7 +211,7 @@ export async function getAchievementShowcase(authorId: number) {
         eq(userAchievements.authorId, authorId),
       ),
     )
-    .where(or(
+    .where(recentOnly ? inArray(achievements.id, recentIds) : or(
       sql`exists (
         select 1 from user_achievements awarded
         inner join achievement_levels awarded_level on awarded_level.id = awarded.achievement_level_id
@@ -199,17 +220,17 @@ export async function getAchievementShowcase(authorId: number) {
       and(eq(achievements.enabled, true), eq(achievements.showWhenLocked, true)),
     ))
     .orderBy(asc(achievements.displayOrder), asc(achievements.id), asc(achievementLevels.level)),
-    getAchievementSettings(),
+    recentOnly ? Promise.resolve({ lockedImageUrl: null }) : getAchievementSettings(),
   ]);
 
   const byAchievement = new Map<number, typeof rows>();
   for (const row of rows) byAchievement.set(row.achievementId, [...(byAchievement.get(row.achievementId) ?? []), row]);
-  const progress = await db.transaction((tx) => getAchievementProgressValues(tx, {
+  const progress = recentOnly ? [] : await db.transaction((tx) => getAchievementProgressValues(tx, {
     achievementIds: [...byAchievement.keys()],
     authorIds: [authorId],
   }));
   const valueByAchievement = new Map(progress.map((item) => [item.achievementId, item.value]));
-  return [...byAchievement.values()].map((levels) => {
+  const items = [...byAchievement.values()].map((levels) => {
     const awarded = levels.filter((item) => item.awardedAt !== null).at(-1) ?? null;
     const presentation = awarded ?? levels[0]!;
     const nextLevel = levels.find((item) => item.awardedAt === null) ?? null;
@@ -232,6 +253,7 @@ export async function getAchievementShowcase(authorId: number) {
       awardedThreshold: awarded?.threshold ?? null,
       code: presentation.code,
       currentValue: valueByAchievement.get(presentation.achievementId) ?? 0,
+      progressAvailable: !recentOnly,
       description: presentation.levelDescription ?? presentation.description,
       highestAwardedLevel: awarded?.level ?? null,
       imageUrl: awarded ? ownImageUrl : settings.lockedImageUrl,
@@ -245,6 +267,9 @@ export async function getAchievementShowcase(authorId: number) {
       showcaseBackgroundImageUrl: resolveAchievementImageUrl(presentation.showcaseBackgroundImageObjectKey),
     }
   });
+  return recentOnly
+    ? items.sort((left, right) => right.awardedAt!.getTime() - left.awardedAt!.getTime())
+    : items;
 }
 
 export async function getLatestAwardedAchievement(authorId: number) {

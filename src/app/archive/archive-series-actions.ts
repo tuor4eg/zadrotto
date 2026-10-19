@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import {
   createAuthorMediaItemFranchiseLinks,
-  getFranchiseByCode,
+  getPublishedFranchiseIdentityByCode,
   requestAuthorMediaItemFranchiseRemoval,
 } from "@/db/queries/franchises";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
@@ -21,7 +21,7 @@ export type SeriesMediaLinkActionResult = {
 };
 
 function revalidateSeriesMediaSurfaces(mediaItemCode: string) {
-  revalidatePath("/", "layout");
+  revalidatePath("/");
   revalidatePath("/archive");
   revalidatePath("/series");
   revalidatePath(`/media/${mediaItemCode}`);
@@ -35,10 +35,11 @@ export async function addAuthorSeriesMediaLinkAction(input: {
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
   const author = await requireAuthor();
-  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
   const [franchise, mediaItem] = await Promise.all([
-    getFranchiseByCode(input.franchiseCode),
-    getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
+    getPublishedFranchiseIdentityByCode(input.franchiseCode),
+    getAccessibleMediaTypeCodes(author.id).then((accessibleMediaTypeCodes) =>
+      getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
+    ),
   ]);
 
   if (!franchise || !mediaItem) {
@@ -90,10 +91,11 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
   const author = await requireAuthor();
-  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
   const [franchise, mediaItem] = await Promise.all([
-    getFranchiseByCode(input.franchiseCode),
-    getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
+    getPublishedFranchiseIdentityByCode(input.franchiseCode),
+    getAccessibleMediaTypeCodes(author.id).then((accessibleMediaTypeCodes) =>
+      getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
+    ),
   ]);
 
   if (!franchise || !mediaItem) {

@@ -1,3 +1,5 @@
+import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
+import { getIgdbCompanyReferences } from "@/lib/creators/game-company-references";
 import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
@@ -36,7 +38,9 @@ type IgdbGameResponse = Array<{
     developer?: boolean;
     publisher?: boolean;
     company?: {
+      id?: number;
       name?: string;
+      url?: string;
     };
   }>;
   platforms?: Array<{
@@ -50,7 +54,7 @@ let cachedToken: {
   expiresAt: number;
 } | null = null;
 
-async function getIgdbAccessToken(credentials: { clientId: string; clientSecret: string }) {
+export async function getIgdbAccessToken(credentials: { clientId: string; clientSecret: string }) {
   if (
     cachedToken &&
     cachedToken.clientId === credentials.clientId &&
@@ -96,7 +100,7 @@ function getIgdbYear(firstReleaseDate: number | undefined) {
   return getFirstYear(firstReleaseDate ? new Date(firstReleaseDate * 1000).toISOString() : null) ?? null;
 }
 
-function createIgdbClient(credentials: { clientId: string; clientSecret: string }) {
+function createIgdbClient(credentials: { clientId: string; clientSecret: string }, request = fetchGameProvider) {
   async function fetchGames(body: string, strict = false) {
     const accessToken = await getIgdbAccessToken(credentials);
 
@@ -104,7 +108,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
       return [];
     }
 
-    const response = await fetch("https://api.igdb.com/v4/games", {
+    const response = await request("igdb", "https://api.igdb.com/v4/games", {
       method: "POST",
       headers: {
         accept: "application/json",
@@ -143,7 +147,7 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
     async getGameMetadata(id: number) {
       const [game] = await fetchGames(
         [
-          "fields genres.id,genres.name,involved_companies.company.name,involved_companies.developer,involved_companies.publisher,platforms.name,slug,url;",
+          "fields genres.id,genres.name,involved_companies.company.id,involved_companies.company.name,involved_companies.company.url,involved_companies.developer,involved_companies.publisher,platforms.name,slug,url;",
           `where id = ${id};`,
           "limit 1;",
         ].join(" "),
@@ -181,7 +185,8 @@ function getInvolvedCompanyNames(
   ];
 }
 
-export const igdbProvider: MediaProvider = {
+export function createIgdbProvider(request = fetchGameProvider): MediaProvider {
+return {
   code: "igdb",
   mediaTypes: ["game"],
   async searchTitleCandidates(input, options) {
@@ -194,7 +199,7 @@ export const igdbProvider: MediaProvider = {
       return [];
     }
 
-    const games = await createIgdbClient(credentials).searchGames({
+    const games = await createIgdbClient(credentials, request).searchGames({
       query,
       limit: options.candidateLimit,
     });
@@ -235,7 +240,7 @@ export const igdbProvider: MediaProvider = {
       return null;
     }
 
-    const game = await createIgdbClient(credentials).getGameMetadata(id);
+    const game = await createIgdbClient(credentials, request).getGameMetadata(id);
 
     if (!game) {
       return null;
@@ -247,6 +252,7 @@ export const igdbProvider: MediaProvider = {
       externalId: input.externalId,
       sourceUrl: getIgdbSourcePageUrl(game),
       facts: {
+        ...(getIgdbCompanyReferences(game.involved_companies ?? []) !== undefined ? {gameCompanyReferences:getIgdbCompanyReferences(game.involved_companies ?? [])} : {}),
         platforms: getUniqueNames(game.platforms),
         developers: getInvolvedCompanyNames(game, "developer"),
         publishers: getInvolvedCompanyNames(game, "publisher"),
@@ -260,7 +266,7 @@ export const igdbProvider: MediaProvider = {
     const clientSecret = options.providerCredentials?.igdb?.clientSecret?.trim();
     const id = Number(input.titleSource?.externalId);
     if (!clientId || !clientSecret || !Number.isInteger(id) || id <= 0) return [];
-    const game = await createIgdbClient({ clientId, clientSecret }).getGameForCover(id);
+    const game = await createIgdbClient({ clientId, clientSecret }, request).getGameForCover(id);
     const imageId = game?.cover?.image_id;
     if (!game?.id || !imageId) return [];
     return [{ id: `game:${game.id}:${imageId}`, provider: "igdb", title: game.name ?? input.title, imageUrl: buildIgdbImageUrl(imageId), sourcePageUrl: getIgdbSourcePageUrl(game), width: game.cover?.width, height: game.cover?.height, year: getIgdbYear(game.first_release_date) ?? undefined, confidence: game.total_rating ?? game.rating }];
@@ -275,7 +281,7 @@ export const igdbProvider: MediaProvider = {
       return [];
     }
 
-    const games = await createIgdbClient(credentials).searchGames({
+    const games = await createIgdbClient(credentials, request).searchGames({
       query,
       limit: options.candidateLimit,
       requireCover: true,
@@ -305,3 +311,6 @@ export const igdbProvider: MediaProvider = {
     return candidates.slice(0, options.candidateLimit);
   },
 };
+
+}
+export const igdbProvider = createIgdbProvider();

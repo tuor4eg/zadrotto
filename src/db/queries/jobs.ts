@@ -351,7 +351,7 @@ export async function getAdminJobRuns(input: {
   const totalPages = Math.max(1, Math.ceil(count / pageSize));
   const page = Math.max(1, Math.min(input.page, totalPages));
   const items = await db.select().from(jobRuns).where(where)
-    .orderBy(desc(jobRuns.createdAt), desc(jobRuns.id))
+    .orderBy(sql`case when ${jobRuns.status} in ('queued','running') then 0 else 1 end`, desc(jobRuns.createdAt), desc(jobRuns.id))
     .limit(pageSize)
     .offset((page - 1) * pageSize);
   return { items, page, pageSize, totalCount: count, totalPages };

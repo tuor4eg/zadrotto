@@ -1,6 +1,7 @@
 import { getActivePlatformBySlug, searchArchivePlatformMatches } from "@/db/queries/platforms";
 import { ArchiveSelectedPlatform } from "./archive-platform-context";
 import { notFound } from "next/navigation";
+import { buildCreatorArchiveHref } from "@/lib/media/creator-role-filter";
 import { getCreatorBySlug, searchArchiveCreatorMatches } from "@/db/queries/creators";
 import { ArchiveSelectedCreator } from "./archive-creator-context";
 import { getActiveGenreBySlug, searchArchiveGenreMatches } from "@/db/queries/genres";
@@ -71,6 +72,7 @@ type HomeProps = {
     genre?: string;
     platform?: string;
     creator?: string;
+    creatorRole?: string;
     dir?: string;
     sort?: string;
     suggested?: string;
@@ -97,6 +99,8 @@ export default async function Home({ searchParams }: HomeProps) {
   const requestedRatedByAuthorId = parseRatedByAuthorId(params.ratedBy);
   const selectedCreator = params.creator ? await getCreatorBySlug(params.creator.trim()) : null;
   if (params.creator && !selectedCreator) notFound();
+  const selectedCreatorRole=selectedCreator?.roles.find(role=>role.code===params.creatorRole)?.code;
+  if(selectedCreator&&params.creatorRole&&!selectedCreatorRole)notFound();
   const selectedPlatform = params.platform ? await getActivePlatformBySlug(params.platform.trim()) : null;
   const selectedGenre = params.genre ? await getActiveGenreBySlug(params.genre.trim()) : null;
   const [effectiveMediaTypes, activeQuiz, selectedSeries, requestedRatedProfile] = await Promise.all([
@@ -181,6 +185,7 @@ export default async function Home({ searchParams }: HomeProps) {
         genreId: selectedGenre?.id,
         platformId: selectedPlatform?.id,
         creatorId: selectedCreator?.id,
+        creatorRole: selectedCreatorRole,
         sort,
         sortDirection,
         yearFilter,
@@ -196,10 +201,11 @@ export default async function Home({ searchParams }: HomeProps) {
         genreId: selectedGenre?.id,
         platformId: selectedPlatform?.id,
         creatorId: selectedCreator?.id,
+        creatorRole: selectedCreatorRole,
         yearFilter,
         yearMode,
       }),
-      getCatalogReleaseYearBounds(enabledMediaTypeCodes, selectedGenre?.id, selectedCreator?.id, selectedPlatform?.id),
+      getCatalogReleaseYearBounds(enabledMediaTypeCodes, selectedGenre?.id, selectedCreator?.id, selectedPlatform?.id, selectedCreatorRole),
       currentAuthor
           ? Promise.all([
             getFranchiseOptions(currentAuthor.id),
@@ -242,10 +248,18 @@ export default async function Home({ searchParams }: HomeProps) {
         : Promise.resolve({ items: [], totalCount: 0 }),
     ]);
   const preservedCatalogParams = new URLSearchParams();
-  for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "platform"] as const) {
+  for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"] as const) {
     const value = params[key];
     if (value) preservedCatalogParams.set(key, value);
   }
+  const creatorRoleParams=new URLSearchParams();
+  for(const key of ["mine","pageSize","q","series","genre","platform","dir","sort","type","year","yearMode","ratedBy","compare"] as const) {
+    const value=params[key];if(value)creatorRoleParams.set(key,value);
+  }
+  const creatorRoleHrefs=selectedCreator?Object.fromEntries(selectedCreator.roles.map(role=>[role.code,buildCreatorArchiveHref({
+    creatorSlug:selectedCreator.slug,roleCode:role.code,searchParams:creatorRoleParams.toString(),
+  })])):{};
+  const creatorAllRolesHref=selectedCreator?buildCreatorArchiveHref({creatorSlug:selectedCreator.slug,searchParams:creatorRoleParams.toString()}):undefined;
   const getArchiveSeriesHref = (seriesCode?: string) => {
     const nextParams = new URLSearchParams(preservedCatalogParams);
     if (selectedCreator) {
@@ -267,7 +281,7 @@ export default async function Home({ searchParams }: HomeProps) {
   );
   const getRatedContextHref = (comparison: ArchiveRatingComparison | null) => {
     const nextParams = new URLSearchParams();
-    for (const key of ["mine", "pageSize", "q", "series", "genre", "platform", "creator", "dir", "sort", "type", "year", "yearMode"] as const) {
+    for (const key of ["mine", "pageSize", "q", "series", "genre", "platform", "creator", "creatorRole", "dir", "sort", "type", "year", "yearMode"] as const) {
       if (!selectedCreator && selectedGenre && (key === "q" || key === "series")) continue;
       const value = params[key];
       if (value) nextParams.set(key, value);
@@ -369,7 +383,7 @@ export default async function Home({ searchParams }: HomeProps) {
             }
             return next.size ? `/archive?${next.toString()}` : "/archive";
           })()} /> : null}
-          {selectedCreator ? <ArchiveSelectedCreator adminCanEdit={Boolean(currentAdminUser)} creator={selectedCreator} clearHref={(() => {
+          {selectedCreator ? <ArchiveSelectedCreator adminCanEdit={Boolean(currentAdminUser)} creator={selectedCreator} roleHrefs={creatorRoleHrefs} allRolesHref={creatorAllRolesHref} selectedRole={selectedCreatorRole} clearHref={(() => {
             const next = new URLSearchParams();
             for (const key of ["mine", "pageSize", "q", "series", "genre", "platform", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
               const value = params[key];
@@ -476,6 +490,7 @@ export default async function Home({ searchParams }: HomeProps) {
           genreSlug={selectedGenre?.slug ?? null}
           platformSlug={selectedPlatform?.slug ?? null}
           creatorSlug={selectedCreator?.slug ?? null}
+          creatorRole={selectedCreatorRole ?? null}
           sort={sort}
           sortDirection={sortDirection}
           totalCount={catalog.totalCount}

@@ -18,6 +18,7 @@ export function PlatformRequestStatus({ status }: { status: keyof typeof PLATFOR
 }
 
 export function platformProviderLabel(provider: string) {
+  if(provider === "platform-logos") return "Выбор логотипа";
   return isCoverProviderCode(provider) ? COVER_PROVIDER_LABELS[provider] : provider;
 }
 

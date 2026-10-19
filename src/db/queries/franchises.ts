@@ -129,6 +129,17 @@ const franchisesJsonSql = (mediaItemId = mediaItems.id) => sql<FranchiseLink[]>`
     and "media_item_franchises"."publication_status" = ${PUBLISHED_PUBLICATION_STATUS}
 ), '[]'::jsonb)`;
 
+/** Lightweight published identity for link search and mutations; no breadcrumb reads. */
+export async function getPublishedFranchiseIdentityByCode(code: string) {
+  const [franchise] = await db
+    .select({ id: franchises.id, code: franchises.code, title: franchises.title })
+    .from(franchises)
+    .where(and(eq(franchises.code, code), publishedFranchiseCondition))
+    .limit(1);
+
+  return franchise ?? null;
+}
+
 export async function getFranchiseByCode(code: string) {
   const [franchise] = await db
     .select({

@@ -1,9 +1,11 @@
-import { syncBggCreators, resolveBggCreatorRequest, removeBggBinding, bggRequestKey } from "./bgg-creators";
+import { gameCompanyRequestKey, syncGameCompanyCreators, resolveGameCompanyRequest, removeGameCompanyBinding, getGameCompanyRosterBatch } from "./game-companies";
+import { isGameCompanyProvider } from "@/lib/creators/game-companies";
+import { syncBggCreators, resolveBggCreatorRequest, removeBggBinding } from "./bgg-creators";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
 import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, jobRuns } from "@/db/schema";
+import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns } from "@/db/schema";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { normalizeSearchSql } from "@/db/search";
 import { extractExternalCreators, extractFantlabCreatorReferences } from "@/lib/media/creators";
@@ -44,6 +46,7 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
     facts: Record<string, unknown>;
     autoApprove?: boolean;
 }) {
+    if (isGameCompanyProvider(input.provider) && input.mediaType === "game") return syncGameCompanyCreators(tx, input.mediaItemId, input.provider, input.facts);
     if (input.provider === "bgg" && input.mediaType === "boardgame") return syncBggCreators(tx, input.mediaItemId, input.facts);
     if (input.provider === "fantlab" && input.mediaType === "book") {
         const references = extractFantlabCreatorReferences(input.facts);
@@ -70,8 +73,8 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
         // Incomplete identity migration must never erase the populated archive's old provenance.
         const complete = resolved.every(value => value.binding || suppressed.has(value.reference.normalizedName));
         if (complete) {
-            await tx.delete(entryCreatorSources).where(eq(entryCreatorSources.entryId, input.mediaItemId));
-            await tx.delete(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.mediaItemId, input.mediaItemId));
+            await tx.delete(entryCreatorSources).where(and(eq(entryCreatorSources.entryId, input.mediaItemId), input.provider ? eq(entryCreatorSources.provider, input.provider) : undefined));
+            await tx.delete(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.mediaItemId, input.mediaItemId), input.provider ? sql`${creatorRequestMediaItems.requestId} in (select id from creator_requests where provider=${input.provider})` : undefined));
         }
         let createdMappings = 0, createdLinks = 0;
         const diagnostics: { externalCreatorId: string; name: string; reason: string }[] = [];
@@ -104,8 +107,8 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
         return { createdCreators: 0, createdMappings, createdLinks };
     }
     const external = input.mediaType === "book" && input.provider ? extractExternalCreators(input.facts) : [];
-    await tx.delete(entryCreatorSources).where(eq(entryCreatorSources.entryId, input.mediaItemId));
-    await tx.delete(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.mediaItemId, input.mediaItemId));
+    await tx.delete(entryCreatorSources).where(and(eq(entryCreatorSources.entryId, input.mediaItemId), input.provider ? eq(entryCreatorSources.provider, input.provider) : undefined));
+    await tx.delete(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.mediaItemId, input.mediaItemId), input.provider ? sql`${creatorRequestMediaItems.requestId} in (select id from creator_requests where provider=${input.provider})` : undefined));
     let createdCreators = 0, createdMappings = 0, createdLinks = 0;
     const role = external.length ? await writerRole(tx) : null;
     for (const value of [...external].sort((a, b) => a.normalizedName.localeCompare(b.normalizedName))) {
@@ -183,7 +186,7 @@ export async function resolveCreatorRequest(input: {
     decision: "create" | "map" | "exclude";
     creatorId?: number;
     name?: string;
-    typeCode?: "person" | "collective";
+    typeCode?: "person" | "collective" | "organization";
 }) {
     return db.transaction(async (tx) => {
         if (!["create", "map", "exclude"].includes(input.decision))
@@ -194,8 +197,51 @@ export async function resolveCreatorRequest(input: {
         await assertIdle(tx, request);
         if (request.decision !== null)
             throw new CreatorRequestError("already-resolved", "Решение уже принято.");
-        if (input.autoApprove && (request.provider !== "bgg" || request.externalCreatorId === null || request.manuallyReopened || request.applyStatus !== "pending")) {
+        if (input.autoApprove && ((request.provider !== "bgg" && !isGameCompanyProvider(request.provider)) || request.externalCreatorId === null || request.manuallyReopened || request.applyStatus !== "pending")) {
             throw new CreatorRequestError("auto-skip", "Заявка требует ручного решения.");
+        }
+        if (request.externalCreatorId !== null && isGameCompanyProvider(request.provider)) {
+            const resolvedInput = { ...input };
+            if (input.autoApprove) {
+                const [confirmed] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
+                if (confirmed) {
+                    resolvedInput.decision = "map";
+                    resolvedInput.creatorId = confirmed.creatorId;
+                } else {
+                    const names = await tx.select({ name: creatorRequestMediaItems.externalCreatorName }).from(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.requestId, request.id));
+                    if (new Set([request.normalizedExternalCreatorName, ...names.map(row => normalizeSearchText(row.name))]).size !== 1) throw new CreatorRequestError("auto-skip", "Разные варианты названия требуют проверки.");
+                    await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator:${request.normalizedExternalCreatorName}`},0))`);
+                    const candidates = await tx.select({ id: creators.id }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(and(
+                        eq(creatorTypes.code, "organization"), or(
+                            sql`btrim(${normalizeSearchSql(creators.name)})=${request.normalizedExternalCreatorName}`,
+                            sql`btrim(${normalizeSearchSql(creators.originalName)})=${request.normalizedExternalCreatorName}`,
+                        ),
+                    ));
+                    if (candidates.length > 1) throw new CreatorRequestError("auto-skip", "Неоднозначное название организации.");
+                    if (candidates.length === 1) {
+                        // Distinct IDs in one API namespace may be homonymous companies.
+                        // RAWG developer and publisher are separate namespaces and may share a Creator.
+                        const namespace = request.externalCreatorId.split(":")[0];
+                        const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(
+                            eq(providerCreatorBindings.creatorId, candidates[0].id), eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.active, true),
+                            sql`split_part(${providerCreatorBindings.externalCreatorId}, ':', 1)=${namespace}`,
+                            sql`${providerCreatorBindings.externalCreatorId} <> ${request.externalCreatorId}`,
+                        )).limit(1);
+                        if (conflict) throw new CreatorRequestError("auto-skip", "У организации уже есть другой ID в этом пространстве провайдера.");
+                        resolvedInput.decision = "map";
+                        resolvedInput.creatorId = candidates[0].id;
+                    } else {
+                        resolvedInput.decision = "create";
+                        resolvedInput.name = request.externalCreatorName;
+                        resolvedInput.typeCode = "organization";
+                    }
+                }
+            }
+            await resolveGameCompanyRequest(tx, request, resolvedInput);
+            await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
+            const queued = await enqueue(tx, request.id, input.adminId);
+            await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по организации.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
+            return queued;
         }
         if (request.externalCreatorId !== null && request.provider === "bgg") {
             const resolvedInput = { ...input };
@@ -223,7 +269,7 @@ export async function resolveCreatorRequest(input: {
                     resolvedInput.typeCode = "person";
                 }
             }
-            await resolveBggCreatorRequest(tx, request, resolvedInput);
+            await resolveBggCreatorRequest(tx, request, { ...resolvedInput, typeCode: resolvedInput.typeCode === "organization" ? undefined : resolvedInput.typeCode });
             await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
             const queued = await enqueue(tx, request.id, input.adminId);
             await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по BGG ID.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
@@ -263,9 +309,12 @@ async function reopen(input: {
             throw new CreatorRequestError("not-found", "Соответствие не найдено.");
         await tx.insert(creatorRequests).values({ provider: value.provider, mediaType: value.mediaType, externalCreatorId: "externalCreatorId" in value ? value.externalCreatorId : null, externalCreatorName: value.externalCreatorName, normalizedExternalCreatorName: value.normalizedExternalCreatorName }).onConflictDoNothing();
         const externalCreatorId = "externalCreatorId" in value ? value.externalCreatorId : null;
-        const [request] = await tx.select().from(creatorRequests).where(externalCreatorId ? bggRequestKey(externalCreatorId) : key(value.provider, value.mediaType, value.normalizedExternalCreatorName)).for("update");
+        const [request] = await tx.select().from(creatorRequests).where(externalCreatorId ? gameCompanyRequestKey(value.provider, externalCreatorId) : key(value.provider, value.mediaType, value.normalizedExternalCreatorName)).for("update");
         await assertIdle(tx, request);
-        if (externalCreatorId) await removeBggBinding(tx, externalCreatorId);
+        if (externalCreatorId) {
+            if (isGameCompanyProvider(value.provider)) await removeGameCompanyBinding(tx, value.provider, externalCreatorId);
+            else await removeBggBinding(tx, externalCreatorId);
+        }
         const deleted = await tx.delete(table).where(eq(table.id, value.id)).returning({ id: table.id });
         if (!deleted.length)
             throw new CreatorRequestError("changed", "Соответствие уже изменено.");
@@ -319,7 +368,10 @@ export async function applyCreatorRequest(requestId: number, input: {
     try {
         for (;;) {
             input.signal?.throwIfAborted();
-            const items = request.decision === null
+            const company = isGameCompanyProvider(request.provider) && request.externalCreatorId !== null;
+            const items = company
+                ? (await getGameCompanyRosterBatch(request.provider, request.externalCreatorId!, afterId)).map(row => ({ id: row.mediaItemId }))
+                : request.decision === null
                 ? await db.select({ id: mediaItems.id }).from(mediaItems).innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id)).where(and(eq(mediaItems.mediaType, request.mediaType), eq(mediaItemMetadata.sourceProvider, request.provider), gt(mediaItems.id, afterId))).orderBy(asc(mediaItems.id)).limit(100)
                 : await db.selectDistinct({ id: creatorRequestMediaItems.mediaItemId }).from(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.requestId, requestId), gt(creatorRequestMediaItems.mediaItemId, afterId))).orderBy(asc(creatorRequestMediaItems.mediaItemId)).limit(100);
             if (!items.length)
@@ -328,6 +380,11 @@ export async function applyCreatorRequest(requestId: number, input: {
                 input.signal?.throwIfAborted();
                 await db.transaction(async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
+                    if (company && entry) {
+                        const [roster] = await tx.select().from(gameCompanyRosters).where(and(eq(gameCompanyRosters.mediaItemId, item.id), eq(gameCompanyRosters.provider, request.provider)));
+                        if (roster && isGameCompanyProvider(request.provider)) await syncGameCompanyCreators(tx, item.id, request.provider, { gameCompanyReferences: roster.references });
+                        return;
+                    }
                     const [metadata] = await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                     if (!entry || !metadata)
                         return;
@@ -356,6 +413,10 @@ export async function applyCreatorRequest(requestId: number, input: {
             }
             await tx.update(creatorRequests).set({ applyStatus: current.decision === null ? "pending" : "processed", jobError: null, updatedAt: new Date() }).where(eq(creatorRequests.id, requestId));
         });
+        if (isGameCompanyProvider(request.provider) && request.externalCreatorId) {
+            const [binding] = await db.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
+            if (binding) { const { syncGameCompanyAvatar } = await import("@/lib/creators/game-company-images"); await syncGameCompanyAvatar(binding.creatorId); }
+        }
         return { processed };
     }
     catch (error) {
@@ -423,20 +484,20 @@ export async function deleteUnlinkedCreator(tx: CreatorTransaction, creatorId: n
 export async function reopenCreatorBinding(input: { bindingId: number; adminId: number }) {
     return db.transaction(async tx => {
         const [binding] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
-        if (!binding || binding.provider !== "bgg") throw new CreatorRequestError("not-found", "Привязка BGG не найдена.");
+        if (!binding || !binding.active || (binding.provider !== "bgg" && !isGameCompanyProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
         const name = binding.externalCreatorName ?? binding.externalCreatorId;
-        await tx.insert(creatorRequests).values({ provider: "bgg", externalCreatorId: binding.externalCreatorId, mediaType: "boardgame", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
-        const [request] = await tx.select().from(creatorRequests).where(bggRequestKey(binding.externalCreatorId)).for("update");
+        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "bgg" ? "boardgame" : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
+        const [request] = await tx.select().from(creatorRequests).where(gameCompanyRequestKey(binding.provider, binding.externalCreatorId)).for("update");
         await assertIdle(tx, request);
         // Recheck the binding after request lock; a concurrent administrator may have remapped it.
         const [current] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
-        if (!current || current.creatorId !== binding.creatorId) throw new CreatorRequestError("changed", "Привязка уже изменилась.");
+        if (!current || !current.active || current.creatorId !== binding.creatorId) throw new CreatorRequestError("changed", "Привязка уже изменилась.");
         await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, binding.creatorId)).for("update");
-        await removeBggBinding(tx, binding.externalCreatorId);
-        await deleteUnlinkedCreator(tx, binding.creatorId);
+        if (isGameCompanyProvider(binding.provider)) await removeGameCompanyBinding(tx, binding.provider, binding.externalCreatorId);
+        else { await removeBggBinding(tx, binding.externalCreatorId); await deleteUnlinkedCreator(tx, binding.creatorId); }
         await tx.update(creatorRequests).set({ decision: null, resolvedAt: null, resolvedByAdminId: null, manuallyReopened: true, updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
         const queued = await enqueue(tx, request.id, input.adminId);
-        await activity(tx, "creator-mapping.reopened", request.id, name, "BGG ID возвращён на апрув.", input.adminId, queued);
+        await activity(tx, "creator-mapping.reopened", request.id, name, "Внешний ID возвращён на апрув.", input.adminId, queued);
         return queued;
     });
 }
@@ -459,4 +520,33 @@ export async function autoApproveBggCreatorRequests(mediaItemId: number) {
         }
     }
     return { approved, skipped };
+}
+
+/** Auto approval is an ordinary request decision; existing apply jobs materialize all saved rosters. */
+export async function autoApproveGameCompanyRequests(input: { provider?: "igdb" | "rawg"; externalIds?: readonly string[]; signal?: AbortSignal } = {}) {
+    const result = { approved: 0, skipped: 0 };
+    if (input.externalIds?.length === 0) return result;
+    let afterId = 0;
+    for (;;) {
+        input.signal?.throwIfAborted();
+        const pending = await db.select({ id: creatorRequests.id }).from(creatorRequests).where(and(
+            input.provider ? eq(creatorRequests.provider, input.provider) : inArray(creatorRequests.provider, ["igdb", "rawg"]),
+            input.externalIds ? inArray(creatorRequests.externalCreatorId, [...input.externalIds]) : undefined,
+            isNull(creatorRequests.decision), eq(creatorRequests.manuallyReopened, false), eq(creatorRequests.applyStatus, "pending"), gt(creatorRequests.id, afterId),
+            sql`exists (select 1 from game_company_rosters r where r.provider=${creatorRequests.provider} and r.references @> jsonb_build_array(jsonb_build_object('externalId',${creatorRequests.externalCreatorId})))`,
+        )).orderBy(asc(creatorRequests.id)).limit(100);
+        if (!pending.length) break;
+        for (const request of pending) {
+            input.signal?.throwIfAborted();
+            try {
+                await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true });
+                result.approved++;
+            } catch (error) {
+                if (error instanceof CreatorRequestError && ["auto-skip", "already-resolved", "applying"].includes(error.code)) result.skipped++;
+                else throw error;
+            }
+            afterId = request.id;
+        }
+    }
+    return result;
 }

@@ -13,7 +13,7 @@ export function CreatorProviderVariants({ variants, bindings = [] }: {
     <div className="mt-1 flex flex-wrap items-center gap-2">
       <span className="min-w-0 break-words text-stone-800">{binding.externalCreatorName ?? `#${binding.externalCreatorId}`}</span>
       {binding.provider === "bgg" ? <a href={`https://boardgamegeek.com/boardgamedesigner/${binding.externalCreatorId}`} target="_blank" rel="noreferrer" className="underline">BGG</a> : null}
-      {binding.provider === "bgg" ? <form action={reopenCreatorAction}><input type="hidden" name="bindingId" value={binding.id} /><Button type="submit" variant="outline" size="sm">Вернуть в заявки</Button></form> : null}
+      {["bgg", "igdb", "rawg"].includes(binding.provider) ? <form action={reopenCreatorAction}><input type="hidden" name="bindingId" value={binding.id} /><Button type="submit" variant="outline" size="sm">Вернуть в заявки</Button></form> : null}
     </div>
   </li>)}{variants.map(variant => <li key={`mapping:${variant.id}`} className="min-w-0">
     <p className="text-xs font-medium text-stone-500">{isCoverProviderCode(variant.provider) ? COVER_PROVIDER_LABELS[variant.provider] : variant.provider}</p>

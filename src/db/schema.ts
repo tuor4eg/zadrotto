@@ -1,4 +1,5 @@
 import { sql } from "drizzle-orm";
+import type { GameCompanyReference } from "@/lib/creators/game-companies";
 import {
   check,
   type AnyPgColumn,
@@ -936,6 +937,9 @@ export const jobRuns = pgTable(
     ...timestamps(),
   },
   (table) => [
+    index("job_runs_journal_active_idx").on(sql`(case when ${table.status} in ('queued','running') then 0 else 1 end)`, sql`${table.createdAt} desc`, sql`${table.id} desc`),
+    index("job_runs_platform_catalogue_idx").on(table.id).where(sql`${table.type}='media.platform-logos-sync' and ${table.payload}->'checkpoint'->>'stage'='complete'`),
+    uniqueIndex("job_runs_platform_logos_active_idx").on(table.type).where(sql`${table.type} = 'media.platform-logos-sync' and ${table.status} in ('queued','running')`),
     index("job_runs_queue_idx").on(table.availableAt, table.id).where(sql`${table.status} = 'queued'`),
     index("job_runs_recovery_idx").on(table.lockExpiresAt).where(sql`${table.status} = 'running'`),
     index("job_runs_job_created_idx").on(table.jobId, table.createdAt),
@@ -960,6 +964,7 @@ export const jobRuns = pgTable(
       .on(sql`(${table.payload}->>'requestId')`)
       .where(sql`${table.type} = 'media.genre-request-apply' and ${table.status} in ('queued', 'running')`),
     uniqueIndex("job_runs_platform_request_apply_active_unique").on(sql`(${table.payload}->>'requestId')`).where(sql`${table.type} = 'media.platform-request-apply' and ${table.status} in ('queued', 'running')`),
+    uniqueIndex("job_runs_game_company_backfill_active_unique").on(table.type).where(sql`${table.type}='media.game-companies-backfill' and ${table.status} in ('queued','running')`),
     uniqueIndex("job_runs_creator_request_apply_active_unique").on(sql`(${table.payload}->>'requestId')`).where(sql`${table.type} = 'media.creator-request-apply' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
     check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
@@ -1812,13 +1817,50 @@ export const providerGenreExclusions = pgTable("provider_genre_exclusions", {
   check("provider_genre_exclusions_name_check", sql`btrim(${table.externalGenreName}) <> '' and btrim(${table.normalizedExternalGenreName}) <> ''`),
 ]);
 
+export const platformProviderProfiles = pgTable("platform_provider_profiles", {
+  isAvailable: boolean("is_available").default(true).notNull(),
+  provider: text("provider").notNull(),
+  externalId: text("external_id").notNull(),
+  name: text("name").notNull(),
+  normalizedName: text("normalized_name").notNull(),
+  sourceUrl: text("source_url"),
+  imageId: text("image_id"),
+  imageUrl: text("image_url"),
+  imageKey: text("image_key"),
+  imageObjectKey: text("image_object_key"),
+  imageContentHash: text("image_content_hash"),
+  profileFetchedAt: timestamp("profile_fetched_at", { withTimezone: true }),
+  imageFetchedAt: timestamp("image_fetched_at", { withTimezone: true }),
+  imageError: text("image_error"),
+  ...timestamps(),
+}, table => [
+  primaryKey({ columns: [table.provider, table.externalId] }),
+  index("platform_provider_profiles_asset_idx").on(table.provider, table.imageKey).where(sql`${table.imageObjectKey} is not null and ${table.imageContentHash} is not null`),
+  index("platform_provider_profiles_image_idx").on(table.imageObjectKey).where(sql`${table.imageObjectKey} is not null`),
+  index("platform_provider_profiles_name_idx").on(table.provider, table.normalizedName),
+  check("platform_provider_profiles_provider_check", sql`${table.provider} in ('igdb','rawg')`),
+  check("platform_provider_profiles_id_check", sql`${table.externalId} ~ '^[1-9][0-9]*$'`),
+]);
+
 export const platforms = pgTable("platforms", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   isActive: boolean("is_active").notNull().default(true),
+  logoMode: text("logo_mode").$type<"exact" | "combined">().default("exact").notNull(),
+  manualLogoObjectKey: text("manual_logo_object_key"),
+  manualLogoContentHash: text("manual_logo_content_hash"),
+  importedLogoObjectKey: text("imported_logo_object_key"),
+  importedLogoContentHash: text("imported_logo_content_hash"),
+  importedLogoProvider: text("imported_logo_provider"),
+  importedLogoExternalId: text("imported_logo_external_id"),
+  importedLogoImageKey: text("imported_logo_image_key"),
+  logoVersion: integer("logo_version").default(0).notNull(),
   ...timestamps(),
 }, (table) => [
+  index("platforms_manual_logo_idx").on(table.manualLogoObjectKey).where(sql`${table.manualLogoObjectKey} is not null`),
+  index("platforms_imported_logo_idx").on(table.importedLogoObjectKey).where(sql`${table.importedLogoObjectKey} is not null`),
+  check("platforms_logo_mode_check", sql`${table.logoMode} in ('exact','combined')`),
   check("platforms_slug_check", sql`btrim(${table.slug}) <> ''`),
   check("platforms_name_check", sql`btrim(${table.name}) <> ''`),
 ]);
@@ -1843,8 +1885,11 @@ export const providerPlatformMappings = pgTable("provider_platform_mappings", {
   externalPlatformName: text("external_platform_name").notNull(),
   normalizedExternalPlatformName: text("normalized_external_platform_name").notNull(),
   platformId: integer("platform_id").notNull().references(() => platforms.id, { onDelete: "restrict" }),
+  externalPlatformId: text("external_platform_id"),
   ...timestamps(),
 }, (table) => [
+  foreignKey({ columns: [table.provider, table.externalPlatformId], foreignColumns: [platformProviderProfiles.provider, platformProviderProfiles.externalId], name: "platform_mapping_external_fk" }),
+  index("platform_mappings_external_idx").on(table.provider, table.externalPlatformId, table.platformId),
   index("provider_platform_mappings_platform_id_idx").on(table.platformId),
   uniqueIndex("provider_platform_mappings_name_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName, table.platformId),
   check("provider_platform_mappings_game_check", sql`${table.mediaType} = 'game'`),
@@ -1867,10 +1912,21 @@ export const platformRequests = pgTable("platform_requests", {
   jobRunId: integer("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
   applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(),
   jobError: text("job_error"),
+  kind: text("kind").$type<"mapping" | "logo">().default("mapping").notNull(),
+  targetPlatformId: integer("target_platform_id").references(() => platforms.id, { onDelete: "set null" }),
+  proposalKey: text("proposal_key"),
+  proposal: jsonb("proposal").$type<import("@/lib/platforms/contracts").PlatformAssetProposal>(),
+  autoApproved: boolean("auto_approved").default(false).notNull(),
+  autoApprovalBlocked: boolean("auto_approval_blocked").default(false).notNull(),
+  superseded: boolean("superseded").default(false).notNull(),
   ...timestamps(),
 }, (table) => [
-  uniqueIndex("platform_requests_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName),
-  index("platform_requests_pending_idx").on(table.firstSeenAt, table.id).where(sql`${table.decision} is null`),
+  uniqueIndex("platform_requests_key_unique_idx").on(table.provider, table.mediaType, table.normalizedExternalPlatformName).where(sql`${table.kind} = 'mapping'`),
+  uniqueIndex("platform_requests_proposal_unique_idx").on(table.kind, table.proposalKey).where(sql`${table.kind} <> 'mapping'`),
+  index("platform_requests_target_idx").on(table.targetPlatformId, table.kind, table.id),
+  index("platform_requests_logo_evidence_idx").on(table.targetPlatformId, sql`(${table.proposal}->>'provider')`, sql`(${table.proposal}->>'externalId')`, sql`(${table.proposal}->>'imageKey')`).where(sql`${table.kind}='logo' and ${table.decision}='map' and ${table.applyStatus}='processed'`),
+  check("platform_requests_kind_check", sql`${table.kind} in ('mapping','logo') and (${table.kind}='mapping' or (${table.proposalKey} is not null and ${table.proposal} is not null))`),
+  index("platform_requests_pending_idx").on(table.firstSeenAt, table.id).where(sql`${table.decision} is null and not ${table.superseded}`),
   index("platform_requests_job_run_id_idx").on(table.jobRunId),
   check("platform_requests_game_check", sql`${table.mediaType} = 'game'`),
   check("platform_requests_provider_check", sql`btrim(${table.provider}) <> ''`),
@@ -1916,7 +1972,7 @@ export const creators = pgTable("creators", {
   id: serial("id").primaryKey(), name: text("name").notNull(), slug: text("slug").notNull().unique(),
   originalName: text("original_name"),
   avatarObjectKey: text("avatar_object_key"),
-  avatarSource: text("avatar_source").$type<"manual" | "fantlab">(),
+  avatarSource: text("avatar_source").$type<"manual" | "fantlab" | "igdb" | "rawg">(),
   avatarSourceExternalId: text("avatar_source_external_id"),
   avatarSourceUrl: text("avatar_source_url"),
   avatarOriginalUrl: text("avatar_original_url"),
@@ -1928,11 +1984,11 @@ export const creators = pgTable("creators", {
   check("creators_avatar_check", sql`(
     (${t.avatarObjectKey} is null and ${t.avatarSource} is null and ${t.avatarContentHash} is null
       and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
-    or (${t.avatarObjectKey} is not null and ${t.avatarSource} is not null and ${t.avatarSource} in ('manual','fantlab')
+    or (${t.avatarObjectKey} is not null and ${t.avatarSource} is not null and ${t.avatarSource} in ('manual','fantlab','igdb','rawg')
       and ${t.avatarContentHash} is not null and ${t.avatarContentHash} ~ '^[0-9a-f]{64}$'
       and ${t.avatarObjectKey} ~ '^avatars/creators/[1-9][0-9]*/[0-9a-f-]{36}[.]webp$'
       and ((${t.avatarSource} = 'manual' and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
-        or (${t.avatarSource} = 'fantlab' and ${t.avatarSourceExternalId} is not null and ${t.avatarSourceExternalId} ~ '^[1-9][0-9]*$'
+        or (${t.avatarSource} in ('fantlab','igdb','rawg') and ${t.avatarSourceExternalId} is not null and ((${t.avatarSource} = 'fantlab' and ${t.avatarSourceExternalId} ~ '^[1-9][0-9]*$') or (${t.avatarSource} = 'igdb' and ${t.avatarSourceExternalId} ~ '^company:[1-9][0-9]*$') or (${t.avatarSource} = 'rawg' and ${t.avatarSourceExternalId} ~ '^(developer|publisher):[1-9][0-9]*$'))
           and ${t.avatarSourceUrl} is not null and ${t.avatarOriginalUrl} is not null and ${t.avatarFetchedAt} is not null)))
   ) and ${t.avatarVersion} >= 0`),
   uniqueIndex("creators_avatar_object_key_unique").on(t.avatarObjectKey).where(sql`${t.avatarObjectKey} is not null`),
@@ -1961,6 +2017,7 @@ export const creatorSeries = pgTable("creator_series", {
   seriesId: integer("series_id").notNull().references(() => franchises.id, { onDelete: "cascade" }),
 }, (t) => [primaryKey({ columns: [t.creatorId, t.seriesId] }), index("creator_series_series_idx").on(t.seriesId)]);
 export const providerCreatorBindings = pgTable("provider_creator_bindings", {
+  active: boolean("active").notNull().default(true),
   externalCreatorName: text("external_creator_name"),
   id: serial("id").primaryKey(),
   provider: text("provider").notNull(),
@@ -1968,10 +2025,10 @@ export const providerCreatorBindings = pgTable("provider_creator_bindings", {
   creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
   ...timestamps(),
 }, (t) => [
-  uniqueIndex("provider_creator_bindings_identity_unique").on(t.provider, t.externalCreatorId),
+  uniqueIndex("provider_creator_bindings_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.active}`),
   unique("provider_creator_bindings_owner_unique").on(t.id, t.creatorId, t.provider),
   index("provider_creator_bindings_creator_idx").on(t.creatorId),
-  check("provider_creator_bindings_values_check", sql`${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$' and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
+  check("provider_creator_bindings_values_check", sql`((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')) and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
 ]);
 export const providerCreatorMappings = pgTable("provider_creator_mappings", {
   bindingId: integer("binding_id"),
@@ -1994,7 +2051,7 @@ export const creatorRequests = pgTable("creator_requests", {
   applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(), jobError: text("job_error"),
   firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(), lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
   manuallyReopened: boolean("manually_reopened").notNull().default(false), ...timestamps(),
-}, (t) => [uniqueIndex("creator_requests_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("creator_requests_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("creator_requests_identity_check", sql`${t.externalCreatorId} is null or (${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$')`), index("creator_requests_pending_idx").on(t.firstSeenAt, t.id).where(sql`${t.decision} is null`), index("creator_requests_job_idx").on(t.jobRunId), check("creator_requests_decision_check", sql`${t.decision} is null or ${t.decision} in ('create','map','exclude')`), check("creator_requests_status_check", sql`${t.applyStatus} in ('pending','applying','processed','failed')`)]);
+}, (t) => [uniqueIndex("creator_requests_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("creator_requests_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("creator_requests_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')))`), index("creator_requests_pending_idx").on(t.firstSeenAt, t.id).where(sql`${t.decision} is null`), index("creator_requests_job_idx").on(t.jobRunId), check("creator_requests_decision_check", sql`${t.decision} is null or ${t.decision} in ('create','map','exclude')`), check("creator_requests_status_check", sql`${t.applyStatus} in ('pending','applying','processed','failed')`)]);
 export const creatorRequestMediaItems = pgTable("creator_request_media_items", {
   roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
   requestId: integer("request_id").notNull().references(() => creatorRequests.id, { onDelete: "cascade" }),
@@ -2005,7 +2062,7 @@ export const providerCreatorExclusions = pgTable("provider_creator_exclusions", 
   externalCreatorId: text("external_creator_id"),
   id: serial("id").primaryKey(), provider: text("provider").notNull(), mediaType: text("media_type").notNull().references(() => mediaTypes.code),
   externalCreatorName: text("external_creator_name").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(), ...timestamps(),
-}, (t) => [uniqueIndex("provider_creator_exclusions_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("provider_creator_exclusions_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("provider_creator_exclusions_identity_check", sql`${t.externalCreatorId} is null or (${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$')`)]);
+}, (t) => [uniqueIndex("provider_creator_exclusions_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("provider_creator_exclusions_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("provider_creator_exclusions_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')))`)]);
 // One source per provider value preserves aliases mapped to the same creator.
 export const entryCreatorSources = pgTable("entry_creator_sources", {
   bindingId: integer("binding_id"),
@@ -2400,3 +2457,49 @@ export type NotificationTransportRoute = typeof notificationTransportRoutes.$inf
 export type NewNotificationTransportRoute = typeof notificationTransportRoutes.$inferInsert;
 export type QuizQuestionTemplate = typeof quizQuestionTemplates.$inferSelect;
 export type NewQuizQuestionTemplate = typeof quizQuestionTemplates.$inferInsert;
+
+// Persistent provider evidence exists independently of moderation and expiring job history.
+export const gameCompanyProfiles = pgTable("game_company_profiles", {
+  provider: text("provider").notNull(), externalId: text("external_id").notNull(),
+  name: text("name").notNull(), sourceUrl: text("source_url"),
+  details: jsonb("details").$type<Record<string, unknown>>().default({}).notNull(),
+  imageUrl: text("image_url"), imageObjectKey: text("image_object_key"), imageContentHash: text("image_content_hash"),
+  profileStatus: text("profile_status").notNull().default("pending"),
+  imageStatus: text("image_status").notNull().default("pending"),
+  error: text("error"), fetchedAt: timestamp("fetched_at", { withTimezone: true }), ...timestamps(),
+}, t => [primaryKey({ columns: [t.provider, t.externalId] }),
+  check("game_company_profiles_identity_check", sql`(${t.provider}='igdb' and ${t.externalId} ~ '^company:[1-9][0-9]*$') or (${t.provider}='rawg' and ${t.externalId} ~ '^(developer|publisher):[1-9][0-9]*$')`),
+  check("game_company_profiles_status_check", sql`${t.profileStatus} in ('pending','ready','missing') and ${t.imageStatus} in ('pending','ready','missing')`),
+]);
+export const gameCompanyRosters = pgTable("game_company_rosters", {
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), sourceExternalId: text("source_external_id").notNull(),
+  references: jsonb("references").$type<GameCompanyReference[]>().notNull(),
+  fetchedAt: timestamp("fetched_at", { withTimezone: true }).defaultNow().notNull(), ...timestamps(),
+}, t => [primaryKey({ columns: [t.mediaItemId, t.provider] }),
+  check("game_company_rosters_provider_check", sql`${t.provider} in ('igdb','rawg')`),
+  index("game_company_rosters_references_idx").using("gin", t.references),
+  index("game_company_rosters_provider_entry_idx").on(t.provider, t.mediaItemId),
+]);
+export const gameCompanyBackfills = pgTable("game_company_backfills", {
+  id: serial("id").primaryKey(), version: integer("version").notNull().default(1),
+  status: text("status").notNull().default("active"),
+  jobRunId: integer("job_run_id").references(() => jobRuns.id, { onDelete: "set null" }),
+  createdByAdminId: integer("created_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  finishedAt: timestamp("finished_at", { withTimezone: true }), ...timestamps(),
+}, t => [uniqueIndex("game_company_backfills_active_unique").on(t.version).where(sql`${t.status}='active'`),
+  check("game_company_backfills_status_check", sql`${t.status} in ('active','completed','partial')`),
+]);
+export const gameCompanyBackfillItems = pgTable("game_company_backfill_items", {
+  backfillId: integer("backfill_id").notNull().references(() => gameCompanyBackfills.id, { onDelete: "cascade" }),
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  provider: text("provider").notNull(), sourceExternalId: text("source_external_id").notNull(),
+  status: text("status").notNull().default("pending"),
+  references: jsonb("references").$type<GameCompanyReference[] | null>(),
+  attempts: integer("attempts").notNull().default(0), error: text("error"),
+  usedBindings: integer("used_bindings").notNull().default(0), newRequests: integer("new_requests").notNull().default(0),
+  ...timestamps(),
+}, t => [primaryKey({ columns: [t.backfillId, t.mediaItemId, t.provider] }),
+  index("game_company_backfill_items_pending_idx").on(t.backfillId, t.status, t.mediaItemId),
+  check("game_company_backfill_items_values_check", sql`${t.provider} in ('igdb','rawg') and ${t.status} in ('pending','ready','done','error','skipped') and ${t.attempts} >= 0`),
+]);

@@ -251,6 +251,7 @@ export function CatalogHeaderControls({
         nextSearchParams.delete("series");
         nextSearchParams.delete("genre");
         nextSearchParams.delete("creator");
+        nextSearchParams.delete("creatorRole");
         nextSearchParams.delete("ratedBy");
         nextSearchParams.delete("compare");
         updateFilterParam(nextSearchParams, "q", nextFilters.q, "");

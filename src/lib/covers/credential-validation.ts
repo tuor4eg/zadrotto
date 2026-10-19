@@ -1,3 +1,4 @@
+import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
 import {
   parseCoverProviderCredentials,
 } from "@/lib/covers/credential-definitions";
@@ -36,12 +37,13 @@ const CREDENTIAL_VALIDATION_TIMEOUT_MS = 8_000;
 async function fetchWithValidationTimeout(
   input: string | URL,
   init?: RequestInit,
+  transport: typeof fetch = fetch,
 ): Promise<ValidationFetchResult> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), CREDENTIAL_VALIDATION_TIMEOUT_MS);
 
   try {
-    const response = await fetch(input, {
+    const response = await transport(input, {
       ...init,
       signal: controller.signal,
     });
@@ -130,12 +132,12 @@ async function validateComicVineCredentials(credentials: Record<string, string>)
     : ({ ok: false, error: "invalid-credentials" } as const);
 }
 
-async function validateRawgCredentials(credentials: Record<string, string>) {
+async function validateRawgCredentials(credentials: Record<string, string>, gameFetch: typeof fetchGameProvider) {
   const url = buildUrl("https://api.rawg.io/api/games", {
     key: credentials.apiKey,
     page_size: 1,
   });
-  const response = await fetchWithValidationTimeout(url);
+  const response = await fetchWithValidationTimeout(url, undefined, (input, init) => gameFetch("rawg", input as string | URL, init));
 
   if (!response.ok) {
     return response;
@@ -146,7 +148,7 @@ async function validateRawgCredentials(credentials: Record<string, string>) {
     : ({ ok: false, error: getCredentialsValidationError(response.response) } as const);
 }
 
-async function validateIgdbCredentials(credentials: Record<string, string>) {
+async function validateIgdbCredentials(credentials: Record<string, string>, gameFetch: typeof fetchGameProvider) {
   const tokenUrl = buildUrl("https://id.twitch.tv/oauth2/token", {
     client_id: credentials.clientId,
     client_secret: credentials.clientSecret,
@@ -176,7 +178,7 @@ async function validateIgdbCredentials(credentials: Record<string, string>) {
       Authorization: `Bearer ${token.access_token}`,
     },
     body: "fields id; limit 1;",
-  });
+  }, (input, init) => gameFetch("igdb", input as string | URL, init));
 
   if (!igdbResponse.ok) {
     return igdbResponse;
@@ -190,7 +192,7 @@ async function validateIgdbCredentials(credentials: Record<string, string>) {
 export async function validateCoverProviderCredentials(input: {
   providerCode: CoverProviderCode;
   values: Record<string, string>;
-}): Promise<CoverProviderCredentialValidationResult> {
+}, gameFetch: typeof fetchGameProvider = fetchGameProvider): Promise<CoverProviderCredentialValidationResult> {
   const parsed = parseCoverProviderCredentials(input);
 
   if (!parsed.ok) {
@@ -215,9 +217,9 @@ export async function validateCoverProviderCredentials(input: {
     case "comic-vine":
       return validateComicVineCredentials(parsed.value);
     case "igdb":
-      return validateIgdbCredentials(parsed.value);
+      return validateIgdbCredentials(parsed.value, gameFetch);
     case "rawg":
-      return validateRawgCredentials(parsed.value);
+      return validateRawgCredentials(parsed.value, gameFetch);
     default:
       return { ok: false, error: "unsupported-provider" };
   }

@@ -26,7 +26,7 @@ export async function executeClaimedJobRun(input: {
     } catch {
       throw new JobError("invalid-payload", "Параметры задачи не прошли проверку.", { retryable: false });
     }
-    await handler.execute({ attempt: run.attempts, jobId: run.jobId, payload, runId: run.id, signal, source: run.source as import("./model").JobRunSource } as never);
+    await handler.execute({ lockToken: run.lockToken, attempt: run.attempts, jobId: run.jobId, payload, runId: run.id, signal, source: run.source as import("./model").JobRunSource } as never);
     if (input.signal?.aborted) throw new JobError("interrupted", "Задача прервана при остановке worker.");
     if (controller.signal.aborted) {
       throw new JobError("timeout", "Превышено время выполнения задачи.");

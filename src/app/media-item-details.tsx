@@ -11,6 +11,7 @@ import { RateableMediaItemTile, TileRatingScope } from "@/components/archive/til
 import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
+import { GameCompanyDetailsFacts, type GameCompanyDisplay } from "@/components/archive/game-company-details-facts";
 import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
@@ -46,6 +47,7 @@ type MediaItemDetailsItem = {
   platforms?: MediaItemPlatform[];
   writerCreators?: WriterCreatorLink[];
   entryCreators?: EntryRoleCreatorLink[];
+  gameCompanies?: GameCompanyDisplay[];
   hasUnifiedGenres?: boolean;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
@@ -243,6 +245,7 @@ export function MediaItemDetails({
                 {!isBoardgame && item.genres.length > 0 ? <span className="mr-2"><MediaItemGenreLinks genres={item.genres} /></span> : null}
                 {item.mediaType === "game" && item.platforms?.length ? <span className="mr-2"><MediaItemPlatformLinks platforms={item.platforms} /></span> : null}
                 {item.mediaType === "book" && item.writerCreators?.length ? <div className="mt-1"><MediaItemWriterLinks creators={item.writerCreators} /></div> : null}
+                {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
@@ -569,6 +572,7 @@ function ArchiveMediaItemDetails({
                   <MediaItemGenreLinks genres={item.genres} />
                 </> : null}
                 {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
+                {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}

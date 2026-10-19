@@ -54,6 +54,29 @@ Use the lightest relevant checks: focused diff, `rg`, targeted tests, typecheck,
 Do not run `npm run build` unless the user explicitly asks or approves it; the production build can
 freeze or crash VS Code.
 
+### Database query performance
+
+Every new or changed database query requires a performance check before the work is complete.
+Fast execution against the small local database is not sufficient evidence of scalability.
+
+- Inspect the generated SQL and its execution plan, including related count/pagination queries.
+  Check index compatibility with the actual expressions, join cardinality, correlated subquery
+  loops, repeated scans, sorts, JIT costs, and N+1 database round trips.
+- Use `EXPLAIN (ANALYZE, BUFFERS)` on safe reads. For writes, inspect `EXPLAIN` without executing
+  the mutation, or measure in an isolated test database; never run a mutation merely to benchmark
+  it against application data.
+- For queries whose cost grows with data volume (especially search, lists, aggregates, and bulk
+  operations), verify representative scale and data distribution in an isolated database with
+  synthetic fixtures, realistic relationship fan-out, and current planner statistics (`ANALYZE`).
+  Include common, rare, and absent search/filter matches where relevant. Do not populate the
+  application database with benchmark fixtures.
+- Compare plans and measurements before and after changes to existing queries. Judge work done
+  and expected growth, not only elapsed milliseconds; a sequential scan on a tiny table is not
+  automatically a defect, and an index alone does not prove the query is efficient.
+- Report what was checked, the data scale, and any remaining limits. If representative-scale
+  measurement is unavailable, explicitly report that gap and provide a concrete plan/index
+  analysis; do not claim performance is verified from local timings alone.
+
 ## Skills
 
 Use `.codex/SKILLS_INDEX.md` only when the relevant skill is not already clear. Open only skills

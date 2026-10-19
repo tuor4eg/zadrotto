@@ -59,7 +59,7 @@ export function AdHocJobButton({ handlers, mediaTypes }: { handlers: Handler[]; 
         <div><h2 className="text-xl font-semibold">Разовый запуск</h2><p className="mt-1 text-sm text-stone-600">Не создаёт расписание. Запуск сразу попадёт в очередь.</p></div>
         <Field label="Обработчик" hint="Выберите операцию для выполнения.">
           <Select name="type" value={selectedType} onChange={(event) => setSelectedType(event.currentTarget.value)}>
-            {handlers.filter((item) => item.type !== EDITORIAL_SUMMARY_GENERATE_TYPE).map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}
+            {handlers.filter((item) => item.type !== EDITORIAL_SUMMARY_GENERATE_TYPE && item.type !== "media.game-company-enrich").map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}
           </Select>
         </Field>
         <input type="hidden" name="payload" value={JSON.stringify(payload)} />

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { PlatformAssetRequestDetail } from "../asset-request-detail";
 import { notFound } from "next/navigation";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { getPlatformRequestDetail } from "@/db/queries/platform-requests";
@@ -23,6 +24,7 @@ export default async function PlatformRequestPage({ params, searchParams }: {
   const detail = await getPlatformRequestDetail(id, { page });
   if (!detail) notFound();
   const { request, variants, items, platforms } = detail;
+  if(request.kind !== "mapping")return <PlatformAssetRequestDetail id={id} error={query.error} saved={query.saved} />;
   const platformChoices = request.status === "pending" ? await getAdminPlatforms() : [];
   const choices = platformChoices.filter((platform) => platform.isActive);
   const error = platformRequestError(query.error);

@@ -26,6 +26,7 @@ const statusSql = sql<PlatformRequestStatus>`case
   when ${jobRuns.status} in ('failed', 'cancelled') then 'failed'
   else ${platformRequests.applyStatus} end`;
 const requestSelect = {
+  superseded: platformRequests.superseded, kind: platformRequests.kind, proposal: platformRequests.proposal, targetPlatformId: platformRequests.targetPlatformId, autoApproved: platformRequests.autoApproved,
   id: platformRequests.id, provider: platformRequests.provider, mediaType: platformRequests.mediaType,
   mediaTypeName: mediaTypes.name, externalPlatformName: platformRequests.externalPlatformName,
   normalizedExternalPlatformName: platformRequests.normalizedExternalPlatformName,
@@ -38,7 +39,7 @@ const requestSelect = {
 };
 
 export async function getPendingPlatformRequestCount() {
-  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(platformRequests).where(isNull(platformRequests.decision));
+  const [row] = await db.select({ count: sql<number>`count(*)::int` }).from(platformRequests).where(and(isNull(platformRequests.decision),eq(platformRequests.superseded,false)));
   return row.count;
 }
 
@@ -46,13 +47,13 @@ export async function getPlatformRequests(input: { all?: boolean } = {}) {
   return db.select(requestSelect).from(platformRequests)
     .innerJoin(mediaTypes, eq(mediaTypes.code, platformRequests.mediaType))
     .leftJoin(jobRuns, eq(jobRuns.id, platformRequests.jobRunId))
-    .where(input.all ? undefined : isNull(platformRequests.decision))
+    .where(input.all ? undefined : and(isNull(platformRequests.decision),eq(platformRequests.superseded,false)))
     .orderBy(asc(platformRequests.firstSeenAt), asc(platformRequests.id));
 }
 
 export async function getPlatformRequestsPage(input: { all?: boolean; searchQuery?: string; page?: number } = {}) {
   const search = normalizeSearchText(input.searchQuery ?? "");
-  const filter = and(input.all ? undefined : isNull(platformRequests.decision),
+  const filter = and(input.all ? undefined : and(isNull(platformRequests.decision),eq(platformRequests.superseded,false)),
     search ? containsNormalizedSearchSql(platformRequests.externalPlatformName, search) : undefined);
   const [count] = await db.select({ total: sql<number>`count(*)::int` }).from(platformRequests).where(filter);
   const totalPages = Math.max(1, Math.ceil(count.total / 25));
@@ -115,7 +116,7 @@ export async function lockPlatformRequestsForMetadata(tx: PlatformTransaction, i
         message: "Обнаружена неизвестная платформа записи.", metadata: { mediaItemId: input.mediaItemId, provider: input.provider, mediaType: input.mediaType, externalName: platform.name, reason: "unmapped-value" } });
     }
     await tx.select({ id: platformRequests.id }).from(platformRequests)
-      .where(and(eq(platformRequests.provider, input.provider), eq(platformRequests.mediaType, input.mediaType),
+      .where(and(eq(platformRequests.kind, "mapping"), eq(platformRequests.provider, input.provider), eq(platformRequests.mediaType, input.mediaType),
         eq(platformRequests.normalizedExternalPlatformName, platform.normalizedName))).for("update");
   }
 }
@@ -125,7 +126,7 @@ export async function syncPlatformRequestOccurrences(tx: PlatformTransaction, in
   mediaItemId: number; provider: string | null; mediaType: string; externalPlatforms: readonly ExternalPlatform[];
 }) {
   const rows = input.mediaType === "game" && input.provider && input.externalPlatforms.length ? await tx.select().from(platformRequests)
-    .where(and(eq(platformRequests.provider, input.provider), eq(platformRequests.mediaType, input.mediaType),
+    .where(and(eq(platformRequests.kind, "mapping"), eq(platformRequests.provider, input.provider), eq(platformRequests.mediaType, input.mediaType),
       inArray(platformRequests.normalizedExternalPlatformName, input.externalPlatforms.map((platform) => platform.normalizedName)))) : [];
   const now = new Date();
   // Delete/reinsert inside the existing transaction; request/media uniqueness prevents duplicates.
@@ -149,8 +150,14 @@ async function enqueueApply(tx: PlatformTransaction, requestId: number, adminId:
 }
 
 export async function resolvePlatformRequest(input: {
-  requestId: number; adminId: number; decision: PlatformRequestDecision; platformIds?: number[]; name?: string;
+  requestId: number; adminId: number; decision: PlatformRequestDecision; platformIds?: number[]; name?: string; candidateKey?: string; autoApprove?: boolean;
 }) {
+  const [kindRow] = await db.select({kind:platformRequests.kind}).from(platformRequests).where(eq(platformRequests.id,input.requestId));
+  if (kindRow && kindRow.kind !== "mapping") {
+    if(input.decision==="create") throw new Error("Создание платформы недоступно для этой заявки.");
+    const { resolvePlatformAssetRequest } = await import("./platform-logo-requests");
+    return resolvePlatformAssetRequest({...input,decision:input.decision});
+  }
   if (!["map", "create", "exclude"].includes(input.decision)) throw new Error("Неизвестное решение заявки.");
   const result = await db.transaction(async (tx) => {
     const [request] = await tx.select().from(platformRequests).where(eq(platformRequests.id, input.requestId)).for("update");
@@ -204,7 +211,7 @@ export async function reopenPlatformMapping(input: { mappingId: number; adminId:
   return db.transaction(async (tx) => {
     const [mapping] = await tx.select().from(providerPlatformMappings).where(eq(providerPlatformMappings.id, input.mappingId));
     if (!mapping) throw new PlatformRequestError("not-found", "Соответствие платформы не найдено.");
-    const key = and(eq(platformRequests.provider, mapping.provider), eq(platformRequests.mediaType, mapping.mediaType),
+    const key = and(eq(platformRequests.kind, "mapping"), eq(platformRequests.provider, mapping.provider), eq(platformRequests.mediaType, mapping.mediaType),
       eq(platformRequests.normalizedExternalPlatformName, mapping.normalizedExternalPlatformName));
     await tx.insert(platformRequests).values({ provider: mapping.provider, mediaType: mapping.mediaType,
       externalPlatformName: mapping.externalPlatformName, normalizedExternalPlatformName: mapping.normalizedExternalPlatformName }).onConflictDoNothing();
@@ -268,6 +275,10 @@ export async function retryPlatformRequest(input: { requestId: number; adminId: 
 export async function applyPlatformRequest(requestId: number, input: { signal?: AbortSignal; jobRunId?: number } = {}) {
   const [request] = await db.select().from(platformRequests).where(eq(platformRequests.id, requestId));
   if (!request) throw new Error("Platform request not found");
+  if(request.kind !== "mapping") {
+    const { applyPlatformAssetRequest } = await import("./platform-logo-requests");
+    return applyPlatformAssetRequest(requestId,input);
+  }
   if (input.jobRunId && request.jobRunId !== input.jobRunId) return { processed: 0 };
   // A worker can retry after committing the recalculation but before recording job success.
   if (request.decision === null && request.applyStatus === "pending") {

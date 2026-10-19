@@ -2,7 +2,7 @@ import { compareCatalogAlphabetGroups, getCatalogAlphabetGroup } from "@/lib/com
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import type { MediaItemPlatform } from "./platforms";
 
-export type PublicPlatform = MediaItemPlatform & { mediaItemsCount: number };
+export type PublicPlatform = MediaItemPlatform & { mediaItemsCount: number; logoUrl?: string | null };
 
 export function paginatePublicPlatforms(rows: readonly (PublicPlatform & { nameMatches: boolean })[], input: {
   page: number; pageSize: number; letter?: string; searchQuery: string;
@@ -14,6 +14,6 @@ export function paginatePublicPlatforms(rows: readonly (PublicPlatform & { nameM
       || a.name.localeCompare(b.name, "ru-RU") || a.id - b.id);
   const totalPages = getTotalPages(filtered.length, input.pageSize);
   const page = clampPage(input.page, totalPages);
-  return { items: filtered.slice(getOffset(page, input.pageSize), page * input.pageSize).map(({ id, slug, name, mediaItemsCount }) => ({ id, slug, name, mediaItemsCount })),
+  return { items: filtered.slice(getOffset(page, input.pageSize), page * input.pageSize).map(({ id, slug, name, mediaItemsCount, logoUrl }) => ({ id, slug, name, mediaItemsCount, ...(logoUrl !== undefined ? { logoUrl } : {}) })),
     page, pageSize: input.pageSize, paginationTotalCount: filtered.length, totalPages, availableLetters, selectedLetter };
 }

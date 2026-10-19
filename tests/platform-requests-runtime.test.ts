@@ -52,7 +52,7 @@ test("platform requests apply current metadata, reopen mappings and survive fail
         actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     const initialFacts = await client`SELECT facts FROM media_item_metadata ORDER BY media_item_id`;
-    for (const file of ["0120_normalized_platforms.sql", "0121_platform_initial_mappings.sql", "0122_platform_backfill.sql"]) {
+    for (const file of ["0120_normalized_platforms.sql", "0121_platform_initial_mappings.sql", "0122_platform_backfill.sql", "0126_platform_logos.sql"]) {
       await client.begin(async tx => {
         for (const statement of readFileSync(`drizzle/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
       });

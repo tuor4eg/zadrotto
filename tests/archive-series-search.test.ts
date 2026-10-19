@@ -39,7 +39,7 @@ describe("archive series search", () => {
     assert.match(archivePage, /getFranchiseByCode\(requestedSeriesCode\)/);
     assert.match(
       archivePage,
-      /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "platform"\]/,
+      /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"\]/,
     );
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
     assert.match(archivePage, /const catalogSearchQuery = !selectedCreator && \(selectedGenre \|\| selectedSeries\) \? "" : searchQuery/);

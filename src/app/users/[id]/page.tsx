@@ -5,7 +5,7 @@ import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { AuthorStatistics } from "@/components/author/author-statistics";
 import { HomeAuthorStatistics } from "@/app/main/home-author-statistics";
 import { RecentAchievementShowcase } from "@/components/achievements/recent-achievement-showcase";
-import { getAchievementShowcase } from "@/db/queries/achievements";
+import { getRecentAwardedAchievements } from "@/db/queries/achievements";
 import { Alert } from "@/components/ui/alert";
 import { getPublicAuthorStatistics, getPublicUserProfile } from "@/db/queries/friends";
 import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
@@ -45,26 +45,26 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const isAdmin = headerState.currentAdminUser;
   const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
-  const [achievementItems, level] = await Promise.all([
-    getAchievementShowcase(profile.id),
+  const [achievementItems, level, journal, quizStatistics] = await Promise.all([
+    getRecentAwardedAchievements(profile.id),
     getPublicAuthorLevel(profile.id),
+    (async () => {
+      if (!profile.canViewJournal) return { mediaTypes: [], statistics: null };
+      const [accessibleCodes, options] = await Promise.all([
+        isAdmin
+          ? getAllMediaTypeOptions().then((items) => items.map((item) => item.code))
+          : getAccessibleMediaTypeCodes(current?.id),
+        getEffectiveMediaTypeOptions(profile.id),
+      ]);
+      const accessibleCodeSet = new Set(accessibleCodes);
+      const mediaTypes = options.filter((item) => item.isEnabled && accessibleCodeSet.has(item.code));
+      const statistics = await getPublicAuthorStatistics(profile.id, mediaTypes.map((item) => item.code));
+      return { mediaTypes, statistics };
+    })(),
+    profile.canViewJournal ? getAuthorQuizStatistics(profile.id) : Promise.resolve(null),
   ]);
-  const accessibleMediaTypeCodes = profile.canViewJournal
-    ? isAdmin
-      ? (await getAllMediaTypeOptions()).map((item) => item.code)
-      : await getAccessibleMediaTypeCodes(current?.id)
-    : [];
   const basePath = `/users/${profile.id}`;
-  const accessibleMediaTypeCodeSet = new Set(accessibleMediaTypeCodes);
-  const mediaTypes = profile.canViewJournal
-    ? (await getEffectiveMediaTypeOptions(profile.id)).filter((item) => item.isEnabled && accessibleMediaTypeCodeSet.has(item.code))
-    : [];
-  const [statistics, quizStatistics] = profile.canViewJournal
-    ? await Promise.all([
-        getPublicAuthorStatistics(profile.id, mediaTypes.map((item) => item.code)),
-        getAuthorQuizStatistics(profile.id),
-      ])
-    : [null, null];
+  const { mediaTypes, statistics } = journal;
   const statisticsMediaItemIds = statistics ? [...new Set([
     ...statistics.latestRatings.map((item) => item.mediaItemId),
     ...statistics.latestReviews.map((item) => item.mediaItemId),

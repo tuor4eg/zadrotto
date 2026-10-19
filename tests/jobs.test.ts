@@ -173,7 +173,7 @@ test("achievement backfill is enqueue-only and cannot be created as a periodic s
   assert.match(manage, /if \(handler\.schedulable === false\) throw new Error/);
   assert.match(schedules, /schedulable: schedulable !== false/);
   assert.match(manager, /handlers\.filter\(\(item\) => item\.schedulable \|\| item\.type === job\?\.type\)/);
-  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.filter\(\(item\) => item\.type !== EDITORIAL_SUMMARY_GENERATE_TYPE\)\.map\(\(item\) => <option key=\{item\.type\}/);
+  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.filter\(\(item\) => item\.type !== EDITORIAL_SUMMARY_GENERATE_TYPE && item\.type !== "media\.game-company-enrich"\)\.map\(\(item\) => <option key=\{item\.type\}/);
   assert.match(manager, /partsOnly: true/);
   assert.match(manager, /Только части сериалов без сезонов/);
 });

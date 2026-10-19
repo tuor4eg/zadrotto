@@ -29,6 +29,7 @@ export type AchievementShowcaseItem = {
   awardedThreshold: number | null
   code: string
   currentValue: number
+  progressAvailable?: boolean
   description: string | null
   highestAwardedLevel: number | null
   imageUrl: string | null
@@ -131,7 +132,7 @@ function AchievementCardPanel({
 }) {
   const level = formatLevel({ level: slide.level, levelCount: item.levelCount })
   const nextThreshold = item.nextThreshold
-  const showProgress = slide.showProgress && hasVisibleProgress(nextThreshold)
+  const showProgress = item.progressAvailable !== false && slide.showProgress && hasVisibleProgress(nextThreshold)
 
   return (
     <div className="flex h-full w-full shrink-0 basis-full flex-col items-center px-2 pb-4 pt-4 sm:px-3">
