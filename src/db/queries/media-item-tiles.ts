@@ -1,3 +1,4 @@
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -78,7 +79,7 @@ export async function getMediaItemTilesByIds(
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
       mediaTypeName: mediaTypes.name,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       genres: publicMediaItemGenresJsonSql(),
       hasUnifiedGenres: hasUnifiedGenresSql(),
       originalTitle: mediaItems.originalTitle,

@@ -1,3 +1,10 @@
+import type { DbTransaction } from "@/db/transaction";
+import { getWorkingBookPublishers } from "@/db/queries/book-publisher-roster";
+import { guardSnapshotJob, withSnapshotJobGuard, attachProviderSnapshots, lockProviderSnapshotReferences, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { prepareBookSnapshotReferences, bookProjectionLegacyFacts } from "@/lib/providers/book-service";
+import { isNormalizedBookProvider } from "@/lib/providers/book-cutover";
+import type { SnapshotReference } from "@/lib/providers/snapshot-values";
+import { mediaMetadataFactsSql, normalizedBookProviderSql } from "@/db/queries/book-metadata";
 import { saveGameCompanyRoster } from "./game-companies";
 import { extractGameCompanyReferences, isGameCompanyProvider } from "@/lib/creators/game-companies";
 import { gameCompanyRosters } from "@/db/schema";
@@ -6,7 +13,7 @@ import { entryProviderWriterCreatorsJsonSql } from "@/db/queries/creators"
 import type { TitlePartProviderInput } from "@/lib/media/title-parts"
 import { syncProviderTitleParts } from "@/db/queries/title-parts-sync"
 import { createJobRun } from "@/db/queries/jobs"
-import { and, asc, eq, inArray, or, sql } from "drizzle-orm"
+import { and, asc, eq, getTableColumns, inArray, or, sql } from "drizzle-orm"
 
 import { db } from "@/db"
 import { mediaCarriers, mediaItemMetadata, mediaItems, titleParts } from "@/db/schema"
@@ -37,6 +44,10 @@ export type MediaItemMetadataValue = {
 };
 
 export type UpsertMediaItemMetadataInput = {
+  snapshotReferences?: SnapshotReference[];
+  jobGuard?: SnapshotJobGuard;
+  expectedSource?: {provider:string|null;externalId:string|null};
+  checkpoint?: Record<string,unknown>;
   parts?: TitlePartProviderInput[];
   requestProviderParts?: boolean;
   mediaItemId: number;
@@ -66,28 +77,48 @@ export async function getMediaItemMetadata(
   mediaItemId: number,
 ): Promise<MediaItemMetadataValue | null> {
   const [row] = await db
-    .select({ mediaType: mediaItems.mediaType, metadata: mediaItemMetadata, genres: mediaItemGenresJsonSql(mediaItemMetadata.mediaItemId), platforms: mediaItemPlatformsJsonSql(mediaItemMetadata.mediaItemId), writerCreators: entryProviderWriterCreatorsJsonSql(sql`"media_item_metadata"."media_item_id"`) })
+    .select({ mediaType: mediaItems.mediaType, metadata: {mediaItemId:mediaItemMetadata.mediaItemId,facts:mediaMetadataFactsSql(),sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,sourceUrl:mediaItemMetadata.sourceUrl,fetchedAt:mediaItemMetadata.fetchedAt,createdAt:mediaItemMetadata.createdAt,updatedAt:mediaItemMetadata.updatedAt,originalLanguage:mediaItemMetadata.originalLanguage}, genres: mediaItemGenresJsonSql(mediaItemMetadata.mediaItemId), platforms: mediaItemPlatformsJsonSql(mediaItemMetadata.mediaItemId), writerCreators: entryProviderWriterCreatorsJsonSql(sql`"media_item_metadata"."media_item_id"`) })
     .from(mediaItemMetadata)
     .innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
     .where(eq(mediaItemMetadata.mediaItemId, mediaItemId))
     .limit(1);
 
-  return row ? mapMediaItemMetadata(row.metadata, row.genres, row.platforms, row.mediaType === "book" ? row.writerCreators : undefined) : null;
+  return row ? mapMediaItemMetadata({...row.metadata,facts:row.metadata.facts ?? {}}, row.genres, row.platforms, row.mediaType === "book" ? row.writerCreators : undefined) : null;
 }
 
 export async function upsertMediaItemMetadata(
   input: UpsertMediaItemMetadataInput,
+  transaction?: DbTransaction,
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
-  const fetchedAt = input.fetchedAt === undefined ? now : input.fetchedAt;
   const provider = input.sourceProvider?.trim() || null;
-  const result = await db.transaction(async (tx) => {
+  const prepared = input.snapshotReferences && provider && input.sourceExternalId
+    ? await prepareBookSnapshotReferences(provider,input.sourceExternalId,input.snapshotReferences,transaction ?? db) : null;
+  const fetchedAt = input.fetchedAt === undefined ? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
+  const work = async (tx:DbTransaction) => {
+    await guardSnapshotJob(tx,input.jobGuard);
     const [item] = await tx.select({ mediaType: mediaItems.mediaType, title: mediaItems.title })
       .from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).for("update");
     if (!item) throw new Error("Media item not found");
-    const [previous] = await tx.select().from(mediaItemMetadata)
+    const normalizedBook = item.mediaType === "book" && await isNormalizedBookProvider(provider, tx);
+    const [previous] = await tx.select({mediaItemId:mediaItemMetadata.mediaItemId,sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,originalLanguage:mediaItemMetadata.originalLanguage,
+      facts:normalizedBook ? sql<Record<string,unknown>>`'{}'::jsonb` : mediaItemMetadata.facts}).from(mediaItemMetadata)
       .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId));
-    await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: input.facts, provider, mediaType: item.mediaType });
+    if (input.expectedSource && ((previous?.sourceProvider ?? null) !== input.expectedSource.provider || (previous?.sourceExternalId ?? null) !== input.expectedSource.externalId)) throw new Error("PROVIDER_SOURCE_CHANGED");
+    if (prepared && item.mediaType !== "book") throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
+    if (input.snapshotReferences) await lockProviderSnapshotReferences(tx,input.snapshotReferences);
+    if (normalizedBook && !prepared) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
+    const sourceFacts = prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
+    const publisherValue = !normalizedBook && previous?.sourceProvider === provider ? previous.facts.publishers : null;
+    const historicalPublishers = (typeof publisherValue === "string" ? [publisherValue] : Array.isArray(publisherValue) ? publisherValue : [])
+      .filter((name):name is string=>typeof name==="string" && Boolean(name.trim()));
+    const workingPublishers = prepared && previous?.sourceProvider === provider ? await getWorkingBookPublishers(tx,input.mediaItemId,provider!) : [];
+    const publishers = workingPublishers.length ? workingPublishers : historicalPublishers.map((name,position)=>({name,position,externalId:null,roleCode:"publisher" as const}));
+    const contributors = prepared ? [...prepared.projection.contributors,...publishers] : undefined;
+    const facts = normalizedBook ? previous?.facts ?? {} : {
+      ...(item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...sourceFacts,
+    };
+    await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: sourceFacts, provider, mediaType: item.mediaType });
     // Global order: media item → genre request keys → platform request keys.
     await lockPlatformRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: input.facts, provider, mediaType: item.mediaType });
     const resolved = await resolveProviderGenres({ facts: input.facts, provider, mediaType: item.mediaType }, tx);
@@ -96,25 +127,27 @@ export async function upsertMediaItemMetadata(
       .insert(mediaItemMetadata)
       .values({
         mediaItemId: input.mediaItemId,
-        facts: input.facts,
+        facts,
+        originalLanguage: previous?.originalLanguage ?? (typeof previous?.facts.originalLanguage === "string" ? previous.facts.originalLanguage.trim() : null),
         sourceProvider: provider,
-        sourceExternalId: input.sourceExternalId ?? null,
-        sourceUrl: input.sourceUrl ?? null,
+        sourceExternalId: prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+        sourceUrl: input.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
         fetchedAt,
         updatedAt: now,
       })
       .onConflictDoUpdate({
         target: mediaItemMetadata.mediaItemId,
         set: {
-          facts: input.facts,
+          facts: normalizedBook ? undefined : facts,
+          originalLanguage: previous?.originalLanguage ?? (typeof previous?.facts.originalLanguage === "string" ? previous.facts.originalLanguage.trim() : null),
           sourceProvider: provider,
-          sourceExternalId: input.sourceExternalId ?? null,
-          sourceUrl: input.sourceUrl ?? null,
+          sourceExternalId: prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+          sourceUrl: input.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
           fetchedAt,
           updatedAt: now,
         },
       })
-      .returning();
+      .returning({...getTableColumns(mediaItemMetadata),facts:normalizedBook ? sql<Record<string,unknown>>`'{}'::jsonb` : mediaItemMetadata.facts});
 
     const partsResult = input.parts !== undefined && provider
       ? await syncProviderTitleParts(tx, { mediaItemId: input.mediaItemId, provider, parts: input.parts })
@@ -129,6 +162,9 @@ export async function upsertMediaItemMetadata(
         maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 3600, timeoutSeconds: 300 }, now, tx);
     }
 
+    // Book adapters own contributors only; do not erase independent normalized
+    // genre/platform decisions when their projection supplies neither roster.
+    if (!prepared) {
     await syncMediaItemProviderGenres(tx, { mediaItemId: input.mediaItemId, provider, genres: resolved.genres });
     await syncGenreRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
       externalGenres: extractExternalGenres(input.facts) });
@@ -137,7 +173,8 @@ export async function upsertMediaItemMetadata(
     await syncPlatformRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
       externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(input.facts) : [] });
 
-    if (Object.keys(input.facts).length > 0) {
+    }
+    if (prepared || Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
@@ -145,12 +182,21 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
       const references = extractGameCompanyReferences(input.facts, provider);
       if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references });
-    } else await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: input.facts });
-    const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql(), platforms: mediaItemPlatformsJsonSql(), writerCreators: entryProviderWriterCreatorsJsonSql() }).from(mediaItems)
-      .where(eq(mediaItems.id, input.mediaItemId));
+    } else await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    if (prepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
+      {id:prepared.primary.id,payloadHash:prepared.primary.payloadHash,purpose:"primary"},
+      ...prepared.dependencies.map(row=>({id:row.id,payloadHash:row.payloadHash,purpose:"dependency" as const})),
+    ],{kind:"system"});
+    if (input.jobGuard && input.checkpoint) {
+      const {jobRuns}=await import("@/db/schema");
+      await tx.update(jobRuns).set({payload:input.checkpoint,updatedAt:now}).where(eq(jobRuns.id,input.jobGuard.runId));
+    }
+    const [genreRow] = await tx.select({ genres: mediaItemGenresJsonSql(), platforms: mediaItemPlatformsJsonSql(), writerCreators: entryProviderWriterCreatorsJsonSql(), facts:mediaMetadataFactsSql() }).from(mediaItems)
+      .leftJoin(mediaItemMetadata,eq(mediaItemMetadata.mediaItemId,mediaItems.id)).where(eq(mediaItems.id, input.mediaItemId));
+    await guardSnapshotJob(tx,input.jobGuard);
     return {
       partConflicts: partsResult.conflicts,
-      metadata: mapMediaItemMetadata(row, genreRow.genres, genreRow.platforms, item.mediaType === "book" ? genreRow.writerCreators : undefined),
+      metadata: mapMediaItemMetadata({...row,facts:genreRow.facts??{}}, genreRow.genres, genreRow.platforms, item.mediaType === "book" ? genreRow.writerCreators : undefined),
       title: item.title, mediaType: item.mediaType, unmapped: resolved.unmapped,
       unmappedPlatforms: resolvedPlatforms.unmapped,
       shouldWarnPlatforms: hasNewUnmappedPlatforms({
@@ -162,7 +208,8 @@ export async function upsertMediaItemMetadata(
         previousProvider: previous?.sourceProvider ?? null, previousFacts: previous?.facts ?? null,
       }),
     };
-  });
+  };
+  const result = transaction ? await work(transaction) : await db.transaction(work);
   if (result.partConflicts.length) {
     await logSystemActivity({ action: "media.parts.sync-conflict", entityId: input.mediaItemId, entityLabel: result.title,
       message: "При обновлении частей записи обнаружен конфликт источников или нумерации.", severity: "warning",
@@ -207,10 +254,9 @@ const hasMetadataSourceSql = sql`(
   and btrim(${mediaItemMetadata.sourceExternalId}) <> ''
 )`
 
-const missingMetadataFactsSql = sql`(
-  ${mediaItemMetadata.fetchedAt} is null
-  or ${mediaItemMetadata.facts} = '{}'::jsonb
-)`
+const missingMetadataFactsSql = sql`case when ${mediaItems.mediaType}='book' and ${normalizedBookProviderSql()}
+ then ${mediaItemMetadata.fetchedAt} is null
+ else (${mediaItemMetadata.fetchedAt} is null or ${mediaItemMetadata.facts} = '{}'::jsonb) end`
 
 export const METADATA_REFRESH_MEDIA_TYPES = ["series", "anime"] as const
 
@@ -330,9 +376,8 @@ export async function getMediaItemsStaleMetadata(input: {
   return rows.map(mapMetadataJobItem)
 }
 
-export async function markMediaItemMetadataAttempt(mediaItemId: number, issueCode: MetadataIssueCode | null) {
-  await db
-    .update(mediaItems)
-    .set({ metadataAttemptedAt: new Date(), metadataIssueCode: issueCode })
-    .where(eq(mediaItems.id, mediaItemId))
+export async function markMediaItemMetadataAttempt(mediaItemId: number, issueCode: MetadataIssueCode | null, jobGuard?:SnapshotJobGuard) {
+  await withSnapshotJobGuard(jobGuard, async tx=>{
+    await tx.update(mediaItems).set({metadataAttemptedAt:new Date(),metadataIssueCode:issueCode}).where(eq(mediaItems.id,mediaItemId));
+  });
 }

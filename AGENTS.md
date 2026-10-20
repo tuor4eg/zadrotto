@@ -33,6 +33,12 @@ alone does not require four agents.
 For small mechanical changes—copy, labels, minor styles, formatting, obvious local bugs—work
 directly without project agents.
 
+When making substantial architectural changes, check the relevant documents in
+`docs/architecture/` and update them within the same task. This includes changes to domain
+boundaries, sources of truth, data relationships, integration pipelines, background processing,
+or architectural invariants. Cosmetic changes and local fixes that do not affect architecture
+do not require architecture documentation updates.
+
 ## Project invariants
 
 - Keep changes focused and preserve unrelated work.
@@ -41,6 +47,9 @@ directly without project agents.
 - Design wide admin data tables responsively from the start: keep the table for desktop, but render
   the same rows as readable cards on mobile instead of relying on horizontal scrolling.
 - Integrations, AI, Telegram, and visual experiments must not become foundations of the domain.
+- Minimize environment variables. If a setting or operational switch can be managed through the
+  admin UI, implement it there using persisted settings instead of adding an environment variable.
+  Reserve environment variables for deployment configuration and bootstrap requirements.
 - Respond in Russian unless asked otherwise.
 - In user-facing text call `MediaItem` «запись». Do not use «тайтл» in labels, messages,
   notifications, tooltips, or activity logs.
@@ -105,3 +114,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 This block is written and re-added by `next dev` — verify at `node_modules/next/dist/server/lib/generate-agent-files.js`. Removing it from a diff only re-creates the uncommitted change; committing it with your work keeps the tree clean.
 
 <!-- END:nextjs-agent-rules -->
+
+## Provider snapshot links
+
+`provider_snapshot_links` uses polymorphic references validated by the server registry in
+`src/lib/providers/entities.ts`. Attach, delete and merge must lock the target and change its
+snapshot links in the same transaction through the shared helpers. Register new entity types
+in code; never accept table names from requests. Direct SQL and new FK cascades bypass this
+application-level guarantee: migration/import/delete scripts must explicitly remove or move
+links atomically. Do not remove shared provider snapshots when deleting one entity.

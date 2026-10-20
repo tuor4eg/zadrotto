@@ -1,5 +1,9 @@
 "use server";
 
+import type { DbTransaction } from "@/db/transaction";
+
+import { validateBookFormMutation, isBookSnapshotValidationError } from "@/lib/providers/book-form-mutation";
+
 import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
@@ -365,19 +369,21 @@ function getCoverSourceFromItem(item: {
   };
 }
 
-function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
-  return resolveMediaMetadataFormMutation({
+async function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
+  const mutation = resolveMediaMetadataFormMutation({
     expectedMediaType,
     metadataCandidateToken: getOptionalMetadataCandidateToken(formData),
     titleSourceToken:
       normalizeOptionalFormString(getFormString(formData, "metadataTitleSourceToken")),
     sourceChanged: getFormString(formData, "metadataSourceChanged") === "1",
   });
+  return validateBookFormMutation(mutation,expectedMediaType);
 }
 
 async function saveMediaItemMetadataMutation(
   mutation: Exclude<MediaMetadataFormMutation, { type: "reject" }>,
   mediaItemId: number,
+  transaction?:DbTransaction,
 ) {
   if (mutation.type === "keep") {
     return;
@@ -395,15 +401,16 @@ async function saveMediaItemMetadataMutation(
     requestProviderParts: true,
     mediaItemId,
     facts: mutation.facts,
+    snapshotReferences: mutation.snapshotReferences,
     sourceProvider: mutation.sourceProvider,
     sourceExternalId: mutation.sourceExternalId,
     sourceUrl: mutation.sourceUrl,
     fetchedAt: mutation.fetchedAt,
-  });
+  },transaction);
   await upsertMediaItemProviderSnapshot({
     mediaItemId,
     ...mutation.providerSnapshot,
-  });
+  },transaction);
 }
 
 export async function createAuthorInlineFranchiseAction(
@@ -528,7 +535,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, firstExperience.error));
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
+  const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
@@ -584,6 +591,8 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   try {
     result = await createAuthorPrivateMediaItemWithLimitCheck({
+      afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
+        ? (tx,id)=>saveMediaItemMetadataMutation(metadataMutation,id,tx) : undefined,
       authorId: author.id,
       authorCreationRequestId,
       code,
@@ -601,6 +610,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       coverUrl: cover.coverUrl,
       coverThumbUrl: cover.coverThumbUrl,
     }).catch((cleanupError) => console.error("cover cleanup after create failure", cleanupError));
+    if (isBookSnapshotValidationError(error)) redirect(getCreateErrorRedirect(formData,"invalid-metadata"));
     throw error;
   }
 
@@ -636,7 +646,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     },
   });
 
-  await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
+  if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
 
   if (ratingScore.value !== null) {
     await upsertAuthorRating({
@@ -807,7 +817,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=${duplicateCheck.error}`);
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
+  const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
@@ -877,6 +887,8 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
 
   try {
     await updateAuthorMediaItem({
+      afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
+        ? (tx,id)=>saveMediaItemMetadataMutation(metadataMutation,id,tx) : undefined,
       authorId: author.id,
       mediaItemId,
       coverUrl: nextCoverUrl,
@@ -894,6 +906,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
         mediaItemId,
       }));
     }
+    if (isBookSnapshotValidationError(error)) redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
     throw error;
   }
 
@@ -939,7 +952,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     }));
   }
 
-  await saveMediaItemMetadataMutation(metadataMutation, mediaItemId);
+  if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, mediaItemId);
 
   await logActivity({
     action: "media.updated",

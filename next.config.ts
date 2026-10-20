@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
+import { HTML_LIMITED_BOT_UA_RE } from "next/dist/shared/lib/router/utils/html-bots";
 
 const nextConfig: NextConfig = {
+  // Keep Next's full crawler list; Telegram also needs metadata in the initial HTML.
+  htmlLimitedBots: new RegExp(`${HTML_LIMITED_BOT_UA_RE.source}|TelegramBot`, "i"),
   experimental: {
     serverActions: {
       bodySizeLimit: "6mb",

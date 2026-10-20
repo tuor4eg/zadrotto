@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
@@ -258,7 +259,7 @@ export async function retryGenreRequest(input: { requestId: number; adminId: num
   });
 }
 
-export async function applyGenreRequest(requestId: number, input: { signal?: AbortSignal; jobRunId?: number } = {}) {
+export async function applyGenreRequest(requestId: number, input: { signal?: AbortSignal; jobRunId?: number; jobGuard?: SnapshotJobGuard } = {}) {
   const [request] = await db.select().from(genreRequests).where(eq(genreRequests.id, requestId));
   if (!request) throw new Error("Genre request not found");
   if (input.jobRunId && request.jobRunId !== input.jobRunId) return { processed: 0 };
@@ -283,7 +284,7 @@ export async function applyGenreRequest(requestId: number, input: { signal?: Abo
       if (!occurrences.length) break;
       for (const occurrence of occurrences) {
         input.signal?.throwIfAborted();
-        await db.transaction(async (tx) => {
+        await withSnapshotJobGuard(input.jobGuard, async (tx) => {
           const [item] = await tx.select({ mediaType: mediaItems.mediaType }).from(mediaItems)
             .where(eq(mediaItems.id, occurrence.mediaItemId)).for("update");
           if (!item) return;
@@ -313,11 +314,15 @@ export async function applyGenreRequest(requestId: number, input: { signal?: Abo
       }
     }
     input.signal?.throwIfAborted();
-    await db.update(genreRequests).set({ applyStatus: request.decision === null ? "pending" : "processed", jobError: null, updatedAt: new Date() }).where(and(eq(genreRequests.id, requestId), input.jobRunId ? eq(genreRequests.jobRunId, input.jobRunId) : undefined));
+    await withSnapshotJobGuard(input.jobGuard, async tx => {
+      await tx.update(genreRequests).set({ applyStatus: request.decision === null ? "pending" : "processed", jobError: null, updatedAt: new Date() }).where(and(eq(genreRequests.id, requestId), input.jobRunId ? eq(genreRequests.jobRunId, input.jobRunId) : undefined));
+    });
     return { processed };
   } catch (error) {
-    await db.update(genreRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение по жанру. Подробности доступны в журнале задачи.",
+    await withSnapshotJobGuard(input.jobGuard, async tx => {
+      await tx.update(genreRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение по жанру. Подробности доступны в журнале задачи.",
       updatedAt: new Date() }).where(and(eq(genreRequests.id, requestId), input.jobRunId ? eq(genreRequests.jobRunId, input.jobRunId) : undefined));
+    });
     throw error;
   }
 }

@@ -33,8 +33,12 @@ export async function sendEmailWithResend(input: {
   subject: string;
   html: string;
   text: string;
+  signal?: AbortSignal;
 }): Promise<ResendSendResult> {
+  input.signal?.throwIfAborted();
   const controller = new AbortController();
+  const onAbort = () => controller.abort(input.signal?.reason);
+  input.signal?.addEventListener("abort", onAbort, { once: true });
   const timeout = setTimeout(() => controller.abort(), 10_000);
   const requestBody = JSON.stringify({
     from: `${input.config.fromName} <${input.config.fromEmail}>`,
@@ -73,5 +77,6 @@ export async function sendEmailWithResend(input: {
     return { ok: false, retryable: true, error: error instanceof Error ? error.message : "Resend request failed" };
   } finally {
     clearTimeout(timeout);
+    input.signal?.removeEventListener("abort", onAbort);
   }
 }

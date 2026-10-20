@@ -41,7 +41,7 @@ export async function runInDomainEventTransaction<TResult>(
     },
   ));
 
-  await Promise.all(eventIds.map(enqueueDomainEventDispatch));
+  await Promise.all(eventIds.map(id => enqueueDomainEventDispatch(id)));
   return result;
 }
 

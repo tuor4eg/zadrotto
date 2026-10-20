@@ -91,11 +91,13 @@ export type SignedMediaTitleCandidate = MediaTitleCandidate & {
 export type ProviderTitlePart = import("@/lib/media/title-parts").TitlePartProviderInput;
 
 export type MediaTitleMetadata = {
+  snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[];
   parts?: ProviderTitlePart[];
   provider: MediaProviderCode;
   externalId: string;
   sourceUrl: string | null;
   facts: Record<string, unknown>;
+  /** Partial enrichment of the selected candidate. Empty/missing values do not clear form fields. */
   fields?: {
     aliases?: string[];
     title?: string | null;
@@ -120,6 +122,9 @@ export type ProviderSearchOptions = {
 export type CoverSearchOptions = ProviderSearchOptions;
 export type TitleSearchOptions = ProviderSearchOptions;
 export type TitleMetadataOptions = ProviderSearchOptions & {
+  snapshotJobGuard?: {runId:number;lockToken:string};
+  snapshotReuseAfter?: Date;
+  signal?: AbortSignal;
   enrichTitleFields?: boolean;
 };
 

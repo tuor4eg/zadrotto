@@ -11,11 +11,15 @@ import { AdminToasts, type AdminToast } from "../admin-toasts";
 import { findCreatorRelatedSeriesAction, saveCreatorAction } from "./actions";
 
 export function CreatorForm({ creator, types, series, creators }: {
-  creator?: { id: number; name: string; originalName?: string | null; slug: string; typeId: number; seriesIds: number[]; relations: { targetCreatorId: number; relationType: "pseudonym_of" }[]; incomingRelations: { sourceCreatorId: number; name: string; relationType: "pseudonym_of" }[] };
+  creator?: { id: number; name: string; originalName?: string | null; birthDate?: string | null; deathDate?: string | null; slug: string; typeId: number; seriesIds: number[]; relations: { targetCreatorId: number; relationType: "pseudonym_of" }[]; incomingRelations: { sourceCreatorId: number; name: string; relationType: "pseudonym_of" }[] };
   types: { id: number; name: string; code: string }[];
   series: SearchableFranchiseOption[];
   creators: { id: number; name: string }[];
 }) {
+  const [initialBirthDate] = useState(creator?.birthDate ?? "");
+  const [initialDeathDate] = useState(creator?.deathDate ?? "");
+  const [birthDate, setBirthDate] = useState(initialBirthDate);
+  const [deathDate, setDeathDate] = useState(initialDeathDate);
   const [relatedIds, setRelatedIds] = useState(() => creator?.relations.map(relation => relation.targetCreatorId) ?? []);
   const [creatorSearch, setCreatorSearch] = useState("");
   const normalizedSearch = normalizeSearchText(creatorSearch);
@@ -49,6 +53,11 @@ export function CreatorForm({ creator, types, series, creators }: {
       <div className="grid gap-2"><Label htmlFor="creator-original-name">Оригинальное имя</Label><Input id="creator-original-name" name="originalName" defaultValue={creator?.originalName ?? ""} maxLength={200} /></div>
       <div className="grid gap-2"><Label htmlFor="creator-slug">Slug</Label><Input id="creator-slug" name="slug" defaultValue={creator?.slug} required maxLength={200} /><p className="text-xs text-stone-500">Латинские буквы, цифры и дефисы. Используется в ссылке архива.</p></div>
       <div className="grid content-start gap-2"><Label htmlFor="creator-type">Тип</Label><Select id="creator-type" name="typeId" required defaultValue={creator?.typeId ?? types.find(type => type.code === "person")?.id}>{types.map(type => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
+    </div>
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-2"><Label htmlFor="creator-birth-date">Дата рождения</Label><Input id="creator-birth-date" name={!creator || birthDate !== initialBirthDate ? "birthDate" : undefined} type="date" value={birthDate} onChange={event => setBirthDate(event.target.value)} /></div>
+      <div className="grid gap-2"><Label htmlFor="creator-death-date">Дата смерти</Label><Input id="creator-death-date" name={!creator || deathDate !== initialDeathDate ? "deathDate" : undefined} type="date" value={deathDate} onChange={event => setDeathDate(event.target.value)} /></div>
+      <p className="text-xs text-stone-500 sm:col-span-2">Полные даты для людей. Заполненные даты сохраняются при обработке снимков; очищенная дата может заполниться снова.</p>
     </div>
     <div className="grid gap-2"><Label htmlFor="creator-series">Прямые связи с сериями</Label>
       <div className="flex flex-col items-start gap-2 sm:flex-row">

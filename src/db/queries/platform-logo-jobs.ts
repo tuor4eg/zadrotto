@@ -1,3 +1,4 @@
+import { guardSnapshotJob, withSnapshotJobGuard } from "./provider-snapshots";
 import { and, asc, desc, eq, inArray, isNull, lt, or, sql } from 'drizzle-orm';
 import { db } from '@/db';
 import { jobRuns, platforms, platformProviderProfiles, providerPlatformMappings } from '@/db/schema';
@@ -8,16 +9,16 @@ import { JobError } from '@/lib/jobs/types';
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 export type PlatformLogoJobLease = { runId:number;lockToken:string };
 async function lockLease(tx:Transaction,lease:PlatformLogoJobLease) {
-  const [run]=await tx.select({id:jobRuns.id,adminId:jobRuns.createdByAdminId}).from(jobRuns).where(and(eq(jobRuns.id,lease.runId),eq(jobRuns.lockToken,lease.lockToken),eq(jobRuns.status,'running'),sql`${jobRuns.lockExpiresAt}>now()`)).for('update');
+  await guardSnapshotJob(tx, lease);
+  const [run]=await tx.select({id:jobRuns.id,adminId:jobRuns.createdByAdminId}).from(jobRuns).where(eq(jobRuns.id,lease.runId));
   if (!run) throw new JobError('lease-lost','Запуск задачи уже передан другому worker.',{retryable:false});
   return run;
 }
 export async function assertPlatformLogoJobLease(lease:PlatformLogoJobLease) {
-  return db.transaction(tx=>lockLease(tx,lease));
+  return withSnapshotJobGuard(lease, tx=>lockLease(tx,lease));
 }
 export async function checkpointPlatformLogoJob(lease:PlatformLogoJobLease,payload:PlatformLogoSyncPayload,mutate?:(tx:Transaction)=>Promise<void>) {
-  await db.transaction(async tx=>{
-    await lockLease(tx,lease);
+  await withSnapshotJobGuard(lease, async tx=>{
     if (mutate) await mutate(tx);
     await tx.update(jobRuns).set({payload,updatedAt:new Date()}).where(eq(jobRuns.id,lease.runId));
   });

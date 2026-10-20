@@ -10,7 +10,7 @@ export default function AdminProvidersLayout({
     <div>
       <PageHeader
         title="Провайдеры"
-        description="Авторизация, включение, порядок и лимиты внешних источников."
+        description="Авторизация, порядок, лимиты и сохранённые данные внешних источников."
       />
 
       <div className="mt-5 grid gap-6 border-t border-stone-100 pt-5 lg:grid-cols-[220px_minmax(0,1fr)]">

@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -34,7 +35,7 @@ export async function transformCompanyLogo(buffer: Buffer) {
 }
 
 /** One provider enrichment lease makes the persistent cache shared across concurrent import jobs. */
-export async function enrichGameCompanyProfiles(provider: GameCompanyProvider, externalIds: string[], signal?: AbortSignal, backfill = false) {
+export async function enrichGameCompanyProfiles(provider: GameCompanyProvider, externalIds: string[], signal?: AbortSignal, backfill = false, jobGuard?: SnapshotJobGuard) {
   if (!externalIds.length) return;
   signal?.throwIfAborted();
   const redis = await getRedisClient().catch(() => null);
@@ -49,17 +50,19 @@ export async function enrichGameCompanyProfiles(provider: GameCompanyProvider, e
     void redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('PEXPIRE',KEYS[1],120000) else return 0 end", { keys: [key], arguments: [owner] })
       .then(result => { if (Number(result) !== 1) lease.abort(); }).catch(() => lease.abort());
   }, 30000);
-  try { await enrichProfilesUnderLease(provider, externalIds, combined, backfill); }
+  try { await enrichProfilesUnderLease(provider, externalIds, combined, backfill, jobGuard); }
   finally {
     clearInterval(heartbeat);
     await redis.eval("if redis.call('GET',KEYS[1])==ARGV[1] then return redis.call('DEL',KEYS[1]) else return 0 end", { keys: [key], arguments: [owner] }).catch(() => {});
   }
 }
-async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalIds: string[], signal?: AbortSignal, backfill = false) {
+async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalIds: string[], signal?: AbortSignal, backfill = false, jobGuard?: SnapshotJobGuard) {
   const ids = [...new Set(externalIds)].sort();
   if (ids.some(id => !isGameCompanyId(provider, id))) throw new Error("Некорректный ID организации.");
   if (!ids.length) return;
-  for (const id of ids) await db.insert(gameCompanyProfiles).values({ provider, externalId: id, name: id }).onConflictDoNothing();
+  await withSnapshotJobGuard(jobGuard, async tx => {
+    for (const id of ids) await tx.insert(gameCompanyProfiles).values({ provider, externalId: id, name: id }).onConflictDoNothing();
+  });
   const cached = await db.select().from(gameCompanyProfiles).where(and(eq(gameCompanyProfiles.provider, provider), inArray(gameCompanyProfiles.externalId, ids)));
   const pending = cached.filter(row => row.profileStatus === "pending").map(row => row.externalId);
   const credentials = pending.length ? await getCoverProviderCredentialsForSearch() : undefined;
@@ -71,7 +74,9 @@ async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalI
     signal?.throwIfAborted();
     for (const id of batch) {
       const profile = profiles.find(row => row.externalId === id);
-      await db.update(gameCompanyProfiles).set(profile ? { name: profile.name, sourceUrl: profile.sourceUrl, details: profile.details, imageUrl: profile.imageUrl, profileStatus: "ready", fetchedAt: new Date(), error: null, updatedAt: new Date(), ...(!profile.imageUrl ? { imageStatus: "missing" } : {}) } : { profileStatus: "missing", imageStatus: "missing", fetchedAt: new Date(), updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, id)));
+      await withSnapshotJobGuard(jobGuard, async tx => {
+        await tx.update(gameCompanyProfiles).set(profile ? { name: profile.name, sourceUrl: profile.sourceUrl, details: profile.details, imageUrl: profile.imageUrl, profileStatus: "ready", fetchedAt: new Date(), error: null, updatedAt: new Date(), ...(!profile.imageUrl ? { imageStatus: "missing" } : {}) } : { profileStatus: "missing", imageStatus: "missing", fetchedAt: new Date(), updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, id)));
+      });
     }
   }
   const rows = await db.select().from(gameCompanyProfiles).where(and(eq(gameCompanyProfiles.provider, provider), inArray(gameCompanyProfiles.externalId, ids)));
@@ -89,22 +94,27 @@ async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalI
       signal?.throwIfAborted();
       await uploadS3Object({ objectKey, body, contentType: "image/webp" });
       signal?.throwIfAborted();
-      await db.update(gameCompanyProfiles).set({ imageObjectKey: objectKey, imageContentHash: contentHash, imageStatus: "ready", error: null, updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, row.externalId)));
-    } catch {
+      await withSnapshotJobGuard(jobGuard, async tx => {
+        await tx.update(gameCompanyProfiles).set({ imageObjectKey: objectKey, imageContentHash: contentHash, imageStatus: "ready", error: null, updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, row.externalId)));
+      });
+    } catch (error) {
       signal?.throwIfAborted();
-      await db.update(gameCompanyProfiles).set({ error: "Не удалось сохранить логотип организации.", updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, row.externalId)));
+      if (error instanceof Error && "code" in error && error.code === "lease-lost") throw error;
+      await withSnapshotJobGuard(jobGuard, async tx => {
+        await tx.update(gameCompanyProfiles).set({ error: "Не удалось сохранить логотип организации.", updatedAt: new Date() }).where(and(eq(gameCompanyProfiles.provider, provider), eq(gameCompanyProfiles.externalId, row.externalId)));
+      });
       failedImages.push(row.externalId);
     }
   }
   const bindings = await db.select({ creatorId: providerCreatorBindings.creatorId }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, provider), eq(providerCreatorBindings.active, true), inArray(providerCreatorBindings.externalCreatorId, ids)));
-  for (const id of new Set(bindings.map(row => row.creatorId))) await syncGameCompanyAvatar(id);
+  for (const id of new Set(bindings.map(row => row.creatorId))) await syncGameCompanyAvatar(id, {}, jobGuard);
   const { autoApproveGameCompanyRequests } = await import("@/db/queries/creator-requests");
-  await autoApproveGameCompanyRequests({ provider, externalIds: ids, signal });
+  await autoApproveGameCompanyRequests({ provider, externalIds: ids, signal, jobGuard });
   if (failedImages.length) throw new GameCompanyImageError(failedImages);
 }
 
 /** Use only saved, confirmed evidence. No provider API is contacted during moderation apply. */
-export async function syncGameCompanyAvatar(creatorId: number, dependencies: Partial<{ fetchLocal: typeof fetchS3Object; upload: typeof uploadProcessedCreatorAvatarBuffer; cleanup: typeof deleteCreatorAvatarBestEffort }> = {}) {
+export async function syncGameCompanyAvatar(creatorId: number, dependencies: Partial<{ fetchLocal: typeof fetchS3Object; upload: typeof uploadProcessedCreatorAvatarBuffer; cleanup: typeof deleteCreatorAvatarBestEffort }> = {}, jobGuard?: SnapshotJobGuard) {
   const fetchLocal = dependencies.fetchLocal ?? fetchS3Object;
   const upload = dependencies.upload ?? uploadProcessedCreatorAvatarBuffer;
   const cleanup = dependencies.cleanup ?? deleteCreatorAvatarBestEffort;
@@ -120,7 +130,7 @@ export async function syncGameCompanyAvatar(creatorId: number, dependencies: Par
   const uploaded = await upload({ creatorId, body });
   let committed = false;
   try {
-    const previous = await db.transaction(async tx => {
+    const result = await withSnapshotJobGuard(jobGuard, async tx => {
       const [current] = await tx.select().from(creators).where(eq(creators.id, creatorId)).for("update");
       if (!current || current.avatarSource === "manual" || current.avatarVersion !== creator.avatarVersion) return undefined;
       const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.id, candidate.bindingId), eq(providerCreatorBindings.creatorId, creatorId), eq(providerCreatorBindings.active, true)));
@@ -129,10 +139,10 @@ export async function syncGameCompanyAvatar(creatorId: number, dependencies: Par
       const [preferred] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).innerJoin(gameCompanyProfiles, and(eq(gameCompanyProfiles.provider, providerCreatorBindings.provider), eq(gameCompanyProfiles.externalId, providerCreatorBindings.externalCreatorId))).where(and(eq(providerCreatorBindings.creatorId, creatorId), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.provider, "igdb"), eq(gameCompanyProfiles.imageStatus, "ready"))).orderBy(asc(sql`split_part(${gameCompanyProfiles.externalId}, ':', 2)::bigint`)).limit(1);
       if (preferred?.id !== candidate.bindingId) return undefined;
       await tx.update(creators).set({ avatarObjectKey: uploaded.objectKey, avatarContentHash: uploaded.contentHash, avatarSource: "igdb", avatarSourceExternalId: candidate.externalId, avatarSourceUrl: candidate.sourceUrl, avatarOriginalUrl: candidate.originalUrl, avatarFetchedAt: new Date(), avatarVersion: current.avatarVersion + 1, updatedAt: new Date() }).where(eq(creators.id, creatorId));
-      committed = true;
-      return current.avatarObjectKey;
+      return { previousObjectKey: current.avatarObjectKey };
     });
-    if (committed) await cleanup(previous ?? null);
+    committed = result !== undefined;
+    if (result) await cleanup(result.previousObjectKey);
   } finally { if (!committed) await cleanup(uploaded.objectKey); }
 }
 
@@ -144,8 +154,8 @@ export const gameCompanyEnrichHandler: JobHandlerDefinition<{ provider: GameComp
     if (!row || (row.provider !== "igdb" && row.provider !== "rawg") || !Array.isArray(row.externalIds) || row.externalIds.length > 1000 || row.externalIds.some(id => typeof id !== "string" || !isGameCompanyId(row.provider!, id))) throw new Error("Некорректные параметры организаций.");
     return { provider: row.provider, externalIds: row.externalIds as string[] };
   },
-  async execute({ payload, signal }) {
-    try { await enrichGameCompanyProfiles(payload.provider, payload.externalIds, signal); }
+  async execute({ payload, signal, runId, lockToken }) {
+    try { await enrichGameCompanyProfiles(payload.provider, payload.externalIds, signal, false, lockToken ? { runId, lockToken } : undefined); }
     catch (error) {
       if (error instanceof GameProviderDeferredError) throw new JobError(error.code, "Ожидание доступного лимита провайдера.", { deferSeconds: error.retryAfterSeconds });
       throw error;

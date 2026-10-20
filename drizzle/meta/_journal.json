@@ -890,6 +890,41 @@
       "when": 1793577600000,
       "tag": "0126_platform_logos",
       "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1793664000000,
+      "tag": "0127_provider_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1793750400000,
+      "tag": "0128_book_provider_cutover_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1793836800000,
+      "tag": "0129_email_outbox_lease",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1793923200000,
+      "tag": "0130_domain_event_recovery_backoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1794009600000,
+      "tag": "0131_creator_life_dates",
+      "breakpoints": true
     }
   ]
 }

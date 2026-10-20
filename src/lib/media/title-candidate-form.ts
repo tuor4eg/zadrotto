@@ -41,11 +41,13 @@ export function getMediaTitleMetadataFormFields(
 ): MediaTitleFormFields {
   if (!fields) return current;
 
+  // Detail responses enrich the selected candidate; missing values are not deletion commands.
+  // Switching candidates already resets these fields in getMediaTitleCandidateFormFields.
   const metadataFields = {
     title: fields.title?.trim() || current.title,
-    originalTitle: fields.originalTitle?.trim() || "",
-    releaseYear: fields.releaseYear ? String(fields.releaseYear) : "",
-    description: fields.description?.trim() || "",
+    originalTitle: fields.originalTitle?.trim() || current.originalTitle,
+    releaseYear: fields.releaseYear ? String(fields.releaseYear) : current.releaseYear,
+    description: fields.description?.trim() || current.description,
   };
 
   if (!preserveExisting) return metadataFields;

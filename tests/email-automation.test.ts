@@ -13,7 +13,7 @@ test("validates automation ranges and retry ordering", () => {
   assert.equal(validateEmailAutomationSettings({ ...valid, failedOutboxRetentionDays: 6 }), null);
 });
 
-test("calculates capped exponential retry from the completed attempt", () => {
+test("calculates capped exponential retry from the claimed attempt", () => {
   assert.equal(calculateEmailRetryDelaySeconds({ attempts: 1, baseSeconds: 60, maxSeconds: 500 }), 60);
   assert.equal(calculateEmailRetryDelaySeconds({ attempts: 3, baseSeconds: 60, maxSeconds: 500 }), 240);
   assert.equal(calculateEmailRetryDelaySeconds({ attempts: 8, baseSeconds: 60, maxSeconds: 500 }), 500);
@@ -71,8 +71,13 @@ test("delivery uses dynamic attempts, backoff, sanitization and sending-only com
   const claimStart = outbox.indexOf("export async function claimPendingEmailOutboxMessages");
   const claimEnd = outbox.indexOf("export async function updateEmailOutboxStatus");
   const claim = outbox.slice(claimStart, claimEnd);
-  assert.match(claim, /attempts} >= \$\{maxAttempts}[\s\S]*eq\(emailOutbox\.status, "pending"\)[\s\S]*eq\(emailOutbox\.status, "sending"\)[\s\S]*lte\(emailOutbox\.updatedAt, staleLease\)/);
-  assert.match(claim, /lt\(emailOutbox\.attempts, maxAttempts\)[\s\S]*eq\(emailOutbox\.status, "pending"\)[\s\S]*eq\(emailOutbox\.status, "sending"\)/);
+  assert.match(claim, /sql`\$\{emailOutbox.attempts\} >= \$\{maxAttempts\}`/);
+  assert.match(claim, /lt\(emailOutbox\.attempts, maxAttempts\)/);
+  assert.match(claim, /leaseToken: randomUUID\(\)/);
+  assert.match(claim, /attempts: sql`\$\{emailOutbox.attempts\} \+ 1`/);
+  assert.match(claim, /isNotNull\(emailOutbox\.leaseToken\)/);
+  assert.match(claim, /lastError: EMAIL_LEGACY_UNKNOWN_ERROR/);
+  assert.match(claim, /clock_timestamp\(\)/);
   assert.match(claim, /EMAIL_AUTOMATION_LEASE_MS/);
   assert.match(outbox, /eq\(emailOutbox\.status, "sending"\)/);
 });

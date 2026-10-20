@@ -215,7 +215,7 @@ describe("bug report notifications", () => {
   });
 
   it("inherits claim-before-handle idempotence from the domain dispatcher", () => {
-    assert.match(dispatcher, /from\(domainEventOutbox\)[\s\S]*\.for\("update"\)/);
+    assert.match(dispatcher, /from\(domainEventOutbox\)[\s\S]*\.for\("update", \{ skipLocked: true \}\)/);
     assert.match(dispatcher, /insert\(domainEventConsumptions\)[\s\S]*onConflictDoNothing\(\)[\s\S]*if \(!claimedRow\) continue/);
     assert.match(dispatcher, /await consumer\.handle\(tx, typedEvent\)/);
   });

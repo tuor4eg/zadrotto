@@ -1,3 +1,7 @@
+import { JobError } from "@/lib/jobs/types";
+import { automoderationChecks } from "@/db/schema";
+import { reconcileAutomoderationJob, recoverOrphanedAutomoderationChecks } from "./automoderation-recovery";
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
 import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -122,14 +126,19 @@ export async function setPeriodicJobEnabled(id: number, enabled: boolean) {
   return job ?? null;
 }
 
+function automoderationCheckId(run: { type: string; payload: Record<string, unknown> }) {
+  const id = run.payload.checkId;
+  return run.type === "moderation.auto-check" && typeof id === "number" && Number.isSafeInteger(id) && id > 0 && id <= 2147483647 ? id : null;
+}
+
 export async function cancelQueuedJobRun(id: number, now = new Date()) {
-  const [run] = await db.update(jobRuns).set({
-    cancelledAt: now,
-    finishedAt: now,
-    status: "cancelled",
-    updatedAt: now,
-  }).where(and(eq(jobRuns.id, id), eq(jobRuns.status, "queued"))).returning();
-  return run ?? null;
+  return db.transaction(async tx => {
+    const [run] = await tx.update(jobRuns).set({ cancelledAt: now, finishedAt: now, status: "cancelled", updatedAt: now })
+      .where(and(eq(jobRuns.id, id), eq(jobRuns.status, "queued"))).returning();
+    const checkId = run && automoderationCheckId(run);
+    if (checkId) await reconcileAutomoderationJob(tx, {checkId, retry: false});
+    return run ?? null;
+  });
 }
 
 export async function retryFailedJobRun(id: number, createdByAdminId: number | null, now = new Date()) {
@@ -137,6 +146,12 @@ export async function retryFailedJobRun(id: number, createdByAdminId: number | n
     const [source] = await tx.select().from(jobRuns)
       .where(and(eq(jobRuns.id, id), eq(jobRuns.status, "failed"))).for("update").limit(1);
     if (!source) return null;
+    const checkId = automoderationCheckId(source);
+    if (checkId) {
+      const [check] = await tx.select({status: automoderationChecks.status}).from(automoderationChecks)
+        .where(eq(automoderationChecks.id, checkId)).for("update").limit(1);
+      if (!check || !["pending", "running"].includes(check.status)) throw new JobError("automoderation-terminal", "Проверка завершена. Повтор не переоткрывает решение автомодерации.", {retryable: false});
+    }
     const [run] = await tx.insert(jobRuns).values(jobRunValues({
       availableAt: now,
       createdByAdminId,
@@ -251,8 +266,11 @@ export async function recoverExpiredJobRuns(limit = 100, now = new Date()) {
         status: "queued",
         updatedAt: now,
       }).where(and(eq(jobRuns.id, run.id), eq(jobRuns.status, "running"), tokenCondition));
+      const checkId = automoderationCheckId(run);
+      if (checkId) await reconcileAutomoderationJob(tx, {checkId, retry: !exhausted});
       if (exhausted) failed += 1; else requeued += 1;
     }
+    await recoverOrphanedAutomoderationChecks(tx, safeLimit);
     return { failed, requeued };
   });
 }
@@ -266,7 +284,8 @@ export async function finishJobRun(input: {
   status: Extract<JobRunStatus, "succeeded" | "failed">;
 }) {
   const now = input.now ?? new Date();
-  const [run] = await db.update(jobRuns).set({
+  return db.transaction(async tx => {
+  const [run] = await tx.update(jobRuns).set({
     errorCode: input.errorCode ?? null,
     errorMessage: input.errorMessage ?? null,
     finishedAt: now,
@@ -276,8 +295,11 @@ export async function finishJobRun(input: {
     lockedBy: null,
     status: input.status,
     updatedAt: now,
-  }).where(and(eq(jobRuns.id, input.id), eq(jobRuns.status, "running"), eq(jobRuns.lockToken, input.lockToken))).returning();
+  }).where(and(eq(jobRuns.id, input.id), eq(jobRuns.status, "running"), eq(jobRuns.lockToken, input.lockToken), input.status === "succeeded" ? sql`${jobRuns.lockExpiresAt} > clock_timestamp()` : undefined)).returning();
+  const checkId = run && automoderationCheckId(run);
+  if (checkId && input.status === "failed") await reconcileAutomoderationJob(tx, {checkId, retry: false});
   return run ?? null;
+  });
 }
 
 export async function requeueJobRun(input: { errorCode: string; errorMessage: string; id: number; lockToken: string; now?: Date }) {
@@ -357,14 +379,14 @@ export async function getAdminJobRuns(input: {
   return { items, page, pageSize, totalCount: count, totalPages };
 }
 
-export async function cleanupJobRunHistory(now = new Date()) {
+export async function cleanupJobRunHistory(now = new Date(), jobGuard?: SnapshotJobGuard) {
   const configuredJobs = await db.select({
     historyRetentionDays: jobs.historyRetentionDays,
     id: jobs.id,
   }).from(jobs);
   const terminalStatuses: JobRunStatus[] = ["succeeded", "failed", "cancelled"];
   let deleted = 0;
-  await db.transaction(async (tx) => {
+  await withSnapshotJobGuard(jobGuard, async (tx) => {
     for (const job of configuredJobs) {
       const cutoff = new Date(now.getTime() - job.historyRetentionDays * 24 * 60 * 60 * 1000);
       const rows = await tx.delete(jobRuns).where(and(

@@ -37,6 +37,7 @@ export type MetadataJobContext = {
     error: string | null
     metadata: {
       externalId: string
+      snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[]
       parts?: ProviderTitlePart[]
       facts: Record<string, unknown>
       provider: string
@@ -57,6 +58,8 @@ export type MetadataJobStore = {
   }) => Promise<void>
   markAttempt: (mediaItemId: number, issueCode: MetadataIssueCode | null) => Promise<void>
   upsert: (input: {
+    expectedSource?: {provider:string|null;externalId:string|null}
+    snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[]
     parts?: ProviderTitlePart[]
     facts: Record<string, unknown>
     mediaItemId: number
@@ -133,6 +136,8 @@ async function fetchAndStoreMetadata(input: {
 
   await input.store.upsert({
     parts: result.metadata.parts,
+    snapshotReferences: result.metadata.snapshotReferences,
+    expectedSource:{provider:input.item.sourceProvider,externalId:input.item.sourceExternalId},
     facts: result.metadata.facts,
     mediaItemId: input.item.id,
     sourceExternalId: result.metadata.externalId,

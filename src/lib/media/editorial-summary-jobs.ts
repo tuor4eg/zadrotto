@@ -1,3 +1,4 @@
+import { type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import { enqueueEditorialSummaryRun, getEditorialSummaryJob, getEditorialSummaryQueueState, getEditorialSummarySource, listEditorialSummarySources, saveGeneratedEditorialSummary } from "@/db/queries/editorial-summaries";
@@ -8,7 +9,7 @@ import { JobError } from "@/lib/jobs/types";
 import { EDITORIAL_SUMMARY_SCENARIO_KEY, EDITORIAL_SUMMARY_SCHEMA, EDITORIAL_SUMMARY_SYSTEM_PROMPT, getEditorialSummarySourceHash, hasRussianEditorialDescription, isEditorialSummaryResponse, isEditorialSummaryStale, nextEditorialSummaryAvailableAt, parseEditorialSummaryOptions } from "./editorial-summary";
 import { runEditorialSummaryFlow } from "./editorial-summary-flow";
 
-export async function sweepEditorialSummaries() {
+export async function sweepEditorialSummaries(jobGuard?: SnapshotJobGuard, signal?: AbortSignal) {
   const job = await getEditorialSummaryJob();
   if (!job) throw new JobError("configuration", "Задача справок не настроена.", { retryable: false });
   if (!await getEnabledAiScenarioProfile(EDITORIAL_SUMMARY_SCENARIO_KEY)) {
@@ -20,6 +21,7 @@ export async function sweepEditorialSummaries() {
   let lastAvailableAt = queue.lastAvailableAt;
   let afterId = 0;
   while (slots > 0) {
+    signal?.throwIfAborted();
     const batch = await listEditorialSummarySources(afterId, 100);
     if (batch.length === 0) break;
     for (const item of batch) {
@@ -30,7 +32,7 @@ export async function sweepEditorialSummaries() {
       const hash = getEditorialSummarySourceHash(item, prompt);
       if (!isEditorialSummaryStale({ locked: false, sourceHash: item.sourceHash, currentHash: hash })) continue;
       const availableAt = nextEditorialSummaryAvailableAt(lastAvailableAt, new Date());
-      const result = await enqueueEditorialSummaryRun({ mediaItemId: item.id, source: "event", availableAt });
+      const result = await enqueueEditorialSummaryRun({ mediaItemId: item.id, source: "event", availableAt, jobGuard });
       if (result.created) {
         slots -= 1;
         lastAvailableAt = availableAt;
@@ -41,7 +43,7 @@ export async function sweepEditorialSummaries() {
   }
 }
 
-export async function generateEditorialSummary(mediaItemId: number, force = false) {
+export async function generateEditorialSummary(mediaItemId: number, force = false, jobGuard?: SnapshotJobGuard, signal?: AbortSignal) {
   const [job, item] = await Promise.all([getEditorialSummaryJob(), getEditorialSummarySource(mediaItemId)]);
   if (!job) throw new JobError("configuration", "Задача справок не настроена.", { retryable: false });
   if (!item || item.locked) return;
@@ -75,6 +77,6 @@ export async function generateEditorialSummary(mediaItemId: number, force = fals
       schema: EDITORIAL_SUMMARY_SCHEMA,
       validate: isEditorialSummaryResponse,
     }),
-    save: saveGeneratedEditorialSummary,
+    save: result => { signal?.throwIfAborted(); return saveGeneratedEditorialSummary({...result, jobGuard}); },
   });
 }

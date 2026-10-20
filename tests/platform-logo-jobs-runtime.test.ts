@@ -131,6 +131,19 @@ test("platform logo jobs resume catalogue and image checkpoints under their work
         await client`update job_runs set lock_token='new-owner' where id=${next}`;
         await assert.rejects(queries.savePlatformProfiles({runId:next,lockToken:'lease'},payload,'igdb',['998'],[profile('998','Stale')]),{code:'lease-lost'});
         assert.equal((await client`select count(*)::int n from platform_provider_profiles where external_id='998'`)[0].n,0);
+        const oldOwner={runId:next,lockToken:'lease'};
+        await assert.rejects(requests.resolveMissingPlatformProviderIds(target.id,oldOwner),{code:'lease-lost'});
+        await assert.rejects(requests.proposePlatformLogoRequests(target.id,1,oldOwner),{code:'lease-lost'});
+        const [guarded]=await client`insert into platforms(slug,name) values('guarded-approval','Guarded Approval') returning id`;
+        await client`insert into provider_platform_mappings(provider,media_type,external_platform_name,normalized_external_platform_name,platform_id,external_platform_id)
+          values('igdb','game','Ready Image','ready image',${guarded.id},'903')`;
+        await requests.proposePlatformLogoRequests(guarded.id,1);
+        const [pending]=await client`select id from platform_requests where target_platform_id=${guarded.id} and kind='logo'`;
+        assert.ok(pending,'accepted cached evidence creates a pending image request');
+        const beforeJobs=(await client`select count(*)::int n from job_runs`)[0].n;
+        await assert.rejects(requests.autoApprovePlatformAssetRequests(guarded.id,1,oldOwner),{code:'lease-lost'});
+        assert.equal((await client`select decision from platform_requests where id=${pending.id}`)[0].decision,null);
+        assert.equal((await client`select count(*)::int n from job_runs`)[0].n,beforeJobs,'a stale decision must not enqueue an apply job');
         await finish(next);
       });
       await t.test('successful immutable images reuse one file across IDs without CDN or upload',async()=>{

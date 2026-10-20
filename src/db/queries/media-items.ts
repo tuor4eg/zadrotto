@@ -1,3 +1,5 @@
+import { deleteEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
 import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition, entryCreatorSearchCondition } from "@/db/queries/creators";
 import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
@@ -623,7 +625,7 @@ const catalogMediaItemsQuery = (input: {
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       platforms: publicMediaItemPlatformsJsonSql(),
       writerCreators: entryWriterCreatorsJsonSql(),
       entryCreators: entryCreatorsJsonSql(),
@@ -851,7 +853,7 @@ function adminMediaFilterConditions(input: {
     conditions.push(sql`not exists (
       select 1 from ${mediaItemMetadata}
       where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id}
-        and ${mediaItemMetadata.facts} <> '{}'::jsonb
+        and ${mediaMetadataFactsSql()} <> '{}'::jsonb
     )`);
   }
 
@@ -884,7 +886,7 @@ export async function getAdminMediaItems(input: {
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
       description: mediaItems.description,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       platforms: publicMediaItemPlatformsJsonSql(),
       writerCreators: entryWriterCreatorsJsonSql(),
       entryCreators: entryCreatorsJsonSql(),
@@ -1045,6 +1047,7 @@ export async function findPublishedMediaItemDuplicateCandidates(
 }
 
 export type AuthorMediaItemInput = {
+  afterWrite?: (tx:DbTransaction,mediaItemId:number)=>Promise<void>;
   aliases?: string[];
   authorId: number;
   code: string;
@@ -1084,6 +1087,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
+    await input.afterWrite?.(tx,item.id);
   });
 }
 
@@ -1118,6 +1122,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
+    await input.afterWrite?.(tx,item.id);
 
     await appendEvent({
       actorAuthorId: null,
@@ -1278,6 +1283,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
     if (input.aliases) {
       await setMediaItemTitleAliasesForExecutor(tx, input.mediaItemId, input.aliases);
     }
+    await input.afterWrite?.(tx,input.mediaItemId);
   });
 }
 
@@ -1317,6 +1323,7 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
     if (input.aliases) {
       await setMediaItemTitleAliasesForExecutor(tx, input.mediaItemId, input.aliases);
     }
+    await input.afterWrite?.(tx,input.mediaItemId);
 
     return item;
   });
@@ -1434,7 +1441,7 @@ export async function deleteAuthorDraftMediaItem(input: {
           inArray(mediaItems.publicationStatus, ["private", "rejected"]),
         ),
       )
-      .limit(1);
+      .limit(1).for("update");
 
     if (!item) {
       return null;
@@ -1447,6 +1454,7 @@ export async function deleteAuthorDraftMediaItem(input: {
     const partCovers = await tx.select({ coverUrl: titleParts.coverUrl, coverThumbUrl: titleParts.coverThumbUrl })
       .from(titleParts).where(eq(titleParts.mediaItemId, input.mediaItemId));
     await tx.delete(titleParts).where(eq(titleParts.mediaItemId, input.mediaItemId));
+    await deleteEntitySnapshotLinks(tx,{entityType:"media-item",entityId:String(input.mediaItemId)});
     await tx.delete(mediaItems).where(eq(mediaItems.id, input.mediaItemId));
 
     return { ...item, partCovers };
@@ -1708,6 +1716,7 @@ export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId
     const partCovers = await tx.select({ coverUrl: titleParts.coverUrl, coverThumbUrl: titleParts.coverThumbUrl })
       .from(titleParts).where(eq(titleParts.mediaItemId, mediaItemId));
     await tx.delete(titleParts).where(eq(titleParts.mediaItemId, mediaItemId));
+    await deleteEntitySnapshotLinks(tx,{entityType:"media-item",entityId:String(mediaItemId)});
     await tx.delete(mediaItems).where(eq(mediaItems.id, mediaItemId));
 
     return { ...item, partCovers };
@@ -1818,7 +1827,7 @@ export async function getPublicMediaItemMetadataByCode(
       coverUrl: mediaItems.coverUrl,
       mediaType: mediaItems.mediaType,
       mediaTypeLabel: mediaTypes.name,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       writerCreators: entryWriterCreatorsJsonSql(),
       entryCreators: entryCreatorsJsonSql(),
       releaseYear: mediaItems.releaseYear,
@@ -1894,7 +1903,7 @@ export async function getMediaItemByCode(
       mediaCarrierCode: mediaCarriers.code,
       mediaCarrierName: mediaCarriers.name,
       releaseYear: mediaItems.releaseYear,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       writerCreators: entryWriterCreatorsJsonSql(),
       entryCreators: entryCreatorsJsonSql(),
       coverUrl: mediaItems.coverUrl,

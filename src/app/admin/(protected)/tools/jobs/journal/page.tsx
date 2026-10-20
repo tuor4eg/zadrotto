@@ -53,6 +53,11 @@ export default async function JobJournalPage({
           Активные запуски показаны первыми. Можно сузить список до расписания или разовых запусков.
         </p>
       </div>
+      {query.error === "automoderation-terminal" ? (
+        <p role="alert" className="text-sm text-red-700">
+          Проверка автомодерации уже завершена. Повтор задания не переоткрывает её решение; запись можно проверить вручную.
+        </p>
+      ) : null}
       <JobJournalFilters jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />
       <p className="text-sm text-stone-500">Всего запусков: {result.totalCount}</p>
       <TableWrap className="overflow-x-auto">
@@ -60,7 +65,7 @@ export default async function JobJournalPage({
           <THead><tr><TH>ID / тип</TH><TH>Статус</TH><TH>Время</TH><TH>Попытки</TH><TH>Ошибка</TH><TH /></tr></THead>
           <TBody>
             {result.items.map((run) => (
-              <TR key={run.id}>
+              <TR key={run.id} id={`run-${run.id}`}>
                 <TD>#{run.id}<div className="text-xs text-stone-500">{run.type}{run.retryOfRunId ? ` · повтор #${run.retryOfRunId}` : ""}</div></TD>
                 <TD>{STATUS_LABELS[run.status] ?? run.status}</TD>
                 <TD><ActivityLogTime value={run.scheduledFor.toISOString()} /></TD>

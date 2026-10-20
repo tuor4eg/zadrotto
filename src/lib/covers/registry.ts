@@ -576,6 +576,19 @@ export async function getTitleMetadata(
     return { metadata: null, error: null };
   }
 
+  // Connected book adapters persist full responses and reserve quota for every
+  // HTTP request, including Open Library author dependencies.
+  if (providers === COVER_PROVIDERS && input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) {
+    try {
+      const { fetchBookMetadata } = await import("@/lib/providers/book-service");
+      return { metadata: await withProviderRequestTimeout(options,()=>fetchBookMetadata(input, options)), error: null };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "";
+      if (message === "provider-daily-limit" || message === "rate-limit-unavailable") return {metadata:null,error:message};
+      const retryAfterSeconds = getRetryAfterSeconds(error);
+      return {metadata:null,error:getProviderExecutionError(error),...(retryAfterSeconds!==undefined?{retryAfterSeconds}:{})};
+    }
+  }
   const permission = await canSearchProvider(provider.code, options);
 
   if (!permission.allowed) {

@@ -153,7 +153,7 @@ describe("notification consumer", () => {
     assert.match(notificationQuerySource, /insertNotifications/)
     assert.match(notificationQuerySource, /eq\(notifications\.recipientType, input\.recipientType\)/)
     assert.match(notificationQuerySource, /isNull\(notifications\.readAt\)/)
-    assert.match(dispatcherSource, /followUpEventIds\.map\(enqueueDomainEventDispatch\)/)
+    assert.match(dispatcherSource, /followUpEventIds\.map\(id => enqueueDomainEventDispatch\(id, context\.jobGuard\)\)/)
   })
 
   it("fans out to external transports through a retryable transactional outbox", () => {
@@ -168,7 +168,7 @@ describe("notification consumer", () => {
     assert.match(transportOutboxSource, /eq\(notificationTransportOutbox\.status, "sending"\)/)
     assert.match(transportOutboxMigrationSource, /PRIMARY KEY\("event_id","transport","recipient"\)/)
     assert.match(transportPolicySource, /attempts >= NOTIFICATION_TRANSPORT_MAX_ATTEMPTS \? "failed" as const : "pending" as const/)
-    assert.match(transportDeliverySource, /sendClaimedMessage\(message, signal\)/)
+    assert.match(transportDeliverySource, /sendClaimedMessage\(message, signal, jobGuard\)/)
     assert.match(externalSource, /getEnabledExternalTransportCodes\(event\.type\)/)
     assert.match(externalSource, /new TelegramTransport/)
     assert.match(externalSource, /if \(!transport\.isReady\(\)\) throw new Error/)

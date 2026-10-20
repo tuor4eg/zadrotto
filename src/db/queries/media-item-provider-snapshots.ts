@@ -1,3 +1,4 @@
+import type { DbTransaction } from "@/db/transaction";
 import { createHash } from "node:crypto";
 
 import { eq } from "drizzle-orm";
@@ -34,10 +35,10 @@ export function getMediaItemProviderSnapshotHash(
   return createHash("sha256").update(JSON.stringify(stableValue(input))).digest("hex");
 }
 
-export async function upsertMediaItemProviderSnapshot(input: MediaItemProviderSnapshotInput) {
+export async function upsertMediaItemProviderSnapshot(input: MediaItemProviderSnapshotInput, transaction?:DbTransaction) {
   const now = new Date();
   const payloadHash = getMediaItemProviderSnapshotHash(input);
-  const [snapshot] = await db.insert(mediaItemProviderSnapshots).values({
+  const [snapshot] = await (transaction??db).insert(mediaItemProviderSnapshots).values({
     ...input,
     payloadHash,
     fetchedAt: now,

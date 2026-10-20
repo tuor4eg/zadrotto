@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { createManagedPeriodicJob, updateManagedPeriodicJob } from "@/lib/jobs/manage";
 import { enqueueJobRun, enqueueManualJobRun } from "@/lib/jobs/queue";
+import { JobError } from "@/lib/jobs/types";
 import { DEFAULT_JOB_HISTORY_RETENTION_DAYS } from "@/lib/jobs/model";
 
 const PATH = "/admin/tools/jobs/schedules";
@@ -57,5 +58,23 @@ export async function enqueueAdHocJobAction(formData: FormData) {
   revalidatePath(PATH); redirect(PATH);
 }
 
-export async function retryJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); const run = await retryFailedJobRun(runId, admin.id); if (run) await logActivity({ action: "job-run.retry-requested", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Повторный запуск поставлен в очередь." }); revalidatePath(destination); redirect(destination); }
+export async function retryJobRunAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const runId = id(formData.get("id"));
+  const destination = returnPath(formData.get("returnTo"));
+  let run;
+  try {
+    run = await retryFailedJobRun(runId, admin.id);
+  } catch (error) {
+    if (error instanceof JobError && error.code === "automoderation-terminal") {
+      redirect("/admin/tools/jobs/journal?error=automoderation-terminal");
+    }
+    throw error;
+  }
+  if (run) await logActivity({ action: "job-run.retry-requested", actorType: "admin", adminUserId: admin.id,
+    entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Повторный запуск поставлен в очередь." });
+  revalidatePath(destination);
+  redirect(destination);
+}
+
 export async function cancelJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); const run = await cancelQueuedJobRun(runId); if (run) await logActivity({ action: "job-run.cancelled", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Запуск фоновой задачи отменён." }); revalidatePath(destination); redirect(destination); }

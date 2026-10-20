@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -110,9 +111,10 @@ async function getLockedItem(tx: DbTransaction, mediaItemId: number) {
 
 export async function markAnimeShikimoriBackfillSkipped(input: {
   mediaItemId: number;
+  jobGuard?: SnapshotJobGuard;
   shouldMark: (item: NonNullable<Awaited<ReturnType<typeof getLockedItem>>>) => boolean;
 }) {
-  return db.transaction(async (tx) => {
+  return withSnapshotJobGuard(input.jobGuard, async (tx) => {
     const item = await getLockedItem(tx, input.mediaItemId);
     if (!item || !input.shouldMark(item)) return false;
 
@@ -129,8 +131,9 @@ export async function applyAnimeShikimoriBackfillResult(input: {
     description: string | null;
   };
   mediaItemId: number;
+  jobGuard?: SnapshotJobGuard;
 }) {
-  return db.transaction(async (tx) => {
+  return withSnapshotJobGuard(input.jobGuard, async (tx) => {
     const item = await getLockedItem(tx, input.mediaItemId);
     if (!item) return false;
 

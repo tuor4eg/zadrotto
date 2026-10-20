@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
 import { createHash } from "node:crypto";
 import { and, asc, desc, eq, inArray, ne, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -21,13 +22,8 @@ async function enqueue(tx: Tx, requestId: number, adminId: number) {
 
 /** Complete only existing bindings. Ambiguity is a sync diagnostic, not an editorial request. */
 export async function resolveMissingPlatformProviderIds(platformId:number,lease?:{runId:number;lockToken:string}) {
-  return db.transaction(async tx=>{
+  return withSnapshotJobGuard(lease, async tx=>{
     const result={resolved:0,missing:0,ambiguous:0};
-    if(lease) {
-      const [run]=await tx.select({id:jobRuns.id}).from(jobRuns).where(and(eq(jobRuns.id,lease.runId),eq(jobRuns.lockToken,lease.lockToken),
-        eq(jobRuns.status,"running"),sql`${jobRuns.lockExpiresAt}>now()`)).for("update");
-      if(!run)throw new PlatformAssetConflict("Запуск задачи больше не владеет lease.");
-    }
     await tx.select({id:providerPlatformMappings.id}).from(providerPlatformMappings)
       .where(eq(providerPlatformMappings.platformId,platformId)).orderBy(asc(providerPlatformMappings.id)).for("update");
     const [counts]=await tx.execute<{resolved:number;missing:number;ambiguous:number}>(sql`
@@ -90,8 +86,8 @@ const selectCandidate=(proposal:PlatformAssetProposal,candidate:PlatformLogoCand
   imageKey:candidate.imageKey,objectKey:candidate.objectKey,contentHash:candidate.contentHash,
 });
 
-export async function proposePlatformLogoRequests(platformId:number,adminId:number) {
-  return db.transaction(async tx=>{
+export async function proposePlatformLogoRequests(platformId:number,adminId:number,jobGuard?:SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx=>{
     const result=counters();
     const [platform]=await tx.select().from(platforms).where(eq(platforms.id,platformId)).for("update");
     if(!platform){result.skipped++;return result;}
@@ -139,10 +135,10 @@ async function validatedChoice(tx:Tx,request:Request,proposal:PlatformAssetPropo
   return {platform,candidate};
 }
 
-export async function resolvePlatformAssetRequest(input:{requestId:number;adminId:number;decision:"map"|"exclude";candidateKey?:string;autoApprove?:boolean}) {
+export async function resolvePlatformAssetRequest(input:{requestId:number;adminId:number;decision:"map"|"exclude";candidateKey?:string;autoApprove?:boolean;jobGuard?:SnapshotJobGuard}) {
   const [initial]=await db.select().from(platformRequests).where(eq(platformRequests.id,input.requestId));
   if(!initial?.proposal||initial.kind!=="logo")throw new PlatformAssetConflict("Заявка не найдена.");
-  return db.transaction(async tx=>{
+  return withSnapshotJobGuard(input.jobGuard, async tx=>{
     const [platform]=await tx.select().from(platforms).where(eq(platforms.id,initial.proposal!.platformId)).for("update");
     const [request]=await tx.select().from(platformRequests).where(eq(platformRequests.id,input.requestId)).for("update");
     if(!platform||!request?.proposal||request.superseded||request.decision!==null||request.applyStatus!=="pending")throw new PlatformAssetConflict("Решение уже принято или применяется.");
@@ -167,7 +163,7 @@ export async function resolvePlatformAssetRequest(input:{requestId:number;adminI
   });
 }
 
-export async function autoApprovePlatformAssetRequests(platformId:number,adminId:number) {
+export async function autoApprovePlatformAssetRequests(platformId:number,adminId:number,jobGuard?:SnapshotJobGuard) {
   const result=counters();
   const rows=await db.select().from(platformRequests).where(and(eq(platformRequests.targetPlatformId,platformId),eq(platformRequests.kind,"logo"),eq(platformRequests.superseded,false))).orderBy(asc(platformRequests.id));
   const ids=rows.flatMap(row=>row.jobRunId?[row.jobRunId]:[]);
@@ -180,17 +176,17 @@ export async function autoApprovePlatformAssetRequests(platformId:number,adminId
     }
     if(row.decision!==null){if(row.applyStatus==="processed")result.applied++;continue;}
     if(row.autoApprovalBlocked||row.proposal?.reason!=="unique-logo"){result.pending++;continue;}
-    try {await resolvePlatformAssetRequest({requestId:row.id,adminId,decision:"map",candidateKey:row.proposal.candidates[0]?.key,autoApprove:true});result.approved++;result.applying++;}
+    try {await resolvePlatformAssetRequest({requestId:row.id,adminId,decision:"map",candidateKey:row.proposal.candidates[0]?.key,autoApprove:true,jobGuard});result.approved++;result.applying++;}
     catch(error){if(!(error instanceof PlatformAssetConflict))throw error;result.pending++;}
   }
   return result;
 }
 
-export async function applyPlatformAssetRequest(requestId:number,input:{jobRunId?:number;signal?:AbortSignal}={}) {
+export async function applyPlatformAssetRequest(requestId:number,input:{jobRunId?:number;signal?:AbortSignal;jobGuard?:SnapshotJobGuard}={}) {
   const [initial]=await db.select().from(platformRequests).where(eq(platformRequests.id,requestId));
   if(!initial?.proposal)throw new PlatformAssetConflict("Заявка не найдена.");
   try {
-    return await db.transaction(async tx=>{
+    return await withSnapshotJobGuard(input.jobGuard, async tx=>{
       input.signal?.throwIfAborted();
       await tx.select({id:platforms.id}).from(platforms).where(eq(platforms.id,initial.proposal!.platformId)).for("update");
       const [request]=await tx.select().from(platformRequests).where(eq(platformRequests.id,requestId)).for("update");
@@ -220,8 +216,8 @@ export async function applyPlatformAssetRequest(requestId:number,input:{jobRunId
       return {processed:1};
     });
   } catch(error) {
-    await db.update(platformRequests).set({applyStatus:"failed",jobError:error instanceof Error?error.message:"Не удалось применить решение.",updatedAt:new Date()})
-      .where(and(eq(platformRequests.id,requestId),input.jobRunId?eq(platformRequests.jobRunId,input.jobRunId):undefined));
+    await withSnapshotJobGuard(input.jobGuard, async tx => tx.update(platformRequests).set({applyStatus:"failed",jobError:error instanceof Error?error.message:"Не удалось применить решение.",updatedAt:new Date()})
+      .where(and(eq(platformRequests.id,requestId),input.jobRunId?eq(platformRequests.jobRunId,input.jobRunId):undefined)));
     throw error;
   }
 }

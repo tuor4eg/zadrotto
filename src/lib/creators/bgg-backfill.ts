@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { setTimeout as delay } from "node:timers/promises";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -37,9 +38,10 @@ export const bggCreatorsBackfillHandler: JobHandlerDefinition<BggCreatorsBackfil
     try { return parseBggCreatorsBackfillPayload(value); }
     catch (error) { throw new JobError("invalid-payload", error instanceof Error ? error.message : "Некорректные параметры.", { retryable: false }); }
   },
-  async execute({ payload, signal, runId, source, jobId }) {
+  async execute({ payload, signal, runId, source, jobId, lockToken }) {
     if (source !== "manual" || jobId !== null) throw new JobError("manual-only", "Доступен только разовый запуск из админки.", { retryable: false });
-    const context = await createMetadataProviderJobContext(0);
+    const jobGuard = lockToken ? { runId, lockToken } : undefined;
+    const context = await createMetadataProviderJobContext(0, jobGuard);
     const items = await batch(payload);
     let afterId = payload.afterId, updated = 0, failed = 0;
     for (const item of items) {
@@ -57,7 +59,7 @@ export const bggCreatorsBackfillHandler: JobHandlerDefinition<BggCreatorsBackfil
         const references = extractBggCreatorReferences(response.metadata.facts);
         if (references === null) throw new Error("BGG не вернул полный список ID участников.");
         let syncResult: { createdCreators: number; createdMappings: number; createdLinks: number } | null = null;
-        if (!payload.dryRun) syncResult = await db.transaction(async tx => {
+        if (!payload.dryRun) syncResult = await withSnapshotJobGuard(jobGuard, async tx => {
           const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
           const [metadata] = await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
           if (!entry || entry.mediaType !== "boardgame" || metadata?.sourceProvider !== "bgg" || metadata.sourceExternalId !== item.externalId) throw new Error("Источник записи изменился во время загрузки.");
@@ -66,22 +68,23 @@ export const bggCreatorsBackfillHandler: JobHandlerDefinition<BggCreatorsBackfil
           await tx.update(mediaItemMetadata).set({ facts, updatedAt: new Date() }).where(eq(mediaItemMetadata.mediaItemId, item.id));
           return syncProviderCreators(tx, { mediaItemId: item.id, provider: "bgg", mediaType: "boardgame", facts });
         });
-        const approval = payload.dryRun ? null : await autoApproveBggCreatorRequests(item.id);
+        const approval = payload.dryRun ? null : await autoApproveBggCreatorRequests(item.id, jobGuard);
         updated++;
-        await logSystemActivity({ action: "media.bgg-creators-backfill.progress", entityType: "job-run", entityId: runId,
+        await logSystemActivity({ jobGuard, action: "media.bgg-creators-backfill.progress", entityType: "job-run", entityId: runId,
           message: `Запись #${item.id}: ${payload.dryRun ? "проверена" : "обновлена"}, участников/ролей — ${references.length}.`, metadata: { mediaItemId: item.id, afterId: item.id, dryRun: payload.dryRun, references, syncResult, approval } });
       } catch (error) {
         signal.throwIfAborted();
+        if (error instanceof Error && "code" in error && error.code === "lease-lost") throw error;
         failed++;
-        await logSystemActivity({ action: "media.bgg-creators-backfill.progress", entityType: "job-run", entityId: runId, severity: "warning", status: "failure",
+        await logSystemActivity({ jobGuard, action: "media.bgg-creators-backfill.progress", entityType: "job-run", entityId: runId, severity: "warning", status: "failure",
           message: `Запись #${item.id}: ${error instanceof Error ? error.message : "Не удалось загрузить участников."}`, metadata: { mediaItemId: item.id, afterId: item.id, dryRun: payload.dryRun } });
       }
       afterId = item.id;
     }
     const more = (await batch({ ...payload, afterId, limit: 1 })).length > 0;
-    await logSystemActivity({ action: "media.bgg-creators-backfill.completed", entityType: "job-run", entityId: runId,
+    await logSystemActivity({ jobGuard, action: "media.bgg-creators-backfill.completed", entityType: "job-run", entityId: runId,
       message: `Участники BGG: обработано ${items.length}, успешно ${updated}, ошибок ${failed}${more ? "; будет продолжение" : "; обход завершён"}.`, metadata: { dryRun: payload.dryRun, afterId, updated, failed, hasMore: more } });
     signal.throwIfAborted();
-    if (more) await createJobRun({ type: "media.bgg-creators-backfill", payload: { ...payload, afterId }, source: "manual", maxAttempts: 1, timeoutSeconds: 900, retryBaseSeconds: 60, retryMaxSeconds: 3600 });
+    if (more) await withSnapshotJobGuard(jobGuard, tx => createJobRun({ type: "media.bgg-creators-backfill", payload: { ...payload, afterId }, source: "manual", maxAttempts: 1, timeoutSeconds: 900, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx));
   },
 };

@@ -74,7 +74,7 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
   }
 
   if (error === "invalid-metadata") {
-    return "Не удалось сохранить факты тайтла. Выбери тайтл у провайдера еще раз.";
+    return "Не удалось сохранить данные источника. Выбери запись у провайдера ещё раз.";
   }
 
   if (error === "invalid-rating") {

@@ -1,3 +1,4 @@
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
 import { publicMediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import {
@@ -212,7 +213,7 @@ export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery) {
         mediaCarrierName: mediaCarriers.name,
         mediaType: mediaItems.mediaType,
         mediaTypeLabel: mediaTypes.name,
-        metadataFacts: mediaItemMetadata.facts,
+        metadataFacts: mediaMetadataFactsSql(),
         genres: publicMediaItemGenresJsonSql(),
         platforms: publicMediaItemPlatformsJsonSql(),
         originalTitle: mediaItems.originalTitle,

@@ -126,8 +126,8 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
           cp.stage="request";await checkpointPlatformLogoJob(lease,payload);
         }
         if(cp.stage==="request") {
-          await proposePlatformLogoRequests(platformId,adminId);
-          const result=await autoApprovePlatformAssetRequests(platformId,adminId);
+          await proposePlatformLogoRequests(platformId,adminId,lease);
+          const result=await autoApprovePlatformAssetRequests(platformId,adminId,lease);
           if(result.applying) {await progress(lease,payload,cp);defer(2);}
           cp.doneIds.push(platformId);delete cp.retryAt[platformId];
           advance(cp);await checkpointPlatformLogoJob(lease,payload);

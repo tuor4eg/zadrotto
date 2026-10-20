@@ -22,6 +22,7 @@ export async function backfillMediaMetadata(input: {
   limit?: number
   mediaItemId?: number
   quotaReserve?: number
+  lockToken?: string
   runId?: number
 } = {}): Promise<MetadataJobResult> {
   const items = await getMediaItemsMissingMetadata({
@@ -35,13 +36,14 @@ export async function backfillMediaMetadata(input: {
     return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, updatedItems: [] }
   }
 
-  const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100)
+  const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100, input.runId && input.lockToken ? {runId:input.runId,lockToken:input.lockToken} : undefined)
   return runMetadataBackfill({
     context,
     items,
     store: createMetadataJobStore({
       attempt: input.attempt ?? 1,
       runId: input.runId ?? null,
+      lockToken: input.lockToken,
     }),
   })
 }

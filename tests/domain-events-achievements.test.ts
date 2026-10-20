@@ -63,14 +63,14 @@ describe("domain event foundation", () => {
       /PRIMARY KEY\("event_id","consumer_key"\)/,
     );
     assert.match(dispatcherSource, /onConflictDoNothing\(\)[\s\S]*consumer\.handle\(tx, typedEvent\)/);
-    assert.match(dispatcherSource, /from\(domainEventOutbox\)[\s\S]*\.for\("update"\)/);
-    assert.match(dispatcherSource, /if \(outbox\.dispatchedAt\) return \{ dispatched: true/);
+    assert.match(dispatcherSource, /from\(domainEventOutbox\)[\s\S]*\.for\("update", \{ skipLocked: true \}\)/);
+    assert.match(dispatcherSource, /if \(!outbox \|\| outbox\.dispatchedAt\) return \{ dispatched: false/);
   });
 
   it("commits event and outbox before best-effort immediate delivery", () => {
     assert.match(
       transactionSource,
-      /const result = await db\.transaction[\s\S]*await Promise\.all\(eventIds\.map\(enqueueDomainEventDispatch\)\)/,
+      /const result = await db\.transaction[\s\S]*await Promise\.all\(eventIds\.map\(id => enqueueDomainEventDispatch\(id\)\)\)/,
     );
     assert.match(migrationSource, /'domain-events-recovery'[\s\S]*'\* \* \* \* \*'/);
   });

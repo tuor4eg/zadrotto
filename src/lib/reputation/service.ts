@@ -1,8 +1,8 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import { and, eq, isNull, sql } from "drizzle-orm";
 
-import { db } from "@/db";
 import {
   authorAccessProfiles,
   authorActionLedger,
@@ -149,8 +149,8 @@ async function promoteTrustedAuthorIfEligible(tx: DbTransaction, authorId: numbe
   return null;
 }
 
-export async function promoteEligibleTrustedAuthors() {
-  const eventIds = await db.transaction(async (tx) => {
+export async function promoteEligibleTrustedAuthors(jobGuard?: SnapshotJobGuard) {
+  const eventIds = await withSnapshotJobGuard(jobGuard, async (tx) => {
     await lockReputationForConsumer(tx);
     const promotedRows = await tx.execute(sql`
       with eligible as (

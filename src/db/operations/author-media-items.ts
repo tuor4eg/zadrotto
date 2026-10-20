@@ -126,6 +126,7 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
 
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
+    await input.afterWrite?.(tx,item.id);
 
     return { ok: true, created: true, item };
   });

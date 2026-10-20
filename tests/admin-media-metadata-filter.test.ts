@@ -10,7 +10,7 @@ const metadataQuery = readFileSync("src/db/queries/media-item-metadata.ts", "utf
 
 test("metadata filters share the same missing-facts condition, with an attempt required only for not found", () => {
   assert.match(query, /if \(input\.metadataFilter\) \{\s*if \(input\.metadataFilter === "missing"\) \{\s*conditions\.push\(isNotNull\(mediaItems\.metadataAttemptedAt\)\)/);
-  assert.match(query, /not exists \([\s\S]*mediaItemMetadata\.facts\} <> '\{\}'::jsonb/);
+  assert.match(query, /not exists \([\s\S]*mediaMetadataFactsSql\(\)\} <> '\{\}'::jsonb/);
   assert.match(query, /const filterCondition = adminMediaFilterConditions\(input\);[\s\S]*count\(\*\)::int[\s\S]*\.where\(filterCondition\);[\s\S]*\.where\(filterCondition\)/);
 });
 

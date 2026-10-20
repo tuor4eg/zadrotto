@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots"
 import { eq } from "drizzle-orm"
 
 import { db } from "@/db"
@@ -22,7 +23,7 @@ const BATCH_SIZE = 20
 
 type ClaimedMessage = Awaited<ReturnType<typeof claimPendingNotificationTransportMessages>>[number]
 
-async function sendClaimedMessage(message: ClaimedMessage, signal?: AbortSignal) {
+async function sendClaimedMessage(message: ClaimedMessage, signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
   const [event] = await db.select().from(domainEvents).where(eq(domainEvents.id, message.eventId)).limit(1)
   if (!event || !isDomainEventType(event.type)) throw new Error("Domain event is missing or unsupported.")
   if (message.recipient === MISSING_NOTIFICATION_RECIPIENT) {
@@ -35,9 +36,11 @@ async function sendClaimedMessage(message: ClaimedMessage, signal?: AbortSignal)
     }
     await enqueueNotificationTransportRecipients({
       eventId: message.eventId, recipients: config.chatIds, transport: "telegram",
-    })
+    }, jobGuard)
     return
   }
+  signal?.throwIfAborted()
+  await withSnapshotJobGuard(jobGuard, async () => undefined)
   await dispatchExternalNotificationTransport({
     event: event as PersistedDomainEvent,
     recipient: message.recipient,
@@ -46,10 +49,10 @@ async function sendClaimedMessage(message: ClaimedMessage, signal?: AbortSignal)
   })
 }
 
-export async function deliverPendingNotificationTransports(signal?: AbortSignal) {
-  const messages = await claimPendingNotificationTransportMessages(BATCH_SIZE, NOTIFICATION_TRANSPORT_MAX_ATTEMPTS)
+export async function deliverPendingNotificationTransports(signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
+  const messages = await claimPendingNotificationTransportMessages(BATCH_SIZE, NOTIFICATION_TRANSPORT_MAX_ATTEMPTS, new Date(), jobGuard)
   return processClaimedNotificationTransportMessages(messages, {
     complete: completeNotificationTransportMessage,
-    send: (message) => sendClaimedMessage(message, signal),
+    send: (message) => sendClaimedMessage(message, signal, jobGuard),
   })
 }

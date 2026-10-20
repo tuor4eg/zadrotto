@@ -1,5 +1,9 @@
 "use server";
 
+import type { DbTransaction } from "@/db/transaction";
+
+import { validateBookFormMutation, isBookSnapshotValidationError } from "@/lib/providers/book-form-mutation";
+
 import { randomUUID } from "node:crypto";
 
 import { revalidatePath } from "next/cache";
@@ -202,19 +206,21 @@ function getCoverSourceFromItem(item: {
   };
 }
 
-function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
-  return resolveMediaMetadataFormMutation({
+async function getMediaItemMetadataMutation(formData: FormData, expectedMediaType: MediaType) {
+  const mutation = resolveMediaMetadataFormMutation({
     expectedMediaType,
     metadataCandidateToken: getOptionalMetadataCandidateToken(formData),
     titleSourceToken:
       normalizeOptionalFormString(getFormString(formData, "metadataTitleSourceToken")),
     sourceChanged: getFormString(formData, "metadataSourceChanged") === "1",
   });
+  return validateBookFormMutation(mutation,expectedMediaType);
 }
 
 async function saveMediaItemMetadataMutation(
   mutation: Exclude<MediaMetadataFormMutation, { type: "reject" }>,
   mediaItemId: number,
+  transaction?:DbTransaction,
 ) {
   if (mutation.type === "keep") {
     return;
@@ -229,11 +235,12 @@ async function saveMediaItemMetadataMutation(
     requestProviderParts: true,
     mediaItemId,
     facts: mutation.facts,
+    snapshotReferences: mutation.snapshotReferences,
     sourceProvider: mutation.sourceProvider,
     sourceExternalId: mutation.sourceExternalId,
     sourceUrl: mutation.sourceUrl,
     fetchedAt: mutation.fetchedAt,
-  });
+  },transaction);
 }
 
 export async function updateAdminMediaItemAction(formData: FormData) {
@@ -280,7 +287,7 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     }
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
+  const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(`/admin/media/${mediaItemId.value}/edit?error=invalid-metadata`);
@@ -323,19 +330,11 @@ export async function updateAdminMediaItemAction(formData: FormData) {
   const nextCoverSource =
     removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(existingItem);
 
-  if ((removeCover || cover.coverUrl) && isS3ObjectKey(existingItem.coverUrl)) {
-    try {
-      await deleteUploadedCoverFilesIfNeeded({
-        coverUrl: existingItem.coverUrl,
-        coverThumbUrl: existingItem.coverThumbUrl,
-      });
-    } catch {
-      redirect(`/admin/media/${mediaItemId.value}/edit?error=cover-delete`);
-    }
-  }
 
   try {
     const updatedItem = await updateAdminMediaItem({
+      afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
+        ? (tx,id)=>saveMediaItemMetadataMutation(metadataMutation,id,tx) : undefined,
       mediaItemId: mediaItemId.value,
       coverUrl: nextCoverUrl,
       coverThumbUrl: nextCoverThumbUrl,
@@ -348,10 +347,23 @@ export async function updateAdminMediaItemAction(formData: FormData) {
     }
   } catch (error) {
     console.error(error);
-    redirect(`/admin/media/${mediaItemId.value}/edit?error=${getAdminFormErrorCode(error)}`);
+    if (cover.coverUrl) await deleteUploadedCoverFilesIfNeeded({coverUrl:cover.coverUrl,coverThumbUrl:cover.coverThumbUrl}).catch(console.error);
+    redirect(`/admin/media/${mediaItemId.value}/edit?error=${isBookSnapshotValidationError(error)?"invalid-metadata":getAdminFormErrorCode(error)}`);
   }
 
-  await saveMediaItemMetadataMutation(metadataMutation, mediaItemId.value);
+  if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, mediaItemId.value);
+
+  if ((removeCover || cover.coverUrl) && isS3ObjectKey(existingItem.coverUrl)) {
+    try {
+      await deleteUploadedCoverFilesIfNeeded({
+        coverUrl: existingItem.coverUrl,
+        coverThumbUrl: existingItem.coverThumbUrl,
+      });
+    } catch {
+      redirect(`/admin/media/${mediaItemId.value}/edit?error=cover-delete`);
+    }
+  }
+
 
   const nextIdentity = await getAdminMediaItemIdentityById(mediaItemId.value);
 
@@ -398,7 +410,7 @@ export async function createAdminMediaItemAction(formData: FormData) {
     redirect(`/admin/media/new?error=too-many-aliases-${maxTitleAliases}`);
   }
 
-  const metadataMutation = getMediaItemMetadataMutation(formData, form.value.mediaType);
+  const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect("/admin/media/new?error=invalid-metadata");
@@ -455,6 +467,8 @@ export async function createAdminMediaItemAction(formData: FormData) {
     const { authorId, ...mediaInput } = form.value;
 
     item = await createAdminMediaItem({
+      afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
+        ? (tx,id)=>saveMediaItemMetadataMutation(metadataMutation,id,tx) : undefined,
       authorId,
       code,
       coverUrl: cover.coverUrl,
@@ -468,10 +482,10 @@ export async function createAdminMediaItemAction(formData: FormData) {
       coverThumbUrl: cover.coverThumbUrl,
     }).catch(console.error);
     console.error(error);
-    redirect(`/admin/media/new?error=${getAdminFormErrorCode(error)}`);
+    redirect(`/admin/media/new?error=${isBookSnapshotValidationError(error)?"invalid-metadata":getAdminFormErrorCode(error)}`);
   }
 
-  await saveMediaItemMetadataMutation(metadataMutation, item.id);
+  if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, item.id);
 
   const identity = await getAdminMediaItemIdentityById(item.id);
 

@@ -211,6 +211,10 @@ describe("author auth persistence contracts", () => {
     assert.match(claim, /for\("update", \{ skipLocked: true \}\)/);
     assert.match(claim, /status: "sending"/);
     assert.match(claim, /status, "sending"[\s\S]*staleLease/);
+    assert.match(claim, /leaseToken: randomUUID\(\)/);
+    assert.match(claim, /attempts: sql`\$\{emailOutbox.attempts\} \+ 1`/);
+    assert.match(outboxQueries, /eq\(emailOutbox\.leaseToken, leaseToken\)/);
+    assert.match(outboxQueries, /updatedAt\} > clock_timestamp\(\)/);
   });
 
   it("adds auth tables without rewriting legacy authors or access tokens", () => {

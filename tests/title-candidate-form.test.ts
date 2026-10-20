@@ -4,6 +4,7 @@ import { describe, it } from "node:test";
 
 import {
   getMediaTitleCandidateFormFields,
+  getMediaTitleMetadataFormFields,
   mergeMediaTitleMetadataAliases,
 } from "../src/lib/media/title-candidate-form";
 import type { MediaTitleCandidate } from "../src/lib/covers/types";
@@ -20,6 +21,26 @@ const candidate: MediaTitleCandidate = {
   sourcePageUrl: null,
   releaseYear: 1999,
 };
+
+describe("partial metadata after candidate selection", () => {
+  const selected = getMediaTitleCandidateFormFields(candidate, { title: "", originalTitle: "", description: "", releaseYear: "" }, false);
+
+  it("retains search-result year and description when detail metadata omits them", () => {
+    assert.deepEqual(getMediaTitleMetadataFormFields({ title: "Уточнённое название" }, selected, false), {
+      ...selected, title: "Уточнённое название",
+    });
+    assert.deepEqual(getMediaTitleMetadataFormFields(undefined, selected, false), selected);
+  });
+
+  it("applies supplied details and preserves selected fields when details have no value", () => {
+    assert.deepEqual(getMediaTitleMetadataFormFields({ releaseYear: 2005, description: "Полное описание" }, selected, false), {
+      ...selected, releaseYear: "2005", description: "Полное описание",
+    });
+    assert.deepEqual(getMediaTitleMetadataFormFields({ originalTitle: null, releaseYear: null, description: null }, selected, false), selected);
+    assert.deepEqual(getMediaTitleMetadataFormFields({ originalTitle: "  ", description: "" }, selected, false), selected);
+    assert.deepEqual(getMediaTitleMetadataFormFields({ releaseYear: 2005, description: "Полное описание" }, selected, true), selected);
+  });
+});
 
 describe("getMediaTitleCandidateFormFields", () => {
   it("fully applies the candidate in create mode", () => {

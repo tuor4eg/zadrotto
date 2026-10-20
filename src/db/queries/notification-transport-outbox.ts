@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots"
 import { randomUUID } from "node:crypto"
 
 import { and, asc, eq, lt, lte, or, sql } from "drizzle-orm"
@@ -11,18 +12,18 @@ export async function enqueueNotificationTransportRecipients(input: {
   eventId: string
   recipients: string[]
   transport: "telegram"
-}) {
+}, jobGuard?: SnapshotJobGuard) {
   if (input.recipients.length === 0) return
-  await db.insert(notificationTransportOutbox).values(input.recipients.map((recipient) => ({
+  await withSnapshotJobGuard(jobGuard, tx => tx.insert(notificationTransportOutbox).values(input.recipients.map((recipient) => ({
     eventId: input.eventId,
     recipient,
     transport: input.transport,
-  }))).onConflictDoNothing()
+  }))).onConflictDoNothing())
 }
 
-export async function claimPendingNotificationTransportMessages(limit: number, maxAttempts: number, now = new Date()) {
+export async function claimPendingNotificationTransportMessages(limit: number, maxAttempts: number, now = new Date(), jobGuard?: SnapshotJobGuard) {
   const safeLimit = Math.max(1, Math.min(limit, 50))
-  return db.transaction(async (tx) => {
+  return withSnapshotJobGuard(jobGuard, async (tx) => {
     await tx.update(notificationTransportOutbox).set({
       status: "failed", leaseToken: null, leaseExpiresAt: null,
       lastError: "Достигнут лимит попыток доставки.", updatedAt: now,

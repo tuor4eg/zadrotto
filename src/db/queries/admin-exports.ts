@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminExports, jobRuns } from "@/db/schema";
@@ -55,30 +56,40 @@ export async function getAdminExportById(id: string) {
   const [row] = await db.select().from(adminExports).where(eq(adminExports.id, id)).limit(1);
   return row ?? null;
 }
-export async function markAdminExportRunning(id: string) {
-  const [row] = await db.update(adminExports).set({ status: "running", startedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(and(eq(adminExports.id, id), inArray(adminExports.status, ["queued", "running", "failed"]))).returning();
+export async function markAdminExportRunning(id: string, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+  const [row] = await tx.update(adminExports).set({ status: "running", startedAt: new Date(), errorMessage: null, updatedAt: new Date() }).where(and(eq(adminExports.id, id), inArray(adminExports.status, ["queued", "running", "failed"]))).returning();
   return row ?? null;
+  });
 }
-export async function markAdminExportReady(input: { id: string; objectKey: string; rowCount: number | null; fileSize: number; expiresAt?: Date }) {
+export async function markAdminExportReady(input: { id: string; objectKey: string; rowCount: number | null; fileSize: number; expiresAt?: Date }, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
   if (!Number.isSafeInteger(input.fileSize) || input.fileSize < 0) throw new Error("Некорректный размер экспорта.");
-  await db.update(adminExports).set({ status: "ready", objectKey: input.objectKey, rowCount: input.rowCount, fileSize: input.fileSize, ...(input.expiresAt ? { expiresAt: input.expiresAt } : {}), finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, input.id));
+  await tx.update(adminExports).set({ status: "ready", objectKey: input.objectKey, rowCount: input.rowCount, fileSize: input.fileSize, ...(input.expiresAt ? { expiresAt: input.expiresAt } : {}), finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, input.id));
+  });
 }
-export async function markAdminExportFailed(id: string, message = "Не удалось сформировать экспорт.") {
-  await db.update(adminExports).set({ status: "failed", errorMessage: message, finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, id));
+export async function markAdminExportFailed(id: string, message = "Не удалось сформировать экспорт.", jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+  await tx.update(adminExports).set({ status: "failed", errorMessage: message, finishedAt: new Date(), updatedAt: new Date() }).where(eq(adminExports.id, id));
+  });
 }
 export async function requeueAdminExport(id: string, adminId: number, expiresAt?: Date) {
   const [row] = await db.update(adminExports).set({ status: "queued", errorMessage: null, startedAt: null, finishedAt: null, objectKey: null, rowCount: null, fileSize: null, ...(expiresAt ? { expiresAt } : {}), updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.createdByAdminId, adminId), eq(adminExports.status, "failed"))).returning();
   return row ?? null;
 }
 
-export async function setAdminExportObjectKey(id: string, objectKey: string) {
-  await db.update(adminExports).set({ objectKey, updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.status, "running")));
+export async function setAdminExportObjectKey(id: string, objectKey: string, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+  await tx.update(adminExports).set({ objectKey, updatedAt: new Date() }).where(and(eq(adminExports.id, id), eq(adminExports.status, "running")));
+  });
 }
 export async function getExpiredAdminExports(now = new Date()) {
   return db.select().from(adminExports).where(and(lt(adminExports.expiresAt, now), inArray(adminExports.status, ["queued", "ready", "failed"]))).limit(100);
 }
-export async function markAdminExportExpired(id: string) {
-  await db.update(adminExports).set({ status: "expired", objectKey: null, updatedAt: new Date() }).where(eq(adminExports.id, id));
+export async function markAdminExportExpired(id: string, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+  await tx.update(adminExports).set({ status: "expired", objectKey: null, updatedAt: new Date() }).where(eq(adminExports.id, id));
+  });
 }
 
 export async function cancelQueuedAdminExport(id: string, adminId: number) {

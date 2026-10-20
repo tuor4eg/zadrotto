@@ -1,3 +1,4 @@
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { and, asc, eq, gte, lt, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -79,7 +80,7 @@ function createDailyDossierQuery(input: {
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,

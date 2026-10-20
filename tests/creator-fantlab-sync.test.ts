@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "node:test";
 import { parseFantlabSyncPayload, syncCreatorFantlabAvatar } from "../src/lib/creators/fantlab-sync";
+import { JobError } from "../src/lib/jobs/types";
 
 type Dependencies = NonNullable<Parameters<typeof syncCreatorFantlabAvatar>[3]>;
 const controller = new AbortController();
@@ -53,6 +54,18 @@ test("concurrent manual change discards new file and preserves old one", async (
   assert.equal((await syncCreatorFantlabAvatar(1, false, controller.signal, f.dependencies)).status, "conflict");
   assert.equal(f.calls.includes("delete:new-key"), true);
   assert.equal(f.calls.includes("delete:old-key"), false);
+});
+test("lost worker lease rejects the avatar commit, cleans its upload and never retries the preview", async () => {
+  const f = fixture();
+  const jobGuard = { runId: 21, lockToken: "former-owner" };
+  const lost = new JobError("lease-lost", "Worker lease expired", { retryable: false });
+  f.dependencies.commitFantlabAvatar = async input => {
+    assert.deepEqual(input.jobGuard, jobGuard);
+    f.calls.push("commit");
+    throw lost;
+  };
+  await assert.rejects(syncCreatorFantlabAvatar(1, false, controller.signal, f.dependencies, jobGuard), error => error === lost);
+  assert.deepEqual(f.calls, ["author:20", "https://fantlab.ru/main", "upload", "commit", "delete:new-key"]);
 });
 test("dry run fetches and validates but never writes; missing binding prevents all requests", async () => {
   const f = fixture();

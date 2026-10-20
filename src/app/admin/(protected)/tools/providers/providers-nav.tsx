@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Gauge, ServerCog } from "lucide-react";
+import { Database, Gauge, ServerCog } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -16,6 +16,11 @@ const PROVIDER_NAV_ITEMS = [
     href: "/admin/tools/providers/limits",
     label: "Лимиты",
     icon: Gauge,
+  },
+  {
+    href: "/admin/tools/providers/snapshots",
+    label: "Снимки",
+    icon: Database,
   },
 ] as const;
 

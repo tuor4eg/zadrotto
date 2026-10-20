@@ -1,3 +1,4 @@
+import { ProviderSnapshotControls } from "@/components/admin/provider-snapshot-controls";
 import Link from "next/link";
 import { ArrowLeft, Check, Eye, EyeOff, FileText, RotateCcw, Trash2, X } from "lucide-react";
 import { notFound } from "next/navigation";
@@ -387,6 +388,11 @@ export default async function EditAdminMediaPage({
           </div>
         </CardContent>
       </Card>
+      {item.mediaType === "book" ? (
+        <div className="xl:col-span-2">
+          <ProviderSnapshotControls mediaItemId={mediaItemId} />
+        </div>
+      ) : null}
     </div>
   );
 }

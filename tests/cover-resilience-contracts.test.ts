@@ -97,7 +97,7 @@ describe("cover thumbnail recovery job", () => {
     assert.match(handlersSource, /mediaItemId < 1/);
     assert.match(handlersSource, /defaultMaxAttempts: 3/);
     assert.match(handlersSource, /defaultTimeoutSeconds: 300/);
-    assert.match(handlersSource, /backfillCoverThumbnails\(\{ attempt, runId, \.\.\.payload \}\)/);
+    assert.match(handlersSource, /backfillCoverThumbnails\(\{ attempt, runId, signal, jobGuard: jobGuard\(runId, lockToken\), \.\.\.payload \}\)/);
     assert.match(handlersSource, /cover-thumbnail-backfill-failed/);
   });
 

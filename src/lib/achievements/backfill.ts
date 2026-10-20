@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import { randomUUID } from "node:crypto";
@@ -6,7 +7,6 @@ import { and, asc, eq, gt, inArray, isNull } from "drizzle-orm";
 
 import { db } from "@/db";
 import { achievements, authors } from "@/db/schema";
-import { runInTransaction } from "@/db/transaction";
 import { createJobRun } from "@/db/queries/jobs";
 import {
   DEFAULT_JOB_MAX_ATTEMPTS,
@@ -23,7 +23,7 @@ export type AchievementBackfillPayload = {
   batchSize?: number;
 };
 
-export async function backfillAchievements(input: AchievementBackfillPayload) {
+export async function backfillAchievements(input: AchievementBackfillPayload, jobGuard?: SnapshotJobGuard) {
   const batchSize = input.batchSize ?? 100;
   const awardGroupId = input.awardGroupId ?? randomUUID();
   const achievementIds = input.achievementIds ? [...new Set(input.achievementIds)] : undefined;
@@ -46,13 +46,12 @@ export async function backfillAchievements(input: AchievementBackfillPayload) {
     .limit(batchSize);
   const authorIds = authorRows.map((author) => author.id);
 
-  const awards = authorIds.length > 0
-    ? await runInTransaction((tx) => evaluateAchievements(tx, {
+  const awards = await withSnapshotJobGuard(jobGuard, async tx => {
+    const awarded = authorIds.length > 0 ? await evaluateAchievements(tx, {
         achievementIds,
         authorIds,
         awardGroupId,
-      }))
-    : [];
+      }) : [];
   const lastAuthorId = authorIds.at(-1);
 
   if (lastAuthorId && authorRows.length === batchSize) {
@@ -69,8 +68,11 @@ export async function backfillAchievements(input: AchievementBackfillPayload) {
       source: "event",
       timeoutSeconds: DEFAULT_JOB_TIMEOUT_SECONDS,
       type: "achievements.backfill",
-    });
+    }, new Date(), tx);
   }
+
+    return awarded;
+  });
 
   return {
     awardGroupId,

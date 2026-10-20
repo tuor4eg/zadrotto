@@ -39,6 +39,7 @@ export const ACTIVITY_ENTITY_TYPES = [
 ] as const;
 
 export const ACTIVITY_ACTIONS = [
+  "domain-event.dispatch.failed",
   "admin.login",
   "admin.login.failed",
   "admin.logout",
@@ -165,6 +166,7 @@ export const ACTIVITY_ACTIONS = [
   "collection.published",
   "collection.unpublished",
   "cover-providers.updated",
+  "book-provider.normalized-metadata.enabled",
   "cover-provider-image-relay.updated",
   "cover-provider-credentials.updated",
   "ai-provider.settings.updated",
@@ -385,6 +387,8 @@ export const ACTIVITY_ACTION_LABELS = {
   "collection.published": "Подборка опубликована",
   "collection.unpublished": "Подборка снята с публикации",
   "cover-providers.updated": "Провайдеры обложек изменены",
+  "domain-event.dispatch.failed": "Ошибка обработки доменного события",
+  "book-provider.normalized-metadata.enabled": "Включены нормализованные метаданные книг",
   "cover-provider-image-relay.updated": "Загрузка изображений провайдера изменена",
   "cover-provider-credentials.updated": "Авторизация провайдера сохранена",
   "ai-provider.settings.updated": "Настройки AI-провайдера изменены",

@@ -1,3 +1,4 @@
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
 
@@ -381,7 +382,7 @@ export async function getRandomPublishedFranchisePreview(input: {
       id: mediaItems.id,
       mediaCarrierCode: mediaCarriers.code,
       mediaType: mediaItems.mediaType,
-      metadataFacts: mediaItemMetadata.facts,
+      metadataFacts: mediaMetadataFactsSql(),
       ratingsCount: mediaItemRatingsCountSql,
       releaseYear: mediaItems.releaseYear,
       title: mediaItems.title,
@@ -401,6 +402,8 @@ export async function getRandomPublishedFranchisePreview(input: {
       mediaItems.id,
       mediaCarriers.code,
       mediaItemMetadata.facts,
+      mediaItemMetadata.sourceProvider,
+      mediaItemMetadata.originalLanguage,
       mediaItemRatingStats.ratingsCount,
       mediaItemRatingStats.scoreSum,
     )

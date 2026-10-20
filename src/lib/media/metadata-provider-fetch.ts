@@ -16,6 +16,7 @@ import type { MetadataJobContext } from "@/lib/media/metadata-jobs"
 
 export async function createMetadataProviderJobContext(
   quotaReserve: number,
+  snapshotJobGuard?: {runId:number;lockToken:string},
 ): Promise<MetadataJobContext> {
   const [coverSettings, providerSettings, providerRateLimits, providerCredentials] = await Promise.all([
     getCoverSettings(),
@@ -25,6 +26,7 @@ export async function createMetadataProviderJobContext(
   ])
   const limiter = createProviderCoverSearchRateLimiter(providerRateLimits)
   const options = {
+    snapshotJobGuard,
     candidateLimit: coverSettings.candidateLimit,
     tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
     requestTimeoutMs: coverSettings.providerRequestTimeoutMs,

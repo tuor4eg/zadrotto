@@ -1,4 +1,6 @@
-import { createHash } from "node:crypto";
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
+import { createHash, randomUUID } from "node:crypto";
 import { createReadStream, createWriteStream } from "node:fs";
 import { mkdtemp, rm, stat } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -40,12 +42,12 @@ function mediaConditions(filters: Record<string, unknown>, afterId: number): SQL
   if (filters.mediaType && filters.mediaType !== "all") conditions.push(eq(mediaItems.mediaType, String(filters.mediaType)));
   if (filters.metadata === "missing") conditions.push(isNotNull(mediaItems.metadataAttemptedAt));
   if (filters.seriesBinding === "missing") conditions.push(missingGenreSeriesBindingSql());
-  if (filters.metadata === "missing" || filters.metadata === "absent") conditions.push(sql`not exists (select 1 from ${mediaItemMetadata} where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id} and ${mediaItemMetadata.facts} <> '{}'::jsonb)`);
+  if (filters.metadata === "missing" || filters.metadata === "absent") conditions.push(sql`not exists (select 1 from ${mediaItemMetadata} where ${mediaItemMetadata.mediaItemId} = ${mediaItems.id} and ${mediaMetadataFactsSql()} <> '{}'::jsonb)`);
   return conditions;
 }
 
 async function getMediaBatch(filters: Record<string, unknown>, afterId: number) {
-  return db.select({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title, originalTitle: mediaItems.originalTitle, description: mediaItems.description, mediaType: mediaItems.mediaType, carrier: mediaCarriers.name, releaseYear: mediaItems.releaseYear, coverUrl: mediaItems.coverUrl, publicationStatus: mediaItems.publicationStatus, author: authors.name, createdAt: mediaItems.createdAt, updatedAt: mediaItems.updatedAt, metadataFacts: mediaItemMetadata.facts })
+  return db.select({ id: mediaItems.id, code: mediaItems.code, title: mediaItems.title, originalTitle: mediaItems.originalTitle, description: mediaItems.description, mediaType: mediaItems.mediaType, carrier: mediaCarriers.name, releaseYear: mediaItems.releaseYear, coverUrl: mediaItems.coverUrl, publicationStatus: mediaItems.publicationStatus, author: authors.name, createdAt: mediaItems.createdAt, updatedAt: mediaItems.updatedAt, metadataFacts: mediaMetadataFactsSql() })
     .from(mediaItems).leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId)).leftJoin(authors, eq(authors.id, mediaItems.createdByAuthorId)).leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .where(and(...mediaConditions(filters, afterId))).orderBy(asc(mediaItems.id)).limit(BATCH_SIZE);
 }
@@ -91,14 +93,17 @@ async function hashFile(filePath: string) {
   return hash.digest("hex");
 }
 
-export async function generateAdminExport(exportId: string, signal: AbortSignal) {
+export async function generateAdminExport(exportId: string, signal: AbortSignal, jobGuard?: SnapshotJobGuard) {
   const current = await getAdminExportById(exportId);
-  if (current?.entityType === "database_dump") return generateDatabaseDump(exportId, signal);
-  const item = await markAdminExportRunning(exportId);
+  if (current?.entityType === "database_dump") return generateDatabaseDump(exportId, signal, jobGuard);
+  const item = await markAdminExportRunning(exportId, jobGuard);
   if (!item || item.status === "ready") return;
   const directory = await mkdtemp(join(tmpdir(), "zadrotto-export-"));
   const filePath = join(directory, `${item.id}.csv`);
+  let published = false;
+  let objectKey: string | undefined;
   try {
+    signal.throwIfAborted();
     if (!ADMIN_EXPORT_ENTITY_TYPES.includes(item.entityType as AdminExportEntityType)) throw new Error("Некорректный тип экспорта.");
     const entityType = item.entityType as AdminExportEntityType;
     const mediaTypes = typeof item.filters.mediaType === "string" ? [item.filters.mediaType] : [];
@@ -106,7 +111,7 @@ export async function generateAdminExport(exportId: string, signal: AbortSignal)
     let maxAliases = 0;
     if (item.entityType === "media_items" && fields.includes("aliases")) {
       let afterId = 0;
-      while (true) { const batch = await getMediaBatch(item.filters, afterId); if (!batch.length) break; const related = await getMediaRelations(batch.map((row) => row.id)); for (const values of related.aliases.values()) maxAliases = Math.max(maxAliases, values.length); afterId = batch.at(-1)!.id; }
+      while (true) { signal.throwIfAborted(); const batch = await getMediaBatch(item.filters, afterId); if (!batch.length) break; const related = await getMediaRelations(batch.map((row) => row.id)); for (const values of related.aliases.values()) maxAliases = Math.max(maxAliases, values.length); afterId = batch.at(-1)!.id; }
       maxAliases = Math.max(1, maxAliases);
     }
     const stream = createWriteStream(filePath, { encoding: "utf8" }); const state = { bytes: 0 }; let rowCount = 0;
@@ -119,6 +124,7 @@ export async function generateAdminExport(exportId: string, signal: AbortSignal)
     await writeChunk(stream, createCsvRow(headers), state);
     let afterId = 0;
     while (true) {
+      signal.throwIfAborted();
       const batch = item.entityType === "media_items" ? await getMediaBatch(item.filters, afterId) : await getSeriesBatch(item.filters, afterId);
       if (!batch.length) break;
       const related = item.entityType === "media_items" ? await getMediaRelations(batch.map((row) => row.id)) : null;
@@ -138,19 +144,24 @@ export async function generateAdminExport(exportId: string, signal: AbortSignal)
     }
     stream.end(); await once(stream, "finish");
     const fileStat = await stat(filePath); const payloadHash = await hashFile(filePath);
-    const objectKey = `admin-exports/${item.id}.csv`;
-    await uploadS3ObjectStream({ objectKey, body: createReadStream(filePath), contentLength: fileStat.size, contentType: "text/csv; charset=utf-8", payloadHash });
-    await markAdminExportReady({ id: item.id, objectKey, rowCount, fileSize: fileStat.size });
+    signal.throwIfAborted();
+    objectKey = `admin-exports/${item.id}/${randomUUID()}.csv`;
+    await uploadS3ObjectStream({ objectKey, body: createReadStream(filePath), contentLength: fileStat.size, contentType: "text/csv; charset=utf-8", payloadHash, signal });
+    signal.throwIfAborted();
+    await markAdminExportReady({ id: item.id, objectKey, rowCount, fileSize: fileStat.size }, jobGuard);
+    published = true;
     await logSystemActivity({ action: "data-export.ready", entityType: "data-export", entityLabel: item.id, message: "Экспорт данных сформирован.", metadata: { rowCount } });
   } catch (error) {
-    await markAdminExportFailed(item.id);
+    if (published) throw error;
+    if (objectKey) await deleteAdminExportFile({objectKey, entityType: item.entityType}).catch(() => undefined);
+    await markAdminExportFailed(item.id, undefined, jobGuard);
     await logSystemActivity({ action: "data-export.failed", entityType: "data-export", entityLabel: item.id, message: "Экспорт данных завершился ошибкой.", status: "failure", severity: "warning" });
     throw error;
   } finally { await rm(directory, { recursive: true, force: true }); }
 }
 
-export async function cleanupAdminExports() {
+export async function cleanupAdminExports(jobGuard?: SnapshotJobGuard, signal?: AbortSignal) {
   const expired = await getExpiredAdminExports();
-  for (const item of expired) { if (item.objectKey) await deleteAdminExportFile({ objectKey: item.objectKey, entityType: item.entityType }); await markAdminExportExpired(item.id); await logSystemActivity({ action: "data-export.expired", entityType: "data-export", entityLabel: item.id, message: "Истёкший файл экспорта удалён." }); }
+  for (const item of expired) { signal?.throwIfAborted(); await withSnapshotJobGuard(jobGuard, async () => undefined); if (item.objectKey) await deleteAdminExportFile({ objectKey: item.objectKey, entityType: item.entityType }); await markAdminExportExpired(item.id, jobGuard); await logSystemActivity({ action: "data-export.expired", entityType: "data-export", entityLabel: item.id, message: "Истёкший файл экспорта удалён." }); }
   return expired.length;
 }

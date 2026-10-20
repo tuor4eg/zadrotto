@@ -5,6 +5,7 @@ import { redirect } from "next/navigation";
 import * as creators from "@/db/queries/creators";
 import * as requests from "@/db/queries/creator-requests";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { parseCreatorDate } from "@/lib/creators/life-dates";
 import { deleteCreatorAvatarBestEffort } from "@/lib/creators/avatar-storage";
 
 function id(value: FormDataEntryValue | null) {
@@ -32,11 +33,15 @@ export async function saveCreatorAction(formData: FormData) {
     const relationType = formData.get("relationType");
     if (relationType !== "pseudonym_of") throw new Error("invalid-relation-type");
     const relations = formData.getAll("relatedCreatorIds").map(value => ({ targetCreatorId: id(value), relationType: "pseudonym_of" as const }));
-    const values = { relations, adminId: admin.id, name: text(formData.get("name")), slug: text(formData.get("slug")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
+    const values = { ...(formData.has("birthDate") ? { birthDate: parseCreatorDate(formData.get("birthDate")) } : {}), ...(formData.has("deathDate") ? { deathDate: parseCreatorDate(formData.get("deathDate")) } : {}), relations, adminId: admin.id, name: text(formData.get("name")), slug: text(formData.get("slug")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
     const creator = creatorId ? await creators.updateCreator(creatorId, values) : await creators.createCreator(values);
     if (!creator) throw new Error("not-found");
     creatorId = creator.id;
-  } catch { redirect(creatorId ? `/admin/creators/${creatorId}/edit?error=1` : "/admin/creators/new?error=1"); }
+  } catch (error) {
+    const dateError = error instanceof Error && ["Укажите полную корректную дату.", "Дата смерти не может предшествовать дате рождения.", "Даты жизни доступны только для персоны без исходящей связи псевдонима."].includes(error.message);
+    const errorCode = dateError ? "dates" : "1";
+    redirect(creatorId ? `/admin/creators/${creatorId}/edit?error=${errorCode}` : `/admin/creators/new?error=${errorCode}`);
+  }
   refresh();
   redirect(`/admin/creators/${creatorId}/edit?updated=1`);
 }

@@ -7,6 +7,7 @@ import type { MetadataJobStore } from "@/lib/media/metadata-jobs"
 export function createMetadataJobStore(input: {
   attempt: number
   runId: number | null
+  lockToken?: string
 }): MetadataJobStore {
   return {
     async logProviderFailure({ action, error, item }) {
@@ -37,7 +38,7 @@ export function createMetadataJobStore(input: {
         status: "failure",
       })
     },
-    markAttempt: markMediaItemMetadataAttempt,
-    upsert: upsertMediaItemMetadata,
+    markAttempt: (id,code) => markMediaItemMetadataAttempt(id,code,input.runId && input.lockToken ? {runId:input.runId,lockToken:input.lockToken}:undefined),
+    upsert: (value) => upsertMediaItemMetadata({...value,jobGuard:input.runId && input.lockToken ? {runId:input.runId,lockToken:input.lockToken}:undefined}),
   }
 }

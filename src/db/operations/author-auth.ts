@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { randomUUID } from "node:crypto";
 
 import { and, eq, gt, isNotNull, isNull, lt, or, sql } from "drizzle-orm";
@@ -424,6 +425,7 @@ export async function resetAuthorPassword(input: { tokenHash: string; passwordHa
 export async function cleanupAuthorAuthData(
   settings: Pick<EmailAutomationSettingsInput, "challengeRetentionHours" | "sessionRetentionDays" | "staleRegistrationDays" | "sentOutboxRetentionDays" | "failedOutboxRetentionDays"> = EMAIL_AUTOMATION_DEFAULTS,
   now = new Date(),
+  jobGuard?: SnapshotJobGuard,
 ) {
   const challengeCutoff = new Date(now.getTime() - settings.challengeRetentionHours * 60 * 60 * 1000);
   const sessionCutoff = new Date(now.getTime() - settings.sessionRetentionDays * 24 * 60 * 60 * 1000);
@@ -431,7 +433,7 @@ export async function cleanupAuthorAuthData(
   const sentOutboxCutoff = new Date(now.getTime() - settings.sentOutboxRetentionDays * 24 * 60 * 60 * 1000);
   const failedOutboxCutoff = new Date(now.getTime() - settings.failedOutboxRetentionDays * 24 * 60 * 60 * 1000);
 
-  return db.transaction(async (tx) => {
+  return withSnapshotJobGuard(jobGuard, async (tx) => {
     const expiredChallenges = await tx.delete(authorAuthChallenges).where(or(
       lt(authorAuthChallenges.expiresAt, challengeCutoff),
       and(

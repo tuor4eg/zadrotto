@@ -3,6 +3,7 @@ import { setTimeout as delay } from "node:timers/promises";
 import { getRedisClient } from "@/lib/services/redis";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { isSafeProviderImageUrl } from "@/lib/covers/provider-image-relay";
+import type { JSONValue } from "@/lib/providers/types";
 
 export type FantlabAuthor = { id: string; name: string; originalName: string | null; imageUrl: string | null; previewUrl: string | null; sourceUrl: string };
 export type FantlabSearchCandidate = { id: string; names: string[] };
@@ -29,13 +30,20 @@ function image(value: unknown) {
     return isSafeProviderImageUrl("fantlab", url.href) ? url.href : null;
   } catch { return null; }
 }
-export function parseFantlabAuthor(value: unknown, expectedId: string): FantlabAuthor {
+export function parseFantlabAuthor(value: unknown, expectedId: string, options: { allowClosed?: boolean } = {}): FantlabAuthor {
   const row = record(value);
   const id = parseFantlabId(row.autor_id ?? row.id);
   if (id !== expectedId || (row.id != null && parseFantlabId(row.id) !== id) || row.type !== "autor"
-    || ![1, "1", true].includes(row.is_opened as string | number | boolean) || !name(row.name)) throw new Error("Автор FantLab недоступен или ID не совпадает.");
+    || !(options.allowClosed ? [0, "0", false, 1, "1", true] : [1, "1", true]).includes(row.is_opened as string | number | boolean) || !name(row.name)) throw new Error("Автор FantLab недоступен или ID не совпадает.");
   return { id, name: name(row.name), originalName: name(row.name_orig) || null,
     imageUrl: image(row.image), previewUrl: image(row.image_preview), sourceUrl: `https://fantlab.ru/autor${id}` };
+}
+/** Closed bibliographies can still return a complete author JSON, even with HTTP 404. */
+export function parseFantlabAuthorSnapshot(value: unknown, expectedId: string) {
+  parseFantlabAuthor(value, expectedId, { allowClosed: true });
+  const row = record(value) as Record<string, JSONValue>;
+  if (typeof row.biography !== "string" || !row.awards || typeof row.awards !== "object") throw new Error("INVALID_CREATOR_SNAPSHOT");
+  return row;
 }
 export function parseFantlabSearchPage(value: unknown) {
   const row = record(value);
@@ -57,7 +65,7 @@ export function selectExactFantlabAuthor(names: readonly string[], candidates: r
 }
 
 /** A distributed lease serializes creator API requests across app and worker processes. */
-async function acquireSlot(signal: AbortSignal) {
+export async function acquireFantlabRequestSlot(signal: AbortSignal) {
   const redis = await getRedisClient();
   if (!redis) throw new Error("Redis недоступен для ограничения запросов FantLab.");
   const owner = randomUUID();
@@ -78,27 +86,32 @@ export function retryAfterMs(value: string | null, now = Date.now()) {
   const seconds = Number(value);
   return Math.max(1000, Number.isFinite(seconds) ? seconds * 1000 : (Date.parse(value) - now) || 1000);
 }
+export class FantlabHttpError extends Error {
+  constructor(readonly status: number, readonly retryAfterSeconds: number) { super(`FantLab HTTP ${status}`); }
+}
 export function createFantlabAuthorClient(dependencies: {
   fetch?: typeof fetch;
   acquire?: (signal: AbortSignal) => Promise<(cooldownMs: number) => Promise<void>>;
 } = {}) {
   const fetcher = dependencies.fetch ?? fetch;
-  async function json(path: string, parentSignal?: AbortSignal): Promise<unknown> {
+  async function json(path: string, parentSignal?: AbortSignal, beforeRequest?: () => Promise<void>, attempts = 3, acceptNotFound?: (payload: JSONValue) => void): Promise<JSONValue> {
     const signal = parentSignal ?? AbortSignal.timeout(120_000);
     let lastError: unknown;
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < attempts; attempt++) {
       signal.throwIfAborted();
-      const release = await (dependencies.acquire ?? acquireSlot)(signal);
+      const release = await (dependencies.acquire ?? acquireFantlabRequestSlot)(signal);
       let cooldownMs = 1000;
       let retry = false;
       try {
+        await beforeRequest?.();
         const response = await fetcher(`${API}${path}`, { redirect: "error", signal: AbortSignal.any([signal, AbortSignal.timeout(15_000)]), headers: { accept: "application/json" } });
-        if (!response.ok) {
+        if (!response.ok && !(response.status === 404 && acceptNotFound)) {
           retry = response.status === 429 || response.status >= 500;
           cooldownMs = retry ? retryAfterMs(response.headers.get("retry-after")) : 1000;
           await response.body?.cancel();
-          throw new Error(`FantLab HTTP ${response.status}`);
+          throw new FantlabHttpError(response.status, Math.ceil(cooldownMs / 1000));
         }
+        if (!response.body && response.status === 404) throw new FantlabHttpError(404, 1);
         if (!response.body || Number(response.headers.get("content-length")) > MAX_JSON_BYTES) throw new Error("Слишком большой ответ FantLab.");
         const chunks: Uint8Array[] = [];
         let bytes = 0;
@@ -110,7 +123,15 @@ export function createFantlabAuthorClient(dependencies: {
           if (bytes > MAX_JSON_BYTES) { await reader.cancel(); throw new Error("Слишком большой ответ FantLab."); }
           chunks.push(next.value);
         }
-        return JSON.parse(Buffer.concat(chunks).toString("utf8"));
+        let payload: JSONValue;
+        try {
+          payload = JSON.parse(Buffer.concat(chunks).toString("utf8"));
+          if (response.status === 404) acceptNotFound!(payload);
+        } catch (error) {
+          if (response.status === 404) throw new FantlabHttpError(404, 1);
+          throw error;
+        }
+        return payload;
       } catch (error) {
         lastError = error;
         if (signal.aborted) signal.throwIfAborted();
@@ -121,6 +142,11 @@ export function createFantlabAuthorClient(dependencies: {
     throw lastError;
   }
   return {
+    /** Jobs own retries; capture the DB-clock timestamp after acquiring the shared slot. */
+    async authorRaw(id: string, signal?: AbortSignal, beforeRequest?: () => Promise<void>) {
+      const expectedId = parseFantlabId(id);
+      return json(`/autor/${expectedId}?biography=1&awards=1`, signal, beforeRequest, 1, payload => { parseFantlabAuthorSnapshot(payload, expectedId); });
+    },
     async author(id: string, signal?: AbortSignal) {
       return parseFantlabAuthor(await json(`/autor/${parseFantlabId(id)}`, signal), id);
     },
@@ -144,4 +170,5 @@ export function createFantlabAuthorClient(dependencies: {
 }
 const client = createFantlabAuthorClient();
 export const getFantlabAuthor = client.author;
+export const getFantlabAuthorRaw = client.authorRaw;
 export const searchFantlabAuthors = client.search;

@@ -1,3 +1,4 @@
+import { type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { randomUUID } from "node:crypto";
 import { rename, stat, unlink } from "node:fs/promises";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
@@ -8,7 +9,7 @@ import { createPostgresClient } from "@/lib/services/postgres";
 import { writeDatabaseDump } from "./pg-dump";
 import { deleteAdminExportFile, ensureLocalDumpDirectory, getLocalDumpPath } from "./storage";
 
-export async function generateDatabaseDump(exportId: string, signal: AbortSignal) {
+export async function generateDatabaseDump(exportId: string, signal: AbortSignal, jobGuard?: SnapshotJobGuard) {
   signal.throwIfAborted();
   const client = createPostgresClient();
   let connection: Awaited<ReturnType<typeof client.reserve>> | undefined;
@@ -22,7 +23,7 @@ export async function generateDatabaseDump(exportId: string, signal: AbortSignal
     if (!lock.locked) throw new JobError("dump-busy", "Другой дамп базы ещё выполняется.", { deferSeconds: 30 });
     const current = await getAdminExportById(exportId);
     if (!current || current.status === "ready" || current.status === "expired") return;
-    const item = await markAdminExportRunning(exportId);
+    const item = await markAdminExportRunning(exportId, jobGuard);
     if (!item) return;
     started = true;
     // A previous worker can have stopped after writing but before publishing the result.
@@ -36,7 +37,7 @@ export async function generateDatabaseDump(exportId: string, signal: AbortSignal
     const filePath = getLocalDumpPath(objectKey);
     partialPath = `${filePath}.partial`;
     // Persist the attempt before writing so recovery can remove interrupted files.
-    await setAdminExportObjectKey(item.id, objectKey);
+    await setAdminExportObjectKey(item.id, objectKey, jobGuard);
     await writeDatabaseDump({ databaseUrl: process.env.DATABASE_URL!, filePath: partialPath, signal });
     const info = await stat(partialPath);
     if (!Number.isSafeInteger(info.size)) throw new JobError("dump-size", "Размер дампа превышает поддерживаемый предел.", { retryable: false });
@@ -47,7 +48,7 @@ export async function generateDatabaseDump(exportId: string, signal: AbortSignal
     await markAdminExportReady({
       id: item.id, objectKey, rowCount: null, fileSize: info.size,
       expiresAt: new Date(Date.now() + settings.exportRetentionDays * 86_400_000),
-    });
+    }, jobGuard);
     published = true;
     await logSystemActivity({ action: "data-export.ready", entityType: "data-export", entityLabel: item.id, message: "Дамп базы сформирован.", metadata: { fileSize: info.size } });
   } catch (error) {
@@ -55,7 +56,7 @@ export async function generateDatabaseDump(exportId: string, signal: AbortSignal
     if (started) {
       if (objectKey) await deleteAdminExportFile({ objectKey, entityType: "database_dump" }).catch(() => undefined);
       const failure = error instanceof JobError ? error : new JobError("dump-failed", "Не удалось сформировать дамп базы.");
-      await markAdminExportFailed(exportId, failure.message);
+      await markAdminExportFailed(exportId, failure.message, jobGuard);
       await logSystemActivity({ action: "data-export.failed", entityType: "data-export", entityLabel: exportId, message: "Формирование дампа базы завершилось ошибкой.", status: "failure", severity: "warning" });
     }
     throw error;

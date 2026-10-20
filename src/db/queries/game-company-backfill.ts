@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { gameCompanyBackfills as operations, gameCompanyBackfillItems as items, jobRuns, mediaItemMetadata as metadata, mediaItemProviderSnapshots as snapshots, gameCompanyRosters } from "@/db/schema";
@@ -5,8 +6,8 @@ import { getMediaItemProviderSnapshotHash } from "@/db/queries/media-item-provid
 import type { GameCompanyReference } from "@/lib/creators/game-companies";
 
 export const GAME_COMPANY_BACKFILL_TYPE = "media.game-companies-backfill";
-export async function claimGameCompanyBackfill(runId: number, adminId: number | null = null) {
-  return db.transaction(async tx => {
+export async function claimGameCompanyBackfill(runId: number, adminId: number | null = null, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
     await tx.execute(sql`select pg_advisory_xact_lock(72018421)`);
     let [operation] = await tx.select().from(operations).where(inArray(operations.status, ["active", "partial"])).orderBy(desc(operations.id)).limit(1);
     if (operation?.jobRunId && operation.jobRunId !== runId) {
@@ -34,8 +35,13 @@ export async function claimGameCompanyBackfill(runId: number, adminId: number | 
 export async function getGameCompanyBackfillBatch(backfillId: number) {
   return db.select().from(items).where(and(eq(items.backfillId, backfillId), inArray(items.status, ["pending", "ready"]))).orderBy(items.mediaItemId).limit(50);
 }
-export async function checkpointGameCompanyItem(item: typeof items.$inferSelect, patch: Partial<typeof items.$inferInsert>, executor: Pick<typeof db, "update"> = db) {
-  await executor.update(items).set({ ...patch, updatedAt: new Date() }).where(and(eq(items.backfillId, item.backfillId), eq(items.mediaItemId, item.mediaItemId), eq(items.provider, item.provider)));
+export async function checkpointGameCompanyItem(item: typeof items.$inferSelect, patch: Partial<typeof items.$inferInsert>, executor?: Parameters<Parameters<typeof db.transaction>[0]>[0], jobGuard?: SnapshotJobGuard) {
+  const write = async (tx: Pick<typeof db, "update">) => {
+    await tx.update(items).set({ ...patch, updatedAt: new Date() }).where(and(eq(items.backfillId, item.backfillId), eq(items.mediaItemId, item.mediaItemId), eq(items.provider, item.provider)));
+  };
+  // A provided transaction is already fenced by its caller; never reacquire its run lock.
+  if (executor) return write(executor);
+  return withSnapshotJobGuard(jobGuard, write);
 }
 export async function isCurrentGameCompanySource(item: typeof items.$inferSelect) {
   const [m, s] = await Promise.all([
@@ -58,9 +64,11 @@ export async function mergeGameCompanyMetadata(tx: Parameters<Parameters<typeof 
     await tx.update(snapshots).set({facts:mergedFacts,payloadHash:getMediaItemProviderSnapshotHash(payload),updatedAt:new Date()}).where(eq(snapshots.mediaItemId,item.mediaItemId));
   }
 }
-export async function finishGameCompanyBackfill(id: number) {
-  const [counts] = await db.select({ errors: sql<number>`count(*) filter (where ${items.status}='error')::int` }).from(items).where(eq(items.backfillId,id));
-  await db.update(operations).set({ status: counts.errors ? "partial" : "completed", finishedAt:new Date(),updatedAt:new Date() }).where(eq(operations.id,id));
+export async function finishGameCompanyBackfill(id: number, jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+    const [counts] = await tx.select({ errors: sql<number>`count(*) filter (where ${items.status}='error')::int` }).from(items).where(eq(items.backfillId,id));
+    await tx.update(operations).set({ status: counts.errors ? "partial" : "completed", finishedAt:new Date(),updatedAt:new Date() }).where(eq(operations.id,id));
+  });
 }
 export async function getGameCompanyBackfillProgress(backfillId?: number) {
   const [operation] = await db.select().from(operations).where(backfillId ? eq(operations.id, backfillId) : undefined).orderBy(desc(operations.id)).limit(1);

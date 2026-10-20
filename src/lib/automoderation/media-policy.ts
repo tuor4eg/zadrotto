@@ -10,6 +10,8 @@ import {
   mediaItems,
 } from "@/db/schema";
 import { runInDomainEventTransaction } from "@/db/transaction";
+import { guardAutomoderationJob } from "@/db/queries/automoderation-recovery";
+import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import {
   getCoverProviderCredentialsForSearch,
   getCoverProviderRateLimits,
@@ -21,6 +23,7 @@ import { createProviderCoverSearchRateLimiter } from "@/lib/covers/rate-limits";
 import { getTitleMetadata } from "@/lib/covers/registry";
 import { isMediaProviderCode } from "@/lib/media/metadata-candidates";
 import { isMediaTypeCode, type MediaType } from "@/lib/media/types";
+import { MEDIA_AUTOMODERATION_POLICY_CODE, MEDIA_AUTOMODERATION_POLICY_VERSION } from "./model";
 
 const SUSPICIOUS_TEXT = /(?:https?:\/\/|www\.|<\/?(?:script|iframe|object)\b|[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]|(.)\1{11,})/iu;
 
@@ -34,7 +37,8 @@ function textLooksSuspicious(value: string | null) {
   return value.length > 10_000 || SUSPICIOUS_TEXT.test(value) || (compact.length >= 8 && !/[\p{L}\p{N}]/u.test(compact));
 }
 
-export async function evaluateMediaAutomoderationCheck(checkId: number) {
+export async function evaluateMediaAutomoderationCheck(checkId: number, signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
+  signal?.throwIfAborted();
   const [check] = await db.select().from(automoderationChecks)
     .where(and(eq(automoderationChecks.id, checkId), eq(automoderationChecks.status, "running")))
     .limit(1);
@@ -113,9 +117,12 @@ export async function evaluateMediaAutomoderationCheck(checkId: number) {
         candidateLimit: coverSettings.candidateLimit,
         tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
         requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
+        signal,
+        snapshotJobGuard: jobGuard,
         providerCredentials,
         beforeProviderSearch: rateLimiter.canSearchProvider,
       }, providerSettings);
+      signal?.throwIfAborted();
       if (fresh.error) reasons.add(`provider_${fresh.error}`);
       if (!fresh.metadata) reasons.add("provider_item_not_found");
       if (fresh.metadata && (
@@ -155,9 +162,24 @@ export async function autoApproveMediaItem(input: {
   mediaItemId: number;
   expectedRevision: number;
   expectedUpdatedAt: Date;
+  jobGuard?: SnapshotJobGuard;
+  signal?: AbortSignal;
 }) {
   const now = new Date();
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    input.signal?.throwIfAborted();
+    await guardAutomoderationJob(tx, input.checkId, input.jobGuard);
+    const [check] = await tx.select().from(automoderationChecks).where(and(
+      eq(automoderationChecks.id, input.checkId),
+      eq(automoderationChecks.status, "running"),
+      eq(automoderationChecks.subjectType, "media-item"),
+      eq(automoderationChecks.subjectKey, String(input.mediaItemId)),
+      eq(automoderationChecks.subjectRevision, input.expectedRevision),
+      eq(automoderationChecks.mode, "enforce"),
+      eq(automoderationChecks.policyCode, MEDIA_AUTOMODERATION_POLICY_CODE),
+      eq(automoderationChecks.policyVersion, MEDIA_AUTOMODERATION_POLICY_VERSION),
+    )).limit(1).for("update");
+    if (!check) return null;
     const [item] = await tx.update(mediaItems).set({
       publicationStatus: "published",
       reviewedByAdminId: null,
@@ -220,6 +242,8 @@ export async function autoApproveMediaItem(input: {
       },
       type: "automoderation.approved",
     });
+    input.signal?.throwIfAborted();
+    await guardAutomoderationJob(tx, input.checkId, input.jobGuard);
     return item;
   });
 }

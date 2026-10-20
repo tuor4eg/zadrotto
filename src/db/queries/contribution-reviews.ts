@@ -1,3 +1,4 @@
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { isTitlePartReviewable } from "@/lib/media/title-parts";
 import { and, asc, desc, eq, gte, inArray, isNull, lte, ne, sql } from "drizzle-orm";
 
@@ -121,7 +122,7 @@ export async function getPublishedReviewById(
       mediaItemMediaType: mediaItems.mediaType,
       mediaItemReleaseYear: mediaItems.releaseYear,
       mediaItemCarrierCode: mediaCarriers.code,
-      mediaItemMetadataFacts: mediaItemMetadata.facts,
+      mediaItemMetadataFacts: mediaMetadataFactsSql(),
       likeCount: reviewReactionCountSql(contributions.id, "like"),
       likedByCurrentUser: currentUserReviewReactionExistsSql(
         contributions.id,

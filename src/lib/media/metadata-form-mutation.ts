@@ -9,6 +9,7 @@ export type MediaMetadataFormMutation =
   | { type: "reject" }
   | {
       type: "upsert";
+      snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[];
       facts: Record<string, unknown>;
       sourceProvider: string;
       sourceExternalId: string;
@@ -77,6 +78,7 @@ export function resolveMediaMetadataFormMutation(input: {
     return {
       type: "upsert",
       facts: metadata.facts,
+      ...(metadata.snapshotReferences ? { snapshotReferences: metadata.snapshotReferences } : {}),
       sourceProvider: metadata.provider,
       sourceExternalId: metadata.externalId,
       sourceUrl: metadata.sourceUrl,

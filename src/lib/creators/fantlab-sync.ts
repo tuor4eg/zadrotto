@@ -1,3 +1,5 @@
+import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { getCreatorNamesByIds } from "@/db/queries/creator-names";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { createHash } from "node:crypto";
 import { assignFantlabCreatorBinding, commitFantlabAvatar, getCreatorAvatarState, getCreatorFantlabBindings, getCreatorFantlabMappings, getFantlabCreatorBatch, getFantlabBindingOwner, getConflictingFantlabMappingOwners } from "@/db/queries/creator-avatars";
@@ -8,7 +10,7 @@ import { getFantlabAuthor, searchFantlabAuthors, selectExactFantlabAuthor } from
 
 export type FantlabSyncPayload = { dryRun: boolean; creatorId?: number; afterId: number; limit: number };
 export type FantlabSyncStatus = "confirmed" | "ambiguous" | "conflict" | "no-image" | "manual" | "updated" | "unchanged" | "error" | "unresolved" | "would-confirm" | "would-update";
-export type FantlabSyncRow = { creatorId: number; status: FantlabSyncStatus; message?: string; externalCreatorId?: string };
+export type FantlabSyncRow = { creatorId: number; creatorName?: string; status: FantlabSyncStatus; message?: string; externalCreatorId?: string };
 export type FantlabSyncReport = { processed: number; afterId: number; hasMore: boolean; counts: Partial<Record<FantlabSyncStatus, number>>; rows: FantlabSyncRow[] };
 
 export function parseFantlabSyncPayload(value: unknown): FantlabSyncPayload {
@@ -26,7 +28,7 @@ export function parseFantlabSyncPayload(value: unknown): FantlabSyncPayload {
   return { dryRun: input.dryRun === true, afterId: integer("afterId", 0), limit, ...(input.creatorId !== undefined ? { creatorId: integer("creatorId") } : {}) };
 }
 
-export async function migrateCreatorFantlabBinding(creatorId: number, dryRun: boolean, signal: AbortSignal): Promise<FantlabSyncRow> {
+export async function migrateCreatorFantlabBinding(creatorId: number, dryRun: boolean, signal: AbortSignal, jobGuard?: SnapshotJobGuard): Promise<FantlabSyncRow> {
   const state = await getCreatorAvatarState(creatorId);
   if (!state) throw new Error("Создатель не найден.");
   const [bindings, mappings] = await Promise.all([getCreatorFantlabBindings(creatorId), getCreatorFantlabMappings(creatorId)]);
@@ -52,7 +54,7 @@ export async function migrateCreatorFantlabBinding(creatorId: number, dryRun: bo
   const owner = await getFantlabBindingOwner(externalCreatorId);
   if (owner && owner.creatorId !== creatorId) return { creatorId, status: "conflict", externalCreatorId, message: "FantLab ID уже назначен другому Creator." };
   signal.throwIfAborted();
-  if (!dryRun) await assignFantlabCreatorBinding({ creatorId, externalCreatorId, mappingIds: mappings.map(mapping => mapping.id), expectedVersion: state.avatarVersion });
+  if (!dryRun) await assignFantlabCreatorBinding({ creatorId, externalCreatorId, mappingIds: mappings.map(mapping => mapping.id), expectedVersion: state.avatarVersion, jobGuard });
   return { creatorId, status: dryRun ? "would-confirm" : "confirmed", externalCreatorId };
 }
 
@@ -63,7 +65,7 @@ const avatarDependencies = {
 };
 
 export async function syncCreatorFantlabAvatar(creatorId: number, dryRun: boolean, signal: AbortSignal,
-  dependencies: Partial<typeof avatarDependencies> = {}): Promise<FantlabSyncRow> {
+  dependencies: Partial<typeof avatarDependencies> = {}, jobGuard?: SnapshotJobGuard): Promise<FantlabSyncRow> {
   const { getCreatorAvatarState, getCreatorFantlabBindings, getCreatorFantlabMappings, getFantlabAuthor,
     fetchProviderImage, transformCreatorAvatarBuffer, uploadProcessedCreatorAvatarBuffer,
     commitFantlabAvatar, deleteCreatorAvatarBestEffort } = { ...avatarDependencies, ...dependencies };
@@ -94,7 +96,7 @@ export async function syncCreatorFantlabAvatar(creatorId: number, dryRun: boolea
       try {
         signal.throwIfAborted();
         const result = await commitFantlabAvatar({ creatorId, expectedVersion: state.avatarVersion, bindingId: binding.id,
-          externalCreatorId: binding.externalCreatorId, ...uploaded, originalUrl, sourceUrl: author.sourceUrl });
+          externalCreatorId: binding.externalCreatorId, jobGuard, ...uploaded, originalUrl, sourceUrl: author.sourceUrl });
         if (!result.committed) return { creatorId, status: "conflict", message: "Создатель или привязка изменились во время загрузки." };
         committed = true;
         await deleteCreatorAvatarBestEffort(result.previousObjectKey);
@@ -102,6 +104,7 @@ export async function syncCreatorFantlabAvatar(creatorId: number, dryRun: boolea
       } finally { if (!committed) await deleteCreatorAvatarBestEffort(uploaded.objectKey); }
     } catch (error) {
       if (signal.aborted) signal.throwIfAborted();
+      if (error instanceof Error && "code" in error && error.code === "lease-lost") throw error;
       lastError = error;
     }
   }
@@ -109,21 +112,26 @@ export async function syncCreatorFantlabAvatar(creatorId: number, dryRun: boolea
 }
 
 export async function runFantlabCreatorBatch(kind: "bindings" | "avatars", payload: FantlabSyncPayload, signal: AbortSignal,
-  progress?: (row: FantlabSyncRow) => Promise<void>): Promise<FantlabSyncReport> {
+  progress?: (row: FantlabSyncRow) => Promise<void>, jobGuard?: SnapshotJobGuard): Promise<FantlabSyncReport> {
   const report: FantlabSyncReport = { processed: 0, afterId: payload.afterId, hasMore: false, counts: {}, rows: [] };
   while (report.processed < payload.limit) {
     signal.throwIfAborted();
     const batch = await getFantlabCreatorBatch(report.afterId, payload.creatorId);
     if (!batch.length) break;
+    const names = await getCreatorNamesByIds(batch.map(creator => creator.id));
     for (const creator of batch.slice(0, payload.limit - report.processed)) {
       signal.throwIfAborted();
       let row: FantlabSyncRow;
-      try { row = await (kind === "bindings" ? migrateCreatorFantlabBinding : syncCreatorFantlabAvatar)(creator.id, payload.dryRun, signal); }
+      try { row = kind === "bindings"
+        ? await migrateCreatorFantlabBinding(creator.id, payload.dryRun, signal, jobGuard)
+        : await syncCreatorFantlabAvatar(creator.id, payload.dryRun, signal, {}, jobGuard); }
       catch (error) {
         if (signal.aborted) signal.throwIfAborted();
+        if (error instanceof Error && "code" in error && error.code === "lease-lost") throw error;
         row = { creatorId: creator.id, status: "error", message: error instanceof Error ? error.message : "Неизвестная ошибка." };
       }
       // Persist report before advancing the cursor. Reprocessing an interrupted item is safe.
+      row = { ...row, creatorName: names[creator.id] };
       await progress?.(row);
       report.rows.push(row);
       report.counts[row.status] = (report.counts[row.status] ?? 0) + 1;

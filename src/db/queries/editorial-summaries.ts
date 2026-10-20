@@ -1,3 +1,5 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -13,7 +15,7 @@ export async function getEditorialSummarySource(mediaItemId: number) {
     mediaType: mediaItems.mediaType,
     releaseYear: mediaItems.releaseYear,
     description: mediaItems.description,
-    metadataFacts: mediaItemMetadata.facts,
+    metadataFacts: mediaMetadataFactsSql(),
     sourceProvider: mediaItemMetadata.sourceProvider,
     summary: mediaItemEditorialSummaries.summary,
     sourceHash: mediaItemEditorialSummaries.sourceHash,
@@ -47,7 +49,7 @@ export async function listEditorialSummarySources(afterId: number, limit: number
     mediaType: mediaItems.mediaType,
     releaseYear: mediaItems.releaseYear,
     description: mediaItems.description,
-    metadataFacts: mediaItemMetadata.facts,
+    metadataFacts: mediaMetadataFactsSql(),
     sourceProvider: mediaItemMetadata.sourceProvider,
     sourceHash: mediaItemEditorialSummaries.sourceHash,
     locked: mediaItemEditorialSummaries.locked,
@@ -73,12 +75,14 @@ export async function enqueueEditorialSummaryRun(input: {
   force?: boolean;
   source: "manual" | "event";
   availableAt?: Date;
+  jobGuard?: SnapshotJobGuard;
 }) {
   const job = await getEditorialSummaryJob();
   if (!job) throw new Error("EDITORIAL_SUMMARY_JOB_MISSING");
   parseEditorialSummaryOptions(job.options);
   const now = new Date();
-  const [created] = await db.insert(jobRuns).values({
+  const created = await withSnapshotJobGuard(input.jobGuard, async tx => {
+  const [row] = await tx.insert(jobRuns).values({
     jobId: job.id,
     type: EDITORIAL_SUMMARY_GENERATE_TYPE,
     payload: { mediaItemId: input.mediaItemId, ...(input.force ? { force: true } : {}) },
@@ -92,6 +96,8 @@ export async function enqueueEditorialSummaryRun(input: {
     retryBaseSeconds: job.retryBaseSeconds,
     retryMaxSeconds: job.retryMaxSeconds,
   }).onConflictDoNothing().returning({ id: jobRuns.id });
+  return row;
+  });
   return { created: Boolean(created), runId: created?.id ?? null };
 }
 
@@ -101,8 +107,9 @@ export async function saveGeneratedEditorialSummary(input: {
   prompt: string;
   description: string | null;
   modelId: string;
+  jobGuard?: SnapshotJobGuard;
 }) {
-  return db.transaction(async (tx) => {
+  return withSnapshotJobGuard(input.jobGuard, async (tx) => {
     const [item] = await tx.select({
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
@@ -111,8 +118,9 @@ export async function saveGeneratedEditorialSummary(input: {
       description: mediaItems.description,
     }).from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).for("update").limit(1);
     if (!item) return false;
-    const [metadata] = await tx.select({ facts: mediaItemMetadata.facts, provider: mediaItemMetadata.sourceProvider }).from(mediaItemMetadata)
-      .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId)).limit(1);
+    const [metadata] = await tx.select({ facts: mediaMetadataFactsSql(), provider: mediaItemMetadata.sourceProvider }).from(mediaItems)
+      .leftJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
+      .where(eq(mediaItems.id, input.mediaItemId)).limit(1);
     const [job] = await tx.select({ options: jobs.options }).from(jobs)
       .where(eq(jobs.code, EDITORIAL_SUMMARY_JOB_CODE)).for("share").limit(1);
     if (!job) return false;

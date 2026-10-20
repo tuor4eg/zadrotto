@@ -1,3 +1,4 @@
+import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import {
@@ -24,6 +25,8 @@ export async function backfillCoverThumbnails(input: {
   limit?: number;
   mediaItemId?: number;
   runId?: number;
+  jobGuard?: SnapshotJobGuard;
+  signal?: AbortSignal;
 } = {}): Promise<CoverThumbnailBackfillResult> {
   const items = await getMediaItemsMissingCoverThumb({
     limit: input.mediaItemId ? 1 : input.limit ?? 50,
@@ -37,6 +40,7 @@ export async function backfillCoverThumbnails(input: {
   };
 
   for (const item of items) {
+    input.signal?.throwIfAborted();
     const thumbnail = await createCoverThumbFromObjectKey(item.coverUrl);
 
     if (!thumbnail.ok) {
@@ -44,6 +48,7 @@ export async function backfillCoverThumbnails(input: {
       if (thumbnail.retryable) result.retryableFailed += 1;
       await markMediaItemCoverThumbAttempt({
         mediaItemId: item.id,
+        jobGuard: input.jobGuard,
         expectedCoverUrl: item.coverUrl!,
       });
       console.error("cover thumbnail backfill failed", {
@@ -52,7 +57,7 @@ export async function backfillCoverThumbnails(input: {
         mediaItemId: item.id,
         runId: input.runId ?? null,
       });
-      await logSystemActivity({
+      await logSystemActivity({ jobGuard: input.jobGuard,
         action: "media.cover-thumbnail.failed",
         entityId: item.id,
         entityLabel: item.title,
@@ -71,6 +76,7 @@ export async function backfillCoverThumbnails(input: {
 
     const updated = await updateMediaItemCoverThumb({
       mediaItemId: item.id,
+      jobGuard: input.jobGuard,
       expectedCoverUrl: item.coverUrl!,
       coverThumbUrl: thumbnail.coverThumbUrl,
     });
@@ -95,7 +101,7 @@ export async function backfillCoverThumbnails(input: {
     }
 
     result.updated += 1;
-    await logSystemActivity({
+    await logSystemActivity({ jobGuard: input.jobGuard,
       action: "media.cover-thumbnail.recovered",
       entityId: item.id,
       entityLabel: item.title,

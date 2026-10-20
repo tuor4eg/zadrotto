@@ -219,8 +219,8 @@ test("metadata jobs seed two enabled schedules with split cron and payloads", as
 
   assert.match(handlers, /type: "media\.metadata-backfill"/);
   assert.match(handlers, /type: "media\.metadata-refresh"/);
-  assert.match(handlers, /backfillMediaMetadata\(\{ attempt, runId, \.\.\.payload \}\)/);
-  assert.match(handlers, /refreshStaleMediaMetadata\(\{ attempt, runId, \.\.\.payload \}\)/);
+  assert.match(handlers, /backfillMediaMetadata\(\{ attempt, runId, lockToken, \.\.\.payload \}\)/);
+  assert.match(handlers, /refreshStaleMediaMetadata\(\{ attempt, runId, lockToken, \.\.\.payload \}\)/);
   assert.match(handlers, /result\.retryableFailed > 0/);
   assert.match(
     migration,

@@ -1,3 +1,4 @@
+import { validateSnapshotReferences } from "@/lib/providers/snapshot-values";
 import { createHmac, timingSafeEqual } from "node:crypto";
 
 import { COVER_PROVIDER_CODES, type MediaProviderCode } from "@/lib/covers/types";
@@ -8,6 +9,7 @@ const METADATA_CANDIDATE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 const TITLE_SOURCE_TOKEN_MAX_AGE_SECONDS = 6 * 60 * 60;
 
 export type MediaMetadataCandidateTokenPayload = {
+  snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[];
   provider: MediaProviderCode;
   externalId: string;
   mediaType: MediaType;
@@ -186,6 +188,7 @@ function isMediaMetadataCandidateTokenPayload(
     isMediaTypeCode(value.mediaType as string) &&
     (value.sourceUrl === null || isAbsoluteHttpUrl(value.sourceUrl)) &&
     isPlainRecord(value.facts) &&
+    (value.snapshotReferences === undefined || validateSnapshotReferences(value.snapshotReferences)) &&
     typeof value.exp === "number"
   );
 }
@@ -225,6 +228,7 @@ export function verifyMediaMetadataCandidateToken(token: string) {
       mediaType: decodedPayload.mediaType,
       sourceUrl: decodedPayload.sourceUrl,
       facts: decodedPayload.facts,
+      ...(decodedPayload.snapshotReferences ? {snapshotReferences:decodedPayload.snapshotReferences}: {}),
     } satisfies MediaMetadataCandidate;
   } catch {
     return null;

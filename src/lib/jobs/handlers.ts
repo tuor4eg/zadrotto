@@ -1,3 +1,5 @@
+import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { providerSnapshotJobHandler } from "@/lib/providers/snapshot-job";
 import { platformLogosSyncHandler } from "@/lib/platforms/logo-sync-job";
 import { gameCompanyEnrichHandler } from "@/lib/creators/game-company-images";
 import { gameCompanyBackfillHandler } from "@/lib/creators/game-company-backfill";
@@ -39,6 +41,10 @@ import { initializeReputation } from "@/lib/reputation/initialize";
 import { promoteEligibleTrustedAuthors } from "@/lib/reputation/service";
 import { setReputationSystemStatus } from "@/db/queries/reputation";
 
+function jobGuard(runId: number, lockToken?: string): SnapshotJobGuard | undefined {
+  return lockToken ? {runId, lockToken} : undefined;
+}
+
 function parseEmptyPayload(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value) || Object.keys(value).length > 0) {
     throw new JobError("invalid-payload", "Задача не принимает параметры.", { retryable: false });
@@ -50,9 +56,9 @@ const emailOutboxDeliveryHandler: JobHandlerDefinition<Record<string, never>> = 
   type: "auth.email-outbox-delivery",
   label: "Доставка системных email",
   parsePayload: parseEmptyPayload,
-  async execute() {
+  async execute({ signal }) {
     const settings = await getEmailAutomationSettings();
-    const result = await deliverPendingAuthorEmails(settings);
+    const result = await deliverPendingAuthorEmails(settings, signal);
     if (!result.ok) {
       throw new JobError("email-unavailable", "Email-провайдер недоступен.");
     }
@@ -63,9 +69,9 @@ const authCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "auth.cleanup",
   label: "Очистка авторской аутентификации",
   parsePayload: parseEmptyPayload,
-  async execute() {
+  async execute({ runId, lockToken }) {
     const settings = await getEmailAutomationSettings();
-    await cleanupAuthorAuthData(settings);
+    await cleanupAuthorAuthData(settings, new Date(), jobGuard(runId, lockToken));
   },
 };
 
@@ -73,8 +79,8 @@ const jobHistoryCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "jobs.cleanup-history",
   label: "Очистка истории фоновых задач",
   parsePayload: parseEmptyPayload,
-  async execute() {
-    await cleanupJobRunHistory();
+  async execute({ runId, lockToken }) {
+    await cleanupJobRunHistory(new Date(), jobGuard(runId, lockToken));
   },
 };
 
@@ -88,12 +94,12 @@ function parseAdminExportPayload(value: unknown) {
 const adminExportGenerateHandler: JobHandlerDefinition<{ exportId: string }> = {
   type: "admin.export-generate", label: "Экспорт данных и дамп базы", schedulable: false,
   defaultMaxAttempts: 3, defaultTimeoutSeconds: 3600, parsePayload: parseAdminExportPayload,
-  async execute({ payload, signal }) { await generateAdminExport(payload.exportId, signal); },
+  async execute({ payload, signal, runId, lockToken }) { await generateAdminExport(payload.exportId, signal, jobGuard(runId, lockToken)); },
 };
 const adminExportCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "admin.export-cleanup", label: "Очистка экспортов", parsePayload: parseEmptyPayload,
   defaultMaxAttempts: 3, defaultTimeoutSeconds: 300,
-  async execute() { await cleanupAdminExports(); },
+  async execute({runId, lockToken, signal}) { await cleanupAdminExports(jobGuard(runId, lockToken), signal); },
 };
 
 type CoverThumbnailBackfillPayload = {
@@ -133,8 +139,8 @@ const coverThumbnailBackfillHandler: JobHandlerDefinition<CoverThumbnailBackfill
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseCoverThumbnailBackfillPayload,
-  async execute({ attempt, payload, runId }) {
-    const result = await backfillCoverThumbnails({ attempt, runId, ...payload });
+  async execute({ attempt, payload, runId, lockToken, signal }) {
+    const result = await backfillCoverThumbnails({ attempt, runId, signal, jobGuard: jobGuard(runId, lockToken), ...payload });
 
     if (result.failed > 0) {
       throw new JobError(
@@ -226,8 +232,8 @@ const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseMetadataBackfillPayload,
-  async execute({ attempt, payload, runId }) {
-    const result = await backfillMediaMetadata({ attempt, runId, ...payload });
+  async execute({ attempt, payload, runId, lockToken }) {
+    const result = await backfillMediaMetadata({ attempt, runId, lockToken, ...payload });
 
     if (result.stopError) {
       throw new JobError(result.stopError, "Заполнение метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
@@ -293,8 +299,8 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseMetadataRefreshPayload,
-  async execute({ attempt, payload, runId }) {
-    const result = await refreshStaleMediaMetadata({ attempt, runId, ...payload });
+  async execute({ attempt, payload, runId, lockToken }) {
+    const result = await refreshStaleMediaMetadata({ attempt, runId, lockToken, ...payload });
 
     if (result.stopError) {
       throw new JobError(result.stopError, "Обновление метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
@@ -315,8 +321,8 @@ const animeShikimoriBackfillHandler: JobHandlerDefinition<Record<string, never>>
   defaultMaxAttempts: 1,
   defaultTimeoutSeconds: 60,
   parsePayload: parseEmptyPayload,
-  async execute() {
-    await backfillAnimeFromShikimori();
+  async execute({ runId, lockToken, signal }) {
+    await backfillAnimeFromShikimori(jobGuard(runId, lockToken), signal);
   },
 };
 
@@ -353,8 +359,8 @@ const ratingStatsReconciliationHandler: JobHandlerDefinition<RatingStatsReconcil
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseRatingStatsReconciliationPayload,
-  async execute({ payload }) {
-    const result = await reconcileMediaItemRatingStatsBatch(payload);
+  async execute({ payload, runId, lockToken }) {
+    const result = await reconcileMediaItemRatingStatsBatch(payload, jobGuard(runId, lockToken));
     console.info("rating stats reconciliation completed", result);
   },
 };
@@ -363,7 +369,7 @@ const editorialSummarySweepHandler: JobHandlerDefinition<Record<string, never>> 
   type: EDITORIAL_SUMMARY_SWEEP_TYPE,
   label: "Поиск записей для AI-справок",
   parsePayload: parseEmptyPayload,
-  async execute() { await sweepEditorialSummaries(); },
+  async execute({runId, lockToken, signal}) { await sweepEditorialSummaries(jobGuard(runId, lockToken), signal); },
 };
 
 function parseEditorialSummaryGeneratePayload(value: unknown) {
@@ -384,7 +390,7 @@ const editorialSummaryGenerateHandler: JobHandlerDefinition<{ mediaItemId: numbe
   label: "Генерация AI-справки записи",
   schedulable: false,
   parsePayload: parseEditorialSummaryGeneratePayload,
-  async execute({ payload }) { await generateEditorialSummary(payload.mediaItemId, payload.force); },
+  async execute({ payload, runId, lockToken, signal }) { await generateEditorialSummary(payload.mediaItemId, payload.force, jobGuard(runId, lockToken), signal); },
 };
 
 const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayload> = {
@@ -393,12 +399,14 @@ const domainEventDispatchHandler: JobHandlerDefinition<DomainEventDispatchPayloa
   defaultMaxAttempts: 5,
   defaultTimeoutSeconds: 300,
   parsePayload: parseDomainEventDispatchPayload,
-  async execute({ payload }) {
+  async execute({ payload, runId, lockToken, signal }) {
+    const context = {jobGuard: jobGuard(runId, lockToken), signal};
     if (payload.eventId) {
-      await dispatchDomainEvent(payload.eventId);
+      await dispatchDomainEvent(payload.eventId, context);
       return;
     }
-    await recoverPendingDomainEvents(payload.limit);
+    const result = await recoverPendingDomainEvents(payload.limit, context);
+    if (result.failed) throw new JobError("event-recovery-incomplete", `Ошибок обработки событий: ${result.failed}. Подробнее: /admin/activity. Повтор управляется outbox.`, { retryable: false });
   },
 };
 
@@ -408,8 +416,8 @@ const notificationTransportDeliveryHandler: JobHandlerDefinition<Record<string, 
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseEmptyPayload,
-  async execute({ signal }) {
-    await deliverPendingNotificationTransports(signal);
+  async execute({ signal, runId, lockToken }) {
+    await deliverPendingNotificationTransports(signal, jobGuard(runId, lockToken));
   },
 };
 
@@ -432,8 +440,8 @@ const automoderationHandler: JobHandlerDefinition<{ checkId: number }> = {
   defaultMaxAttempts: 1,
   defaultTimeoutSeconds: 60,
   parsePayload: parseAutomoderationPayload,
-  async execute({ payload }) {
-    await processAutomoderationCheck(payload.checkId);
+  async execute({ payload, runId, lockToken, signal }) {
+    await processAutomoderationCheck(payload.checkId, {jobGuard: jobGuard(runId, lockToken), signal});
   },
 };
 
@@ -487,8 +495,8 @@ const achievementBackfillHandler: JobHandlerDefinition<AchievementBackfillPayloa
   defaultTimeoutSeconds: 300,
   schedulable: false,
   parsePayload: parseAchievementBackfillPayload,
-  async execute({ payload }) {
-    await backfillAchievements(payload);
+  async execute({ payload, runId, lockToken }) {
+    await backfillAchievements(payload, jobGuard(runId, lockToken));
   },
 };
 
@@ -499,11 +507,11 @@ const reputationInitializeHandler: JobHandlerDefinition<Record<string, never>> =
   defaultTimeoutSeconds: 900,
   schedulable: false,
   parsePayload: parseEmptyPayload,
-  async execute() {
+  async execute({ runId, lockToken }) {
     try {
-      await initializeReputation();
+      await initializeReputation(jobGuard(runId, lockToken));
     } catch (error) {
-      await setReputationSystemStatus("disabled");
+      await setReputationSystemStatus("disabled", jobGuard(runId, lockToken));
       throw error;
     }
   },
@@ -515,9 +523,9 @@ const reputationPromoteTrustedHandler: JobHandlerDefinition<Record<string, never
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 120,
   parsePayload: parseEmptyPayload,
-  async execute() {
-    const eventIds = await promoteEligibleTrustedAuthors();
-    await Promise.all(eventIds.map(enqueueDomainEventDispatch));
+  async execute({ runId, lockToken }) {
+    const eventIds = await promoteEligibleTrustedAuthors(jobGuard(runId, lockToken));
+    await Promise.all(eventIds.map(id => enqueueDomainEventDispatch(id, jobGuard(runId, lockToken))));
   },
 };
 
@@ -538,15 +546,15 @@ const genreRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
     }
     return { requestId: source.requestId };
   },
-  async execute({ payload, signal, runId }) {
-    await applyGenreRequest(payload.requestId, { signal, jobRunId: runId });
+  async execute({ payload, signal, runId, lockToken }) {
+    await applyGenreRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) });
   },
 };
 
 const platformRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
   ...genreRequestApplyHandler, type: "media.platform-request-apply", label: "Применение решения по платформе",
-  async execute({ payload, signal, runId }) {
-    await applyPlatformRequest(payload.requestId, { signal, jobRunId: runId });
+  async execute({ payload, signal, runId, lockToken }) {
+    await applyPlatformRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) });
   },
 };
 
@@ -557,11 +565,11 @@ const genreSeriesBackfillHandler: JobHandlerDefinition<Record<string, never>> = 
   defaultMaxAttempts: 1,
   defaultTimeoutSeconds: 900,
   parsePayload: parseEmptyPayload,
-  async execute({ source, signal, runId, jobId }) {
+  async execute({ source, signal, runId, jobId, lockToken }) {
     if (source !== "manual" || jobId !== null) {
       throw new JobError("manual-only", "Привязка серий по жанрам доступна только разовым ручным запуском.", { retryable: false });
     }
-    const result = await backfillGenreSeriesLinks(signal);
+    const result = await backfillGenreSeriesLinks(signal, jobGuard(runId, lockToken));
     await logSystemActivity({ action: "media.genre-series-backfill.completed", entityType: "job-run", entityId: runId,
       message: `Привязка серий по жанрам завершена: обновлено записей — ${result.updatedRecords}, добавлено связей — ${result.addedLinks}.`,
       metadata: result });
@@ -583,20 +591,21 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
     }
     return { requestId: rest.requestId, ...(orphanCreatorId !== undefined ? { orphanCreatorId } : {}) };
   },
-  async execute({ payload, signal, runId }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId }); },
+  async execute({ payload, signal, runId, lockToken }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) }); },
 };
 const creatorBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "media.creators-backfill", label: "Импорт создателей книг с автоматическим апрувом", schedulable: false,
   defaultMaxAttempts: 1, defaultTimeoutSeconds: 900, parsePayload: parseEmptyPayload,
-  async execute({ source, signal, runId, jobId }) {
+  async execute({ source, signal, runId, jobId, lockToken }) {
     if (source !== "manual" || jobId !== null) throw new JobError("manual-only", "Импорт доступен только разовым ручным запуском.", { retryable: false });
-    const result = await backfillCreators(signal);
+    const result = await backfillCreators(signal, jobGuard(runId, lockToken));
     await logSystemActivity({ action: "media.creators-backfill.completed", entityType: "job-run", entityId: runId,
       message: `Импорт создателей завершён: записей — ${result.processed}, создателей — ${result.createdCreators}, связей — ${result.createdLinks}, ошибок — ${result.errors.length}.`, metadata: result });
   },
 };
 
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  providerSnapshotJobHandler,
   platformLogosSyncHandler,
   gameCompanyBackfillHandler,
   bggCreatorsBackfillHandler,

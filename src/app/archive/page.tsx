@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+import { getArchiveLinkMetadata } from "@/lib/archive/link-metadata-loader";
 import { getActivePlatformBySlug, searchArchivePlatformMatches } from "@/db/queries/platforms";
 import { ArchiveSelectedPlatform } from "./archive-platform-context";
 import { notFound } from "next/navigation";
@@ -84,6 +86,10 @@ type HomeProps = {
     yearMode?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
+  return getArchiveLinkMetadata(await searchParams);
+}
 
 export default async function Home({ searchParams }: HomeProps) {
   await connection();

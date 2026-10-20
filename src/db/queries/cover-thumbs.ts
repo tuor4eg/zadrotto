@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, isNotNull, isNull, notIlike, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -33,19 +34,22 @@ export async function getMediaItemsMissingCoverThumb(input: {
 }
 
 export async function markMediaItemCoverThumbAttempt(input: {
+  jobGuard?: SnapshotJobGuard;
   expectedCoverUrl: string;
   mediaItemId: number;
 }) {
-  await db
-    .update(mediaItems)
-    .set({ coverThumbAttemptedAt: new Date() })
-    .where(
-      and(
-        eq(mediaItems.id, input.mediaItemId),
-        eq(mediaItems.coverUrl, input.expectedCoverUrl),
-        isNull(mediaItems.coverThumbUrl),
-      ),
-    );
+  return withSnapshotJobGuard(input.jobGuard, async tx => {
+    await tx
+      .update(mediaItems)
+      .set({ coverThumbAttemptedAt: new Date() })
+      .where(
+        and(
+          eq(mediaItems.id, input.mediaItemId),
+          eq(mediaItems.coverUrl, input.expectedCoverUrl),
+          isNull(mediaItems.coverThumbUrl),
+        ),
+      );
+  });
 }
 
 export async function isMediaItemCoverThumbReferenced(input: {
@@ -67,25 +71,28 @@ export async function isMediaItemCoverThumbReferenced(input: {
 }
 
 export async function updateMediaItemCoverThumb(input: {
+  jobGuard?: SnapshotJobGuard;
   mediaItemId: number;
   expectedCoverUrl: string;
   coverThumbUrl: string;
 }) {
-  const [item] = await db
-    .update(mediaItems)
-    .set({
-      coverThumbUrl: input.coverThumbUrl,
-      coverThumbAttemptedAt: null,
-      updatedAt: new Date(),
-    })
-    .where(
-      and(
-        eq(mediaItems.id, input.mediaItemId),
-        eq(mediaItems.coverUrl, input.expectedCoverUrl),
-        isNull(mediaItems.coverThumbUrl),
-      ),
-    )
-    .returning({ id: mediaItems.id });
+  return withSnapshotJobGuard(input.jobGuard, async tx => {
+    const [item] = await tx
+      .update(mediaItems)
+      .set({
+        coverThumbUrl: input.coverThumbUrl,
+        coverThumbAttemptedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(
+        and(
+          eq(mediaItems.id, input.mediaItemId),
+          eq(mediaItems.coverUrl, input.expectedCoverUrl),
+          isNull(mediaItems.coverThumbUrl),
+        ),
+      )
+      .returning({ id: mediaItems.id });
 
-  return Boolean(item);
+    return Boolean(item);
+  });
 }

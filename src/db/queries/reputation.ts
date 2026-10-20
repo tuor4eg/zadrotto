@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import { and, asc, eq, isNotNull, sql, type SQL } from "drizzle-orm";
@@ -467,10 +468,12 @@ export async function saveReputationConfiguration(input: {
   });
 }
 
-export async function setReputationSystemStatus(status: "disabled" | "initializing") {
-  const [updated] = await db.update(levelSettings).set({ status, updatedAt: new Date() })
+export async function setReputationSystemStatus(status: "disabled" | "initializing", jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async tx => {
+  const [updated] = await tx.update(levelSettings).set({ status, updatedAt: new Date() })
     .where(eq(levelSettings.id, 1)).returning({ status: levelSettings.status });
   return updated ?? null;
+  });
 }
 
 export async function beginReputationInitialization() {

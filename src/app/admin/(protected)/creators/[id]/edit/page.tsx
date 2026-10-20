@@ -12,6 +12,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { deleteCreatorAction } from "../../actions";
 import { CreatorProviderVariants } from "../../provider-variants";
+import { ProviderSnapshotControls } from "@/components/admin/provider-snapshot-controls";
 import { CreatorForm } from "../../creator-form";
 
 export default async function EditCreatorPage({params,searchParams}: {params:Promise<{id:string}>;searchParams:Promise<{error?:string;updated?:string;avatarError?:string;avatarUpdated?:string;avatarQueued?:string;fantlabAuthor?:string}>}) {
@@ -21,11 +22,12 @@ export default async function EditCreatorPage({params,searchParams}: {params:Pro
   const creator = await getAdminCreatorById(creatorId);
   if (!creator) notFound();
   const [avatar, bindings, providerBindings] = await Promise.all([getCreatorAvatarState(creatorId), getCreatorFantlabBindings(creatorId), getCreatorProviderBindings(creatorId)]);
-  return <div className="grid gap-5"><PageHeader title="Редактирование создателя" description={creator.name} aside={<Link href="/admin/creators" className={buttonVariants({ variant: "outline" })}><ArrowLeft className="size-4" />Назад</Link>}/>
-    <AdminToasts clearParams={["error","updated"]} messages={query.error ? [{id:"error",tone:"error",text:"Не удалось сохранить. Проверьте поля и уникальность slug."}] : query.updated ? [{id:"updated",tone:"success",text:"Создатель сохранён."}] : []}/>
+  return <div className="grid gap-5"><PageHeader title={creator.name} description={`Редактирование создателя · №${creator.id}`} aside={<Link href="/admin/creators" className={buttonVariants({ variant: "outline" })}><ArrowLeft className="size-4" />Назад</Link>}/>
+    <AdminToasts clearParams={["error","updated"]} messages={query.error ? [{id:"error",tone:"error",text:query.error === "dates" ? "Проверьте даты: нужны полные корректные даты, дата смерти не раньше рождения. Даты доступны только людям без связи псевдонима." : "Не удалось сохранить. Проверьте поля и уникальность slug."}] : query.updated ? [{id:"updated",tone:"success",text:"Создатель сохранён."}] : []}/>
     <AdminToasts clearParams={["avatarError", "avatarUpdated", "avatarQueued", "fantlabAuthor"]} messages={query.avatarError ? [{id:"avatar-error",tone:"error",text:query.avatarError === "binding" ? "Не удалось подтвердить привязку FantLab: проверьте ID и конфликты с другими создателями." : "Не удалось обновить аватар. Проверьте изображение и повторите попытку."}] : query.avatarQueued ? [{id:"avatar-queued",tone:"success",text:"Обновление аватара поставлено в очередь. Результат доступен в заданиях."}] : query.avatarUpdated ? [{id:"avatar-updated",tone:"success",text:query.fantlabAuthor ? `Подтверждён автор FantLab: ${query.fantlabAuthor}` : "Данные аватара сохранены."}] : []}/>
-    <div className="max-w-3xl"><CreatorAvatarEditor creatorId={creatorId} authorName={creator.name} avatarObjectKey={avatar?.avatarObjectKey ?? null}/><p className="mt-2 text-sm text-stone-500">Источник: {avatar?.avatarSource === "manual" ? "ручная аватарка" : avatar?.avatarSource === "fantlab" ? "FantLab" : "нет изображения"}{avatar?.avatarSourceExternalId ? ` · Автор #${avatar.avatarSourceExternalId}` : ""}{avatar?.avatarFetchedAt ? ` · Импорт: ${avatar.avatarFetchedAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}` : ""}</p>{avatar?.avatarSourceUrl ? <a href={avatar.avatarSourceUrl} target="_blank" rel="noreferrer" className="text-sm underline">Страница источника</a> : null}</div>
-    <CreatorFantlabBindings creatorId={creatorId} bindings={bindings} variants={creator.providerVariants}/>
+    <div className="max-w-3xl"><CreatorAvatarEditor creatorId={creatorId} authorName={creator.name} avatarObjectKey={avatar?.avatarObjectKey ?? null}/><p className="mt-2 text-sm text-stone-500">Источник: {avatar?.avatarSource === "manual" ? "ручная аватарка" : avatar?.avatarSource === "fantlab" ? "FantLab" : "нет изображения"}{avatar?.avatarSourceExternalId ? ` · ID провайдера ${avatar.avatarSourceExternalId}` : ""}{avatar?.avatarFetchedAt ? ` · Импорт: ${avatar.avatarFetchedAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}` : ""}</p>{avatar?.avatarSourceUrl ? <a href={avatar.avatarSourceUrl} target="_blank" rel="noreferrer" className="text-sm underline">Страница источника</a> : null}</div>
+    <CreatorFantlabBindings creatorId={creatorId} creatorName={creator.name} bindings={bindings} variants={creator.providerVariants}/>
+    <ProviderSnapshotControls creatorId={creatorId} />
     <CreatorForm creator={creator} types={types} series={series} creators={creators}/>
     {creator.inheritedSeries.length ? <section className="grid max-w-3xl gap-3 rounded-lg border bg-white p-5">
       <h2 className="font-semibold">Серии через псевдонимы</h2>

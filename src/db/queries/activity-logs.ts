@@ -35,8 +35,8 @@ export type CreateActivityLogInput = {
   metadata: Record<string, unknown> | null;
 };
 
-export async function createActivityLog(input: CreateActivityLogInput) {
-  await db.insert(adminActivityLogs).values(input);
+export async function createActivityLog(input: CreateActivityLogInput, executor: Pick<typeof db, "insert"> = db) {
+  await executor.insert(adminActivityLogs).values(input);
 }
 
 function getActivityLogFilterCondition(filters: ActivityLogFilters) {

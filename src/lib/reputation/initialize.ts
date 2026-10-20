@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
 import { eq, sql } from "drizzle-orm";
@@ -9,8 +10,8 @@ import { historicalReputationFactsSql } from "./historical-sql";
 
 const REPUTATION_SYSTEM_LOCK = 90_420_261;
 
-export async function initializeReputation() {
-  return db.transaction(async (tx) => {
+export async function initializeReputation(jobGuard?: SnapshotJobGuard) {
+  return withSnapshotJobGuard(jobGuard, async (tx) => {
     await tx.execute(sql`select pg_advisory_xact_lock(${REPUTATION_SYSTEM_LOCK})`);
     const [settings] = await tx.select({ status: levelSettings.status }).from(levelSettings)
       .where(eq(levelSettings.id, 1)).limit(1).for("update");

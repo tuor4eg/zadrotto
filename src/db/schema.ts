@@ -222,6 +222,7 @@ export const providerSettings = pgTable(
     enabled: boolean("enabled").default(true).notNull(),
     titleSearchMode: text("title_search_mode").default("parallel").notNull(),
     coverSearchEnabled: boolean("cover_search_enabled").default(true).notNull(),
+    normalizedBookMetadata: boolean("normalized_book_metadata").default(false).notNull(),
     priority: integer("priority").default(100).notNull(),
     ...timestamps(),
   },
@@ -800,6 +801,7 @@ export const emailOutbox = pgTable(
     template: text("template").notNull(),
     recipient: text("recipient").notNull(),
     encryptedPayload: text("encrypted_payload").notNull(),
+    leaseToken: text("lease_token"),
     status: text("status").default("pending").notNull(),
     attempts: integer("attempts").default(0).notNull(),
     nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
@@ -809,6 +811,7 @@ export const emailOutbox = pgTable(
   },
   (table) => [
     index("email_outbox_delivery_idx").on(table.status, table.nextAttemptAt),
+    index("email_outbox_sending_lease_idx").on(table.updatedAt, table.id).where(sql`${table.status} = 'sending'`),
     index("email_outbox_status_created_id_idx").on(table.status, table.createdAt, table.id),
     index("email_outbox_created_id_idx").on(table.createdAt, table.id),
     check(
@@ -1038,11 +1041,12 @@ export const domainEventOutbox = pgTable(
       .primaryKey()
       .references(() => domainEvents.id, { onDelete: "cascade" }),
     dispatchedAt: timestamp("dispatched_at", { withTimezone: true }),
+    nextAttemptAt: timestamp("next_attempt_at", { withTimezone: true }).defaultNow().notNull(),
     ...timestamps(),
   },
   (table) => [
     index("domain_event_outbox_pending_idx")
-      .on(table.createdAt)
+      .on(table.nextAttemptAt, table.eventId)
       .where(sql`${table.dispatchedAt} is null`),
   ],
 );
@@ -1971,6 +1975,8 @@ export const creatorRoles = pgTable("creator_roles", {
 export const creators = pgTable("creators", {
   id: serial("id").primaryKey(), name: text("name").notNull(), slug: text("slug").notNull().unique(),
   originalName: text("original_name"),
+  birthDate: date("birth_date", { mode: "string" }),
+  deathDate: date("death_date", { mode: "string" }),
   avatarObjectKey: text("avatar_object_key"),
   avatarSource: text("avatar_source").$type<"manual" | "fantlab" | "igdb" | "rawg">(),
   avatarSourceExternalId: text("avatar_source_external_id"),
@@ -2028,6 +2034,7 @@ export const providerCreatorBindings = pgTable("provider_creator_bindings", {
   uniqueIndex("provider_creator_bindings_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.active}`),
   unique("provider_creator_bindings_owner_unique").on(t.id, t.creatorId, t.provider),
   index("provider_creator_bindings_creator_idx").on(t.creatorId),
+  index("provider_creator_bindings_active_creator_idx").on(t.provider, t.creatorId).where(sql`${t.active}`),
   check("provider_creator_bindings_values_check", sql`((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')) and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
 ]);
 export const providerCreatorMappings = pgTable("provider_creator_mappings", {
@@ -2056,7 +2063,7 @@ export const creatorRequestMediaItems = pgTable("creator_request_media_items", {
   roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
   requestId: integer("request_id").notNull().references(() => creatorRequests.id, { onDelete: "cascade" }),
   mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
-  externalCreatorName: text("external_creator_name").notNull(), ...timestamps(),
+  externalCreatorName: text("external_creator_name").notNull(), sourcePosition: integer("source_position"), ...timestamps(),
 }, (t) => [primaryKey({ columns: [t.requestId, t.mediaItemId, t.roleId] }), index("creator_request_media_items_entry_idx").on(t.mediaItemId)]);
 export const providerCreatorExclusions = pgTable("provider_creator_exclusions", {
   externalCreatorId: text("external_creator_id"),
@@ -2066,11 +2073,13 @@ export const providerCreatorExclusions = pgTable("provider_creator_exclusions", 
 // One source per provider value preserves aliases mapped to the same creator.
 export const entryCreatorSources = pgTable("entry_creator_sources", {
   bindingId: integer("binding_id"),
+  sourcePosition: integer("source_position"),
   entryId: integer("entry_id").notNull(), creatorId: integer("creator_id").notNull(), roleId: integer("role_id").notNull(),
   provider: text("provider").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(),
 }, (t) => [primaryKey({ columns: [t.entryId, t.creatorId, t.roleId, t.provider, t.normalizedExternalCreatorName] }), foreignKey({ columns: [t.entryId, t.creatorId, t.roleId], foreignColumns: [entryCreators.entryId, entryCreators.creatorId, entryCreators.roleId] }).onDelete("cascade"), index("entry_creator_sources_binding_idx").on(t.bindingId), foreignKey({name: "entry_creator_sources_binding_owner_fk", columns: [t.bindingId,t.creatorId,t.provider], foreignColumns: [providerCreatorBindings.id,providerCreatorBindings.creatorId,providerCreatorBindings.provider]}).onDelete("restrict")]);
 
 export const mediaItemMetadata = pgTable("media_item_metadata", {
+  originalLanguage: text("original_language"),
   mediaItemId: integer("media_item_id")
     .primaryKey()
     .references(() => mediaItems.id, { onDelete: "cascade" }),
@@ -2083,7 +2092,7 @@ export const mediaItemMetadata = pgTable("media_item_metadata", {
   sourceUrl: text("source_url"),
   fetchedAt: timestamp("fetched_at", { withTimezone: true }),
   ...timestamps(),
-});
+}, (t) => [index("media_item_metadata_source_entry_idx").on(t.sourceProvider,t.mediaItemId)]);
 
 export const mediaItemProviderSnapshots = pgTable(
   "media_item_provider_snapshots",
@@ -2502,4 +2511,34 @@ export const gameCompanyBackfillItems = pgTable("game_company_backfill_items", {
 }, t => [primaryKey({ columns: [t.backfillId, t.mediaItemId, t.provider] }),
   index("game_company_backfill_items_pending_idx").on(t.backfillId, t.status, t.mediaItemId),
   check("game_company_backfill_items_values_check", sql`${t.provider} in ('igdb','rawg') and ${t.status} in ('pending','ready','done','error','skipped') and ${t.attempts} >= 0`),
+]);
+
+// Full external responses; working tables never depend on reading payload here.
+export const providerSnapshots = pgTable("provider_snapshots", {
+  id: serial("id").primaryKey(),
+  providerCode: text("provider_code").notNull(),
+  resourceType: text("resource_type").notNull(),
+  externalId: text("external_id").notNull(),
+  apiMethod: text("api_method").notNull(),
+  requestParams: jsonb("request_params").$type<Record<string, import("@/lib/providers/types").JSONValue>>().notNull().default({}),
+  requestKey: text("request_key").notNull(),
+  payload: jsonb("payload").$type<import("@/lib/providers/types").JSONValue>().notNull(),
+  contentType: text("content_type").notNull(),
+  payloadHash: text("payload_hash").notNull(),
+  requestStartedAt: timestamp("request_started_at", {withTimezone: true, precision: 3}).notNull(),
+  fetchedAt: timestamp("fetched_at", {withTimezone: true, precision: 3}).notNull(),
+}, (t) => [
+  uniqueIndex("provider_snapshots_identity_unique").on(t.providerCode,t.resourceType,t.externalId,t.apiMethod,t.requestKey),
+  check("provider_snapshots_identity_check",sql`btrim(${t.providerCode}) <> '' and btrim(${t.resourceType}) <> '' and btrim(${t.externalId}) <> '' and btrim(${t.apiMethod}) <> ''`),
+  check("provider_snapshots_params_check",sql`jsonb_typeof(${t.requestParams}) = 'object'`),
+]);
+export const providerSnapshotLinks = pgTable("provider_snapshot_links", {
+  snapshotId: integer("snapshot_id").notNull().references(() => providerSnapshots.id,{onDelete:"cascade"}),
+  entityType: text("entity_type").notNull(),
+  entityId: text("entity_id").notNull(),
+  purpose: text("purpose").$type<"primary" | "dependency">().notNull(),
+}, (t) => [
+  primaryKey({columns:[t.snapshotId,t.entityType,t.entityId,t.purpose]}),
+  index("provider_snapshot_links_entity_idx").on(t.entityType,t.entityId,t.purpose,t.snapshotId),
+  check("provider_snapshot_links_values_check",sql`btrim(${t.entityType}) <> '' and btrim(${t.entityId}) <> '' and ${t.purpose} in ('primary','dependency')`),
 ]);

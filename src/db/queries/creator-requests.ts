@@ -1,8 +1,16 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { getWorkingBookPublishers } from "./book-publisher-roster";
+import { syncFantlabBookContributors, syncBookPublisherContributors, resolveFantlabBookRequest, removeFantlabBookBinding } from "./book-contributors";
+import { clearDeletedEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
+import { getSavedBookBundle, isBookSnapshotProvider } from "@/lib/providers/book-service";
+import { isNormalizedBookProvider } from "@/lib/providers/book-cutover";
+import type { ProviderContributor } from "@/lib/providers/types";
 import { gameCompanyRequestKey, syncGameCompanyCreators, resolveGameCompanyRequest, removeGameCompanyBinding, getGameCompanyRosterBatch } from "./game-companies";
 import { isGameCompanyProvider } from "@/lib/creators/game-companies";
 import { syncBggCreators, resolveBggCreatorRequest, removeBggBinding } from "./bgg-creators";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
+import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
 import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns } from "@/db/schema";
@@ -44,10 +52,12 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
     provider: string | null;
     mediaType: string;
     facts: Record<string, unknown>;
+    contributors?: ProviderContributor[];
     autoApprove?: boolean;
 }) {
     if (isGameCompanyProvider(input.provider) && input.mediaType === "game") return syncGameCompanyCreators(tx, input.mediaItemId, input.provider, input.facts);
     if (input.provider === "bgg" && input.mediaType === "boardgame") return syncBggCreators(tx, input.mediaItemId, input.facts);
+    if (input.provider === "fantlab" && input.mediaType === "book" && input.contributors) return syncFantlabBookContributors(tx, input.mediaItemId, input.contributors);
     if (input.provider === "fantlab" && input.mediaType === "book") {
         const references = extractFantlabCreatorReferences(input.facts);
         const existingSources = await tx.select({ name: entryCreatorSources.normalizedExternalCreatorName }).from(entryCreatorSources).where(and(eq(entryCreatorSources.entryId, input.mediaItemId), eq(entryCreatorSources.provider, "fantlab")));
@@ -65,10 +75,10 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
             return { createdCreators: 0, createdMappings: 0, createdLinks: 0 };
         }
         const externalIds = references.map(value => value.id);
-        const initialBindings = externalIds.length ? await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), inArray(providerCreatorBindings.externalCreatorId, externalIds))) : [];
+        const initialBindings = externalIds.length ? await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), inArray(providerCreatorBindings.externalCreatorId, externalIds))) : [];
         const creatorIds = [...new Set(initialBindings.map(value => value.creatorId))].sort((a, b) => a - b);
         if (creatorIds.length) await tx.select({ id: creators.id }).from(creators).where(inArray(creators.id, creatorIds)).orderBy(asc(creators.id)).for("update");
-        const currentBindings = externalIds.length ? await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), inArray(providerCreatorBindings.externalCreatorId, externalIds))) : [];
+        const currentBindings = externalIds.length ? await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), inArray(providerCreatorBindings.externalCreatorId, externalIds))) : [];
         const resolved = references.map(reference => ({ reference, binding: currentBindings.find(value => value.externalCreatorId === reference.id && creatorIds.includes(value.creatorId)) }));
         // Incomplete identity migration must never erase the populated archive's old provenance.
         const complete = resolved.every(value => value.binding || suppressed.has(value.reference.normalizedName));
@@ -106,23 +116,31 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
         await pruneEntryCreators(tx, input.mediaItemId);
         return { createdCreators: 0, createdMappings, createdLinks };
     }
-    const external = input.mediaType === "book" && input.provider ? extractExternalCreators(input.facts) : [];
+    const contributorKeys = new Set<string>();
+    const external = (input.contributors ? input.contributors.map(value=>({...value,normalizedName:normalizeSearchText(value.name)}))
+      : (input.mediaType === "book" && input.provider ? extractExternalCreators(input.facts) : []).map((value,position)=>({...value,roleCode:"writer" as const,position}))).filter(value=>{
+        const key=`${value.roleCode}:${value.normalizedName}`;
+        if (!value.normalizedName || contributorKeys.has(key)) return false;
+        contributorKeys.add(key);return true;
+      });
     await tx.delete(entryCreatorSources).where(and(eq(entryCreatorSources.entryId, input.mediaItemId), input.provider ? eq(entryCreatorSources.provider, input.provider) : undefined));
     await tx.delete(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.mediaItemId, input.mediaItemId), input.provider ? sql`${creatorRequestMediaItems.requestId} in (select id from creator_requests where provider=${input.provider})` : undefined));
     let createdCreators = 0, createdMappings = 0, createdLinks = 0;
-    const role = external.length ? await writerRole(tx) : null;
+    const roles = external.length ? await tx.select().from(creatorRoles).where(inArray(creatorRoles.code,[...new Set(external.map(value=>value.roleCode))])) : [];
     for (const value of [...external].sort((a, b) => a.normalizedName.localeCompare(b.normalizedName))) {
         const provider = input.provider!;
+        const role = roles.find(role=>role.code===value.roleCode);
+        if (!role) throw new Error("Роль создателя не настроена.");
         const [detected] = await tx.insert(creatorRequests).values({ provider, mediaType: input.mediaType, externalCreatorName: value.name, normalizedExternalCreatorName: value.normalizedName }).onConflictDoNothing().returning();
         const [request] = await tx.select().from(creatorRequests).where(key(provider, input.mediaType, value.normalizedName)).for("update");
         if (detected)
             await activity(tx, "creator-request.detected", request.id, value.name, "Обнаружен неизвестный создатель записи.", undefined, { mediaItemId: input.mediaItemId, provider });
-        await tx.insert(creatorRequestMediaItems).values({ requestId: request.id, mediaItemId: input.mediaItemId, roleId: role!.id, externalCreatorName: value.name });
+        await tx.insert(creatorRequestMediaItems).values({ requestId: request.id, mediaItemId: input.mediaItemId, roleId: role!.id, externalCreatorName: value.name, sourcePosition:value.position });
         await tx.update(creatorRequests).set({ lastSeenAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
         const mappingKey = and(eq(providerCreatorMappings.provider, provider), eq(providerCreatorMappings.mediaType, input.mediaType), eq(providerCreatorMappings.normalizedExternalCreatorName, value.normalizedName));
         let [mapping] = await tx.select().from(providerCreatorMappings).where(mappingKey);
         const [excluded] = await tx.select().from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, provider), eq(providerCreatorExclusions.mediaType, input.mediaType), eq(providerCreatorExclusions.normalizedExternalCreatorName, value.normalizedName)));
-        if (!mapping && !excluded && input.autoApprove && !request.manuallyReopened && request.decision === null && request.applyStatus === "pending") {
+        if (!mapping && !excluded && input.autoApprove && value.roleCode === "writer" && !request.manuallyReopened && request.decision === null && request.applyStatus === "pending") {
             // Across providers, serialize exact-name reuse without conflating distinct normalized names.
             await tx.execute(sql `select pg_advisory_xact_lock(hashtextextended(${`creator:${value.normalizedName}`},0))`);
             const candidates = await tx.select({ id: creators.id }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(and(eq(creatorTypes.code, "person"), sql `btrim(${normalizeSearchSql(creators.name)})=${value.normalizedName}`));
@@ -144,11 +162,11 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
             await createJobRun({ type: "domain-events.dispatch", payload: { eventId: event.id }, source: "event",
                 maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx);
         }
-        if (mapping && !excluded) {
+        if (mapping && !excluded && !(request.decision === null && request.manuallyReopened) && request.decision !== "exclude") {
             const [added] = await tx.insert(entryCreators).values({ entryId: input.mediaItemId, creatorId: mapping.creatorId, roleId: role!.id }).onConflictDoNothing().returning();
             if (added)
                 createdLinks++;
-            await tx.insert(entryCreatorSources).values({ entryId: input.mediaItemId, creatorId: mapping.creatorId, roleId: role!.id, provider, normalizedExternalCreatorName: value.normalizedName }).onConflictDoNothing();
+            await tx.insert(entryCreatorSources).values({ entryId: input.mediaItemId, creatorId: mapping.creatorId, roleId: role!.id, provider, normalizedExternalCreatorName: value.normalizedName, sourcePosition:value.position }).onConflictDoNothing();
         }
     }
     await pruneEntryCreators(tx, input.mediaItemId);
@@ -181,6 +199,7 @@ async function enqueue(tx: CreatorTransaction, requestId: number, adminId?: numb
 }
 export async function resolveCreatorRequest(input: {
     requestId: number;
+    jobGuard?: SnapshotJobGuard;
     adminId?: number;
     autoApprove?: boolean;
     decision: "create" | "map" | "exclude";
@@ -188,7 +207,7 @@ export async function resolveCreatorRequest(input: {
     name?: string;
     typeCode?: "person" | "collective" | "organization";
 }) {
-    return db.transaction(async (tx) => {
+    return withSnapshotJobGuard(input.jobGuard, async (tx) => {
         if (!["create", "map", "exclude"].includes(input.decision))
             throw new CreatorRequestError("invalid-decision", "Неизвестное решение.");
         const [request] = await tx.select().from(creatorRequests).where(eq(creatorRequests.id, input.requestId)).for("update");
@@ -275,16 +294,39 @@ export async function resolveCreatorRequest(input: {
             await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по BGG ID.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
             return queued;
         }
+        if (request.provider === "fantlab" && request.externalCreatorId !== null) {
+            await resolveFantlabBookRequest(tx, request, input);
+            if (input.decision !== "exclude") {
+                const [binding] = await tx.select({ creatorId: providerCreatorBindings.creatorId }).from(providerCreatorBindings)
+                    .where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
+                if (!binding) throw new Error("CREATOR_BINDING_MISSING");
+                await createJobRun({ type: PROVIDER_SNAPSHOT_JOB_TYPE, source: input.adminId ? "manual" : "event", createdByAdminId: input.adminId,
+                    payload: { entityType: "creator", creatorIds: [binding.creatorId], provider: "fantlab", operation: "refresh-process" },
+                    maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx);
+            }
+            await tx.update(creatorRequests).set({ decision: input.decision, resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
+            const queued = await enqueue(tx, request.id, input.adminId);
+            await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по автору FantLab.", input.adminId, {decision:input.decision,...queued});
+            return queued;
+        }
+        const requestRoles = await tx.select({code:creatorRoles.code}).from(creatorRequestMediaItems).innerJoin(creatorRoles,eq(creatorRoles.id,creatorRequestMediaItems.roleId)).where(eq(creatorRequestMediaItems.requestId,request.id));
+        const publisherOnly = requestRoles.length > 0 && requestRoles.every(value=>value.code === "publisher");
         let creatorId = input.creatorId;
         if (input.decision === "create") {
             if (!input.name?.trim())
                 throw new CreatorRequestError("invalid-name", "Укажите имя.");
-            creatorId = (await createPerson(tx, input.name)).id;
+            if (publisherOnly) {
+                const [type]=await tx.select().from(creatorTypes).where(eq(creatorTypes.code,"organization"));
+                if(!type) throw new CreatorRequestError("invalid-type","Тип organization не настроен.");
+                const [next]=await tx.execute<{id:number}>(sql`select nextval(pg_get_serial_sequence('creators','id'))::int id`);
+                const [created]=await tx.insert(creators).values({id:next.id,name:input.name.trim(),slug:`creator-${next.id}`,typeId:type.id}).returning({id:creators.id});
+                creatorId=created.id;
+            } else creatorId = (await createPerson(tx, input.name)).id;
         }
         if (input.decision === "map") {
             const [creator] = creatorId ? await tx.select({ code: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, creatorId)) : [];
-            if (!creator || creator.code !== "person")
-                throw new CreatorRequestError("invalid-creator", "Выберите создателя типа person.");
+            if (!creator || creator.code !== (publisherOnly ? "organization" : "person"))
+                throw new CreatorRequestError("invalid-creator", publisherOnly ? "Выберите издателя типа organization." : "Выберите создателя типа person.");
         }
         const values = { provider: request.provider, mediaType: request.mediaType, externalCreatorName: request.externalCreatorName, normalizedExternalCreatorName: request.normalizedExternalCreatorName };
         if (input.decision === "exclude")
@@ -313,6 +355,7 @@ async function reopen(input: {
         await assertIdle(tx, request);
         if (externalCreatorId) {
             if (isGameCompanyProvider(value.provider)) await removeGameCompanyBinding(tx, value.provider, externalCreatorId);
+            else if (value.provider === "fantlab") await removeFantlabBookBinding(tx, externalCreatorId);
             else await removeBggBinding(tx, externalCreatorId);
         }
         const deleted = await tx.delete(table).where(eq(table.id, value.id)).returning({ id: table.id });
@@ -356,6 +399,7 @@ export async function retryCreatorRequest(input: {
 export async function applyCreatorRequest(requestId: number, input: {
     signal?: AbortSignal;
     jobRunId?: number;
+    jobGuard?: SnapshotJobGuard;
 } = {}) {
     const [request] = await db.select().from(creatorRequests).where(eq(creatorRequests.id, requestId));
     if (!request)
@@ -378,17 +422,26 @@ export async function applyCreatorRequest(requestId: number, input: {
                 break;
             for (const item of items) {
                 input.signal?.throwIfAborted();
-                await db.transaction(async (tx) => {
+                const [sourceBefore] = await db.select({provider:mediaItemMetadata.sourceProvider,externalId:mediaItemMetadata.sourceExternalId}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,item.id));
+                const normalizedBundle = sourceBefore && await isNormalizedBookProvider(sourceBefore.provider) && isBookSnapshotProvider(sourceBefore.provider!) && sourceBefore.externalId
+                    ? await getSavedBookBundle(sourceBefore.provider as "fantlab"|"google-books"|"open-library",sourceBefore.externalId) : null;
+                await withSnapshotJobGuard(input.jobGuard, async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
                     if (company && entry) {
                         const [roster] = await tx.select().from(gameCompanyRosters).where(and(eq(gameCompanyRosters.mediaItemId, item.id), eq(gameCompanyRosters.provider, request.provider)));
                         if (roster && isGameCompanyProvider(request.provider)) await syncGameCompanyCreators(tx, item.id, request.provider, { gameCompanyReferences: roster.references });
                         return;
                     }
-                    const [metadata] = await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
+                    if (await isNormalizedBookProvider(sourceBefore?.provider, tx) !== Boolean(normalizedBundle)) throw new Error("BOOK_PROVIDER_MODE_CHANGED");
+                    const [metadata] = await tx.select({sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,facts:normalizedBundle ? sql<Record<string,unknown>>`'{}'::jsonb` : mediaItemMetadata.facts}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                     if (!entry || !metadata)
                         return;
-                    if (request.decision === null) {
+                    if (metadata.sourceProvider!==sourceBefore?.provider || metadata.sourceExternalId!==sourceBefore?.externalId) return;
+                    if (normalizedBundle) {
+                        const {lockProviderSnapshotReferences}=await import("@/db/queries/provider-snapshots");
+                        await lockProviderSnapshotReferences(tx,[normalizedBundle.primary,...normalizedBundle.dependencies].map(row=>({id:row.id,payloadHash:row.payloadHash})));
+                    }
+                    if (request.decision === null && !normalizedBundle) {
                         if (metadata.sourceProvider !== request.provider || entry.mediaType !== request.mediaType)
                             return;
                         try {
@@ -399,13 +452,16 @@ export async function applyCreatorRequest(requestId: number, input: {
                             return;
                         }
                     }
-                    await syncProviderCreators(tx, { mediaItemId: item.id, provider: metadata.sourceProvider, mediaType: entry.mediaType, facts: metadata.facts });
+                    const publishers=entry.mediaType === "book" && metadata.sourceProvider ? await getWorkingBookPublishers(tx,item.id,metadata.sourceProvider) : [];
+                    if (!normalizedBundle && publishers.length && request.externalCreatorId===null && publishers.some(value=>normalizeSearchText(value.name)===request.normalizedExternalCreatorName)) {
+                        await syncBookPublisherContributors(tx,item.id,metadata.sourceProvider!,publishers);
+                    } else await syncProviderCreators(tx, { mediaItemId: item.id, provider: metadata.sourceProvider, mediaType: entry.mediaType, facts: normalizedBundle ? {} : metadata.facts, contributors: normalizedBundle ? [...normalizedBundle.projection.contributors,...publishers] : undefined });
                 });
                 afterId = item.id;
                 processed++;
             }
         }
-        await db.transaction(async tx => {
+        await withSnapshotJobGuard(input.jobGuard, async tx => {
             const [current] = await tx.select().from(creatorRequests).where(eq(creatorRequests.id, requestId)).for("update");
             if (!current || (input.jobRunId && current.jobRunId !== input.jobRunId)) return;
             if (current.externalCreatorId === null && current.decision === null && typeof orphanCreatorId === "number") {
@@ -415,16 +471,18 @@ export async function applyCreatorRequest(requestId: number, input: {
         });
         if (isGameCompanyProvider(request.provider) && request.externalCreatorId) {
             const [binding] = await db.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
-            if (binding) { const { syncGameCompanyAvatar } = await import("@/lib/creators/game-company-images"); await syncGameCompanyAvatar(binding.creatorId); }
+            if (binding) { const { syncGameCompanyAvatar } = await import("@/lib/creators/game-company-images"); await syncGameCompanyAvatar(binding.creatorId, {}, input.jobGuard); }
         }
         return { processed };
     }
     catch (error) {
-        await db.update(creatorRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение. Подробности в журнале задачи.", updatedAt: new Date() }).where(and(eq(creatorRequests.id, requestId), input.jobRunId ? eq(creatorRequests.jobRunId, input.jobRunId) : undefined));
+        await withSnapshotJobGuard(input.jobGuard, async tx => {
+          await tx.update(creatorRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение. Подробности в журнале задачи.", updatedAt: new Date() }).where(and(eq(creatorRequests.id, requestId), input.jobRunId ? eq(creatorRequests.jobRunId, input.jobRunId) : undefined));
+        });
         throw error;
     }
 }
-export async function backfillCreators(signal?: AbortSignal) {
+export async function backfillCreators(signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
     const result = { processed: 0, createdCreators: 0, createdMappings: 0, createdLinks: 0, errors: [] as {
             entryId: number;
             message: string;
@@ -438,9 +496,11 @@ export async function backfillCreators(signal?: AbortSignal) {
         for (const item of items) {
             signal?.throwIfAborted();
             try {
-                const added = await db.transaction(async (tx) => {
+                const added = await withSnapshotJobGuard(jobGuard, async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
-                    const [metadata] = await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
+                    const [source] = await tx.select({provider:mediaItemMetadata.sourceProvider}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,item.id));
+                    if (await isNormalizedBookProvider(source?.provider, tx)) return {createdCreators:0,createdMappings:0,createdLinks:0};
+                    const [metadata] = await tx.select({sourceProvider:mediaItemMetadata.sourceProvider,facts:mediaItemMetadata.facts}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                     return entry && metadata ? syncProviderCreators(tx, { mediaItemId: item.id, provider: metadata.sourceProvider, mediaType: entry.mediaType, facts: metadata.facts, autoApprove: true }) : { createdCreators: 0, createdMappings: 0, createdLinks: 0 };
                 });
                 result.createdCreators += added.createdCreators;
@@ -449,6 +509,7 @@ export async function backfillCreators(signal?: AbortSignal) {
             }
             catch (error) {
                 signal?.throwIfAborted();
+                if (error instanceof Error && "code" in error && error.code === "lease-lost") throw error;
                 result.errors.push({ entryId: item.id, message: error instanceof Error ? error.message : "Ошибка записи" });
             }
             result.processed++;
@@ -475,6 +536,7 @@ export async function deleteUnlinkedCreator(tx: CreatorTransaction, creatorId: n
         sql`not exists (select 1 from creator_relations cr where cr.source_creator_id=${creators.id} or cr.target_creator_id=${creators.id})`,
         sql`not exists (select 1 from entry_creator_pseudonyms p where p.creator_id=${creators.id})`,
     )).returning({ id: creators.id, name: creators.name });
+    if (deleted) await clearDeletedEntitySnapshotLinks(tx,{entityType:"creator",entityId:String(creatorId)});
     if (deleted) await tx.insert(adminActivityLogs).values({ action: "creator.deleted", actorType: "system",
         entityType: "creator", entityId: deleted.id, entityLabel: deleted.name, status: "success", severity: "info",
         message: "Создатель удалён после возврата последнего соответствия в заявки." });
@@ -484,9 +546,9 @@ export async function deleteUnlinkedCreator(tx: CreatorTransaction, creatorId: n
 export async function reopenCreatorBinding(input: { bindingId: number; adminId: number }) {
     return db.transaction(async tx => {
         const [binding] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
-        if (!binding || !binding.active || (binding.provider !== "bgg" && !isGameCompanyProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
+        if (!binding || !binding.active || (binding.provider !== "bgg" && binding.provider !== "fantlab" && !isGameCompanyProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
         const name = binding.externalCreatorName ?? binding.externalCreatorId;
-        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "bgg" ? "boardgame" : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
+        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
         const [request] = await tx.select().from(creatorRequests).where(gameCompanyRequestKey(binding.provider, binding.externalCreatorId)).for("update");
         await assertIdle(tx, request);
         // Recheck the binding after request lock; a concurrent administrator may have remapped it.
@@ -494,6 +556,7 @@ export async function reopenCreatorBinding(input: { bindingId: number; adminId: 
         if (!current || !current.active || current.creatorId !== binding.creatorId) throw new CreatorRequestError("changed", "Привязка уже изменилась.");
         await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, binding.creatorId)).for("update");
         if (isGameCompanyProvider(binding.provider)) await removeGameCompanyBinding(tx, binding.provider, binding.externalCreatorId);
+        else if (binding.provider === "fantlab") await removeFantlabBookBinding(tx, binding.externalCreatorId);
         else { await removeBggBinding(tx, binding.externalCreatorId); await deleteUnlinkedCreator(tx, binding.creatorId); }
         await tx.update(creatorRequests).set({ decision: null, resolvedAt: null, resolvedByAdminId: null, manuallyReopened: true, updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
         const queued = await enqueue(tx, request.id, input.adminId);
@@ -503,7 +566,7 @@ export async function reopenCreatorBinding(input: { bindingId: number; adminId: 
 }
 
 /** A backfill convenience: every decision still passes through the normal approval/apply flow. */
-export async function autoApproveBggCreatorRequests(mediaItemId: number) {
+export async function autoApproveBggCreatorRequests(mediaItemId: number, jobGuard?: SnapshotJobGuard) {
     const pending = await db.selectDistinct({ id: creatorRequests.id }).from(creatorRequests)
         .innerJoin(creatorRequestMediaItems, eq(creatorRequestMediaItems.requestId, creatorRequests.id))
         .where(and(eq(creatorRequests.provider, "bgg"), isNull(creatorRequests.decision), eq(creatorRequests.manuallyReopened, false),
@@ -512,7 +575,7 @@ export async function autoApproveBggCreatorRequests(mediaItemId: number) {
     let approved = 0, skipped = 0;
     for (const request of pending) {
         try {
-            await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true });
+            await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true, jobGuard });
             approved++;
         } catch (error) {
             if (error instanceof CreatorRequestError && ["auto-skip", "already-resolved", "applying"].includes(error.code)) skipped++;
@@ -523,7 +586,8 @@ export async function autoApproveBggCreatorRequests(mediaItemId: number) {
 }
 
 /** Auto approval is an ordinary request decision; existing apply jobs materialize all saved rosters. */
-export async function autoApproveGameCompanyRequests(input: { provider?: "igdb" | "rawg"; externalIds?: readonly string[]; signal?: AbortSignal } = {}) {
+export async function autoApproveGameCompanyRequests(input: { provider?: "igdb" | "rawg"; externalIds?: readonly string[]; signal?: AbortSignal; jobGuard?: SnapshotJobGuard } = {}) {
+    const jobGuard = input.jobGuard;
     const result = { approved: 0, skipped: 0 };
     if (input.externalIds?.length === 0) return result;
     let afterId = 0;
@@ -539,7 +603,7 @@ export async function autoApproveGameCompanyRequests(input: { provider?: "igdb" 
         for (const request of pending) {
             input.signal?.throwIfAborted();
             try {
-                await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true });
+                await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true, jobGuard });
                 result.approved++;
             } catch (error) {
                 if (error instanceof CreatorRequestError && ["auto-skip", "already-resolved", "applying"].includes(error.code)) result.skipped++;

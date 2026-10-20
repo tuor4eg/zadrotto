@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -8,7 +9,7 @@ import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
 /** One finite pass over published candidates present when the administrator starts the run. */
-export async function backfillGenreSeriesLinks(signal?: AbortSignal) {
+export async function backfillGenreSeriesLinks(signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
   signal?.throwIfAborted();
   const candidates = await db.select({ id: mediaItems.id }).from(mediaItems)
     .where(and(eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), missingGenreSeriesBindingSql()))
@@ -17,7 +18,7 @@ export async function backfillGenreSeriesLinks(signal?: AbortSignal) {
   let updatedRecords = 0;
   for (const candidate of candidates) {
     signal?.throwIfAborted();
-    const added = await db.transaction(async (tx) => {
+    const added = await withSnapshotJobGuard(jobGuard, async (tx) => {
       await lockMediaItemFranchiseMutations(tx, [candidate.id]);
       const [item] = await tx.select({ id: mediaItems.id }).from(mediaItems)
         .where(and(eq(mediaItems.id, candidate.id), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS)))

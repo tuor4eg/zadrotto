@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, exists, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { creators, providerCreatorBindings, providerCreatorMappings } from "@/db/schema";
@@ -9,7 +10,7 @@ export async function getCreatorAvatarState(id: number) {
 
 export async function getCreatorFantlabBindings(creatorId: number) {
   return db.select().from(providerCreatorBindings).where(and(
-    eq(providerCreatorBindings.creatorId, creatorId), eq(providerCreatorBindings.provider, "fantlab"),
+    eq(providerCreatorBindings.creatorId, creatorId), eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true),
   )).orderBy(asc(providerCreatorBindings.id));
 }
 
@@ -27,7 +28,7 @@ export async function getFantlabCreatorBatch(afterId: number, creatorId?: number
         eq(providerCreatorMappings.creatorId, creators.id), eq(providerCreatorMappings.provider, "fantlab"),
       ))),
       exists(db.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(
-        eq(providerCreatorBindings.creatorId, creators.id), eq(providerCreatorBindings.provider, "fantlab"),
+        eq(providerCreatorBindings.creatorId, creators.id), eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true),
       ))),
     ),
   )).orderBy(asc(creators.id)).limit(50);
@@ -35,11 +36,12 @@ export async function getFantlabCreatorBatch(afterId: number, creatorId?: number
 
 /** Creator row serializes binding changes and all avatar assignments; no network inside. */
 export async function assignFantlabCreatorBinding(input: {
+  jobGuard?: SnapshotJobGuard;
   creatorId: number; externalCreatorId: string; mappingId?: number;
   mappingIds?: number[]; expectedVersion?: number;
 }) {
   if (!/^[1-9]\d*$/.test(input.externalCreatorId) || !Number.isSafeInteger(Number(input.externalCreatorId))) throw new Error("Некорректный FantLab ID.");
-  return db.transaction(async tx => {
+  return withSnapshotJobGuard(input.jobGuard, async tx => {
     const [creator] = await tx.select().from(creators).where(eq(creators.id, input.creatorId)).for("update");
     if (!creator || (input.expectedVersion !== undefined && creator.avatarVersion !== input.expectedVersion)) throw new Error("Создатель изменился. Повторите операцию.");
     const mappingIds = input.mappingIds ?? (input.mappingId ? [input.mappingId] : []);
@@ -51,7 +53,7 @@ export async function assignFantlabCreatorBinding(input: {
     if (input.expectedVersion !== undefined && mappings.some(mapping => mapping.bindingId !== null)) throw new Error("Привязка уже подтверждена.");
     await tx.insert(providerCreatorBindings).values({ provider: "fantlab", externalCreatorId: input.externalCreatorId, creatorId: input.creatorId }).onConflictDoNothing();
     const [binding] = await tx.select().from(providerCreatorBindings).where(and(
-      eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId),
+      eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId),
     ));
     if (!binding || binding.creatorId !== input.creatorId) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
     if (mappingIds.length) await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(inArray(providerCreatorMappings.id, mappingIds));
@@ -91,14 +93,15 @@ export async function isAssignedCreatorAvatarObjectKey(key: string) {
 }
 
 export async function commitFantlabAvatar(input: {
+  jobGuard?: SnapshotJobGuard;
   creatorId: number; expectedVersion: number; bindingId: number; externalCreatorId: string;
   objectKey: string; contentHash: string; originalUrl: string; sourceUrl: string;
 }) {
-  return db.transaction(async tx => {
+  return withSnapshotJobGuard(input.jobGuard, async tx => {
     const [creator] = await tx.select().from(creators).where(eq(creators.id, input.creatorId)).for("update");
     if (!creator || creator.avatarSource === "manual" || creator.avatarVersion !== input.expectedVersion) return { committed: false as const };
     const bindings = await tx.select().from(providerCreatorBindings).where(and(
-      eq(providerCreatorBindings.creatorId, input.creatorId), eq(providerCreatorBindings.provider, "fantlab"),
+      eq(providerCreatorBindings.creatorId, input.creatorId), eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true),
     ));
     if (bindings.length !== 1 || bindings[0].id !== input.bindingId || bindings[0].externalCreatorId !== input.externalCreatorId) return { committed: false as const };
     const unresolved = await tx.select({ id: providerCreatorMappings.id }).from(providerCreatorMappings).where(and(
@@ -121,17 +124,17 @@ export async function replaceCreatorFantlabBinding(input: { creatorId: number; e
     const [creator] = await tx.select().from(creators).where(eq(creators.id, input.creatorId)).for("update");
     if (!creator) throw new Error("Создатель не найден.");
     await tx.insert(providerCreatorBindings).values({ provider: "fantlab", externalCreatorId: input.externalCreatorId, creatorId: input.creatorId }).onConflictDoNothing();
-    const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId)));
+    const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId)));
     if (!binding || binding.creatorId !== input.creatorId) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
     await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(and(eq(providerCreatorMappings.provider, "fantlab"), eq(providerCreatorMappings.creatorId, input.creatorId)));
-    await tx.delete(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.creatorId, input.creatorId), sql`${providerCreatorBindings.id} <> ${binding.id}`));
+    await tx.delete(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.creatorId, input.creatorId), sql`${providerCreatorBindings.id} <> ${binding.id}`));
     await tx.update(creators).set({ avatarVersion: creator.avatarVersion + 1, updatedAt: new Date() }).where(eq(creators.id, creator.id));
     return binding;
   });
 }
 
 export async function getFantlabBindingOwner(externalCreatorId: string) {
-  return (await db.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.externalCreatorId, externalCreatorId))))[0] ?? null;
+  return (await db.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.externalCreatorId, externalCreatorId))))[0] ?? null;
 }
 
 export async function getConflictingFantlabMappingOwners(creatorId: number, normalizedNames: string[]) {

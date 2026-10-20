@@ -137,6 +137,7 @@ export async function POST(request: Request) {
           sourceUrl: result.metadata.sourceUrl,
           metadataCandidateToken: createMediaMetadataCandidateToken({
             ...result.metadata,
+            facts: result.metadata.snapshotReferences ? {} : result.metadata.facts,
             mediaType,
           }),
         }

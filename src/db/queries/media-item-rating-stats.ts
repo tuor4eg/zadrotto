@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { rateableRatingSql } from "@/db/queries/effective-ratings";
 import { asc, gt, inArray, sql } from "drizzle-orm";
 
@@ -93,9 +94,10 @@ export type RatingStatsReconciliationPayload = {
 
 export async function reconcileMediaItemRatingStatsBatch(
   input: RatingStatsReconciliationPayload,
+  jobGuard?: SnapshotJobGuard,
 ) {
   const batchSize = input.batchSize ?? 500;
-  const result = await db.transaction(async (tx) => {
+  const result = await withSnapshotJobGuard(jobGuard, async (tx) => {
     const itemRows = await tx
       .select({ id: mediaItems.id })
       .from(mediaItems)
@@ -162,7 +164,7 @@ export async function reconcileMediaItemRatingStatsBatch(
   });
 
   if (result.lastMediaItemId && result.processed === batchSize) {
-    await createJobRun({
+    await withSnapshotJobGuard(jobGuard, tx => createJobRun({
       maxAttempts: DEFAULT_JOB_MAX_ATTEMPTS,
       payload: {
         afterMediaItemId: result.lastMediaItemId,
@@ -173,7 +175,7 @@ export async function reconcileMediaItemRatingStatsBatch(
       source: "event",
       timeoutSeconds: DEFAULT_JOB_TIMEOUT_SECONDS,
       type: "media.rating-stats-reconcile",
-    });
+    }, new Date(), tx));
   }
 
   return result;

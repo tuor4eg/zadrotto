@@ -1,3 +1,4 @@
+import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
 import { and, asc, eq, gt, inArray, isNull, sql } from "drizzle-orm";
@@ -272,7 +273,7 @@ export async function retryPlatformRequest(input: { requestId: number; adminId: 
   });
 }
 
-export async function applyPlatformRequest(requestId: number, input: { signal?: AbortSignal; jobRunId?: number } = {}) {
+export async function applyPlatformRequest(requestId: number, input: { signal?: AbortSignal; jobRunId?: number; jobGuard?: SnapshotJobGuard } = {}) {
   const [request] = await db.select().from(platformRequests).where(eq(platformRequests.id, requestId));
   if (!request) throw new Error("Platform request not found");
   if(request.kind !== "mapping") {
@@ -301,7 +302,7 @@ export async function applyPlatformRequest(requestId: number, input: { signal?: 
       if (!occurrences.length) break;
       for (const occurrence of occurrences) {
         input.signal?.throwIfAborted();
-        await db.transaction(async (tx) => {
+        await withSnapshotJobGuard(input.jobGuard, async (tx) => {
           const [item] = await tx.select({ mediaType: mediaItems.mediaType }).from(mediaItems)
             .where(eq(mediaItems.id, occurrence.mediaItemId)).for("update");
           if (!item || item.mediaType !== "game") return;
@@ -331,11 +332,15 @@ export async function applyPlatformRequest(requestId: number, input: { signal?: 
       }
     }
     input.signal?.throwIfAborted();
-    await db.update(platformRequests).set({ applyStatus: request.decision === null ? "pending" : "processed", jobError: null, updatedAt: new Date() }).where(and(eq(platformRequests.id, requestId), input.jobRunId ? eq(platformRequests.jobRunId, input.jobRunId) : undefined));
+    await withSnapshotJobGuard(input.jobGuard, async tx => {
+      await tx.update(platformRequests).set({ applyStatus: request.decision === null ? "pending" : "processed", jobError: null, updatedAt: new Date() }).where(and(eq(platformRequests.id, requestId), input.jobRunId ? eq(platformRequests.jobRunId, input.jobRunId) : undefined));
+    });
     return { processed };
   } catch (error) {
-    await db.update(platformRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение по платформе. Подробности доступны в журнале задачи.",
+    await withSnapshotJobGuard(input.jobGuard, async tx => {
+      await tx.update(platformRequests).set({ applyStatus: "failed", jobError: "Не удалось применить решение по платформе. Подробности доступны в журнале задачи.",
       updatedAt: new Date() }).where(and(eq(platformRequests.id, requestId), input.jobRunId ? eq(platformRequests.jobRunId, input.jobRunId) : undefined));
+    });
     throw error;
   }
 }

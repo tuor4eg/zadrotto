@@ -1,6 +1,6 @@
+import { withSnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 import { and, eq, sql } from "drizzle-orm";
-import { db } from "@/db";
 import { titleParts } from "@/db/schema";
 import { getTitlePartPosterSource } from "@/db/queries/title-parts-sync";
 import { deleteUploadedCoverFilesIfNeeded, uploadTitlePartPoster } from "@/lib/covers/storage";
@@ -20,7 +20,9 @@ export const titlePartPosterHandler: JobHandlerDefinition<Payload> = {
     }
     return { partId: input.partId!, imageUrl: input.imageUrl };
   },
-  async execute({ payload }) {
+  async execute({ payload, runId, lockToken, signal }) {
+    const jobGuard = lockToken ? { runId, lockToken } : undefined;
+    signal.throwIfAborted();
     const previous = await getTitlePartPosterSource(payload.partId, payload.imageUrl);
     if (!previous) return;
     const uploaded = await uploadTitlePartPoster(payload);
@@ -31,10 +33,13 @@ export const titlePartPosterHandler: JobHandlerDefinition<Payload> = {
     }
     let installed = false;
     try {
-      const rows = await db.update(titleParts).set({ coverUrl: uploaded.coverUrl, coverThumbUrl: uploaded.coverThumbUrl, updatedAt: new Date() })
-        .where(and(eq(titleParts.id, payload.partId), eq(titleParts.posterSourceUrl, payload.imageUrl),
-          sql`${titleParts.coverUrl} is not distinct from ${previous.coverUrl}`,
-          sql`${titleParts.coverThumbUrl} is not distinct from ${previous.coverThumbUrl}`)).returning({ id: titleParts.id });
+      const rows = await withSnapshotJobGuard(jobGuard, async tx => {
+        signal.throwIfAborted();
+        return tx.update(titleParts).set({ coverUrl: uploaded.coverUrl, coverThumbUrl: uploaded.coverThumbUrl, updatedAt: new Date() })
+          .where(and(eq(titleParts.id, payload.partId), eq(titleParts.posterSourceUrl, payload.imageUrl),
+            sql`${titleParts.coverUrl} is not distinct from ${previous.coverUrl}`,
+            sql`${titleParts.coverThumbUrl} is not distinct from ${previous.coverThumbUrl}`)).returning({ id: titleParts.id });
+      });
       installed = rows.length > 0;
     } finally {
       // Every upload has a unique key: an obsolete worker can only delete its own files.

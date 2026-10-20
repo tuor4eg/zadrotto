@@ -89,6 +89,18 @@ test("BGG identity bindings display external ID and reopen the whole identity", 
   assert.match(approval, /Коллектив/);
 });
 
+test("FantLab ID binding and name mapping are labelled as separate provenance of one Creator", () => {
+  const html = renderToStaticMarkup(createElement(CreatorProviderVariants, {
+    variants: [{ id: 8, provider: "fantlab", externalCreatorName: "Кен Кизи" }],
+    bindings: [{ id: 7, provider: "fantlab", externalCreatorId: "10433", externalCreatorName: "Кен Кизи" }],
+  }));
+  assert.match(html, /ID 10433/);
+  assert.match(html, /Привязка по ID/);
+  assert.match(html, /Соответствие имени/);
+  assert.match(html, /https:\/\/fantlab\.ru\/autor10433/);
+  assert.match(html, /name="mappingId" value="8"/);
+});
+
 test("organization approval shows existing provider identities without merging candidates", () => {
   const html = renderToStaticMarkup(createElement(CreatorDecisionForm, {
     requestId: 9, name: "Studio", provider: "rawg", people: [
