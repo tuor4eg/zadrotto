@@ -13,20 +13,23 @@ import { SNAPSHOT_OPERATIONS_UI } from "./snapshot-operations";
 
 function BatchFields({ busy, values }: { busy: boolean; values?: SnapshotJobPayload }) {
   const { pending } = useFormStatus();
-  const [entityType, setEntityType] = useState(values?.entityType ?? "media-item");
-  const creator = entityType === "creator";
+  const [processingType, setProcessingType] = useState<"book" | "film" | "creator">(
+    values?.entityType === "creator" ? "creator" : values?.provider === "tmdb" ? "film" : "book",
+  );
+  const creator = processingType === "creator";
+  const film = processingType === "film";
   const [operation, setOperation] = useState<SnapshotOperation>(values?.operation ?? "verify");
   return <>
     <fieldset disabled={pending || busy} className="grid gap-4 rounded-md border border-stone-200 bg-white p-4">
       <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Параметры обработки</legend>
-      <div className="grid gap-2"><Label htmlFor="snapshot-entity">Объекты обработки</Label><Select id="snapshot-entity" name="entityType" value={entityType} onChange={event => { setEntityType(event.target.value as "media-item" | "creator"); if (event.target.value === "creator" && operation === "verify") setOperation("refresh-process"); }}><option value="media-item">Книги</option><option value="creator">Создатели FantLab</option></Select></div>
+      <div className="grid gap-2"><Label htmlFor="snapshot-entity">Объекты обработки</Label><Select id="snapshot-entity" name="processingType" value={processingType} onChange={event => { setProcessingType(event.target.value as "book" | "film" | "creator"); if (event.target.value === "creator" && operation === "verify") setOperation("refresh-process"); }}><option value="book">Книги</option><option value="film">Фильмы</option><option value="creator">Создатели FantLab</option></Select><input type="hidden" name="entityType" value={creator ? "creator" : "media-item"} /></div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="snapshot-provider">Провайдер</Label>
-          <Select key={entityType} id="snapshot-provider" name="provider" defaultValue={creator ? "fantlab" : values?.provider ?? "fantlab"}>
-            {(creator ? ["fantlab"] as const : ["fantlab", "google-books", "open-library"] as const).map(provider => <option key={provider} value={provider}>{COVER_PROVIDER_LABELS[provider]}</option>)}
+          <Select key={processingType} id="snapshot-provider" name="provider" defaultValue={creator ? "fantlab" : film ? "tmdb" : values?.provider !== "tmdb" ? values?.provider ?? "fantlab" : "fantlab"}>
+            {(creator ? ["fantlab"] as const : film ? ["tmdb"] as const : ["fantlab", "google-books", "open-library"] as const).map(provider => <option key={provider} value={provider}>{COVER_PROVIDER_LABELS[provider]}</option>)}
           </Select>
-          <p className="text-xs leading-5 text-stone-500">{creator ? "Создатели с подтверждённой привязкой FantLab. Новые сопоставления не создаются." : "Книги с уже выбранным источником. Поиск нового источника не выполняется."}</p>
+          <p className="text-xs leading-5 text-stone-500">{creator ? "Создатели с подтверждённой привязкой FantLab. Новые сопоставления не создаются." : film ? "Фильмы с уже выбранным источником TMDB. Поиск нового источника не выполняется." : "Книги с уже выбранным источником. Поиск нового источника не выполняется."}</p>
         </div>
         <div className="grid content-start gap-2">
           <Label htmlFor="snapshot-operation">Действие</Label>
@@ -48,14 +51,14 @@ function BatchFields({ busy, values }: { busy: boolean; values?: SnapshotJobPayl
           <p className="text-xs leading-5 text-stone-500">0 — пауза 1 секунда. Можно указать дробное число: 0,5 — полчаса; 24 — сутки.</p>
         </div>
       </div>
-      {creator && operation !== "process" && <div className="grid gap-2">
+      {(operation === "refresh" || operation === "refresh-process") && <div className="grid gap-2">
         <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" name="onlyMissingSnapshots" defaultChecked={values?.onlyMissingSnapshots ?? false} />Только без сохранённого снимка</label>
-        <p className="text-xs leading-5 text-stone-500">Успешно загруженные профили будут пропущены. Проверяется полный снимок FantLab с биографией и наградами, независимо от заполненности полей создателя. Для обработки уже сохранённых данных выберите «Применить сохранённые данные».</p>
+        <p className="text-xs leading-5 text-stone-500">{creator ? "Профили с полным снимком FantLab с биографией и наградами будут пропущены, независимо от заполненности полей создателя." : "Записи с основным снимком текущего источника будут пропущены, независимо от заполненности полей записи. Проверяется ресурс, метод и параметры запроса; привязка снимка к записи не требуется."} Для обработки уже сохранённых данных выберите «Применить сохранённые данные».</p>
       </div>}
       {creator && <div className="grid gap-2"><Label htmlFor="snapshot-creator-ids">ID создателей (необязательно)</Label><Input id="snapshot-creator-ids" name="creatorIds" defaultValue={values?.creatorIds?.join(", ")} placeholder="12, 34, 56" maxLength={3200} /><p className="text-xs text-stone-500">До 200 положительных ID через запятую или пробел. Пустое поле — все подходящие создатели в диапазоне.</p></div>}
       <details className="rounded-md border border-stone-100 p-3">
         <summary className="cursor-pointer text-sm font-medium">Ограничить диапазон записей</summary>
-        <p className="mt-2 text-xs leading-5 text-stone-500">{creator ? "Если оставить поля пустыми, будут обработаны все создатели с привязкой FantLab." : "Если оставить поля пустыми, будут обработаны все книги выбранного провайдера."}</p>
+        <p className="mt-2 text-xs leading-5 text-stone-500">{creator ? "Если оставить поля пустыми, будут обработаны все создатели с привязкой FantLab." : film ? "Если оставить поля пустыми, будут обработаны все фильмы с источником TMDB." : "Если оставить поля пустыми, будут обработаны все книги выбранного провайдера."}</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="snapshot-after-id">После ID</Label>

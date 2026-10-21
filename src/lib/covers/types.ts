@@ -91,6 +91,8 @@ export type SignedMediaTitleCandidate = MediaTitleCandidate & {
 export type ProviderTitlePart = import("@/lib/media/title-parts").TitlePartProviderInput;
 
 export type MediaTitleMetadata = {
+  /** Server-only transient provider evidence for genre suggestions; never persisted or signed. */
+  genreFacts?: Record<string, unknown>;
   snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[];
   parts?: ProviderTitlePart[];
   provider: MediaProviderCode;

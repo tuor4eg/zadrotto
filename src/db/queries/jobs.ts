@@ -1,8 +1,9 @@
+import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
 import { JobError } from "@/lib/jobs/types";
 import { automoderationChecks } from "@/db/schema";
 import { reconcileAutomoderationJob, recoverOrphanedAutomoderationChecks } from "./automoderation-recovery";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { jobRuns, jobs } from "@/db/schema";
@@ -131,14 +132,33 @@ function automoderationCheckId(run: { type: string; payload: Record<string, unkn
   return run.type === "moderation.auto-check" && typeof id === "number" && Number.isSafeInteger(id) && id > 0 && id <= 2147483647 ? id : null;
 }
 
-export async function cancelQueuedJobRun(id: number, now = new Date()) {
+async function cancelRun(id: number, now: Date, allowRunningSnapshot: boolean) {
   return db.transaction(async tx => {
-    const [run] = await tx.update(jobRuns).set({ cancelledAt: now, finishedAt: now, status: "cancelled", updatedAt: now })
-      .where(and(eq(jobRuns.id, id), eq(jobRuns.status, "queued"))).returning();
+    const [run] = await tx.update(jobRuns).set({ cancelledAt: now, finishedAt: now, status: "cancelled", updatedAt: now,
+      lockToken: null, lockExpiresAt: null, lockedAt: null, lockedBy: null })
+      .where(and(eq(jobRuns.id, id), allowRunningSnapshot
+        ? or(eq(jobRuns.status, "queued"),and(eq(jobRuns.status,"running"),eq(jobRuns.type,PROVIDER_SNAPSHOT_JOB_TYPE)))
+        : eq(jobRuns.status, "queued"))).returning();
     const checkId = run && automoderationCheckId(run);
     if (checkId) await reconcileAutomoderationJob(tx, {checkId, retry: false});
     return run ?? null;
   });
+}
+
+/** Existing callers retain queued-only cancellation. */
+export function cancelQueuedJobRun(id: number, now = new Date()) {
+  return cancelRun(id, now, false);
+}
+
+/** Running cancellation is enabled for snapshot processing with transactional mutation guards. */
+export function cancelJobRun(id: number, now = new Date()) {
+  return cancelRun(id, now, true);
+}
+
+export async function isJobRunLeaseCurrent(input: {id: number; lockToken: string}) {
+  const [run] = await db.select({id:jobRuns.id}).from(jobRuns).where(and(eq(jobRuns.id,input.id),
+    eq(jobRuns.status,"running"),eq(jobRuns.lockToken,input.lockToken),sql`${jobRuns.lockExpiresAt} > clock_timestamp()`)).limit(1);
+  return Boolean(run);
 }
 
 export async function retryFailedJobRun(id: number, createdByAdminId: number | null, now = new Date()) {

@@ -3,7 +3,6 @@ import { getWorkingBookPublishers } from "./book-publisher-roster";
 import { syncFantlabBookContributors, syncBookPublisherContributors, resolveFantlabBookRequest, removeFantlabBookBinding } from "./book-contributors";
 import { clearDeletedEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
 import { getSavedBookBundle, isBookSnapshotProvider } from "@/lib/providers/book-service";
-import { isNormalizedBookProvider } from "@/lib/providers/book-cutover";
 import type { ProviderContributor } from "@/lib/providers/types";
 import { gameCompanyRequestKey, syncGameCompanyCreators, resolveGameCompanyRequest, removeGameCompanyBinding, getGameCompanyRosterBatch } from "./game-companies";
 import { isGameCompanyProvider } from "@/lib/creators/game-companies";
@@ -423,7 +422,8 @@ export async function applyCreatorRequest(requestId: number, input: {
             for (const item of items) {
                 input.signal?.throwIfAborted();
                 const [sourceBefore] = await db.select({provider:mediaItemMetadata.sourceProvider,externalId:mediaItemMetadata.sourceExternalId}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,item.id));
-                const normalizedBundle = sourceBefore && await isNormalizedBookProvider(sourceBefore.provider) && isBookSnapshotProvider(sourceBefore.provider!) && sourceBefore.externalId
+                if (request.mediaType === "book" && isBookSnapshotProvider(sourceBefore?.provider ?? "") && !sourceBefore?.externalId) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
+                const normalizedBundle = request.mediaType === "book" && sourceBefore && isBookSnapshotProvider(sourceBefore.provider ?? "") && sourceBefore.externalId
                     ? await getSavedBookBundle(sourceBefore.provider as "fantlab"|"google-books"|"open-library",sourceBefore.externalId) : null;
                 await withSnapshotJobGuard(input.jobGuard, async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
@@ -432,7 +432,6 @@ export async function applyCreatorRequest(requestId: number, input: {
                         if (roster && isGameCompanyProvider(request.provider)) await syncGameCompanyCreators(tx, item.id, request.provider, { gameCompanyReferences: roster.references });
                         return;
                     }
-                    if (await isNormalizedBookProvider(sourceBefore?.provider, tx) !== Boolean(normalizedBundle)) throw new Error("BOOK_PROVIDER_MODE_CHANGED");
                     const [metadata] = await tx.select({sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,facts:normalizedBundle ? sql<Record<string,unknown>>`'{}'::jsonb` : mediaItemMetadata.facts}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                     if (!entry || !metadata)
                         return;
@@ -499,7 +498,7 @@ export async function backfillCreators(signal?: AbortSignal, jobGuard?: Snapshot
                 const added = await withSnapshotJobGuard(jobGuard, async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
                     const [source] = await tx.select({provider:mediaItemMetadata.sourceProvider}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,item.id));
-                    if (await isNormalizedBookProvider(source?.provider, tx)) return {createdCreators:0,createdMappings:0,createdLinks:0};
+                    if (isBookSnapshotProvider(source?.provider ?? "")) return {createdCreators:0,createdMappings:0,createdLinks:0};
                     const [metadata] = await tx.select({sourceProvider:mediaItemMetadata.sourceProvider,facts:mediaItemMetadata.facts}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                     return entry && metadata ? syncProviderCreators(tx, { mediaItemId: item.id, provider: metadata.sourceProvider, mediaType: entry.mediaType, facts: metadata.facts, autoApprove: true }) : { createdCreators: 0, createdMappings: 0, createdLinks: 0 };
                 });

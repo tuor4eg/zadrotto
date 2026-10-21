@@ -121,6 +121,43 @@ test("worker shutdown aborts the running handler and requeues its work", async (
   assert.equal(requeues[0]?.errorCode, "interrupted");
 });
 
+test("snapshot worker refuses stale ownership before entering the handler", async () => {
+  let entered = false;
+  let mutations = 0;
+  await executeClaimedJobRun({
+    getHandler: () => ({ ...handler, execute: async () => { entered = true; } }),
+    operations: {
+      isCurrent: async () => false,
+      finish: async () => { mutations++; return null; },
+      requeue: async () => { mutations++; return null; },
+    },
+    run: { attempts: 1, id: 20, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "provider.snapshots" } as never,
+  });
+  assert.equal(entered, false);
+  assert.equal(mutations, 0);
+});
+
+test("snapshot worker detects cancellation during execution and aborts without reviving the run", async () => {
+  let checks = 0;
+  let aborted = false;
+  let mutations = 0;
+  await executeClaimedJobRun({
+    getHandler: () => ({ ...handler, execute: ({ signal }) => new Promise<void>(resolve => {
+      signal.addEventListener("abort", () => { aborted = true; resolve(); }, { once: true });
+    }) }),
+    operations: {
+      isCurrent: async () => ++checks === 1,
+      finish: async () => { mutations++; return null; },
+      requeue: async () => { mutations++; return null; },
+      defer: async () => { mutations++; return null as never; },
+    },
+    run: { attempts: 1, id: 21, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "provider.snapshots" } as never,
+  });
+  assert.ok(checks >= 2);
+  assert.equal(aborted, true);
+  assert.equal(mutations, 0);
+});
+
 test("queue queries retain locking, deduplication, and token guards", async () => {
   const source = await readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8");
   assert.match(source, /for\("update", \{ skipLocked: true \}\)/);

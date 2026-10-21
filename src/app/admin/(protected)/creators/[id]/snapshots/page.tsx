@@ -1,3 +1,4 @@
+import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
@@ -42,6 +43,7 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
       {run.payload.checkpoint?.errors.map((error, index) => <p key={index} className="text-sm text-red-700">{snapshotItemErrorMessage(error)}</p>)}
       {run.payload.checkpoint?.diagnostics?.map(item => <div key={item.id} className="text-sm">{item.codes.map(code => <p key={code}>{creatorSnapshotDiagnosticMessage(code)}</p>)}</div>)}
       <SnapshotJobProgress active={active} />
+      {active && <StopSnapshotRunButton runId={run.id} returnTo={`/admin/creators/${id}/snapshots?run=${run.id}`} />}
       <Link className="text-sm underline" href={`/admin/tools/jobs/journal?job=adhoc#run-${run.id}`}>Подробности в журнале</Link>
     </section>}
     {state.bindings.length !== 1 && <Alert variant="warning">Для обработки нужна единственная подтверждённая привязка FantLab. Проверьте привязки в редакторе.</Alert>}

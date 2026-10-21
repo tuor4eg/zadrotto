@@ -1,3 +1,4 @@
+import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
 import Link from "next/link";
 import { SNAPSHOT_OPERATIONS_UI } from "./snapshot-operations";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
@@ -14,13 +15,11 @@ import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getNormalizedBookProviders } from "@/lib/providers/book-cutover";
-import { BookCutoverForm } from "./book-cutover-form";
 import { SnapshotBatchForm } from "./snapshot-batch-form";
 
 export default async function ProviderSnapshotsPage({ searchParams }: { searchParams: Promise<{ error?: string; run?: string }> }) {
   await requireAdminUser();
-  const [normalized, query] = await Promise.all([getNormalizedBookProviders(), searchParams]);
+  const query = await searchParams;
   const run = query.run ? await getProviderSnapshotRun(Number(query.run)) : null;
   const creatorNames = run?.payload.entityType === "creator" ? await getCreatorNamesByIds([
     ...(run.payload.checkpoint?.errors.map(item => item.id) ?? []),
@@ -36,7 +35,7 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
         <h2 className="font-serif text-2xl">Снимки провайдеров</h2>
-        <p className="text-sm leading-6 text-stone-600">Получение, проверка и применение сохранённых данных книг и авторов FantLab.</p>
+        <p className="text-sm leading-6 text-stone-600">Получение, проверка и применение сохранённых данных книг, фильмов TMDB и авторов FantLab.</p>
       </div>
       <Link href="/admin/tools/jobs/journal?job=adhoc" className={buttonVariants({ variant: "outline", size: "sm" })}><History />Журнал запусков</Link>
     </div>
@@ -51,11 +50,11 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
             <CardTitle>{active ? "Ход обработки" : "Результат обработки"}</CardTitle>
             <Badge variant={run.status === "succeeded" ? "positive" : run.status === "failed" ? "destructive" : "outline"}>{statusLabels[run.status] ?? run.status}</Badge>
           </div>
-          <CardDescription>Задача №{run.id} · {run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
+          <CardDescription>Задача №{run.id} · {run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.provider === "tmdb" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4" aria-live="polite">
           {batch && <p className="text-sm text-stone-600">Размер партии: {batch.batchSize}. Пауза между партиями: {batch.batchPauseHours === 0 ? "1 секунда" : `${batch.batchPauseHours} ч.`}</p>}
-          {run.payload.onlyMissingSnapshots && <p className="text-sm text-stone-600">Выборка: только создатели без сохранённого снимка FantLab.</p>}
+          {run.payload.onlyMissingSnapshots && <p className="text-sm text-stone-600">Выборка: только объекты без основного сохранённого снимка текущего источника.</p>}
           <dl className="grid gap-3 sm:grid-cols-3">
             <div className="rounded-md border border-stone-200 bg-stone-50 p-3"><dt className="text-sm text-stone-500">Пройдено записей</dt><dd className="mt-1 text-2xl font-semibold">{processed + failed}</dd></div>
             <div className="rounded-md border border-stone-200 bg-stone-50 p-3"><dt className="text-sm text-stone-500">Успешно</dt><dd className="mt-1 text-2xl font-semibold text-emerald-700">{processed}</dd></div>
@@ -72,24 +71,13 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
           </div>}
           {run.payload.entityType === "creator" && Boolean(run.payload.checkpoint?.diagnostics?.length) && <div className="space-y-2 text-sm"><h3 className="font-semibold">Пропущенные данные</h3>{run.payload.checkpoint!.diagnostics!.map(item => <div key={item.id}><Link href={`/admin/creators/${item.id}/snapshots`} className="underline">{creatorAdminLabel(item.id, creatorNames[item.id])}</Link>{item.codes.map(code => <p key={code}>{creatorSnapshotDiagnosticMessage(code)}</p>)}</div>)}</div>}
           <SnapshotJobProgress active={active} />
+      {active && <StopSnapshotRunButton runId={run.id} returnTo={`/admin/tools/providers/snapshots?run=${run.id}`} />}
           {!active && run.status === "succeeded" && <p className="text-sm text-emerald-700">Обработка завершена. {processed + failed === 0 ? "Подходящих записей не найдено." : "Результат сохранён."}</p>}
           <Link className="w-fit text-sm underline" href={`/admin/tools/jobs/journal?job=adhoc#run-${run.id}`}>Подробности в журнале</Link>
         </CardContent>
       </Card>}
 
     </div>
-    <Card>
-      <CardHeader>
-        <CardTitle>Завершение перехода на сохранённые данные</CardTitle>
-        <CardDescription>После обработки книг включите новый режим для каждого провайдера. Перед включением сервер проверит все его записи и покажет расхождения.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-4">
-        <Alert>Переключение действует сразу для всех книг провайдера. После него прежние данные перестают обновляться; для обратного перехода потребуется отдельная сверка.</Alert>
-        <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {([["fantlab", "FantLab"], ["google-books", "Google Books"], ["open-library", "Open Library"]] as const).map(([provider, label]) =>
-            <BookCutoverForm key={provider} provider={provider} label={label} enabled={normalized.includes(provider)} />)}
-        </div>
-      </CardContent>
-    </Card>
+
   </section>;
 }

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { DbTransaction } from "../src/db/transaction";
 
 // No real APIs, migration against application tables, or shared-sequence writes.
-test("book import preserves raw answers and manual decisions across offline replay and cutover",{skip:process.env.PROVIDER_SNAPSHOT_TEST!=="1"},async(t)=>{
+test("book import preserves raw answers and manual decisions across offline replay with the permanent snapshot contract",{skip:process.env.PROVIDER_SNAPSHOT_TEST!=="1"},async(t)=>{
   await import("dotenv/config");
   const {default:postgres}=await import("postgres");
   const original=process.env.DATABASE_URL!;
@@ -31,19 +31,6 @@ test("book import preserves raw answers and manual decisions across offline repl
     }
     const [flagColumn]=await client`select 1 from information_schema.columns where table_schema=${schema} and table_name='provider_settings' and column_name='normalized_book_metadata'`;
     if(flagColumn)await client.unsafe('alter table provider_settings drop column normalized_book_metadata');
-    await client.unsafe(`insert into provider_settings(media_type,provider_code,enabled,title_search_mode,cover_search_enabled,priority) values('book','google-books',false,'fallback',false,71),('film','fantlab',false,'off',false,99)`);
-    for(const statement of (await readFile("drizzle/0128_book_provider_cutover_settings.sql","utf8")).split('--> statement-breakpoint'))await client.unsafe(statement);
-    const networkSettings=await client`select media_type,provider_code,enabled,title_search_mode,cover_search_enabled,priority,normalized_book_metadata from provider_settings order by media_type,provider_code`;
-    assert.deepEqual([...networkSettings],[
-      {media_type:'book',provider_code:'fantlab',enabled:true,title_search_mode:'parallel',cover_search_enabled:true,priority:30,normalized_book_metadata:false},
-      {media_type:'book',provider_code:'google-books',enabled:false,title_search_mode:'fallback',cover_search_enabled:false,priority:71,normalized_book_metadata:false},
-      {media_type:'book',provider_code:'open-library',enabled:true,title_search_mode:'parallel',cover_search_enabled:true,priority:10,normalized_book_metadata:false},
-      {media_type:'film',provider_code:'fantlab',enabled:false,title_search_mode:'off',cover_search_enabled:false,priority:99,normalized_book_metadata:false},
-    ],'migration preserves existing settings and seeds absent providers with runtime defaults');
-    await client`delete from provider_settings where media_type='book' and provider_code='google-books'`;
-    await client.unsafe((await readFile('drizzle/0128_book_provider_cutover_settings.sql','utf8')).split('--> statement-breakpoint')[1]);
-    const [googleDefault]=await client`select enabled,title_search_mode,cover_search_enabled,priority,normalized_book_metadata from provider_settings where media_type='book' and provider_code='google-books'`;
-    assert.deepEqual(googleDefault,{enabled:true,title_search_mode:'parallel',cover_search_enabled:true,priority:20,normalized_book_metadata:false});
     for(const table of ['media_types','creator_types','creator_roles'])await client.unsafe(`insert into ${quote(table)} select * from public.${quote(table)}`);
     await client.unsafe(`insert into media_items(id,code,title,media_type,publication_status) values(1,'test-book','Ручное название','book','published');
       insert into creators(id,name,slug,type_id) select v.id,v.name,v.slug,t.id from (values(1,'Manual','manual'),(2,'Second','second'),(3,'First','first')) v(id,name,slug) cross join creator_types t where t.code='person';
@@ -58,39 +45,23 @@ test("book import preserves raw answers and manual decisions across offline repl
     const base={mediaItemId:1,facts:preview.facts,sourceProvider:'google-books',sourceExternalId:'volume1',snapshotReferences:preview.snapshotReferences};
     await upsertMediaItemMetadata(base);
     assert.deepEqual((await client`select payload from provider_snapshots`)[0].payload.future,{unknown:[true,4]});
-    const before=(await client`select facts from media_item_metadata where media_item_id=1`)[0].facts;
+    await client`update media_item_metadata set facts=facts||'{"originalLanguage":"fr"}'::jsonb where media_item_id=1`;
     globalThis.fetch=async()=>{throw new Error('OFFLINE_REPLAY_MUST_NOT_FETCH');};
     const saved=await service.getSavedBookBundle('google-books','volume1');
     assert.deepEqual(saved.projection.contributors.map(value=>value.name),['Second','First']);
-    await client.unsafe(`insert into provider_settings(media_type,provider_code,normalized_book_metadata) values('book','google-books',false) on conflict(media_type,provider_code) do update set normalized_book_metadata=false`);
-    const {enableNormalizedBookProvider,getNormalizedBookProviders,isNormalizedBookProvider}=await import('../src/lib/providers/book-cutover');
-    assert.deepEqual(await getNormalizedBookProviders(),[]);
-    assert.equal(await isNormalizedBookProvider('google-books'),false);
-    await client`update media_item_metadata set facts=facts||'{"unmigrated":"preserve"}'::jsonb where media_item_id=1`;
-    const blocked=await enableNormalizedBookProvider('google-books',1);
-    assert.equal(blocked.enabled,false);
-    assert.ok(blocked.report?.issues.some(issue=>issue.code==='UNMIGRATED_LEGACY_FIELD'));
-    assert.equal(await isNormalizedBookProvider('google-books'),false,'audit failure does not enable provider');
-    await client`update media_item_metadata set facts=facts-'unmigrated' where media_item_id=1`;
-    assert.equal((await enableNormalizedBookProvider('google-books',1)).enabled,true);
-    assert.deepEqual(await enableNormalizedBookProvider('google-books',1),{enabled:true,report:null});
-    assert.deepEqual(await getNormalizedBookProviders(),['google-books']);
-    assert.equal(await isNormalizedBookProvider('google-books'),true,'setting becomes visible immediately without process restart');
-    const settingQueries:Array<{query:string;params:unknown[]}>=[];
-    client.options.debug=(_c,query,params)=>{if(query.trim().startsWith('select'))settingQueries.push({query,params:[...params]});};
-    await getNormalizedBookProviders();await isNormalizedBookProvider('google-books');
-    client.options.debug=false;
-    for(const {query,params} of settingQueries){
-      // postgres-js debug exposes encoded booleans; rebinding those as strings changes their meaning.
-      if(query.includes('"normalized_book_metadata" ='))params[params.length-1]=true;
-      const [explained]=await client.unsafe('explain(analyze,buffers,format json) '+query,params as never[]);
-      t.diagnostic(JSON.stringify({settingRead:true,plan:explained['QUERY PLAN']}));
-      assert.match(JSON.stringify(explained),/provider_settings/);
-    }
-    const [updatePlan]=await client.unsafe("explain(format json) update provider_settings set normalized_book_metadata=true where media_type='book' and provider_code='google-books'");
-    assert.match(JSON.stringify(updatePlan),/provider_settings/);
+    await assert.rejects(upsertMediaItemMetadata({...base,snapshotReferences:undefined}),/PROVIDER_SNAPSHOT_REQUIRED/);
+    assert.deepEqual((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts,{originalLanguage:'fr'},'working facts contain only the preserved language');
     await upsertMediaItemMetadata({...base,facts:{authors:['UNTRUSTED'],extra:'must not replace legacy'},expectedSource:{provider:'google-books',externalId:'volume1'}});
-    assert.deepEqual((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts,before,'legacy facts freeze at cutover');
+    assert.deepEqual((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts,{originalLanguage:'fr'},'offline normalized upsert preserves language and rejects client facts');
+    const {describeBookSource}=await import('../src/lib/providers/book-adapters');
+    const {saveProviderSnapshot,providerRequestStartedAt}=await import('../src/db/queries/provider-snapshots');
+    const {snapshotHash}=await import('../src/lib/providers/snapshot-values');
+    const replacementPayload=[{id:42,name:'Another source',authors:[]}];
+    const replacement=await saveProviderSnapshot({...describeBookSource('fantlab','42'),payload:replacementPayload,payloadHash:snapshotHash(replacementPayload),contentType:'application/json',requestStartedAt:await providerRequestStartedAt(),fetchedAt:new Date()});
+    await upsertMediaItemMetadata({...base,sourceProvider:'fantlab',sourceExternalId:'42',snapshotReferences:[{id:replacement.id,payloadHash:replacement.payloadHash}]});
+    assert.equal((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts.originalLanguage,'fr','changing source preserves language');
+    assert.deepEqual((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts,{originalLanguage:'fr'},'changing normalized source preserves persisted language');
+    await upsertMediaItemMetadata(base);
     assert.equal((await client`select title from media_items where id=1`)[0].title,'Ручное название');
     assert.equal((await client`select count(*)::int n from entry_creators where entry_id=1 and creator_id=1 and is_manual`)[0].n,1);
     assert.deepEqual((await client`select creator_id from entry_creator_sources where entry_id=1 order by source_position`).map(row=>row.creator_id),[2,3]);
@@ -99,7 +70,7 @@ test("book import preserves raw answers and manual decisions across offline repl
     const rendered=await getMediaItemMetadata(1);
     client.options.debug=false;
     assert.deepEqual(rendered!.writerCreators!.map(value=>value.name),['Second','First']);
-    assert.ok(reads.every(query=>!query.includes('provider_snapshots')),'normal metadata reads do not load raw snapshots');
+    assert.ok(reads.every(query=>!query.includes('provider_snapshots') && !query.includes('provider_settings')),'normal metadata reads do not load raw snapshots');
     await assert.rejects(upsertMediaItemMetadata({...base,expectedSource:{provider:'google-books',externalId:'other'}}),/PROVIDER_SOURCE_CHANGED/);
     await assert.rejects(upsertMediaItemMetadata({...base,snapshotReferences:preview.snapshotReferences!.map(ref=>({...ref,payloadHash:'0'.repeat(64)}))}),/PROVIDER_SNAPSHOT_CHANGED/);
     await client.unsafe(`insert into job_runs(id,type,source,status,lock_token,lock_expires_at,scheduled_for,available_at,max_attempts,timeout_seconds,retry_base_seconds,retry_max_seconds) values(1,'provider.snapshots','manual','running','active',now()+interval '1 hour',now(),now(),3,300,60,3600)`);

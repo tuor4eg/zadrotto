@@ -15,8 +15,6 @@ test("FantLab typed contributor identity, moderation, order and manual safety", 
     await client.unsafe(`CREATE SCHEMA ${schema}`);
     await client.unsafe(`CREATE TABLE media_types(code text PRIMARY KEY,name text,is_publicly_available boolean DEFAULT true); INSERT INTO media_types(code,name) VALUES('book','Книга'),('film','Фильм'),('boardgame','Настолка');
       CREATE TABLE admin_users(id integer PRIMARY KEY); INSERT INTO admin_users VALUES(1);
-      CREATE TABLE provider_settings(media_type text,provider_code text,normalized_book_metadata boolean NOT NULL DEFAULT false,PRIMARY KEY(media_type,provider_code));
-      INSERT INTO provider_settings(media_type,provider_code) VALUES('book','fantlab');
       CREATE TABLE media_items(id integer PRIMARY KEY,code text,title text,media_type text,publication_status text);
       INSERT INTO media_items VALUES(1,'one','Один','book','published'),(2,'two','Два','book','published'),(3,'three','Три','book','published'),(4,'four','Четыре','book','draft'),(5,'five','Пять','book','published');
       ALTER TABLE media_items ADD COLUMN original_title text,ADD COLUMN description text,ADD COLUMN media_carrier_id integer,ADD COLUMN release_year integer,
@@ -37,15 +35,14 @@ test("FantLab typed contributor identity, moderation, order and manual safety", 
         timeout_seconds integer,retry_base_seconds integer,retry_max_seconds integer,locked_at timestamptz,locked_by text,lock_token text,
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
+    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql", "drizzle/0127_provider_snapshots.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
-    await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
+    await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date,ADD COLUMN death_date date;
+      CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
-      CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    await client.unsafe(`ALTER TABLE entry_creator_sources ADD COLUMN source_position integer;
-      ALTER TABLE creator_request_media_items ADD COLUMN source_position integer;
-      insert into creators(id,name,slug,type_id) select 100,'Ручной','manual',id from creator_types where code='person';
+      CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,next_attempt_at timestamptz NOT NULL DEFAULT now(),created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
+    await client.unsafe(`insert into creators(id,name,slug,type_id) select 100,'Ручной','manual',id from creator_types where code='person';
       insert into entry_creators(entry_id,creator_id,role_id,is_manual) select 1,100,id,true from creator_roles where code='writer';`);
     const refs=[{name:"Одно имя",externalId:"101",roleCode:"writer" as const,position:1},{name:"Одно имя",externalId:"102",roleCode:"writer" as const,position:0}];
     const sync=()=>db.transaction(tx=>helper.syncFantlabBookContributors(tx,1,refs));
@@ -80,6 +77,11 @@ test("FantLab typed contributor identity, moderation, order and manual safety", 
     assert.equal((await client`select count(*)::int n from entry_creator_sources where normalized_external_creator_name='historic'`)[0].n,1);
     await db.transaction(tx=>helper.syncFantlabBookContributors(tx,1,[...refs,{name:"Издатель",externalId:null,roleCode:"publisher",position:0}]));
     const [publisher]=await client`select id from creator_requests where external_creator_name='Издатель' and external_creator_id is null`;
+    const {saveProviderSnapshot,providerRequestStartedAt}=await import("../src/db/queries/provider-snapshots");
+    const {describeBookSource}=await import("../src/lib/providers/book-adapters");
+    const {snapshotHash}=await import("../src/lib/providers/snapshot-values");
+    const payload=[{id:42,name:"Книга",authors:[]}];
+    await saveProviderSnapshot({...describeBookSource("fantlab","42"),payload,payloadHash:snapshotHash(payload),contentType:"application/json",requestStartedAt:await providerRequestStartedAt(),fetchedAt:new Date()});
     await client`insert into media_item_metadata(media_item_id,source_provider,source_external_id,facts) values(1,'fantlab','42','{}')`;
     const publisherDecision=await moderation.resolveCreatorRequest({requestId:publisher.id,decision:"create",name:"Издательство",adminId:1});
     await moderation.applyCreatorRequest(publisher.id,{jobRunId:publisherDecision.jobRunId});

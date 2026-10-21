@@ -403,7 +403,6 @@ export async function getRandomPublishedFranchisePreview(input: {
       mediaCarriers.code,
       mediaItemMetadata.facts,
       mediaItemMetadata.sourceProvider,
-      mediaItemMetadata.originalLanguage,
       mediaItemRatingStats.ratingsCount,
       mediaItemRatingStats.scoreSum,
     )

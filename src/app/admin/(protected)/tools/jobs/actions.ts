@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cancelQueuedJobRun, retryFailedJobRun, setPeriodicJobEnabled } from "@/db/queries/jobs";
+import { cancelJobRun, retryFailedJobRun, setPeriodicJobEnabled } from "@/db/queries/jobs";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { createManagedPeriodicJob, updateManagedPeriodicJob } from "@/lib/jobs/manage";
@@ -15,7 +15,9 @@ const integer = (value: FormDataEntryValue | null, fallback: number) => Number.i
 const id = (value: FormDataEntryValue | null) => Number(value);
 const returnPath = (value: FormDataEntryValue | null) => {
   const path = typeof value === "string" ? value : "";
-  return path.startsWith("/admin/tools/jobs/") ? path : PATH;
+  return path.startsWith("/admin/tools/jobs/")
+    || /^\/admin\/tools\/providers\/snapshots(?:\?run=\d+)?$/.test(path)
+    || /^\/admin\/(?:media|creators)\/[1-9]\d*\/snapshots(?:\?run=\d+)?$/.test(path) ? path : PATH;
 };
 
 export async function createJobAction(formData: FormData) {
@@ -77,4 +79,4 @@ export async function retryJobRunAction(formData: FormData) {
   redirect(destination);
 }
 
-export async function cancelJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); const run = await cancelQueuedJobRun(runId); if (run) await logActivity({ action: "job-run.cancelled", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Запуск фоновой задачи отменён." }); revalidatePath(destination); redirect(destination); }
+export async function cancelJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); if (!Number.isSafeInteger(runId) || runId <= 0) redirect(`${PATH}?error=invalid`); const run = await cancelJobRun(runId); if (run) await logActivity({ action: "job-run.cancelled", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Запуск фоновой задачи отменён." }); revalidatePath(destination); redirect(destination); }

@@ -12,7 +12,7 @@ export type SnapshotJobPayload = {
   creatorIds?: number[];
   onlyMissingSnapshots?: boolean;
   operation: SnapshotOperation;
-  provider?: BookProviderCode;
+  provider?: BookProviderCode | "tmdb";
   mediaItemIds?: number[];
   batchSize?: number;
   batchPauseHours?: number;
@@ -24,13 +24,13 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
   if (!value || typeof value!=="object" || Array.isArray(value)) throw new Error("INVALID_SNAPSHOT_JOB");
   const input=value as Record<string,unknown>;
   if (Object.keys(input).some(key=>!["entityType","creatorIds","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
-  if (input.onlyMissingSnapshots !== undefined && (input.entityType !== "creator" || typeof input.onlyMissingSnapshots !== "boolean" || (input.onlyMissingSnapshots && input.operation === "process"))) throw new Error("INVALID_MISSING_SNAPSHOT_FILTER");
+  if (input.onlyMissingSnapshots !== undefined && (typeof input.onlyMissingSnapshots !== "boolean" || (input.onlyMissingSnapshots && !["refresh","refresh-process"].includes(String(input.operation))))) throw new Error("INVALID_MISSING_SNAPSHOT_FILTER");
   if (input.entityType !== undefined && input.entityType !== "media-item" && input.entityType !== "creator") throw new Error("INVALID_SNAPSHOT_ENTITY_TYPE");
   if (input.entityType === "creator") {
     if (input.provider !== "fantlab" || input.operation === "verify" || input.mediaItemIds !== undefined) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   } else if (input.creatorIds !== undefined) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   if (input.creatorIds !== undefined && (!Array.isArray(input.creatorIds) || !input.creatorIds.length || input.creatorIds.length > 200 || !input.creatorIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
-  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
+  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.batchSize!==undefined && (!Number.isSafeInteger(input.batchSize) || Number(input.batchSize)<1 || Number(input.batchSize)>SNAPSHOT_MAX_BATCH_SIZE)) throw new Error("INVALID_SNAPSHOT_BATCH_SIZE");
   if (input.batchPauseHours!==undefined && (typeof input.batchPauseHours!=="number" || !Number.isFinite(input.batchPauseHours) || input.batchPauseHours<0 || input.batchPauseHours>SNAPSHOT_MAX_PAUSE_HOURS)) throw new Error("INVALID_SNAPSHOT_BATCH_PAUSE");
   for (const key of ["afterId","throughId"]) if (input[key]!==undefined && (!Number.isSafeInteger(input[key]) || Number(input[key])<0)) throw new Error("INVALID_SNAPSHOT_RANGE");

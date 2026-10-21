@@ -1,3 +1,4 @@
+import { getTmdbFilmGenreFacts } from "@/lib/providers/tmdb-film-service";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
@@ -293,20 +294,20 @@ export async function applyGenreRequest(requestId: number, input: { signal?: Abo
             await tx.delete(genreRequestMediaItems).where(eq(genreRequestMediaItems.mediaItemId, occurrence.mediaItemId));
             return;
           }
+          if (request.decision === null && (metadata.sourceProvider !== request.provider || item.mediaType !== request.mediaType)) return;
+          // Legacy metadata without a trustworthy provider is not a successful provider refresh.
+          if (!metadata.sourceProvider?.trim()) return;
+          const genreFacts = await getTmdbFilmGenreFacts({ ...metadata, mediaType: item.mediaType }, tx);
           if (request.decision === null) {
-            if (metadata.sourceProvider !== request.provider || item.mediaType !== request.mediaType) return;
             // Recalculate all current records of this provider/type. This also covers ID aliases
             // after a failed job's history has been deleted, without persisting a second rollback state.
-            try { extractExternalGenres(metadata.facts); } catch { return; }
+            try { extractExternalGenres(genreFacts); } catch { return; }
           }
-          // Legacy metadata without a trustworthy provider is not a successful provider refresh.
-          // Keep its existing normalized links; diagnostics remain in the import/migration logs.
-          if (!metadata.sourceProvider?.trim()) return;
-          await lockGenreRequestsForMetadata(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, mediaType: item.mediaType, facts: metadata.facts });
-          const resolved = await resolveProviderGenres({ provider: metadata.sourceProvider, mediaType: item.mediaType, facts: metadata.facts }, tx);
+          await lockGenreRequestsForMetadata(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, mediaType: item.mediaType, facts: genreFacts });
+          const resolved = await resolveProviderGenres({ provider: metadata.sourceProvider, mediaType: item.mediaType, facts: genreFacts }, tx);
           await syncMediaItemProviderGenres(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, genres: resolved.genres });
           await syncGenreRequestOccurrences(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider,
-            mediaType: item.mediaType, externalGenres: extractExternalGenres(metadata.facts) });
+            mediaType: item.mediaType, externalGenres: extractExternalGenres(genreFacts) });
           input.signal?.throwIfAborted();
         });
         afterId = occurrence.mediaItemId;

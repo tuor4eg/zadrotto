@@ -7,7 +7,7 @@ import { normalizeSearchText } from "@/lib/search/normalize";
 import type { EntryCreator } from "@/lib/media/creators";
 import { paginatePublicCreators } from "@/lib/media/public-creators";
 import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
-import { normalizedBookProviderSql } from "@/db/queries/book-metadata";
+import { bookSnapshotProviderSql } from "@/db/queries/book-metadata";
 import { parseCreatorDate, type CreatorLifeDates } from "@/lib/creators/life-dates";
 
 export async function searchArchiveCreatorMatches(searchQuery: string, enabledMediaTypeCodes: readonly string[]) {
@@ -142,10 +142,10 @@ export function entryProviderWriterCreatorsJsonSql(column: SQLWrapper = sql`"med
       select jsonb_agg(jsonb_build_object('id', c.id, 'name', c.name, 'slug', c.slug)
         order by provider_authors.position nulls last, c.name, c.id)
       from creators c join (
-        select s.creator_id, min(case when ${normalizedBookProviderSql(sql`md.source_provider`)} then s.source_position else coalesce(author.ordinality, case when s.provider='fantlab' and s.normalized_external_creator_name like 'fantlab:%' then s.source_position end) end) as position
+        select s.creator_id, min(case when ${bookSnapshotProviderSql(sql`md.source_provider`)} then s.source_position else coalesce(author.ordinality, case when s.provider='fantlab' and s.normalized_external_creator_name like 'fantlab:%' then s.source_position end) end) as position
         from entry_creator_sources s join creator_roles r on r.id=s.role_id
         join media_item_metadata md on md.media_item_id=s.entry_id
-        left join lateral jsonb_array_elements_text(case when ${normalizedBookProviderSql(sql`md.source_provider`)} then '[]'::jsonb else case jsonb_typeof(md.facts->'authors')
+        left join lateral jsonb_array_elements_text(case when ${bookSnapshotProviderSql(sql`md.source_provider`)} then '[]'::jsonb else case jsonb_typeof(md.facts->'authors')
           when 'array' then md.facts->'authors'
           when 'string' then jsonb_build_array(md.facts->'authors')
           else '[]'::jsonb end end) with ordinality as author(name, ordinality)

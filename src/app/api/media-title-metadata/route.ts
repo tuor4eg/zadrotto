@@ -116,7 +116,7 @@ export async function POST(request: Request) {
   }
 
   const normalized = result.metadata
-    ? await resolveProviderGenres({ facts: result.metadata.facts, provider: result.metadata.provider, mediaType })
+    ? await resolveProviderGenres({ facts: result.metadata.genreFacts ?? result.metadata.facts, provider: result.metadata.provider, mediaType })
     : null;
   const suggestedFranchiseIds = await getGenreReplacementFranchiseIds(normalized?.genres.map((genre) => genre.id) ?? []);
   return NextResponse.json({
@@ -136,7 +136,10 @@ export async function POST(request: Request) {
           sourceExternalId: result.metadata.externalId,
           sourceUrl: result.metadata.sourceUrl,
           metadataCandidateToken: createMediaMetadataCandidateToken({
-            ...result.metadata,
+            provider: result.metadata.provider,
+            externalId: result.metadata.externalId,
+            sourceUrl: result.metadata.sourceUrl,
+            snapshotReferences: result.metadata.snapshotReferences,
             facts: result.metadata.snapshotReferences ? {} : result.metadata.facts,
             mediaType,
           }),

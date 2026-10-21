@@ -16,6 +16,7 @@ export function snapshotItemError(id: number, error: unknown): SnapshotItemError
     "PROVIDER_SOURCE_CHANGED": "source-changed", "provider-disabled": "provider-disabled", "migration-difference": "migration-difference",
     "INCOMPLETE_PROVIDER_SNAPSHOTS": "incomplete-snapshots", "PROVIDER_SNAPSHOT_MISSING": "missing-snapshot",
     "PROVIDER_SNAPSHOT_CHANGED": "snapshot-changed",
+    "INVALID_PROVIDER_SNAPSHOT_REFERENCES": "invalid-provider-response", "INVALID_PROVIDER_SNAPSHOT_TARGET": "invalid-provider-response",
     "Incomplete Open Library work response.": "incomplete-snapshots", "Incomplete Open Library author response.": "incomplete-snapshots",
     "Incomplete book contributor response.": "incomplete-snapshots",
   };
@@ -36,7 +37,7 @@ export function snapshotItemErrorMessage(error: SnapshotItemError): string {
     "source-changed": "Источник записи изменился во время обработки.",
     "provider-disabled": "Провайдер выключен в настройках.",
     "migration-difference": "Обнаружены расхождения с прежними данными записи.",
-    "incomplete-snapshots": "Данные книги или её авторов неполны. Запись не изменена.",
+    "incomplete-snapshots": "Данные источника неполны. Запись не изменена.",
     "missing-snapshot": "Сохранённые данные не найдены. Сначала получите данные провайдера.",
     "snapshot-changed": "Сохранённые данные изменились во время обработки. Повторите попытку.",
     "missing-source": "У записи не указан поддерживаемый источник.",

@@ -1,11 +1,9 @@
 import { sql, type SQLWrapper } from "drizzle-orm";
-import { mediaItemMetadata, mediaItems, providerSettings } from "@/db/schema";
+import { mediaItemMetadata, mediaItems } from "@/db/schema";
 
 /** Uses working relations only. Raw provider snapshots are never a rendering dependency. */
-export function normalizedBookProviderSql(provider: SQLWrapper = mediaItemMetadata.sourceProvider) {
-  return sql`exists(select 1 from ${providerSettings} book_provider_settings
-    where book_provider_settings.media_type='book' and book_provider_settings.provider_code=${provider}
-    and book_provider_settings.normalized_book_metadata=true)`;
+export function bookSnapshotProviderSql(provider: SQLWrapper = mediaItemMetadata.sourceProvider) {
+  return sql`${provider} in ('fantlab', 'google-books', 'open-library')`;
 }
 
 export function bookContributorNamesSql(roleCode: "writer" | "publisher", entryId: SQLWrapper = mediaItems.id, sourceProvider: SQLWrapper = mediaItemMetadata.sourceProvider) {
@@ -24,13 +22,12 @@ export function mediaMetadataFactsSql(input: {
   mediaType?: SQLWrapper;
   provider?: SQLWrapper;
   facts?: SQLWrapper;
-  originalLanguage?: SQLWrapper;
 } = {}) {
-  const { entryId = mediaItems.id, mediaType = mediaItems.mediaType, provider = mediaItemMetadata.sourceProvider, facts = mediaItemMetadata.facts, originalLanguage = mediaItemMetadata.originalLanguage } = input;
-  return sql<Record<string, unknown> | null>`case when ${mediaType}='book' and ${normalizedBookProviderSql(provider)}
+  const { entryId = mediaItems.id, mediaType = mediaItems.mediaType, provider = mediaItemMetadata.sourceProvider, facts = mediaItemMetadata.facts } = input;
+  return sql<Record<string, unknown> | null>`case when ${mediaType}='book' and ${bookSnapshotProviderSql(provider)}
     then jsonb_strip_nulls(jsonb_build_object(
       'authors', nullif(${bookContributorNamesSql("writer", entryId, provider)}, '[]'::jsonb),
       'publishers', nullif(${bookContributorNamesSql("publisher", entryId, provider)}, '[]'::jsonb),
-      'originalLanguage', ${originalLanguage}
+      'originalLanguage', ${facts}->'originalLanguage'
     )) else ${facts} end`;
 }

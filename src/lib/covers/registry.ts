@@ -545,7 +545,7 @@ function normalizeTitleMetadata(metadata: MediaTitleMetadata | null) {
     }),
   );
 
-  if (Object.keys(facts).length === 0 && !metadata.fields) {
+  if (Object.keys(facts).length === 0 && !metadata.fields && !metadata.genreFacts) {
     return null;
   }
 
@@ -578,10 +578,13 @@ export async function getTitleMetadata(
 
   // Connected book adapters persist full responses and reserve quota for every
   // HTTP request, including Open Library author dependencies.
-  if (providers === COVER_PROVIDERS && input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) {
+  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (input.mediaType === "film" && input.provider === "tmdb"))) {
     try {
-      const { fetchBookMetadata } = await import("@/lib/providers/book-service");
-      return { metadata: await withProviderRequestTimeout(options,()=>fetchBookMetadata(input, options)), error: null };
+      const fetchMetadata = input.mediaType === "film"
+        ? (await import("@/lib/providers/tmdb-film-service")).fetchTmdbFilmMetadata
+        : (await import("@/lib/providers/book-service")).fetchBookMetadata;
+      const metadata = await withProviderRequestTimeout(options,()=>fetchMetadata(input, options));
+      return { metadata: input.mediaType === "film" ? normalizeTitleMetadata(metadata) : metadata, error: null };
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message === "provider-daily-limit" || message === "rate-limit-unavailable") return {metadata:null,error:message};

@@ -317,6 +317,26 @@ describe("metadata backfill and refresh runs", () => {
     assert.deepEqual(empty.upserts, [])
   })
 
+  it("applies film snapshots with empty compact facts while series still require metadata", async () => {
+    const snapshotReferences = [{ id: 7, payloadHash: "a".repeat(64) }]
+    for (const mediaType of ["film", "series"] as const) {
+      const result = createStore()
+      await runMetadataBackfill({
+        context: {
+          async fetchTitleMetadata() { return { error: null, metadata: { externalId: "1", facts: {}, provider: "tmdb", sourceUrl: null, snapshotReferences } } },
+          async searchTitles() { throw new Error("should not search") },
+        },
+        items: [item({ id: 16, title: "Genre only", mediaType, sourceProvider: "tmdb", sourceExternalId: "1" })],
+        store: result.store,
+      })
+      assert.equal(result.upserts.length, mediaType === "film" ? 1 : 0)
+      if (mediaType === "film") {
+        assert.deepEqual(result.upserts[0].facts, {})
+        assert.deepEqual(result.upserts[0].snapshotReferences, snapshotReferences)
+      } else assert.deepEqual(result.issueCodes, ["no-provider-metadata"])
+    }
+  })
+
   it("binds unmatched records only after a unique exact title match", async () => {
     const { store, upserts } = createStore()
     const result = await runMetadataBackfill({

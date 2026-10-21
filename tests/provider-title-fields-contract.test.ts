@@ -89,3 +89,19 @@ for (const provider of Object.keys(allProviders) as MediaProviderCode[]) {
     });
   });
 }
+
+test("TMDB film keeps search-selected title, original title, year and description when details arrive", async () => {
+  const { createTmdbProvider } = await import("../src/lib/covers/providers/tmdb");
+  const previousFetch = globalThis.fetch;
+  globalThis.fetch = async () => Response.json({ id:42, title:"Different details title", original_title:"Different original",
+    release_date:"2025-01-01", overview:"Different details description", runtime:100, genres:[], production_companies:[], production_countries:[], original_language:"en" });
+  try {
+    const metadata = await createTmdbProvider("film").getTitleMetadata!({provider:"tmdb",externalId:"42",mediaType:"film"}, {
+      candidateLimit:1,tmdbResultScanLimit:1,enrichTitleFields:true,providerCredentials:{tmdb:{accessToken:"test-token"}},
+    });
+    assert.ok(metadata);
+    assert.equal(metadata.fields,undefined,"the existing TMDB adapter never enriches editorial fields");
+    assert.deepEqual(getMediaTitleMetadataFormFields(metadata.fields,searchFields,false),searchFields);
+    assert.deepEqual(getMediaTitleMetadataFormFields(metadata.fields,searchFields,true),searchFields);
+  } finally { globalThis.fetch = previousFetch; }
+});

@@ -21,7 +21,7 @@ export class SnapshotProviderHttpError extends ProviderHttpError {
   constructor(status: number, readonly retryAfterSeconds: number) { super(status, null); }
 }
 
-async function boundedJson(response: Response): Promise<JSONValue> {
+export async function boundedJson(response: Response): Promise<JSONValue> {
   if (!response.body || Number(response.headers.get("content-length")) > MAX_JSON_BYTES) {
     await response.body?.cancel();
     throw new Error("Слишком большой или пустой ответ источника.");

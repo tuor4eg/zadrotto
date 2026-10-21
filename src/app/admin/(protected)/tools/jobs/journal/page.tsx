@@ -1,3 +1,4 @@
+import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
 import { RotateCcw, X } from "lucide-react";
 import Link from "next/link";
 
@@ -74,6 +75,8 @@ export default async function JobJournalPage({
                 <TD>
                   {run.status === "failed" ? (
                     <form action={retryJobRunAction}><input type="hidden" name="id" value={run.id} /><input type="hidden" name="returnTo" value={currentHref} /><Tooltip label="Повторить"><Button size="icon" type="submit" variant="outline" aria-label={`Повторить запуск ${run.id}`}><RotateCcw className="size-4" /></Button></Tooltip></form>
+                  ) : run.status === "running" && run.type === "provider.snapshots" ? (
+                    <StopSnapshotRunButton runId={run.id} returnTo={currentHref} />
                   ) : run.status === "queued" ? (
                     <form action={cancelJobRunAction}><input type="hidden" name="id" value={run.id} /><input type="hidden" name="returnTo" value={currentHref} /><Tooltip label="Отменить"><Button size="icon" type="submit" variant="outline" aria-label={`Отменить запуск ${run.id}`}><X className="size-4" /></Button></Tooltip></form>
                   ) : null}

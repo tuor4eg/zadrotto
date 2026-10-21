@@ -5,7 +5,8 @@ import { canonicalJson, snapshotHash, validateSnapshotReferences } from "../src/
 
 test("snapshot operations reject unsupported sources, invalid ranges and forged checkpoints",()=>{
   assert.equal(parseSnapshotJobPayload({operation:"refresh-process",provider:"fantlab",mediaItemIds:[1]}).provider,"fantlab");
-  for(const input of [{operation:"delete"},{operation:"process",provider:"tmdb"},{operation:"verify",mediaItemIds:[0]},{operation:"verify",afterId:-1},
+  assert.equal(parseSnapshotJobPayload({operation:"process",provider:"tmdb",mediaItemIds:[42]}).provider,"tmdb");
+  for(const input of [{operation:"delete"},{operation:"process",provider:"rawg"},{operation:"verify",mediaItemIds:[0]},{operation:"verify",afterId:-1},
     {operation:"process",checkpoint:{afterId:0,throughId:10,processed:0,failed:0,errors:[],retryId:-1}}]) assert.throws(()=>parseSnapshotJobPayload(input));
 });
 test("snapshot fingerprints canonicalize objects without reordering arrays",()=>{
@@ -16,6 +17,17 @@ test("snapshot fingerprints canonicalize objects without reordering arrays",()=>
   assert.equal(validateSnapshotReferences([ref]),true);
   assert.equal(validateSnapshotReferences([ref,ref]),false);
   assert.equal(validateSnapshotReferences([{...ref,id:-1}]),false);
+});
+
+test("missing raw filter applies to network operations for media and creators, with historical false accepted", () => {
+  for (const provider of ["fantlab", "google-books", "open-library", "tmdb"]) {
+    for (const operation of ["refresh", "refresh-process"]) assert.equal(parseSnapshotJobPayload({ operation, provider, onlyMissingSnapshots: true }).onlyMissingSnapshots, true);
+    for (const operation of ["process", "verify"]) {
+      assert.throws(() => parseSnapshotJobPayload({ operation, provider, onlyMissingSnapshots: true }));
+      assert.equal(parseSnapshotJobPayload({ operation, provider, onlyMissingSnapshots: false }).onlyMissingSnapshots, false);
+    }
+  }
+  assert.throws(() => parseSnapshotJobPayload({ operation: "refresh", onlyMissingSnapshots: "true" }));
 });
 
 test("batch settings preserve old defaults, fractional hours, daily pauses and the remaining records after a retry",()=>{

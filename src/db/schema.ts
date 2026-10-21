@@ -222,7 +222,6 @@ export const providerSettings = pgTable(
     enabled: boolean("enabled").default(true).notNull(),
     titleSearchMode: text("title_search_mode").default("parallel").notNull(),
     coverSearchEnabled: boolean("cover_search_enabled").default(true).notNull(),
-    normalizedBookMetadata: boolean("normalized_book_metadata").default(false).notNull(),
     priority: integer("priority").default(100).notNull(),
     ...timestamps(),
   },
@@ -2079,7 +2078,6 @@ export const entryCreatorSources = pgTable("entry_creator_sources", {
 }, (t) => [primaryKey({ columns: [t.entryId, t.creatorId, t.roleId, t.provider, t.normalizedExternalCreatorName] }), foreignKey({ columns: [t.entryId, t.creatorId, t.roleId], foreignColumns: [entryCreators.entryId, entryCreators.creatorId, entryCreators.roleId] }).onDelete("cascade"), index("entry_creator_sources_binding_idx").on(t.bindingId), foreignKey({name: "entry_creator_sources_binding_owner_fk", columns: [t.bindingId,t.creatorId,t.provider], foreignColumns: [providerCreatorBindings.id,providerCreatorBindings.creatorId,providerCreatorBindings.provider]}).onDelete("restrict")]);
 
 export const mediaItemMetadata = pgTable("media_item_metadata", {
-  originalLanguage: text("original_language"),
   mediaItemId: integer("media_item_id")
     .primaryKey()
     .references(() => mediaItems.id, { onDelete: "cascade" }),

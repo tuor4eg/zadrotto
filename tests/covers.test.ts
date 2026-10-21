@@ -537,7 +537,7 @@ describe("metadata token caller contracts", () => {
     );
     assert.match(
       metadataRoute,
-      /createMediaMetadataCandidateToken\(\{[\s\S]*\.\.\.result\.metadata,[\s\S]*mediaType/,
+      /createMediaMetadataCandidateToken\(\{[\s\S]*provider: result\.metadata\.provider,[\s\S]*externalId: result\.metadata\.externalId,[\s\S]*snapshotReferences: result\.metadata\.snapshotReferences,[\s\S]*mediaType/,
     );
 
     for (const actionPath of [

@@ -1,5 +1,6 @@
 import type { DbTransaction } from "@/db/transaction";
 import "server-only";
+import { describeTmdbFilmSource } from "./tmdb-film-adapter";
 import { and, asc, eq, inArray, or } from "drizzle-orm";
 import { db } from "@/db";
 import { providerSnapshots } from "@/db/schema";
@@ -69,11 +70,17 @@ export async function fetchBookMetadata(input: TitleMetadataInput, options: Titl
 }
 /** Dedicated admin inspection can also show a partially fetched, not-yet-linked source. */
 export async function getRawEntitySnapshot(snapshotId: number, mediaItemId: number) {
-  const {providerSnapshotLinks,mediaItemMetadata}=await import("@/db/schema");
+  const {providerSnapshotLinks,mediaItemMetadata,mediaItems}=await import("@/db/schema");
   const linked=(await db.select({snapshot:providerSnapshots}).from(providerSnapshotLinks).innerJoin(providerSnapshots,eq(providerSnapshots.id,providerSnapshotLinks.snapshotId))
     .where(and(eq(providerSnapshotLinks.entityType,"media-item"),eq(providerSnapshotLinks.entityId,String(mediaItemId)),eq(providerSnapshotLinks.snapshotId,snapshotId))).limit(1))[0]?.snapshot;
   if(linked)return linked;
   const [source]=await db.select({provider:mediaItemMetadata.sourceProvider,externalId:mediaItemMetadata.sourceExternalId}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,mediaItemId));
+  if (source?.provider === "tmdb" && source.externalId) {
+    const [item] = await db.select({mediaType:mediaItems.mediaType}).from(mediaItems).where(eq(mediaItems.id,mediaItemId));
+    if (item?.mediaType !== "film") return null;
+    const film = await getProviderSnapshot(describeTmdbFilmSource(source.externalId));
+    return film?.id === snapshotId ? film : null;
+  }
   if(!source?.provider || !source.externalId || !isBookSnapshotProvider(source.provider))return null;
   const primary=await getProviderSnapshot(describeBookSource(source.provider,source.externalId));
   if(!primary)return null;
@@ -83,8 +90,12 @@ export async function getRawEntitySnapshot(snapshotId: number, mediaItemId: numb
   return getBookDependencyDescriptors(primary).some(desc=>desc.providerCode===dependency.providerCode && desc.externalId===dependency.externalId && desc.resourceType===dependency.resourceType && desc.apiMethod===dependency.apiMethod && snapshotHash(desc.requestParams)===dependency.requestKey)?dependency:null;
 }
 export async function getCurrentBookPrimarySnapshot(mediaItemId:number) {
-  const {mediaItemMetadata}=await import("@/db/schema");
+  const {mediaItemMetadata,mediaItems}=await import("@/db/schema");
   const [source]=await db.select({provider:mediaItemMetadata.sourceProvider,externalId:mediaItemMetadata.sourceExternalId}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,mediaItemId));
+  if (source?.provider === "tmdb" && source.externalId) {
+    const [item] = await db.select({mediaType:mediaItems.mediaType}).from(mediaItems).where(eq(mediaItems.id,mediaItemId));
+    return item?.mediaType === "film" ? getProviderSnapshot(describeTmdbFilmSource(source.externalId)) : null;
+  }
   if(!source?.provider || !source.externalId || !isBookSnapshotProvider(source.provider))return null;
   return getProviderSnapshot(describeBookSource(source.provider,source.externalId));
 }

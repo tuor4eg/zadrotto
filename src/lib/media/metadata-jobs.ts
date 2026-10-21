@@ -130,7 +130,7 @@ async function fetchAndStoreMetadata(input: {
     return { kind: "retryable", error: result.error }
   }
 
-  if (!result.metadata || Object.keys(result.metadata.facts).length === 0) {
+  if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !(input.item.mediaType === "film" && input.provider === "tmdb" && result.metadata.snapshotReferences?.length))) {
     return { kind: "skip", issue: result.error ? "provider-error" : "no-provider-metadata" }
   }
 

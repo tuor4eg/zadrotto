@@ -29,12 +29,46 @@ test("creator network batches expose the missing-snapshot option and restore it 
   assert.match(html, /независимо от заполненности полей создателя/);
 });
 
-test("books and offline processing cannot submit the missing-snapshot filter", () => {
+test("book and film network batches restore the missing-snapshot filter", () => {
+  for (const provider of ["fantlab", "google-books", "open-library", "tmdb"]) for (const operation of ["refresh", "refresh-process"]) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { provider, operation, onlyMissingSnapshots: true } }));
+    assert.match(html, /name="onlyMissingSnapshots" checked=""/);
+  }
+});
+
+test("offline processing and verification cannot submit the missing-snapshot filter", () => {
   for (const values of [
-    { provider: "fantlab", operation: "refresh" },
+    { provider: "fantlab", operation: "process" },
+    { provider: "tmdb", operation: "verify" },
     { entityType: "creator", provider: "fantlab", operation: "process" },
   ] as const) {
     const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values }));
     assert.doesNotMatch(html, /name="onlyMissingSnapshots"/);
   }
+});
+
+
+test("TMDB batches restore the provider and explicitly limit processing to films", () => {
+  const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
+    provider: "tmdb", operation: "process",
+  } }));
+  assert.match(html, /value="tmdb" selected=""/);
+  assert.match(html, /value="film" selected=""/);
+  assert.match(html, /Фильмы с уже выбранным источником TMDB/);
+  const filmProviders = html.match(/<select[^>]*name="provider"[^>]*>(.*?)<\/select>/)?.[1];
+  assert.ok(filmProviders);
+  assert.doesNotMatch(filmProviders, /value="fantlab"|value="google-books"|value="open-library"/);
+  const books = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
+    provider: "google-books", operation: "process",
+  } }));
+  assert.match(books, /value="book" selected=""/);
+  assert.match(books, /value="google-books" selected=""/);
+  const bookProviders = books.match(/<select[^>]*name="provider"[^>]*>(.*?)<\/select>/)?.[1];
+  assert.ok(bookProviders);
+  assert.doesNotMatch(bookProviders, /value="tmdb"/);
+  assert.doesNotMatch(html, /name="onlyMissingSnapshots"/);
+  const creators = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
+    entityType: "creator", provider: "fantlab", operation: "process",
+  } }));
+  assert.doesNotMatch(creators, /value="tmdb"/);
 });

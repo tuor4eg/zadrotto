@@ -1,3 +1,4 @@
+import { fetchTmdbFilmMetadata, getSavedTmdbFilmBundle, getTmdbFilmMigrationComparison } from "./tmdb-film-service";
 import { providerSnapshotBookBatchQuery } from "@/db/queries/provider-snapshot-jobs";
 import "server-only";
 import { eq, inArray, sql } from "drizzle-orm";
@@ -21,9 +22,6 @@ async function checkpoint(guard: SnapshotJobGuard, payload: SnapshotJobPayload) 
   await withSnapshotJobGuard(guard, async tx=>{
     await tx.update(jobRuns).set({payload:payload as unknown as Record<string,unknown>,updatedAt:new Date()}).where(eq(jobRuns.id,guard.runId));
   });
-}
-function refsOf(bundle: Awaited<ReturnType<typeof getSavedBookBundle>>) {
-  return [bundle.primary,...bundle.dependencies].map(row=>({id:row.id,payloadHash:row.payloadHash}));
 }
 
 async function runCreatorSnapshots(payload: SnapshotJobPayload, guard: SnapshotJobGuard, signal: AbortSignal, reuseAfter: Date) {
@@ -92,7 +90,7 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
     let current={...payload,checkpoint:state};
     await checkpoint(guard,current);
     const batch = getSnapshotBatchSettings(current);
-    const candidates=await providerSnapshotBookBatchQuery({afterId:state.afterId,throughId:state.throughId,provider:payload.provider,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining});
+    const candidates=await providerSnapshotBookBatchQuery({afterId:state.afterId,throughId:state.throughId,provider:payload.provider,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining,onlyMissingSnapshots:payload.onlyMissingSnapshots,retryId:state.retryId});
     const rows=candidates.slice(0,batch.remaining);
     const network=payload.operation==="refresh" || payload.operation==="refresh-process";
     const [settings,providerSettings,limits,credentials]=network ? await Promise.all([getCoverSettings(),getCoverProviderSettings(),getCoverProviderRateLimits(),getCoverProviderCredentialsForSearch()]) : [null,[],[],{}];
@@ -100,18 +98,26 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
     const before=wrapProviderSearchWithReserve(limiter.canSearchProvider,limits,100);
     for (const row of rows) {
       signal.throwIfAborted();
-      if (!row.provider || !row.externalId || !isBookSnapshotProvider(row.provider)) {
-        state={...state,afterId:row.id,failed:state.failed+1,errors:[...state.errors,{id:row.id,code:"missing-source"}].slice(-100)};
+      if (payload.onlyMissingSnapshots) {
+        // Raw can commit before applying metadata; retain this row on resume.
+        state={...state,retryId:row.id};
+        await checkpoint(guard,{...payload,checkpoint:state});
+      }
+      if (!row.provider || !row.externalId || (!isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
+        state={...state,afterId:row.id,failed:state.failed+1,retryId:undefined,retryCount:undefined,errors:[...state.errors,{id:row.id,code:"missing-source"}].slice(-100)};
         await checkpoint(guard,{...payload,checkpoint:state});continue;
       }
       try {
-        if (network && !providerSettings.some(item=>item.mediaType==="book" && item.providerCode===row.provider && item.enabled!==false)) throw new Error("provider-disabled");
+        if (network && !providerSettings.some(item=>item.mediaType===(row.provider === "tmdb" ? "film" : "book") && item.providerCode===row.provider && item.enabled!==false)) throw new Error("provider-disabled");
         let refs: SnapshotReference[];
         if (network) {
-          const metadata=await fetchBookMetadata({provider:row.provider,externalId:row.externalId,mediaType:"book"},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
-            providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:run.createdAt,signal});
+          const metadata=await (row.provider === "tmdb" ? fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider,externalId:row.externalId,mediaType:row.provider === "tmdb" ? "film" : "book"},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
+            providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal});
           refs=metadata.snapshotReferences!;
-        } else refs=refsOf(await getSavedBookBundle(row.provider,row.externalId));
+        } else {
+          const bundle = row.provider === "tmdb" ? await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider,row.externalId);
+          refs = [bundle.primary,...bundle.dependencies].map(item=>({id:item.id,payloadHash:item.payloadHash}));
+        }
         const nextState={...state,afterId:row.id,processed:state.processed+1,retryId:undefined,retryCount:undefined};
         current={...payload,checkpoint:nextState};
         if (payload.operation==="process" || payload.operation==="refresh-process") {
@@ -122,16 +128,16 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
             // Refresh-only attaches evidence, never changes working metadata or contributors.
             const [source]=await tx.select().from(mediaItems).where(eq(mediaItems.id,row.id)).for("update");
             const [metadata]=await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,row.id));
-            if (!source || metadata?.sourceProvider!==row.provider || metadata.sourceExternalId!==row.externalId) throw new Error("PROVIDER_SOURCE_CHANGED");
+            if (!source || (row.provider === "tmdb" && source.mediaType !== "film") || metadata?.sourceProvider!==row.provider || metadata.sourceExternalId!==row.externalId) throw new Error("PROVIDER_SOURCE_CHANGED");
             const bundle=await tx.select({id:providerSnapshots.id,resourceType:providerSnapshots.resourceType}).from(providerSnapshots).where(inArray(providerSnapshots.id,refs.map(ref=>ref.id)));
             await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(row.id)},refs.map(ref=>({...ref,purpose:bundle.find(item=>item.id===ref.id)?.resourceType==="author"?"dependency":"primary"})),{kind:"system"});
             await tx.update(jobRuns).set({payload:current as unknown as Record<string,unknown>,updatedAt:new Date()}).where(eq(jobRuns.id,runId));
           });
         } else {
           // Verification is read-only for domain data; its report is the job checkpoint.
-          const bundle=await getSavedBookBundle(row.provider,row.externalId);
-          const {getBookMigrationComparison}=await import("./snapshot-report");
-          const report=await getBookMigrationComparison(row.id,bundle.projection);
+          const report = row.provider === "tmdb"
+            ? await getTmdbFilmMigrationComparison(row.id,(await getSavedTmdbFilmBundle(row.externalId)).projection)
+            : await (await import("./snapshot-report")).getBookMigrationComparison(row.id,(await getSavedBookBundle(row.provider,row.externalId)).projection);
           if (report.blockers.length) throw new Error("migration-difference");
           await checkpoint(guard,current);
         }
