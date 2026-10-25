@@ -578,13 +578,15 @@ export async function getTitleMetadata(
 
   // Connected book adapters persist full responses and reserve quota for every
   // HTTP request, including Open Library author dependencies.
-  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (input.mediaType === "film" && input.provider === "tmdb"))) {
+  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (["film", "series"].includes(input.mediaType) && input.provider === "tmdb"))) {
     try {
-      const fetchMetadata = input.mediaType === "film"
+      const fetchMetadata = input.mediaType === "series"
+        ? (await import("@/lib/providers/tmdb-series-service")).fetchTmdbSeriesMetadata
+        : input.mediaType === "film"
         ? (await import("@/lib/providers/tmdb-film-service")).fetchTmdbFilmMetadata
         : (await import("@/lib/providers/book-service")).fetchBookMetadata;
       const metadata = await withProviderRequestTimeout(options,()=>fetchMetadata(input, options));
-      return { metadata: input.mediaType === "film" ? normalizeTitleMetadata(metadata) : metadata, error: null };
+      return { metadata: ["film", "series"].includes(input.mediaType) ? normalizeTitleMetadata(metadata) : metadata, error: null };
     } catch (error) {
       const message = error instanceof Error ? error.message : "";
       if (message === "provider-daily-limit" || message === "rate-limit-unavailable") return {metadata:null,error:message};

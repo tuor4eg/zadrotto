@@ -33,6 +33,7 @@ export type MetadataJobResult = {
 }
 
 export type MetadataJobContext = {
+  signal?: AbortSignal
   fetchTitleMetadata: (input: TitleMetadataInput) => Promise<{
     error: string | null
     metadata: {
@@ -118,19 +119,21 @@ async function fetchAndStoreMetadata(input: {
   const externalId = normalizeMetadataExternalId(input.provider, input.externalId)
   if (!externalId) return { kind: "skip", issue: "unsupported-source" }
 
+  input.context.signal?.throwIfAborted()
   const result = await input.context.fetchTitleMetadata({
     externalId,
     mediaType: input.item.mediaType,
     provider: input.provider,
   })
 
+  input.context.signal?.throwIfAborted()
   if (isMetadataQuotaStopError(result.error)) return { kind: "quota-stop", error: result.error }
 
   if (result.error === "provider-unavailable" || result.error === "provider-rate-limit") {
     return { kind: "retryable", error: result.error }
   }
 
-  if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !(input.item.mediaType === "film" && input.provider === "tmdb" && result.metadata.snapshotReferences?.length))) {
+  if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !((input.item.mediaType === "film" || input.item.mediaType === "series") && input.provider === "tmdb" && result.metadata.snapshotReferences?.length))) {
     return { kind: "skip", issue: result.error ? "provider-error" : "no-provider-metadata" }
   }
 
@@ -144,6 +147,7 @@ async function fetchAndStoreMetadata(input: {
     sourceProvider: result.metadata.provider,
     sourceUrl: result.metadata.sourceUrl,
   })
+  input.context.signal?.throwIfAborted()
   await input.store.markAttempt(input.item.id, null)
   return { kind: "updated" }
 }
@@ -155,11 +159,13 @@ async function matchAndStoreMetadata(input: {
 }): Promise<ItemOutcome> {
   if (!isMediaTypeCode(input.item.mediaType)) return { kind: "skip", issue: "unsupported-source" }
 
+  input.context.signal?.throwIfAborted()
   const search = await input.context.searchTitles({
     mediaType: input.item.mediaType,
     query: input.item.title,
   })
 
+  input.context.signal?.throwIfAborted()
   if (search.candidates.length === 0) {
     if (isMetadataQuotaStopError(search.error)) return { kind: "quota-stop", error: search.error }
     if (search.error === "provider-unavailable" || search.error === "provider-rate-limit") {
@@ -216,27 +222,36 @@ async function applyItemOutcome(input: {
 }
 
 export async function runMetadataBackfill(input: {
+  signal?: AbortSignal
   context: MetadataJobContext
   items: readonly MetadataJobItem[]
   store: MetadataJobStore
 }): Promise<MetadataJobResult> {
   const result = emptyJobResult()
+  const context = {
+    ...input.context,
+    signal: input.signal && input.context.signal
+      ? AbortSignal.any([input.signal, input.context.signal])
+      : input.signal ?? input.context.signal,
+  }
 
   for (const item of input.items) {
+    context.signal?.throwIfAborted()
     const outcome = hasKnownMetadataSource(item)
       ? await fetchAndStoreMetadata({
-          context: input.context,
+          context,
           externalId: item.sourceExternalId!,
           item,
           provider: item.sourceProvider!,
           store: input.store,
         })
       : await matchAndStoreMetadata({
-          context: input.context,
+          context,
           item,
           store: input.store,
         })
 
+    context.signal?.throwIfAborted()
     if (await applyItemOutcome({
       action: "media.metadata-backfill.failed",
       item,
@@ -252,16 +267,24 @@ export async function runMetadataBackfill(input: {
 }
 
 export async function runMetadataRefresh(input: {
+  signal?: AbortSignal
   context: MetadataJobContext
   items: readonly MetadataJobItem[]
   store: MetadataJobStore
 }): Promise<MetadataJobResult> {
   const result = emptyJobResult()
+  const context = {
+    ...input.context,
+    signal: input.signal && input.context.signal
+      ? AbortSignal.any([input.signal, input.context.signal])
+      : input.signal ?? input.context.signal,
+  }
 
   for (const item of input.items) {
+    context.signal?.throwIfAborted()
     const outcome = hasKnownMetadataSource(item)
       ? await fetchAndStoreMetadata({
-          context: input.context,
+          context,
           externalId: item.sourceExternalId!,
           item,
           provider: item.sourceProvider!,
@@ -269,6 +292,7 @@ export async function runMetadataRefresh(input: {
         })
       : { kind: "skip" as const, issue: "unsupported-source" as const }
 
+    context.signal?.throwIfAborted()
     if (await applyItemOutcome({
       action: "media.metadata-refresh.failed",
       item,

@@ -1,4 +1,3 @@
-import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
 import { deferJobRun, finishJobRun, requeueJobRun, isJobRunLeaseCurrent } from "@/db/queries/jobs";
 import { sanitizeJobError } from "./model";
 import { JobError, type AnyJobHandlerDefinition } from "./types";
@@ -34,11 +33,9 @@ export async function executeClaimedJobRun(input: {
     } finally { checkingOwnership = false; }
   };
   try {
-    if (run.type === PROVIDER_SNAPSHOT_JOB_TYPE) {
-      await checkOwnership();
-      signal.throwIfAborted();
-      ownershipTimer = setInterval(() => { void checkOwnership(); }, 1000);
-    }
+    await checkOwnership();
+    signal.throwIfAborted();
+    ownershipTimer = setInterval(() => { void checkOwnership(); }, 1000);
     const handler = input.getHandler(run.type);
     let payload: unknown;
     try {

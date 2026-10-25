@@ -5,7 +5,7 @@ import { sql } from "drizzle-orm";
 
 const testUrl = process.env.GAME_COMPANIES_TEST_DATABASE_URL;
 
-test("game company identities, moderation and backfill checkpoints persist through PostgreSQL", { skip: !testUrl }, async (t) => {
+test("game company identities and moderation persist through PostgreSQL", { skip: !testUrl }, async (t) => {
   const schema = `game_companies_${Date.now()}`;
   const url = new URL(testUrl!);
   url.searchParams.set("options", `-c search_path=${schema}`);
@@ -48,7 +48,6 @@ test("game company identities, moderation and backfill checkpoints persist throu
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     const { saveGameCompanyRoster, getGameCompanyRosterBatch, syncGameCompanyCreators } = await import("../src/db/queries/game-companies");
-    const backfill = await import("../src/db/queries/game-company-backfill");
     const organization = (await creators.getCreatorTypes()).find(row=>row.code==='organization')!;
     const developer = (await creators.getCreatorRoles()).find(row=>row.code==='developer')!;
     const company = await creators.createCreator({name:'Same Studio',slug:'same-studio',typeId:organization.id});
@@ -149,33 +148,6 @@ test("game company identities, moderation and backfill checkpoints persist throu
       await assert.rejects(save(1,'igdb','201',[ref('9')]));
       await assert.rejects(client`insert into provider_creator_bindings(provider,external_creator_id,creator_id,external_creator_name) values('rawg','7',${company.id},'Invalid')`);
       assert.deepEqual(await client`select * from entry_creator_sources where entry_id=1 order by provider,creator_id,role_id`,before);
-    });
-    await t.test('manifest resumes checkpoints without spending retry budget or reprocessing completed items',async()=>{
-      await client`insert into media_item_provider_snapshots(media_item_id,provider_code,external_id,media_type,title,facts,payload_hash) values(1,'rawg','101','game','One','{"kept":true}','old')`;
-      const [run]=await client`insert into job_runs(type,status,created_by_admin_id) values('media.game-companies-backfill','running',1) returning id`;
-      const id=await backfill.claimGameCompanyBackfill(run.id);
-      assert.ok(id);
-      const batch=await backfill.getGameCompanyBackfillBatch(id!);
-      assert.equal(batch.length,3); // IGDB metadata for both entries, RAWG snapshot for first.
-      const item=batch.find(value=>value.provider==='rawg')!;
-      await backfill.checkpointGameCompanyItem(item,{references:[ref('developer:7')],status:'ready',attempts:2});
-      assert.equal(await backfill.claimGameCompanyBackfill(run.id),id);
-      const continued=(await backfill.getGameCompanyBackfillBatch(id!)).find(value=>value.provider==='rawg')!;
-      assert.equal(continued.attempts,2);
-      assert.deepEqual(continued.references,[ref('developer:7')]);
-      await db.transaction(tx=>backfill.mergeGameCompanyMetadata(tx,continued,continued.references!));
-      const [snapshot]=await client`select facts,payload_hash from media_item_provider_snapshots where media_item_id=1`;
-      assert.equal(snapshot.facts.kept,true);
-      assert.notEqual(snapshot.payload_hash,'old');
-      assert.deepEqual((await client`select facts from media_item_metadata where media_item_id=1`)[0].facts,{},'unrelated metadata provider is untouched');
-      await backfill.checkpointGameCompanyItem(continued,{status:'done'});
-      assert.equal((await backfill.getGameCompanyBackfillBatch(id!)).some(value=>value.provider==='rawg'),false);
-      assert.equal((await backfill.getGameCompanyBackfillProgress())!.done,0,'game is complete only after all its provider sources');
-      const sameGame=(await backfill.getGameCompanyBackfillBatch(id!)).find(value=>value.mediaItemId===continued.mediaItemId)!;
-      await backfill.checkpointGameCompanyItem(sameGame,{status:'done'});
-      assert.equal((await backfill.getGameCompanyBackfillProgress())!.done,1);
-      await client`update media_item_provider_snapshots set external_id='999' where media_item_id=1`;
-      assert.equal(await backfill.isCurrentGameCompanySource(continued),false);
     });
     await t.test('concurrent roster import and reopen converge after apply without erasing unrelated sources',async()=>{
       await save(4,'rawg','104',[ref('developer:77')]);

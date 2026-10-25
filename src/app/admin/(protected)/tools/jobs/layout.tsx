@@ -8,7 +8,7 @@ export default function JobsToolsLayout({ children }: { children: React.ReactNod
     <div>
       <PageHeader
         title="Фоновые задачи"
-        description="Расписания, политика выполнения и журнал запусков."
+        description="Текущие задачи, расписания и журнал запусков."
         aside={<ListTodo className="size-5 text-stone-500" />}
       />
       <div className="mt-5 grid gap-6 border-t border-stone-100 pt-5 lg:grid-cols-[220px_minmax(0,1fr)]">

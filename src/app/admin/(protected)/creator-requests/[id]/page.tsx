@@ -14,6 +14,7 @@ import { CreatorDecisionForm } from "../decision-form";
 import { CreatorRequestStatus } from "../presentation";
 
 const PROFILE_LABELS: Record<string, string> = {
+  logoPath: "Путь логотипа TMDB", snapshotId: "Снимок TMDB", payloadHash: "Хеш снимка",
   description: "Описание", country: "Страна", websites: "Сайты", parent: "Материнская компания (ID)",
   changed_company_id: "Компания после изменения (ID)", slug: "Обозначение провайдера", image_background: "Фоновое изображение", games_count: "Игр у провайдера",
 };
@@ -25,20 +26,22 @@ export default async function CreatorRequestPage({ params }: { params: Promise<{
   const [requests, creators, entries] = await Promise.all([getCreatorRequests({ all: true, requestId }), getCreatorOptions(), getCreatorRequestEntries(requestId)]);
   const request = requests.find(row => row.id === requestId);
   if (!request) notFound();
-  const isOrganization = request.provider === "igdb" || request.provider === "rawg";
+  const isOrganization = request.provider === "igdb" || request.provider === "rawg" || (request.provider === "tmdb" && request.externalCreatorId?.startsWith("company:"));
   const candidates = isOrganization ? creators.filter(creator => creator.typeCode === "organization") : request.provider === "bgg" ? creators : creators.filter(creator => creator.typeCode === "person");
   const [profile, bindings] = await Promise.all([
     isOrganization && request.externalCreatorId ? getGameCompanyRequestProfile(request.provider, request.externalCreatorId) : Promise.resolve(null),
-    isOrganization ? getCreatorProviderBindings(candidates.map(creator => creator.id)) : Promise.resolve([]),
+    (isOrganization || request.provider === "tmdb") ? getCreatorProviderBindings(candidates.map(creator => creator.id)) : Promise.resolve([]),
   ]);
   const people = candidates.map(creator => ({ ...creator, bindings: bindings.filter(binding => binding.creatorId === creator.id).map(({ provider, externalCreatorId }) => ({ provider, externalCreatorId })) }));
   const logoUrl = profile?.imageObjectKey ? getExternalCompanyImageUrl(profile.imageObjectKey) : null;
   return <div className="grid gap-5">
     <PageHeader title={request.externalCreatorName} description={`${request.provider}${request.externalCreatorId ? ` #${request.externalCreatorId}` : ""} · записей: ${request.occurrenceCount}${request.roles.length ? ` · ${request.roles.join(", ")}` : ""}`} aside={<Link href="/admin/creator-requests" className={buttonVariants({ variant: "outline" })}>К заявкам</Link>} />
     {profile ? <section className="flex flex-wrap items-start gap-4 rounded-lg border border-stone-200 p-4">
-      {logoUrl ? <Image src={logoUrl} alt={`Логотип ${profile.name}`} width={80} height={80} unoptimized className="size-20 object-contain" /> : null}
+      {logoUrl ? <Image src={logoUrl} alt={`Логотип ${profile.name}`} width={80} height={80} unoptimized className="size-20 bg-white object-contain" /> : null}
       <div className="min-w-0 flex-1"><h2 className="font-semibold">{profile.name}</h2>
         {profile.sourceUrl ? <a href={profile.sourceUrl} target="_blank" rel="noreferrer" className="text-sm underline underline-offset-4">Страница организации у провайдера</a> : null}
+        <p className="mt-2 text-sm text-stone-500">Логотип: {profile.imageStatus === "ready" ? "сохранён" : profile.imageStatus === "missing" ? "отсутствует у провайдера" : "ожидает загрузки"}</p>
+        {profile.error ? <p className="mt-2 text-sm text-red-700">{profile.error}</p> : null}
         {profile.details ? <dl className="mt-3 grid gap-2 text-sm">{Object.entries(profile.details).filter(([, value]) => value !== null && value !== undefined && value !== "").map(([key, value]) => <div key={key}><dt className="text-xs text-stone-500">{PROFILE_LABELS[key] ?? key}</dt><dd className="break-words">{typeof value === "string" || typeof value === "number" ? String(value) : JSON.stringify(value)}</dd></div>)}</dl> : null}
       </div>
     </section> : null}
@@ -47,7 +50,7 @@ export default async function CreatorRequestPage({ params }: { params: Promise<{
     <section className="grid gap-2"><h2 className="font-semibold">Связанные записи</h2>{entries.length ? <ul className="grid gap-2 text-sm">{entries.map(entry => <li key={`${entry.id}:${entry.roleName ?? "writer"}`}><Link href={`/admin/media/${entry.id}/edit`} className="underline underline-offset-4">{entry.title}</Link>{entry.roleName ? <span className="ml-2 text-stone-500">{entry.roleName}</span> : null}</li>)}</ul> : <p className="text-sm text-stone-500">Нет текущих связанных записей.</p>}</section>
     <GenreRequestAutoRefresh enabled={request.status === "applying"} />
     <AdminToasts clearParams={[]} messages={request.jobError ? [{ id: "error", tone: "error", text: request.jobError }] : []} />
-    {request.status === "pending" ? <CreatorDecisionForm requestId={request.id} name={request.externalCreatorName} provider={request.provider} people={people} /> : null}
+    {request.status === "pending" ? <CreatorDecisionForm requestId={request.id} name={request.externalCreatorName} provider={request.provider} externalCreatorId={request.externalCreatorId} people={people} /> : null}
     {request.status === "applying" ? <p className="text-sm text-stone-500">Связи записей пересчитываются. Страница обновится автоматически.</p> : null}
     {request.status === "failed" ? <form action={retryCreatorAction}><input type="hidden" name="requestId" value={request.id} /><Button type="submit" variant="outline">Повторить применение</Button></form> : null}
     {request.status === "processed" ? <p className="text-sm text-stone-500">Решение применено к записям.</p> : null}

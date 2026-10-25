@@ -1,3 +1,4 @@
+import { extractTmdbCompanyReferences } from "@/lib/creators/tmdb-companies";
 import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { RawSnapshot, SnapshotDescriptor } from "./types";
 
@@ -35,16 +36,14 @@ export function normalizeTmdbFilmSnapshot(snapshot: Pick<RawSnapshot, "providerC
   if (snapshot.providerCode !== "tmdb" || movie?.id !== Number(snapshot.externalId)) throw new Error("INVALID_PROVIDER_SNAPSHOT_REFERENCES");
   if (!credits || !Array.isArray(credits.cast) || !Array.isArray(credits.crew)) throw new Error("INCOMPLETE_PROVIDER_SNAPSHOTS");
   const genreFacts = normalizeTmdbFilmGenreFacts(snapshot);
-  const companies = namedRows(movie.production_companies);
+  extractTmdbCompanyReferences(snapshot);
   if (!Array.isArray(movie.production_countries) || movie.production_countries.some(row => !record(row) || (typeof row.name !== "string" && typeof row.iso_3166_1 !== "string"))) throw new Error("INCOMPLETE_PROVIDER_SNAPSHOTS");
   const countries = movie.production_countries as Array<{name?: string; iso_3166_1?: string}>;
   if (!(movie.runtime === null || typeof movie.runtime === "number") || !(movie.original_language === null || typeof movie.original_language === "string")) throw new Error("INCOMPLETE_PROVIDER_SNAPSHOTS");
-  const names = (rows: Array<{name: string}>) => [...new Set(rows.map(row => row.name.trim()).filter(Boolean))];
   const mappedFacts: Record<string, unknown> = {
     runtimeMinutes: movie.runtime,
     productionCountries: [...new Set(countries.map(row => row.name?.trim() || row.iso_3166_1?.trim()).filter(Boolean))],
     originalLanguage: movie.original_language,
-    productionCompanies: names(companies),
   };
   // Match the existing metadata registry: empty provider values are omitted.
   const facts = Object.fromEntries(Object.entries(mappedFacts).filter(([,value]) => value !== null && value !== undefined

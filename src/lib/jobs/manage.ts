@@ -1,6 +1,6 @@
 import "server-only";
 
-import { createPeriodicJob, updatePeriodicJob, type JobRunPolicy } from "@/db/queries/jobs";
+import { createPeriodicJob, updatePeriodicJob, getJobById, type JobRunPolicy } from "@/db/queries/jobs";
 import { getNextJobRunAt, validateJobCronExpression } from "./cron";
 import { jobHandlerRegistry } from "./handlers";
 import {
@@ -14,7 +14,7 @@ import { EDITORIAL_SUMMARY_JOB_CODE, EDITORIAL_SUMMARY_SWEEP_TYPE, parseEditoria
 type PeriodicJobInput = {
   code: string;
   cronExpression: string;
-  payload: unknown;
+  payload?: unknown;
   options?: unknown;
   policy?: Partial<JobRunPolicy>;
   type: string;
@@ -42,11 +42,13 @@ function normalize(input: PeriodicJobInput) {
 }
 
 export async function createManagedPeriodicJob(input: PeriodicJobInput) {
-  const value = normalize(input);
+  const value = normalize({ ...input, payload: input.payload ?? {} });
   return createPeriodicJob(value);
 }
 
 export async function updateManagedPeriodicJob(id: number, input: PeriodicJobInput) {
-  const value = normalize(input);
+  const current = await getJobById(id);
+  if (!current) throw new Error("Job not found.");
+  const value = normalize({ ...input, payload: input.payload === undefined && current.type === input.type ? current.payload : input.payload ?? {} });
   return updatePeriodicJob({ ...value, id });
 }

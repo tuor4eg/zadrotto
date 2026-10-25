@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
 
 export default function JobsPage() {
-  redirect("/admin/tools/jobs/schedules");
+  redirect("/admin/tools/jobs/current");
 }

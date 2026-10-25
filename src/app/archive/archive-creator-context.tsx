@@ -15,7 +15,7 @@ export function ArchiveSelectedCreator({ creator, clearHref, adminCanEdit = fals
   adminCanEdit?: boolean;
 }) {
   return <section aria-label="Выбранный создатель" className="archive-paper archive-panel flex min-w-0 flex-wrap items-center gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-2.5 text-sm shadow-md">
-    <Avatar name={creator.name} src={resolveCreatorAvatarUrl(creator.avatarObjectKey ?? null)} className="size-12 text-base" />
+    <Avatar name={creator.name} src={resolveCreatorAvatarUrl(creator.avatarObjectKey ?? null)} className="size-12 text-base [&_img]:bg-white" />
     <div className="min-w-0 flex-1">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
       <div className="break-words font-semibold text-stone-900">Создатель: {creator.name}{creator.pseudonymAuthors?.length ? <span className="font-normal"> (псевдоним для: <MediaItemCreatorLinks creators={creator.pseudonymAuthors} />)</span> : null}{creator.pseudonyms?.length ? <span className="font-normal"> (псевдонимы: <MediaItemCreatorLinks creators={creator.pseudonyms} />)</span> : null}</div>

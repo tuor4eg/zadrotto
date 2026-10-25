@@ -13,7 +13,7 @@ test("creator report names use one bounded PK query, retaining missing-ID fallba
   const { getDbClient } = await import("../src/db");
   const client = getDbClient();
   try {
-    await client.unsafe(`create table creators(id integer primary key,name text);
+    await client.unsafe(`create table creators(id integer primary key,name text,name_ru text,name_ru_source text,name_ru_processed boolean default false);
       insert into creators select i,'Creator '||i from generate_series(1,100000)i;
       update creators set name='Кен Кизи' where id=9; analyze creators`);
     const { getCreatorNamesByIds } = await import("../src/db/queries/creator-names");

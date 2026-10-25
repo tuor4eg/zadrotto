@@ -24,9 +24,9 @@ test("creator network batches expose the missing-snapshot option and restore it 
   const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
     entityType: "creator", provider: "fantlab", operation: "refresh-process", onlyMissingSnapshots: true,
   } }));
-  assert.match(html, /Только без сохранённого снимка/);
+  assert.match(html, /Только без снимков/);
   assert.match(html, /name="onlyMissingSnapshots" checked=""/);
-  assert.match(html, /независимо от заполненности полей создателя/);
+  assert.match(html, /не меняет рабочие поля/);
 });
 
 test("book and film network batches restore the missing-snapshot filter", () => {
@@ -70,5 +70,16 @@ test("TMDB batches restore the provider and explicitly limit processing to films
   const creators = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
     entityType: "creator", provider: "fantlab", operation: "process",
   } }));
-  assert.doesNotMatch(creators, /value="tmdb"/);
+  assert.match(creators, /value="tmdb"/);
+  assert.match(creators, /Все поддерживаемые источники/);
+});
+
+
+test("TV batches restore explicit series scope with TMDB and all four operations", () => {
+  for (const operation of ["refresh", "process", "refresh-process", "verify"] as const) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "series", provider: "tmdb", operation } }));
+    assert.match(html, /value="series" selected=""/);
+    assert.match(html, /value="tmdb" selected=""/);
+    assert.match(html, /Сериалы с уже выбранным источником TMDB/);
+  }
 });

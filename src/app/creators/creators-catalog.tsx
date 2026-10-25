@@ -21,7 +21,7 @@ export function CreatorCatalog({ items, selectedLetter, mediaType }: { items: re
           {index === 0 ? <h2 id={`creator-group-${encodeURIComponent(group)}`} className="break-after-avoid rounded-sm border-y border-stone-400/35 bg-[linear-gradient(90deg,rgba(190,174,138,0.78),rgba(225,214,186,0.58))] px-2.5 py-1.5 font-serif text-xl font-semibold leading-none text-stone-950 shadow-[inset_0_1px_0_rgba(255,255,255,0.35)]">{group}</h2> : null}
           <div className="group flex items-center gap-4 border-b border-stone-300/45 px-2.5 py-2 transition-colors hover:bg-stone-50/60">
           <Link href={buildCreatorArchiveHref({creatorSlug:creator.slug,mediaType})} prefetch={false} aria-label={creator.name} className="shrink-0">
-            <Avatar name={creator.name} src={resolveCreatorAvatarUrl(creator.avatarObjectKey ?? null)} className="size-10" />
+            <Avatar name={creator.name} src={resolveCreatorAvatarUrl(creator.avatarObjectKey ?? null)} className="size-10 [&_img]:bg-white" />
           </Link>
           <div className="min-w-0 flex-1">
             <Link href={buildCreatorArchiveHref({creatorSlug:creator.slug,mediaType})}

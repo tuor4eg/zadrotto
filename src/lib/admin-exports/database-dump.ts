@@ -39,7 +39,8 @@ export async function generateDatabaseDump(exportId: string, signal: AbortSignal
     // Persist the attempt before writing so recovery can remove interrupted files.
     await setAdminExportObjectKey(item.id, objectKey, jobGuard);
     await writeDatabaseDump({ databaseUrl: process.env.DATABASE_URL!, filePath: partialPath, signal });
-    const info = await stat(partialPath);
+    // Generated at runtime, outside the deployment file trace.
+    const info = await stat(/* turbopackIgnore: true */ partialPath);
     if (!Number.isSafeInteger(info.size)) throw new JobError("dump-size", "Размер дампа превышает поддерживаемый предел.", { retryable: false });
     signal.throwIfAborted();
     await rename(partialPath, filePath);

@@ -1,3 +1,4 @@
+import { getCreatorTypes, getCreatorRoles } from "@/db/queries/creators";
 import { Alert } from "@/components/ui/alert";
 import { getAllMediaTypeOptions } from "@/db/queries/media-types";
 import { getAdminJobs, getLatestJobRuns } from "@/db/queries/jobs";
@@ -11,11 +12,13 @@ export default async function JobSchedulesPage({
   searchParams: Promise<Record<string, string | undefined>>;
 }) {
   const query = await searchParams;
-  const [jobs, latestRuns, handlerDefinitions, mediaTypes] = await Promise.all([
+  const [jobs, latestRuns, handlerDefinitions, mediaTypes, creatorTypes, creatorRoles] = await Promise.all([
     getAdminJobs(),
     getLatestJobRuns(),
     Promise.resolve(getRegisteredJobHandlers()),
     getAllMediaTypeOptions(),
+    getCreatorTypes(),
+    getCreatorRoles(),
   ]);
   const handlers = handlerDefinitions.map(({ label, schedulable, type }) => ({
     label,
@@ -27,10 +30,11 @@ export default async function JobSchedulesPage({
     <section className="space-y-6">
       {query.error ? (
         <Alert variant="destructive">
-          Не удалось выполнить действие: проверьте заполненные поля и расписание.
+          {query.error === "enqueue" ? "Не удалось поставить разовую задачу в очередь. Проверьте параметры выбранной операции."
+            : "Не удалось выполнить действие: проверьте заполненные поля и расписание."}
         </Alert>
       ) : null}
-      <JobsManager handlers={handlers} jobs={jobs} latestRuns={latestRuns} mediaTypes={mediaTypes} />
+      <JobsManager handlers={handlers} jobs={jobs} latestRuns={latestRuns} mediaTypes={mediaTypes} creatorTypes={creatorTypes} creatorRoles={creatorRoles} />
     </section>
   );
 }

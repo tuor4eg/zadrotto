@@ -81,11 +81,13 @@ test("creator snapshot jobs accept three operations, preserve old book payloads 
   for (const operation of ["refresh", "refresh-process"]) {
     const payload = { entityType: "creator", provider: "fantlab", operation, onlyMissingSnapshots: true };
     assert.deepEqual(parseSnapshotJobPayload(payload), payload);
+    const mediaPayload = { provider: "fantlab", operation, onlyMissingSnapshots: true };
+    assert.deepEqual(parseSnapshotJobPayload(mediaPayload), mediaPayload);
   }
   for (const payload of [
     { ...base, onlyMissingSnapshots: true },
     { ...base, operation: "refresh", onlyMissingSnapshots: "true" },
-    { operation: "refresh", provider: "fantlab", onlyMissingSnapshots: true },
+    { operation: "verify", provider: "fantlab", onlyMissingSnapshots: true },
   ]) assert.throws(() => parseSnapshotJobPayload(payload));
 });
 

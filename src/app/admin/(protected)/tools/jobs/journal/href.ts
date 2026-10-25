@@ -1,9 +1,11 @@
 export function buildJobJournalHref(input: {
+  type?: string
   job?: string
   page?: number
   pageSize?: number
 }) {
   const params = new URLSearchParams()
+  if (input.type) params.set("type", input.type)
   if (input.job && input.job !== "all") params.set("job", input.job)
   if (input.page && input.page > 1) params.set("page", String(input.page))
   if (input.pageSize && input.pageSize !== 25) params.set("pageSize", String(input.pageSize))

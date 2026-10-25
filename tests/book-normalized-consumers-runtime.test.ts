@@ -19,14 +19,15 @@ test("normalized book reads preserve ordering and scale using working-table inde
       create table media_items(id integer primary key,media_type text);
       create table media_item_metadata(media_item_id integer primary key,source_provider text,source_external_id text,facts jsonb);
       create table creator_roles(id integer primary key,code text);
-      create table creators(id integer primary key,name text,slug text);
+      create table creators(id integer primary key,name text,slug text,name_ru text,name_ru_source text,name_ru_processed boolean default false);
       create table entry_creators(entry_id integer,creator_id integer,role_id integer,is_manual boolean default false,primary key(entry_id,creator_id,role_id));
       create table entry_creator_sources(entry_id integer,creator_id integer,role_id integer,provider text,normalized_external_creator_name text,source_position integer,binding_id integer,
         primary key(entry_id,creator_id,role_id,provider,normalized_external_creator_name));
-      create table provider_creator_bindings(id integer primary key,external_creator_id text);
+      create table provider_creator_bindings(id integer primary key,external_creator_id text,external_creator_name text,provider text,creator_id integer,active boolean);
       create table entry_creator_pseudonyms(entry_id integer primary key);
       create table provider_creator_exclusions(provider text,media_type text,normalized_external_creator_name text,external_creator_id text);
-      create table creator_requests(provider text,media_type text,normalized_external_creator_name text,external_creator_id text,manually_reopened boolean);
+      create table creator_requests(id integer primary key,provider text,media_type text,normalized_external_creator_name text,external_creator_id text,manually_reopened boolean,decision text);
+      create table creator_request_media_items(request_id integer,media_item_id integer,role_id integer,external_creator_name text,source_position integer);
       create table provider_snapshots(id integer primary key,provider_code text,external_id text,resource_type text,api_method text,request_params jsonb default '{}');
       create table provider_snapshot_links(snapshot_id integer,entity_type text,entity_id text,purpose text);
       create index snapshot_links_entity_idx on provider_snapshot_links(entity_type,entity_id);

@@ -123,3 +123,15 @@ test("game company bindings expose reopening for the exact namespaced identity",
     assert.match(html, /Вернуть в заявки/);
   }
 });
+
+test("Russian name editor shows provenance and preserves untouched automatic names", () => {
+  const html = renderToStaticMarkup(createElement(CreatorForm, {
+    creator: { id: 1, name: "Stephen King", nameRu: "Стивен Кинг", nameRuSource: "ai", nameRuProcessed: true, slug: "king", typeId: 1, seriesIds: [], relations: [], incomingRelations: [] },
+    creators: [], types, series: [],
+  }));
+  assert.match(html, /id="creator-name"[^>]*name="name"[^>]*value="Stephen King"/);
+  assert.match(html, /id="creator-name-ru"[^>]*value="Стивен Кинг"/);
+  assert.match(html, /Источник: ИИ/);
+  assert.match(html, /Локализация: обработано/);
+  assert.doesNotMatch(html, /name="nameRu"/);
+});

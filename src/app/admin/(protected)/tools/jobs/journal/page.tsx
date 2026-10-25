@@ -1,3 +1,5 @@
+import { getRegisteredJobHandlers } from "@/lib/jobs/queue";
+import { getRetiredJob } from "@/lib/jobs/retired";
 import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
 import { RotateCcw, X } from "lucide-react";
 import Link from "next/link";
@@ -38,12 +40,13 @@ export default async function JobJournalPage({
 }) {
   const query = await searchParams;
   const jobs = await getAdminJobs();
+  const type = query.type && (getRetiredJob(query.type) || getRegisteredJobHandlers().some(handler => handler.type === query.type)) ? query.type : undefined;
   const jobId = parseJobFilter(query.job, jobs);
   const jobFilter = jobId === undefined ? "all" : String(jobId);
   const pageSize = [25, 50, 100].includes(Number(query.pageSize)) ? Number(query.pageSize) : 25;
   const page = parsePositiveInteger(query.page, 1);
-  const result = await getAdminJobRuns({ jobId, page, pageSize });
-  const href = (targetPage: number) => buildJobJournalHref({ job: jobFilter, page: targetPage, pageSize });
+  const result = await getAdminJobRuns({ jobId, page, pageSize, type });
+  const href = (targetPage: number) => buildJobJournalHref({ job: jobFilter, page: targetPage, pageSize, type });
   const currentHref = href(result.page);
 
   return (
@@ -54,12 +57,14 @@ export default async function JobJournalPage({
           Активные запуски показаны первыми. Можно сузить список до расписания или разовых запусков.
         </p>
       </div>
+      {query.error === "job-type-retired" ? <p role="alert" className="text-sm text-red-700">Этот тип задачи снят с эксплуатации. Используйте актуальную операцию.</p> : null}
       {query.error === "automoderation-terminal" ? (
         <p role="alert" className="text-sm text-red-700">
           Проверка автомодерации уже завершена. Повтор задания не переоткрывает её решение; запись можно проверить вручную.
         </p>
       ) : null}
-      <JobJournalFilters jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />
+      <JobJournalFilters type={type} jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />
+      {type ? <p className="text-sm text-stone-500">Тип задачи: {type}</p> : null}
       <p className="text-sm text-stone-500">Всего запусков: {result.totalCount}</p>
       <TableWrap className="overflow-x-auto">
         <Table>
@@ -67,15 +72,15 @@ export default async function JobJournalPage({
           <TBody>
             {result.items.map((run) => (
               <TR key={run.id} id={`run-${run.id}`}>
-                <TD>#{run.id}<div className="text-xs text-stone-500">{run.type}{run.retryOfRunId ? ` · повтор #${run.retryOfRunId}` : ""}</div></TD>
+                <TD>#{run.id}<div className="text-xs text-stone-500">{getRetiredJob(run.type)?.label ?? run.type}{run.retryOfRunId ? ` · повтор #${run.retryOfRunId}` : ""}</div></TD>
                 <TD>{STATUS_LABELS[run.status] ?? run.status}</TD>
                 <TD><ActivityLogTime value={run.scheduledFor.toISOString()} /></TD>
                 <TD>{run.attempts}/{run.maxAttempts}</TD>
                 <TD className="max-w-72 break-words text-xs text-red-700">{run.errorMessage ?? "—"}</TD>
                 <TD>
-                  {run.status === "failed" ? (
+                  {getRetiredJob(run.type) ? <span className="text-xs text-stone-500">Снята с эксплуатации</span> : run.type === "reputation.initialize" && run.status === "failed" ? <Link className="text-xs underline" href="/admin/reputation">Открыть репутацию</Link> : run.status === "failed" ? (
                     <form action={retryJobRunAction}><input type="hidden" name="id" value={run.id} /><input type="hidden" name="returnTo" value={currentHref} /><Tooltip label="Повторить"><Button size="icon" type="submit" variant="outline" aria-label={`Повторить запуск ${run.id}`}><RotateCcw className="size-4" /></Button></Tooltip></form>
-                  ) : run.status === "running" && run.type === "provider.snapshots" ? (
+                  ) : run.status === "running" ? (
                     <StopSnapshotRunButton runId={run.id} returnTo={currentHref} />
                   ) : run.status === "queued" ? (
                     <form action={cancelJobRunAction}><input type="hidden" name="id" value={run.id} /><input type="hidden" name="returnTo" value={currentHref} /><Tooltip label="Отменить"><Button size="icon" type="submit" variant="outline" aria-label={`Отменить запуск ${run.id}`}><X className="size-4" /></Button></Tooltip></form>

@@ -1,17 +1,19 @@
+import { creatorNameLocalizationHandler } from "@/lib/creators/name-localization-job";
+import { genreSeriesApplyHandler } from "@/lib/media/genre-series-job";
+import { reputationInitializeHandler } from "@/lib/reputation/initialization-job";
+import { creatorImageFillHandler, creatorImagesBackfillHandler, creatorImageRefreshHandler } from "@/lib/creators/image-jobs";
+import { tmdbDirectorApprovalHandler } from "@/lib/creators/tmdb-director-jobs";
+import { tmdbCompanyApprovalHandler } from "@/lib/creators/tmdb-company-jobs";
 import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { providerSnapshotJobHandler } from "@/lib/providers/snapshot-job";
 import { platformLogosSyncHandler } from "@/lib/platforms/logo-sync-job";
 import { gameCompanyEnrichHandler } from "@/lib/creators/game-company-images";
-import { gameCompanyBackfillHandler } from "@/lib/creators/game-company-backfill";
-import { bggCreatorsBackfillHandler } from "@/lib/creators/bgg-backfill";
-import { creatorFantlabBindingHandler, creatorFantlabAvatarHandler } from "@/lib/creators/fantlab-jobs";
 import { applyPlatformRequest } from "@/db/queries/platform-requests";
-import { applyCreatorRequest, backfillCreators } from "@/db/queries/creator-requests";
+import { applyCreatorRequest } from "@/db/queries/creator-requests";
 import { titlePartPosterHandler } from "@/lib/media/title-part-poster-job";
 import "server-only";
 
 import { applyGenreRequest } from "@/db/queries/genre-requests";
-import { backfillGenreSeriesLinks } from "@/db/queries/genre-series-backfill";
 import { logSystemActivity } from "@/lib/activity-logs/system";
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
@@ -37,9 +39,7 @@ import { createJobHandlerRegistry } from "./registry";
 import { processAutomoderationCheck } from "@/lib/automoderation/process";
 import { MEDIA_AUTOMODERATION_JOB_TYPE } from "@/lib/automoderation/model";
 import { JobError, type JobHandlerDefinition } from "./types";
-import { initializeReputation } from "@/lib/reputation/initialize";
 import { promoteEligibleTrustedAuthors } from "@/lib/reputation/service";
-import { setReputationSystemStatus } from "@/db/queries/reputation";
 
 function jobGuard(runId: number, lockToken?: string): SnapshotJobGuard | undefined {
   return lockToken ? {runId, lockToken} : undefined;
@@ -232,8 +232,8 @@ const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseMetadataBackfillPayload,
-  async execute({ attempt, payload, runId, lockToken }) {
-    const result = await backfillMediaMetadata({ attempt, runId, lockToken, ...payload });
+  async execute({ attempt, payload, runId, lockToken, signal }) {
+    const result = await backfillMediaMetadata({ attempt, runId, lockToken, signal, ...payload });
 
     if (result.stopError) {
       throw new JobError(result.stopError, "Заполнение метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
@@ -246,6 +246,7 @@ const metadataBackfillHandler: JobHandlerDefinition<MetadataBackfillPayload> = {
       );
     }
     for (const item of result.updatedItems) {
+      signal.throwIfAborted();
       await logSystemActivity({
         action: "media.metadata-backfill.completed",
         entityId: item.id,
@@ -299,8 +300,8 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   defaultMaxAttempts: 3,
   defaultTimeoutSeconds: 300,
   parsePayload: parseMetadataRefreshPayload,
-  async execute({ attempt, payload, runId, lockToken }) {
-    const result = await refreshStaleMediaMetadata({ attempt, runId, lockToken, ...payload });
+  async execute({ attempt, payload, runId, lockToken, signal }) {
+    const result = await refreshStaleMediaMetadata({ attempt, runId, lockToken, signal, ...payload });
 
     if (result.stopError) {
       throw new JobError(result.stopError, "Обновление метаданных остановлено лимитом провайдера или недоступной проверкой лимита.", { retryable: false });
@@ -500,23 +501,6 @@ const achievementBackfillHandler: JobHandlerDefinition<AchievementBackfillPayloa
   },
 };
 
-const reputationInitializeHandler: JobHandlerDefinition<Record<string, never>> = {
-  type: "reputation.initialize",
-  label: "Первичный расчёт уровней и доверия",
-  defaultMaxAttempts: 1,
-  defaultTimeoutSeconds: 900,
-  schedulable: false,
-  parsePayload: parseEmptyPayload,
-  async execute({ runId, lockToken }) {
-    try {
-      await initializeReputation(jobGuard(runId, lockToken));
-    } catch (error) {
-      await setReputationSystemStatus("disabled", jobGuard(runId, lockToken));
-      throw error;
-    }
-  },
-};
-
 const reputationPromoteTrustedHandler: JobHandlerDefinition<Record<string, never>> = {
   type: "reputation.promote-trusted",
   label: "Автоматическое назначение Trusted",
@@ -558,24 +542,6 @@ const platformRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> =
   },
 };
 
-const genreSeriesBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
-  type: "media.genre-series-backfill",
-  label: "Привязка серий по жанрам опубликованных записей",
-  schedulable: false,
-  defaultMaxAttempts: 1,
-  defaultTimeoutSeconds: 900,
-  parsePayload: parseEmptyPayload,
-  async execute({ source, signal, runId, jobId, lockToken }) {
-    if (source !== "manual" || jobId !== null) {
-      throw new JobError("manual-only", "Привязка серий по жанрам доступна только разовым ручным запуском.", { retryable: false });
-    }
-    const result = await backfillGenreSeriesLinks(signal, jobGuard(runId, lockToken));
-    await logSystemActivity({ action: "media.genre-series-backfill.completed", entityType: "job-run", entityId: runId,
-      message: `Привязка серий по жанрам завершена: обновлено записей — ${result.updatedRecords}, добавлено связей — ${result.addedLinks}.`,
-      metadata: result });
-  },
-};
-
 const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = {
   ...genreRequestApplyHandler, type: "media.creator-request-apply", label: "Применение решения по создателю",
   parsePayload(value) {
@@ -593,28 +559,18 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
   },
   async execute({ payload, signal, runId, lockToken }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) }); },
 };
-const creatorBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
-  type: "media.creators-backfill", label: "Импорт создателей книг с автоматическим апрувом", schedulable: false,
-  defaultMaxAttempts: 1, defaultTimeoutSeconds: 900, parsePayload: parseEmptyPayload,
-  async execute({ source, signal, runId, jobId, lockToken }) {
-    if (source !== "manual" || jobId !== null) throw new JobError("manual-only", "Импорт доступен только разовым ручным запуском.", { retryable: false });
-    const result = await backfillCreators(signal, jobGuard(runId, lockToken));
-    await logSystemActivity({ action: "media.creators-backfill.completed", entityType: "job-run", entityId: runId,
-      message: `Импорт создателей завершён: записей — ${result.processed}, создателей — ${result.createdCreators}, связей — ${result.createdLinks}, ошибок — ${result.errors.length}.`, metadata: result });
-  },
-};
-
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  creatorNameLocalizationHandler,
   providerSnapshotJobHandler,
+  creatorImageFillHandler,
+  creatorImagesBackfillHandler,
+  creatorImageRefreshHandler,
+  tmdbDirectorApprovalHandler,
+  tmdbCompanyApprovalHandler,
   platformLogosSyncHandler,
-  gameCompanyBackfillHandler,
-  bggCreatorsBackfillHandler,
   gameCompanyEnrichHandler,
-  creatorFantlabBindingHandler,
-  creatorFantlabAvatarHandler,
   creatorRequestApplyHandler,
-  creatorBackfillHandler,
-  genreSeriesBackfillHandler,
+  genreSeriesApplyHandler,
   genreRequestApplyHandler,
   platformRequestApplyHandler,
   emailOutboxDeliveryHandler,

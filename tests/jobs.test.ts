@@ -35,6 +35,7 @@ test("invalid payload fails terminally without requeue", async () => {
   await executeClaimedJobRun({
     getHandler: () => ({ ...handler, parsePayload: () => { throw new Error("bad payload"); } }),
     operations: {
+      isCurrent: async () => true,
       finish: async (input) => { completions.push(input); return null; },
       requeue: async () => { requeues += 1; return null; },
     },
@@ -54,6 +55,7 @@ test("unknown exceptions store a safe generic message", async () => {
     await executeClaimedJobRun({
       getHandler: () => ({ ...handler, execute: async () => { throw new Error("postgres://user:secret@db/private"); } }),
       operations: {
+        isCurrent: async () => true,
         finish: async (input) => { completions.push(input); return null; },
         requeue: async () => null,
       },
@@ -77,6 +79,7 @@ test("timeout aborts a cooperative handler and requeues the same run", async () 
       }),
     }),
     operations: {
+      isCurrent: async () => true,
       finish: async () => null,
       requeue: async (input) => { requeues.push(input); return null; },
     },
@@ -93,6 +96,7 @@ test("rate-limit deferral keeps the same run without consuming retry attempts", 
   await executeClaimedJobRun({
     getHandler: () => ({ ...handler, execute: async () => { throw new JobError("ai-rate-limit", "Лимит AI", { deferSeconds: 120 }); } }),
     operations: {
+      isCurrent: async () => true,
       finish: async () => null,
       requeue: async () => null,
       defer: async (input) => { deferred.push(input); return null as never; },
@@ -115,13 +119,13 @@ test("worker shutdown aborts the running handler and requeues its work", async (
         controller.abort();
       }),
     }),
-    operations: { finish: async () => null, requeue: async (input) => { requeues.push(input); return null; } },
+    operations: { isCurrent: async () => true, finish: async () => null, requeue: async (input) => { requeues.push(input); return null; } },
     run: { attempts: 1, id: 14, jobId: null, lockToken: "token", maxAttempts: 2, payload: {}, source: "manual", timeoutSeconds: 3600, type: "test.job" } as never,
   });
   assert.equal(requeues[0]?.errorCode, "interrupted");
 });
 
-test("snapshot worker refuses stale ownership before entering the handler", async () => {
+test("worker refuses stale ownership before entering the handler", async () => {
   let entered = false;
   let mutations = 0;
   await executeClaimedJobRun({
@@ -131,13 +135,13 @@ test("snapshot worker refuses stale ownership before entering the handler", asyn
       finish: async () => { mutations++; return null; },
       requeue: async () => { mutations++; return null; },
     },
-    run: { attempts: 1, id: 20, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "provider.snapshots" } as never,
+    run: { attempts: 1, id: 20, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "test.job" } as never,
   });
   assert.equal(entered, false);
   assert.equal(mutations, 0);
 });
 
-test("snapshot worker detects cancellation during execution and aborts without reviving the run", async () => {
+test("worker detects cancellation during execution and aborts without reviving the run", async () => {
   let checks = 0;
   let aborted = false;
   let mutations = 0;
@@ -151,7 +155,7 @@ test("snapshot worker detects cancellation during execution and aborts without r
       requeue: async () => { mutations++; return null; },
       defer: async () => { mutations++; return null as never; },
     },
-    run: { attempts: 1, id: 21, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "provider.snapshots" } as never,
+    run: { attempts: 1, id: 21, jobId: null, lockToken: "cancelled-token", maxAttempts: 3, payload: {}, source: "manual", timeoutSeconds: 10, type: "test.job" } as never,
   });
   assert.ok(checks >= 2);
   assert.equal(aborted, true);
@@ -210,7 +214,8 @@ test("achievement backfill is enqueue-only and cannot be created as a periodic s
   assert.match(manage, /if \(handler\.schedulable === false\) throw new Error/);
   assert.match(schedules, /schedulable: schedulable !== false/);
   assert.match(manager, /handlers\.filter\(\(item\) => item\.schedulable \|\| item\.type === job\?\.type\)/);
-  assert.match(manager, /AdHocJobButton[\s\S]*handlers\.filter\(\(item\) => item\.type !== EDITORIAL_SUMMARY_GENERATE_TYPE && item\.type !== "media\.game-company-enrich"\)\.map\(\(item\) => <option key=\{item\.type\}/);
+  assert.match(manager, /const manualHandlers = handlers\.filter\(\(item\) => getJobManualPlacement\(item\.type\) === "general"\)/);
+  assert.match(manager, /manualHandlers\.map\(\(item\) => <option key=\{item\.type\}/);
   assert.match(manager, /partsOnly: true/);
   assert.match(manager, /Только части сериалов без сезонов/);
 });
@@ -245,6 +250,7 @@ test("job journal href omits the default all-runs filter", () => {
   assert.equal(buildJobJournalHref({ job: "all", page: 1, pageSize: 25 }), "/admin/tools/jobs/journal");
   assert.equal(buildJobJournalHref({ job: "adhoc", page: 2, pageSize: 50 }), "/admin/tools/jobs/journal?job=adhoc&page=2&pageSize=50");
   assert.equal(buildJobJournalHref({ job: "12", page: 1, pageSize: 25 }), "/admin/tools/jobs/journal?job=12");
+  assert.equal(buildJobJournalHref({ type: "media.tmdb-directors-backfill", page: 2 }), "/admin/tools/jobs/journal?type=media.tmdb-directors-backfill&page=2");
 });
 
 test("metadata jobs seed two enabled schedules with split cron and payloads", async () => {
@@ -256,8 +262,8 @@ test("metadata jobs seed two enabled schedules with split cron and payloads", as
 
   assert.match(handlers, /type: "media\.metadata-backfill"/);
   assert.match(handlers, /type: "media\.metadata-refresh"/);
-  assert.match(handlers, /backfillMediaMetadata\(\{ attempt, runId, lockToken, \.\.\.payload \}\)/);
-  assert.match(handlers, /refreshStaleMediaMetadata\(\{ attempt, runId, lockToken, \.\.\.payload \}\)/);
+  assert.match(handlers, /backfillMediaMetadata\(\{ attempt, runId, lockToken, signal, \.\.\.payload \}\)/);
+  assert.match(handlers, /refreshStaleMediaMetadata\(\{ attempt, runId, lockToken, signal, \.\.\.payload \}\)/);
   assert.match(handlers, /result\.retryableFailed > 0/);
   assert.match(
     migration,
@@ -268,5 +274,26 @@ test("metadata jobs seed two enabled schedules with split cron and payloads", as
     /'media-metadata-refresh',[\s\S]*'media\.metadata-refresh',[\s\S]*'\{"limit":20,"staleDays":90,"quotaReserve":100\}'::jsonb,[\s\S]*'0 5 \* \* 0',[\s\S]*true/,
   );
   assert.match(migration, /ON CONFLICT \("code"\) DO NOTHING/);
-  assert.match(manager, /name="payload" value="\{\}"/);
+  assert.doesNotMatch(manager, /name="payload" value="\{\}"/);
+  assert.match(manager, /JobPayloadFields/);
+});
+
+
+test("bulk Creator images expose persistent type and role filters without IDs input", async () => {
+  const [manager, current, schedules] = await Promise.all([
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-manager.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/current/page.tsx", import.meta.url), "utf8"),
+    readFile(new URL("../src/app/admin/(protected)/tools/jobs/schedules/page.tsx", import.meta.url), "utf8"),
+  ]);
+  assert.match(manager, /selectedType === "media\.creator-images-backfill"/);
+  assert.match(manager, /creatorTypeId: Number\(creatorTypeId\)/);
+  assert.match(manager, /roleId: Number\(roleId\)/);
+  assert.match(manager, /creatorTypes\.map/);
+  assert.match(manager, /creatorRoles\.map/);
+  assert.match(manager, /min=\{1\} max=\{100\}/);
+  assert.match(manager, /существующие сохраняет/);
+  assert.match(schedules, /creatorTypes=\{creatorTypes\} creatorRoles=\{creatorRoles\}/);
+  assert.match(current, /typeNames\.get\(run\.payload\.creatorTypeId\)/);
+  assert.match(current, /roleNames\.get\(run\.payload\.roleId\)/);
+  assert.match(current, /run\.filters/);
 });

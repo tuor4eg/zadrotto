@@ -30,7 +30,6 @@ test("TMDB film projects existing compact facts without processing credits or ch
     runtimeMinutes: 123,
     productionCountries: ["Франция", "DE"],
     originalLanguage: "fr",
-    productionCompanies: ["Studio"],
   });
   assert.deepEqual(projection.genreFacts, { genres: ["Драма"], genreReferences: [{ id: "18", name: "Драма" }] });
   assert.equal("contributors" in projection, false);

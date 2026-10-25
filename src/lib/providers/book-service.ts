@@ -1,3 +1,4 @@
+import { describeTmdbSeriesSource } from "./tmdb-series-adapter";
 import type { DbTransaction } from "@/db/transaction";
 import "server-only";
 import { describeTmdbFilmSource } from "./tmdb-film-adapter";
@@ -94,7 +95,7 @@ export async function getCurrentBookPrimarySnapshot(mediaItemId:number) {
   const [source]=await db.select({provider:mediaItemMetadata.sourceProvider,externalId:mediaItemMetadata.sourceExternalId}).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId,mediaItemId));
   if (source?.provider === "tmdb" && source.externalId) {
     const [item] = await db.select({mediaType:mediaItems.mediaType}).from(mediaItems).where(eq(mediaItems.id,mediaItemId));
-    return item?.mediaType === "film" ? getProviderSnapshot(describeTmdbFilmSource(source.externalId)) : null;
+    return item?.mediaType === "series" ? getProviderSnapshot(describeTmdbSeriesSource(source.externalId)) : item?.mediaType === "film" ? getProviderSnapshot(describeTmdbFilmSource(source.externalId)) : null;
   }
   if(!source?.provider || !source.externalId || !isBookSnapshotProvider(source.provider))return null;
   return getProviderSnapshot(describeBookSource(source.provider,source.externalId));

@@ -4,7 +4,7 @@ import { test } from "node:test";
 import type { DbTransaction } from "../src/db/transaction";
 
 // No real APIs, migration against application tables, or shared-sequence writes.
-test("book import preserves raw answers and manual decisions across offline replay with the permanent snapshot contract",{skip:process.env.PROVIDER_SNAPSHOT_TEST!=="1"},async(t)=>{
+test("book import preserves raw answers and manual decisions across offline replay with the permanent snapshot contract",{skip:process.env.PROVIDER_SNAPSHOT_TEST!=="1"},async()=>{
   await import("dotenv/config");
   const {default:postgres}=await import("postgres");
   const original=process.env.DATABASE_URL!;

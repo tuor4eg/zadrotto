@@ -1,5 +1,7 @@
 "use server";
 
+import { isCreatorRequestErrorCode } from "../creator-requests/messages";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as creators from "@/db/queries/creators";
@@ -19,6 +21,13 @@ function text(value: FormDataEntryValue | null) {
 }
 function refresh() { revalidatePath("/", "layout"); }
 
+export async function searchCreatorRelationsAction(query: string, creatorId?: number) {
+  await requireAdminUser();
+  if (typeof query !== "string" || query.length > 200 || (creatorId !== undefined && (!Number.isSafeInteger(creatorId) || creatorId < 1))) throw new Error("invalid-search");
+  const { findCreatorRelationCandidates } = await import("@/db/queries/creator-editor");
+  return findCreatorRelationCandidates(query, creatorId);
+}
+
 export async function findCreatorRelatedSeriesAction(creatorId: number) {
   await requireAdminUser();
   if (!Number.isSafeInteger(creatorId) || creatorId < 1) throw new Error("invalid-id");
@@ -33,13 +42,13 @@ export async function saveCreatorAction(formData: FormData) {
     const relationType = formData.get("relationType");
     if (relationType !== "pseudonym_of") throw new Error("invalid-relation-type");
     const relations = formData.getAll("relatedCreatorIds").map(value => ({ targetCreatorId: id(value), relationType: "pseudonym_of" as const }));
-    const values = { ...(formData.has("birthDate") ? { birthDate: parseCreatorDate(formData.get("birthDate")) } : {}), ...(formData.has("deathDate") ? { deathDate: parseCreatorDate(formData.get("deathDate")) } : {}), relations, adminId: admin.id, name: text(formData.get("name")), slug: text(formData.get("slug")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
+    const values = { ...(formData.has("nameRu") ? { nameRu: formData.get("nameRu") === "" ? null : text(formData.get("nameRu")) } : {}), ...(formData.has("birthDate") ? { birthDate: parseCreatorDate(formData.get("birthDate")) } : {}), ...(formData.has("deathDate") ? { deathDate: parseCreatorDate(formData.get("deathDate")) } : {}), relations, adminId: admin.id, name: text(formData.get("name")), slug: text(formData.get("slug")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
     const creator = creatorId ? await creators.updateCreator(creatorId, values) : await creators.createCreator(values);
     if (!creator) throw new Error("not-found");
     creatorId = creator.id;
   } catch (error) {
-    const dateError = error instanceof Error && ["Укажите полную корректную дату.", "Дата смерти не может предшествовать дате рождения.", "Даты жизни доступны только для персоны без исходящей связи псевдонима."].includes(error.message);
-    const errorCode = dateError ? "dates" : "1";
+    const dateError = error instanceof Error && ["Укажите полную корректную дату.", "Дата смерти не может предшествовать дате рождения.", "Даты доступны для персоны без исходящей связи псевдонима или для организации."].includes(error.message);
+    const errorCode = dateError ? "dates" : error instanceof Error && error.message === "creator-type-in-use" ? "type-in-use" : "1";
     redirect(creatorId ? `/admin/creators/${creatorId}/edit?error=${errorCode}` : `/admin/creators/new?error=${errorCode}`);
   }
   refresh();
@@ -89,7 +98,10 @@ export async function resolveCreatorAction(formData: FormData) {
     await requests.resolveCreatorRequest({requestId: id(formData.get("requestId")), adminId: admin.id, decision,
       ...(decision === "map" ? { creatorId: id(formData.get("creatorId")) } : {}),
       ...(decision === "create" ? { name: text(formData.get("name")), ...(typeCode ? { typeCode } : {}) } : {}) });
-  } catch { redirect("/admin/creator-requests?error=1"); }
+  } catch (error) {
+    const code = error instanceof requests.CreatorRequestError && isCreatorRequestErrorCode(error.code) ? error.code : "1";
+    redirect(`/admin/creator-requests?error=${code}`);
+  }
   refresh(); redirect("/admin/creator-requests?updated=1");
 }
 
@@ -136,3 +148,15 @@ export async function saveEntryPseudonymAction(formData: FormData) {
   redirect(`/admin/media/${entryId}/edit?pseudonymSaved=1`);
 }
 
+
+export async function resetCreatorNameLocalizationAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  try {
+    const ids = [...new Set(formData.getAll("creatorIds").map(id))];
+    if (!ids.length || ids.length > 100) throw new Error("invalid-selection");
+    const { resetCreatorNameLocalization } = await import("@/db/queries/creator-name-localization");
+    await resetCreatorNameLocalization(ids, admin.id);
+  } catch { redirect("/admin/creators?error=1"); }
+  refresh();
+  redirect("/admin/creators?updated=1");
+}

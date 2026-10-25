@@ -12,6 +12,7 @@ import {
   DEFAULT_JOB_TIMEOUT_SECONDS,
   type JobRunSource,
 } from "./model";
+import { JobError } from "./types";
 import { jobHandlerRegistry } from "./handlers";
 
 export function resolveJobRunPolicy(type: string, overrides?: Partial<JobRunPolicy>): JobRunPolicy {
@@ -56,6 +57,7 @@ export async function enqueueJobRun(input: {
 export async function enqueueManualJobRun(jobId: number, createdByAdminId: number | null) {
   const job = await getJobById(jobId);
   if (!job) throw new Error("Job not found.");
+  if (jobHandlerRegistry.get(job.type).schedulable === false) throw new JobError("manual-placement", "Эта операция запускается из своего раздела.", { retryable: false });
   return enqueueJobRun({
     createdByAdminId,
     jobId: job.id,

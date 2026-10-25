@@ -96,6 +96,10 @@ function getActivityEntityAdminHref(input: {
       return input.entityId ? `/admin/authors/${input.entityId}/edit` : null;
     case "author-token":
       return "/admin/author-tokens";
+    case "creator":
+      return input.entityId ? `/admin/creators/${input.entityId}/edit` : null;
+    case "creator-request":
+      return input.entityId ? `/admin/creator-requests/${input.entityId}` : null;
     case "cover-provider":
       return "/admin/tools/providers";
     case "cover-settings":

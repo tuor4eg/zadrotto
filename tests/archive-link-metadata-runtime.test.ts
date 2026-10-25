@@ -17,7 +17,7 @@ test("archive previews use public identities and indexed single lookups at scale
   const client = getDbClient();
   try {
     await client.unsafe(`
-      create table creators(id integer primary key,name text,slug text unique,avatar_object_key text);
+      create table creators(id integer primary key,name text,slug text unique,avatar_object_key text,name_ru text,name_ru_source text,name_ru_processed boolean default false);
       create table franchises(id integer primary key,code text unique,title text,publication_status text);
       create table genres(id integer primary key,slug text unique,name text,is_active boolean);
       create table platforms(id integer primary key,slug text unique,name text,is_active boolean,logo_mode text,

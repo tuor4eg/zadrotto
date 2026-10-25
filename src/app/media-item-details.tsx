@@ -1,3 +1,5 @@
+import { SeriesCreatorDetailsFacts } from "@/components/archive/series-creator-details-facts";
+import type { SeriesCreatorDisplay } from "@/db/queries/tmdb-series-display";
 import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
 import type { MediaItemPlatform } from "@/lib/media/platforms";
 import { MediaItemWriterLinks, type WriterCreatorLink } from "@/components/archive/media-item-creator-links";
@@ -12,6 +14,10 @@ import { ArchiveRatingPanel } from "@/app/media-rating-panel";
 import { ArchiveNote } from "@/components/archive/archive-note";
 import { CoverSourceAttribution } from "@/components/archive/cover-source-attribution";
 import { GameCompanyDetailsFacts, type GameCompanyDisplay } from "@/components/archive/game-company-details-facts";
+import { FilmDirectorDetailsFacts } from "@/components/archive/film-director-details-facts";
+import type { FilmDirectorDisplay } from "@/db/queries/tmdb-director-display";
+import { FilmCompanyDetailsFacts } from "@/components/archive/film-company-details-facts";
+import type { FilmCompanyDisplay } from "@/db/queries/tmdb-company-display";
 import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaItemGenreLinks } from "@/components/archive/media-item-genre-links";
 import { MediaItemFranchiseLinks } from "@/components/archive/media-item-franchise-links";
@@ -48,6 +54,9 @@ type MediaItemDetailsItem = {
   writerCreators?: WriterCreatorLink[];
   entryCreators?: EntryRoleCreatorLink[];
   gameCompanies?: GameCompanyDisplay[];
+  filmCompanies?: FilmCompanyDisplay[];
+  filmDirectors?: FilmDirectorDisplay[];
+  seriesCreators?: SeriesCreatorDisplay;
   hasUnifiedGenres?: boolean;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
@@ -147,6 +156,7 @@ export function MediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
+    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
@@ -246,6 +256,9 @@ export function MediaItemDetails({
                 {item.mediaType === "game" && item.platforms?.length ? <span className="mr-2"><MediaItemPlatformLinks platforms={item.platforms} /></span> : null}
                 {item.mediaType === "book" && item.writerCreators?.length ? <div className="mt-1"><MediaItemWriterLinks creators={item.writerCreators} /></div> : null}
                 {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
+                {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
+                {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
@@ -391,6 +404,7 @@ function ArchiveMediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
+    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
 
@@ -573,6 +587,9 @@ function ArchiveMediaItemDetails({
                 </> : null}
                 {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
                 {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
+                {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
+                {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}

@@ -1,13 +1,15 @@
 "use client";
 
-import { CalendarClock, ScrollText } from "lucide-react";
+import { CalendarClock, ScrollText, Activity, Database } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 import { cn } from "@/lib/common/utils";
 
 const ITEMS = [
+  { href: "/admin/tools/jobs/current", icon: Activity, label: "Текущие" },
   { href: "/admin/tools/jobs/schedules", icon: CalendarClock, label: "Расписания" },
+  { href: "/admin/tools/jobs/migrations", icon: Database, label: "Миграции" },
   { href: "/admin/tools/jobs/journal", icon: ScrollText, label: "Журнал" },
 ] as const;
 

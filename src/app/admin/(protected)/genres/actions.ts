@@ -1,5 +1,6 @@
 "use server";
 
+import { enqueueJobRun } from "@/lib/jobs/queue";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -83,4 +84,14 @@ export async function reopenGenreMappingAction(formData: FormData) {
   revalidatePath("/author/media/new");
   revalidatePath("/api/admin/media-browser");
   redirect(`/admin/genre-requests/${requestId}?reopened=1`);
+}
+
+export async function applyGenreSeriesAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const genreId = parseGenreId(formData.get("genreId"));
+  if (!genreId) redirect("/admin/genres?error=invalid-genre");
+  try { await enqueueJobRun({ type: "media.genre-series-apply", source: "manual", createdByAdminId: admin.id, payload: { genreId } }); }
+  catch { redirect(`/admin/genres/${genreId}/edit?error=queue`); }
+  revalidatePath("/admin/tools/jobs/current");
+  redirect("/admin/tools/jobs/current");
 }

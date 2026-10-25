@@ -1,7 +1,8 @@
+import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, exists, gt, inArray, isNull, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { creators, providerCreatorBindings, providerCreatorMappings } from "@/db/schema";
+import { creators, creatorTypes, providerCreatorBindings, providerCreatorMappings } from "@/db/schema";
 
 export async function getCreatorAvatarState(id: number) {
   const [creator] = await db.select().from(creators).where(eq(creators.id, id));
@@ -42,7 +43,10 @@ export async function assignFantlabCreatorBinding(input: {
 }) {
   if (!/^[1-9]\d*$/.test(input.externalCreatorId) || !Number.isSafeInteger(Number(input.externalCreatorId))) throw new Error("Некорректный FantLab ID.");
   return withSnapshotJobGuard(input.jobGuard, async tx => {
-    const [creator] = await tx.select().from(creators).where(eq(creators.id, input.creatorId)).for("update");
+    const [owner] = await tx.select({ creator: creators, typeCode: creatorTypes.code }).from(creators)
+      .innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, input.creatorId)).for("update", { of: creators });
+    if (!owner || !["person", "collective"].includes(owner.typeCode)) throw new Error("FantLab ID автора доступен только людям и коллективам.");
+    const creator = owner.creator;
     if (!creator || (input.expectedVersion !== undefined && creator.avatarVersion !== input.expectedVersion)) throw new Error("Создатель изменился. Повторите операцию.");
     const mappingIds = input.mappingIds ?? (input.mappingId ? [input.mappingId] : []);
     const mappings = mappingIds.length ? await tx.select().from(providerCreatorMappings).where(and(
@@ -58,6 +62,7 @@ export async function assignFantlabCreatorBinding(input: {
     if (!binding || binding.creatorId !== input.creatorId) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
     if (mappingIds.length) await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(inArray(providerCreatorMappings.id, mappingIds));
     await tx.update(creators).set({ avatarVersion: sql`${creators.avatarVersion} + 1`, updatedAt: new Date() }).where(eq(creators.id, input.creatorId));
+    await enqueueCreatorImageFill(tx, creator.id);
     return binding;
   });
 }
@@ -121,7 +126,10 @@ export async function commitFantlabAvatar(input: {
 export async function replaceCreatorFantlabBinding(input: { creatorId: number; externalCreatorId: string }) {
   if (!/^[1-9]\d*$/.test(input.externalCreatorId) || !Number.isSafeInteger(Number(input.externalCreatorId))) throw new Error("Некорректный FantLab ID.");
   return db.transaction(async tx => {
-    const [creator] = await tx.select().from(creators).where(eq(creators.id, input.creatorId)).for("update");
+    const [owner] = await tx.select({ creator: creators, typeCode: creatorTypes.code }).from(creators)
+      .innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, input.creatorId)).for("update", { of: creators });
+    if (!owner || !["person", "collective"].includes(owner.typeCode)) throw new Error("FantLab ID автора доступен только людям и коллективам.");
+    const creator = owner.creator;
     if (!creator) throw new Error("Создатель не найден.");
     await tx.insert(providerCreatorBindings).values({ provider: "fantlab", externalCreatorId: input.externalCreatorId, creatorId: input.creatorId }).onConflictDoNothing();
     const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId)));
@@ -129,6 +137,7 @@ export async function replaceCreatorFantlabBinding(input: { creatorId: number; e
     await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(and(eq(providerCreatorMappings.provider, "fantlab"), eq(providerCreatorMappings.creatorId, input.creatorId)));
     await tx.delete(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.creatorId, input.creatorId), sql`${providerCreatorBindings.id} <> ${binding.id}`));
     await tx.update(creators).set({ avatarVersion: creator.avatarVersion + 1, updatedAt: new Date() }).where(eq(creators.id, creator.id));
+    await enqueueCreatorImageFill(tx, creator.id);
     return binding;
   });
 }

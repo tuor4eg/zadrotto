@@ -33,6 +33,7 @@ import {
   disableReputationAction,
   enableReputationAction,
   previewReputationAction,
+  recoverReputationInitializationAction,
   saveReputationConfigurationAction,
   type ReputationPreviewActionInput,
 } from "./actions";
@@ -196,6 +197,18 @@ export function ReputationSettings({
         id: `reputation-enable-${Date.now()}`,
         tone: result.error ? "error" : "success",
         text: result.error ?? result.success ?? "Расчёт запущен.",
+      });
+    });
+  }
+
+  function recoverInitialization() {
+    setToast(null);
+    startMutation(async () => {
+      const result = await recoverReputationInitializationAction();
+      setToast({
+        id: `reputation-recover-${Date.now()}`,
+        tone: result.error ? "error" : "success",
+        text: result.error ?? result.success ?? "Расчёт поставлен в очередь.",
       });
     });
   }
@@ -542,15 +555,20 @@ export function ReputationSettings({
             <div className="max-w-2xl text-sm leading-6 text-stone-500">
               <p>Результат не является снимком: новые действия авторов могут изменить цифры между расчётами.</p>
               <p className="mt-1">Состояние: <strong className="text-stone-800">{status === "enabled" ? "включена" : status === "initializing" ? "идёт первичный расчёт" : "выключена"}</strong>{enabledAt ? ` · первый запуск ${new Date(enabledAt).toLocaleDateString("ru-RU")}` : ""}</p>
-              {status === "initializing" ? <a className="underline" href="/admin/tools/jobs/journal">Открыть журнал задач</a> : null}
+              {status === "initializing" ? <>
+                <a className="underline" href="/admin/tools/jobs/journal">Открыть журнал задач</a>
+                <p>Если активной задачи уже нет, повторите расчёт по сохранённым настройкам.</p>
+              </> : null}
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" disabled={isMutationPending || status === "initializing"} onClick={saveSettings}><Save />Сохранить</Button>
               <Button type="button" variant="outline" disabled={isMutationPending} onClick={() => { setHasPreviewed(true); setIsPreviewOpen(true); }}><Eye />Предпросмотр результатов</Button>
               {status === "enabled" ? (
                 <Button type="button" variant="outline" disabled={isMutationPending} onClick={() => setConfirmation("disable")}>Приостановить</Button>
+              ) : status === "initializing" ? (
+                <Button type="button" variant="outline" disabled={isMutationPending} onClick={recoverInitialization}>Повторить незавершённый расчёт</Button>
               ) : (
-                <Button type="button" disabled={isMutationPending || status === "initializing"} onClick={() => setConfirmation("enable")}>{status === "initializing" ? "Расчёт запущен" : "Включить систему"}</Button>
+                <Button type="button" disabled={isMutationPending} onClick={() => setConfirmation("enable")}>Включить систему</Button>
               )}
             </div>
           </div>

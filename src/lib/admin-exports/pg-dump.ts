@@ -43,7 +43,8 @@ export async function writeDatabaseDump(input: {
 }) {
   input.signal.throwIfAborted();
   const connection = getPgDumpConnection(input.databaseUrl);
-  const child = spawn(input.executable ?? "pg_dump", [...PG_DUMP_ARGS, `--dbname=${connection.connectionString}`], {
+  // pg_dump is installed in the runtime image; it is not a bundled project asset.
+  const child = spawn(/* turbopackIgnore: true */ input.executable ?? "pg_dump", [...PG_DUMP_ARGS, `--dbname=${connection.connectionString}`], {
     shell: false,
     // libpq expands a URI passed as dbname, but not a URI supplied through PGDATABASE defaults.
     env: { ...process.env, PGPASSWORD: connection.password ?? process.env.PGPASSWORD, PGCONNECT_TIMEOUT: "10", PGAPPNAME: "geekoteka-database-dump", LC_ALL: "C" },

@@ -391,8 +391,8 @@ const currentAuthorStatusCondition = (currentAuthorId: number, status: AuthorMed
       ),
   );
 
-const catalogSeriesCondition = (seriesId: number) =>
-  publishedSeriesMembershipSql(sql`"media_items"."id"`, sql`${seriesId}`);
+const catalogSeriesCondition = (seriesId: number, includeDescendants = true) =>
+  publishedSeriesMembershipSql(sql`"media_items"."id"`, sql`${seriesId}`, includeDescendants);
 
 function catalogGenreCondition(genreId: number) {
   return exists(db.select({ id: mediaItemGenres.genreId }).from(mediaItemGenres)
@@ -415,6 +415,7 @@ function catalogFilterConditions(input: {
   enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   seriesId?: number;
+  includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
   creatorId?: number;
@@ -442,7 +443,7 @@ function catalogFilterConditions(input: {
   if (input.creatorId) conditions.push(creatorCondition(input.creatorId,undefined,input.creatorRole));
 
   if (input.seriesId) {
-    conditions.push(catalogSeriesCondition(input.seriesId));
+    conditions.push(catalogSeriesCondition(input.seriesId, input.includeSeriesDescendants));
   }
 
   if (input.ratedByAuthorId) {
@@ -674,6 +675,7 @@ export async function getCatalogMediaItems(input: {
   pageSize: number;
   searchQuery: string;
   seriesId?: number;
+  includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
   creatorId?: number;
@@ -712,6 +714,7 @@ export async function getCatalogMediaTypeCounts(input: {
   enabledMediaTypeCodes: readonly string[];
   searchQuery: string;
   seriesId?: number;
+  includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
   creatorId?: number;

@@ -13,7 +13,8 @@ test("creator avatar migration and assignments preserve data, identity ownership
   const key = (id: number, digit: string) => `avatars/creators/${id}/00000000-0000-4000-8000-${digit.repeat(12)}.webp`;
   const hash = "a".repeat(64);
   try {
-    await sql.unsafe(`CREATE TABLE creators(id serial PRIMARY KEY,name text NOT NULL,slug text NOT NULL UNIQUE,original_name text,type_id integer NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
+    await sql.unsafe(`CREATE TABLE creator_types(id integer PRIMARY KEY,code text); INSERT INTO creator_types VALUES(1,'person');
+      CREATE TABLE creators(id serial PRIMARY KEY,name text NOT NULL,slug text NOT NULL UNIQUE,original_name text,type_id integer NOT NULL,created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now(),name_ru text,name_ru_source text,name_ru_processed boolean default false);
       CREATE TABLE provider_creator_mappings(id serial PRIMARY KEY,provider text NOT NULL,media_type text NOT NULL,external_creator_name text NOT NULL,normalized_external_creator_name text NOT NULL,creator_id integer NOT NULL REFERENCES creators(id),created_at timestamptz NOT NULL DEFAULT now(),updated_at timestamptz NOT NULL DEFAULT now());
       INSERT INTO creators(id,name,slug,type_id) VALUES(1,'Автор А','a',1),(2,'Автор Б','b',1),(3,'Другой провайдер','c',1);
       INSERT INTO provider_creator_mappings(provider,media_type,external_creator_name,normalized_external_creator_name,creator_id) VALUES('fantlab','book','Автор А','автор а',1),('fantlab','book','Author A','author a',1),('fantlab','book','Автор Б','автор б',2),('bgg','boardgame','Other','other',3);`);
@@ -61,7 +62,7 @@ test("creator avatar migration and assignments preserve data, identity ownership
     assert.equal((await sql`SELECT binding_id FROM provider_creator_mappings WHERE creator_id=3`)[0].binding_id, null);
   } finally {
     await dbClient.end();
-    await sql.unsafe("DROP TABLE IF EXISTS provider_creator_mappings,provider_creator_bindings,creators CASCADE");
+    await sql.unsafe("DROP TABLE IF EXISTS provider_creator_mappings,provider_creator_bindings,creators,creator_types CASCADE");
     await sql.end();
   }
 });

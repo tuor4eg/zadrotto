@@ -1,12 +1,12 @@
-import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
+import { getRetiredJob } from "@/lib/jobs/retired";
 import { JobError } from "@/lib/jobs/types";
 import { automoderationChecks } from "@/db/schema";
 import { reconcileAutomoderationJob, recoverOrphanedAutomoderationChecks } from "./automoderation-recovery";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, or, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { jobRuns, jobs } from "@/db/schema";
+import { jobRuns, jobs, adminExports, levelSettings } from "@/db/schema";
 import {
   calculateJobRetryDelaySeconds,
   AD_HOC_JOB_HISTORY_RETENTION_DAYS,
@@ -132,13 +132,20 @@ function automoderationCheckId(run: { type: string; payload: Record<string, unkn
   return run.type === "moderation.auto-check" && typeof id === "number" && Number.isSafeInteger(id) && id > 0 && id <= 2147483647 ? id : null;
 }
 
-async function cancelRun(id: number, now: Date, allowRunningSnapshot: boolean) {
+async function cancelRun(id: number, now: Date, allowRunning: boolean) {
   return db.transaction(async tx => {
     const [run] = await tx.update(jobRuns).set({ cancelledAt: now, finishedAt: now, status: "cancelled", updatedAt: now,
       lockToken: null, lockExpiresAt: null, lockedAt: null, lockedBy: null })
-      .where(and(eq(jobRuns.id, id), allowRunningSnapshot
-        ? or(eq(jobRuns.status, "queued"),and(eq(jobRuns.status,"running"),eq(jobRuns.type,PROVIDER_SNAPSHOT_JOB_TYPE)))
+      .where(and(eq(jobRuns.id, id), allowRunning
+        ? inArray(jobRuns.status, ["queued", "running"])
         : eq(jobRuns.status, "queued"))).returning();
+    if (run?.type === "admin.export-generate" && typeof run.payload.exportId === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(run.payload.exportId)) {
+      await tx.update(adminExports).set({ status: "failed", errorMessage: "Формирование экспорта остановлено администратором.", finishedAt: now, updatedAt: now })
+        .where(and(eq(adminExports.id, run.payload.exportId), inArray(adminExports.status, ["queued", "running"])));
+    }
+    if (run?.type === "reputation.initialize" && run.source === "manual" && run.createdByAdminId !== null && run.payload.initializationRequested === true) {
+      await tx.update(levelSettings).set({ status: "disabled", updatedAt: now }).where(and(eq(levelSettings.id, 1), eq(levelSettings.status, "initializing")));
+    }
     const checkId = run && automoderationCheckId(run);
     if (checkId) await reconcileAutomoderationJob(tx, {checkId, retry: false});
     return run ?? null;
@@ -150,7 +157,7 @@ export function cancelQueuedJobRun(id: number, now = new Date()) {
   return cancelRun(id, now, false);
 }
 
-/** Running cancellation is enabled for snapshot processing with transactional mutation guards. */
+/** Revoke ownership atomically; workers abort cooperatively and guarded writes cannot commit. */
 export function cancelJobRun(id: number, now = new Date()) {
   return cancelRun(id, now, true);
 }
@@ -166,6 +173,9 @@ export async function retryFailedJobRun(id: number, createdByAdminId: number | n
     const [source] = await tx.select().from(jobRuns)
       .where(and(eq(jobRuns.id, id), eq(jobRuns.status, "failed"))).for("update").limit(1);
     if (!source) return null;
+    const retired = getRetiredJob(source.type);
+    if (retired) throw new JobError("job-type-retired", retired.reason, { retryable: false });
+    if (source.type === "reputation.initialize") throw new JobError("reputation-subject-required", "Повторите инициализацию на странице репутации.", { retryable: false });
     const checkId = automoderationCheckId(source);
     if (checkId) {
       const [check] = await tx.select({status: automoderationChecks.status}).from(automoderationChecks)
@@ -425,4 +435,24 @@ export async function cleanupJobRunHistory(now = new Date(), jobGuard?: Snapshot
     deleted += adHocRows.length;
   });
   return deleted;
+}
+
+/** One backward index probe per registered migration; does not scan all history. */
+export function latestJobRunsByTypesQuery(types: string[]) {
+  return sql`select latest.id, latest.type, latest.status, latest.scheduled_for as "scheduledFor"
+    from unnest(${sql.param(types)}::text[]) requested(type)
+    cross join lateral (
+      select id,type,status,scheduled_for from job_runs where type=requested.type
+      order by created_at desc,id desc limit 1
+    ) latest`;
+}
+type LatestJobRunRow = { id: number; type: string; status: string; scheduledFor: string | Date };
+/** Raw SQL bypasses Drizzle's timestamp column decoder. Normalize at the data boundary. */
+export function mapLatestJobRun(row: LatestJobRunRow) {
+  return { ...row, scheduledFor: row.scheduledFor instanceof Date ? row.scheduledFor : new Date(row.scheduledFor) };
+}
+export async function getLatestJobRunsByTypes(types: string[]) {
+  if (!types.length) return [];
+  const rows = await db.execute<LatestJobRunRow>(latestJobRunsByTypesQuery(types));
+  return rows.map(mapLatestJobRun);
 }

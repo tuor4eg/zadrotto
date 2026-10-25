@@ -946,6 +946,69 @@
       "when": 1794268800000,
       "tag": "0134_tmdb_film_genre_facts",
       "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1794355200000,
+      "tag": "0135_tmdb_company_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1794441600000,
+      "tag": "0136_tmdb_director_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1794528000000,
+      "tag": "0137_current_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1794614400000,
+      "tag": "0138_creator_image_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1794700800000,
+      "tag": "0139_retire_completed_job_migrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1794787200000,
+      "tag": "0140_creator_editor_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1794873600000,
+      "tag": "0141_creator_name_localization",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1794960000000,
+      "tag": "0142_creator_admin_pagination",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1795046400000,
+      "tag": "0143_tmdb_series_creators",
+      "breakpoints": true
     }
   ]
 }

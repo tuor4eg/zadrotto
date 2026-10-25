@@ -7,6 +7,7 @@ import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { createManagedPeriodicJob, updateManagedPeriodicJob } from "@/lib/jobs/manage";
 import { enqueueJobRun, enqueueManualJobRun } from "@/lib/jobs/queue";
+import { assertJobManualPlacement } from "@/lib/jobs/catalog";
 import { JobError } from "@/lib/jobs/types";
 import { DEFAULT_JOB_HISTORY_RETENTION_DAYS } from "@/lib/jobs/model";
 
@@ -23,7 +24,7 @@ const returnPath = (value: FormDataEntryValue | null) => {
 export async function createJobAction(formData: FormData) {
   const admin = await requireAdminUser();
   try {
-    const job = await createManagedPeriodicJob({ code: String(formData.get("code") ?? ""), cronExpression: String(formData.get("cronExpression") ?? ""), historyRetentionDays: integer(formData.get("historyRetentionDays"), DEFAULT_JOB_HISTORY_RETENTION_DAYS), payload: JSON.parse(String(formData.get("payload") ?? "{}")), options: { prompt: String(formData.get("prompt") ?? "") }, policy: { maxAttempts: integer(formData.get("maxAttempts"), 3), retryBaseSeconds: integer(formData.get("retryBaseSeconds"), 60), retryMaxSeconds: integer(formData.get("retryMaxSeconds"), 3600), timeoutSeconds: integer(formData.get("timeoutSeconds"), 300) }, type: String(formData.get("type") ?? "") });
+    const job = await createManagedPeriodicJob({ code: String(formData.get("code") ?? ""), cronExpression: String(formData.get("cronExpression") ?? ""), historyRetentionDays: integer(formData.get("historyRetentionDays"), DEFAULT_JOB_HISTORY_RETENTION_DAYS), payload: formData.has("payload") ? JSON.parse(String(formData.get("payload"))) : undefined, options: { prompt: String(formData.get("prompt") ?? "") }, policy: { maxAttempts: integer(formData.get("maxAttempts"), 3), retryBaseSeconds: integer(formData.get("retryBaseSeconds"), 60), retryMaxSeconds: integer(formData.get("retryMaxSeconds"), 3600), timeoutSeconds: integer(formData.get("timeoutSeconds"), 300) }, type: String(formData.get("type") ?? "") });
     await logActivity({ action: "job.created", actorType: "admin", adminUserId: admin.id, entityType: "job", entityId: job.id, entityLabel: job.code, message: "Фоновая задача создана." });
   } catch { redirect(`${PATH}?error=create`); }
   revalidatePath(PATH); redirect(`${PATH}?created=1`);
@@ -41,7 +42,7 @@ export async function updateJobAction(formData: FormData) {
   const admin = await requireAdminUser(); const jobId = id(formData.get("id"));
   if (!Number.isInteger(jobId) || jobId <= 0) redirect(`${PATH}?error=invalid`);
   try {
-    const job = await updateManagedPeriodicJob(jobId, { code: String(formData.get("code") ?? ""), cronExpression: String(formData.get("cronExpression") ?? ""), enabled: formData.get("enabled") === "true", historyRetentionDays: integer(formData.get("historyRetentionDays"), DEFAULT_JOB_HISTORY_RETENTION_DAYS), payload: JSON.parse(String(formData.get("payload") ?? "{}")), options: { prompt: String(formData.get("prompt") ?? "") }, policy: { maxAttempts: integer(formData.get("maxAttempts"), 3), retryBaseSeconds: integer(formData.get("retryBaseSeconds"), 60), retryMaxSeconds: integer(formData.get("retryMaxSeconds"), 3600), timeoutSeconds: integer(formData.get("timeoutSeconds"), 300) }, type: String(formData.get("type") ?? "") });
+    const job = await updateManagedPeriodicJob(jobId, { code: String(formData.get("code") ?? ""), cronExpression: String(formData.get("cronExpression") ?? ""), enabled: formData.get("enabled") === "true", historyRetentionDays: integer(formData.get("historyRetentionDays"), DEFAULT_JOB_HISTORY_RETENTION_DAYS), payload: formData.has("payload") ? JSON.parse(String(formData.get("payload"))) : undefined, options: { prompt: String(formData.get("prompt") ?? "") }, policy: { maxAttempts: integer(formData.get("maxAttempts"), 3), retryBaseSeconds: integer(formData.get("retryBaseSeconds"), 60), retryMaxSeconds: integer(formData.get("retryMaxSeconds"), 3600), timeoutSeconds: integer(formData.get("timeoutSeconds"), 300) }, type: String(formData.get("type") ?? "") });
     if (!job) redirect(`${PATH}?error=missing`);
     await logActivity({ action: "job.updated", actorType: "admin", adminUserId: admin.id, entityType: "job", entityId: job.id, entityLabel: job.code, message: "Фоновая задача изменена." });
   } catch { redirect(`${PATH}?error=update`); }
@@ -56,8 +57,10 @@ export async function runJobNowAction(formData: FormData) {
 
 export async function enqueueAdHocJobAction(formData: FormData) {
   const admin = await requireAdminUser();
-  try { const run = await enqueueJobRun({ createdByAdminId: admin.id, payload: JSON.parse(String(formData.get("payload") ?? "{}")), source: "manual", type: String(formData.get("type") ?? "") }); await logActivity({ action: "job-run.manual-requested", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Разовый запуск поставлен в очередь." }); } catch { redirect(`${PATH}?error=enqueue`); }
-  revalidatePath(PATH); redirect(PATH);
+  try { assertJobManualPlacement(String(formData.get("type") ?? ""), "general"); const run = await enqueueJobRun({ createdByAdminId: admin.id, payload: JSON.parse(String(formData.get("payload") ?? "{}")), source: "manual", type: String(formData.get("type") ?? "") }); await logActivity({ action: "job-run.manual-requested", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Разовый запуск поставлен в очередь." }); } catch {
+    redirect(`${PATH}?error=enqueue`);
+  }
+  revalidatePath(PATH); redirect("/admin/tools/jobs/current");
 }
 
 export async function retryJobRunAction(formData: FormData) {
@@ -68,6 +71,8 @@ export async function retryJobRunAction(formData: FormData) {
   try {
     run = await retryFailedJobRun(runId, admin.id);
   } catch (error) {
+    if (error instanceof JobError && error.code === "reputation-subject-required") redirect("/admin/reputation");
+    if (error instanceof JobError && error.code === "job-type-retired") redirect("/admin/tools/jobs/journal?error=job-type-retired");
     if (error instanceof JobError && error.code === "automoderation-terminal") {
       redirect("/admin/tools/jobs/journal?error=automoderation-terminal");
     }
@@ -80,3 +85,16 @@ export async function retryJobRunAction(formData: FormData) {
 }
 
 export async function cancelJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); if (!Number.isSafeInteger(runId) || runId <= 0) redirect(`${PATH}?error=invalid`); const run = await cancelJobRun(runId); if (run) await logActivity({ action: "job-run.cancelled", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Запуск фоновой задачи отменён." }); revalidatePath(destination); redirect(destination); }
+
+export async function enqueueMigrationJobAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const path = "/admin/tools/jobs/migrations";
+  try {
+    const type = String(formData.get("type") ?? "");
+    assertJobManualPlacement(type, "migration");
+    const run = await enqueueJobRun({ type, payload: JSON.parse(String(formData.get("payload") ?? "{}")), source: "manual", createdByAdminId: admin.id });
+    await logActivity({ action: "job-run.manual-requested", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: type, message: "Миграция поставлена в очередь." });
+  } catch { redirect(`${path}?error=enqueue`); }
+  revalidatePath(path);
+  redirect("/admin/tools/jobs/current");
+}

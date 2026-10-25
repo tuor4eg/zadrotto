@@ -1,3 +1,8 @@
+import { syncTmdbSeriesCreators, clearTmdbSeriesCreators } from "./tmdb-series-creators";
+import { prepareTmdbSeriesSnapshotReferences } from "@/lib/providers/tmdb-series-service";
+import { TMDB_SERIES_FACT_KEYS } from "@/lib/providers/tmdb-series-adapter";
+import { syncTmdbDirectorCreators, syncTmdbFilmDirectors } from "./tmdb-directors";
+import { syncTmdbCompanyCreators, syncTmdbFilmCompanies } from "./tmdb-companies";
 import { compactBookFacts } from "@/lib/providers/book-facts";
 import { TMDB_FILM_FACT_KEYS } from "@/lib/providers/tmdb-film-adapter";
 import { prepareTmdbFilmSnapshotReferences } from "@/lib/providers/tmdb-film-service";
@@ -46,6 +51,7 @@ export type MediaItemMetadataValue = {
 };
 
 export type UpsertMediaItemMetadataInput = {
+  enqueueCompanyLogos?: boolean;
   snapshotReferences?: SnapshotReference[];
   jobGuard?: SnapshotJobGuard;
   expectedSource?: {provider:string|null;externalId:string|null};
@@ -94,16 +100,20 @@ export async function upsertMediaItemMetadata(
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
   const provider = input.sourceProvider?.trim() || null;
-  const filmPrepared = input.snapshotReferences && provider === "tmdb" && input.sourceExternalId
-    ? await prepareTmdbFilmSnapshotReferences(input.sourceExternalId,input.snapshotReferences,transaction ?? db) : null;
   const prepared = input.snapshotReferences && provider && provider !== "tmdb" && input.sourceExternalId
     ? await prepareBookSnapshotReferences(provider,input.sourceExternalId,input.snapshotReferences,transaction ?? db) : null;
-  const fetchedAt = input.fetchedAt === undefined ? filmPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
   const work = async (tx:DbTransaction) => {
     await guardSnapshotJob(tx,input.jobGuard);
     const [item] = await tx.select({ mediaType: mediaItems.mediaType, title: mediaItems.title })
       .from(mediaItems).where(eq(mediaItems.id, input.mediaItemId)).for("update");
     if (!item) throw new Error("Media item not found");
+    const filmPrepared = input.snapshotReferences && provider === "tmdb" && item.mediaType === "film" && input.sourceExternalId
+      ? await prepareTmdbFilmSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const seriesPrepared = input.snapshotReferences && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId
+      ? await prepareTmdbSeriesSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const tmdbPrepared = filmPrepared ?? seriesPrepared;
+    if (input.snapshotReferences && provider === "tmdb" && !tmdbPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
+    const fetchedAt = input.fetchedAt === undefined ? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
     const normalizedBook = item.mediaType === "book" && isBookSnapshotProvider(provider ?? "");
     const [previous] = await tx.select({mediaItemId:mediaItemMetadata.mediaItemId,sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,
       facts:mediaItemMetadata.facts}).from(mediaItemMetadata)
@@ -113,14 +123,15 @@ export async function upsertMediaItemMetadata(
     if (prepared && item.mediaType !== "book") throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     if (input.snapshotReferences) await lockProviderSnapshotReferences(tx,input.snapshotReferences);
     if (normalizedBook && !prepared) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
-    const sourceFacts = filmPrepared ? { ...filmPrepared.projection.facts, ...filmPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
+    if ((item.mediaType === "film" || item.mediaType === "series") && provider === "tmdb" && !tmdbPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
+    const sourceFacts = tmdbPrepared ? { ...tmdbPrepared.projection.facts, ...tmdbPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
     const publishers = prepared && previous?.sourceProvider === provider ? await getWorkingBookPublishers(tx,input.mediaItemId,provider!) : [];
     const contributors = prepared ? [...prepared.projection.contributors,...publishers] : undefined;
     const facts = normalizedBook ? compactBookFacts(previous?.facts ?? {}) : {
       ...(item.mediaType === "book" ? compactBookFacts(previous?.facts ?? {}) : {}),
-      ...(filmPrepared && previous?.sourceProvider === provider
-        ? Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !([...TMDB_FILM_FACT_KEYS, "genres", "genreReferences"] as readonly string[]).includes(key)))
-        : item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...(filmPrepared ? filmPrepared.projection.facts : sourceFacts),
+      ...(tmdbPrepared && previous?.sourceProvider === provider
+        ? Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !([...(seriesPrepared ? TMDB_SERIES_FACT_KEYS : TMDB_FILM_FACT_KEYS), "productionCompanies", "genres", "genreReferences"] as readonly string[]).includes(key)))
+        : item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...(tmdbPrepared ? tmdbPrepared.projection.facts : sourceFacts),
     };
     await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: sourceFacts, provider, mediaType: item.mediaType });
     // Global order: media item → genre request keys → platform request keys.
@@ -133,8 +144,8 @@ export async function upsertMediaItemMetadata(
         mediaItemId: input.mediaItemId,
         facts,
         sourceProvider: provider,
-        sourceExternalId: filmPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-        sourceUrl: input.sourceUrl ?? filmPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+        sourceExternalId: tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+        sourceUrl: input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
         fetchedAt,
         updatedAt: now,
       })
@@ -143,23 +154,24 @@ export async function upsertMediaItemMetadata(
         set: {
           facts,
           sourceProvider: provider,
-          sourceExternalId: filmPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-          sourceUrl: input.sourceUrl ?? filmPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+          sourceExternalId: tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+          sourceUrl: input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
           fetchedAt,
           updatedAt: now,
         },
       })
       .returning({...getTableColumns(mediaItemMetadata),facts:mediaItemMetadata.facts});
 
-    const partsResult = input.parts !== undefined && provider
-      ? await syncProviderTitleParts(tx, { mediaItemId: input.mediaItemId, provider, parts: input.parts })
+    const providerParts = seriesPrepared?.projection.parts ?? input.parts;
+    const partsResult = providerParts !== undefined && provider
+      ? await syncProviderTitleParts(tx, { mediaItemId: input.mediaItemId, provider, parts: providerParts })
       : { posters: [], conflicts: [] };
     for (const poster of partsResult.posters) {
       await createJobRun({ type: "media.title-part-poster", payload: poster, source: "event",
         maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 3600, timeoutSeconds: 120 }, now, tx);
     }
     // Client candidates do not carry parts. Refresh the trusted provider response after source selection.
-    if (input.requestProviderParts && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId) {
+    if (input.requestProviderParts && !seriesPrepared && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId) {
       await createJobRun({ type: "media.metadata-backfill", payload: { mediaItemId: input.mediaItemId, partsOnly: true }, source: "event",
         maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 3600, timeoutSeconds: 300 }, now, tx);
     }
@@ -176,7 +188,7 @@ export async function upsertMediaItemMetadata(
       externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(input.facts) : [] });
 
     }
-    if (prepared || filmPrepared || Object.keys(input.facts).length > 0) {
+    if (prepared || tmdbPrepared || Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
@@ -184,10 +196,24 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
       const references = extractGameCompanyReferences(input.facts, provider);
       if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references });
-    } else if (!filmPrepared) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
-    if (filmPrepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
-      {id:filmPrepared.primary.id,payloadHash:filmPrepared.primary.payloadHash,purpose:"primary"},
+    } else if (!tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    if (tmdbPrepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
+      {id:tmdbPrepared.primary.id,payloadHash:tmdbPrepared.primary.payloadHash,purpose:"primary"},
     ],{kind:"system"});
+    if (!filmPrepared && item.mediaType === "film" && previous?.sourceProvider === "tmdb"
+      && (provider !== previous.sourceProvider || (input.sourceExternalId ?? null) !== previous.sourceExternalId)) {
+      await syncTmdbCompanyCreators(tx, input.mediaItemId, []);
+      await syncTmdbDirectorCreators(tx, input.mediaItemId, []);
+    }
+    if (!seriesPrepared && item.mediaType === "series" && previous?.sourceProvider === "tmdb"
+      && (provider !== previous.sourceProvider || (input.sourceExternalId ?? null) !== previous.sourceExternalId)) {
+      await clearTmdbSeriesCreators(tx, input.mediaItemId);
+    }
+    if (seriesPrepared) await syncTmdbSeriesCreators(tx, input.mediaItemId, { enqueueLogos: input.enqueueCompanyLogos !== false });
+    if (filmPrepared) {
+      await syncTmdbFilmCompanies(tx, input.mediaItemId, { enqueueLogos: input.enqueueCompanyLogos !== false });
+      await syncTmdbFilmDirectors(tx, input.mediaItemId);
+    }
     if (prepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
       {id:prepared.primary.id,payloadHash:prepared.primary.payloadHash,purpose:"primary"},
       ...prepared.dependencies.map(row=>({id:row.id,payloadHash:row.payloadHash,purpose:"dependency" as const})),
@@ -241,7 +267,8 @@ export async function upsertMediaItemMetadata(
 
 export async function deleteMediaItemMetadata(mediaItemId: number) {
   await db.transaction(async (tx) => {
-    await tx.select({ id: mediaItems.id }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
+    const [item] = await tx.select({ id: mediaItems.id, mediaType: mediaItems.mediaType }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
+    if (item?.mediaType === "series") await clearTmdbSeriesCreators(tx, mediaItemId);
     await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
     await tx.delete(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, mediaItemId));
     await syncProviderCreators(tx, { mediaItemId, provider: null, mediaType: "", facts: {} });

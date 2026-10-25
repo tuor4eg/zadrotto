@@ -15,6 +15,7 @@ export type MetadataBackfillPayload = {
 }
 
 export async function backfillMediaMetadata(input: {
+  signal?: AbortSignal
   attempt?: number
   force?: boolean
   mediaType?: string
@@ -25,6 +26,7 @@ export async function backfillMediaMetadata(input: {
   lockToken?: string
   runId?: number
 } = {}): Promise<MetadataJobResult> {
+  input.signal?.throwIfAborted()
   const items = await getMediaItemsMissingMetadata({
     limit: input.mediaItemId ? 1 : input.limit ?? 25,
     mediaItemId: input.mediaItemId,
@@ -36,9 +38,10 @@ export async function backfillMediaMetadata(input: {
     return { failed: 0, retryableFailed: 0, skipped: 0, updated: 0, updatedItems: [] }
   }
 
-  const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100, input.runId && input.lockToken ? {runId:input.runId,lockToken:input.lockToken} : undefined)
+  const context = await createMetadataProviderJobContext(input.quotaReserve ?? 100, input.runId && input.lockToken ? {runId:input.runId,lockToken:input.lockToken} : undefined, input.signal)
   return runMetadataBackfill({
     context,
+    signal: input.signal,
     items,
     store: createMetadataJobStore({
       attempt: input.attempt ?? 1,

@@ -249,6 +249,7 @@ export function CatalogHeaderControls({
 
       if (nextFilters.q !== undefined) {
         nextSearchParams.delete("series");
+        nextSearchParams.delete("seriesChildren");
         nextSearchParams.delete("genre");
         nextSearchParams.delete("creator");
         nextSearchParams.delete("creatorRole");

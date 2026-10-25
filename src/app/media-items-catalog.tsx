@@ -167,6 +167,7 @@ export function MediaItemsCatalog({
     pageSize: pageSize !== defaultPageSize ? String(pageSize) : undefined,
     q: searchQuery || undefined,
     series: seriesCode ?? undefined,
+    seriesChildren: seriesCode && searchParams.get("seriesChildren") === "0" ? "0" : undefined,
     genre: genreSlug ?? undefined,
     platform: platformSlug ?? undefined,
     creator: creatorSlug ?? undefined,

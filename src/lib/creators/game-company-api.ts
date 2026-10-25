@@ -5,7 +5,12 @@ import type { ProviderSearchOptions } from "@/lib/covers/types";
 import { getIgdbCompanyReferences, getRawgCompanyReferences } from "@/lib/creators/game-company-references";
 import { isGameCompanyId, type GameCompanyProvider, type GameCompanyProfile, type GameCompanyReference } from "@/lib/creators/game-companies";
 
+import { providerRequestStartedAt, saveProviderSnapshot, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { creatorProfileDescriptor, creatorProfileTargetFromBinding, IGDB_COMPANY_PROFILE_FIELDS } from "@/lib/providers/creator-profile-targets";
+import type { JSONValue } from "@/lib/providers/types";
+
 export type GameCompanyApiOptions = {
+  jobGuard?: SnapshotJobGuard;
   providerCredentials?: ProviderSearchOptions["providerCredentials"];
   backfill?: boolean;
   signal?: AbortSignal;
@@ -76,10 +81,12 @@ export async function fetchGameCompanyProfiles(provider:GameCompanyProvider, ext
   if(provider==="igdb") {
     for(let offset=0;offset<ids.length;offset+=100) {
       const batch=ids.slice(offset,offset+100).map(id=>id.split(":")[1]);
-      const rows=await igdbJson<Array<{id:number;name?:string;url?:string;slug?:string;logo?:{image_id?:string};description?:string;country?:number;websites?:unknown;parent?:number;changed_company_id?:number}>>("companies",`fields name,url,slug,logo.image_id,description,country,websites.url,parent,changed_company_id; where id = (${batch.join(",")}); limit 100;`,options);
+      const requestStartedAt = await providerRequestStartedAt();
+      const rows=await igdbJson<Array<{id:number;name?:string;url?:string;slug?:string;logo?:{image_id?:string};description?:string;country?:number;websites?:unknown;parent?:number;changed_company_id?:number}>>("companies",`fields ${IGDB_COMPANY_PROFILE_FIELDS}; where id = (${batch.join(",")}); limit 100;`,options);
       if(!Array.isArray(rows)) throw new Error("Некорректный ответ IGDB.");
       for(const row of rows) {
         if(!batch.includes(String(row.id)) || !row.name?.trim()) throw new Error("Некорректный профиль IGDB.");
+        await persistProfileRaw(provider, `company:${row.id}`, row as unknown as JSONValue, requestStartedAt, options);
         const {id,name,url,slug,logo,...details}=row;
         result.push({provider,externalId:`company:${id}`,name:name.trim(),sourceUrl:url??(slug?`https://www.igdb.com/companies/${slug}`:null),details,imageUrl:logo?.image_id?`https://images.igdb.com/igdb/image/upload/t_original/${logo.image_id}.png`:null});
       }
@@ -88,11 +95,20 @@ export async function fetchGameCompanyProfiles(provider:GameCompanyProvider, ext
     for(const externalId of ids) {
       const [kind,id]=externalId.split(":");
       let row:{id:number;name?:string;slug?:string;description?:string;image_background?:string;games_count?:number};
+      const requestStartedAt = await providerRequestStartedAt();
       try { row=await fetchRawgJson(rawgUrl(`${kind}s/${id}`,options),{signal:options.signal},options.backfill); }
       catch(error) { if(error instanceof ProviderHttpError && error.status===404) continue; throw error; }
       if(String(row.id)!==id || !row.name?.trim()) throw new Error("Некорректный профиль RAWG.");
+      await persistProfileRaw(provider, externalId, row as unknown as JSONValue, requestStartedAt, options);
       result.push({provider,externalId,name:row.name.trim(),sourceUrl:`https://rawg.io/${kind}s/${row.slug??id}`,details:{description:row.description??null,image_background:row.image_background??null,games_count:row.games_count??null},imageUrl:null});
     }
   }
   return result;
+}
+
+async function persistProfileRaw(provider: GameCompanyProvider, externalCreatorId: string, payload: JSONValue, requestStartedAt: Date, options: GameCompanyApiOptions) {
+  options.signal?.throwIfAborted();
+  const target = creatorProfileTargetFromBinding({ provider, externalCreatorId });
+  if (!target) throw new Error("INVALID_CREATOR_PROFILE_TARGET");
+  await saveProviderSnapshot({ ...creatorProfileDescriptor(target), payload, payloadHash: "", contentType: "application/json", requestStartedAt, fetchedAt: new Date() }, options.jobGuard);
 }

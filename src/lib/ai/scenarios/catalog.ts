@@ -1,9 +1,16 @@
 export const AI_SCENARIO_KEYS = {
   SUGGEST_SERIES: "suggest_series",
+  CREATOR_NAME_LOCALIZATION: "creator_name_localization",
   EDITORIAL_SUMMARY: "editorial_summary",
 } as const;
 
 export const AI_SCENARIOS = {
+  creator_name_localization: {
+    key: "creator_name_localization",
+    name: "Локализация имён персон",
+    defaultInstruction: "Верни общеупотребительное русское написание имени или корректную транслитерацию с учётом происхождения.",
+    defaultConfig: {},
+  },
   editorial_summary: {
     key: "editorial_summary",
     name: "Редакционные справки",

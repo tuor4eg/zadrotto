@@ -1,3 +1,5 @@
+import { getImportedCreatorNameLocalization } from "./creator-name-import";
+import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, eq, inArray, or, sql } from "drizzle-orm";
 import { creators, creatorTypes, creatorRoles, creatorRequests, creatorRequestMediaItems, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources } from "@/db/schema";
 import { normalizeSearchSql } from "@/db/search";
@@ -49,6 +51,7 @@ export async function syncBggCreators(tx: CreatorTransaction, entryId: number, f
         const conflict = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "bgg"), eq(providerCreatorBindings.creatorId, candidates[0].id)));
         if (!conflict.length) {
           [binding] = await tx.insert(providerCreatorBindings).values({ provider: "bgg", externalCreatorId: externalId, externalCreatorName: refs[0].name, creatorId: candidates[0].id }).returning();
+          await enqueueCreatorImageFill(tx, binding.creatorId);
           createdMappings++;
         }
       }
@@ -96,10 +99,12 @@ export async function resolveBggCreatorRequest(tx: CreatorTransaction, request: 
     const [type] = await tx.select().from(creatorTypes).where(eq(creatorTypes.code, input.typeCode!));
     if (!type) throw new Error("Тип создателя не настроен.");
     const [next] = await tx.execute<{ id: number }>(sql`select nextval(pg_get_serial_sequence('creators','id'))::int id`);
-    const [created] = await tx.insert(creators).values({ id: next.id, name: input.name.trim(), typeId: type.id, slug: `creator-${next.id}` }).returning();
+    const [created] = await tx.insert(creators).values({ id: next.id, name: input.name.trim(), ...(input.typeCode === "person" ? getImportedCreatorNameLocalization({ name: input.name }) : {}), typeId: type.id, slug: `creator-${next.id}` }).returning();
     creatorId = created.id;
+    await enqueueCreatorImageFill(tx, created.id);
   }
   const [creator] = creatorId ? await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, creatorId)).for("update") : [];
   if (!creator) throw new Error("Выберите существующего создателя.");
   await tx.insert(providerCreatorBindings).values({ provider: "bgg", externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+  await enqueueCreatorImageFill(tx, creator.id);
 }

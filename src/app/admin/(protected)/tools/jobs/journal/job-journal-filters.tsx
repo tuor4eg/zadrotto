@@ -7,10 +7,12 @@ import { Select } from "@/components/ui/form"
 import { buildJobJournalHref } from "./href"
 
 export function JobJournalFilters({
+  type,
   jobFilter,
   jobs,
   pageSize,
 }: {
+  type?: string
   jobFilter: string
   jobs: Array<{ code: string; id: number }>
   pageSize: number
@@ -22,6 +24,7 @@ export function JobJournalFilters({
     startTransition(() => {
       router.replace(
         buildJobJournalHref({
+          type: next.job === undefined ? type : undefined,
           job: next.job ?? jobFilter,
           pageSize: next.pageSize ?? pageSize,
         }),

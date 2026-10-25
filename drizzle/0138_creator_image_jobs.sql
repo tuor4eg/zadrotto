@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX job_runs_creator_image_fill_active_unique ON job_runs ((payload->>'creatorId'), (payload->>'bindingFingerprint')) WHERE type = 'media.creator-image-fill' AND status IN ('queued','running');

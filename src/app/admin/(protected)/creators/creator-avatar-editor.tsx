@@ -14,11 +14,14 @@ export function CreatorAvatarEditor({
   creatorId,
   authorName,
   avatarObjectKey,
+  creatorType = "person",
 }: {
   creatorId: number;
   authorName: string;
   avatarObjectKey: string | null;
+  creatorType?: string;
 }) {
+  const organization = creatorType === "organization";
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
@@ -92,12 +95,12 @@ export function CreatorAvatarEditor({
         <input type="hidden" name="creatorId" value={creatorId} />
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3">
-            <span className="grid size-16 place-items-center overflow-hidden rounded-full bg-stone-200">{avatarObjectKey ? (
+            <span className={`grid size-16 place-items-center overflow-hidden bg-stone-200 ${organization ? "rounded-md" : "rounded-full"}`}>{avatarObjectKey ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={resolveCreatorAvatarUrl(avatarObjectKey) ?? undefined} alt={authorName} className="size-full object-cover" />
+              <img src={resolveCreatorAvatarUrl(avatarObjectKey) ?? undefined} alt={authorName} className={`size-full bg-white ${organization ? "object-contain" : "object-cover"}`} />
             ) : authorName.slice(0, 1)}</span>
             <div>
-              <h3 className="font-semibold">Аватар</h3>
+              <h3 className="font-semibold">{organization ? "Логотип" : "Фото"}</h3>
               <p className="text-sm text-stone-600">JPEG, PNG или WebP до 5 МБ.</p>
             </div>
           </div>
@@ -150,7 +153,7 @@ export function CreatorAvatarEditor({
                 className="font-serif text-2xl outline-none"
                 tabIndex={-1}
               >
-                Кадрирование аватара
+                Кадрирование изображения
               </h3>
               <p id="avatar-crop-description" className="mt-1 text-sm text-stone-600">
                 Перемести изображение и настрой масштаб, затем сохрани выбранную область.
@@ -162,7 +165,7 @@ export function CreatorAvatarEditor({
                     crop={crop}
                     zoom={zoom}
                     aspect={1}
-                    cropShape="round"
+                    cropShape={organization ? "rect" : "round"}
                     showGrid={false}
                     onCropChange={setCrop}
                     onZoomChange={setZoom}
@@ -171,13 +174,13 @@ export function CreatorAvatarEditor({
                 </div>
                 <div>
                   <p className="mb-2 text-sm text-stone-600">Предпросмотр</p>
-                  <div className="relative size-32 overflow-hidden rounded-full bg-stone-950 pointer-events-none">
+                  <div className={`relative size-32 overflow-hidden bg-stone-950 pointer-events-none ${organization ? "rounded-md" : "rounded-full"}`}>
                     <Cropper
                       image={imageUrl}
                       crop={crop}
                       zoom={zoom}
                       aspect={1}
-                      cropShape="round"
+                      cropShape={organization ? "rect" : "round"}
                       showGrid={false}
                       onCropChange={() => undefined}
                     />
@@ -219,7 +222,7 @@ export function CreatorAvatarEditor({
       {avatarObjectKey ? (
         <form action={removeCreatorAvatarAction} className="mt-3">
           <input type="hidden" name="creatorId" value={creatorId} />
-          <Button type="submit" variant="outline">Удалить аватар</Button>
+          <Button type="submit" variant="outline">Удалить изображение</Button>
         </form>
       ) : null}
     </section>

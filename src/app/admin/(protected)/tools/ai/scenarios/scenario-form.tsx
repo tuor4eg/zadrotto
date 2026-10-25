@@ -145,7 +145,7 @@ export function ScenarioForm({
           Сбросить к системной
         </Button>
       </div> : null}
-      {scenarioKey !== "editorial_summary" ? <div className="grid gap-2">
+      {scenarioKey === "suggest_series" ? <div className="grid gap-2">
         <Label htmlFor="scenario-result-limit">Количество предложений</Label>
         <Input
           id="scenario-result-limit"
@@ -268,7 +268,7 @@ export function ScenarioForm({
 
 function validateScenarioForm(formData: FormData, provider: ScenarioFormProvider) {
   const errors: Record<string, string> = {};
-  if (formData.get("scenarioKey") !== "editorial_summary" && formData.get("resultLimit") !== null) {
+  if (formData.get("scenarioKey") === "suggest_series" && formData.get("resultLimit") !== null) {
     const resultLimitError = validateResultLimit(String(formData.get("resultLimit") ?? ""));
     if (resultLimitError) errors.resultLimit = resultLimitError;
   }

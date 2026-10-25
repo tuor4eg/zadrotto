@@ -1,3 +1,4 @@
+import { getSeriesCreatorDisplay } from "@/db/queries/tmdb-series-display";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -5,6 +6,8 @@ import { notFound, redirect } from "next/navigation";
 
 import { TitlePartsSection } from "@/components/archive/title-parts-section";
 import { getGameCompanyDisplay } from "@/db/queries/game-companies";
+import { getFilmDirectorDisplay } from "@/db/queries/tmdb-director-display";
+import { getFilmCompanyDisplay } from "@/db/queries/tmdb-company-display";
 import { getTitlePartsForMediaItem } from "@/db/queries/title-parts";
 import { MediaItemDetails } from "@/app/media-item-details";
 import { MediaItemRatingDialog } from "@/app/media-item-rating-dialog";
@@ -104,7 +107,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies] = await Promise.all([
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators] = await Promise.all([
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -120,6 +123,9 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     currentAuthor ? getParticipatingActiveQuiz(currentAuthor.id) : Promise.resolve(null),
     getTitlePartsForMediaItem(item.id, currentAuthor?.id),
     item.mediaType === "game" ? getGameCompanyDisplay(item.id) : Promise.resolve(undefined),
+    item.mediaType === "film" ? getFilmCompanyDisplay(item.id) : Promise.resolve(undefined),
+    item.mediaType === "film" ? getFilmDirectorDisplay(item.id) : Promise.resolve(undefined),
+    item.mediaType === "series" ? getSeriesCreatorDisplay(item.id) : Promise.resolve(undefined),
   ]);
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -129,7 +135,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
-          item={{ ...item, description: publicDescription, gameCompanies }}
+          item={{ ...item, description: publicDescription, gameCompanies, filmCompanies, filmDirectors, seriesCreators }}
           variant="archive"
           headerActions={
             headerState.currentAdminUser ? (

@@ -30,7 +30,7 @@ test("creator snapshots: transactional dates, fencing, source CAS and resumable 
       insert into creator_types values (1,'person'),(2,'collective'),(3,'organization');
       create table creators(id serial primary key, type_id integer not null references creator_types,
         name text not null, original_name text, slug text not null,
-        updated_at timestamptz default now());
+        updated_at timestamptz default now(),name_ru text,name_ru_source text,name_ru_processed boolean default false);
       create table creator_relations(source_creator_id integer references creators,target_creator_id integer references creators,
         relation_type text,primary key(source_creator_id,target_creator_id,relation_type));
       create table provider_creator_bindings(id serial primary key,creator_id integer references creators,

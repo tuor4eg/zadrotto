@@ -1,4 +1,4 @@
-import { Building2, Clapperboard, Code2, Dices, Drama, Feather, Palette, ScrollText, UserRound, type LucideIcon } from "lucide-react";
+import { Building2, Clapperboard, Code2, Dices, Drama, Feather, Lightbulb, Palette, ScrollText, Tv, UserRound, type LucideIcon } from "lucide-react";
 
 const CREATOR_ROLE_ICONS: Record<string, LucideIcon> = {
   writer: Feather,
@@ -9,6 +9,9 @@ const CREATOR_ROLE_ICONS: Record<string, LucideIcon> = {
   director: Clapperboard,
   actor: Drama,
   screenwriter: ScrollText,
+  network: Tv,
+  production_company: Clapperboard,
+  creator: Lightbulb,
 };
 
 export function CreatorRoleIcon({ code, className }: { code: string; className?: string }) {

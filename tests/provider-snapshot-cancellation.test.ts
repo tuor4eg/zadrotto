@@ -34,7 +34,7 @@ test("snapshot cancellation fences old workers and preserves resumable payload",
     assert.equal((await queries.cancelJobRun(1))?.status, "cancelled", "any queued job remains cancellable");
     assert.equal(await queries.cancelQueuedJobRun(2), null, "legacy queued-only helper cannot stop running work");
     assert.equal((await queries.cancelQueuedJobRun(6))?.status, "cancelled");
-    assert.equal(await queries.cancelJobRun(3), null, "unrelated running jobs retain previous behavior");
+    assert.equal((await queries.cancelJobRun(3))?.status, "cancelled", "ordinary running jobs can also be stopped");
     assert.equal(await queries.cancelJobRun(4), null);
     const cancelled = await queries.cancelJobRun(2);
     assert.equal(cancelled?.status, "cancelled");

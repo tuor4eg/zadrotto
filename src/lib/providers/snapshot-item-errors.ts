@@ -11,6 +11,7 @@ export function snapshotItemError(id: number, error: unknown): SnapshotItemError
   if (Number.isInteger(status) && status >= 400 && status <= 599) return { id, code: `provider-http-${status}` };
   const message = error instanceof Error ? error.message : "";
   const known: Record<string, string> = {
+    "INVALID_CREATOR_PROFILE_TARGET": "unsupported-profile", "INVALID_CREATOR_PROFILE_RESPONSE": "invalid-provider-response",
     "CREATOR_BINDING_MISSING": "missing-binding", "CREATOR_BINDING_AMBIGUOUS": "ambiguous-binding",
     "SNAPSHOT_ENTITY_NOT_FOUND": "creator-missing", "INVALID_CREATOR_SNAPSHOT": "invalid-provider-response",
     "PROVIDER_SOURCE_CHANGED": "source-changed", "provider-disabled": "provider-disabled", "migration-difference": "migration-difference",
@@ -29,7 +30,8 @@ export function snapshotItemErrorMessage(error: SnapshotItemError): string {
   }
   if (/^provider-http-[45]\d\d$/.test(error.code)) return `Провайдер вернул HTTP ${error.code.slice(-3)}.`;
   const messages: Record<string, string> = {
-    "missing-binding": "Нет подтверждённой привязки FantLab.",
+    "unsupported-profile": "Получение этого внешнего профиля пока не поддерживается.",
+    "missing-binding": "Нет подтверждённой внешней привязки.",
     "ambiguous-binding": "У создателя несколько активных привязок FantLab. Выберите одну.",
     "creator-missing": "Создатель больше не существует.",
     "invalid-provider-response": "Провайдер вернул данные другого ресурса или некорректный ответ.",

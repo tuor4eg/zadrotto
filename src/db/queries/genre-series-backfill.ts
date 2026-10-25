@@ -1,19 +1,30 @@
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
-import { and, asc, eq, inArray, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { franchises, genres, mediaItemFranchises, mediaItemGenres, mediaItems } from "@/db/schema";
 import { lockMediaItemFranchiseMutations } from "@/db/queries/franchises";
-import { missingGenreSeriesBindingSql } from "@/db/queries/media-item-genres";
+import { visibleGenreSql } from "@/db/queries/media-item-genres";
 import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
-/** One finite pass over published candidates present when the administrator starts the run. */
-export async function backfillGenreSeriesLinks(signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
+type GenreSeriesScope = { genreId: number; afterId: number; throughId: number; limit: number };
+export function genreSeriesCandidatesQuery(input: GenreSeriesScope) {
+  const query = db.select({ id: mediaItems.id }).from(mediaItems).where(and(
+    eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+    sql`exists (select 1 from media_item_genres mg join genres g on g.id=mg.genre_id
+      where mg.media_item_id=${mediaItems.id} and g.id=${input.genreId} and g.is_active=true
+      and g.replacement_franchise_id is not null and ${visibleGenreSql(mediaItems.id, sql`g.replacement_franchise_id`)})`,
+    gt(mediaItems.id, input.afterId),
+    lte(mediaItems.id, input.throughId),
+  )).orderBy(asc(mediaItems.id));
+  return query.limit(input.limit + 1);
+}
+/** Bounded subject-specific application; the historical global pass is retired. */
+export async function applyGenreSeriesLinks(input: GenreSeriesScope, signal?: AbortSignal, jobGuard?: SnapshotJobGuard) {
   signal?.throwIfAborted();
-  const candidates = await db.select({ id: mediaItems.id }).from(mediaItems)
-    .where(and(eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), missingGenreSeriesBindingSql()))
-    .orderBy(asc(mediaItems.id));
+  const rows = await genreSeriesCandidatesQuery(input);
+  const candidates = rows.slice(0, input.limit);
   let addedLinks = 0;
   let updatedRecords = 0;
   for (const candidate of candidates) {
@@ -29,7 +40,7 @@ export async function backfillGenreSeriesLinks(signal?: AbortSignal, jobGuard?: 
         .where(eq(mediaItemGenres.mediaItemId, item.id));
       if (!linkedGenres.length) return 0;
       const genreRows = await tx.select({ franchiseId: genres.replacementFranchiseId }).from(genres)
-        .where(and(inArray(genres.id, linkedGenres.map((row) => row.genreId)), eq(genres.isActive, true)))
+        .where(and(inArray(genres.id, linkedGenres.map((row) => row.genreId)), eq(genres.isActive, true), eq(genres.id, input.genreId)))
         .orderBy(asc(genres.id)).for("share");
       const seriesIds = [...new Set(genreRows.flatMap((genre) => genre.franchiseId === null ? [] : [genre.franchiseId]))];
       if (!seriesIds.length) return 0;
@@ -66,5 +77,5 @@ export async function backfillGenreSeriesLinks(signal?: AbortSignal, jobGuard?: 
     addedLinks += added;
     if (added > 0) updatedRecords++;
   }
-  return { candidateRecords: candidates.length, updatedRecords, addedLinks };
+  return { candidateRecords: candidates.length, updatedRecords, addedLinks, lastId: candidates.at(-1)?.id, hasMore: rows.length > input.limit };
 }

@@ -1,3 +1,4 @@
+import type { JobManualPlacement } from "./catalog";
 import type { JobRunSource } from "./model";
 
 export class JobError extends Error {
@@ -31,6 +32,7 @@ export type JobHandlerDefinition<TPayload> = {
   defaultTimeoutSeconds?: number;
   execute: (context: JobHandlerContext<TPayload>) => Promise<void>;
   label: string;
+  manualPlacement?: JobManualPlacement;
   parsePayload: (value: unknown) => TPayload;
   schedulable?: boolean;
   type: string;
@@ -43,6 +45,7 @@ export type AnyJobHandlerDefinition = {
   defaultTimeoutSeconds?: number;
   execute: (context: JobHandlerContext<never>) => Promise<void>;
   label: string;
+  manualPlacement?: JobManualPlacement;
   parsePayload: (value: unknown) => unknown;
   schedulable?: boolean;
   type: string;

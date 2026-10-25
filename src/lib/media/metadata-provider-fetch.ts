@@ -17,7 +17,9 @@ import type { MetadataJobContext } from "@/lib/media/metadata-jobs"
 export async function createMetadataProviderJobContext(
   quotaReserve: number,
   snapshotJobGuard?: {runId:number;lockToken:string},
+  signal?: AbortSignal,
 ): Promise<MetadataJobContext> {
+  signal?.throwIfAborted()
   const [coverSettings, providerSettings, providerRateLimits, providerCredentials] = await Promise.all([
     getCoverSettings(),
     getCoverProviderSettings(),
@@ -25,7 +27,9 @@ export async function createMetadataProviderJobContext(
     getCoverProviderCredentialsForSearch(),
   ])
   const limiter = createProviderCoverSearchRateLimiter(providerRateLimits)
+  signal?.throwIfAborted()
   const options = {
+    signal,
     snapshotJobGuard,
     candidateLimit: coverSettings.candidateLimit,
     tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
@@ -39,10 +43,13 @@ export async function createMetadataProviderJobContext(
   }
 
   return {
+    signal,
     fetchTitleMetadata(input: TitleMetadataInput) {
+      signal?.throwIfAborted()
       return getTitleMetadata(input, undefined, options, providerSettings)
     },
     searchTitles(input: TitleSearchInput) {
+      signal?.throwIfAborted()
       return searchTitleCandidates(input, undefined, options, providerSettings)
     },
   }

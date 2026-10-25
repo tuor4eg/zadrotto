@@ -1,3 +1,5 @@
+import { creatorDisplayNameSql } from "./creator-display";
+import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { creators, creatorTypes, creatorRoles, creatorRequests, creatorRequestMediaItems, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, gameCompanyProfiles, gameCompanyRosters, mediaItemMetadata } from "@/db/schema";
@@ -72,11 +74,11 @@ export async function saveGameCompanyRoster(tx: CreatorTransaction, input: { med
 
 /** Decision transaction holds request lock, but never entry locks. Removal is done by apply. */
 export async function resolveGameCompanyRequest(tx: CreatorTransaction, request: typeof creatorRequests.$inferSelect, input: { decision: "create" | "map" | "exclude"; creatorId?: number; name?: string }) {
-  if (!isGameCompanyProvider(request.provider) || !request.externalCreatorId) throw new Error("Некорректная заявка организации.");
+  if ((!isGameCompanyProvider(request.provider) && request.provider !== "tmdb") || !request.externalCreatorId || (request.provider === "tmdb" && !/^(company|network):/.test(request.externalCreatorId))) throw new Error("Некорректная заявка организации.");
   await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider), eq(providerCreatorExclusions.externalCreatorId, request.externalCreatorId)));
   if (input.decision === "exclude") {
     await removeGameCompanyBinding(tx, request.provider, request.externalCreatorId);
-    await tx.insert(providerCreatorExclusions).values({ provider: request.provider, mediaType: "game", externalCreatorId: request.externalCreatorId, externalCreatorName: request.externalCreatorName, normalizedExternalCreatorName: request.normalizedExternalCreatorName });
+    await tx.insert(providerCreatorExclusions).values({ provider: request.provider, mediaType: request.mediaType, externalCreatorId: request.externalCreatorId, externalCreatorName: request.externalCreatorName, normalizedExternalCreatorName: request.normalizedExternalCreatorName });
     return;
   }
   let creatorId = input.creatorId;
@@ -87,11 +89,13 @@ export async function resolveGameCompanyRequest(tx: CreatorTransaction, request:
     const [next] = await tx.execute<{ id: number }>(sql`select nextval(pg_get_serial_sequence('creators','id'))::int id`);
     const [created] = await tx.insert(creators).values({ id: next.id, name: input.name.trim(), slug: `creator-${next.id}`, typeId: type.id }).returning();
     creatorId = created.id;
+    await enqueueCreatorImageFill(tx, created.id);
   }
   const [creator] = creatorId ? await tx.select({ id: creators.id, type: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, creatorId)).for("update", { of: creators }) : [];
   if (!creator || creator.type !== "organization") throw new Error("Выберите организацию.");
   await removeGameCompanyBinding(tx, request.provider, request.externalCreatorId);
   await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: request.externalCreatorId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+  await enqueueCreatorImageFill(tx, creator.id);
 }
 
 export async function removeGameCompanyBinding(tx: CreatorTransaction, provider: string, externalId: string) {
@@ -109,13 +113,13 @@ export type GameCompanyDisplay = { provider: string; externalId: string; name: s
 export async function getGameCompanyDisplay(mediaItemId: number): Promise<GameCompanyDisplay[] | undefined> {
   const [rosters, manual] = await Promise.all([
     db.select().from(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, mediaItemId)).orderBy(asc(gameCompanyRosters.provider)),
-    db.select({ creatorId: creators.id, name: creators.name, slug: creators.slug, roleCode: creatorRoles.code }).from(entryCreators).innerJoin(creators, eq(creators.id, entryCreators.creatorId)).innerJoin(creatorRoles, eq(creatorRoles.id, entryCreators.roleId)).where(and(eq(entryCreators.entryId, mediaItemId), eq(entryCreators.isManual, true), inArray(creatorRoles.code, ["developer", "publisher"]))),
+    db.select({ creatorId: creators.id, name: creatorDisplayNameSql(), slug: creators.slug, roleCode: creatorRoles.code }).from(entryCreators).innerJoin(creators, eq(creators.id, entryCreators.creatorId)).innerJoin(creatorRoles, eq(creatorRoles.id, entryCreators.roleId)).where(and(eq(entryCreators.entryId, mediaItemId), eq(entryCreators.isManual, true), inArray(creatorRoles.code, ["developer", "publisher"]))),
   ]);
   if (!rosters.length && !manual.length) return undefined;
   const identities = [...new Set(rosters.flatMap(row => row.references.map(ref => ref.externalId)))];
   const relevantIds = identities.length ? identities : ["__empty__"];
   const [bindings, exclusions, requests] = await Promise.all([
-    db.select({ provider: providerCreatorBindings.provider, externalId: providerCreatorBindings.externalCreatorId, creatorId: creators.id, name: creators.name, slug: creators.slug }).from(providerCreatorBindings).innerJoin(creators, eq(creators.id, providerCreatorBindings.creatorId)).where(and(inArray(providerCreatorBindings.provider, ["igdb", "rawg"]), inArray(providerCreatorBindings.externalCreatorId, relevantIds), eq(providerCreatorBindings.active, true))),
+    db.select({ provider: providerCreatorBindings.provider, externalId: providerCreatorBindings.externalCreatorId, creatorId: creators.id, name: creatorDisplayNameSql(), slug: creators.slug }).from(providerCreatorBindings).innerJoin(creators, eq(creators.id, providerCreatorBindings.creatorId)).where(and(inArray(providerCreatorBindings.provider, ["igdb", "rawg"]), inArray(providerCreatorBindings.externalCreatorId, relevantIds), eq(providerCreatorBindings.active, true))),
     db.select().from(providerCreatorExclusions).where(and(inArray(providerCreatorExclusions.provider, ["igdb", "rawg"]), inArray(providerCreatorExclusions.externalCreatorId, relevantIds))),
     db.select().from(creatorRequests).where(and(inArray(creatorRequests.provider, ["igdb", "rawg"]), eq(creatorRequests.manuallyReopened, true), inArray(creatorRequests.externalCreatorId, relevantIds))),
   ]);

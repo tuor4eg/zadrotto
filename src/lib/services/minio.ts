@@ -373,6 +373,13 @@ export async function checkMinioHealth(): Promise<ServiceHealthCheck> {
   }
 }
 
+export class S3UploadError extends Error {
+  constructor(readonly status: number) {
+    super(`S3 upload failed with status ${status}.`);
+    this.name = "S3UploadError";
+  }
+}
+
 export async function uploadS3Object(input: {
   objectKey: string;
   body: Buffer;
@@ -407,7 +414,7 @@ export async function uploadS3Object(input: {
   });
 
   if (!response.ok) {
-    throw new Error(`S3 upload failed with status ${response.status}.`);
+    throw new S3UploadError(response.status);
   }
 }
 

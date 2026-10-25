@@ -13,8 +13,8 @@ function SubmitDecision({ disabled }: { disabled: boolean }) {
   return <Button type="submit" disabled={pending || disabled}>{pending ? "Сохранение…" : "Применить решение"}</Button>;
 }
 
-export function CreatorDecisionForm({ requestId, name, people, provider }: { requestId: number; name: string; people: { id: number; name: string; bindings?: { provider: string; externalCreatorId: string }[] }[]; provider?: string }) {
-  const isOrganization = provider === "igdb" || provider === "rawg";
+export function CreatorDecisionForm({ requestId, name, people, provider, externalCreatorId }: { requestId: number; name: string; people: { id: number; name: string; bindings?: { provider: string; externalCreatorId: string }[] }[]; provider?: string; externalCreatorId?: string | null }) {
+  const isOrganization = provider === "igdb" || provider === "rawg" || (provider === "tmdb" && externalCreatorId?.startsWith("company:"));
   const [decision, setDecision] = useState("map");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -33,7 +33,7 @@ export function CreatorDecisionForm({ requestId, name, people, provider }: { req
         <input type="radio" name="decision" value={value} checked={decision === value} onChange={() => setDecision(value)} className="mt-0.5" />{label}
       </label>)}
     </fieldset>
-    {decision === "create" ? <div className="grid gap-2"><Label htmlFor="new-creator-name">{isOrganization ? "Название" : "Имя"}</Label><Input id="new-creator-name" name="name" defaultValue={name} required maxLength={200} />{isOrganization ? <><input type="hidden" name="typeCode" value="organization" /><p className="text-xs leading-5 text-stone-500">Будет создана организация. Роли разработчика и издателя определяются связями с играми.</p></> : provider === "bgg" ? <><Label htmlFor="new-creator-type">Тип создателя</Label><select id="new-creator-type" name="typeCode" defaultValue="person" className="rounded-md border px-3 py-2"><option value="person">Человек</option><option value="collective">Коллектив</option></select><p className="text-xs leading-5 text-stone-500">Создатель получит роли из связанных настолок. Тип существующего создателя при привязке не меняется.</p></> : <p className="text-xs leading-5 text-stone-500">Будет создан человек с ролью «Писатель» в связанных книгах.</p>}</div> : null}
+    {decision === "create" ? <div className="grid gap-2"><Label htmlFor="new-creator-name">{isOrganization ? "Название" : "Имя"}</Label><Input id="new-creator-name" name="name" defaultValue={name} required maxLength={200} />{isOrganization ? <><input type="hidden" name="typeCode" value="organization" /><p className="text-xs leading-5 text-stone-500">Будет создана организация. Роли определяются связями с записями.</p></> : provider === "bgg" ? <><Label htmlFor="new-creator-type">Тип создателя</Label><select id="new-creator-type" name="typeCode" defaultValue="person" className="rounded-md border px-3 py-2"><option value="person">Человек</option><option value="collective">Коллектив</option></select><p className="text-xs leading-5 text-stone-500">Создатель получит роли из связанных настолок. Тип существующего создателя при привязке не меняется.</p></> : <p className="text-xs leading-5 text-stone-500">{provider === "tmdb" ? "Будет создан человек с ролью «Режиссёр» в связанных фильмах." : "Будет создан человек с ролью «Писатель» в связанных книгах."}</p>}</div> : null}
     {decision === "map" ? <fieldset><legend className="mb-3 text-sm font-medium">Наши создатели</legend>
       <input type="hidden" name="creatorId" value={selectedId ?? ""} />
       {people.length ? <div className="grid gap-4">

@@ -52,7 +52,7 @@ function parseScenarioInput(
       { allowMissingRequired: true },
     ),
     instruction,
-    config: identity.key === "editorial_summary" ? {} : parseSuggestSeriesConfig({
+    config: identity.key !== "suggest_series" ? {} : parseSuggestSeriesConfig({
       resultLimit: Number(read(formData, "resultLimit")),
     }),
     enabled,

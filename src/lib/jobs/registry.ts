@@ -1,3 +1,5 @@
+import { getRetiredJob } from "./retired";
+import { getJobManualPlacement } from "./catalog";
 import { JobError, type AnyJobHandlerDefinition } from "./types";
 
 export function createJobHandlerRegistry(definitions: readonly AnyJobHandlerDefinition[]) {
@@ -8,11 +10,13 @@ export function createJobHandlerRegistry(definitions: readonly AnyJobHandlerDefi
     if (!type || handlers.has(type)) {
       throw new Error(`Duplicate or empty job type: ${type || "(empty)"}`);
     }
-    handlers.set(type, definition);
+    handlers.set(type, { ...definition, manualPlacement: getJobManualPlacement(type) });
   }
 
   return {
     get(type: string) {
+      const retired = getRetiredJob(type);
+      if (retired) throw new JobError("job-type-retired", retired.reason, { retryable: false });
       const handler = handlers.get(type);
       if (!handler) {
         throw new JobError("unknown-type", `Обработчик задачи «${type}» не зарегистрирован.`, {
@@ -22,7 +26,7 @@ export function createJobHandlerRegistry(definitions: readonly AnyJobHandlerDefi
       return handler;
     },
     list() {
-      return [...handlers.values()];
+      return [...handlers.values()].filter(handler => !getRetiredJob(handler.type));
     },
   };
 }

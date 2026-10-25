@@ -25,16 +25,16 @@ function SnapshotButtons({ canProcess, busy, creator }: { canProcess: boolean; b
   </div>;
 }
 
-export function ProviderSnapshotControls({ mediaItemId, creatorId, provider, showActions = false, canProcess = false, busy = false }: {
-  mediaItemId?: number; creatorId?: number; provider?: "tmdb"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
+export function ProviderSnapshotControls({ mediaItemId, creatorId, provider, mediaType, showActions = false, canProcess = false, busy = false }: {
+  mediaItemId?: number; creatorId?: number; mediaType?: "book" | "film" | "series"; provider?: "tmdb"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
 }) {
   const creator = creatorId !== undefined;
   return <section className="rounded-md border border-stone-200 p-4 space-y-3">
     <h3 className="font-semibold">Данные источника</h3>
-    <p className="text-sm text-stone-600">{creator ? "Получите полный ответ FantLab и примените даты жизни. Заполненные даты сохраняются." : "Получите данные провайдера, сравните их с записью и примените. Ручные назначения сохраняются."}</p>
+    <p className="text-sm text-stone-600">{creator && showActions ? "Отдельная обработка FantLab заполняет пустые даты жизни; заполненные значения сохраняются." : creator ? "Сохраните полные ответы подтверждённых источников. Загрузка raw не меняет рабочие данные создателя." : "Получите данные провайдера, сравните их с записью и примените. Ручные назначения сохраняются."}</p>
     {showActions ? <form action={enqueueProviderSnapshotAction}>
-      {creator ? <><input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={creatorId} /><input type="hidden" name="provider" value="fantlab" /></> : <><input type="hidden" name="mediaItemId" value={mediaItemId} />{provider && <input type="hidden" name="provider" value={provider} />}</>}
+      {creator ? <><input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={creatorId} /><input type="hidden" name="provider" value="fantlab" /></> : <><input type="hidden" name="mediaItemId" value={mediaItemId} />{mediaType && <input type="hidden" name="mediaType" value={mediaType} />}{provider && <input type="hidden" name="provider" value={provider} />}</>}
       <SnapshotButtons canProcess={canProcess} busy={busy} creator={creator} />
-    </form> : <Link className="inline-flex rounded-md border px-4 py-2 text-sm font-medium underline" href={creator ? `/admin/creators/${creatorId}/snapshots` : `/admin/media/${mediaItemId}/snapshots`}>Открыть данные источника и проверить результат</Link>}
+    </form> : <Link className="inline-flex rounded-md border px-4 py-2 text-sm font-medium underline" href={creator ? `/admin/creators/${creatorId}/snapshots` : `/admin/media/${mediaItemId}/snapshots`}>Открыть данные источников</Link>}
   </section>;
 }

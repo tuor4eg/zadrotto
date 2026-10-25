@@ -29,7 +29,7 @@ test("creator matches normalize names, cap results and exclude unpublished or un
     await client.unsafe(`CREATE SCHEMA ${schema}`);
     await client.unsafe(`
       CREATE TABLE creator_types(id integer PRIMARY KEY, code text);
-      CREATE TABLE creators(id integer PRIMARY KEY, name text, slug text, type_id integer);
+      CREATE TABLE creators(id integer PRIMARY KEY, name text, slug text, type_id integer,name_ru text,name_ru_source text,name_ru_processed boolean default false);
       CREATE TABLE creator_roles(id integer PRIMARY KEY, code text);
       CREATE TABLE media_types(code text PRIMARY KEY, is_publicly_available boolean);
       CREATE TABLE media_items(id integer PRIMARY KEY, media_type text, publication_status text);

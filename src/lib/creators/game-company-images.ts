@@ -1,3 +1,4 @@
+import { enqueueCreatorImageFill } from "@/db/queries/creator-image-jobs";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { createHash, randomUUID } from "node:crypto";
 import sharp from "sharp";
@@ -19,7 +20,7 @@ export class GameCompanyImageError extends Error {
   constructor(readonly externalIds: string[]) { super("Не удалось сохранить логотипы организаций."); }
 }
 
-const EXTERNAL_IMAGE_KEY = /^avatars\/external-companies\/(igdb|rawg)\/[a-z]+-[1-9]\d*\/[a-f0-9]{64}\.webp$/;
+const EXTERNAL_IMAGE_KEY = /^avatars\/external-companies\/(igdb|rawg|tmdb)\/[a-z]+-[1-9]\d*\/[a-f0-9]{64}\.webp$/;
 export function getExternalCompanyImageUrl(objectKey: string | null) {
   return objectKey && EXTERNAL_IMAGE_KEY.test(objectKey) ? `/company-images/${objectKey.slice("avatars/external-companies/".length)}` : null;
 }
@@ -70,7 +71,7 @@ async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalI
   for (let offset = 0; offset < pending.length; offset += provider === "igdb" ? 100 : 1) {
     signal?.throwIfAborted();
     const batch = pending.slice(offset, offset + (provider === "igdb" ? 100 : 1));
-    const profiles = await fetchGameCompanyProfiles(provider, batch, { providerCredentials: credentials, backfill, signal });
+    const profiles = await fetchGameCompanyProfiles(provider, batch, { providerCredentials: credentials, backfill, signal, jobGuard });
     signal?.throwIfAborted();
     for (const id of batch) {
       const profile = profiles.find(row => row.externalId === id);
@@ -107,7 +108,9 @@ async function enrichProfilesUnderLease(provider: GameCompanyProvider, externalI
     }
   }
   const bindings = await db.select({ creatorId: providerCreatorBindings.creatorId }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, provider), eq(providerCreatorBindings.active, true), inArray(providerCreatorBindings.externalCreatorId, ids)));
-  for (const id of new Set(bindings.map(row => row.creatorId))) await syncGameCompanyAvatar(id, {}, jobGuard);
+  await withSnapshotJobGuard(jobGuard, async tx => {
+    for (const id of [...new Set(bindings.map(row => row.creatorId))].sort((a, b) => a - b)) await enqueueCreatorImageFill(tx, id);
+  });
   const { autoApproveGameCompanyRequests } = await import("@/db/queries/creator-requests");
   await autoApproveGameCompanyRequests({ provider, externalIds: ids, signal, jobGuard });
   if (failedImages.length) throw new GameCompanyImageError(failedImages);

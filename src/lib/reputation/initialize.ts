@@ -1,6 +1,8 @@
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
+import { assertReputationInitializationOwner } from "@/db/queries/reputation";
+import { JobError } from "@/lib/jobs/types";
 import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -10,13 +12,14 @@ import { historicalReputationFactsSql } from "./historical-sql";
 
 const REPUTATION_SYSTEM_LOCK = 90_420_261;
 
-export async function initializeReputation(jobGuard?: SnapshotJobGuard) {
+export async function initializeReputation(jobGuard: SnapshotJobGuard) {
   return withSnapshotJobGuard(jobGuard, async (tx) => {
+    await assertReputationInitializationOwner(tx, jobGuard);
     await tx.execute(sql`select pg_advisory_xact_lock(${REPUTATION_SYSTEM_LOCK})`);
     const [settings] = await tx.select({ status: levelSettings.status }).from(levelSettings)
       .where(eq(levelSettings.id, 1)).limit(1).for("update");
     if (!settings || settings.status !== "initializing") {
-      throw new Error("Reputation initialization was not requested.");
+      throw new JobError("invalid-initialization", "Reputation initialization was not requested.", { retryable: false });
     }
 
     await tx.execute(sql`

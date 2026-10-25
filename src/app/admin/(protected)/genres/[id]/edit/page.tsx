@@ -10,7 +10,8 @@ import { getAdminGenreById } from "@/db/queries/genres";
 import { getPublishedFranchiseOptions } from "@/db/queries/franchises";
 import { parseGenreId } from "@/lib/media/admin-genres";
 import { PageHeader } from "../../../admin-ui";
-import { updateGenreNameAction } from "../../actions";
+import { Button } from "@/components/ui/button";
+import { applyGenreSeriesAction, updateGenreNameAction } from "../../actions";
 import { GenreForm } from "../../genre-form";
 import { getGenreErrorMessage } from "../../messages";
 import { GenreProviderVariants } from "../../provider-variants";
@@ -36,6 +37,10 @@ export default async function EditGenrePage({ params, searchParams }: {
       <Card><CardContent className="pt-5">
         <GenreForm key={`${genre.id}:${genre.replacementFranchiseId}`} genre={genre} franchiseOptions={franchiseOptions} action={updateGenreNameAction} errorMessage={getGenreErrorMessage(query.error)} updated={query.updated === "1"} />
       </CardContent></Card>
+      {genre.isActive && genre.replacementFranchise?.publicationStatus === "published" ? <Card><CardContent className="grid gap-3 pt-5">
+        <p className="text-sm text-stone-600">Добавить заменяющую серию опубликованным записям этого жанра. Существующие связи сохраняются.</p>
+        <form action={applyGenreSeriesAction}><input type="hidden" name="genreId" value={genre.id} /><Button type="submit" variant="outline">Применить серию к записям</Button></form>
+      </CardContent></Card> : null}
       <Card><CardContent className="grid gap-3 pt-5">
         <h3 className="text-sm font-medium text-stone-950">Варианты у провайдеров</h3>
         <GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} />

@@ -8,6 +8,8 @@ import {
   resolveCoverUrl,
   getS3BucketAccessSettings,
   S3BucketAccessError,
+  S3UploadError,
+  uploadS3Object,
 } from "../src/lib/services/minio";
 
 const storageEnv = {
@@ -19,6 +21,17 @@ const storageEnv = {
   S3_FORCE_PATH_STYLE: "true",
   S3_PUBLIC_BASE_URL: "http://127.0.0.1:9000/zadrotto-covers/",
 };
+
+it("S3 uploads preserve the HTTP status without exposing the response body", async () => {
+  const originalFetch = globalThis.fetch;
+  try {
+    for (const status of [403, 507, 503]) {
+      globalThis.fetch = async () => new Response("private storage diagnostics", { status });
+      await assert.rejects(uploadS3Object({ objectKey: "test/logo.webp", body: Buffer.from("logo"), contentType: "image/webp", env: storageEnv }),
+        (error: unknown) => error instanceof S3UploadError && error.status === status && !error.message.includes("private"));
+    }
+  } finally { globalThis.fetch = originalFetch; }
+});
 
 it("bucket access inspection fails closed and distinguishes permissions from transient S3 errors", async () => {
   const originalFetch = globalThis.fetch;

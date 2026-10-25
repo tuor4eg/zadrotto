@@ -7,6 +7,7 @@ import type { ArchiveSeriesMatch } from "@/db/queries/franchises";
 import { ArchiveChildSeries } from "@/app/archive/archive-child-series";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
 import { ArchiveSeriesMediaLinkSearch } from "@/app/archive/archive-series-media-link-search";
+import { ArchiveSeriesDescendantsToggle } from "./archive-series-descendants-toggle";
 import type { MediaTypeOption } from "@/lib/media/types";
 
 function SeriesPath({
@@ -158,6 +159,8 @@ export function ArchiveSelectedSeries({
   authorCanAddMedia,
   childSeries,
   clearHref,
+  includeDescendants,
+  toggleDescendantsHref,
   item,
   parentHrefs,
   mediaTypes,
@@ -166,30 +169,28 @@ export function ArchiveSelectedSeries({
   authorCanAddMedia: boolean;
   childSeries: Array<{ id: number; href: string; title: string }>;
   clearHref: string;
+  includeDescendants: boolean;
+  toggleDescendantsHref: string;
   item: ArchiveSeriesMatch;
   parentHrefs: Record<number, string>;
   mediaTypes: MediaTypeOption[];
 }) {
   return (
     <section
-      className="archive-paper archive-panel relative z-[60] flex min-w-0 flex-wrap items-start gap-3 overflow-visible border-amber-300/70 bg-amber-100/75 px-4 py-2.5 text-sm shadow-md"
+      className="archive-paper archive-panel relative z-[60] flex min-w-0 flex-wrap items-baseline gap-3 overflow-visible border-amber-300/70 bg-amber-100/75 px-4 py-2.5 text-sm shadow-md"
       style={{ overflow: "visible" }}
       aria-label="Выбранная серия"
     >
-      <Tag className="mt-2 size-5 shrink-0 text-stone-500" />
+      <Tag className="size-5 shrink-0 self-center text-stone-500" />
       <div className={`min-w-0 flex-1 ${
         childSeries.length > 0 ? "sm:flex-none sm:max-w-[40%]" : ""
-      } ${
-        childSeries.length > 0 ? "pt-1" : "pt-2"
       }`}>
         <SeriesPath item={item} parentHrefs={parentHrefs} />
       </div>
       {childSeries.length > 0 ? (
         <div className="flex min-w-0 flex-1 items-baseline gap-x-2 max-sm:order-last max-sm:w-full max-sm:basis-full">
           <span aria-hidden="true" className="hidden text-stone-400 sm:inline">·</span>
-          <span className="shrink-0 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-stone-500">
-            Серии внутри
-          </span>
+          <ArchiveSeriesDescendantsToggle checked={includeDescendants} href={toggleDescendantsHref} />
           <ArchiveChildSeries items={childSeries} />
         </div>
       ) : null}

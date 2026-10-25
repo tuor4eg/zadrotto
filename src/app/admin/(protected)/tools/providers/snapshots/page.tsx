@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ProfileTargetForm } from "./profile-target-form";
 import { SnapshotBatchForm } from "./snapshot-batch-form";
 
 export default async function ProviderSnapshotsPage({ searchParams }: { searchParams: Promise<{ error?: string; run?: string }> }) {
@@ -28,20 +29,21 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
   ]) : {};
   const batch = run ? getSnapshotBatchSettings(run.payload) : null;
   const active = run?.status === "queued" || run?.status === "running";
-  const processed = run?.payload.checkpoint?.processed ?? 0;
-  const failed = run?.payload.checkpoint?.failed ?? 0;
+  const processed = run?.payload.profileCheckpoint?.processed ?? run?.payload.checkpoint?.processed ?? 0;
+  const failed = run?.payload.profileCheckpoint?.failed ?? run?.payload.checkpoint?.failed ?? 0;
   const statusLabels: Record<string, string> = { queued: "В очереди", running: "Выполняется", succeeded: "Завершена", failed: "Завершена с ошибкой", cancelled: "Отменена" };
   return <section className="grid gap-5">
     <div className="flex flex-wrap items-start justify-between gap-3">
       <div className="space-y-1">
         <h2 className="font-serif text-2xl">Снимки провайдеров</h2>
-        <p className="text-sm leading-6 text-stone-600">Получение, проверка и применение сохранённых данных книг, фильмов TMDB и авторов FantLab.</p>
+        <p className="text-sm leading-6 text-stone-600">Получение, проверка и применение сохранённых данных записей и исходных профилей создателей.</p>
       </div>
       <Link href="/admin/tools/jobs/journal?job=adhoc" className={buttonVariants({ variant: "outline", size: "sm" })}><History />Журнал запусков</Link>
     </div>
     {query.error === "invalid" && <Alert variant="destructive" role="alert">Не удалось запустить обработку. Проверьте параметры и повторите попытку.</Alert>}
     <div className="space-y-3">
       <p className="text-sm leading-6 text-stone-600">Обработка запускается вручную и проходит партиями с выбранным размером и паузой, с учётом лимитов провайдера. Для обработки одного объекта откройте «Данные источника» в его редакторе.</p>
+      <ProfileTargetForm busy={active} />
       <SnapshotBatchForm key={run?.id ?? "new"} busy={active} values={run?.payload} />
       {query.run && !run && <Alert variant="warning">Запуск не найден. Его можно проверить в журнале.</Alert>}
       {run && <Card>
@@ -50,7 +52,7 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
             <CardTitle>{active ? "Ход обработки" : "Результат обработки"}</CardTitle>
             <Badge variant={run.status === "succeeded" ? "positive" : run.status === "failed" ? "destructive" : "outline"}>{statusLabels[run.status] ?? run.status}</Badge>
           </div>
-          <CardDescription>Задача №{run.id} · {run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.provider === "tmdb" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
+          <CardDescription>Задача №{run.id} · {run.payload.profileTargets ? "Внешние профили" : run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.mediaType === "series" ? "Сериалы" : run.payload.provider === "tmdb" || run.payload.mediaType === "film" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4" aria-live="polite">
           {batch && <p className="text-sm text-stone-600">Размер партии: {batch.batchSize}. Пауза между партиями: {batch.batchPauseHours === 0 ? "1 секунда" : `${batch.batchPauseHours} ч.`}</p>}
@@ -70,6 +72,8 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
             {failed > run.payload.checkpoint!.errors.length && <p className="text-stone-500">Показаны последние {run.payload.checkpoint!.errors.length} ошибок из {failed}.</p>}
           </div>}
           {run.payload.entityType === "creator" && Boolean(run.payload.checkpoint?.diagnostics?.length) && <div className="space-y-2 text-sm"><h3 className="font-semibold">Пропущенные данные</h3>{run.payload.checkpoint!.diagnostics!.map(item => <div key={item.id}><Link href={`/admin/creators/${item.id}/snapshots`} className="underline">{creatorAdminLabel(item.id, creatorNames[item.id])}</Link>{item.codes.map(code => <p key={code}>{creatorSnapshotDiagnosticMessage(code)}</p>)}</div>)}</div>}
+          {run.payload.profileTargets && <div className="space-y-2"><h3 className="font-semibold">Исходные профили</h3>{run.payload.profileTargets.map(target => <Link key={`${target.provider}:${target.resourceType}:${target.externalId}`} className="block text-sm underline" href={`/admin/tools/providers/snapshots/profile?${new URLSearchParams(target)}`}>Посмотреть raw: {target.provider} · {target.resourceType} · {target.externalId}</Link>)}</div>}
+          {run.payload.profileCheckpoint?.errors.map((item, index) => <p key={index} className="text-sm text-red-700">{item.target ? `${item.target.provider} · ${item.target.resourceType} · ${item.target.externalId}` : `Привязка №${item.bindingId ?? item.id}`}: {snapshotItemErrorMessage(item)}</p>)}
           <SnapshotJobProgress active={active} />
       {active && <StopSnapshotRunButton runId={run.id} returnTo={`/admin/tools/providers/snapshots?run=${run.id}`} />}
           {!active && run.status === "succeeded" && <p className="text-sm text-emerald-700">Обработка завершена. {processed + failed === 0 ? "Подходящих записей не найдено." : "Результат сохранён."}</p>}

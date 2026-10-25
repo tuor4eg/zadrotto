@@ -58,7 +58,7 @@ export function ArchiveChildSeries({ items }: { items: ArchiveChildSeriesItem[] 
 
   return (
     <div className="relative min-w-0 flex-1 self-baseline" ref={containerRef}>
-      <div className="flex min-w-0 flex-wrap items-center gap-1.5">
+      <div className="flex min-w-0 flex-wrap items-baseline gap-1.5">
         {visibleItems.map((child) => (
           <Link className={tagClassName} href={child.href} key={child.id}>
             {child.title}

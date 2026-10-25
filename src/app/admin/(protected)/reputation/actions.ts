@@ -7,7 +7,7 @@ import {
   saveReputationConfiguration,
   setReputationSystemStatus,
 } from "@/db/queries/reputation";
-import { enqueueJobRun } from "@/lib/jobs/queue";
+import { resolveJobRunPolicy } from "@/lib/jobs/queue";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import {
@@ -195,14 +195,8 @@ export async function enableReputationAction(config: ReputationPreviewConfig) {
   const saved = await saveReputationConfigurationAction(config);
   if (saved.error) return saved;
   try {
-    const started = await beginReputationInitialization();
+    const started = await beginReputationInitialization({ adminId: admin.id, policy: resolveJobRunPolicy("reputation.initialize") });
     if (!started) return { error: "Расчёт уже запущен.", success: null };
-    await enqueueJobRun({
-      createdByAdminId: admin.id,
-      payload: {},
-      source: "manual",
-      type: "reputation.initialize",
-    });
     await logActivity({
       action: "reputation.initialization.requested",
       actorType: "admin",
@@ -214,9 +208,31 @@ export async function enableReputationAction(config: ReputationPreviewConfig) {
     });
     return { error: null, success: "Расчёт поставлен в очередь." };
   } catch (error) {
-    await setReputationSystemStatus("disabled");
     console.error("Failed to enqueue reputation initialization", error);
     return { error: "Не удалось поставить расчёт в очередь.", success: null };
+  }
+}
+
+/** Recover only an orphaned initialization, using the already saved configuration. */
+export async function recoverReputationInitializationAction() {
+  const admin = await requireAdminUser();
+  try {
+    const started = await beginReputationInitialization({ adminId: admin.id,
+      policy: resolveJobRunPolicy("reputation.initialize"), recoverOrphaned: true });
+    if (!started) return { error: "Расчёт уже выполняется или больше не требует восстановления.", success: null };
+    await logActivity({
+      action: "reputation.initialization.requested",
+      actorType: "admin",
+      adminUserId: admin.id,
+      entityType: "reputation-settings",
+      entityId: 1,
+      entityLabel: "Уровни и доверие",
+      message: "Повторно запущен незавершённый расчёт уровней и доверия по сохранённым настройкам.",
+    });
+    return { error: null, success: "Незавершённый расчёт поставлен в очередь." };
+  } catch (error) {
+    console.error("Failed to recover reputation initialization", error);
+    return { error: "Не удалось повторить расчёт. Проверьте текущие задачи.", success: null };
   }
 }
 

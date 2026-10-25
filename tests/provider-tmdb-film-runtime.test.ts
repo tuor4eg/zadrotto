@@ -45,7 +45,7 @@ test("TMDB film raw import and offline replay preserve manual data and commit ch
     const { upsertMediaItemMetadata } = await import("../src/db/queries/media-item-metadata");
     const raw = {
       id: 42, title: "API title", runtime: 123, original_language: "fr", genres: [{ id: 18, name: "Excluded" }],
-      production_countries: [{ name: "France" }], production_companies: [{ name: "Studio" }],
+      production_countries: [{ name: "France" }], production_companies: [{ id: 300, name: "Studio", logo_path: null }],
       credits: { cast: [{ id: 200, name: "Actor" }], crew: [{ id: 201, name: "Director", job: "Director" }] },
       future: { unknown: [true, 4] },
     };

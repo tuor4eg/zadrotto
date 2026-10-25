@@ -317,9 +317,9 @@ describe("metadata backfill and refresh runs", () => {
     assert.deepEqual(empty.upserts, [])
   })
 
-  it("applies film snapshots with empty compact facts while series still require metadata", async () => {
+  it("applies film and series snapshots with empty compact facts while anime keeps its existing validation", async () => {
     const snapshotReferences = [{ id: 7, payloadHash: "a".repeat(64) }]
-    for (const mediaType of ["film", "series"] as const) {
+    for (const mediaType of ["film", "series", "anime"] as const) {
       const result = createStore()
       await runMetadataBackfill({
         context: {
@@ -329,8 +329,8 @@ describe("metadata backfill and refresh runs", () => {
         items: [item({ id: 16, title: "Genre only", mediaType, sourceProvider: "tmdb", sourceExternalId: "1" })],
         store: result.store,
       })
-      assert.equal(result.upserts.length, mediaType === "film" ? 1 : 0)
-      if (mediaType === "film") {
+      assert.equal(result.upserts.length, mediaType !== "anime" ? 1 : 0)
+      if (mediaType !== "anime") {
         assert.deepEqual(result.upserts[0].facts, {})
         assert.deepEqual(result.upserts[0].snapshotReferences, snapshotReferences)
       } else assert.deepEqual(result.issueCodes, ["no-provider-metadata"])
@@ -523,5 +523,41 @@ describe("provider quota reserve", () => {
     )
 
     assert.equal(await wrapped("tmdb"), "rate-limit-unavailable")
+  })
+})
+
+describe("metadata job cancellation", () => {
+  it("stops backfill after an aborted search before matching or writing", async () => {
+    const controller = new AbortController()
+    const { store, upserts, attempts } = createStore()
+    let fetches = 0
+    await assert.rejects(runMetadataBackfill({
+      signal: controller.signal,
+      items: [item({ id: 1, title: "First" }), item({ id: 2, title: "Second" })],
+      context: {
+        searchTitles: async () => { controller.abort(); return { candidates: [], error: null } },
+        fetchTitleMetadata: async () => { fetches++; return { error: null, metadata: null } },
+      }, store,
+    }), { name: "AbortError" })
+    assert.equal(fetches, 0)
+    assert.equal(upserts.length, 0)
+    assert.equal(attempts.length, 0)
+  })
+
+  it("stops refresh after provider response before persisting or moving to the next record", async () => {
+    const controller = new AbortController()
+    const { store, upserts, attempts } = createStore()
+    let fetches = 0
+    await assert.rejects(runMetadataRefresh({
+      signal: controller.signal,
+      items: [item({ id: 1, title: "First", sourceProvider: "tmdb", sourceExternalId: "1" }), item({ id: 2, title: "Second", sourceProvider: "tmdb", sourceExternalId: "2" })],
+      context: {
+        searchTitles: async () => ({ candidates: [], error: null }),
+        fetchTitleMetadata: async () => { fetches++; controller.abort(); return { error: null, metadata: { externalId: "1", provider: "tmdb", facts: { episodes: 1 }, sourceUrl: null } } },
+      }, store,
+    }), { name: "AbortError" })
+    assert.equal(fetches, 1)
+    assert.equal(upserts.length, 0)
+    assert.equal(attempts.length, 0)
   })
 })

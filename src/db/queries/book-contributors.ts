@@ -1,3 +1,5 @@
+import { applyProviderCreatorName, getImportedCreatorNameLocalization } from "./creator-name-import";
+import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { creatorRequests, creatorRequestMediaItems, creatorRoles, creators, creatorTypes, entryCreators, entryCreatorSources, providerCreatorBindings, providerCreatorExclusions, providerCreatorMappings } from "@/db/schema";
 import { normalizeSearchText } from "@/lib/search/normalize";
@@ -59,6 +61,7 @@ export async function syncFantlabBookContributors(tx: CreatorTransaction, entryI
       }
       continue;
     }
+    await applyProviderCreatorName(tx, binding.creatorId, reference.name);
     const [mapping]=await tx.insert(providerCreatorMappings).values({provider:"fantlab",mediaType:"book",externalCreatorName:reference.name,normalizedExternalCreatorName:reference.normalizedName,creatorId:binding.creatorId,bindingId:binding.id}).onConflictDoNothing().returning({id:providerCreatorMappings.id});
     if (mapping) createdMappings++;
     const [added]=await tx.insert(entryCreators).values({entryId,creatorId:binding.creatorId,roleId:role!.id}).onConflictDoNothing().returning();
@@ -95,14 +98,16 @@ export async function resolveFantlabBookRequest(tx: CreatorTransaction, request:
     const [type]=await tx.select().from(creatorTypes).where(eq(creatorTypes.code,"person"));
     if (!type) throw new Error("Тип person не настроен.");
     const [next]=await tx.execute<{id:number}>(sql`select nextval(pg_get_serial_sequence('creators','id'))::int id`);
-    const [created]=await tx.insert(creators).values({id:next.id,name:input.name.trim(),slug:`creator-${next.id}`,typeId:type.id}).returning({id:creators.id});
+    const [created]=await tx.insert(creators).values({id:next.id,name:input.name.trim(),...getImportedCreatorNameLocalization({name:input.name}),slug:`creator-${next.id}`,typeId:type.id}).returning({id:creators.id});
     creatorId=created.id;
+    await enqueueCreatorImageFill(tx, created.id);
   }
   const [creator]=creatorId ? await tx.select({id:creators.id,type:creatorTypes.code}).from(creators).innerJoin(creatorTypes,eq(creatorTypes.id,creators.typeId)).where(eq(creators.id,creatorId)).for("update",{of:creators}) : [];
   if (!creator || creator.type !== "person") throw new Error("Выберите автора типа person.");
   await tx.insert(providerCreatorBindings).values({provider:"fantlab",externalCreatorId:externalId,creatorId:creator.id,externalCreatorName:request.externalCreatorName}).onConflictDoNothing();
   const [binding]=await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider,"fantlab"),eq(providerCreatorBindings.externalCreatorId,externalId),eq(providerCreatorBindings.active,true)));
   if (!binding || binding.creatorId !== creator.id) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
+  await enqueueCreatorImageFill(tx, creator.id);
   await tx.update(creators).set({avatarVersion:sql`${creators.avatarVersion}+1`,updatedAt:new Date()}).where(eq(creators.id,creator.id));
   await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider,"fantlab"),eq(providerCreatorExclusions.externalCreatorId,externalId)));
 }

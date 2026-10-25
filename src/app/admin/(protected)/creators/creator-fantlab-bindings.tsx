@@ -1,5 +1,5 @@
 import { Button } from "@/components/ui/button";
-import { assignCreatorFantlabBindingAction, syncCreatorFantlabAvatarAction } from "./avatar-actions";
+import { assignCreatorFantlabBindingAction } from "./avatar-actions";
 
 export function CreatorFantlabBindings({ creatorId, creatorName, bindings, variants }: {
   creatorId: number;
@@ -23,6 +23,6 @@ export function CreatorFantlabBindings({ creatorId, creatorName, bindings, varia
       <label className="grid gap-1 text-sm">Единый ID для всех вариантов<input name="externalCreatorId" required type="number" min="1" className="rounded-md border px-3 py-2" /></label>
       <Button type="submit" variant="outline">Подтвердить ID для всех вариантов</Button>
     </form> : null}
-    {bindings.length ? <form action={syncCreatorFantlabAvatarAction}><input type="hidden" name="creatorId" value={creatorId} /><Button type="submit" variant="outline">Обновить аватар из FantLab</Button><p className="mt-2 text-xs text-stone-500">Задание выполнит worker. Ручная аватарка не заменяется.</p></form> : null}
+
   </section>;
 }

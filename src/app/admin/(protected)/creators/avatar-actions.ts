@@ -8,6 +8,7 @@ import { logActivity } from "@/lib/activity-logs/server";
 import { parseAvatarCrop } from "@/lib/avatars/storage";
 import { uploadCreatorAvatar, deleteCreatorAvatarBestEffort } from "@/lib/creators/avatar-storage";
 import { getFantlabAuthor } from "@/lib/creators/fantlab-api";
+import { canWriteCreatorImage } from "@/lib/creators/image-policy";
 import { enqueueJobRun } from "@/lib/jobs/queue";
 
 function id(value: FormDataEntryValue | null) {
@@ -66,10 +67,19 @@ export async function assignCreatorFantlabBindingAction(form: FormData) {
   finish(creatorId, `avatarUpdated=1&fantlabAuthor=${encodeURIComponent(authorName)}`);
 }
 
-export async function syncCreatorFantlabAvatarAction(form: FormData) {
+export async function refreshCreatorImageAction(form: FormData) {
   const admin = await requireAdminUser();
   const creatorId = id(form.get("creatorId"));
-  try { await enqueueJobRun({ createdByAdminId: admin.id, type: "media.creator-fantlab-avatars", source: "manual", payload: { creatorId } }); }
-  catch { finish(creatorId, "avatarError=queue"); }
-  finish(creatorId, "avatarQueued=1");
+  let runId: number;
+  try {
+    const bindingId = id(form.get("bindingId"));
+    const { getCreatorProfileSources } = await import("@/db/queries/creator-profile-snapshots");
+    const state = await getCreatorProfileSources(creatorId);
+    const source = state?.sources.find(source => source.binding.id === bindingId && source.target);
+    if (!source || !state || !((state.creator.typeCode === "person" && (source.target?.provider === "fantlab" || source.target?.resourceType === "person")) || (state.creator.typeCode === "organization" && (source.target?.resourceType === "company" || source.target?.resourceType === "network")))) throw new Error("CREATOR_BINDING_MISSING");
+    const avatar = await getCreatorAvatarState(creatorId);
+    if (!avatar || !canWriteCreatorImage(avatar, source.binding)) throw new Error("image-protected");
+    runId = (await enqueueJobRun({ createdByAdminId: admin.id, type: "media.creator-image-refresh", source: "manual", payload: { creatorId, bindingId } })).id;
+  } catch (error) { finish(creatorId, error instanceof Error && error.message === "image-protected" ? "avatarError=protected" : "avatarError=queue"); }
+  finish(creatorId, `avatarQueued=1&imageRun=${runId}`);
 }

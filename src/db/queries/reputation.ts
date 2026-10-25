@@ -1,3 +1,4 @@
+import { createJobRun, type JobRunPolicy } from "./jobs";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import "server-only";
 
@@ -9,6 +10,7 @@ import {
   authorAccessProfiles,
   authorTrust,
   authors,
+  jobRuns,
   levelSettings,
   levelThresholds,
   trustActionRules,
@@ -29,6 +31,9 @@ import {
   type ReputationPreviewRow,
   type ReputationPreviewSort,
 } from "@/lib/reputation/model";
+import { isReputationInitializationRequest } from "@/lib/reputation/initialization-request";
+import type { DbTransaction } from "@/db/transaction";
+import { JobError } from "@/lib/jobs/types";
 import { historicalReputationFactsSql } from "@/lib/reputation/historical-sql";
 
 export type ReputationConfiguration = ReputationPreviewConfig & {
@@ -476,11 +481,41 @@ export async function setReputationSystemStatus(status: "disabled" | "initializi
   });
 }
 
-export async function beginReputationInitialization() {
-  const [updated] = await db.update(levelSettings).set({ status: "initializing", updatedAt: new Date() })
-    .where(and(
-      eq(levelSettings.id, 1),
-      sql`${levelSettings.status} <> 'initializing'`,
-    )).returning({ status: levelSettings.status });
-  return updated ?? null;
+/** The guard has already locked the run before settings are touched. */
+export async function assertReputationInitializationOwner(tx: DbTransaction, guard: SnapshotJobGuard) {
+  const [run] = await tx.select({ type: jobRuns.type, source: jobRuns.source,
+    createdByAdminId: jobRuns.createdByAdminId, payload: jobRuns.payload }).from(jobRuns)
+    .where(eq(jobRuns.id, guard.runId)).limit(1);
+  if (!run || !isReputationInitializationRequest(run)) {
+    throw new JobError("invalid-initialization", "Запустите расчёт на странице репутации.", { retryable: false });
+  }
+}
+
+export async function failReputationInitialization(guard: SnapshotJobGuard) {
+  return withSnapshotJobGuard(guard, async tx => {
+    await assertReputationInitializationOwner(tx, guard);
+    return tx.update(levelSettings).set({ status: "disabled", updatedAt: new Date() })
+      .where(and(eq(levelSettings.id, 1), eq(levelSettings.status, "initializing")))
+      .returning({ status: levelSettings.status });
+  });
+}
+
+export async function beginReputationInitialization(input: { adminId: number; policy: JobRunPolicy; recoverOrphaned?: boolean }) {
+  return db.transaction(async tx => {
+    // Serialize requests before inspecting active runs. This enqueue-only lock
+    // is never acquired by workers/cancellation, so their run → settings order stays intact.
+    await tx.execute(sql`select pg_advisory_xact_lock(90420262)`);
+    // Do not start a new initialization while the previous worker still owns a run.
+    const active = await tx.select({ id: jobRuns.id }).from(jobRuns)
+      .where(and(eq(jobRuns.type, "reputation.initialize"), sql`${jobRuns.status} in ('queued','running')`))
+      .orderBy(asc(jobRuns.id)).for("update");
+    if (active.length) return null;
+    const [updated] = await tx.update(levelSettings).set({ status: "initializing", updatedAt: new Date() })
+      .where(and(eq(levelSettings.id, 1), input.recoverOrphaned
+        ? eq(levelSettings.status, "initializing")
+        : sql`${levelSettings.status} <> 'initializing'`)).returning({ status: levelSettings.status });
+    if (!updated) return null;
+    await createJobRun({ type: "reputation.initialize", payload: { initializationRequested: true }, source: "manual", createdByAdminId: input.adminId, ...input.policy }, new Date(), tx);
+    return updated;
+  });
 }

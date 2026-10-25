@@ -286,7 +286,6 @@ export function createTmdbProvider(mediaType: TmdbMediaType): MediaProvider {
             ...(genreReferences.length > 0 ? { genreReferences } : {}),
             productionCountries: getTmdbProductionCountries(movieDetails.production_countries),
             originalLanguage: movieDetails.original_language ?? null,
-            productionCompanies: getTmdbNames(movieDetails.production_companies),
           },
         };
       }

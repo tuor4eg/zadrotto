@@ -7,7 +7,8 @@ import { deleteS3Object, fetchS3Object } from "@/lib/services/minio";
 const LOCAL_KEY = /^local-dumps\/([0-9a-f-]{36})\.sql\.gz$/;
 
 export function getLocalDumpDirectory() {
-  return resolve(process.env.ADMIN_EXPORTS_DIR?.trim() || ".data/admin-exports");
+  // Runtime dump volume; its contents must not enter the application bundle.
+  return resolve(/* turbopackIgnore: true */ process.env.ADMIN_EXPORTS_DIR?.trim() || ".data/admin-exports");
 }
 
 export async function ensureLocalDumpDirectory() {

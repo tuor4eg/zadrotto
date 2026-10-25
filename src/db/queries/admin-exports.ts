@@ -1,5 +1,5 @@
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
-import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
+import { and, asc, desc, eq, inArray, lt, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { adminExports, jobRuns } from "@/db/schema";
 import type { AdminExportType } from "@/lib/admin-exports/model";
@@ -94,12 +94,19 @@ export async function markAdminExportExpired(id: string, jobGuard?: SnapshotJobG
 
 export async function cancelQueuedAdminExport(id: string, adminId: number) {
   return db.transaction(async (tx) => {
-    const [cancelled] = await tx.update(adminExports).set({ status: "expired", updatedAt: new Date() })
+    const [owner] = await tx.select({ id: adminExports.id }).from(adminExports).where(and(eq(adminExports.id, id), eq(adminExports.createdByAdminId, adminId)));
+    if (!owner) return null;
+    // Match fenced workers and general cancellation: job first, then export.
+    const runs = await tx.select({ id: jobRuns.id, status: jobRuns.status }).from(jobRuns)
+      .where(and(eq(jobRuns.type, "admin.export-generate"), inArray(jobRuns.status, ["queued", "running"]), sql`${jobRuns.payload}->>'exportId' = ${id}`))
+      .orderBy(asc(jobRuns.id)).for("update");
+    if (runs.some(run => run.status === "running")) return null;
+    const now = new Date();
+    const [cancelled] = await tx.update(adminExports).set({ status: "expired", updatedAt: now })
       .where(and(eq(adminExports.id, id), eq(adminExports.createdByAdminId, adminId), eq(adminExports.status, "queued"))).returning();
     if (!cancelled) return null;
-    const now = new Date();
-    await tx.update(jobRuns).set({ status: "cancelled", cancelledAt: now, finishedAt: now, updatedAt: now })
-      .where(and(eq(jobRuns.status, "queued"), sql`${jobRuns.payload}->>'exportId' = ${id}`));
+    if (runs.length) await tx.update(jobRuns).set({ status: "cancelled", cancelledAt: now, finishedAt: now, updatedAt: now })
+      .where(and(inArray(jobRuns.id, runs.map(run => run.id)), eq(jobRuns.status, "queued")));
     return cancelled;
   });
 }

@@ -43,9 +43,13 @@ test("creator approval, provenance, backfill and stable codes persist through re
     for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
+    await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date, ADD COLUMN death_date date, ADD COLUMN name_ru text, ADD COLUMN name_ru_source text,
+      ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false;
+      ALTER TABLE entry_creator_sources ADD COLUMN source_position integer;
+      ALTER TABLE creator_request_media_items ADD COLUMN source_position integer;`);
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
-      CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
+      CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,next_attempt_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     const person = (await creators.getCreatorTypes()).find(row => row.code === "person")!;
     const writer = (await creators.getCreatorRoles()).find(row => row.code === "writer")!;
     assert.ok(person && writer);
@@ -119,12 +123,12 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await client`UPDATE job_runs SET status='succeeded' WHERE id=${retry.jobRunId}`;
     assert.deepEqual(await creators.getEntryCreators(3), []);
     await sync(5, ["Еж Иван"], "open-library");
-    await requests.backfillCreators();
-    assert.equal((await creators.getEntryCreators(5))[0].id, creator.id, "backfill reuses normalized names across providers");
-    assert.deepEqual(await creators.getEntryCreators(1), [], "backfill preserves explicitly reopened mapping");
-    assert.deepEqual(await creators.getEntryCreators(3), [], "backfill preserves exclusion");
+    await db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 5, provider: "open-library", mediaType: "book", facts: { authors: ["Еж Иван"] }, autoApprove: true }));
+    assert.equal((await creators.getEntryCreators(5))[0].id, creator.id, "normal sync reuses normalized names across providers");
+    assert.deepEqual(await creators.getEntryCreators(1), [], "normal sync preserves explicitly reopened mapping");
+    assert.deepEqual(await creators.getEntryCreators(3), [], "normal sync preserves exclusion");
     const count = (await client`SELECT count(*)::int n FROM entry_creators`)[0].n;
-    await requests.backfillCreators();
+    await db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 5, provider: "open-library", mediaType: "book", facts: { authors: ["Еж Иван"] }, autoApprove: true }));
     assert.equal((await client`SELECT count(*)::int n FROM entry_creators`)[0].n, count);
     await assert.rejects(creators.deleteCreatorType(person.id));
     await assert.rejects(creators.deleteCreatorRole(writer.id));
@@ -138,19 +142,16 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await creators.createCreator({ name: "Ambiguous", slug: "ambiguous-one", typeId: person.id });
     await creators.createCreator({ name: "AMBIGUOUS", slug: "ambiguous-two", typeId: person.id });
     await sync(3, ["Ambiguous"]);
-    const ambiguous = await requests.backfillCreators();
-    assert.equal(ambiguous.errors.length, 0);
+    await db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 3, provider: "google-books", mediaType: "book", facts: { authors: ["Ambiguous"] }, autoApprove: true }));
     assert.deepEqual(await creators.getEntryCreators(3), []);
     assert.ok((await requests.getCreatorRequests()).some(row => row.normalizedExternalCreatorName === "ambiguous"));
     await client`UPDATE media_item_metadata SET facts='{"authors":["Valid",42]}'::jsonb WHERE media_item_id=3`;
-    const malformed = await requests.backfillCreators();
-    assert.deepEqual(malformed.errors.map(row => row.entryId), [3]);
+    await assert.rejects(db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 3, provider: "google-books", mediaType: "book", facts: { authors: ["Valid", 42] }, autoApprove: true })));
     await sync(3, ["Concurrent new"]);
-    const concurrent = await Promise.all([requests.backfillCreators(), requests.backfillCreators()]);
+    const importConcurrent = () => db.transaction(tx => requests.syncProviderCreators(tx, { mediaItemId: 3, provider: "google-books", mediaType: "book", facts: { authors: ["Concurrent new"] }, autoApprove: true }));
+    const concurrent = await Promise.all([importConcurrent(), importConcurrent()]);
     assert.equal(concurrent.reduce((sum, row) => sum + row.createdCreators, 0), 1);
     assert.equal(concurrent.reduce((sum, row) => sum + row.createdMappings, 0), 1);
-    const cancelled = new AbortController(); cancelled.abort();
-    await assert.rejects(requests.backfillCreators(cancelled.signal));
     await client`UPDATE media_types SET is_publicly_available=false WHERE code='book'`;
     assert.equal((await creators.getCreators({ publicOnly: true })).totalCount, 0);
     await client`UPDATE media_types SET is_publicly_available=true WHERE code='book'`;
