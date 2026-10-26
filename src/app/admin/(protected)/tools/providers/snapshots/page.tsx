@@ -1,4 +1,5 @@
 import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
+import { ResumeSnapshotRunButton } from "@/components/admin/resume-snapshot-run-button";
 import Link from "next/link";
 import { SNAPSHOT_OPERATIONS_UI } from "./snapshot-operations";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
@@ -52,7 +53,7 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
             <CardTitle>{active ? "Ход обработки" : "Результат обработки"}</CardTitle>
             <Badge variant={run.status === "succeeded" ? "positive" : run.status === "failed" ? "destructive" : "outline"}>{statusLabels[run.status] ?? run.status}</Badge>
           </div>
-          <CardDescription>Задача №{run.id} · {run.payload.profileTargets ? "Внешние профили" : run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.mediaType === "series" ? "Сериалы" : run.payload.provider === "tmdb" || run.payload.mediaType === "film" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
+          <CardDescription>Задача №{run.id} · {run.payload.profileTargets ? "Внешние профили" : run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.mediaType === "anime" ? "Аниме" : run.payload.mediaType === "series" ? "Сериалы" : run.payload.provider === "tmdb" || run.payload.mediaType === "film" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4" aria-live="polite">
           {batch && <p className="text-sm text-stone-600">Размер партии: {batch.batchSize}. Пауза между партиями: {batch.batchPauseHours === 0 ? "1 секунда" : `${batch.batchPauseHours} ч.`}</p>}
@@ -75,6 +76,10 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
           {run.payload.profileTargets && <div className="space-y-2"><h3 className="font-semibold">Исходные профили</h3>{run.payload.profileTargets.map(target => <Link key={`${target.provider}:${target.resourceType}:${target.externalId}`} className="block text-sm underline" href={`/admin/tools/providers/snapshots/profile?${new URLSearchParams(target)}`}>Посмотреть raw: {target.provider} · {target.resourceType} · {target.externalId}</Link>)}</div>}
           {run.payload.profileCheckpoint?.errors.map((item, index) => <p key={index} className="text-sm text-red-700">{item.target ? `${item.target.provider} · ${item.target.resourceType} · ${item.target.externalId}` : `Привязка №${item.bindingId ?? item.id}`}: {snapshotItemErrorMessage(item)}</p>)}
           <SnapshotJobProgress active={active} />
+          {run.status === "queued" ? <div className="space-y-2">
+            <ResumeSnapshotRunButton runId={run.id} returnTo={`/admin/tools/providers/snapshots?run=${run.id}`} />
+            <p className="text-xs text-stone-500">Снимет паузу и продолжит этот запуск с сохранённой позиции. Текущие лимиты провайдера учитываются.</p>
+          </div> : null}
       {active && <StopSnapshotRunButton runId={run.id} returnTo={`/admin/tools/providers/snapshots?run=${run.id}`} />}
           {!active && run.status === "succeeded" && <p className="text-sm text-emerald-700">Обработка завершена. {processed + failed === 0 ? "Подходящих записей не найдено." : "Результат сохранён."}</p>}
           <Link className="w-fit text-sm underline" href={`/admin/tools/jobs/journal?job=adhoc#run-${run.id}`}>Подробности в журнале</Link>

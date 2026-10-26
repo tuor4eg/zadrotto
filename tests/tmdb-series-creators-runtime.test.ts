@@ -121,7 +121,7 @@ test("TV rosters reuse global TMDB identities, preserve namespaces, moderation a
     };
     const one = await measure(1), ten = await measure(10);
     assert.equal(one,ten,"read roundtrips must not grow with returned links");
-    assert.equal(one,5,"roles, previous identities, locked requests, bindings, exclusions");
+    assert.equal(one,5,"unbound roster: roles, previous identities, locked requests, bindings, exclusions");
     console.log(`TMDB roster read roundtrips: ${one} for 4 links; ${ten} for 40 links`);
     await attach(1,payload([{id:42,name:'Studio'}],[{id:42,name:'Network'}]));
     await attach(2,payload([{id:42,name:'Studio'}],[{id:42,name:'Network'}]));

@@ -1,3 +1,6 @@
+import { animeCompanyLogoSourceAllowed, animeCompanyLogoSourceName, validateAnimeCompanyLogoEvidence, type AnimeCompanyLogoEvidence } from "./anime-company-logo-binding";
+import { isAniListPersonId } from "@/lib/creators/anilist-identity";
+import { syncAniListCreators } from "./anilist-creators";
 import { syncTmdbSeriesCreators } from "./tmdb-series-creators";
 import { getImportedCreatorNameLocalization } from "./creator-name-import";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
@@ -17,14 +20,14 @@ import { syncBggCreators, resolveBggCreatorRequest, removeBggBinding } from "./b
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
 import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
-import { and, asc, eq, gt, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns } from "@/db/schema";
+import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, creatorLogoCandidates, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns } from "@/db/schema";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { normalizeSearchSql } from "@/db/search";
 import { extractExternalCreators, extractFantlabCreatorReferences } from "@/lib/media/creators";
 import { pruneEntryCreators, type CreatorTransaction } from "./creators";
-const isOrganizationProvider = (provider: unknown) => provider === "tmdb" || isGameCompanyProvider(provider);
+const isOrganizationProvider = (provider: unknown) => provider === "tmdb" || provider === "anilist" || isGameCompanyProvider(provider);
 export const CREATOR_REQUEST_JOB_TYPE = "media.creator-request-apply";
 export class CreatorRequestError extends Error {
     constructor(public readonly code: string, message: string) {
@@ -64,6 +67,7 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
     contributors?: ProviderContributor[];
     autoApprove?: boolean;
 }) {
+    if (input.provider === "anilist" && input.mediaType === "anime") return syncAniListCreators(tx, input.mediaItemId);
     if (input.provider === "tmdb" && input.mediaType === "series") {
       return syncTmdbSeriesCreators(tx, input.mediaItemId);
     }
@@ -190,23 +194,116 @@ export async function syncProviderCreators(tx: CreatorTransaction, input: {
     return { createdCreators, createdMappings, createdLinks };
 }
 const statusSql = sql<"pending" | "applying" | "processed" | "failed"> `case when ${jobRuns.status} in ('queued','running') then 'applying' when ${jobRuns.status} in ('failed','cancelled') then 'failed' when ${jobRuns.status}='succeeded' then case when ${creatorRequests.decision} is null then 'pending' else 'processed' end else ${creatorRequests.applyStatus} end`;
-export async function getCreatorRequests(input: {
-    all?: boolean;
-    requestId?: number;
-} = {}) {
-    return db.select({ id: creatorRequests.id, provider: creatorRequests.provider, externalCreatorId: creatorRequests.externalCreatorId, roles: sql<string[]>`coalesce((select jsonb_agg(distinct r.name) from creator_request_media_items o join creator_roles r on r.id=o.role_id where o.request_id=${creatorRequests.id}), '[]'::jsonb)`, mediaType: creatorRequests.mediaType, externalCreatorName: creatorRequests.externalCreatorName, normalizedExternalCreatorName: creatorRequests.normalizedExternalCreatorName, decision: creatorRequests.decision, status: statusSql, jobRunId: creatorRequests.jobRunId, jobError: sql<string | null> `coalesce(${jobRuns.errorMessage},${creatorRequests.jobError})`, firstSeenAt: creatorRequests.firstSeenAt, occurrenceCount: sql<number> `(select count(distinct o.media_item_id)::int from ${creatorRequestMediaItems} o where o.request_id=${creatorRequests.id})` }).from(creatorRequests).leftJoin(jobRuns, eq(jobRuns.id, creatorRequests.jobRunId)).where(and(input.all ? undefined : isNull(creatorRequests.decision), input.requestId ? eq(creatorRequests.id, input.requestId) : undefined)).orderBy(asc(creatorRequests.firstSeenAt), asc(creatorRequests.id));
+const hasCreatorRequestEntriesSql = sql<boolean>`exists (select 1 from ${creatorRequestMediaItems} o where o.request_id=${creatorRequests.id})`;
+const hasLogoCandidatesSql = sql<boolean>`exists (select 1 from ${creatorLogoCandidates} l where l.request_id=${creatorRequests.id})`;
+function legacyLogoIgnoreCondition(hasEntries: SQL, hasCandidates: SQL, bulk = false) {
+    const excluded = bulk
+      ? sql`${creatorRequests.externalCreatorId} in (select e.external_creator_id from ${providerCreatorExclusions} e where e.provider='tmdb' and e.media_type='anime' and e.external_creator_id is not null)`
+      : sql`exists (select 1 from ${providerCreatorExclusions} e where e.provider='tmdb' and e.external_creator_id=${creatorRequests.externalCreatorId} and e.media_type='anime')`;
+    return sql<boolean>`(${creatorRequests.provider}='tmdb' and ${creatorRequests.mediaType}='anime'
+      and ${creatorRequests.externalCreatorId} like 'company:%' and ${creatorRequests.decision}='exclude'
+      and ${hasCandidates} and not ${hasEntries}
+      and ${excluded})`;
+}
+export const legacyLogoIgnoreSql = legacyLogoIgnoreCondition(hasCreatorRequestEntriesSql, hasLogoCandidatesSql);
+const bulkHasEntriesSql = sql<boolean>`${creatorRequests.id} in (select distinct o.request_id from ${creatorRequestMediaItems} o)`;
+const bulkHasCandidatesSql = sql<boolean>`${creatorRequests.id} in (select l.request_id from ${creatorLogoCandidates} l)`;
+const bulkHasPendingCandidatesSql = sql<boolean>`${creatorRequests.id} in (select l.request_id from ${creatorLogoCandidates} l where l.decision is null)`;
+function pendingCreatorRequestCondition(hasEntries: SQL, hasCandidates: SQL, hasPendingCandidates: SQL, legacyIgnore: SQL) {
+    return or(and(isNull(creatorRequests.decision), or(hasEntries, sql`not (${hasCandidates})`, hasPendingCandidates)), legacyIgnore);
+}
+export function getCreatorRequestsQuery(input: { all?: boolean; requestId?: number; requestIds?: number[] } = {}) {
+    const requestScope = input.requestId ? eq(creatorRequests.id, input.requestId) : input.requestIds ? inArray(creatorRequests.id, input.requestIds) : undefined;
+    const logoScope = input.requestId ? eq(creatorLogoCandidates.requestId, input.requestId) : input.requestIds ? inArray(creatorLogoCandidates.requestId, input.requestIds) : undefined;
+    const occurrenceScope = input.requestId ? eq(creatorRequestMediaItems.requestId, input.requestId) : input.requestIds ? inArray(creatorRequestMediaItems.requestId, input.requestIds) : undefined;
+    // Aggregate pairs once for a queue; push the key into this aggregation for a detail page.
+    const logos = db.select({ requestId: creatorLogoCandidates.requestId,
+      total: sql<number>`count(*)::int`.as("total"), pending: sql<number>`count(*) filter (where ${creatorLogoCandidates.decision} is null)::int`.as("pending"),
+    }).from(creatorLogoCandidates).where(logoScope).groupBy(creatorLogoCandidates.requestId).as("logo_summary");
+    const occurrences = db.select({ requestId: creatorRequestMediaItems.requestId,
+      count: sql<number>`count(distinct ${creatorRequestMediaItems.mediaItemId})::int`.as("entry_count"),
+      roles: sql<string[]>`jsonb_agg(distinct ${creatorRoles.name})`.as("roles"),
+    }).from(creatorRequestMediaItems).innerJoin(creatorRoles, eq(creatorRoles.id, creatorRequestMediaItems.roleId))
+      .where(occurrenceScope).groupBy(creatorRequestMediaItems.requestId).as("occurrence_summary");
+    const hasEntries = sql<boolean>`coalesce(${occurrences.count},0)>0`;
+    const hasCandidates = sql<boolean>`coalesce(${logos.total},0)>0`;
+    const hasPendingCandidates = sql<boolean>`coalesce(${logos.pending},0)>0`;
+    const legacyIgnore = legacyLogoIgnoreCondition(hasEntries, hasCandidates, !input.requestId && !input.requestIds);
+    return db.select({ id: creatorRequests.id, provider: creatorRequests.provider, externalCreatorId: creatorRequests.externalCreatorId, roles: sql<string[]>`coalesce(${occurrences.roles}, '[]'::jsonb)`, mediaType: creatorRequests.mediaType, externalCreatorName: creatorRequests.externalCreatorName, normalizedExternalCreatorName: creatorRequests.normalizedExternalCreatorName, decision: creatorRequests.decision, status: statusSql, jobRunId: creatorRequests.jobRunId, jobError: sql<string | null> `coalesce(${jobRuns.errorMessage},${creatorRequests.jobError})`, firstSeenAt: creatorRequests.firstSeenAt, occurrenceCount: sql<number>`coalesce(${occurrences.count},0)`,
+      logoCandidateCount: sql<number>`coalesce(${logos.total},0)`, pendingLogoCandidateCount: sql<number>`coalesce(${logos.pending},0)`, legacyLogoIgnore: legacyIgnore,
+    }).from(creatorRequests).leftJoin(jobRuns, eq(jobRuns.id, creatorRequests.jobRunId)).leftJoin(logos, eq(logos.requestId, creatorRequests.id)).leftJoin(occurrences, eq(occurrences.requestId, creatorRequests.id))
+      .where(and(input.all ? undefined : pendingCreatorRequestCondition(hasEntries, hasCandidates, hasPendingCandidates, legacyIgnore), requestScope))
+      .orderBy(asc(creatorRequests.firstSeenAt), asc(creatorRequests.id));
+}
+export async function getCreatorRequests(input: Parameters<typeof getCreatorRequestsQuery>[0] = {}) { return getCreatorRequestsQuery(input); }
+
+const creatorRequestQueueCondition = pendingCreatorRequestCondition(bulkHasEntriesSql, bulkHasCandidatesSql, bulkHasPendingCandidatesSql, legacyLogoIgnoreCondition(bulkHasEntriesSql, bulkHasCandidatesSql, true));
+export function getCreatorRequestsPageIdsQuery(input: { all?: boolean; page: number; pageSize: number }) {
+    return db.select({ id: creatorRequests.id }).from(creatorRequests).where(input.all ? undefined : creatorRequestQueueCondition)
+        .orderBy(asc(creatorRequests.firstSeenAt), asc(creatorRequests.id)).limit(input.pageSize).offset((input.page - 1) * input.pageSize);
+}
+export function getCreatorRequestsCountQuery(input: { all?: boolean } = {}) {
+    return db.select({ count: sql<number>`count(*)::int` }).from(creatorRequests).where(input.all ? undefined : creatorRequestQueueCondition);
+}
+export async function getCreatorRequestsPage(input: { all?: boolean; page?: number } = {}) {
+    const pageSize = 30;
+    const [count] = await getCreatorRequestsCountQuery(input);
+    const totalCount = count.count;
+    const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+    const requestedPage = input.page ?? 1;
+    const page = Math.min(totalPages, Math.max(1, Number.isSafeInteger(requestedPage) ? requestedPage : 1));
+    const ids = totalCount ? await getCreatorRequestsPageIdsQuery({ all: input.all, page, pageSize }) : [];
+    // LIMIT applies to lightweight request identities before roles, participation or logo aggregates.
+    const items = ids.length ? await getCreatorRequestsQuery({ all: true, requestIds: ids.map(row => row.id) }) : [];
+    return { items, totalCount, page, pageSize, totalPages };
 }
 export async function getCreatorExclusions() {
     return db.select().from(providerCreatorExclusions).orderBy(asc(providerCreatorExclusions.externalCreatorName));
 }
 export async function getPendingCreatorRequestCount() {
-    const [row] = await db.select({ count: sql<number> `count(*)::int` }).from(creatorRequests).where(isNull(creatorRequests.decision));
+    const [row] = await getPendingCreatorRequestCountQuery();
     return row.count;
+}
+export function getPendingCreatorRequestCountQuery() {
+    return getCreatorRequestsCountQuery();
 }
 async function assertIdle(tx: CreatorTransaction, request: typeof creatorRequests.$inferSelect) {
     const [run] = request.jobRunId ? await tx.select().from(jobRuns).where(eq(jobRuns.id, request.jobRunId)) : [];
     if (run ? ["queued", "running"].includes(run.status) : request.applyStatus === "applying")
         throw new CreatorRequestError("applying", "Дождитесь завершения текущей задачи.");
+}
+/** Reject only the search suggestion. The provider identity and its real roster are untouched. */
+export async function rejectAnimeCompanyLogoCandidate(input: { requestId: number; creatorId: number; adminId?: number }) {
+    return db.transaction(async tx => {
+        const [request] = await tx.select().from(creatorRequests).where(eq(creatorRequests.id, input.requestId)).for("update");
+        if (!request) throw new CreatorRequestError("not-found", "Заявка не найдена.");
+        if (request.provider !== "tmdb" || !request.externalCreatorId?.startsWith("company:")) throw new CreatorRequestError("logo-candidate", "Это не кандидат для поиска логотипа.");
+        await assertIdle(tx, request);
+        const [candidate] = await tx.select().from(creatorLogoCandidates).where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, input.creatorId))).for("update");
+        if (!candidate || candidate.decision === "map") throw new CreatorRequestError("logo-candidate", "Совпадение не найдено или уже подтверждено.");
+        if (candidate.decision === "reject") return;
+        await tx.update(creatorLogoCandidates).set({ decision: "reject", resolvedByAdminId: input.adminId ?? null, resolvedAt: new Date(), updatedAt: new Date() })
+            .where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, input.creatorId)));
+        await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Отклонено совпадение организаций при поиске логотипа. Общий игнор не изменён.", input.adminId,
+            { scope: "logo-candidate", decision: "reject", creatorId: input.creatorId, externalCreatorId: request.externalCreatorId });
+    });
+}
+
+/** Explicit remediation only. Migration never guesses whether a legacy global ignore was intentional. */
+export async function repairLegacyAnimeCompanyLogoIgnore(input: { requestId: number; adminId: number }) {
+    return db.transaction(async tx => {
+        const [request] = await tx.select().from(creatorRequests).where(eq(creatorRequests.id, input.requestId)).for("update");
+        if (!request) throw new CreatorRequestError("not-found", "Заявка не найдена.");
+        await assertIdle(tx, request);
+        const [legacy] = await tx.select({ id: creatorRequests.id }).from(creatorRequests).where(and(eq(creatorRequests.id, request.id), legacyLogoIgnoreSql));
+        if (!legacy) throw new CreatorRequestError("logo-candidate", "Общий игнор нельзя заменить автоматически: проверьте связанные записи и решения.");
+        await tx.update(creatorLogoCandidates).set({ decision: "reject", resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() })
+            .where(and(eq(creatorLogoCandidates.requestId, request.id), isNull(creatorLogoCandidates.decision)));
+        await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "tmdb"), eq(providerCreatorExclusions.externalCreatorId, request.externalCreatorId!), eq(providerCreatorExclusions.mediaType, "anime")));
+        await tx.update(creatorRequests).set({ decision: null, resolvedByAdminId: null, resolvedAt: null, jobRunId: null, applyStatus: "pending", jobError: null, manuallyReopened: false, updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
+        await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Прежний общий игнор компании заменён отклонением совпадений для логотипа.", input.adminId,
+            { scope: "logo-candidate-repair", previousJobRunId: request.jobRunId, externalCreatorId: request.externalCreatorId });
+    });
 }
 async function enqueue(tx: CreatorTransaction, requestId: number, adminId?: number, orphanCreatorId?: number) {
     const now = new Date();
@@ -215,6 +312,8 @@ async function enqueue(tx: CreatorTransaction, requestId: number, adminId?: numb
     return { requestId, jobRunId: run.id };
 }
 export async function resolveCreatorRequest(input: {
+    animeCompanyLogoEvidence?: AnimeCompanyLogoEvidence;
+    logoCandidateCreatorId?: number;
     requestId: number;
     jobGuard?: SnapshotJobGuard;
     adminId?: number;
@@ -230,18 +329,41 @@ export async function resolveCreatorRequest(input: {
         const [request] = await tx.select().from(creatorRequests).where(eq(creatorRequests.id, input.requestId)).for("update");
         if (!request)
             throw new CreatorRequestError("not-found", "Заявка не найдена.");
+        if (input.animeCompanyLogoEvidence && (!input.autoApprove || request.provider !== "tmdb" || request.mediaType !== "anime" || !request.externalCreatorId?.startsWith("company:"))) throw new CreatorRequestError("auto-skip", "Некорректное основание привязки логотипа.");
         await assertIdle(tx, request);
         if (request.decision !== null)
             throw new CreatorRequestError("already-resolved", "Решение уже принято.");
+        const pairCreatorId = input.animeCompanyLogoEvidence?.creatorId ?? input.logoCandidateCreatorId;
+        if (pairCreatorId !== undefined) {
+            if (request.provider !== "tmdb" || !request.externalCreatorId?.startsWith("company:") || input.decision !== "map" || input.creatorId !== pairCreatorId)
+                throw new CreatorRequestError("logo-candidate", "Некорректное решение по совпадению организаций.");
+            const [candidate] = await tx.select().from(creatorLogoCandidates).where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, pairCreatorId)));
+            if (!candidate || candidate.decision !== null) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "logo-candidate", "Совпадение уже отклонено или не найдено.");
+            const [creator] = await tx.select({ id: creators.id, type: creatorTypes.code, name: creators.name, originalName: creators.originalName }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, pairCreatorId)).for("update", { of: creators });
+            if (creator?.type !== "organization") throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "invalid-type", "Выберите организацию.");
+            // Creator first, then pair: creator deletion cascades to the pair table.
+            const [lockedCandidate] = await tx.select().from(creatorLogoCandidates).where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, pairCreatorId))).for("update");
+            if (!lockedCandidate || lockedCandidate.decision !== null) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "logo-candidate", "Совпадение уже изменено.");
+            const [source] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "anilist"), eq(providerCreatorBindings.externalCreatorId, candidate.anilistStudioId), eq(providerCreatorBindings.creatorId, pairCreatorId), eq(providerCreatorBindings.active, true))).for("share");
+            if (!source || !await animeCompanyLogoSourceAllowed(source, animeCompanyLogoSourceName(creator), tx)) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "logo-candidate", "Исходная студия больше не доступна для сопоставления.");
+            const [owner] = await tx.select({ id: providerCreatorBindings.id, creatorId: providerCreatorBindings.creatorId }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
+            const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.creatorId, pairCreatorId), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like 'company:%'`, sql`${providerCreatorBindings.externalCreatorId} <> ${request.externalCreatorId}`)).limit(1);
+            if ((owner && owner.creatorId !== pairCreatorId) || conflict) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "identity-conflict", "У организации уже есть другая привязка TMDB.");
+            const [excluded] = await tx.select({ id: providerCreatorExclusions.id }).from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "tmdb"), or(eq(providerCreatorExclusions.externalCreatorId, request.externalCreatorId), and(isNull(providerCreatorExclusions.externalCreatorId), eq(providerCreatorExclusions.mediaType, request.mediaType), eq(providerCreatorExclusions.normalizedExternalCreatorName, request.normalizedExternalCreatorName))))).limit(1);
+            if (excluded) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "logo-candidate", "Компания находится в общем игноре. Сначала проверьте это решение отдельно.");
+        } else if (request.provider === "tmdb" && request.externalCreatorId?.startsWith("company:")) {
+            const [logoOnly] = await tx.select({ id: creatorRequests.id }).from(creatorRequests).where(and(eq(creatorRequests.id, request.id), hasLogoCandidatesSql, sql`not ${hasCreatorRequestEntriesSql}`));
+            if (logoOnly) throw new CreatorRequestError("logo-only", "Для поиска логотипа нужно принять решение по конкретной паре организаций.");
+        }
         if (input.autoApprove && ((request.provider !== "bgg" && !isOrganizationProvider(request.provider)) || request.externalCreatorId === null || request.manuallyReopened || request.applyStatus !== "pending")) {
             throw new CreatorRequestError("auto-skip", "Заявка требует ручного решения.");
         }
-        if (request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) {
+        if (((request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) || (request.provider === "anilist" && isAniListPersonId(request.externalCreatorId)))) {
             const resolvedInput = { ...input };
             const externalId = request.externalCreatorId;
-            const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.externalCreatorId, externalId), eq(providerCreatorBindings.active, true)));
+            const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, externalId), eq(providerCreatorBindings.active, true)));
             if (input.autoApprove) {
-                const [excluded] = await tx.select({ id: providerCreatorExclusions.id }).from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "tmdb"),
+                const [excluded] = await tx.select({ id: providerCreatorExclusions.id }).from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider),
                     sql`(${providerCreatorExclusions.externalCreatorId}=${externalId} or (${providerCreatorExclusions.externalCreatorId} is null and ${providerCreatorExclusions.mediaType}=${request.mediaType} and ${providerCreatorExclusions.normalizedExternalCreatorName}=${request.normalizedExternalCreatorName}))`));
                 if (excluded) throw new CreatorRequestError("auto-skip", "Персона исключена администратором.");
                 const names = await tx.selectDistinct({ name: normalizeSearchSql(creatorRequestMediaItems.externalCreatorName) }).from(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.requestId, request.id)).limit(2);
@@ -250,7 +372,7 @@ export async function resolveCreatorRequest(input: {
                     resolvedInput.decision = "map";
                     resolvedInput.creatorId = binding.creatorId;
                 } else {
-                    const [historical] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.externalCreatorId, externalId))).limit(1);
+                    const [historical] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, externalId))).limit(1);
                     if (historical) throw new CreatorRequestError("auto-skip", "Прежняя привязка требует ручного решения.");
                     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator:${request.normalizedExternalCreatorName}`},0))`);
                     const [candidate] = await tmdbPersonNameCandidateQuery(request.normalizedExternalCreatorName, tx);
@@ -261,60 +383,66 @@ export async function resolveCreatorRequest(input: {
                 }
             }
             if (resolvedInput.decision === "exclude") {
-                await removeGameCompanyBinding(tx, "tmdb", externalId);
-                await tx.insert(providerCreatorExclusions).values({ provider: "tmdb", mediaType: request.mediaType, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, normalizedExternalCreatorName: request.normalizedExternalCreatorName }).onConflictDoNothing();
+                await removeGameCompanyBinding(tx, request.provider, externalId);
+                await tx.insert(providerCreatorExclusions).values({ provider: request.provider, mediaType: request.mediaType, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, normalizedExternalCreatorName: request.normalizedExternalCreatorName }).onConflictDoNothing();
             } else {
                 let creatorId = resolvedInput.creatorId;
                 if (resolvedInput.decision === "create") {
-                    if (binding) throw new CreatorRequestError("identity-conflict", "TMDB ID уже связан с Creator.");
+                    if (binding) throw new CreatorRequestError("identity-conflict", "ID провайдера уже связан с Creator.");
                     if (!resolvedInput.name?.trim()) throw new CreatorRequestError("invalid-name", "Укажите имя создателя.");
                     creatorId = (await createPerson(tx, resolvedInput.name)).id;
                 }
                 const [creator] = creatorId ? await tx.select({ id: creators.id, type: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, creatorId)).for("update", { of: creators }) : [];
                 if (!creator || creator.type !== "person") throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "invalid-type", "Выберите создателя типа person.");
-                if (binding && binding.creatorId !== creator.id) throw new CreatorRequestError("identity-conflict", "TMDB ID уже принадлежит другому Creator.");
-                const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.creatorId, creator.id), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like 'person:%'`, sql`${providerCreatorBindings.externalCreatorId} <> ${externalId}`)).limit(1);
-                if (conflict) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "tmdb-person-conflict", "У Creator уже есть другой TMDB person ID.");
-                await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "tmdb"), eq(providerCreatorExclusions.externalCreatorId, externalId)));
-                if (!binding) await tx.insert(providerCreatorBindings).values({ provider: "tmdb", externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+                if (binding && binding.creatorId !== creator.id) throw new CreatorRequestError("identity-conflict", "ID провайдера уже принадлежит другому Creator.");
+                const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.creatorId, creator.id), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like 'person:%'`, sql`${providerCreatorBindings.externalCreatorId} <> ${externalId}`)).limit(1);
+                if (conflict) throw new CreatorRequestError(input.autoApprove ? "auto-skip" : "tmdb-person-conflict", "У Creator уже есть другой person ID провайдера.");
+                await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider), eq(providerCreatorExclusions.externalCreatorId, externalId)));
+                if (!binding) await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
                 await enqueueCreatorImageFill(tx, creator.id);
             }
             await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
             const queued = await enqueue(tx, request.id, input.adminId);
-            await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по персоне TMDB.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
+            await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по персоне провайдера.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
             return queued;
         }
         if (request.externalCreatorId !== null && isOrganizationProvider(request.provider)) {
             const resolvedInput = { ...input };
-            if (request.provider === "tmdb" && input.autoApprove) {
-                const [excluded] = await tx.select({ id: providerCreatorExclusions.id }).from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "tmdb"),
+            const logoEvidence = input.animeCompanyLogoEvidence;
+            if (logoEvidence) {
+                if (!await validateAnimeCompanyLogoEvidence(tx, request, logoEvidence)) throw new CreatorRequestError("auto-skip", "Совпадение компании требует ручного подтверждения.");
+                resolvedInput.decision = "map";
+                resolvedInput.creatorId = logoEvidence.creatorId;
+            }
+            if ((request.provider === "tmdb" || request.provider === "anilist") && input.autoApprove && !logoEvidence) {
+                const [excluded] = await tx.select({ id: providerCreatorExclusions.id }).from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider),
                   sql`(${providerCreatorExclusions.externalCreatorId}=${request.externalCreatorId} or (${providerCreatorExclusions.externalCreatorId} is null and ${providerCreatorExclusions.mediaType}=${request.mediaType} and ${providerCreatorExclusions.normalizedExternalCreatorName}=${request.normalizedExternalCreatorName}))`));
                 if (excluded) throw new CreatorRequestError("auto-skip", "Компания исключена администратором.");
                 const observations = await tx.selectDistinct({ name: normalizeSearchSql(creatorRequestMediaItems.externalCreatorName) }).from(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.requestId, request.id)).limit(2);
                 if (!observations.length || new Set([request.normalizedExternalCreatorName, ...observations.map(row => row.name)]).size !== 1)
                     throw new CreatorRequestError("auto-skip", "Разные варианты названия требуют проверки.");
             }
-            if (input.autoApprove) {
+            if (input.autoApprove && !logoEvidence) {
                 const [confirmed] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId), eq(providerCreatorBindings.active, true)));
                 if (confirmed) {
-                    if (request.provider === "tmdb") {
+                    if ((request.provider === "tmdb" || request.provider === "anilist")) {
                         const [owner] = await tx.select({ type: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, confirmed.creatorId));
                         if (owner?.type !== "organization") throw new CreatorRequestError("auto-skip", "Привязка ведёт не к организации.");
                     }
                     resolvedInput.decision = "map";
                     resolvedInput.creatorId = confirmed.creatorId;
                 } else {
-                    if (request.provider !== "tmdb") {
+                    if ((request.provider !== "tmdb" && request.provider !== "anilist")) {
                         const names = await tx.select({ name: creatorRequestMediaItems.externalCreatorName }).from(creatorRequestMediaItems).where(eq(creatorRequestMediaItems.requestId, request.id));
                         if (new Set([request.normalizedExternalCreatorName, ...names.map(row => normalizeSearchText(row.name))]).size !== 1) throw new CreatorRequestError("auto-skip", "Разные варианты названия требуют проверки.");
                     }
                     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator:${request.normalizedExternalCreatorName}`},0))`);
-                    if (request.provider === "tmdb") {
-                        const [historical] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "tmdb"), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId))).limit(1);
+                    if ((request.provider === "tmdb" || request.provider === "anilist")) {
+                        const [historical] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, request.externalCreatorId))).limit(1);
                         if (historical) throw new CreatorRequestError("auto-skip", "Прежняя привязка требует ручного решения.");
                     }
-                    const savedMappings = request.provider === "tmdb" ? await tx.select({ creatorId: providerCreatorMappings.creatorId }).from(providerCreatorMappings).where(and(
-                        eq(providerCreatorMappings.provider, "tmdb"), request.externalCreatorId.startsWith("network:") ? undefined : eq(providerCreatorMappings.mediaType, request.mediaType), eq(providerCreatorMappings.normalizedExternalCreatorName, request.normalizedExternalCreatorName),
+                    const savedMappings = (request.provider === "tmdb" || request.provider === "anilist") ? await tx.select({ creatorId: providerCreatorMappings.creatorId }).from(providerCreatorMappings).where(and(
+                        eq(providerCreatorMappings.provider, request.provider), request.externalCreatorId.startsWith("network:") ? undefined : eq(providerCreatorMappings.mediaType, request.mediaType), eq(providerCreatorMappings.normalizedExternalCreatorName, request.normalizedExternalCreatorName),
                     )) : [];
                     const candidates = await tx.select({ id: creators.id }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(and(
                         eq(creatorTypes.code, "organization"), or(
@@ -345,6 +473,7 @@ export async function resolveCreatorRequest(input: {
                 }
             }
             await resolveGameCompanyRequest(tx, request, resolvedInput);
+            if (pairCreatorId !== undefined) await tx.update(creatorLogoCandidates).set({ decision: "map", resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, pairCreatorId)));
             await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: input.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
             const queued = await enqueue(tx, request.id, input.adminId);
             await activity(tx, "creator-request.resolved", request.id, request.externalCreatorName, "Принято решение по организации.", input.adminId, { decision: resolvedInput.decision, automatic: input.autoApprove === true, ...queued });
@@ -504,7 +633,7 @@ export async function applyCreatorRequest(requestId: number, input: {
             const company = isGameCompanyProvider(request.provider) && request.externalCreatorId !== null;
             const items = company
                 ? (await getGameCompanyRosterBatch(request.provider, request.externalCreatorId!, afterId)).map(row => ({ id: row.mediaItemId }))
-                : request.decision === null && request.provider !== "tmdb"
+                : request.decision === null && request.provider !== "tmdb" && request.provider !== "anilist"
                 ? await db.select({ id: mediaItems.id }).from(mediaItems).innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id)).where(and(eq(mediaItems.mediaType, request.mediaType), eq(mediaItemMetadata.sourceProvider, request.provider), gt(mediaItems.id, afterId))).orderBy(asc(mediaItems.id)).limit(100)
                 : await db.selectDistinct({ id: creatorRequestMediaItems.mediaItemId }).from(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.requestId, requestId), gt(creatorRequestMediaItems.mediaItemId, afterId))).orderBy(asc(creatorRequestMediaItems.mediaItemId)).limit(100);
             if (!items.length)
@@ -517,6 +646,10 @@ export async function applyCreatorRequest(requestId: number, input: {
                     ? await getSavedBookBundle(sourceBefore.provider as "fantlab"|"google-books"|"open-library",sourceBefore.externalId) : null;
                 await withSnapshotJobGuard(input.jobGuard, async (tx) => {
                     const [entry] = await tx.select().from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");
+                    if (request.provider === "anilist" && request.externalCreatorId && entry?.mediaType === "anime") {
+                        await syncAniListCreators(tx, item.id, { enqueueApproval: false });
+                        return;
+                    }
                     if (request.provider === "tmdb" && request.externalCreatorId && entry) {
                         const [currentSource] = await tx.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
                         if (entry.mediaType === "series" && currentSource?.sourceProvider === "tmdb") {
@@ -612,13 +745,17 @@ export async function reopenCreatorBinding(input: { bindingId: number; adminId: 
         const [binding] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
         if (!binding || !binding.active || (binding.provider !== "bgg" && binding.provider !== "fantlab" && !isOrganizationProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
         const name = binding.externalCreatorName ?? binding.externalCreatorId;
-        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
+        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "anilist" ? "anime" : binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
         const [request] = await tx.select().from(creatorRequests).where(gameCompanyRequestKey(binding.provider, binding.externalCreatorId)).for("update");
         await assertIdle(tx, request);
         // Recheck the binding after request lock; a concurrent administrator may have remapped it.
         const [current] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
         if (!current || !current.active || current.creatorId !== binding.creatorId) throw new CreatorRequestError("changed", "Привязка уже изменилась.");
         await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, binding.creatorId)).for("update");
+        if (binding.provider === "tmdb" && binding.externalCreatorId.startsWith("company:")) {
+            await tx.update(creatorLogoCandidates).set({ decision: null, resolvedAt: null, resolvedByAdminId: null, updatedAt: new Date() })
+                .where(and(eq(creatorLogoCandidates.requestId, request.id), eq(creatorLogoCandidates.creatorId, binding.creatorId), eq(creatorLogoCandidates.decision, "map")));
+        }
         if (isOrganizationProvider(binding.provider)) await removeGameCompanyBinding(tx, binding.provider, binding.externalCreatorId);
         else if (binding.provider === "fantlab") await removeFantlabBookBinding(tx, binding.externalCreatorId);
         else { await removeBggBinding(tx, binding.externalCreatorId); await deleteUnlinkedCreator(tx, binding.creatorId); }
@@ -712,6 +849,31 @@ export async function autoApproveTmdbDirectorRequests(input: { externalIds?: rea
     for (;;) {
         const pending = await db.select({ id: creatorRequests.id }).from(creatorRequests).where(and(eq(creatorRequests.provider, "tmdb"),
             sql`${creatorRequests.externalCreatorId} like 'person:%'`, input.externalIds ? inArray(creatorRequests.externalCreatorId, [...input.externalIds]) : undefined,
+            isNull(creatorRequests.decision), eq(creatorRequests.manuallyReopened, false), eq(creatorRequests.applyStatus, "pending"), gt(creatorRequests.id, afterId),
+            sql`exists (select 1 from creator_request_media_items o where o.request_id=${creatorRequests.id})`)).orderBy(asc(creatorRequests.id)).limit(100);
+        if (!pending.length) break;
+        for (const request of pending) {
+            input.signal?.throwIfAborted();
+            try {
+                await resolveCreatorRequest({ requestId: request.id, decision: "create", autoApprove: true, jobGuard: input.jobGuard });
+                result.approved++;
+            } catch (error) {
+                if (error instanceof CreatorRequestError && ["auto-skip", "already-resolved", "applying"].includes(error.code)) result.skipped++;
+                else throw error;
+            }
+            afterId = request.id;
+        }
+    }
+    return result;
+}
+
+export async function autoApproveAniListCreatorRequests(input: { externalIds?: readonly string[]; signal?: AbortSignal; jobGuard?: SnapshotJobGuard } = {}) {
+    const result = { approved: 0, skipped: 0 };
+    if (input.externalIds?.length === 0) return result;
+    let afterId = 0;
+    for (;;) {
+        const pending = await db.select({ id: creatorRequests.id }).from(creatorRequests).where(and(eq(creatorRequests.provider, "anilist"),
+            sql`(${creatorRequests.externalCreatorId} like 'person:%' or ${creatorRequests.externalCreatorId} like 'studio:%')`, input.externalIds ? inArray(creatorRequests.externalCreatorId, [...input.externalIds]) : undefined,
             isNull(creatorRequests.decision), eq(creatorRequests.manuallyReopened, false), eq(creatorRequests.applyStatus, "pending"), gt(creatorRequests.id, afterId),
             sql`exists (select 1 from creator_request_media_items o where o.request_id=${creatorRequests.id})`)).orderBy(asc(creatorRequests.id)).limit(100);
         if (!pending.length) break;

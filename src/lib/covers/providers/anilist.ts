@@ -1,5 +1,6 @@
 import type { CoverCandidate, MediaProvider } from "@/lib/covers/types";
-import { fetchJson, fetchSearchJson, normalizeSearchQuery } from "@/lib/covers/providers/shared";
+import { fetchJson, fetchSearchJson, normalizeSearchQuery, ProviderHttpError } from "@/lib/covers/providers/shared";
+import { fetchAniList, aniListRetryAfterSeconds } from "@/lib/covers/anilist-request";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { sanitizeShikimoriDescription } from "@/lib/media/shikimori-description";
 
@@ -91,14 +92,24 @@ const ANILIST_MEDIA_FIELDS = `
   }
 `;
 
+export type AniListShikimoriEnrichmentResult =
+  | { kind: "terminal"; description: string | null; russian: string | null; status: "enriched" | "no-mal-id" | "not-found" }
+  | { kind: "transient-error" };
+
+export function createAniListClient(request: typeof fetchAniList = fetchAniList) {
 async function queryAniList(query: string, variables: Record<string, unknown>) {
-  return fetchSearchJson<AniListResponse>(ANILIST_URL, {
+  const response = await request(ANILIST_URL, {
     method: "POST",
     headers: {
       "content-type": "application/json",
     },
     body: JSON.stringify({ query, variables }),
   });
+  if (!response.ok) {
+    await response.body?.cancel();
+    throw Object.assign(new ProviderHttpError(response.status, null), { retryAfterSeconds: aniListRetryAfterSeconds(response.headers) });
+  }
+  return await response.json() as AniListResponse;
 }
 
 function getAniListTitle(item: AniListMedia, fallbackTitle: string) {
@@ -218,15 +229,6 @@ async function searchAniListAnimeViaShikimori(query: string, candidateLimit: num
   }
 }
 
-export type AniListShikimoriEnrichmentResult =
-  | { kind: "transient-error" }
-  | {
-      kind: "terminal";
-      description: string | null;
-      russian: string | null;
-      status: "enriched" | "no-mal-id" | "not-found";
-    };
-
 async function getShikimoriAnime(malId: number): Promise<AniListShikimoriEnrichmentResult> {
   try {
     const response = await fetchSearchJson<ShikimoriResponse>(SHIKIMORI_URL, {
@@ -267,7 +269,7 @@ async function getShikimoriAnime(malId: number): Promise<AniListShikimoriEnrichm
   }
 }
 
-export async function getAniListShikimoriEnrichment(
+async function getAniListShikimoriEnrichment(
   anilistId: number,
 ): Promise<AniListShikimoriEnrichmentResult> {
   if (!Number.isSafeInteger(anilistId) || anilistId <= 0) {
@@ -293,7 +295,7 @@ export async function getAniListShikimoriEnrichment(
   return getShikimoriAnime(media.idMal!);
 }
 
-export const anilistProvider: MediaProvider = {
+const anilistProvider: MediaProvider = {
   code: "anilist",
   mediaTypes: ["anime"],
   async searchTitleCandidates(input, options) {
@@ -425,3 +427,9 @@ export const anilistProvider: MediaProvider = {
     return candidates.slice(0, options.candidateLimit);
   },
 };
+return { provider: anilistProvider, getAniListShikimoriEnrichment };
+}
+
+const client = createAniListClient();
+export const anilistProvider = client.provider;
+export const getAniListShikimoriEnrichment = client.getAniListShikimoriEnrichment;

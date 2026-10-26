@@ -35,7 +35,7 @@ export function JobJournalFilters({
 
   return (
     <div className="flex flex-wrap items-end gap-3">
-      <label className="grid gap-2 text-sm font-medium text-stone-700">
+      <label className="grid min-w-0 max-w-full gap-2 text-sm font-medium text-stone-700">
         История
         <Select
           aria-label="Фильтр журнала запусков"
@@ -46,7 +46,7 @@ export function JobJournalFilters({
           {jobs.map((job) => (
             <option key={job.id} value={job.id}>{job.code}</option>
           ))}
-          <option value="adhoc">Разовые запуски</option>
+          <option value="adhoc">Без расписания</option>
         </Select>
       </label>
       <label className="grid gap-2 text-sm font-medium text-stone-700">

@@ -65,8 +65,16 @@ freeze or crash VS Code.
 
 ### Database query performance
 
-Every new or changed database query requires a performance check before the work is complete.
-Fast execution against the small local database is not sufficient evidence of scalability.
+Choose performance verification according to risk; do not spend tokens and time on large
+benchmarks for routine changes. For bounded point reads or single-row writes by PK/unique key,
+inspect the query, relevant indexes and FK behavior, and run a focused correctness check.
+Do not create large synthetic fixtures or run EXPLAIN automatically for such changes. Escalate
+only when there is a concrete concern: unindexed access, large relationship fan-out, locking,
+N+1 queries, or a reported performance problem.
+
+For queries whose cost grows with data volume (search, lists, aggregates, bulk operations),
+apply the checks below. Fast execution against a small local database alone does not establish
+scalability. Reuse relevant existing measurements when the query and access path are unchanged.
 
 - Inspect the generated SQL and its execution plan, including related count/pagination queries.
   Check index compatibility with the actual expressions, join cardinality, correlated subquery

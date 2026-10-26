@@ -1,3 +1,4 @@
+import { anilistCreatorApprovalHandler } from "@/lib/creators/anilist-creator-jobs";
 import { creatorNameLocalizationHandler } from "@/lib/creators/name-localization-job";
 import { genreSeriesApplyHandler } from "@/lib/media/genre-series-job";
 import { reputationInitializeHandler } from "@/lib/reputation/initialization-job";
@@ -218,11 +219,14 @@ function parseMetadataJobPayloadBase(value: unknown, extraKeys: readonly string[
 }
 
 function parseMetadataBackfillPayload(value: unknown): MetadataBackfillPayload {
-  const { limit, mediaItemId, quotaReserve, source } = parseMetadataJobPayloadBase(value, ["partsOnly", "force", "mediaType"]);
+  const { limit, mediaItemId, quotaReserve, source } = parseMetadataJobPayloadBase(value, ["partsOnly", "force", "mediaType", "creatorsOnly", "afterId"]);
   if (source.partsOnly !== undefined && typeof source.partsOnly !== "boolean") throw new JobError("invalid-payload", "partsOnly должен быть логическим значением.", { retryable: false });
   if (source.force !== undefined && typeof source.force !== "boolean") throw new JobError("invalid-payload", "force должен быть логическим значением.", { retryable: false });
   if (source.mediaType !== undefined && (typeof source.mediaType !== "string" || !isMediaTypeCode(source.mediaType))) throw new JobError("invalid-payload", "Некорректный тип записи.", { retryable: false });
-  return { limit, mediaItemId, quotaReserve, partsOnly: source.partsOnly as boolean | undefined,
+  if (source.creatorsOnly !== undefined && typeof source.creatorsOnly !== "boolean") throw new JobError("invalid-payload", "creatorsOnly должен быть логическим значением.", {retryable:false});
+  if (source.creatorsOnly && (source.partsOnly || (source.mediaType && source.mediaType !== "anime"))) throw new JobError("invalid-payload", "Состав AniList доступен только для аниме.", {retryable:false});
+  const afterId = parseOptionalSafeInt(source.afterId, "Некорректный курсор.", 0, Number.MAX_SAFE_INTEGER);
+  return { limit, mediaItemId, quotaReserve, creatorsOnly: source.creatorsOnly as boolean | undefined, afterId, partsOnly: source.partsOnly as boolean | undefined,
     force: source.force as boolean | undefined, mediaType: source.mediaType as string | undefined };
 }
 
@@ -565,6 +569,7 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   creatorImageFillHandler,
   creatorImagesBackfillHandler,
   creatorImageRefreshHandler,
+  anilistCreatorApprovalHandler,
   tmdbDirectorApprovalHandler,
   tmdbCompanyApprovalHandler,
   platformLogosSyncHandler,

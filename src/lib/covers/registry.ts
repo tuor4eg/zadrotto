@@ -601,15 +601,15 @@ export async function getTitleMetadata(
   }
 
   try {
-    return {
-      metadata: normalizeTitleMetadata(
-        await withProviderRequestTimeout(options, () =>
-          provider.getTitleMetadata!(input, options),
-        ),
-      ),
-      error: null,
-    };
+    const metadata = normalizeTitleMetadata(await withProviderRequestTimeout(options, () => provider.getTitleMetadata!(input, options)));
+    if (metadata && providers === COVER_PROVIDERS && input.mediaType === "anime" && ["anilist", "jikan"].includes(input.provider)
+      && getMetadataProviderForMediaType("anime", "anilist", providers, providerSettings)) {
+      const { fetchAniListCreatorSnapshot } = await import("@/lib/providers/anilist-creators-service");
+      metadata.snapshotReferences = await withProviderRequestTimeout(options, () => fetchAniListCreatorSnapshot(input, options));
+    }
+    return { metadata, error: null };
   } catch (error) {
+    if (error instanceof Error && (error.message === "provider-daily-limit" || error.message === "rate-limit-unavailable")) return { metadata: null, error: error.message };
     const retryAfterSeconds = getRetryAfterSeconds(error);
     return { metadata: null, error: getProviderExecutionError(error), ...(retryAfterSeconds !== undefined ? { retryAfterSeconds } : {}) };
   }

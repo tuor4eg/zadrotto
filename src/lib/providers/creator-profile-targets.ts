@@ -1,11 +1,12 @@
 import type { SnapshotDescriptor } from "./types";
 
 export type CreatorProfileTarget = {
-  provider: "fantlab" | "tmdb" | "igdb" | "rawg";
+  provider: "fantlab" | "tmdb" | "igdb" | "rawg" | "anilist";
   resourceType: "author" | "person" | "company" | "network" | "developer" | "publisher";
   externalId: string;
 };
 export const CREATOR_PROFILE_KINDS = [
+  { provider: "anilist", resourceType: "person", bindingPrefix: "person:" },
   { provider: "fantlab", resourceType: "author", bindingPrefix: "" },
   { provider: "tmdb", resourceType: "person", bindingPrefix: "person:" },
   { provider: "tmdb", resourceType: "company", bindingPrefix: "company:" },
@@ -32,6 +33,7 @@ export function creatorProfileTargetFromBinding(binding: { provider: string; ext
 }
 export function creatorProfileDescriptor(input: CreatorProfileTarget): SnapshotDescriptor {
   const target = parseCreatorProfileTarget(input);
+  if (target.provider === "anilist") return { providerCode: "anilist", resourceType: "person", externalId: target.externalId, apiMethod: "staff.image", requestParams: { version: 1 } };
   if (target.provider === "fantlab") return { providerCode: "fantlab", resourceType: "author", externalId: target.externalId, apiMethod: "autor.get", requestParams: { biography: 1, awards: 1 } };
   if (target.provider === "tmdb" && target.resourceType === "person") return { providerCode: "tmdb", resourceType: "person", externalId: target.externalId, apiMethod: "person.details", requestParams: { language: "ru-RU" } };
   return { providerCode: target.provider, resourceType: target.resourceType, externalId: target.externalId,

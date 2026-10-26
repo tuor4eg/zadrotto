@@ -44,6 +44,7 @@ test("TMDB companies use ordinary moderation and preserve provenance offline", {
     for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql", "drizzle/0127_provider_snapshots.sql", "drizzle/0131_creator_life_dates.sql", "drizzle/0135_tmdb_company_creators.sql", "drizzle/0136_tmdb_director_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
+    for (const statement of readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`ALTER TABLE creators ADD COLUMN name_ru text,ADD COLUMN name_ru_source text,ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false`);
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());

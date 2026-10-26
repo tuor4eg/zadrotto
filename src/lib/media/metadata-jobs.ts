@@ -33,6 +33,7 @@ export type MetadataJobResult = {
 }
 
 export type MetadataJobContext = {
+  fetchAniListCreators?: (input: TitleMetadataInput) => Promise<import("@/lib/providers/snapshot-values").SnapshotReference[] | undefined>
   signal?: AbortSignal
   fetchTitleMetadata: (input: TitleMetadataInput) => Promise<{
     error: string | null

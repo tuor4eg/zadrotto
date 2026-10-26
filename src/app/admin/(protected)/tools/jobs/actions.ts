@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { cancelJobRun, retryFailedJobRun, setPeriodicJobEnabled } from "@/db/queries/jobs";
+import { cancelJobRun, deletePeriodicJob, resumeProviderSnapshotRunNow, retryFailedJobRun, setPeriodicJobEnabled } from "@/db/queries/jobs";
 import { logActivity } from "@/lib/activity-logs/server";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { createManagedPeriodicJob, updateManagedPeriodicJob } from "@/lib/jobs/manage";
@@ -36,6 +36,19 @@ export async function setJobEnabledAction(formData: FormData) {
   const job = await setPeriodicJobEnabled(jobId, enabled); if (!job) redirect(`${PATH}?error=missing`);
   await logActivity({ action: enabled ? "job.enabled" : "job.disabled", actorType: "admin", adminUserId: admin.id, entityType: "job", entityId: job.id, entityLabel: job.code, message: enabled ? "Фоновая задача включена." : "Фоновая задача выключена." });
   revalidatePath(PATH); redirect(PATH);
+}
+
+export async function deleteJobAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const jobId = id(formData.get("id"));
+  if (!Number.isSafeInteger(jobId) || jobId <= 0) redirect(`${PATH}?error=invalid`);
+  let deleted;
+  try {
+    deleted = await deletePeriodicJob(jobId, admin.id);
+  } catch { redirect(`${PATH}?error=delete`); }
+  if (!deleted) redirect(`${PATH}?error=missing`);
+  revalidatePath("/admin/tools/jobs", "layout");
+  redirect(`${PATH}?deleted=1`);
 }
 
 export async function updateJobAction(formData: FormData) {
@@ -85,6 +98,27 @@ export async function retryJobRunAction(formData: FormData) {
 }
 
 export async function cancelJobRunAction(formData: FormData) { const admin = await requireAdminUser(); const runId = id(formData.get("id")); const destination = returnPath(formData.get("returnTo")); if (!Number.isSafeInteger(runId) || runId <= 0) redirect(`${PATH}?error=invalid`); const run = await cancelJobRun(runId); if (run) await logActivity({ action: "job-run.cancelled", actorType: "admin", adminUserId: admin.id, entityType: "job-run", entityId: run.id, entityLabel: run.type, message: "Запуск фоновой задачи отменён." }); revalidatePath(destination); redirect(destination); }
+
+export async function resumeSnapshotRunAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  const runId = id(formData.get("id"));
+  const destination = returnPath(formData.get("returnTo"));
+  if (!Number.isSafeInteger(runId) || runId <= 0 || runId > 2147483647) redirect(`${PATH}?error=invalid`);
+  const run = await resumeProviderSnapshotRunNow(runId);
+  if (run) await logActivity({
+    action: "job-run.resumed",
+    actorType: "admin",
+    adminUserId: admin.id,
+    entityType: "job-run",
+    entityId: run.id,
+    entityLabel: run.type,
+    message: "Пауза обработки снимков снята. Запуск продолжится с сохранённой позиции с учётом текущих лимитов.",
+  });
+  revalidatePath("/admin/tools/jobs/journal");
+  revalidatePath("/admin/tools/jobs/current");
+  revalidatePath(destination.split("?")[0]);
+  redirect(destination);
+}
 
 export async function enqueueMigrationJobAction(formData: FormData) {
   const admin = await requireAdminUser();

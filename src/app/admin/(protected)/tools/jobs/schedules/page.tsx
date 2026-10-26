@@ -34,6 +34,7 @@ export default async function JobSchedulesPage({
             : "Не удалось выполнить действие: проверьте заполненные поля и расписание."}
         </Alert>
       ) : null}
+      {query.deleted === "1" ? <p role="status" className="text-sm text-stone-600">Расписание удалено. История запусков осталась в журнале.</p> : null}
       <JobsManager handlers={handlers} jobs={jobs} latestRuns={latestRuns} mediaTypes={mediaTypes} creatorTypes={creatorTypes} creatorRoles={creatorRoles} />
     </section>
   );

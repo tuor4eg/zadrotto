@@ -1,3 +1,5 @@
+import { clearAniListCreators, syncAniListCreators } from "./anilist-creators";
+import { prepareAniListCreatorSnapshot } from "@/lib/providers/anilist-creators-service";
 import { syncTmdbSeriesCreators, clearTmdbSeriesCreators } from "./tmdb-series-creators";
 import { prepareTmdbSeriesSnapshotReferences } from "@/lib/providers/tmdb-series-service";
 import { TMDB_SERIES_FACT_KEYS } from "@/lib/providers/tmdb-series-adapter";
@@ -100,7 +102,7 @@ export async function upsertMediaItemMetadata(
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
   const provider = input.sourceProvider?.trim() || null;
-  const prepared = input.snapshotReferences && provider && provider !== "tmdb" && input.sourceExternalId
+  const prepared = input.snapshotReferences && provider && !["tmdb", "anilist", "jikan"].includes(provider) && input.sourceExternalId
     ? await prepareBookSnapshotReferences(provider,input.sourceExternalId,input.snapshotReferences,transaction ?? db) : null;
   const work = async (tx:DbTransaction) => {
     await guardSnapshotJob(tx,input.jobGuard);
@@ -111,6 +113,8 @@ export async function upsertMediaItemMetadata(
       ? await prepareTmdbFilmSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
     const seriesPrepared = input.snapshotReferences && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId
       ? await prepareTmdbSeriesSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const animePrepared = input.snapshotReferences && item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "") && input.sourceExternalId
+      ? await prepareAniListCreatorSnapshot(provider!, input.sourceExternalId, input.snapshotReferences, tx) : null;
     const tmdbPrepared = filmPrepared ?? seriesPrepared;
     if (input.snapshotReferences && provider === "tmdb" && !tmdbPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     const fetchedAt = input.fetchedAt === undefined ? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
@@ -133,6 +137,11 @@ export async function upsertMediaItemMetadata(
         ? Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !([...(seriesPrepared ? TMDB_SERIES_FACT_KEYS : TMDB_FILM_FACT_KEYS), "productionCompanies", "genres", "genreReferences"] as readonly string[]).includes(key)))
         : item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...(tmdbPrepared ? tmdbPrepared.projection.facts : sourceFacts),
     };
+    if (item.mediaType === "anime") {
+      // Completion is established only by applying trusted, complete provider evidence.
+      delete facts.anilistCreatorsComplete;
+      delete facts.anilistCreatorsUnavailable;
+    }
     await lockGenreRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: sourceFacts, provider, mediaType: item.mediaType });
     // Global order: media item → genre request keys → platform request keys.
     await lockPlatformRequestsForMetadata(tx, { mediaItemId: input.mediaItemId, facts: sourceFacts, provider, mediaType: item.mediaType });
@@ -196,7 +205,23 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
       const references = extractGameCompanyReferences(input.facts, provider);
       if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references });
-    } else if (!tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    } else if (!(item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "")) && !tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    if (item.mediaType === "anime") {
+      const sourceChanged = previous && (provider !== previous.sourceProvider || (input.sourceExternalId ?? null) !== previous.sourceExternalId);
+      if (sourceChanged) await clearAniListCreators(tx, input.mediaItemId);
+      if (animePrepared) {
+        await attachProviderSnapshots(tx, {entityType:"media-item",entityId:String(input.mediaItemId)}, [
+          {id:animePrepared.id,payloadHash:animePrepared.payloadHash,purpose:"dependency"},
+        ], {kind:"system"});
+        await syncAniListCreators(tx, input.mediaItemId);
+      } else if (!sourceChanged && previous?.facts.anilistCreatorsComplete === true) {
+        // A metadata-only edit must not erase the durable roster completion marker.
+        await tx.update(mediaItemMetadata).set({facts:sql`(${mediaItemMetadata.facts} - 'studios') || '{"anilistCreatorsComplete":true}'::jsonb`}).where(eq(mediaItemMetadata.mediaItemId,input.mediaItemId));
+      }
+      if (input.requestProviderParts && !animePrepared && ["anilist", "jikan"].includes(provider ?? "")) {
+        await createJobRun({type:"media.metadata-backfill",payload:{mediaItemId:input.mediaItemId,creatorsOnly:true},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},now,tx);
+      }
+    }
     if (tmdbPrepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
       {id:tmdbPrepared.primary.id,payloadHash:tmdbPrepared.primary.payloadHash,purpose:"primary"},
     ],{kind:"system"});
@@ -269,6 +294,7 @@ export async function deleteMediaItemMetadata(mediaItemId: number) {
   await db.transaction(async (tx) => {
     const [item] = await tx.select({ id: mediaItems.id, mediaType: mediaItems.mediaType }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
     if (item?.mediaType === "series") await clearTmdbSeriesCreators(tx, mediaItemId);
+    if (item?.mediaType === "anime") await clearAniListCreators(tx, mediaItemId);
     await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
     await tx.delete(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, mediaItemId));
     await syncProviderCreators(tx, { mediaItemId, provider: null, mediaType: "", facts: {} });

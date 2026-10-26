@@ -1,3 +1,4 @@
+import { parseAniListPersonImage } from "./anilist-person-image";
 import { creatorImageBindingFingerprint } from "./image-fingerprint";
 import { createHash } from "node:crypto";
 import { creatorImageBindingsQuery, creatorImageStateQuery, commitCreatorImage } from "@/db/queries/creator-image-commit";
@@ -18,6 +19,7 @@ import { JobError } from "@/lib/jobs/types";
 
 /** Pure projection of an already validated full raw profile. */
 export function creatorProfileImage(target: CreatorProfileTarget, payload: JSONValue) {
+  if (target.provider === "anilist") return parseAniListPersonImage(payload, target.externalId);
   if (target.provider === "fantlab") {
     const author = parseFantlabAuthor(payload, target.externalId, { allowClosed: true });
     return { urls: [...new Set([author.imageUrl, author.previewUrl].filter((url): url is string => Boolean(url)))], sourceUrl: author.sourceUrl };
@@ -33,19 +35,28 @@ export function creatorProfileImage(target: CreatorProfileTarget, payload: JSONV
   if (imageId != null && (typeof imageId !== "string" || !/^[a-zA-Z0-9_-]+$/.test(imageId))) throw new Error("INVALID_CREATOR_IMAGE");
   return { urls: imageId ? [`https://images.igdb.com/igdb/image/upload/t_original/${imageId}.png`] : [], sourceUrl: `https://www.igdb.com/companies/${typeof row.slug === 'string' && /^[a-z0-9-]+$/.test(row.slug) ? row.slug : target.externalId}` };
 }
+const discoverAnimeCompany: typeof import("./anime-company-logo-binding").ensureAnimeCompanyLogoBinding = async (...args) =>
+  (await import("./anime-company-logo-binding")).ensureAnimeCompanyLogoBinding(...args);
 const defaults = { state: creatorImageStateQuery, bindings: creatorImageBindingsQuery, fetchProfile: fetchCreatorProfileSnapshot, attach: attachCreatorProfileSnapshot,
-  fetchImage: fetchProviderImage, portrait: transformCreatorAvatarBuffer, logo: transformCompanyLogo, upload: uploadProcessedCreatorAvatarBuffer, commit: commitCreatorImage, cleanup: deleteCreatorAvatarBestEffort };
+  discoverCompany: discoverAnimeCompany, fetchImage: fetchProviderImage, portrait: transformCreatorAvatarBuffer, logo: transformCompanyLogo, upload: uploadProcessedCreatorAvatarBuffer, commit: commitCreatorImage, cleanup: deleteCreatorAvatarBestEffort };
 export type CreatorImageDependencies = Partial<typeof defaults>;
 /** Shared orchestration. No name lookup, field enrichment or network inside transactions. */
-export async function fillCreatorImage(creatorId: number, signal: AbortSignal, options: { refreshBindingId?: number; guard?: SnapshotJobGuard; checkpoint?: Record<string, unknown>; bindingFingerprint?: string; beforeRequest?: (provider: CreatorProfileTarget["provider"]) => Promise<void> } = {}, dependencies: CreatorImageDependencies = {}): Promise<CreatorImageOutcome> {
+export async function fillCreatorImage(creatorId: number, signal: AbortSignal, options: { refreshBindingId?: number; refreshCompanySearch?: boolean; guard?: SnapshotJobGuard; checkpoint?: Record<string, unknown>; bindingFingerprint?: string; beforeRequest?: (provider: CreatorProfileTarget["provider"]) => Promise<void> } = {}, dependencies: CreatorImageDependencies = {}): Promise<CreatorImageOutcome> {
   const d = { ...defaults, ...dependencies };
   signal.throwIfAborted();
   const [state] = await d.state(creatorId);
   if (!state) return "source-changed";
   if (!options.refreshBindingId && !canWriteCreatorImage(state.creator)) return "already-present";
-  const bindings = await d.bindings(creatorId);
+  let bindings = await d.bindings(creatorId);
   if (options.bindingFingerprint && creatorImageBindingFingerprint(bindings) !== options.bindingFingerprint) return "source-changed";
   if (!bindings.length) return "no-binding";
+  if (!options.refreshBindingId && state.typeCode === "organization"
+    && bindings.some(binding => binding.provider === "anilist" && binding.externalCreatorId.startsWith("studio:"))
+    && (options.refreshCompanySearch || !creatorImageCandidates(state.typeCode, bindings).some(candidate => candidate.bindings.length))) {
+    const discovery = await d.discoverCompany(creatorId, { signal, guard: options.guard, beforeRequest: options.beforeRequest, refresh: options.refreshCompanySearch });
+    if (discovery.status !== "ready") return discovery.status === "pending" ? "ambiguous-binding" : discovery.status === "missing" ? "missing-image" : discovery.status === "source-changed" ? "source-changed" : "unsupported-source";
+    bindings = await d.bindings(creatorId);
+  }
   const selected = options.refreshBindingId ? bindings.find(binding => binding.id === options.refreshBindingId) : undefined;
   if (options.refreshBindingId && !selected) return "source-changed";
   if (selected && !canWriteCreatorImage(state.creator, selected)) return "already-present";

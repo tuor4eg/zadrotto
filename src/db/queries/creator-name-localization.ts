@@ -48,13 +48,24 @@ export async function saveCreatorNameLocalizationBatch(input: {
     if (!input.expected.length)
       return;
     const rows = await tx.select().from(creators).where(inArray(creators.id, input.expected.map(row => row.id))).orderBy(asc(creators.id)).for("update");
+    const logs: (typeof adminActivityLogs.$inferInsert)[] = [];
     for (const row of rows) {
       const expected = input.expected.find(person => person.id === row.id);
       const result = input.response.persons.find(person => person.id === row.id);
       if (!expected || !result || row.nameRuProcessed || !canAiLocalizeCreatorName(row) || row.name !== expected.name || row.updatedAt.getTime() !== expected.updatedAt.getTime())
         continue;
-      await tx.update(creators).set({ nameRuProcessed: true, ...(result.nameRu === null ? {} : { nameRu: result.nameRu, nameRuSource: "ai" as const }), updatedAt: new Date() }).where(eq(creators.id, row.id));
+      const updatedAt = new Date();
+      await tx.update(creators).set({ nameRuProcessed: true, ...(result.nameRu === null ? {} : { nameRu: result.nameRu, nameRuSource: "ai" as const }), updatedAt }).where(eq(creators.id, row.id));
+      const previousName = row.nameRu ?? row.name;
+      if (result.nameRu !== null && result.nameRu !== previousName) {
+        logs.push({ action: "creator.name-localized", actorType: "system", entityType: "creator", entityId: row.id,
+          entityLabel: result.nameRu, status: "success", severity: "info", createdAt: updatedAt,
+          message: `Имя персоны локализовано: «${previousName}» → «${result.nameRu}». Источник: ИИ, запуск #${input.guard.runId}.`,
+          metadata: { source: "ai", runId: input.guard.runId, originalName: row.name, previousName, nameRu: result.nameRu },
+        });
+      }
     }
+    if (logs.length) await tx.insert(adminActivityLogs).values(logs);
   });
 }
 export async function resetCreatorNameLocalization(ids: number[], adminId?: number) {

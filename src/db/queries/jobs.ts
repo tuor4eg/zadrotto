@@ -3,10 +3,10 @@ import { JobError } from "@/lib/jobs/types";
 import { automoderationChecks } from "@/db/schema";
 import { reconcileAutomoderationJob, recoverOrphanedAutomoderationChecks } from "./automoderation-recovery";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, lt, lte, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { jobRuns, jobs, adminExports, levelSettings } from "@/db/schema";
+import { jobRuns, jobs, adminExports, adminActivityLogs, levelSettings } from "@/db/schema";
 import {
   calculateJobRetryDelaySeconds,
   AD_HOC_JOB_HISTORY_RETENTION_DAYS,
@@ -127,6 +127,22 @@ export async function setPeriodicJobEnabled(id: number, enabled: boolean) {
   return job ?? null;
 }
 
+export async function deletePeriodicJob(id: number, adminId: number) {
+  return db.transaction(async tx => {
+    // Serialize with the scheduler's claim: existing runs survive via ON DELETE SET NULL.
+    const [job] = await tx.select().from(jobs).where(eq(jobs.id, id)).for("update");
+    if (!job) return null;
+    await tx.delete(jobs).where(eq(jobs.id, job.id));
+    await tx.insert(adminActivityLogs).values({
+      action: "job.deleted", actorType: "admin", adminUserId: adminId,
+      entityType: "job", entityId: job.id, entityLabel: job.code,
+      status: "success", severity: "info", message: "Расписание фоновой задачи удалено. История запусков сохранена.",
+      metadata: { type: job.type },
+    });
+    return job;
+  });
+}
+
 function automoderationCheckId(run: { type: string; payload: Record<string, unknown> }) {
   const id = run.payload.checkId;
   return run.type === "moderation.auto-check" && typeof id === "number" && Number.isSafeInteger(id) && id > 0 && id <= 2147483647 ? id : null;
@@ -160,6 +176,22 @@ export function cancelQueuedJobRun(id: number, now = new Date()) {
 /** Revoke ownership atomically; workers abort cooperatively and guarded writes cannot commit. */
 export function cancelJobRun(id: number, now = new Date()) {
   return cancelRun(id, now, true);
+}
+
+/** Remove a snapshot run's pause without replacing its checkpoint or touching a worker's lease. */
+export async function resumeProviderSnapshotRunNow(id: number, now = new Date()) {
+  const [run] = await db.update(jobRuns).set({
+    availableAt: now,
+    errorCode: null,
+    errorMessage: null,
+    updatedAt: now,
+  }).where(and(
+    eq(jobRuns.id, id),
+    eq(jobRuns.type, "provider.snapshots"),
+    eq(jobRuns.status, "queued"),
+    gt(jobRuns.availableAt, now),
+  )).returning({ id: jobRuns.id, type: jobRuns.type });
+  return run ?? null;
 }
 
 export async function isJobRunLeaseCurrent(input: {id: number; lockToken: string}) {

@@ -1,3 +1,4 @@
+import { runWithProviderRequestTimeout } from "@/lib/covers/provider-request-timeout";
 import "server-only"
 
 import {
@@ -10,7 +11,7 @@ import {
   createProviderCoverSearchRateLimiter,
   wrapProviderSearchWithReserve,
 } from "@/lib/covers/rate-limits"
-import { getTitleMetadata, searchTitleCandidates } from "@/lib/covers/registry"
+import { getTitleMetadata, searchTitleCandidates, getMetadataProviderForMediaType } from "@/lib/covers/registry"
 import type { TitleMetadataInput, TitleSearchInput } from "@/lib/covers/types"
 import type { MetadataJobContext } from "@/lib/media/metadata-jobs"
 
@@ -44,6 +45,12 @@ export async function createMetadataProviderJobContext(
 
   return {
     signal,
+    async fetchAniListCreators(input: TitleMetadataInput) {
+      signal?.throwIfAborted();
+      if (!getMetadataProviderForMediaType("anime", "anilist", undefined, providerSettings)) throw new Error("provider-disabled");
+      const { fetchAniListCreatorSnapshot } = await import("@/lib/providers/anilist-creators-service");
+      return runWithProviderRequestTimeout(options.requestTimeoutMs, () => fetchAniListCreatorSnapshot(input, options));
+    },
     fetchTitleMetadata(input: TitleMetadataInput) {
       signal?.throwIfAborted()
       return getTitleMetadata(input, undefined, options, providerSettings)

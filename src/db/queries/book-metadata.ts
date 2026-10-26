@@ -1,3 +1,4 @@
+import { animeCreatorRoleJsonSql } from "@/db/queries/anilist-creator-display";
 import { sql, type SQLWrapper } from "drizzle-orm";
 import { mediaItemMetadata, mediaItems } from "@/db/schema";
 import { filmCompaniesJsonSql } from "@/db/queries/tmdb-company-display";
@@ -33,5 +34,8 @@ export function mediaMetadataFactsSql(input: {
     )) when ${mediaType}='film' and ${provider}='tmdb' and not coalesce(${facts} ? 'productionCompanies', false)
     then coalesce(${facts}, '{}'::jsonb) || jsonb_build_object('productionCompanies',
       coalesce((select jsonb_agg(company->>'name') from jsonb_array_elements(${filmCompaniesJsonSql(entryId)}) company), '[]'::jsonb))
+    when ${mediaType}='anime' and ${facts}->>'anilistCreatorsComplete'='true'
+    then coalesce(${facts}, '{}'::jsonb) || jsonb_build_object('studios',
+      coalesce((select jsonb_agg(company->>'name') from jsonb_array_elements(${animeCreatorRoleJsonSql("production_company", entryId)}) company), '[]'::jsonb))
     else ${facts} end`;
 }

@@ -26,12 +26,12 @@ function SnapshotButtons({ canProcess, busy, creator }: { canProcess: boolean; b
 }
 
 export function ProviderSnapshotControls({ mediaItemId, creatorId, provider, mediaType, showActions = false, canProcess = false, busy = false }: {
-  mediaItemId?: number; creatorId?: number; mediaType?: "book" | "film" | "series"; provider?: "tmdb"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
+  mediaItemId?: number; creatorId?: number; mediaType?: "book" | "film" | "series" | "anime"; provider?: "tmdb" | "anilist"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
 }) {
   const creator = creatorId !== undefined;
   return <section className="rounded-md border border-stone-200 p-4 space-y-3">
     <h3 className="font-semibold">Данные источника</h3>
-    <p className="text-sm text-stone-600">{creator && showActions ? "Отдельная обработка FantLab заполняет пустые даты жизни; заполненные значения сохраняются." : creator ? "Сохраните полные ответы подтверждённых источников. Загрузка raw не меняет рабочие данные создателя." : "Получите данные провайдера, сравните их с записью и примените. Ручные назначения сохраняются."}</p>
+    <p className="text-sm text-stone-600">{creator && showActions ? "Отдельная обработка FantLab заполняет пустые даты жизни; заполненные значения сохраняются." : creator ? "Сохраните полные ответы подтверждённых источников. Загрузка raw не меняет рабочие данные создателя." : mediaType === "anime" ? "Получите состав AniList: режиссёров, производственные компании и продюсеров. Ручные назначения сохраняются; остальные характеристики записи не меняются." : "Получите данные провайдера, сравните их с записью и примените. Ручные назначения сохраняются."}</p>
     {showActions ? <form action={enqueueProviderSnapshotAction}>
       {creator ? <><input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={creatorId} /><input type="hidden" name="provider" value="fantlab" /></> : <><input type="hidden" name="mediaItemId" value={mediaItemId} />{mediaType && <input type="hidden" name="mediaType" value={mediaType} />}{provider && <input type="hidden" name="provider" value={provider} />}</>}
       <SnapshotButtons canProcess={canProcess} busy={busy} creator={creator} />

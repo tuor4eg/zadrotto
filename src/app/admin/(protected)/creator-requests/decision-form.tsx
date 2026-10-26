@@ -5,6 +5,7 @@ import { useFormStatus } from "react-dom";
 import { X } from "lucide-react";
 import { Input, Label } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
+import { isOrganizationCreatorRequest } from "@/lib/creators/request-kind";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { resolveCreatorAction } from "../creators/actions";
 
@@ -13,8 +14,8 @@ function SubmitDecision({ disabled }: { disabled: boolean }) {
   return <Button type="submit" disabled={pending || disabled}>{pending ? "Сохранение…" : "Применить решение"}</Button>;
 }
 
-export function CreatorDecisionForm({ requestId, name, people, provider, externalCreatorId }: { requestId: number; name: string; people: { id: number; name: string; bindings?: { provider: string; externalCreatorId: string }[] }[]; provider?: string; externalCreatorId?: string | null }) {
-  const isOrganization = provider === "igdb" || provider === "rawg" || (provider === "tmdb" && externalCreatorId?.startsWith("company:"));
+export function CreatorDecisionForm({ requestId, name, people, provider, externalCreatorId, suggestedCreatorIds = [] }: { requestId: number; name: string; people: { id: number; name: string; bindings?: { provider: string; externalCreatorId: string }[] }[]; provider?: string; externalCreatorId?: string | null; suggestedCreatorIds?: number[] }) {
+  const isOrganization = isOrganizationCreatorRequest(provider, externalCreatorId);
   const [decision, setDecision] = useState("map");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
@@ -25,17 +26,19 @@ export function CreatorDecisionForm({ requestId, name, people, provider, externa
   const currentPage = Math.min(page, totalPages);
   const visiblePeople = matchingPeople.slice((currentPage - 1) * 12, currentPage * 12);
   const selected = people.find(person => person.id === selectedId);
+  const decisions = [["map", "Связать с существующим создателем"], ["create", "Создать нового создателя"], ["exclude", "Игнорировать значение"]];
 
   return <form action={resolveCreatorAction} className="grid gap-5">
     <input type="hidden" name="requestId" value={requestId} />
     <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-medium">Решение</legend>
-      {[["map", "Связать с существующим создателем"], ["create", "Создать нового создателя"], ["exclude", "Игнорировать значение"]].map(([value, label]) => <label key={value} className="flex items-start gap-2 text-sm">
+      {decisions.map(([value, label]) => <label key={value} className="flex items-start gap-2 text-sm">
         <input type="radio" name="decision" value={value} checked={decision === value} onChange={() => setDecision(value)} className="mt-0.5" />{label}
       </label>)}
     </fieldset>
-    {decision === "create" ? <div className="grid gap-2"><Label htmlFor="new-creator-name">{isOrganization ? "Название" : "Имя"}</Label><Input id="new-creator-name" name="name" defaultValue={name} required maxLength={200} />{isOrganization ? <><input type="hidden" name="typeCode" value="organization" /><p className="text-xs leading-5 text-stone-500">Будет создана организация. Роли определяются связями с записями.</p></> : provider === "bgg" ? <><Label htmlFor="new-creator-type">Тип создателя</Label><select id="new-creator-type" name="typeCode" defaultValue="person" className="rounded-md border px-3 py-2"><option value="person">Человек</option><option value="collective">Коллектив</option></select><p className="text-xs leading-5 text-stone-500">Создатель получит роли из связанных настолок. Тип существующего создателя при привязке не меняется.</p></> : <p className="text-xs leading-5 text-stone-500">{provider === "tmdb" ? "Будет создан человек с ролью «Режиссёр» в связанных фильмах." : "Будет создан человек с ролью «Писатель» в связанных книгах."}</p>}</div> : null}
+    {decision === "create" ? <div className="grid gap-2"><Label htmlFor="new-creator-name">{isOrganization ? "Название" : "Имя"}</Label><Input id="new-creator-name" name="name" defaultValue={name} required maxLength={200} />{isOrganization ? <><input type="hidden" name="typeCode" value="organization" /><p className="text-xs leading-5 text-stone-500">Будет создана организация. Роли определяются связями с записями.</p></> : provider === "bgg" ? <><Label htmlFor="new-creator-type">Тип создателя</Label><select id="new-creator-type" name="typeCode" defaultValue="person" className="rounded-md border px-3 py-2"><option value="person">Человек</option><option value="collective">Коллектив</option></select><p className="text-xs leading-5 text-stone-500">Создатель получит роли из связанных настолок. Тип существующего создателя при привязке не меняется.</p></> : <p className="text-xs leading-5 text-stone-500">{provider === "tmdb" || provider === "anilist" ? "Будет создан человек. Роли определяются связями с записями." : "Будет создан человек с ролью «Писатель» в связанных книгах."}</p>}</div> : null}
     {decision === "map" ? <fieldset><legend className="mb-3 text-sm font-medium">Наши создатели</legend>
       <input type="hidden" name="creatorId" value={selectedId ?? ""} />
+      {people.filter(person => suggestedCreatorIds.includes(person.id)).length > 0 ? <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 p-3 text-sm"><p className="font-medium">Предлагаемые совпадения для логотипа</p><p className="mt-1 text-xs text-stone-600">Проверьте, что это та же компания, прежде чем подтвердить привязку.</p><div className="mt-2 flex flex-wrap gap-2">{people.filter(person => suggestedCreatorIds.includes(person.id)).map(person => <Button key={person.id} type="button" variant="outline" size="sm" onClick={() => setSelectedId(person.id)}>Выбрать: {person.name}</Button>)}</div></div> : null}
       {people.length ? <div className="grid gap-4">
         <div>
           <p className="mb-2 text-xs text-stone-500">Выбрано: {selected ? 1 : 0}</p>

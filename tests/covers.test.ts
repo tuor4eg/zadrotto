@@ -21,10 +21,7 @@ import {
   runCoverProviderSmokeTest,
 } from "@/lib/covers/provider-smoke-test";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
-import {
-  anilistProvider,
-  getAniListShikimoriEnrichment,
-} from "@/lib/covers/providers/anilist";
+import { createAniListClient } from "@/lib/covers/providers/anilist";
 import { fetchSearchJson } from "@/lib/covers/providers/shared";
 import {
   getCoverProvidersForMediaType,
@@ -59,6 +56,9 @@ import {
   getFixedWindowRateLimitKey,
   getFixedWindowRetryAfterSeconds,
 } from "@/lib/rate-limits/redis";
+
+// These adapter tests mock HTTP. Distributed pacing is covered against Redis separately.
+const { provider: anilistProvider, getAniListShikimoriEnrichment } = createAniListClient(async (input, init) => fetch(input, init));
 
 const baseCandidate = {
   id: "external:1",

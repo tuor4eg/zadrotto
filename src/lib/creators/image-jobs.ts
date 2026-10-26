@@ -35,7 +35,7 @@ export const creatorImageFillHandler: JobHandlerDefinition<ReturnType<typeof par
     if (!lockToken) throw new JobError("lease-lost", "Задача потеряла право выполнения.", { retryable: false });
     const guard = { runId, lockToken };
     try {
-      const outcome = await fillCreatorImage(payload.creatorId, signal, { guard, bindingFingerprint: payload.bindingFingerprint, beforeRequest: await imageBeforeRequest() });
+      const outcome = await fillCreatorImage(payload.creatorId, signal, { guard, bindingFingerprint: payload.bindingFingerprint, refreshCompanySearch: payload.refreshCompanySearch, beforeRequest: await imageBeforeRequest() });
       await withSnapshotJobGuard(guard, async tx => { await tx.update(jobRuns).set({ payload: { ...payload, outcome }, updatedAt: new Date() }).where(eq(jobRuns.id, runId)); });
     } catch (error) { signal.throwIfAborted(); throw creatorImageError(error); }
   },

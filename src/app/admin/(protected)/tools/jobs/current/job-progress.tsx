@@ -1,6 +1,6 @@
 import type { JobProgress } from "@/lib/jobs/progress";
 export function CurrentJobProgress({ progress, running }: { progress: JobProgress; running: boolean }) {
-  return <div className="min-w-48 space-y-2">
+  return <div className="min-w-0 space-y-2 xl:min-w-48">
     {progress.stage ? <p className="text-xs text-stone-600">{progress.stage}</p> : null}
     <div role="progressbar" aria-label="Прогресс задачи" aria-valuemin={0} aria-valuemax={100} aria-valuenow={progress.percent ?? undefined}
       aria-valuetext={progress.percent === null ? "Общий объём неизвестен" : `${progress.percent}%`}

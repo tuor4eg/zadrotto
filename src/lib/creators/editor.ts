@@ -16,7 +16,7 @@ export function parseCreatorLocalizationFilter(value: string | undefined): Creat
   return value === "localized" || value === "ai" ? value : "";
 }
 
-export const CREATOR_PROVIDER_FILTER_CODES = ["fantlab", "bgg", "tmdb", "igdb", "rawg", "google-books", "open-library"] as const;
+export const CREATOR_PROVIDER_FILTER_CODES = ["fantlab", "bgg", "tmdb", "anilist", "igdb", "rawg", "google-books", "open-library"] as const;
 export type CreatorProviderFilter = "" | typeof CREATOR_PROVIDER_FILTER_CODES[number];
 export function parseCreatorProviderFilter(value: string | undefined): CreatorProviderFilter {
   return CREATOR_PROVIDER_FILTER_CODES.find(code => code === value) ?? "";

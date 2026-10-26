@@ -43,6 +43,6 @@ test("valid empty rosters are authoritative; missing, malformed and conflicting 
 
 test("series scope supports all operations without altering legacy film and book payloads", () => {
   for (const operation of ["refresh", "process", "refresh-process", "verify"]) assert.equal(parseSnapshotJobPayload({ mediaType: "series", provider: "tmdb", operation }).mediaType, "series");
-  for (const value of [{ mediaType: "series", provider: "fantlab" }, { mediaType: "series", entityType: "creator" }, { mediaType: "book", provider: "tmdb" }, { mediaType: "anime" }]) assert.throws(() => parseSnapshotJobPayload({ operation: "refresh", ...value }));
+  for (const value of [{ mediaType: "series", provider: "fantlab" }, { mediaType: "series", entityType: "creator" }, { mediaType: "book", provider: "tmdb" }, { mediaType: "anime", provider: "tmdb" }]) assert.throws(() => parseSnapshotJobPayload({ operation: "refresh", ...value }));
   assert.equal(parseSnapshotJobPayload({ operation: "process", provider: "tmdb" }).mediaType, undefined);
 });

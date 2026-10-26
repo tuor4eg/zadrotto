@@ -37,7 +37,7 @@ const signal = () => new AbortController().signal;
 
 test("image policy separates namespaces and deterministically prioritizes sources", () => {
   const people = creatorImageCandidates("person", [...personBindings, { id: 3, provider: "tmdb", externalCreatorId: "company:7" }]);
-  assert.deepEqual(people.map(c => [c.kind.provider, c.target?.externalId]), [["fantlab", "8"], ["tmdb", "7"]]);
+  assert.deepEqual(people.map(c => [c.kind.provider, c.target?.externalId]), [["fantlab", "8"], ["anilist", undefined], ["tmdb", "7"]]);
   const organizations = creatorImageCandidates("organization", [...personBindings, { id: 3, provider: "tmdb", externalCreatorId: "company:7" }, { id: 4, provider: "igdb", externalCreatorId: "company:9" }, { id: 5, provider: "tmdb", externalCreatorId: "network:7" }, { id: 6, provider: "tmdb", externalCreatorId: "network:x" }]);
   assert.deepEqual(organizations.map(c => [c.kind.provider, c.kind.resourceType, c.target?.externalId]), [["tmdb", "company", "7"], ["tmdb", "network", "7"], ["igdb", "company", "9"]]);
   assert.equal(organizations.find(c => c.kind.resourceType === "network")?.bindings.length, 1);
@@ -49,7 +49,42 @@ test("bulk payload preserves filters and checkpoint while rejecting invalid inpu
   assert.deepEqual(parseCreatorImagesPayload({ creatorTypeId: 1, roleId: 2, batchSize: 100, checkpoint }), { creatorTypeId: 1, roleId: 2, batchSize: 100, checkpoint });
   for (const value of [null, [], { batchSize: 0 }, { batchSize: 101 }, { roleId: 0 }, { creatorTypeId: "1" }, { force: true }, { checkpoint: { ...checkpoint, afterId: 21 } }, { checkpoint: { ...checkpoint, failed: -1 } }]) assert.throws(() => parseCreatorImagesPayload(value));
   assert.deepEqual(parseCreatorImageFillPayload({ creatorId: 1, bindingFingerprint: "a".repeat(64) }), { creatorId: 1, bindingFingerprint: "a".repeat(64) });
+  assert.deepEqual(parseCreatorImageFillPayload({ creatorId: 1, refreshCompanySearch: true }), { creatorId: 1, refreshCompanySearch: true });
+  assert.throws(() => parseCreatorImageFillPayload({ creatorId: 1, refreshCompanySearch: "true" }));
   for (const value of [{ creatorId: 0 }, { creatorId: 1, bindingFingerprint: "bad" }, { creatorId: 1, extra: true }]) assert.throws(() => parseCreatorImageFillPayload(value));
+});
+
+serviceTest("an anime studio discovers a TMDB identity once then uses the shared logo pipeline", async () => {
+  const f = fixture();
+  f.setState([{ ...f.getState()[0], typeCode: "organization" }] as State);
+  const source = { id: 20, provider: "anilist", externalCreatorId: "studio:42" };
+  f.setBindings([source]);
+  f.deps.discoverCompany = async (_creatorId, options) => {
+    assert.equal(options.refresh, true);
+    f.calls.push("discover");
+    f.setBindings([source, { id: 21, provider: "tmdb", externalCreatorId: "company:7" }]);
+    return { status: "ready" };
+  };
+  assert.equal(await fillCreatorImage(1, signal(), { refreshCompanySearch: true }, f.deps), "stored");
+  assert.deepEqual(f.calls, ["discover", "profile:tmdb", "attach", "image:tmdb", "logo", "upload", "commit"]);
+  assert.equal(f.commits[0].binding.externalCreatorId, "company:7");
+  assert.equal(f.commits[0].bindings.length, 2);
+});
+
+serviceTest("ambiguous or absent company matches do not download images or bypass confirmed sources", async () => {
+  for (const status of ["pending", "missing", "source-changed"] as const) {
+    const f = fixture();
+    f.setState([{ ...f.getState()[0], typeCode: "organization" }] as State);
+    f.setBindings([{ id: 20, provider: "anilist", externalCreatorId: "studio:42" }]);
+    f.deps.discoverCompany = async () => ({ status });
+    assert.equal(await fillCreatorImage(1, signal(), {}, f.deps), status === "pending" ? "ambiguous-binding" : status === "missing" ? "missing-image" : status);
+    assert.deepEqual(f.calls, []);
+  }
+  const confirmed = fixture();
+  confirmed.setState([{ ...confirmed.getState()[0], typeCode: "organization" }] as State);
+  confirmed.setBindings([{ id: 20, provider: "anilist", externalCreatorId: "studio:42" }, { id: 21, provider: "tmdb", externalCreatorId: "company:7" }]);
+  confirmed.deps.discoverCompany = async () => { assert.fail("confirmed image sources take priority over search"); };
+  assert.equal(await fillCreatorImage(1, signal(), {}, confirmed.deps), "stored");
 });
 
 serviceTest("existing manual or provider avatar never starts source discovery or HTTP", async () => {

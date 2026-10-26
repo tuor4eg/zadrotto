@@ -57,7 +57,7 @@ export async function getCreatorProfileSources(creatorId: number) {
     const saved = item ? snapshots.find(({ snapshot }) => snapshot.providerCode === item.descriptor.providerCode && snapshot.resourceType === item.descriptor.resourceType
       && snapshot.externalId === item.descriptor.externalId && snapshot.apiMethod === item.descriptor.apiMethod && snapshot.requestKey === snapshotHash(item.descriptor.requestParams)) : undefined;
     return { binding, target: item?.target ?? null, snapshot: saved?.snapshot ?? null, linked: saved?.linked ?? false,
-      canApply: creator.typeCode === "person" && (item?.target.provider === "fantlab" || item?.target.resourceType === "person") && bindings.filter(row => row.provider === binding.provider && creatorProfileTargetFromBinding(row)?.resourceType === item?.target.resourceType).length === 1 };
+      canApply: creator.typeCode === "person" && (item?.target.provider === "fantlab" || (item?.target.provider === "tmdb" && item.target.resourceType === "person")) && bindings.filter(row => row.provider === binding.provider && creatorProfileTargetFromBinding(row)?.resourceType === item?.target.resourceType).length === 1 };
   }) };
 }
 

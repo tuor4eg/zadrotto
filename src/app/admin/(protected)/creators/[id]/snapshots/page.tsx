@@ -9,7 +9,7 @@ import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getCreatorSnapshotComparison } from "@/db/queries/creator-provider-snapshots";
 import { getCreatorSnapshotRun } from "@/db/queries/provider-snapshot-run";
-import { refreshCreatorImageAction } from "../../avatar-actions";
+import { refreshCreatorImageAction, findAnimeCompanyLogoAction } from "../../avatar-actions";
 import { SnapshotJobProgress } from "@/components/admin/snapshot-job-progress";
 import { SnapshotJsonViewer } from "@/components/admin/snapshot-json-viewer";
 import { snapshotItemErrorMessage } from "@/lib/providers/snapshot-item-errors";
@@ -64,7 +64,7 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
         || (state.typeCode === "organization" && (source.target?.resourceType === "company" || source.target?.resourceType === "network"));
       return <section key={source.binding.id} className="space-y-3 rounded-md border p-4">
         <h2 className="font-semibold">{isCoverProviderCode(source.binding.provider) ? COVER_PROVIDER_LABELS[source.binding.provider] : source.binding.provider} · {source.binding.externalCreatorId}</h2>
-        {!source.target ? <Alert variant="warning">Получение профиля этого источника пока не поддерживается.</Alert> : <>
+        {!source.target && state.typeCode === "organization" && source.binding.provider === "anilist" && source.binding.externalCreatorId.startsWith("studio:") ? <div className="space-y-2"><p className="text-sm text-stone-600">AniList не предоставляет логотипы студий. Поиск в TMDB автоматически подтвердит единственное точное совпадение названия; спорные совпадения появятся в заявках создателей. Существующее изображение сохраняется.</p><form action={findAnimeCompanyLogoAction}><input type="hidden" name="creatorId" value={id} /><Button disabled={active} variant="outline">Найти логотип в TMDB</Button></form></div> : !source.target ? <Alert variant="warning">Получение профиля этого источника пока не поддерживается.</Alert> : <>
           <p className="text-sm">{source.snapshot ? `Снимок сохранён ${source.snapshot.fetchedAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })} · ${source.linked ? "связан с создателем" : "ещё не связан с создателем"}` : "Сохранённого полного профиля пока нет."}</p>
           <form action={enqueueProviderSnapshotAction}>
             <input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={id} /><input type="hidden" name="bindingId" value={source.binding.id} /><input type="hidden" name="operation" value="refresh" />

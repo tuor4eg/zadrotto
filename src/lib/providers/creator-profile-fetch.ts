@@ -1,3 +1,5 @@
+import { parseAniListPersonImage } from "@/lib/creators/anilist-person-image";
+import { fetchAniList } from "@/lib/covers/anilist-request";
 import { getFantlabAuthorRaw, parseFantlabAuthorSnapshot, retryAfterMs } from "@/lib/creators/fantlab-api";
 import { getIgdbAccessToken } from "@/lib/covers/providers/igdb";
 import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
@@ -8,6 +10,7 @@ import { parseCreatorProfileTarget, IGDB_COMPANY_PROFILE_FIELDS, type CreatorPro
 import type { JSONValue } from "./types";
 
 export function validateCreatorProfilePayload(target: CreatorProfileTarget, payload: JSONValue) {
+  if (target.provider === "anilist") { parseAniListPersonImage(payload, target.externalId); return; }
   if (target.provider === "fantlab") { parseFantlabAuthorSnapshot(payload, target.externalId); return; }
   if (!payload || typeof payload !== "object" || Array.isArray(payload) || String(payload.id) !== target.externalId || typeof payload.name !== "string" || !payload.name.trim()) throw new Error("INVALID_CREATOR_PROFILE_RESPONSE");
 }
@@ -18,6 +21,7 @@ export type CreatorProfileRawOptions = {
   requestStartedAt: () => Promise<Date>;
   beforeRequest?: (provider: CreatorProfileTarget["provider"]) => Promise<void>;
   fetchImpl?: typeof fetch;
+  anilistFetch?: typeof fetchAniList;
   gameFetch?: typeof fetchGameProvider;
   igdbToken?: typeof getIgdbAccessToken;
   fantlabRaw?: typeof getFantlabAuthorRaw;
@@ -35,7 +39,11 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
     const headers: Record<string, string> = { accept: "application/json" };
     let url: URL;
     let body: string | undefined;
-    if (target.provider === "igdb") {
+    if (target.provider === "anilist") {
+      headers["content-type"] = "application/json";
+      url = new URL("https://graphql.anilist.co");
+      body = JSON.stringify({ query: "query StaffImage($id:Int!) { Staff(id:$id) { id name { full } image { large medium } siteUrl } }", variables: { id: Number(target.externalId) } });
+    } else if (target.provider === "igdb") {
       const auth = credentials?.igdb;
       if (!auth?.clientId || !auth.clientSecret) throw new Error("Не настроены учётные данные IGDB.");
       const token = await (options.igdbToken ?? getIgdbAccessToken)({ clientId: auth.clientId, clientSecret: auth.clientSecret });
@@ -56,16 +64,26 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
       url = new URL(`https://api.themoviedb.org/3/${target.resourceType}/${target.externalId}`);
     }
     if (target.provider === "tmdb" && target.resourceType === "person") url.searchParams.set("language", "ru-RU");
-    await options.beforeRequest?.(target.provider);
-    requestStartedAt = await options.requestStartedAt();
-    const init = { headers, body, method: body ? "POST" : "GET", redirect: "error" as const, signal: withProviderTimeout(getActiveProviderRequestTimeoutMs(), options.signal) };
-    const response = target.provider === "tmdb" ? await (options.fetchImpl ?? fetch)(url, init) : await (options.gameFetch ?? fetchGameProvider)(target.provider, url, init);
+    const beforeRequest = async () => {
+      await options.beforeRequest?.(target.provider);
+      requestStartedAt = await options.requestStartedAt();
+    };
+    if (target.provider !== "anilist") await beforeRequest();
+    const init = { headers, body, method: body ? "POST" : "GET", redirect: "error" as const,
+      signal: target.provider === "anilist" ? options.signal : withProviderTimeout(getActiveProviderRequestTimeoutMs(), options.signal) };
+    const response = target.provider === "anilist"
+      ? await (options.anilistFetch ?? fetchAniList)(url, init, { fetchImpl: options.fetchImpl, beforeRequest })
+      : target.provider === "tmdb" ? await (options.fetchImpl ?? fetch)(url, init) : await (options.gameFetch ?? fetchGameProvider)(target.provider, url, init);
     if (!response.ok) {
       const retry = Math.ceil(retryAfterMs(response.headers.get("retry-after")) / 1000);
       await response.body?.cancel();
       throw new SnapshotProviderHttpError(response.status, retry);
     }
     payload = await boundedJson(response);
+    if (target.provider === "anilist") {
+      if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.errors !== undefined || !payload.data || typeof payload.data !== "object" || Array.isArray(payload.data) || !payload.data.Staff) throw new Error("INVALID_CREATOR_PROFILE_RESPONSE");
+      payload = payload.data.Staff;
+    }
     if (target.provider === "igdb") {
       if (!Array.isArray(payload) || payload.length !== 1) throw new Error("INVALID_CREATOR_PROFILE_RESPONSE");
       payload = payload[0];

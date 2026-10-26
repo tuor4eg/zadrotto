@@ -1,8 +1,11 @@
+import { fetchAniListCreatorSnapshot, getSavedAniListCreatorSnapshot, getAniListCreatorMigrationComparison } from "./anilist-creators-service";
+import { commitAniListCreatorSnapshot } from "@/db/queries/anilist-creators";
+import { runWithProviderRequestTimeout } from "@/lib/covers/provider-request-timeout";
 import { fetchTmdbSeriesMetadata, getSavedTmdbSeriesBundle, getTmdbSeriesMigrationComparison } from "./tmdb-series-service";
 import { getSavedCreatorProfileSnapshot, fetchCreatorProfileSnapshot } from "./creator-profile-service";
 import { runCreatorProfileSnapshots } from "./creator-profile-job";
 import { fetchTmdbFilmMetadata, getSavedTmdbFilmBundle, getTmdbFilmMigrationComparison } from "./tmdb-film-service";
-import { providerSnapshotBookBatchQuery } from "@/db/queries/provider-snapshot-jobs";
+import { providerSnapshotAnimeBatchQuery, providerSnapshotBookBatchQuery } from "@/db/queries/provider-snapshot-jobs";
 import "server-only";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -16,7 +19,7 @@ import { attachProviderSnapshots, withSnapshotJobGuard, type SnapshotJobGuard } 
 import { JobError, type JobHandlerDefinition } from "@/lib/jobs/types";
 import { fetchBookMetadata, getSavedBookBundle, isBookSnapshotProvider } from "./book-service";
 import { OpenLibraryWorkRedirectError } from "./book-adapters";
-import { snapshotItemError, snapshotItemErrorMessage } from "./snapshot-item-errors";
+import { snapshotItemError, snapshotItemErrorMessage, snapshotProviderDeferral } from "./snapshot-item-errors";
 import type { SnapshotReference } from "./snapshot-values";
 
 export {PROVIDER_SNAPSHOT_JOB_TYPE, SNAPSHOT_OPERATIONS, parseSnapshotJobPayload} from "./snapshot-job-payload";
@@ -100,7 +103,9 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
     let current={...payload,checkpoint:state};
     await checkpoint(guard,current);
     const batch = getSnapshotBatchSettings(current);
-    const candidates=await providerSnapshotBookBatchQuery({mediaType:payload.mediaType,afterId:state.afterId,throughId:state.throughId,provider:payload.provider as import("./types").BookProviderCode | "tmdb" | undefined,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining,onlyMissingSnapshots:payload.onlyMissingSnapshots,retryId:state.retryId});
+    const batchInput={afterId:state.afterId,throughId:state.throughId,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining,onlyMissingSnapshots:payload.onlyMissingSnapshots,retryId:state.retryId};
+    const candidates=await (payload.mediaType === "anime" ? providerSnapshotAnimeBatchQuery(batchInput)
+      : providerSnapshotBookBatchQuery({...batchInput,mediaType:payload.mediaType,provider:payload.provider as import("./types").BookProviderCode | "tmdb" | undefined}));
     const rows=candidates.slice(0,batch.remaining);
     const network=payload.operation==="refresh" || payload.operation==="refresh-process";
     const [settings,providerSettings,limits,credentials]=network ? await Promise.all([getCoverSettings(),getCoverProviderSettings(),getCoverProviderRateLimits(),getCoverProviderCredentialsForSearch()]) : [null,[],[],{}];
@@ -113,24 +118,41 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         state={...state,retryId:row.id};
         await checkpoint(guard,{...payload,checkpoint:state});
       }
-      if (!row.provider || !row.externalId || (!isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
+      const anime = row.mediaType === "anime";
+      if (!row.provider || !row.externalId || (anime ? !["anilist", "jikan"].includes(row.provider) : !isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
         state={...state,afterId:row.id,failed:state.failed+1,retryId:undefined,retryCount:undefined,errors:[...state.errors,{id:row.id,code:"missing-source"}].slice(-100)};
         await checkpoint(guard,{...payload,checkpoint:state});continue;
       }
       try {
-        if (network && !providerSettings.some(item=>item.mediaType===row.mediaType && item.providerCode===row.provider && item.enabled!==false)) throw new Error("provider-disabled");
+        if (network && !providerSettings.some(item=>item.mediaType===row.mediaType && item.providerCode===(anime ? "anilist" : row.provider) && item.enabled!==false)) throw new Error("provider-disabled");
         let refs: SnapshotReference[];
-        if (network) {
-          const metadata=await (row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider,externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
+        if (anime) {
+          if (network) {
+            const evidence=await runWithProviderRequestTimeout(settings!.providerRequestTimeoutMs, () => fetchAniListCreatorSnapshot({provider:row.provider as "anilist"|"jikan",externalId:row.externalId!,mediaType:"anime"}, {
+              candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,beforeProviderSearch:before,snapshotJobGuard:guard,
+              snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal,
+            }));
+            if (!evidence) throw new Error("ANILIST_MEDIA_MISSING");
+            refs=evidence;
+          } else {
+            const snapshot=await getSavedAniListCreatorSnapshot(row.provider,row.externalId);
+            if (!snapshot) throw new Error("PROVIDER_SNAPSHOT_MISSING");
+            refs=[{id:snapshot.id,payloadHash:snapshot.payloadHash}];
+          }
+        } else if (network) {
+          const metadata=await (row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
             providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal});
           refs=metadata.snapshotReferences!;
         } else {
-          const bundle = row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider,row.externalId);
+          const bundle = row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId);
           refs = [bundle.primary,...bundle.dependencies].map(item=>({id:item.id,payloadHash:item.payloadHash}));
         }
         const nextState={...state,afterId:row.id,processed:state.processed+1,retryId:undefined,retryCount:undefined};
         current={...payload,checkpoint:nextState};
-        if (payload.operation==="process" || payload.operation==="refresh-process") {
+        if (anime && payload.operation !== "verify") {
+          await commitAniListCreatorSnapshot({mediaItemId:row.id,expectedSource:{provider:row.provider,externalId:row.externalId},references:refs,
+            process:payload.operation!=="refresh",jobGuard:guard,checkpoint:current as unknown as Record<string,unknown>});
+        } else if (payload.operation==="process" || payload.operation==="refresh-process") {
           await upsertMediaItemMetadata({mediaItemId:row.id,facts:{},sourceProvider:row.provider,sourceExternalId:row.externalId,
             snapshotReferences:refs,enqueueCompanyLogos:network,jobGuard:guard,expectedSource:{provider:row.provider,externalId:row.externalId},checkpoint:current as unknown as Record<string,unknown>});
         } else if (payload.operation==="refresh") {
@@ -145,9 +167,11 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
           });
         } else {
           // Verification is read-only for domain data; its report is the job checkpoint.
-          const report = row.provider === "tmdb"
+          const animeSnapshot = anime ? await getSavedAniListCreatorSnapshot(row.provider,row.externalId) : null;
+          if (anime && !animeSnapshot) throw new Error("PROVIDER_SNAPSHOT_MISSING");
+          const report = anime ? await getAniListCreatorMigrationComparison(row.id,animeSnapshot!) : row.provider === "tmdb"
             ? row.mediaType === "series" ? await getTmdbSeriesMigrationComparison(row.id,(await getSavedTmdbSeriesBundle(row.externalId)).projection) : await getTmdbFilmMigrationComparison(row.id,(await getSavedTmdbFilmBundle(row.externalId)).projection)
-            : await (await import("./snapshot-report")).getBookMigrationComparison(row.id,(await getSavedBookBundle(row.provider,row.externalId)).projection);
+            : await (await import("./snapshot-report")).getBookMigrationComparison(row.id,(await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId)).projection);
           if (report.blockers.length) throw new Error("migration-difference");
           await checkpoint(guard,current);
         }
@@ -157,12 +181,10 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         const code=error instanceof Error?error.message:"provider-error";
         if (code==="STALE_SNAPSHOT_JOB" || (error instanceof JobError && error.code==="lease-lost")) throw error;
         const retryAfter=error && typeof error==="object" && "retryAfterSeconds" in error ? Number(error.retryAfterSeconds) : null;
-        const httpStatus=error && typeof error==="object" && "status" in error ? Number(error.status) : null;
-        if (["provider-daily-limit","rate-limit-unavailable"].includes(code) || httpStatus===429) {
-          throw new JobError("provider-deferred","Получение отложено из-за лимита или временной ошибки источника.",{deferSeconds:retryAfter || (code==="provider-daily-limit"?3600:60)});
-        }
+        const deferral = snapshotProviderDeferral(error, row.id);
+        if (deferral) throw new JobError("provider-deferred", deferral.message, { deferSeconds: deferral.deferSeconds });
         const retries=state.retryId===row.id?(state.retryCount??0)+1:1;
-        const permanent=error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled"].includes(code);
+        const permanent=error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled","ANILIST_MEDIA_MISSING","AMBIGUOUS_ANILIST_SNAPSHOTS"].includes(code);
         if (!permanent && retries<3) {
           state={...state,retryId:row.id,retryCount:retries};
           await checkpoint(guard,{...payload,checkpoint:state});

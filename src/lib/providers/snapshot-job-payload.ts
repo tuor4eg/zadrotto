@@ -10,7 +10,7 @@ export const SNAPSHOT_MAX_PAUSE_HOURS = 8760;
 export type SnapshotOperation = typeof SNAPSHOT_OPERATIONS[number];
 export type SnapshotJobPayload = {
   entityType?: "media-item" | "creator";
-  mediaType?: "book" | "film" | "series";
+  mediaType?: "book" | "film" | "series" | "anime";
   creatorIds?: number[];
   bindingIds?: number[];
   profileTargets?: CreatorProfileTarget[];
@@ -21,7 +21,7 @@ export type SnapshotJobPayload = {
   };
   onlyMissingSnapshots?: boolean;
   operation: SnapshotOperation;
-  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg";
+  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg" | "anilist";
   mediaItemIds?: number[];
   batchSize?: number;
   batchPauseHours?: number;
@@ -35,9 +35,11 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
   if (Object.keys(input).some(key=>!["mediaType","entityType","creatorIds","bindingIds","profileTargets","profileCheckpoint","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
   if (input.onlyMissingSnapshots !== undefined && (typeof input.onlyMissingSnapshots !== "boolean" || (input.onlyMissingSnapshots && !["refresh","refresh-process"].includes(String(input.operation))))) throw new Error("INVALID_MISSING_SNAPSHOT_FILTER");
   if (input.entityType !== undefined && input.entityType !== "media-item" && input.entityType !== "creator") throw new Error("INVALID_SNAPSHOT_ENTITY_TYPE");
-  if (input.mediaType !== undefined && (!["book", "film", "series"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
+  if (input.mediaType !== undefined && (!["book", "film", "series", "anime"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
     || (["film", "series"].includes(String(input.mediaType)) && input.provider !== undefined && input.provider !== "tmdb")
-    || (input.mediaType === "book" && input.provider === "tmdb"))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+    || (input.mediaType === "anime" && input.provider !== undefined && input.provider !== "anilist")
+    || (input.mediaType === "book" && ["tmdb", "anilist"].includes(String(input.provider))))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+  if (input.provider === "anilist" && (input.entityType === "creator" ? input.operation !== "refresh" : input.mediaType !== "anime" || input.profileTargets !== undefined)) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   const profiles = input.profileTargets !== undefined;
   if (profiles) {
     if (!Array.isArray(input.profileTargets) || !input.profileTargets.length || input.profileTargets.length > 200 || input.operation !== "refresh"
@@ -46,7 +48,7 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
     input.profileTargets.forEach(parseCreatorProfileTarget);
   }
   if (input.entityType === "creator") {
-    if (input.operation === "verify" || input.mediaItemIds !== undefined || (input.provider !== undefined && !["fantlab", "tmdb", "igdb", "rawg"].includes(String(input.provider)))
+    if (input.operation === "verify" || input.mediaItemIds !== undefined || (input.provider !== undefined && !["fantlab", "tmdb", "igdb", "rawg", "anilist"].includes(String(input.provider)))
       || (input.operation !== "refresh" && (!["fantlab", "tmdb"].includes(String(input.provider)) || input.bindingIds !== undefined))) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   } else if (input.creatorIds !== undefined || input.bindingIds !== undefined) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   if (input.bindingIds !== undefined && (!Array.isArray(input.bindingIds) || !input.bindingIds.length || input.bindingIds.length > 200 || !input.bindingIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
@@ -62,7 +64,7 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
     cp.errors.forEach(row => { if (row.target) parseCreatorProfileTarget(row.target); });
   }
   if (input.creatorIds !== undefined && (!Array.isArray(input.creatorIds) || !input.creatorIds.length || input.creatorIds.length > 200 || !input.creatorIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
-  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
+  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg","anilist"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.batchSize!==undefined && (!Number.isSafeInteger(input.batchSize) || Number(input.batchSize)<1 || Number(input.batchSize)>SNAPSHOT_MAX_BATCH_SIZE)) throw new Error("INVALID_SNAPSHOT_BATCH_SIZE");
   if (input.batchPauseHours!==undefined && (typeof input.batchPauseHours!=="number" || !Number.isFinite(input.batchPauseHours) || input.batchPauseHours<0 || input.batchPauseHours>SNAPSHOT_MAX_PAUSE_HOURS)) throw new Error("INVALID_SNAPSHOT_BATCH_PAUSE");
   for (const key of ["afterId","throughId"]) if (input[key]!==undefined && (!Number.isSafeInteger(input[key]) || Number(input[key])<0)) throw new Error("INVALID_SNAPSHOT_RANGE");

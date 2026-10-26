@@ -15,7 +15,7 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const creatorIds = rawCreatorIds ? rawCreatorIds.split(/[\s,]+/).map(value => /^\d+$/.test(value) ? Number(value) : NaN) : undefined;
     const standalone = form.get("profileTarget") === "on";
     const payload=parseSnapshotJobPayload({
-      ...(!creator && !standalone && ["book", "film", "series"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
+      ...(!creator && !standalone && ["book", "film", "series", "anime"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
       operation:String(form.get("operation")??"verify"),
       ...(form.get("batchSize")?{batchSize:Number(form.get("batchSize"))}:{}),
       ...(form.get("batchPauseHours")?{batchPauseHours:Number(form.get("batchPauseHours"))}:{}),

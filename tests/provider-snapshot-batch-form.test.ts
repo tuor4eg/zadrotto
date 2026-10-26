@@ -83,3 +83,27 @@ test("TV batches restore explicit series scope with TMDB and all four operations
     assert.match(html, /Сериалы с уже выбранным источником TMDB/);
   }
 });
+
+test("anime batches restore AniList, all operations and the exact-MAL supplemental scope", () => {
+  for (const operation of ["refresh", "process", "refresh-process", "verify"] as const) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "anime", provider: "anilist", operation } }));
+    assert.match(html, /value="anime" selected=""/);
+    assert.match(html, /value="anilist" selected=""/);
+    assert.match(html, /Jikan через точное соответствие MAL ID/);
+    assert.match(html, /режиссёры, производственные компании и продюсеры/);
+    assert.match(html, /остальные характеристики записи не меняются/);
+    const providers = html.match(/<select[^>]*name="provider"[^>]*>(.*?)<\/select>/)?.[1];
+    assert.ok(providers);
+    assert.doesNotMatch(providers, /value="tmdb"|value="fantlab"/);
+  }
+});
+
+test("individual anime snapshot controls submit explicit anime scope and AniList", async () => {
+  const { ProviderSnapshotControls } = await import("../src/components/admin/provider-snapshot-controls");
+  const html = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 9, mediaType: "anime", provider: "anilist", showActions: true, canProcess: true }));
+  assert.match(html, /name="mediaType" value="anime"/);
+  assert.match(html, /name="provider" value="anilist"/);
+  assert.match(html, /name="mediaItemId" value="9"/);
+  assert.match(html, /остальные характеристики записи не меняются/);
+  for (const operation of ["refresh", "process", "refresh-process", "verify"]) assert.match(html, new RegExp(`<button(?=[^>]*name="operation")(?=[^>]*value="${operation}")[^>]*>`));
+});

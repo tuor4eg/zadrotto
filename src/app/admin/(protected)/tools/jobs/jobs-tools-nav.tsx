@@ -18,7 +18,7 @@ export function JobsToolsNav() {
   return (
     <nav
       aria-label="Разделы фоновых задач"
-      className="flex gap-2 overflow-x-auto rounded-md border border-stone-200 bg-white p-2 lg:grid"
+      className="grid min-w-0 grid-cols-2 gap-2 rounded-md border border-stone-200 bg-white p-2 lg:grid-cols-1"
     >
       {ITEMS.map((item) => {
         const Icon = item.icon;
@@ -29,11 +29,11 @@ export function JobsToolsNav() {
             href={item.href}
             aria-current={active ? "page" : undefined}
             className={cn(
-              "flex shrink-0 items-center gap-2 rounded-sm px-3 py-2 text-sm font-medium",
+              "flex min-w-0 items-center gap-2 rounded-sm px-2 py-2 text-sm font-medium sm:px-3",
               active ? "bg-stone-950 text-white" : "text-stone-600 hover:bg-stone-100",
             )}
           >
-            <Icon className="size-4" />
+            <Icon className="size-4 shrink-0" />
             {item.label}
           </Link>
         );

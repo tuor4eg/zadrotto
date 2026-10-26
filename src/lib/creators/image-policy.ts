@@ -3,6 +3,7 @@ import type { CreatorProfileTarget } from "@/lib/providers/creator-profile-targe
 
 export const CREATOR_IMAGE_KINDS = [
   { type: "person", provider: "fantlab", resourceType: "author", prefix: "" },
+  { type: "person", provider: "anilist", resourceType: "person", prefix: "person:" },
   { type: "person", provider: "tmdb", resourceType: "person", prefix: "person:" },
   { type: "organization", provider: "tmdb", resourceType: "company", prefix: "company:" },
   { type: "organization", provider: "tmdb", resourceType: "network", prefix: "network:" },
@@ -39,9 +40,10 @@ export function parseCreatorImagesPayload(value: unknown): CreatorImagesPayload 
 export function parseCreatorImageFillPayload(value: unknown) {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_CREATOR_IMAGE_PAYLOAD");
   const row = value as Record<string, unknown>;
-  if (!integer(row.creatorId) || Object.keys(row).some(key => !["creatorId", "bindingFingerprint", "outcome"].includes(key))
+  if (!integer(row.creatorId) || Object.keys(row).some(key => !["creatorId", "bindingFingerprint", "refreshCompanySearch", "outcome"].includes(key))
+    || (row.refreshCompanySearch !== undefined && typeof row.refreshCompanySearch !== "boolean")
     || (row.bindingFingerprint !== undefined && (typeof row.bindingFingerprint !== "string" || !/^[a-f0-9]{64}$/.test(row.bindingFingerprint)))) throw new Error("INVALID_CREATOR_IMAGE_PAYLOAD");
-  return { creatorId: row.creatorId, ...(row.bindingFingerprint ? { bindingFingerprint: row.bindingFingerprint as string } : {}) };
+  return { creatorId: row.creatorId, ...(row.refreshCompanySearch === true ? {refreshCompanySearch: true} : {}), ...(row.bindingFingerprint ? { bindingFingerprint: row.bindingFingerprint as string } : {}) };
 }
 
 /** Explicit refresh never takes ownership of a manual or another identity's image. */

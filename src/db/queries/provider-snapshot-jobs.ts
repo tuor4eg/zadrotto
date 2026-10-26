@@ -1,3 +1,4 @@
+import { snapshotHash } from "@/lib/providers/snapshot-values";
 import { and, asc, eq, gt, inArray, lte, notExists, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaItems, mediaItemMetadata, providerSnapshots } from "@/db/schema";
@@ -26,5 +27,22 @@ export function providerSnapshotBookBatchQuery(input:{mediaType?:"book"|"film"|"
       input.provider?eq(mediaItemMetadata.sourceProvider,input.provider):inArray(mediaItemMetadata.sourceProvider,input.mediaType === "series" || input.mediaType === "film" ? ["tmdb"] : input.mediaType === "book" ? ["fantlab","google-books","open-library"] : ["fantlab","google-books","open-library","tmdb"]),
       input.mediaItemIds?inArray(mediaItemMetadata.mediaItemId,input.mediaItemIds):undefined,
       input.onlyMissingSnapshots ? (input.retryId ? or(missingPrimarySnapshot(),eq(mediaItemMetadata.mediaItemId,input.retryId)) : missingPrimarySnapshot()) : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+/** Supplemental AniList evidence covers both AniList and exact MAL-backed Jikan sources. */
+export function providerSnapshotAnimeBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).where(and(
+    eq(providerSnapshots.providerCode, "anilist"), eq(providerSnapshots.resourceType, "anime"), eq(providerSnapshots.apiMethod, "anime.creators"),
+    eq(providerSnapshots.requestParams, sql`'{"version":1}'::jsonb`), eq(providerSnapshots.requestKey, snapshotHash({ version: 1 })),
+    or(and(eq(mediaItemMetadata.sourceProvider, "anilist"), eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId)),
+      and(eq(mediaItemMetadata.sourceProvider, "jikan"), sql`${providerSnapshots.payload}->>'idMal'=${mediaItemMetadata.sourceExternalId}`)),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "anime"), inArray(mediaItemMetadata.sourceProvider, ["anilist", "jikan"]),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
     .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
 }

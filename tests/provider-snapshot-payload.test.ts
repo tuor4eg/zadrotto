@@ -40,3 +40,21 @@ test("batch settings preserve old defaults, fractional hours, daily pauses and t
   for(const batchSize of [0,-1,1.5,101,Infinity,"25"])assert.throws(()=>parseSnapshotJobPayload({operation:"verify",batchSize}));
   for(const batchPauseHours of [-1,Infinity,NaN,8761,"1"])assert.throws(()=>parseSnapshotJobPayload({operation:"verify",batchPauseHours}));
 });
+
+test("AniList media jobs require anime scope; creator profiles allow raw refresh only", () => {
+  for (const operation of ["refresh", "process", "refresh-process", "verify"]) {
+    assert.equal(parseSnapshotJobPayload({ operation, mediaType: "anime", provider: "anilist", mediaItemIds: [4] }).mediaType, "anime");
+    assert.equal(parseSnapshotJobPayload({ operation, entityType: "media-item", mediaType: "anime", provider: "anilist" }).provider, "anilist");
+    assert.equal(parseSnapshotJobPayload({ operation, mediaType: "anime" }).mediaType, "anime");
+  }
+  for (const input of [
+    { operation: "refresh", provider: "anilist" },
+    { operation: "refresh", provider: "anilist", mediaType: "book" },
+    { operation: "process", provider: "anilist", mediaType: "series" },
+    { operation: "verify", provider: "tmdb", mediaType: "anime" },
+    { operation: "process", entityType: "creator", provider: "anilist" },
+    { operation: "refresh", mediaType: "anime", profileTargets: [{ provider: "anilist", resourceType: "person", externalId: "4" }] },
+  ]) assert.throws(() => parseSnapshotJobPayload(input));
+  assert.equal(parseSnapshotJobPayload({ operation: "refresh", entityType: "creator", provider: "anilist" }).provider, "anilist");
+  assert.deepEqual(parseSnapshotJobPayload({ operation: "verify" }), { operation: "verify" });
+});

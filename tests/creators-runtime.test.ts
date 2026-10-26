@@ -43,6 +43,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
     for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
+    for (const statement of readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date, ADD COLUMN death_date date, ADD COLUMN name_ru text, ADD COLUMN name_ru_source text,
       ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false;
       ALTER TABLE entry_creator_sources ADD COLUMN source_position integer;

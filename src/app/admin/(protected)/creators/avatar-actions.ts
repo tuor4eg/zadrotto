@@ -83,3 +83,18 @@ export async function refreshCreatorImageAction(form: FormData) {
   } catch (error) { finish(creatorId, error instanceof Error && error.message === "image-protected" ? "avatarError=protected" : "avatarError=queue"); }
   finish(creatorId, `avatarQueued=1&imageRun=${runId}`);
 }
+
+export async function findAnimeCompanyLogoAction(form: FormData) {
+  const admin = await requireAdminUser();
+  const creatorId = id(form.get("creatorId"));
+  let runId: number;
+  try {
+    const { getCreatorProfileSources } = await import("@/db/queries/creator-profile-snapshots");
+    const state = await getCreatorProfileSources(creatorId);
+    if (state?.creator.typeCode !== "organization" || !state.sources.some(source => source.binding.provider === "anilist" && /^studio:[1-9][0-9]*$/.test(source.binding.externalCreatorId))) throw new Error("CREATOR_BINDING_MISSING");
+    const avatar = await getCreatorAvatarState(creatorId);
+    if (!avatar || !canWriteCreatorImage(avatar)) throw new Error("image-protected");
+    runId = (await enqueueJobRun({ createdByAdminId: admin.id, type: "media.creator-image-fill", source: "manual", payload: { creatorId, refreshCompanySearch: true } })).id;
+  } catch (error) { finish(creatorId, error instanceof Error && error.message === "image-protected" ? "avatarError=protected" : "avatarError=queue"); }
+  finish(creatorId, `avatarQueued=1&imageRun=${runId}`);
+}

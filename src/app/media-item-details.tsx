@@ -1,3 +1,5 @@
+import { AnimeCreatorDetailsFacts } from "@/components/archive/anime-creator-details-facts";
+import type { AnimeCreatorDisplay } from "@/db/queries/anilist-creator-display";
 import { SeriesCreatorDetailsFacts } from "@/components/archive/series-creator-details-facts";
 import type { SeriesCreatorDisplay } from "@/db/queries/tmdb-series-display";
 import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
@@ -57,6 +59,7 @@ type MediaItemDetailsItem = {
   filmCompanies?: FilmCompanyDisplay[];
   filmDirectors?: FilmDirectorDisplay[];
   seriesCreators?: SeriesCreatorDisplay;
+  animeCreators?: AnimeCreatorDisplay;
   hasUnifiedGenres?: boolean;
   coverUrl: string | null;
   coverSourceProvider?: string | null;
@@ -156,7 +159,7 @@ export function MediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
-    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.metadataFacts,
+    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
@@ -259,6 +262,7 @@ export function MediaItemDetails({
                 {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
@@ -404,7 +408,7 @@ function ArchiveMediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
-    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.metadataFacts,
+    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
 
@@ -590,6 +594,7 @@ function ArchiveMediaItemDetails({
                 {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}
