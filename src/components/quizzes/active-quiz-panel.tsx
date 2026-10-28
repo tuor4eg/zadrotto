@@ -2,61 +2,52 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useEffect, useState } from "react";
 
 import { QuizParticipationButton } from "@/components/quizzes/quiz-participation-button";
+import { QuizResult } from "@/components/quizzes/quiz-result";
+import { QuizAnswerReveal } from "@/components/quizzes/quiz-answer-reveal";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
-  formatQuizTimeRemaining,
   type ActiveQuiz,
   type QuizParticipantState,
 } from "@/lib/quizzes/model";
 
 export function ActiveQuizPanel({
+  finished = false,
   unavailableMediaTypeNames,
   onOpenArchive,
   participant,
   quiz,
 }: {
+  finished?: boolean;
   unavailableMediaTypeNames: string[];
   onOpenArchive?: () => void;
   participant: QuizParticipantState | null;
   quiz: ActiveQuiz;
 }) {
-  const [now, setNow] = useState<Date | null>(null);
-
-  useEffect(() => {
-    const initialTimeout = window.setTimeout(() => setNow(new Date()), 0);
-    const interval = window.setInterval(() => setNow(new Date()), 1_000);
-
-    return () => {
-      window.clearTimeout(initialTimeout);
-      window.clearInterval(interval);
-    };
-  }, []);
-
   return (
-    <div className="relative flex h-full flex-col items-center gap-5 pb-3 text-center">
+    <div className="relative flex h-full min-h-0 flex-col items-center gap-3 pb-3 text-center">
       {quiz.question ? (
         <p className="whitespace-pre-wrap text-lg">{quiz.question}</p>
       ) : null}
       {quiz.imageUrl ? (
-        <Image
-          src={quiz.imageUrl}
-          alt="Изображение к вопросу"
-          width={1600}
-          height={1200}
-          unoptimized
-          className="mx-auto max-h-[600px] w-full rounded-md object-contain"
-        />
+        <div className="relative min-h-0 w-full flex-1">
+          <Image
+            src={quiz.imageUrl}
+            alt="Изображение к вопросу"
+            fill
+            sizes="100vw"
+            unoptimized
+            className="rounded-md object-contain"
+          />
+        </div>
       ) : null}
-      <div className="mt-auto">
+      <div className="mt-auto grid w-full shrink-0 justify-items-center gap-3">
+        <QuizAnswerReveal key={quiz.id} quizId={quiz.id} endsAt={quiz.endsAt} solved={participant?.outcome === "correct"} />
         {participant?.completed ? (
-          <p className="font-serif text-base font-semibold text-stone-700 sm:text-lg">
-            {participant.outcome === "correct"
-              ? `Вы ответили правильно! Очков: ${participant.points}.`
-              : "Вы исчерпали попытки, повезёт в следующий раз"}
-          </p>
+          <QuizResult participant={participant} />
+        ) : finished ? (
+          <p className="font-serif text-base text-stone-700 sm:text-lg">Квиз завершён</p>
         ) : unavailableMediaTypeNames.length > 0 ? (
           <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
             <p>
@@ -78,9 +69,6 @@ export function ActiveQuizPanel({
           <QuizParticipationButton isParticipating={participant !== null} onOpenArchive={onOpenArchive} />
         )}
       </div>
-      <p className="absolute -bottom-3 -right-3 text-right text-xs text-stone-600 sm:-bottom-6 sm:-right-6">
-        {now ? formatQuizTimeRemaining(quiz.endsAt, now) : null}
-      </p>
     </div>
   );
 }

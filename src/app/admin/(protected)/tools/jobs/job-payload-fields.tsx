@@ -14,6 +14,10 @@ const FIELDS: Record<string, { key: string; label: string; min: number; max?: nu
 export function JobPayloadFields({ type, initialPayload = {}, mediaTypes = [], preserveWithoutFields = false }: { type: string; initialPayload?: Record<string, unknown>; mediaTypes?: { code: string; name: string }[]; preserveWithoutFields?: boolean }) {
   const [payload, setPayload] = useState(initialPayload);
   const fields = FIELDS[type];
+  if (type === "media.creator-request-auto-approve") return <div className="col-span-full rounded-md border bg-stone-50 p-3 text-sm text-stone-600">
+    Будут проверены все ожидающие заявки на создателей. Возможные совпадения останутся на ручном разборе.
+    <input type="hidden" name="payload" value="{}" />
+  </div>;
   const set = (key: string, value: unknown) => setPayload(previous => {
     const next = { ...previous };
     if (value === undefined) delete next[key]; else next[key] = value;

@@ -1,3 +1,6 @@
+import { getSavedBggBundle, getBggMigrationComparison, isBggSnapshotSupported } from "@/lib/providers/bgg-service";
+import { bggSnapshotDiagnosticMessage, gameSnapshotDiagnosticMessage } from "@/lib/providers/snapshot-item-errors";
+import { getSavedGameBundle, getGameMigrationComparison, isGameSnapshotSupported } from "@/lib/providers/game-service";
 import { getSavedAniListCreatorSnapshot, getAniListCreatorMigrationComparison, isAniListCreatorSnapshotSupported } from "@/lib/providers/anilist-creators-service";
 import { getSavedTmdbSeriesBundle, getTmdbSeriesMigrationComparison, isTmdbSeriesSnapshotSupported } from "@/lib/providers/tmdb-series-service";
 import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
@@ -14,6 +17,7 @@ import { bookSnapshotRunStatus } from "@/lib/providers/snapshot-run-status";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { ProviderSnapshotControls } from "@/components/admin/provider-snapshot-controls";
 import { SnapshotJsonViewer } from "@/components/admin/snapshot-json-viewer";
+import { SnapshotDifferences } from "@/components/admin/snapshot-differences";
 import { SnapshotJobProgress } from "@/components/admin/snapshot-job-progress";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 
@@ -34,20 +38,32 @@ export default async function SnapshotPage({ params, searchParams }: {
     query.run ? getBookSnapshotRun(id, Number(query.run)) : null,
   ]);
   const outcome = run ? bookSnapshotRunStatus(run) : null;
-  const [savedPrimary, tmdbFilm, tmdbSeries, anime] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id)]);
+  const [savedPrimary, tmdbFilm, tmdbSeries, anime, game, boardgame] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id), isGameSnapshotSupported(id), isBggSnapshotSupported(id)]);
   let animeSnapshot: Awaited<ReturnType<typeof getSavedAniListCreatorSnapshot>> = null;
   if (anime && metadata?.sourceProvider && metadata.sourceExternalId) {
     try { animeSnapshot = await getSavedAniListCreatorSnapshot(metadata.sourceProvider, metadata.sourceExternalId); }
     catch { /* Only complete snapshots for the current exact source can be applied. */ }
   }
-  const primary = anime ? animeSnapshot : savedPrimary;
+  let gameBundle: Awaited<ReturnType<typeof getSavedGameBundle>> | null = null;
+  if (game && (metadata?.sourceProvider === "igdb" || metadata?.sourceProvider === "rawg") && metadata.sourceExternalId) {
+    try { gameBundle = await getSavedGameBundle(metadata.sourceProvider, metadata.sourceExternalId); }
+    catch { /* Incomplete game responses cannot be applied. */ }
+  }
+  let bggBundle: Awaited<ReturnType<typeof getSavedBggBundle>> | null = null;
+  if (boardgame && metadata?.sourceExternalId) {
+    try { bggBundle = await getSavedBggBundle(metadata.sourceExternalId); }
+    catch { /* Only a complete response can be transferred. */ }
+  }
+  const primary = boardgame ? bggBundle?.primary ?? null : game ? gameBundle?.primary ?? null : anime ? animeSnapshot : savedPrimary;
   if (query.snapshot && (!Number.isSafeInteger(Number(query.snapshot)) || Number(query.snapshot) <= 0)) notFound();
-  const selected = query.snapshot ? animeSnapshot?.id === Number(query.snapshot) ? animeSnapshot : await getRawEntitySnapshot(Number(query.snapshot), id) : null;
+  const selected = query.snapshot ? primary?.id === Number(query.snapshot) ? primary : await getRawEntitySnapshot(Number(query.snapshot), id) : null;
   if (query.snapshot && !selected) notFound();
   let comparison: Awaited<ReturnType<typeof getBookMigrationComparison>> | null = null;
   let filmComparison: Awaited<ReturnType<typeof getTmdbFilmMigrationComparison>> | null = null;
+  let bggComparison: Awaited<ReturnType<typeof getBggMigrationComparison>> | null = null;
+  let gameComparison: Awaited<ReturnType<typeof getGameMigrationComparison>> | null = null;
   let animeComparison: Awaited<ReturnType<typeof getAniListCreatorMigrationComparison>> | null = null;
-  const supported = anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
+  const supported = boardgame || game || anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
   if (primary && !outcome?.active && metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider)) {
     try {
       const bundle = await getSavedBookBundle(metadata.sourceProvider, metadata.sourceExternalId);
@@ -68,6 +84,9 @@ export default async function SnapshotPage({ params, searchParams }: {
   if (animeSnapshot && !outcome?.active) {
     animeComparison = await getAniListCreatorMigrationComparison(id, animeSnapshot);
   }
+  if (gameBundle && !outcome?.active) gameComparison = await getGameMigrationComparison(id, gameBundle.projection);
+  if (bggBundle && !outcome?.active) bggComparison = await getBggMigrationComparison(id, bggBundle.projection);
+  const metadataComparison = bggComparison ?? gameComparison ?? filmComparison;
   const summaryHref = `?view=summary${run ? `&run=${run.id}` : ""}#provider-json`;
   const fullHref = (snapshotId: number) => `?snapshot=${snapshotId}${run ? `&run=${run.id}` : ""}#provider-json`;
   return <main className="space-y-5">
@@ -88,13 +107,19 @@ export default async function SnapshotPage({ params, searchParams }: {
     {run && outcome && !outcome.active && !outcome.success && <Alert variant="warning" role="alert">
       {outcome.message}{run.errorMessage ? ` ${run.errorMessage}` : ""}
     </Alert>}
+    {run && outcome?.success && <Alert variant="success" role="status">{outcome.message}</Alert>}
+    {run && ["game", "boardgame"].includes(run.payload.mediaType ?? "") && Boolean(run.payload.checkpoint?.diagnostics?.length) && <section className="space-y-2 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm">
+      <h2 className="font-semibold">Расхождения при переносе</h2>
+      <p>Связи записи сохранены. Проверьте данные перед включением применения изменений.</p>
+      <ul className="list-disc space-y-1 pl-5">{run.payload.checkpoint!.diagnostics!.filter(item => item.id === id).flatMap(item => item.codes).map(code => <li key={code}>{run.payload.mediaType === "boardgame" ? bggSnapshotDiagnosticMessage(code) : gameSnapshotDiagnosticMessage(code)}</li>)}</ul>
+    </section>}
     <Alert variant={primary ? "success" : "default"}>
       {primary ? <><strong>Данные провайдера сохранены.</strong> {primary.providerCode === "anilist" ? COVER_PROVIDER_LABELS.anilist : isBookSnapshotProvider(primary.providerCode) ? COVER_PROVIDER_LABELS[primary.providerCode] : primary.providerCode} · получены {formatTime(primary.fetchedAt)}.</>
         : outcome?.active ? <><strong>Данные ещё не сохранены.</strong> Получение уже запущено — дождитесь результата.</>
           : <><strong>Сохранённых данных текущего источника пока нет.</strong> Начните с «Получить данные».</>}
     </Alert>
-    {!supported && <Alert variant="warning">У записи не выбран поддерживаемый источник. Сначала выберите FantLab, Google Books, Open Library, TMDB для фильма или сериала либо AniList/Jikan для аниме в редакторе.</Alert>}
-    <ProviderSnapshotControls mediaItemId={id} provider={anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} showActions canProcess={Boolean(comparison || filmComparison || animeComparison)} busy={Boolean(outcome?.active) || !supported} />
+    {!supported && <Alert variant="warning">У записи не выбран поддерживаемый источник. Сначала выберите FantLab, Google Books, Open Library, TMDB для фильма или сериала, AniList/Jikan для аниме либо IGDB/RAWG для видеоигры или BGG для настольной игры в редакторе.</Alert>}
+    <ProviderSnapshotControls mediaItemId={id} provider={boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} showActions canProcess={Boolean(comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
     <section id="comparison" className="space-y-3 scroll-mt-4">
       <h2 className="text-xl font-semibold">Сравнение с текущей записью</h2>
       {animeComparison ? <>
@@ -104,13 +129,17 @@ export default async function SnapshotPage({ params, searchParams }: {
           <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных AniList</h3><SnapshotJsonViewer value={animeComparison.proposed} /></article>
         </div>
         {animeComparison.blockers.length > 0 && <Alert variant="warning">Состав участников отличается. Проверьте данные перед применением.</Alert>}
-      </> : filmComparison ? <>
-        <p className="text-sm text-stone-600">Сравнение характеристик записи. Ручные данные и решения модерации сохраняются.</p>
+        <SnapshotDifferences current={animeComparison.current} proposed={animeComparison.proposed} />
+      </> : metadataComparison ? <>
+        <p className="text-sm text-stone-600">Сравнение характеристик записи. Ручные данные и решения модерации сохраняются.{bggComparison ? " Исходные названия BGG могут отличаться от наших. Применение использует соответствия жанров; неизвестные значения попадают в заявки." : ""}</p>
         <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={filmComparison.current} /></article>
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных провайдера</h3><SnapshotJsonViewer value={filmComparison.proposed} /></article>
+          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={metadataComparison.current} /></article>
+          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных провайдера</h3><SnapshotJsonViewer value={metadataComparison.proposed} /></article>
         </div>
-        {filmComparison.blockers.length > 0 && <Alert variant="warning">Обнаружены расхождения. Проверьте данные перед применением.</Alert>}
+        {metadataComparison.blockers.length > 0 && <Alert variant="warning">Обнаружены расхождения. Проверьте данные перед применением.</Alert>}
+        <SnapshotDifferences current={bggComparison?.preview.current ?? gameComparison?.preview.current ?? metadataComparison.current} proposed={bggComparison?.preview.proposed ?? gameComparison?.preview.proposed ?? metadataComparison.proposed}
+          proposedLabel={bggComparison || gameComparison ? "С учётом наших соответствий" : undefined}
+          description={bggComparison ? "Сопоставленные жанры, состав BGG и характеристики. Служебные поля скрыты; уже существующие заявки не считаются новыми. Неизвестные жанры требуют отдельного решения в заявках." : gameComparison ? "Сопоставленные жанры, платформы и компании. Служебные поля скрыты; существующие заявки не считаются новыми. Значения без соответствий требуют отдельного решения в заявках." : undefined} />
       </> : comparison ? <>
         <p className="text-sm text-stone-600">Справа — участники из ответа провайдера. При применении учитываются существующие сопоставления и решения модерации. Ручные назначения и псевдонимы сохраняются; для неизвестных участников создаются заявки.</p>
         <div className="grid gap-4 md:grid-cols-2">
@@ -129,10 +158,11 @@ export default async function SnapshotPage({ params, searchParams }: {
           </article>
         </div>
         {comparison.blockers.length > 0 && <Alert variant="warning">В ответе провайдера отсутствуют некоторые авторы из прежних данных. Проверьте состав перед применением. Ручные назначения сохранятся.</Alert>}
+        <SnapshotDifferences current={comparison.contributors.map(part => ({role:part.role,name:part.name}))} proposed={comparison.proposed.map(part => ({role:part.role,name:part.name}))} />
       </> : <p className="text-sm text-stone-600">{outcome?.active ? "Дождитесь завершения задачи — сравнение появится автоматически." : primary ? "Основной ответ сохранён, но полный комплект не удалось подготовить. Получите данные повторно; применение пока недоступно." : "Сравнение появится после получения данных."}</p>}
     </section>
     <details id="provider-json" open={Boolean(selected) || query.view === "summary"} className="rounded-md border p-4 space-y-3 scroll-mt-4">
-      <summary className="cursor-pointer font-semibold">Данные провайдера (JSON)</summary>
+      <summary className="cursor-pointer font-semibold">Данные провайдера ({boardgame ? "XML" : "JSON"})</summary>
       {run && outcome && !outcome.active && <div className="space-y-1 pt-3 text-sm">
         <p className="font-semibold">{operationLabel[run.payload.operation]} · задача №{run.id}</p>
         <p>{outcome.message}</p>
@@ -145,8 +175,8 @@ export default async function SnapshotPage({ params, searchParams }: {
       </div>
       <p className="text-sm text-stone-600">{selected
         ? "Полные сохранённые данные провайдера без сокращений. Просмотр не меняет запись."
-        : tmdbFilm || tmdbSeries ? "Краткая сводка: текущие и предлагаемые характеристики записи и расхождения." : "Краткая сводка: текущие участники записи, участники из данных провайдера и расхождения."}</p>
-      {selected || comparison || filmComparison || animeComparison ? <SnapshotJsonViewer key={selected ? `${selected.id}:${selected.payloadHash}` : "summary"} value={selected ? selected.payload : animeComparison ?? filmComparison ?? comparison} />
+        : boardgame || game || tmdbFilm || tmdbSeries ? "Краткая сводка: текущие и предлагаемые характеристики записи и расхождения." : "Краткая сводка: текущие участники записи, участники из данных провайдера и расхождения."}</p>
+      {selected || comparison || filmComparison || animeComparison || gameComparison || bggComparison ? <SnapshotJsonViewer key={selected ? `${selected.id}:${selected.payloadHash}` : "summary"} value={selected ? selected.payload : bggComparison ?? gameComparison ?? animeComparison ?? filmComparison ?? comparison} />
         : <p className="text-sm text-stone-500">Краткие данные пока недоступны.</p>}
       {headers.length > 1 && <div className="space-y-2 text-sm">
         <p className="font-medium">Сохранённые данные по отдельным ресурсам</p>

@@ -25,3 +25,24 @@ test("unknown errors are not deferred and upstream diagnostics omit uncontrolled
     assert.doesNotMatch(result.message, /secret response body/);
   }
 });
+
+
+test("game transport quota errors defer snapshot work without consuming item retries", () => {
+  for (const code of ["provider-daily-limit", "provider-rate-limit", "rate-limit-unavailable"]) {
+    const error = Object.assign(new Error(`Game provider request deferred: ${code}`), {code, retryAfterSeconds: 17});
+    const result = snapshotProviderDeferral(error, 42);
+    assert.ok(result);
+    assert.ok(result.deferSeconds >= 17);
+    assert.match(result.message, /42/);
+  }
+});
+
+test("BGG preparing status defers without consuming an item retry or exposing the response", () => {
+  for (const retryAfterSeconds of [13.2, undefined, NaN, -1]) {
+    const error = Object.assign(new Error("private upstream payload"), { status: 202, retryAfterSeconds });
+    const result = snapshotProviderDeferral(error, 42)!;
+    assert.equal(result.deferSeconds, retryAfterSeconds === 13.2 ? 14 : 60);
+    assert.match(result.message, /BGG готовит.*Запись №42/);
+    assert.doesNotMatch(result.message, /private upstream/);
+  }
+});

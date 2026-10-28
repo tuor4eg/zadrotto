@@ -46,6 +46,9 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
+    await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date,ADD COLUMN death_date date,ADD COLUMN name_ru text,ADD COLUMN name_ru_source text,ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false`);
+    await client.unsafe(`ALTER TABLE creator_request_media_items ADD COLUMN source_position integer; ALTER TABLE entry_creator_sources ADD COLUMN source_position integer; ALTER TABLE domain_event_outbox ADD COLUMN next_attempt_at timestamptz DEFAULT now()`);
+    await client.unsafe(`CREATE TABLE provider_snapshot_links(id serial PRIMARY KEY,snapshot_id bigint,entity_type text,entity_id text,purpose text)`);
     const types = await creators.getCreatorTypes();
     const person = types.find(row => row.code === "person")!;
     const collective = types.find(row => row.code === "collective")!;
@@ -69,16 +72,22 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
     let matchedId = 0;
     let groupId = 0;
 
-    await t.test("unique normalized name and original name auto-map one identity with both roles", async () => {
+    await t.test("exact normalized names await manual review before mapping both roles", async () => {
       const existing = await creators.createCreator({ name: "Ёж Иван", slug: "hedgehog", typeId: person.id });
       matchedId = existing.id;
       const result = await sync(1, [ref("101", "  ЕЖ   ИВАН "), ref("101", "еж Иван", "artist")]);
       assert.equal(result.createdCreators, 0);
+      assert.equal(await bindingFor("101"), undefined);
+      assert.equal((await requestFor("101")).decision, null);
+      await assert.rejects(requests.resolveCreatorRequest({requestId:(await requestFor("101")).id,decision:"create",autoApprove:true}), (error:unknown)=>(error as {code?:string}).code==='auto-skip');
+      await apply(await requests.resolveCreatorRequest({requestId:(await requestFor("101")).id,decision:"map",creatorId:existing.id,adminId:1}));
       assert.equal((await bindingFor("101")).creator_id, existing.id);
       assert.deepEqual(await sourceRoles(1, existing.id), ["artist", "designer"]);
       assert.equal((await client`SELECT count(*)::int n FROM creator_requests WHERE external_creator_id='101'`)[0].n, 1);
       const original = await creators.createCreator({ name: "Русское имя", originalName: "Original Designer", slug: "original-designer", typeId: person.id });
       await sync(2, [ref("102", " ORIGINAL   DESIGNER ")]);
+      assert.equal(await bindingFor("102"), undefined);
+      await apply(await requests.resolveCreatorRequest({requestId:(await requestFor("102")).id,decision:"map",creatorId:original.id,adminId:1}));
       assert.equal((await bindingFor("102")).creator_id, original.id);
       await sync(1, [ref("101", "Renamed Designer"), ref("101", "Renamed Designer", "artist")]);
       await sync(1, [ref("101", "Renamed Designer"), ref("101", "Renamed Designer", "artist")]);
@@ -86,9 +95,9 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
       assert.equal((await bindingFor("101")).external_creator_name, "Renamed Designer");
       assert.deepEqual(await sourceRoles(1, existing.id), ["artist", "designer"]);
       assert.equal((await client`SELECT count(*)::int n FROM entry_creators WHERE entry_id=1 AND creator_id=${existing.id}`)[0].n, 2);
-      await creators.updateCreator(existing.id, { name: existing.name, slug: existing.slug, typeId: collective.id });
+      await assert.rejects(creators.updateCreator(existing.id, { name: existing.name, slug: existing.slug, typeId: collective.id }), /creator-type-in-use/);
       await sync(1, [ref("101", "Renamed Designer"), ref("101", "Renamed Designer", "artist")]);
-      assert.equal((await client`SELECT type_id FROM creators WHERE id=${existing.id}`)[0].type_id, collective.id);
+      assert.equal((await client`SELECT type_id FROM creators WHERE id=${existing.id}`)[0].type_id, person.id);
       assert.equal((await bindingFor("101")).creator_id, existing.id);
       assert.deepEqual(await sourceRoles(1, existing.id), ["artist", "designer"]);
       await creators.updateCreator(existing.id, { name: existing.name, slug: existing.slug, typeId: person.id });
@@ -120,7 +129,8 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
     await t.test("same name with different BGG IDs stays separately moderated", async () => {
       const existing = await creators.createCreator({ name: "Same Person", slug: "same-person", typeId: person.id });
       await sync(5, [ref("301", "Same Person"), ref("302", "Same Person")]);
-      assert.equal((await bindingFor("301")).creator_id, existing.id);
+      assert.equal(await bindingFor("301"), undefined);
+      await apply(await requests.resolveCreatorRequest({requestId:(await requestFor("301")).id,decision:"map",creatorId:existing.id,adminId:1}));
       assert.equal(await bindingFor("302"), undefined);
       const second = await requestFor("302");
       assert.equal(second.decision, null);
@@ -129,7 +139,7 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
       assert.notEqual((await bindingFor("302")).creator_id, existing.id);
     });
 
-    await t.test("concurrent games sharing a new BGG ID create one binding and request", async () => {
+    await t.test("concurrent games sharing a new BGG ID queue one request before manual mapping", async () => {
       const existing = await creators.createCreator({ name: "Concurrent Designer", slug: "concurrent-designer", typeId: person.id });
       const refs = [ref("401", "Concurrent Designer"), ref("401", "Concurrent Designer", "artist")];
       let locked = 0;
@@ -139,19 +149,23 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
         await tx.execute(sql`select id from media_items where id=${entryId} for update`);
         if (++locked === 2) release();
         await bothLocked;
+        await tx.insert(mediaItemMetadata).values({mediaItemId:entryId,sourceProvider:"bgg",facts:{bggCreators:refs}}).onConflictDoUpdate({target:mediaItemMetadata.mediaItemId,set:{sourceProvider:"bgg",facts:{bggCreators:refs}}});
         return requests.syncProviderCreators(tx, { mediaItemId: entryId, provider: "bgg", mediaType: "boardgame", facts: { bggCreators: refs } });
       });
       const eventsBefore = (await client`SELECT count(*)::int n FROM domain_events`)[0].n;
       await Promise.all([syncLocked(2), syncLocked(5)]);
+      assert.equal(await bindingFor("401"), undefined);
+      assert.equal((await client`SELECT count(*)::int n FROM domain_events`)[0].n, eventsBefore+1);
+      assert.equal((await client`SELECT count(*)::int n FROM creator_request_media_items WHERE request_id=${(await requestFor("401")).id}`)[0].n, 4);
+      await apply(await requests.resolveCreatorRequest({requestId:(await requestFor("401")).id,decision:"map",creatorId:existing.id,adminId:1}));
       assert.equal((await client`SELECT count(*)::int n FROM provider_creator_bindings WHERE provider='bgg' AND external_creator_id='401'`)[0].n, 1);
       assert.equal((await bindingFor("401")).creator_id, existing.id);
       assert.equal((await client`SELECT count(*)::int n FROM creator_requests WHERE provider='bgg' AND external_creator_id='401'`)[0].n, 1);
-      assert.equal((await client`SELECT count(*)::int n FROM creator_request_media_items WHERE request_id=${(await requestFor("401")).id}`)[0].n, 4);
       for (const entryId of [2, 5]) {
         assert.deepEqual(await sourceRoles(entryId, existing.id), ["artist", "designer"]);
         assert.equal((await client`SELECT count(*)::int n FROM entry_creators WHERE entry_id=${entryId} AND creator_id=${existing.id}`)[0].n, 2);
       }
-      assert.equal((await client`SELECT count(*)::int n FROM domain_events`)[0].n, eventsBefore, "successful concurrent automapping does not notify moderation");
+      assert.equal((await client`SELECT count(*)::int n FROM domain_events`)[0].n, eventsBefore+1, "concurrent pending occurrences emit one moderation event");
       // Keep following pruning assertions focused on their original participants.
       await sync(2, []);
       await sync(5, []);
@@ -189,7 +203,7 @@ test("BGG creator identities, roles, moderation and public filtering persist thr
       const publicResult = await creators.getCreators({ publicOnly: true, q: "Studio" });
       assert.equal(publicResult.totalCount, 1);
       assert.equal(publicResult.items[0].typeCode, "collective");
-      assert.equal(publicResult.items[0].mediaItemsCount, 1, "draft game and duplicate roles do not increase public count");
+      assert.equal((await client`select count(distinct ec.entry_id)::int n from entry_creators ec join media_items m on m.id=ec.entry_id where ec.creator_id=${groupId} and m.publication_status='published'`)[0].n, 1, "draft game and duplicate roles do not increase public count");
       const filtered = await db.select({ id: mediaItems.id }).from(mediaItems).where(creators.creatorCondition(groupId));
       assert.deepEqual(filtered.map(row => row.id).sort(), [3, 4]);
       await client`UPDATE media_types SET is_publicly_available=false WHERE code='boardgame'`;

@@ -14,9 +14,13 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const rawCreatorIds = String(form.get("creatorIds") ?? "").trim();
     const creatorIds = rawCreatorIds ? rawCreatorIds.split(/[\s,]+/).map(value => /^\d+$/.test(value) ? Number(value) : NaN) : undefined;
     const standalone = form.get("profileTarget") === "on";
+    const mediaType = String(form.get("mediaType") ?? form.get("processingType"));
+    const operation = String(form.get("operation") ?? "verify");
     const payload=parseSnapshotJobPayload({
-      ...(!creator && !standalone && ["book", "film", "series", "anime"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
-      operation:String(form.get("operation")??"verify"),
+      ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
+      operation,
+      ...(!creator && !standalone && mediaType === "boardgame" && ["process", "refresh-process"].includes(operation) ? { applyBoardgameChanges: form.get("applyBoardgameChanges") === "on" } : {}),
+      ...(!creator && !standalone && mediaType === "game" && ["process", "refresh-process"].includes(operation) ? { applyGameChanges: form.get("applyGameChanges") === "on" } : {}),
       ...(form.get("batchSize")?{batchSize:Number(form.get("batchSize"))}:{}),
       ...(form.get("batchPauseHours")?{batchPauseHours:Number(form.get("batchPauseHours"))}:{}),
       ...(standalone ? {profileTargets:[{provider,resourceType:String(form.get("resourceType")??""),externalId:String(form.get("externalId")??"").trim()}]} : provider?{provider}:{}),

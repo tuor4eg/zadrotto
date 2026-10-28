@@ -42,10 +42,10 @@ export function QuizHeroStatistics({
             <div key={item.label} className="flex min-w-0 items-center gap-1 sm:gap-3">
               <Icon className={`size-9 shrink-0 sm:size-10 ${item.iconClassName}`} aria-hidden="true" />
               <div className="flex min-w-0 flex-col">
-                <dt className="order-2 mt-1 whitespace-nowrap font-mono text-[8px] font-semibold uppercase tracking-[0.04em] text-stone-600 sm:text-[9px] sm:tracking-[0.12em]">
+                <dt className="order-2 mt-1 whitespace-nowrap media-carrier-font-pc-steam text-[8px] font-semibold uppercase tracking-[0.04em] text-stone-600 sm:text-[9px] sm:tracking-[0.12em]">
                   {item.label}
                 </dt>
-                <dd className="order-1 font-serif text-xl leading-none tabular-nums text-stone-950 sm:text-3xl">
+                <dd className="order-1 media-carrier-font-pc-steam text-xl leading-none tabular-nums text-stone-950 sm:text-3xl">
                   {item.value.toLocaleString("ru-RU")}
                 </dd>
               </div>

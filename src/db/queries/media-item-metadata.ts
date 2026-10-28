@@ -1,3 +1,6 @@
+import { prepareBggSnapshotReferences } from "@/lib/providers/bgg-service";
+import { BGG_LEGACY_FACT_KEYS, BGG_FACT_KEYS } from "@/lib/providers/bgg-adapter";
+import { prepareGameSnapshotReferences } from "@/lib/providers/game-service";
 import { clearAniListCreators, syncAniListCreators } from "./anilist-creators";
 import { prepareAniListCreatorSnapshot } from "@/lib/providers/anilist-creators-service";
 import { syncTmdbSeriesCreators, clearTmdbSeriesCreators } from "./tmdb-series-creators";
@@ -102,7 +105,7 @@ export async function upsertMediaItemMetadata(
 ): Promise<MediaItemMetadataValue> {
   const now = new Date();
   const provider = input.sourceProvider?.trim() || null;
-  const prepared = input.snapshotReferences && provider && !["tmdb", "anilist", "jikan"].includes(provider) && input.sourceExternalId
+  const prepared = input.snapshotReferences && provider && isBookSnapshotProvider(provider) && input.sourceExternalId
     ? await prepareBookSnapshotReferences(provider,input.sourceExternalId,input.snapshotReferences,transaction ?? db) : null;
   const work = async (tx:DbTransaction) => {
     await guardSnapshotJob(tx,input.jobGuard);
@@ -115,9 +118,15 @@ export async function upsertMediaItemMetadata(
       ? await prepareTmdbSeriesSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
     const animePrepared = input.snapshotReferences && item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "") && input.sourceExternalId
       ? await prepareAniListCreatorSnapshot(provider!, input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const gamePrepared = input.snapshotReferences && item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId
+      ? await prepareGameSnapshotReferences(provider, input.sourceExternalId, input.snapshotReferences, tx) : null;
+    if (input.snapshotReferences && isGameCompanyProvider(provider) && !gamePrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
+    const bggPrepared = input.snapshotReferences && item.mediaType === "boardgame" && provider === "bgg" && input.sourceExternalId
+      ? await prepareBggSnapshotReferences(input.sourceExternalId,input.snapshotReferences,tx) : null;
+    if (input.snapshotReferences && provider === "bgg" && !bggPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     const tmdbPrepared = filmPrepared ?? seriesPrepared;
     if (input.snapshotReferences && provider === "tmdb" && !tmdbPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
-    const fetchedAt = input.fetchedAt === undefined ? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
+    const fetchedAt = input.fetchedAt === undefined ? bggPrepared?.primary.fetchedAt ?? gamePrepared?.primary.fetchedAt ?? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
     const normalizedBook = item.mediaType === "book" && isBookSnapshotProvider(provider ?? "");
     const [previous] = await tx.select({mediaItemId:mediaItemMetadata.mediaItemId,sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,
       facts:mediaItemMetadata.facts}).from(mediaItemMetadata)
@@ -128,15 +137,34 @@ export async function upsertMediaItemMetadata(
     if (input.snapshotReferences) await lockProviderSnapshotReferences(tx,input.snapshotReferences);
     if (normalizedBook && !prepared) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
     if ((item.mediaType === "film" || item.mediaType === "series") && provider === "tmdb" && !tmdbPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
-    const sourceFacts = tmdbPrepared ? { ...tmdbPrepared.projection.facts, ...tmdbPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
+    if (item.mediaType === "game" && isGameCompanyProvider(provider) && !gamePrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
+    if (item.mediaType === "boardgame" && provider === "bgg" && !bggPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
+    const sourceFacts = bggPrepared ? {...bggPrepared.projection.facts,...bggPrepared.projection.genreFacts,bggCreators:bggPrepared.projection.creatorReferences} : gamePrepared ? { ...gamePrepared.projection.genreFacts, ...gamePrepared.projection.platformFacts, gameCompanyReferences: gamePrepared.projection.companyReferences } : tmdbPrepared ? { ...tmdbPrepared.projection.facts, ...tmdbPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
     const publishers = prepared && previous?.sourceProvider === provider ? await getWorkingBookPublishers(tx,input.mediaItemId,provider!) : [];
     const contributors = prepared ? [...prepared.projection.contributors,...publishers] : undefined;
     const facts = normalizedBook ? compactBookFacts(previous?.facts ?? {}) : {
+      ...((gamePrepared || bggPrepared) && previous?.sourceProvider === provider && previous.sourceExternalId === input.sourceExternalId ? previous.facts : {}),
       ...(item.mediaType === "book" ? compactBookFacts(previous?.facts ?? {}) : {}),
       ...(tmdbPrepared && previous?.sourceProvider === provider
         ? Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !([...(seriesPrepared ? TMDB_SERIES_FACT_KEYS : TMDB_FILM_FACT_KEYS), "productionCompanies", "genres", "genreReferences"] as readonly string[]).includes(key)))
         : item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...(tmdbPrepared ? tmdbPrepared.projection.facts : sourceFacts),
     };
+    if (item.mediaType === "game") {
+      delete facts.gameSnapshotProcessed;
+      if (gamePrepared) {
+        // Publish normalized reading only after complete trusted evidence is applied.
+        for (const key of ["genres", "genreReferences", "platforms", "developers", "publishers", "gameCompanyReferences"]) delete facts[key];
+        Object.assign(facts, gamePrepared.projection.facts, { gameSnapshotProcessed: true });
+      }
+    }
+    if (item.mediaType === "boardgame") {
+      delete facts.bggSnapshotProcessed;
+      delete facts.bggSnapshotHash;
+      if (bggPrepared) {
+        for (const key of [...BGG_LEGACY_FACT_KEYS,...BGG_FACT_KEYS]) delete facts[key];
+        Object.assign(facts,bggPrepared.projection.facts,{bggSnapshotProcessed:true,bggSnapshotHash:bggPrepared.primary.payloadHash});
+      }
+    }
     if (item.mediaType === "anime") {
       // Completion is established only by applying trusted, complete provider evidence.
       delete facts.anilistCreatorsComplete;
@@ -153,8 +181,8 @@ export async function upsertMediaItemMetadata(
         mediaItemId: input.mediaItemId,
         facts,
         sourceProvider: provider,
-        sourceExternalId: tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-        sourceUrl: input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+        sourceExternalId: bggPrepared?.projection.externalId ?? gamePrepared?.projection.externalId ?? tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+        sourceUrl: bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
         fetchedAt,
         updatedAt: now,
       })
@@ -163,8 +191,8 @@ export async function upsertMediaItemMetadata(
         set: {
           facts,
           sourceProvider: provider,
-          sourceExternalId: tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-          sourceUrl: input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+          sourceExternalId: bggPrepared?.projection.externalId ?? gamePrepared?.projection.externalId ?? tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
+          sourceUrl: bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
           fetchedAt,
           updatedAt: now,
         },
@@ -194,17 +222,24 @@ export async function upsertMediaItemMetadata(
 
     await syncMediaItemProviderPlatforms(tx, { mediaItemId: input.mediaItemId, provider, platforms: resolvedPlatforms.platforms });
     await syncPlatformRequestOccurrences(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType,
-      externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(input.facts) : [] });
+      externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(sourceFacts) : [] });
 
     }
-    if (prepared || tmdbPrepared || Object.keys(input.facts).length > 0) {
+    if (prepared || tmdbPrepared || gamePrepared || bggPrepared || Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
 
+    if (item.mediaType === "boardgame" && previous && (previous.sourceProvider !== provider || previous.sourceExternalId !== input.sourceExternalId)) {
+      await syncProviderCreators(tx,{mediaItemId:input.mediaItemId,provider:null,mediaType:"boardgame",facts:{}});
+    }
+    if (item.mediaType === "game" && previous && (previous.sourceProvider !== provider || previous.sourceExternalId !== input.sourceExternalId)) {
+      await tx.delete(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, input.mediaItemId));
+      await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider: null, mediaType: "game", facts: {} });
+    }
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
-      const references = extractGameCompanyReferences(input.facts, provider);
-      if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references });
+      const references = gamePrepared?.projection.companyReferences ?? extractGameCompanyReferences(sourceFacts, provider);
+      if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references, enqueueEnrichment: input.enqueueCompanyLogos !== false });
     } else if (!(item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "")) && !tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
     if (item.mediaType === "anime") {
       const sourceChanged = previous && (provider !== previous.sourceProvider || (input.sourceExternalId ?? null) !== previous.sourceExternalId);
@@ -221,6 +256,18 @@ export async function upsertMediaItemMetadata(
       if (input.requestProviderParts && !animePrepared && ["anilist", "jikan"].includes(provider ?? "")) {
         await createJobRun({type:"media.metadata-backfill",payload:{mediaItemId:input.mediaItemId,creatorsOnly:true},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},now,tx);
       }
+    }
+    if (bggPrepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
+      {id:bggPrepared.primary.id,payloadHash:bggPrepared.primary.payloadHash,purpose:"primary"},
+    ],{kind:"system"});
+    if (item.mediaType === "boardgame" && provider === "bgg" && !bggPrepared && input.requestProviderParts && input.sourceExternalId) {
+      await createJobRun({type:"media.metadata-backfill",payload:{mediaItemId:input.mediaItemId,force:true},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},now,tx);
+    }
+    if (gamePrepared) await attachProviderSnapshots(tx, {entityType:"media-item",entityId:String(input.mediaItemId)}, [
+      {id:gamePrepared.primary.id,payloadHash:gamePrepared.primary.payloadHash,purpose:"primary"},
+    ], {kind:"system"});
+    if (item.mediaType === "game" && isGameCompanyProvider(provider) && !gamePrepared && input.requestProviderParts && input.sourceExternalId) {
+      await createJobRun({type:"media.metadata-backfill",payload:{mediaItemId:input.mediaItemId,force:true},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},now,tx);
     }
     if (tmdbPrepared) await attachProviderSnapshots(tx,{entityType:"media-item",entityId:String(input.mediaItemId)},[
       {id:tmdbPrepared.primary.id,payloadHash:tmdbPrepared.primary.payloadHash,purpose:"primary"},

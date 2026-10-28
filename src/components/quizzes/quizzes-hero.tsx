@@ -6,7 +6,7 @@ import type { AuthorQuizStatistics } from "@/lib/quizzes/model";
 export function QuizzesHero({ statistics }: { statistics: AuthorQuizStatistics }) {
   return (
     <section
-      className="archive-paper archive-panel relative flex min-h-[320px] items-center overflow-hidden px-4 py-6 sm:px-5 lg:h-[360px] lg:py-7"
+      className="archive-paper archive-panel media-carrier-font-pc-steam relative flex min-h-[320px] items-center overflow-hidden px-4 py-6 sm:px-5 lg:h-[360px] lg:py-7"
       aria-labelledby="quizzes-title"
     >
       <Image
@@ -41,7 +41,7 @@ export function QuizzesHero({ statistics }: { statistics: AuthorQuizStatistics }
         <div>
           <h1
             id="quizzes-title"
-            className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
+            className="text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
           >
             Квизы
           </h1>

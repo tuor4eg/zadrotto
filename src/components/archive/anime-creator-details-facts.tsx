@@ -17,12 +17,7 @@ export function AnimeCreatorDetailsFacts({ creators, facts }: {
   ];
   return <>{sections.filter(section => section.rows.length).map(section => <Fragment key={section.label}>
     <span className="mx-1.5" aria-hidden="true">•</span><span className="break-words"><span className="text-stone-500">{section.label}: </span>
-      {section.rows.map((creator, index) => <Fragment key={creator.creatorId ?? `pending:${index}`}>
-        {index ? ", " : null}
-        {creator.creatorId !== null && creator.slug
-          ? <MediaItemCreatorLinks creators={[{ id: creator.creatorId, name: creator.name, slug: creator.slug }]} mediaType="anime" />
-          : creator.name}
-      </Fragment>)}
+      <MediaItemCreatorLinks creators={section.rows.map(creator => ({id:creator.creatorId,name:creator.name,slug:creator.creatorId !== null ? creator.slug : null}))} mediaType="anime" />
     </span>
   </Fragment>)}</>;
 }

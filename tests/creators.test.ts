@@ -64,7 +64,7 @@ test("creator banner links related series independently and preserves the suppli
   }, clearHref: "/archive" }));
   assert.match(pseudonym, /Создатель: Джеймс Кори<span class="font-normal"> \(псевдоним для:/);
   assert.match(pseudonym, /href="\/archive\?creator=daniel-abraham"[^>]*>Даниель Абрахам<\/a>, <a/);
-  assert.match(pseudonym, /href="\/archive\?creator=ty-franck"[^>]*>Тай Френк<\/a>\)/);
+  assert.match(pseudonym, /href="\/archive\?creator=ty-franck"[^>]*>Тай Френк<\/a><\/span>\)/);
 });
 
 test("book summaries and facts use accepted creator links without raw metadata fallback", () => {

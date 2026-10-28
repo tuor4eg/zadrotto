@@ -8,7 +8,6 @@ import { createPortal } from "react-dom";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
-import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
 type ArchiveRiddleProps = {
@@ -34,11 +33,12 @@ export function ArchiveRiddle({
   const quizCompleted = isCompleted || isLocallyCompleted;
 
   function openQuiz() {
+    if (!quiz) return;
     if (!authenticated) {
       setLoginOpen(true);
       return;
     }
-    window.dispatchEvent(new Event(OPEN_QUIZ_MODAL_EVENT));
+    router.push(`/quizzes/${quiz.id}`);
   }
 
   function handleCardKeyDown(event: React.KeyboardEvent<HTMLElement>) {
@@ -72,8 +72,8 @@ export function ArchiveRiddle({
       aria-labelledby="main-archive-riddle"
       onClick={openQuiz}
       onKeyDown={handleCardKeyDown}
-      role="button"
-      tabIndex={0}
+      role={quiz ? "link" : undefined}
+      tabIndex={quiz ? 0 : undefined}
     >
       <div className="flex flex-wrap shrink-0 items-start gap-x-2 gap-y-1 md:h-8 sm:flex-nowrap">
           <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
@@ -123,6 +123,7 @@ export function ArchiveRiddle({
               onSuccess={() => {
                 setLoginOpen(false);
                 router.refresh();
+                if (quiz) router.push(`/quizzes/${quiz.id}`);
               }}
             />,
             document.body,

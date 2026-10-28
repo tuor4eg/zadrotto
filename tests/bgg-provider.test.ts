@@ -1,10 +1,34 @@
 import assert from "node:assert/strict";
-import { describe, it } from "node:test";
+import { after, before, describe, it } from "node:test";
+import Module, { createRequire } from "node:module";
 import { createBggProvider, getBggQueryId, normalizeBggId, parseBggXml } from "@/lib/covers/providers/bgg";
 import { BggRequestError, createBggRuntime, type BggRedis } from "@/lib/covers/providers/bgg-runtime";
 import type { ProviderSearchOptions } from "@/lib/covers/types";
 import { getTitleMetadata, searchCoverCandidates, searchTitleCandidates } from "@/lib/covers/registry";
 import { runEditorialSummaryFlow } from "@/lib/media/editorial-summary-flow";
+import { normalizeBggSnapshot } from "../src/lib/providers/bgg-adapter";
+import { fetchBggXml, type BggFetchDependencies } from "../src/lib/providers/bgg-fetch";
+import type { TitleMetadataInput, TitleMetadataOptions } from "../src/lib/covers/types";
+
+const require = createRequire(import.meta.url);
+const servicePath = require.resolve("../src/lib/providers/bgg-service");
+const previousService = require.cache[servicePath];
+before(() => {
+  // Provider transport tests stop at persistence; actual raw storage is exercised
+  // against disposable PostgreSQL schemas in provider-bgg-snapshot-runtime.test.ts.
+  const service = new Module(servicePath);
+  service.filename = servicePath;
+  service.loaded = true;
+  service.exports = { __esModule: true, fetchBggMetadata: async (input: TitleMetadataInput, options: TitleMetadataOptions, dependencies: BggFetchDependencies) => {
+    const token = options.providerCredentials?.bgg?.accessToken?.trim();
+    if (!token) throw new BggRequestError("provider-unavailable", 401, 60, true);
+    const payload = await fetchBggXml("thing", { id: input.externalId, type: "boardgame,boardgameexpansion" }, { token, signal: AbortSignal.timeout(options.requestTimeoutMs ?? 1000) }, dependencies);
+    const projection = normalizeBggSnapshot({ providerCode: "bgg", externalId: input.externalId, payload });
+    return { ...projection, snapshotReferences: [{ id: 1, payloadHash: "test-persistence-boundary" }] };
+  } };
+  require.cache[servicePath] = service;
+});
+after(() => { if (previousService) require.cache[servicePath] = previousService; else delete require.cache[servicePath]; });
 
 // Synthetic fixtures exercise our adapter; they do not establish live BGG search coverage.
 const item = (id = "1", extra = "", type = "boardgame") => `<item id="${id}" type="${type}"><name type="primary" value="Game &amp; Friends"/><yearpublished value="2020"/>${extra}</item>`;
@@ -64,19 +88,19 @@ describe("BGG adapter", () => {
   it("preserves person IDs independently of designer and artist roles", async () => {
     const { provider } = setup(async () => response(xml(item("1", '<link type="boardgamedesigner" id="12" value="A Person"/><link type="boardgameartist" id="12" value="A Person"/><link type="boardgameartist" id="13" value="Another Artist"/>'))));
     const metadata = await provider.getTitleMetadata!(metadataInput, options);
-    assert.deepEqual(metadata?.facts.bggCreators, [
+    assert.deepEqual(metadata?.creatorReferences, [
       { externalId: "12", name: "A Person", roleCode: "designer" },
       { externalId: "12", name: "A Person", roleCode: "artist" },
       { externalId: "13", name: "Another Artist", roleCode: "artist" },
     ]);
-    assert.deepEqual(metadata?.facts.authors, ["A Person"]);
-    assert.deepEqual(metadata?.facts.artists, ["A Person", "Another Artist"]);
+    assert.equal(Object.hasOwn(metadata!.facts, "authors"), false);
+    assert.equal(Object.hasOwn(metadata!.facts, "artists"), false);
   });
   it("distinguishes a complete empty roster from links with missing person IDs", async () => {
     const empty = setup(async () => response(xml(item())));
-    assert.deepEqual((await empty.provider.getTitleMetadata!(metadataInput, options))?.facts.bggCreators, []);
+    assert.deepEqual((await empty.provider.getTitleMetadata!(metadataInput, options))?.creatorReferences, []);
     const normalized = await getTitleMetadata(metadataInput, [empty.provider], options);
-    assert.deepEqual(normalized.metadata?.facts.bggCreators, [], "registry must preserve the explicit empty roster");
+    assert.deepEqual(normalized.metadata?.creatorReferences, [], "registry must preserve the explicit empty roster");
     const broken = setup(async () => response(xml(item("1", '<link type="boardgamedesigner" value="Person without ID"/>'))));
     await assert.rejects(broken.provider.getTitleMetadata!(metadataInput, options), BggRequestError);
   });
@@ -84,15 +108,14 @@ describe("BGG adapter", () => {
   it("decodes numeric entities in category names and references", async () => {
     const { provider } = setup(async () => response(xml(item("1", '<link type="boardgamecategory" id="7" value="Children&#039;s Game"/><link type="boardgamemechanic" value="Pick &#x26; Pass"/>'))));
     const result = await provider.getTitleMetadata!(metadataInput, options);
-    assert.deepEqual(result?.facts?.genres, ["Children's Game"]);
-    assert.deepEqual(result?.facts?.genreReferences, [{ name: "Children's Game", id: "7" }]);
+    assert.deepEqual(result?.genreFacts?.genres, ["Children's Game"]);
+    assert.deepEqual(result?.genreFacts?.genreReferences, [{ name: "Children's Game", id: "7" }]);
     assert.deepEqual(result?.facts?.mechanics, ["Pick & Pass"]);
   });
   it("validates revoked credentials against the API even when a card is cached", async () => {
     let calls = 0;
     const { provider } = setup(async () => ++calls === 1 ? response(xml(item())) : new Response(null, { status: 401 }));
-    await provider.getTitleMetadata!(metadataInput, options);
-    await provider.getTitleMetadata!(metadataInput, options);
+    await provider.searchTitleCandidates!({ query: "bgg:1", mediaType: "boardgame" }, options);
     assert.equal(calls, 1);
     await assert.rejects(provider.getTitleMetadata!(metadataInput, { ...options, bypassCache: true }), (error) => error instanceof BggRequestError && error.invalidCredentials && error.status === 401);
     assert.equal(calls, 2);
@@ -104,7 +127,7 @@ describe("BGG adapter", () => {
     assert.equal(result?.fields?.title, "Game & Friends");
     assert.equal(result?.fields?.description, "Birds & friends");
     assert.deepEqual(result?.fields?.aliases, ["Крылья"]);
-    assert.deepEqual(result?.facts, { bggCreators: [{ externalId: "11", name: "Designer", roleCode: "designer" }, { externalId: "12", name: "Artist", roleCode: "artist" }], bggItemType: "boardgameexpansion", authors: ["Designer"], artists: ["Artist"], publishers: ["Publisher"], mechanics: ["Drafting"], genres: ["Animals"], genreReferences: [{ name: "Animals", id: "7" }], minPlayers: 1, maxPlayers: 5, runtimeMinutes: 60, minPlayingTimeMinutes: 40, maxPlayingTimeMinutes: 70, minAge: 10 });
+    assert.deepEqual(result?.facts, { bggItemType: "boardgameexpansion", publishers: ["Publisher"], mechanics: ["Drafting"], minPlayers: 1, maxPlayers: 5, runtimeMinutes: 60, minPlayingTimeMinutes: 40, maxPlayingTimeMinutes: 70, minAge: 10 });
     assert.equal(JSON.stringify(result).includes("secret"), false);
   });
   it("treats zero year and absent optional fields as missing", async () => {
@@ -112,7 +135,7 @@ describe("BGG adapter", () => {
     const result = await provider.getTitleMetadata!(metadataInput, options);
     assert.equal(result?.fields?.releaseYear, null);
     assert.equal(result?.fields?.description, null);
-    assert.equal(result?.facts.minPlayers, null);
+    assert.equal(result?.facts.minPlayers, undefined);
     assert.deepEqual(result?.fields?.aliases, []);
     assert.equal(Object.hasOwn(result!.facts, "alternateNames"), false);
   });
@@ -123,7 +146,7 @@ describe("BGG adapter", () => {
       assert.equal(new Headers(init?.headers).get("authorization"), "Bearer secret");
       assert.equal(url.origin, "https://boardgamegeek.com");
       assert.equal(url.searchParams.get("type"), "boardgame,boardgameexpansion");
-      return response(url.pathname.endsWith("/search") ? xml(item("1"), item("2"), item("3")) : xml(item("1", '<name type="alternate" value="Крылья"/><image>https://cf.geekdo-images.com/cover.png</image>', "boardgameexpansion"), item("2")));
+      return response(url.pathname.endsWith("/search") ? xml(item("1"), item("2"), item("3")) : xml(item("1", '<name type="alternate" value="Крылья"/><image>https://cf.geekdo-images.com/cover.png</image>', "boardgameexpansion"), ...(url.searchParams.get("id") === "1" ? [] : [item("2")])));
     });
     const result = await provider.searchTitleCandidates!({ query: "Крылья", mediaType: "boardgame" }, options);
     assert.equal(requests.length, 2);
@@ -133,14 +156,14 @@ describe("BGG adapter", () => {
     assert.equal(result[0].coverUrl, "https://cf.geekdo-images.com/cover.png");
     assert.equal(result[1].coverUrl, null);
     await provider.getTitleMetadata!(metadataInput, options);
-    assert.equal(requests.length, 2);
+    assert.equal(requests.length, 3, "metadata captures complete raw independently of parsed search cards");
   });
   it("keeps search results if enrichment fails and rejects unexpected card IDs", async () => {
     const { provider } = setup(async (input) => String(input).includes("/search?") ? response(xml(item())) : response(xml(item("99"))));
     const result = await provider.searchTitleCandidates!({ query: "Game", mediaType: "boardgame" }, options);
     assert.equal(result[0].externalId, "1");
     assert.equal(result[0].coverUrl, null);
-    await assert.rejects(provider.getTitleMetadata!(metadataInput, options), BggRequestError);
+    await assert.rejects(provider.getTitleMetadata!(metadataInput, options), /INVALID_PROVIDER_SNAPSHOT_REFERENCES/);
   });
   it("never fetches arbitrary URLs or invalid direct IDs", async () => {
     let calls = 0;

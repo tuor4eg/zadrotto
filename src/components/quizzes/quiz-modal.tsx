@@ -97,7 +97,7 @@ export function QuizModal({
         aria-modal="true"
         aria-labelledby="active-quiz-title"
         tabIndex={-1}
-        className={`archive-paper archive-panel relative max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
+        className={`archive-paper archive-panel relative flex h-[calc(100dvh-2.5rem)] max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
       >
         <div className="pointer-events-auto left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3" style={{ position: "absolute" }}>
           {quiz ? (

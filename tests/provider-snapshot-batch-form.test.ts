@@ -107,3 +107,64 @@ test("individual anime snapshot controls submit explicit anime scope and AniList
   assert.match(html, /остальные характеристики записи не меняются/);
   for (const operation of ["refresh", "process", "refresh-process", "verify"]) assert.match(html, new RegExp(`<button(?=[^>]*name="operation")(?=[^>]*value="${operation}")[^>]*>`));
 });
+
+test("game batches restore IGDB or RAWG without offering unrelated media providers", async () => {
+  const { ProviderSnapshotControls } = await import("../src/components/admin/provider-snapshot-controls");
+  for (const provider of ["igdb", "rawg"] as const) for (const operation of ["refresh", "process", "refresh-process", "verify"] as const) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "game", provider, operation } }));
+    assert.match(html, /value="game" selected=""/);
+    assert.match(html, new RegExp(`value="${provider}" selected=""`));
+    const providers = html.match(/<select[^>]*name="provider"[^>]*>(.*?)<\/select>/)?.[1];
+    assert.ok(providers); assert.doesNotMatch(providers, /value="tmdb"|value="fantlab"|value="anilist"/);
+    assert.match(html, /Поиск нового источника не выполняется/);
+    const individual = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 10, mediaType: "game", provider, showActions: true, canProcess: true }));
+    assert.match(individual, /name="mediaType" value="game"/);
+    assert.match(individual, new RegExp(`name="provider" value="${provider}"`));
+    assert.match(individual, /name="mediaItemId" value="10"/);
+  }
+});
+
+test("game changes default off and explicit processing consent is restored", async () => {
+  const { ProviderSnapshotControls } = await import("../src/components/admin/provider-snapshot-controls");
+  for (const operation of ["process", "refresh-process"] as const) {
+    const safe = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "game", provider: "igdb", operation } }));
+    assert.match(safe, /name="applyGameChanges"/);
+    assert.doesNotMatch(safe, /name="applyGameChanges"[^>]*checked=/);
+    assert.match(safe, /при расхождениях сохраняется отчёт без изменения связей и новых задач/);
+    const explicit = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "game", provider: "igdb", operation, applyGameChanges: true } }));
+    assert.match(explicit, /name="applyGameChanges" checked=""/);
+  }
+  for (const operation of ["refresh", "verify"] as const) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "game", provider: "igdb", operation } }));
+    assert.doesNotMatch(html, /name="applyGameChanges"/);
+  }
+  const single = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 10, mediaType: "game", provider: "igdb", showActions: true, canProcess: true }));
+  assert.match(single, /name="applyGameChanges"/);
+  assert.doesNotMatch(single, /name="applyGameChanges"[^>]*checked=/);
+  assert.match(single, /3\. Перенести совпадающие данные/);
+  const book = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "book", provider: "fantlab", operation: "process" } }));
+  assert.doesNotMatch(book, /name="applyGameChanges"/);
+});
+
+test("boardgame controls expose BGG and an independent unchecked application option", async () => {
+  const { ProviderSnapshotControls } = await import("../src/components/admin/provider-snapshot-controls");
+  for (const operation of ["refresh", "process", "refresh-process", "verify"] as const) {
+    const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "boardgame", provider: "bgg", operation } }));
+    assert.match(html, /value="boardgame" selected=""/); assert.match(html, /value="bgg" selected=""/);
+    assert.doesNotMatch(html, /name="applyGameChanges"/);
+    if (operation === "process" || operation === "refresh-process") {
+      assert.match(html, /name="applyBoardgameChanges"/); assert.doesNotMatch(html, /name="applyBoardgameChanges" checked/);
+      assert.match(html, /Перенести совпадающие данные/);
+    } else assert.doesNotMatch(html, /name="applyBoardgameChanges"/);
+  }
+  const individual = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 10, mediaType: "boardgame", provider: "bgg", showActions: true, canProcess: true }));
+  assert.match(individual, /name="mediaType" value="boardgame"/); assert.match(individual, /name="provider" value="bgg"/);
+  assert.match(individual, /name="applyBoardgameChanges"/); assert.doesNotMatch(individual, /name="applyGameChanges"/);
+});
+
+test("XML raw viewer shows the original XML text without JSON string quoting", async () => {
+  const { SnapshotJsonViewer } = await import("../src/components/admin/snapshot-json-viewer");
+  const xml = '<?xml version="1.0"?>\n<items><item id="42"/></items>';
+  const html = renderToStaticMarkup(createElement(SnapshotJsonViewer, { value: xml }));
+  assert.match(html, /XML · строк/); assert.match(html, /&lt;items&gt;/); assert.doesNotMatch(html, /\\n/);
+});

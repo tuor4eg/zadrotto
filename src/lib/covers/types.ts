@@ -93,6 +93,9 @@ export type ProviderTitlePart = import("@/lib/media/title-parts").TitlePartProvi
 export type MediaTitleMetadata = {
   /** Server-only transient provider evidence for genre suggestions; never persisted or signed. */
   genreFacts?: Record<string, unknown>;
+  platformFacts?: Record<string, unknown>;
+  companyReferences?: import("@/lib/creators/game-companies").GameCompanyReference[];
+  creatorReferences?: Pick<import("@/lib/media/creators").BggCreatorReference, "externalId" | "name" | "roleCode">[];
   snapshotReferences?: import("@/lib/providers/snapshot-values").SnapshotReference[];
   parts?: ProviderTitlePart[];
   provider: MediaProviderCode;

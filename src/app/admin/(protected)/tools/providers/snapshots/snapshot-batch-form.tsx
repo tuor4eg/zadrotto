@@ -13,35 +13,48 @@ import { SNAPSHOT_OPERATIONS_UI } from "./snapshot-operations";
 
 function BatchFields({ busy, values }: { busy: boolean; values?: SnapshotJobPayload }) {
   const { pending } = useFormStatus();
-  const [processingType, setProcessingType] = useState<"book" | "film" | "series" | "anime" | "creator">(
-    values?.entityType === "creator" ? "creator" : values?.mediaType === "anime" ? "anime" : values?.mediaType === "series" ? "series" : values?.mediaType === "film" || values?.provider === "tmdb" ? "film" : "book",
+  const [processingType, setProcessingType] = useState<"book" | "film" | "series" | "anime" | "game" | "boardgame" | "creator">(
+    values?.entityType === "creator" ? "creator" : values?.mediaType === "boardgame" ? "boardgame" : values?.mediaType === "game" ? "game" : values?.mediaType === "anime" ? "anime" : values?.mediaType === "series" ? "series" : values?.mediaType === "film" || values?.provider === "tmdb" ? "film" : "book",
   );
   const creator = processingType === "creator";
   const anime = processingType === "anime";
+  const boardgame = processingType === "boardgame";
+  const game = processingType === "game";
   const film = ["film", "series"].includes(processingType);
   const [creatorProvider, setCreatorProvider] = useState(values?.entityType === "creator" ? values.provider ?? "" : "");
+  const [applyBoardgameChanges, setApplyBoardgameChanges] = useState(values?.applyBoardgameChanges ?? false);
+  const [applyGameChanges, setApplyGameChanges] = useState(values?.applyGameChanges ?? false);
   const [operation, setOperation] = useState<SnapshotOperation>(values?.operation ?? "verify");
+  const safeTransfer = boardgame ? !applyBoardgameChanges : game && !applyGameChanges;
   return <>
     <fieldset disabled={pending || busy} className="grid gap-4 rounded-md border border-stone-200 bg-white p-4">
       <legend className="px-1 text-xs font-semibold uppercase tracking-[0.14em] text-stone-500">Параметры обработки</legend>
-      <div className="grid gap-2"><Label htmlFor="snapshot-entity">Объекты обработки</Label><Select id="snapshot-entity" name="processingType" value={processingType} onChange={event => { setProcessingType(event.target.value as "book" | "film" | "series" | "anime" | "creator"); if (event.target.value === "creator" && (operation === "verify" || creatorProvider !== "fantlab")) setOperation("refresh"); }}><option value="book">Книги</option><option value="film">Фильмы</option><option value="series">Сериалы</option><option value="anime">Аниме</option><option value="creator">Создатели</option></Select><input type="hidden" name="entityType" value={creator ? "creator" : "media-item"} /></div>
+      <div className="grid gap-2"><Label htmlFor="snapshot-entity">Объекты обработки</Label><Select id="snapshot-entity" name="processingType" value={processingType} onChange={event => { setProcessingType(event.target.value as "book" | "film" | "series" | "anime" | "game" | "boardgame" | "creator"); if (event.target.value === "creator" && (operation === "verify" || creatorProvider !== "fantlab")) setOperation("refresh"); }}><option value="book">Книги</option><option value="film">Фильмы</option><option value="series">Сериалы</option><option value="anime">Аниме</option><option value="game">Видеоигры</option><option value="boardgame">Настольные игры</option><option value="creator">Создатели</option></Select><input type="hidden" name="entityType" value={creator ? "creator" : "media-item"} /></div>
       <div className="grid gap-4 md:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="snapshot-provider">Провайдер</Label>
-          <Select key={processingType} id="snapshot-provider" name="provider" onChange={event => { if (creator) { setCreatorProvider(event.target.value); if (event.target.value !== "fantlab") setOperation("refresh"); } }} defaultValue={creator ? values?.provider ?? "" : anime ? "anilist" : film ? "tmdb" : ["fantlab", "google-books", "open-library"].includes(values?.provider ?? "") ? values?.provider : "fantlab"}>
+          <Select key={processingType} id="snapshot-provider" name="provider" onChange={event => { if (creator) { setCreatorProvider(event.target.value); if (event.target.value !== "fantlab") setOperation("refresh"); } }} defaultValue={creator ? values?.provider ?? "" : boardgame ? "bgg" : game ? (["igdb", "rawg"].includes(values?.provider ?? "") ? values?.provider : "igdb") : anime ? "anilist" : film ? "tmdb" : ["fantlab", "google-books", "open-library"].includes(values?.provider ?? "") ? values?.provider : "fantlab"}>
             {creator && <option value="">Все поддерживаемые источники</option>}
-            {(creator ? ["fantlab", "tmdb", "igdb", "rawg", "anilist"] as const : anime ? ["anilist"] as const : film ? ["tmdb"] as const : ["fantlab", "google-books", "open-library"] as const).map(provider => <option key={provider} value={provider}>{COVER_PROVIDER_LABELS[provider]}</option>)}
+            {(creator ? ["fantlab", "tmdb", "igdb", "rawg", "anilist"] as const : boardgame ? ["bgg"] as const : game ? ["igdb", "rawg"] as const : anime ? ["anilist"] as const : film ? ["tmdb"] as const : ["fantlab", "google-books", "open-library"] as const).map(provider => <option key={provider} value={provider}>{COVER_PROVIDER_LABELS[provider]}</option>)}
           </Select>
-          <p className="text-xs leading-5 text-stone-500">{creator ? "Создатели с подтверждёнными внешними привязками. Загрузка raw автоматически связывает снимки, но не меняет рабочие поля." : anime ? "Аниме с источником AniList либо Jikan через точное соответствие MAL ID. Обрабатываются режиссёры, производственные компании и продюсеры; остальные характеристики записи не меняются. После подтверждения создателей изображения заполняются в фоне." : film ? `${processingType === "series" ? "Сериалы" : "Фильмы"} с уже выбранным источником TMDB. Поиск нового источника не выполняется.` : "Книги с уже выбранным источником. Поиск нового источника не выполняется."}</p>
+          <p className="text-xs leading-5 text-stone-500">{creator ? "Создатели с подтверждёнными внешними привязками. Загрузка raw автоматически связывает снимки, но не меняет рабочие поля." : boardgame ? "Настольные игры с уже выбранным источником BGG. Поиск нового источника не выполняется." : game ? "Видеоигры с уже выбранным источником IGDB или RAWG. Поиск нового источника не выполняется. По умолчанию выполняется проверенный перенос без изменения существующих связей." : anime ? "Аниме с источником AniList либо Jikan через точное соответствие MAL ID. Обрабатываются режиссёры, производственные компании и продюсеры; остальные характеристики записи не меняются. После подтверждения создателей изображения заполняются в фоне." : film ? `${processingType === "series" ? "Сериалы" : "Фильмы"} с уже выбранным источником TMDB. Поиск нового источника не выполняется.` : "Книги с уже выбранным источником. Поиск нового источника не выполняется."}</p>
         </div>
         <div className="grid content-start gap-2">
           <Label htmlFor="snapshot-operation">Действие</Label>
           <Select id="snapshot-operation" name="operation" value={operation} onChange={event => setOperation(event.target.value as SnapshotOperation)} aria-describedby="snapshot-operation-description">
-            {Object.entries(SNAPSHOT_OPERATIONS_UI).filter(([value]) => !creator || (creatorProvider === "fantlab" ? value !== "verify" : value === "refresh")).map(([value, item]) => <option key={value} value={value}>{item.label}</option>)}
+            {Object.entries(SNAPSHOT_OPERATIONS_UI).filter(([value]) => !creator || (creatorProvider === "fantlab" ? value !== "verify" : value === "refresh")).map(([value, item]) => <option key={value} value={value}>{safeTransfer && value === "process" ? "Перенести совпадающие данные" : safeTransfer && value === "refresh-process" ? "Получить и перенести совпадающие данные" : item.label}</option>)}
           </Select>
-          <p id="snapshot-operation-description" className="text-xs leading-5 text-stone-500">{creator && (operation === "process" || operation === "refresh-process") ? (operation === "process" ? "Обработает сохранённый снимок без запросов к провайдеру. " : "Получит полный ответ FantLab и обработает его. ") + "Заполнит пустые даты жизни людей. Ручные значения сохраняются; псевдонимам и коллективам даты не назначаются." : SNAPSHOT_OPERATIONS_UI[operation].description}</p>
+          <p id="snapshot-operation-description" className="text-xs leading-5 text-stone-500">{creator && (operation === "process" || operation === "refresh-process") ? (operation === "process" ? "Обработает сохранённый снимок без запросов к провайдеру. " : "Получит полный ответ FantLab и обработает его. ") + "Заполнит пустые даты жизни людей. Ручные значения сохраняются; псевдонимам и коллективам даты не назначаются." : safeTransfer && (operation === "process" || operation === "refresh-process") ? "Сравнит данные с существующими связями. При совпадении отметит перенос и очистит старые дубли. При расхождениях сохранит отчёт; связи сохранятся, новые задачи сопоставления не появятся." : SNAPSHOT_OPERATIONS_UI[operation].description}</p>
         </div>
       </div>
+      {boardgame && ["process", "refresh-process"].includes(operation) ? <div className="grid gap-2">
+        <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" name="applyBoardgameChanges" checked={applyBoardgameChanges} onChange={event => setApplyBoardgameChanges(event.target.checked)} />Применять изменения жанров, создателей и характеристик</label>
+        <p className="text-xs leading-5 text-stone-500">Без отметки данные BGG переносятся только при совпадении. При расхождениях сохраняется отчёт, связи и заявки не меняются.</p>
+      </div> : null}
+      {game && (operation === "process" || operation === "refresh-process") ? <div className="grid gap-2">
+        <label className="flex items-start gap-2 text-sm"><input className="mt-1" type="checkbox" name="applyGameChanges" checked={applyGameChanges} onChange={event => setApplyGameChanges(event.target.checked)} />Применять изменения жанров, платформ и компаний</label>
+        <p className="text-xs leading-5 text-stone-500">Без отметки данные только сравниваются: при совпадении отмечается перенос и удаляются старые дубли; при расхождениях сохраняется отчёт без изменения связей и новых задач. С отметкой будут применены изменения из сохранённых данных с учётом ручных назначений и решений модерации.</p>
+      </div> : null}
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="grid content-start gap-2">
           <Label htmlFor="snapshot-batch-size">Записей в одной партии</Label>
@@ -61,7 +74,7 @@ function BatchFields({ busy, values }: { busy: boolean; values?: SnapshotJobPayl
       {creator && <div className="grid gap-2"><Label htmlFor="snapshot-creator-ids">ID создателей (необязательно)</Label><Input id="snapshot-creator-ids" name="creatorIds" defaultValue={values?.creatorIds?.join(", ")} placeholder="12, 34, 56" maxLength={3200} /><p className="text-xs text-stone-500">До 200 положительных ID через запятую или пробел. Пустое поле — все подходящие создатели в диапазоне.</p></div>}
       <details className="rounded-md border border-stone-100 p-3">
         <summary className="cursor-pointer text-sm font-medium">Ограничить диапазон записей</summary>
-        <p className="mt-2 text-xs leading-5 text-stone-500">{creator ? "Если оставить поля пустыми, будут обработаны все создатели с поддерживаемыми подтверждёнными привязками." : anime ? "Если оставить поля пустыми, будут обработаны все подходящие аниме с источником AniList или Jikan." : film ? "Если оставить поля пустыми, будут обработаны все записи выбранного типа с источником TMDB." : "Если оставить поля пустыми, будут обработаны все книги выбранного провайдера."}</p>
+        <p className="mt-2 text-xs leading-5 text-stone-500">{creator ? "Если оставить поля пустыми, будут обработаны все создатели с поддерживаемыми подтверждёнными привязками." : boardgame ? "Если оставить поля пустыми, будут обработаны все настольные игры с источником BGG." : game ? "Если оставить поля пустыми, будут обработаны все видеоигры выбранного провайдера." : anime ? "Если оставить поля пустыми, будут обработаны все подходящие аниме с источником AniList или Jikan." : film ? "Если оставить поля пустыми, будут обработаны все записи выбранного типа с источником TMDB." : "Если оставить поля пустыми, будут обработаны все книги выбранного провайдера."}</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-2">
           <div className="grid gap-2">
             <Label htmlFor="snapshot-after-id">После ID</Label>

@@ -1,8 +1,8 @@
+import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { getImportedCreatorNameLocalization } from "./creator-name-import";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
-import { and, eq, inArray, or, sql } from "drizzle-orm";
+import { and, eq, inArray, sql } from "drizzle-orm";
 import { creators, creatorTypes, creatorRoles, creatorRequests, creatorRequestMediaItems, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources } from "@/db/schema";
-import { normalizeSearchSql } from "@/db/search";
 import { extractBggCreatorReferences } from "@/lib/media/creators";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
@@ -30,32 +30,15 @@ export async function syncBggCreators(tx: CreatorTransaction, entryId: number, f
   }
   await tx.delete(entryCreatorSources).where(and(eq(entryCreatorSources.entryId, entryId), eq(entryCreatorSources.provider, "bgg")));
   await tx.delete(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.mediaItemId, entryId), sql`${creatorRequestMediaItems.requestId} in (select id from creator_requests where provider='bgg' and external_creator_id is not null)`));
-  let createdMappings = 0, createdLinks = 0;
+  const createdMappings = 0;
+  let createdLinks = 0;
   for (const { request, refs, detected } of requests) {
     const externalId = request.externalCreatorId!;
     await tx.insert(creatorRequestMediaItems).values(refs.map(reference => ({ requestId: request.id, mediaItemId: entryId, roleId: roles.get(reference.roleCode)!, externalCreatorName: reference.name }))).onConflictDoNothing();
     await tx.update(creatorRequests).set({ externalCreatorName: refs[0].name, normalizedExternalCreatorName: refs[0].normalizedName, lastSeenAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
     const [excluded] = await tx.select().from(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, "bgg"), eq(providerCreatorExclusions.externalCreatorId, externalId)));
-    let [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "bgg"), eq(providerCreatorBindings.externalCreatorId, externalId)));
-    if (!excluded && request.decision !== "exclude" && !request.manuallyReopened && !binding && detected && new Set(refs.map(reference => reference.normalizedName)).size === 1) {
-      // Same exact name across simultaneous IDs may select at most one BGG identity automatically.
-      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`creator:${refs[0].normalizedName}`},0))`);
-      const candidates = await tx.select({ id: creators.id }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(and(
-        inArray(creatorTypes.code, ["person", "collective"]), or(
-          sql`btrim(${normalizeSearchSql(creators.name)})=${refs[0].normalizedName}`,
-          sql`btrim(${normalizeSearchSql(creators.originalName)})=${refs[0].normalizedName}`,
-        ),
-      ));
-      if (candidates.length === 1) {
-        await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, candidates[0].id)).for("update");
-        const conflict = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "bgg"), eq(providerCreatorBindings.creatorId, candidates[0].id)));
-        if (!conflict.length) {
-          [binding] = await tx.insert(providerCreatorBindings).values({ provider: "bgg", externalCreatorId: externalId, externalCreatorName: refs[0].name, creatorId: candidates[0].id }).returning();
-          await enqueueCreatorImageFill(tx, binding.creatorId);
-          createdMappings++;
-        }
-      }
-    }
+    const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "bgg"), eq(providerCreatorBindings.externalCreatorId, externalId), eq(providerCreatorBindings.active, true)));
+
     const allowed = binding && !excluded && request.decision !== "exclude" && !(request.decision === null && request.manuallyReopened);
     if (allowed) {
       await tx.update(providerCreatorBindings).set({ externalCreatorName: refs[0].name, updatedAt: new Date() }).where(eq(providerCreatorBindings.id, binding.id));
@@ -68,6 +51,7 @@ export async function syncBggCreators(tx: CreatorTransaction, entryId: number, f
         await tx.insert(entryCreatorSources).values({ entryId, creatorId: binding.creatorId, roleId, provider: "bgg", bindingId: binding.id, normalizedExternalCreatorName: `bgg:${externalId}` }).onConflictDoNothing();
       }
     } else if (detected && !excluded) {
+      await enqueueCreatorAutoApproval(tx, [request.id]);
       const event = await appendDomainEvent(tx, { type: "creator-request.created", actorAuthorId: null, aggregateType: "creator-request", aggregateId: String(request.id), payload: { requestId: request.id } });
       await createJobRun({ type: "domain-events.dispatch", payload: { eventId: event.id }, source: "event", maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx);
     }

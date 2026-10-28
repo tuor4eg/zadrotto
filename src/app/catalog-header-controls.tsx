@@ -393,7 +393,7 @@ export function CatalogHeaderControls({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
+          className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-base lg:text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
           placeholder="Поиск по архиву"
         />
         {search ? (

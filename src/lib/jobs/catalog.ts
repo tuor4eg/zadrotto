@@ -4,6 +4,7 @@ export type JobManualPlacement = "general" | "domain" | "migration" | "none";
 
 const GENERAL = new Set([
   "media.creator-name-localization",
+  "media.creator-request-auto-approve",
   "media.creator-images-backfill", "media.metadata-backfill", "media.cover-thumbnails-backfill",
   "media.rating-stats-reconcile", "auth.email-outbox-delivery", "domain-events.dispatch",
   "notifications.transport-delivery",

@@ -317,16 +317,16 @@ describe("metadata backfill and refresh runs", () => {
     assert.deepEqual(empty.upserts, [])
   })
 
-  it("applies film and series snapshots with empty compact facts while anime keeps its existing validation", async () => {
+  it("applies film, series and game snapshots with empty compact facts while anime keeps its existing validation", async () => {
     const snapshotReferences = [{ id: 7, payloadHash: "a".repeat(64) }]
-    for (const mediaType of ["film", "series", "anime"] as const) {
+    for (const [mediaType, provider] of [["film", "tmdb"], ["series", "tmdb"], ["game", "igdb"], ["game", "rawg"], ["anime", "tmdb"]] as const) {
       const result = createStore()
       await runMetadataBackfill({
         context: {
-          async fetchTitleMetadata() { return { error: null, metadata: { externalId: "1", facts: {}, provider: "tmdb", sourceUrl: null, snapshotReferences } } },
+          async fetchTitleMetadata() { return { error: null, metadata: { externalId: "1", facts: {}, provider, sourceUrl: null, snapshotReferences } } },
           async searchTitles() { throw new Error("should not search") },
         },
-        items: [item({ id: 16, title: "Genre only", mediaType, sourceProvider: "tmdb", sourceExternalId: "1" })],
+        items: [item({ id: 16, title: "Genre only", mediaType, sourceProvider: provider, sourceExternalId: "1" })],
         store: result.store,
       })
       assert.equal(result.upserts.length, mediaType !== "anime" ? 1 : 0)

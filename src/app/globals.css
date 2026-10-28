@@ -295,6 +295,24 @@ body:has(.public-site-footer-layer) {
   min-height: 0;
 }
 
+@media (min-width: 1024px) {
+  body:has(.quiz-detail-page) {
+    height: 100dvh;
+  }
+
+  body:has(.quizzes-overview-page) {
+    height: 100dvh;
+  }
+
+  .quizzes-overview-page:has(+ .public-site-footer-layer) {
+    flex: 1 1 0;
+  }
+}
+
+.quiz-detail-page:has(+ .public-site-footer-layer) {
+  flex: 1 1 0;
+}
+
 .archive-page:not(.archive-catalog-page):has(.public-site-header) {
   padding-top: 0.75rem;
   padding-bottom: 0.75rem;

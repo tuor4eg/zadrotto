@@ -40,7 +40,7 @@ test("creator edit form preserves original name and submits selected series as t
     creator: { id: 1, name: "Кинг", originalName: "Stephen King", slug: "king", typeId: 1, seriesIds: [2], relations: [{ targetCreatorId: 2, relationType: "pseudonym_of" }], incomingRelations: [{ sourceCreatorId: 3, name: "Коллектив", relationType: "pseudonym_of" }] },
     creators: [{ id: 1, name: "Кинг" }, { id: 2, name: "Связанный автор" }], types, series: [{ id: 2, title: "Тёмная башня", originalTitle: null }, { id: 3, title: "Оно", originalTitle: null }],
   }));
-  assert.match(html, /Связанные Creator/);
+  assert.match(html, /<h2 id="creator-relations-heading"[^>]*>Псевдоним<\/h2>/);
   assert.match(html, /name="relationType"/);
   assert.match(html, /type="hidden" name="relatedCreatorIds" value="2"/);
   assert.match(html, /href="\/admin\/creators\/3\/edit"[^>]*>Коллектив/);
@@ -87,6 +87,18 @@ test("BGG identity bindings display external ID and reopen the whole identity", 
   assert.match(html, /boardgamegeek\.com\/boardgamedesigner\/42/);
   const approval = renderToStaticMarkup(createElement(CreatorDecisionForm, { requestId: 1, name: "Studio", provider: "bgg", people: [{ id: 10, name: "Коллектив" }] }));
   assert.match(approval, /Коллектив/);
+});
+
+test("supported active creator bindings can be reopened while historical bindings cannot", () => {
+  for (const provider of ["bgg", "igdb", "rawg", "tmdb", "fantlab", "anilist"]) {
+    const binding = { id: 17, provider, externalCreatorId: "42", externalCreatorName: "Creator" };
+    const active = renderToStaticMarkup(createElement(CreatorProviderVariants, { variants: [], bindings: [{ ...binding, active: true }] }));
+    assert.match(active, /name="bindingId" value="17"/, provider);
+    assert.match(active, /Вернуть в заявки/, provider);
+    const historical = renderToStaticMarkup(createElement(CreatorProviderVariants, { variants: [], bindings: [{ ...binding, active: false }] }));
+    assert.match(historical, /Историческая \(неактивна\)/, provider);
+    assert.doesNotMatch(historical, /name="bindingId"|Вернуть в заявки/, provider);
+  }
 });
 
 test("FantLab ID binding and name mapping are labelled as separate provenance of one Creator", () => {

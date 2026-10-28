@@ -1044,6 +1044,13 @@
       "when": 1795478400000,
       "tag": "0148_creator_requests_pagination",
       "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0149_creator_auto_approval",
+      "breakpoints": true
     }
   ]
 }

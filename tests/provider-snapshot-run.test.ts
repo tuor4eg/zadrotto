@@ -29,6 +29,19 @@ test('snapshot operation status confirms only a completed single-record result',
   assert.equal(messages.size,4,'refresh, apply, combined and verification communicate different results');
 });
 
+test("game run success distinguishes checked transfer from explicit application", () => {
+  for (const operation of ["process", "refresh-process"] as const) {
+    for (const applyGameChanges of [undefined, false]) {
+      const shown = bookSnapshotRunStatus({ ...completed, payload: { ...completed.payload, mediaType: "game", operation, applyGameChanges } });
+      assert.equal(shown.success, true);
+      assert.match(shown.message, /Жанры, платформы и компании не изменялись/);
+      assert.doesNotMatch(shown.message, /применены к записи/);
+    }
+    const explicit = bookSnapshotRunStatus({ ...completed, payload: { ...completed.payload, mediaType: "game", operation, applyGameChanges: true } });
+    assert.match(explicit.message, /применены к записи/);
+  }
+});
+
 test('snapshot run lookup exposes only a valid explicitly selected single record and uses the primary key at scale',{
   skip:process.env.PROVIDER_SNAPSHOT_TEST!=='1',
 },async(t)=>{

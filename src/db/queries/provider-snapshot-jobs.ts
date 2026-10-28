@@ -1,9 +1,11 @@
+import { describeBggSource } from "@/lib/providers/bgg-adapter";
 import { snapshotHash } from "@/lib/providers/snapshot-values";
 import { and, asc, eq, gt, inArray, lte, notExists, or, sql } from "drizzle-orm";
 import { db } from "@/db";
 import { mediaItems, mediaItemMetadata, providerSnapshots } from "@/db/schema";
 import { SNAPSHOT_DEFAULT_BATCH_SIZE } from "@/lib/providers/snapshot-job-payload";
 import type { BookProviderCode } from "@/lib/providers/types";
+import { describeGameSource } from "@/lib/providers/game-adapter";
 
 /** Exact primary request; deliberately never reads payload or snapshot links. */
 function missingPrimarySnapshot() {
@@ -42,6 +44,45 @@ export function providerSnapshotAnimeBatchQuery(input: { afterId: number; throug
     .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
     .where(and(eq(mediaItems.mediaType, "anime"), inArray(mediaItemMetadata.sourceProvider, ["anilist", "jikan"]),
       sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+/** Games retain their exact selected source; IDs are the resumable entry cursor. */
+export function providerSnapshotGameBatchQuery(input: { afterId: number; throughId: number; provider?: "igdb" | "rawg"; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const igdb = describeGameSource("igdb", "1");
+  const rawg = describeGameSource("rawg", "1");
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).where(and(
+    eq(providerSnapshots.providerCode, mediaItemMetadata.sourceProvider), eq(providerSnapshots.resourceType, "game"),
+    eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId),
+    eq(providerSnapshots.apiMethod, sql`case ${mediaItemMetadata.sourceProvider} when 'igdb' then ${igdb.apiMethod} else ${rawg.apiMethod} end`),
+    eq(providerSnapshots.requestParams, sql`case ${mediaItemMetadata.sourceProvider} when 'igdb' then ${JSON.stringify(igdb.requestParams)}::jsonb else ${JSON.stringify(rawg.requestParams)}::jsonb end`),
+    eq(providerSnapshots.requestKey, sql`case ${mediaItemMetadata.sourceProvider} when 'igdb' then ${snapshotHash(igdb.requestParams)} else ${snapshotHash(rawg.requestParams)} end`),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "game"), input.provider ? eq(mediaItemMetadata.sourceProvider, input.provider) : inArray(mediaItemMetadata.sourceProvider, ["igdb", "rawg"]),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId),
+      input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+/** BGG keeps the same resumable entry cursor and exact-request missing filter. */
+export function providerSnapshotBoardgameBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const descriptor = describeBggSource("1");
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).where(and(
+    eq(providerSnapshots.providerCode, "bgg"), eq(providerSnapshots.resourceType, descriptor.resourceType),
+    eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId), eq(providerSnapshots.apiMethod, descriptor.apiMethod),
+    eq(providerSnapshots.requestParams, descriptor.requestParams), eq(providerSnapshots.requestKey, snapshotHash(descriptor.requestParams)),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "boardgame"), eq(mediaItemMetadata.sourceProvider, "bgg"),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId),
       input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
       input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
     .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);

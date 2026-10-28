@@ -58,3 +58,52 @@ test("AniList media jobs require anime scope; creator profiles allow raw refresh
   assert.equal(parseSnapshotJobPayload({ operation: "refresh", entityType: "creator", provider: "anilist" }).provider, "anilist");
   assert.deepEqual(parseSnapshotJobPayload({ operation: "verify" }), { operation: "verify" });
 });
+
+test("game raw operations require game scope and a supported primary provider", () => {
+  for (const operation of ["refresh", "process", "refresh-process", "verify"]) {
+    for (const provider of [undefined, "igdb", "rawg"]) {
+      const payload = parseSnapshotJobPayload({ operation, mediaType: "game", provider });
+      assert.equal(payload.mediaType, "game");
+      assert.equal(payload.provider, provider);
+    }
+  }
+  for (const input of [
+    { operation: "process", provider: "igdb" },
+    { operation: "process", provider: "rawg", mediaType: "book" },
+    { operation: "verify", provider: "tmdb", mediaType: "game" },
+    { operation: "refresh", entityType: "creator", provider: "igdb", mediaType: "game" },
+  ]) assert.throws(() => parseSnapshotJobPayload(input));
+});
+
+test("game application requires an explicit boolean scoped to processing games", () => {
+  for (const operation of ["process", "refresh-process"]) {
+    assert.equal(parseSnapshotJobPayload({ operation, mediaType: "game" }).applyGameChanges, undefined);
+    for (const applyGameChanges of [false, true]) assert.equal(parseSnapshotJobPayload({ operation, mediaType: "game", applyGameChanges }).applyGameChanges, applyGameChanges);
+  }
+  for (const input of [
+    { operation: "process", mediaType: "game", applyGameChanges: "true" },
+    { operation: "process", applyGameChanges: true },
+    { operation: "process", mediaType: "film", applyGameChanges: false },
+    { operation: "refresh", mediaType: "game", applyGameChanges: true },
+    { operation: "verify", mediaType: "game", applyGameChanges: false },
+    { operation: "process", entityType: "creator", mediaType: "game", applyGameChanges: true },
+  ]) assert.throws(() => parseSnapshotJobPayload(input));
+});
+
+test("BGG jobs are scoped to boardgames and preserve safe transfer unless explicitly enabled", () => {
+  for (const operation of ["refresh", "process", "refresh-process", "verify"] as const) {
+    const payload = parseSnapshotJobPayload({ mediaType: "boardgame", provider: "bgg", operation });
+    assert.equal(payload.applyBoardgameChanges, undefined);
+    if (operation === "process" || operation === "refresh-process") for (const value of [true, false]) {
+      assert.equal(parseSnapshotJobPayload({ ...payload, applyBoardgameChanges: value }).applyBoardgameChanges, value);
+    } else assert.throws(() => parseSnapshotJobPayload({ ...payload, applyBoardgameChanges: true }));
+  }
+  for (const value of [
+    { mediaType: "game", provider: "bgg", operation: "process" },
+    { mediaType: "boardgame", provider: "igdb", operation: "process" },
+    { provider: "bgg", operation: "refresh" },
+    { mediaType: "boardgame", provider: "bgg", operation: "process", applyGameChanges: true },
+    { mediaType: "game", provider: "igdb", operation: "process", applyBoardgameChanges: true },
+    { mediaType: "boardgame", provider: "bgg", operation: "process", applyBoardgameChanges: "true" },
+  ]) assert.throws(() => parseSnapshotJobPayload(value));
+});

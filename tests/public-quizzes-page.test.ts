@@ -20,7 +20,7 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   const currentQuiz = read("src/app/main/archive-riddle.tsx");
   const noActiveState = read("src/components/quizzes/quiz-no-active-state.tsx");
 
-  assert.match(page, /grid gap-3 lg:grid-cols-3[\s\S]*lg:col-span-2[\s\S]*<QuizzesHero statistics=\{statistics\} \/>[\s\S]*<ArchiveRiddle/);
+  assert.match(page, /grid shrink-0 gap-3 lg:grid-cols-3[\s\S]*lg:col-span-2[\s\S]*<QuizzesHero statistics=\{statistics\} \/>[\s\S]*<ArchiveRiddle/);
   assert.match(page, /<ArchiveRiddle[\s\S]*quiz=\{activeQuiz\}/);
   assert.match(page, /<ArchiveRiddle[\s\S]*size="large"/);
   assert.match(widget, /min-h-\[320px\][^"\n]*lg:h-\[360px\]/);
@@ -55,7 +55,7 @@ test("quiz hero promotes key statistics and keeps point totals available in the 
   assert.match(heroStatistics, /icon: Trophy[\s\S]*label: "Очков"/);
   assert.match(heroStatistics, /icon: Flame[\s\S]*label: "Текущая серия"/);
   assert.match(heroStatistics, /size-9 shrink-0 sm:size-10/);
-  assert.match(heroStatistics, /font-serif text-xl[^"\n]*sm:text-3xl/);
+  assert.match(heroStatistics, /media-carrier-font-pc-steam text-xl[^"\n]*sm:text-3xl/);
   assert.match(heroStatistics, /mt-auto[^"\n]*pt-6/);
   assert.match(heroStatistics, /\.filter\(\(item\) => item\.value > 0\)/);
   assert.match(heroStatistics, /if \(items\.length === 0\) return null/);
@@ -70,12 +70,12 @@ test("public quizzes section contains three equal lower widgets and owns quiz st
   const emptyState = read("src/components/quizzes/quiz-empty-state.tsx");
 
   assert.match(page, /getAuthorQuizStatistics\(author\.id\)/);
-  assert.match(page, /getQuizLeaderboard\(\)/);
-  assert.match(page, /grid flex-1 items-stretch gap-3 lg:grid-cols-3/);
+  assert.match(page, /getQuizLeaderboard\(100\)/);
+  assert.match(page, /grid flex-1 items-stretch gap-3 lg:min-h-0 lg:grid-cols-3/);
   assert.match(page, /<AuthorQuizStatistics statistics=\{statistics\} \/>/);
-  assert.match(page, /<QuizLeaderboard items=\{leaderboard\} \/>/);
-  assert.match(page, /getQuizArchive\(\)/);
-  assert.match(page, /<QuizArchiveList items=\{archiveItems\} \/>/);
+  assert.match(page, /<QuizLeaderboard items=\{leaderboard\} fitRows \/>/);
+  assert.match(page, /getQuizArchive\(100\)/);
+  assert.match(page, /<QuizArchiveList items=\{archiveItems\} fitRows \/>/);
   assert.match(statistics, /Твоя статистика/);
   assert.match(statistics, /label: "Общее время"[\s\S]*formatQuizDuration\(statistics\.totalTimeSeconds\)/);
   assert.match(statistics, /statistics\.playedCount === 0/);
@@ -91,11 +91,11 @@ test("public quizzes section contains three equal lower widgets and owns quiz st
 test("current quiz and archive widgets use the same column width", () => {
   const page = read("src/app/quizzes/page.tsx");
 
-  assert.match(page, /grid gap-3 lg:grid-cols-3/);
+  assert.match(page, /grid shrink-0 gap-3 lg:grid-cols-3/);
   assert.match(page, /lg:col-span-2[\s\S]*<QuizzesHero/);
 });
 
-test("quiz archive renders a compact unlinked list", () => {
+test("quiz archive links each row to its quiz page", () => {
   const archive = read("src/components/quizzes/quiz-archive-list.tsx");
   const query = read("src/db/queries/quizzes.ts");
 
@@ -107,12 +107,43 @@ test("quiz archive renders a compact unlinked list", () => {
   assert.match(archive, /Участников: \{item\.participantCount\.toLocaleString\("ru-RU"\)\}/);
   assert.match(archive, /item\.correctCount/);
   assert.doesNotMatch(archive, /winnerName|Победитель|Нет победителя/);
-  assert.doesNotMatch(archive, /<Link|href=/);
+  assert.match(archive, /href="\/quizzes\/archive"/);
+  assert.match(archive, /Смотреть всё →/);
+  assert.ok(archive.includes('href={`/quizzes/${item.id}`}'));
   assert.match(archive, /imageSrc="\/quiz_archieve_placeholder\.webp"/);
   assert.match(archive, /Здесь пока нет завершенных квизов/);
   assert.match(archive, /Самое время стать частью истории/);
   assert.equal(existsSync("public/quiz_archieve_placeholder.webp"), true);
   assert.ok(statSync("public/quiz_archieve_placeholder.webp").size < 100_000);
+});
+
+test("archived quiz page reuses the modal panel without offering active quiz participation", () => {
+  const page = read("src/app/quizzes/[id]/page.tsx");
+  const panel = read("src/components/quizzes/active-quiz-panel.tsx");
+  const query = read("src/db/queries/quizzes.ts");
+  const detailQuery = query.slice(query.indexOf("export async function getQuizById"), query.indexOf("export async function getQuizArchivePage"));
+
+  assert.match(page, /await requireAuthor\(\)/);
+  assert.match(page, /if \(!detail\) notFound\(\)/);
+  assert.match(page, /<ActiveQuizPanel\s+finished=\{detail.finished\}/);
+  assert.match(page, /participant=\{detail.participant\}/);
+  assert.match(detailQuery, /eq\(quizzes.id, id\), eq\(quizzes.enabled, true\), lte\(quizzes.startsAt/);
+  assert.match(detailQuery, /eq\(quizParticipants.quizId, id\), eq\(quizParticipants.authorId, authorId\)/);
+  assert.doesNotMatch(detailQuery, /answerMediaItemId/);
+  assert.doesNotMatch(panel, /formatQuizTimeRemaining/);
+  assert.match(panel, /finished \? \([\s\S]*Квиз завершён[\s\S]*<QuizParticipationButton/);
+});
+
+test("quiz answer is revealed on the server only after a correct guess or the deadline", () => {
+  const query = read("src/db/queries/quizzes.ts");
+  const reveal = query.slice(query.indexOf("export async function getRevealedQuizAnswer"), query.indexOf("export async function getQuizById"));
+  const route = read("src/app/api/quizzes/[id]/answer/route.ts");
+  assert.match(reveal, /eq\(quizParticipants.authorId, authorId\)/);
+  assert.match(reveal, /or\(lte\(quizzes.endsAt, sql`now\(\)`\), eq\(quizParticipants.outcome, "correct"\)\)/);
+  assert.match(reveal, /eq\(quizzes.enabled, true\), lte\(quizzes.startsAt/);
+  assert.match(reveal, /eq\(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/);
+  assert.match(route, /if \(!author\).*status: 401/);
+  assert.match(route, /private, no-store/);
 });
 
 test("quiz leaderboard ranks authors by all correct answer points and elapsed time", () => {

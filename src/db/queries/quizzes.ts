@@ -5,6 +5,7 @@ import { authors, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quiz
 import { containsNormalizedSearchSql } from "@/db/search";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
+import { resolveCoverUrl } from "@/lib/services/minio";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE, calculateUsedQuizAttempts, getAdminQuizParticipantStatus } from "@/lib/quizzes/admin-analytics";
@@ -131,6 +132,7 @@ export async function getAdminQuizContext(quizId: number) {
 export async function getAdminQuizAggregates(quizId: number) {
   const [row] = await db
     .select({
+      averagePoints: sql<number | null>`avg(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)::float`,
       averageCorrectAnswerSeconds: sql<number | null>`(
         avg(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt})))
         filter (where ${quizParticipants.outcome} = 'correct')
@@ -145,6 +147,7 @@ export async function getAdminQuizAggregates(quizId: number) {
     .where(eq(quizParticipants.quizId, quizId));
 
   return row ?? {
+    averagePoints: null,
     averageCorrectAnswerSeconds: null,
     correctCount: 0,
     exhaustedCount: 0,
@@ -335,7 +338,82 @@ export async function getQuizLeaderboard(limit = 5) {
     )
     .limit(limit);
 }
-export async function getQuizArchive(limit = 5, now?: Date) {
+export const QUIZ_ARCHIVE_PAGE_SIZE = 25;
+
+export async function getRevealedQuizAnswer(quizId: number, authorId: number) {
+  const [row] = await db.select({
+    id: mediaItems.id,
+    code: mediaItems.code,
+    title: mediaItems.title,
+    coverUrl: mediaItems.coverUrl,
+    comment: quizzes.comment,
+  }).from(quizzes)
+    .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .leftJoin(quizParticipants, and(eq(quizParticipants.quizId, quizzes.id), eq(quizParticipants.authorId, authorId)))
+    .where(and(
+      eq(quizzes.id, quizId), eq(quizzes.enabled, true), lte(quizzes.startsAt, sql`now()`),
+      eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true),
+      or(lte(quizzes.endsAt, sql`now()`), eq(quizParticipants.outcome, "correct")),
+    )).limit(1);
+  return row ? { ...row, coverUrl: resolveCoverUrl(row.coverUrl) } : null;
+}
+
+export async function getQuizById(id: number, authorId: number) {
+  const [row] = await db
+    .select({
+      id: quizzes.id,
+      question: quizzes.question,
+      imageObjectKey: quizzes.imageObjectKey,
+      startsAt: quizzes.startsAt,
+      endsAt: quizzes.endsAt,
+      attemptLimit: quizzes.attemptLimit,
+    })
+    .from(quizzes)
+    .where(and(eq(quizzes.id, id), eq(quizzes.enabled, true), lte(quizzes.startsAt, sql`now()`)))
+    .limit(1);
+  if (!row) return null;
+
+  const [types, [participantRow]] = await Promise.all([
+    mediaTypesForQuizIds([id]),
+    db.select({
+      quizId: quizParticipants.quizId,
+      attemptsRemaining: quizParticipants.attemptsRemaining,
+      outcome: quizParticipants.outcome,
+    }).from(quizParticipants)
+      .where(and(eq(quizParticipants.quizId, id), eq(quizParticipants.authorId, authorId)))
+      .limit(1),
+  ]);
+  const quiz: ActiveQuiz = {
+    id: row.id,
+    question: row.question,
+    imageUrl: resolveQuizImageUrl(row.imageObjectKey),
+    startsAt: row.startsAt.toISOString(),
+    endsAt: row.endsAt.toISOString(),
+    attemptLimit: row.attemptLimit,
+    mediaTypes: types.get(id) ?? [],
+  };
+  return {
+    quiz,
+    finished: row.endsAt.getTime() <= Date.now(),
+    participant: participantRow ? mapParticipantState({ ...participantRow, attemptLimit: row.attemptLimit }) : null,
+  };
+}
+
+export async function getQuizArchivePage(requestedPage = 1) {
+  const now = new Date();
+  const [{ totalCount }] = await db
+    .select({ totalCount: sql<number>`count(*)::int` })
+    .from(quizzes)
+    .where(and(eq(quizzes.enabled, true), lte(quizzes.endsAt, now)));
+  const totalPages = getTotalPages(totalCount, QUIZ_ARCHIVE_PAGE_SIZE);
+  const page = clampPage(requestedPage, totalPages);
+  const items = await getQuizArchive(QUIZ_ARCHIVE_PAGE_SIZE, now, getOffset(page, QUIZ_ARCHIVE_PAGE_SIZE));
+
+  return { items, page, pageSize: QUIZ_ARCHIVE_PAGE_SIZE, totalCount, totalPages };
+}
+
+export async function getQuizArchive(limit = 5, now?: Date, offset = 0) {
   const currentTime = now ?? sql`now()`;
   const quizRows = await db
     .select({
@@ -347,7 +425,8 @@ export async function getQuizArchive(limit = 5, now?: Date) {
     .from(quizzes)
     .where(and(eq(quizzes.enabled, true), lte(quizzes.endsAt, currentTime)))
     .orderBy(desc(quizzes.endsAt), desc(quizzes.id))
-    .limit(limit);
+    .limit(limit)
+    .offset(offset);
 
   const quizIds = quizRows.map(({ id }) => id);
   if (quizIds.length === 0) return [];

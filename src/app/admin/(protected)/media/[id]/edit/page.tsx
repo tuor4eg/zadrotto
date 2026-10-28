@@ -388,7 +388,7 @@ export default async function EditAdminMediaPage({
           </div>
         </CardContent>
       </Card>
-      {item.mediaType === "book" || item.mediaType === "film" || item.mediaType === "series" || item.mediaType === "anime" ? (
+      {item.mediaType === "book" || item.mediaType === "film" || item.mediaType === "series" || item.mediaType === "anime" || item.mediaType === "game" || item.mediaType === "boardgame" ? (
         <div className="xl:col-span-2">
           <ProviderSnapshotControls mediaItemId={mediaItemId} mediaType={item.mediaType} />
         </div>

@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
+import { MediaItemCreatorLinks } from "@/components/archive/media-item-creator-links";
 import { BoardgameDetailsFacts } from "@/components/archive/boardgame-details-facts";
 import { MediaMetadataFacts } from "@/components/ui/media-metadata-facts";
 
@@ -79,4 +80,23 @@ test("structured BGG creator roles display approved links and suppress raw fallb
   assert.match(legacy, /Raw Artist/);
   const metadata = renderToStaticMarkup(createElement(MediaMetadataFacts, { metadata: { facts, sourceProvider: "bgg", sourceExternalId: "1", sourceUrl: null } }));
   assert.doesNotMatch(metadata, /bggCreators|Raw Designer|Raw Artist/);
+});
+
+
+test("creator lists collapse to ten only when more than five names would be hidden", () => {
+  for (const count of [0, 10, 11, 15, 16, 40]) {
+    for (const linked of [false, true]) {
+      const creators = Array.from({length:count}, (_,index) => ({id:index,name:`Creator ${index + 1} end`,slug:linked ? `creator-${index}` : null}));
+      const html = renderToStaticMarkup(createElement(MediaItemCreatorLinks,{creators,mediaType:"boardgame"}));
+      const visible = count > 15 ? 10 : count;
+      assert.equal((html.match(/Creator \d+ end/g) ?? []).length, visible);
+      assert.equal(html.includes(`показать все ${count}`), count > 15);
+      assert.equal((html.match(/href=/g) ?? []).length, linked ? visible : 0);
+      if (count > 15) assert.match(html,/aria-expanded="false"/);
+      if (linked && count) assert.match(html,/type=boardgame/);
+    }
+  }
+  const legacy = renderToStaticMarkup(createElement(BoardgameDetailsFacts,{facts:{artists:Array.from({length:16},(_,index)=>`Artist ${index + 1} end`)},genres:[]}));
+  assert.equal((legacy.match(/Artist \d+ end/g) ?? []).length,10);
+  assert.match(legacy,/показать все 16/);
 });

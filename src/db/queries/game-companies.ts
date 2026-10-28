@@ -1,3 +1,4 @@
+import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { creatorDisplayNameSql } from "./creator-display";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, asc, eq, gt, inArray, sql } from "drizzle-orm";
@@ -45,6 +46,7 @@ export async function syncGameCompanyCreators(tx: CreatorTransaction, mediaItemI
         await tx.insert(entryCreatorSources).values({ entryId: mediaItemId, creatorId: binding.creatorId, roleId, provider, bindingId: binding.id, normalizedExternalCreatorName: `${provider}:${ref.externalId}` }).onConflictDoNothing();
       }
     } else if (detected && !excluded) {
+      await enqueueCreatorAutoApproval(tx, [request.id]);
       result.newRequests++;
       const event = await appendDomainEvent(tx, { type: "creator-request.created", actorAuthorId: null, aggregateType: "creator-request", aggregateId: String(request.id), payload: { requestId: request.id } });
       await createJobRun({ type: "domain-events.dispatch", payload: { eventId: event.id }, source: "event", maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, new Date(), tx);

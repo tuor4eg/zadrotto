@@ -16,10 +16,10 @@ export function AuthorQuizStatistics({ statistics }: { statistics: AuthorQuizSta
   ];
 
   return (
-    <Card className="archive-paper archive-panel h-full">
+    <Card className="archive-paper archive-panel media-carrier-font-pc-steam h-full [&_*]:[font-family:inherit]">
       <CardContent className="h-full p-4 sm:px-5 sm:pt-5">
         <div className="flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
-          <h2 className="flex min-w-0 items-center gap-2 font-serif text-xl leading-none sm:text-2xl">
+          <h2 className="flex min-w-0 items-center gap-2 media-carrier-font-pc-steam text-xl leading-none sm:text-2xl">
             <Gamepad2 className="size-5 shrink-0 text-red-950/70" />
             Твоя статистика
           </h2>

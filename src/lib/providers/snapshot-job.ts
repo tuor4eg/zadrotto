@@ -1,3 +1,7 @@
+import { fetchBggMetadata, getSavedBggBundle, getBggMigrationComparison } from "./bgg-service";
+import { transferBggSnapshot, BggSnapshotDifferenceError } from "@/db/queries/bgg-snapshot-transfer";
+import { fetchGameMetadata, getSavedGameBundle, getGameMigrationComparison } from "./game-service";
+import { transferGameSnapshot, GameSnapshotDifferenceError } from "@/db/queries/game-snapshot-transfer";
 import { fetchAniListCreatorSnapshot, getSavedAniListCreatorSnapshot, getAniListCreatorMigrationComparison } from "./anilist-creators-service";
 import { commitAniListCreatorSnapshot } from "@/db/queries/anilist-creators";
 import { runWithProviderRequestTimeout } from "@/lib/covers/provider-request-timeout";
@@ -5,7 +9,7 @@ import { fetchTmdbSeriesMetadata, getSavedTmdbSeriesBundle, getTmdbSeriesMigrati
 import { getSavedCreatorProfileSnapshot, fetchCreatorProfileSnapshot } from "./creator-profile-service";
 import { runCreatorProfileSnapshots } from "./creator-profile-job";
 import { fetchTmdbFilmMetadata, getSavedTmdbFilmBundle, getTmdbFilmMigrationComparison } from "./tmdb-film-service";
-import { providerSnapshotAnimeBatchQuery, providerSnapshotBookBatchQuery } from "@/db/queries/provider-snapshot-jobs";
+import { providerSnapshotAnimeBatchQuery, providerSnapshotBookBatchQuery, providerSnapshotGameBatchQuery, providerSnapshotBoardgameBatchQuery } from "@/db/queries/provider-snapshot-jobs";
 import "server-only";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -105,6 +109,8 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
     const batch = getSnapshotBatchSettings(current);
     const batchInput={afterId:state.afterId,throughId:state.throughId,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining,onlyMissingSnapshots:payload.onlyMissingSnapshots,retryId:state.retryId};
     const candidates=await (payload.mediaType === "anime" ? providerSnapshotAnimeBatchQuery(batchInput)
+      : payload.mediaType === "boardgame" ? providerSnapshotBoardgameBatchQuery(batchInput)
+      : payload.mediaType === "game" ? providerSnapshotGameBatchQuery({ ...batchInput, provider: payload.provider as "igdb" | "rawg" | undefined })
       : providerSnapshotBookBatchQuery({...batchInput,mediaType:payload.mediaType,provider:payload.provider as import("./types").BookProviderCode | "tmdb" | undefined}));
     const rows=candidates.slice(0,batch.remaining);
     const network=payload.operation==="refresh" || payload.operation==="refresh-process";
@@ -119,7 +125,9 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         await checkpoint(guard,{...payload,checkpoint:state});
       }
       const anime = row.mediaType === "anime";
-      if (!row.provider || !row.externalId || (anime ? !["anilist", "jikan"].includes(row.provider) : !isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
+      const game = row.mediaType === "game";
+      const boardgame = row.mediaType === "boardgame";
+      if (!row.provider || !row.externalId || (anime ? !["anilist", "jikan"].includes(row.provider) : boardgame ? row.provider !== "bgg" : game ? !["igdb", "rawg"].includes(row.provider) : !isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
         state={...state,afterId:row.id,failed:state.failed+1,retryId:undefined,retryCount:undefined,errors:[...state.errors,{id:row.id,code:"missing-source"}].slice(-100)};
         await checkpoint(guard,{...payload,checkpoint:state});continue;
       }
@@ -140,11 +148,11 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
             refs=[{id:snapshot.id,payloadHash:snapshot.payloadHash}];
           }
         } else if (network) {
-          const metadata=await (row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
+          const metadata=await (boardgame ? fetchBggMetadata : game ? fetchGameMetadata : row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb" | "igdb" | "rawg" | "bgg",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
             providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal});
           refs=metadata.snapshotReferences!;
         } else {
-          const bundle = row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId);
+          const bundle = boardgame ? await getSavedBggBundle(row.externalId) : game ? await getSavedGameBundle(row.provider as "igdb" | "rawg", row.externalId) : row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId);
           refs = [bundle.primary,...bundle.dependencies].map(item=>({id:item.id,payloadHash:item.payloadHash}));
         }
         const nextState={...state,afterId:row.id,processed:state.processed+1,retryId:undefined,retryCount:undefined};
@@ -153,7 +161,11 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
           await commitAniListCreatorSnapshot({mediaItemId:row.id,expectedSource:{provider:row.provider,externalId:row.externalId},references:refs,
             process:payload.operation!=="refresh",jobGuard:guard,checkpoint:current as unknown as Record<string,unknown>});
         } else if (payload.operation==="process" || payload.operation==="refresh-process") {
-          await upsertMediaItemMetadata({mediaItemId:row.id,facts:{},sourceProvider:row.provider,sourceExternalId:row.externalId,
+          if (boardgame && payload.applyBoardgameChanges !== true) await transferBggSnapshot({mediaItemId:row.id,externalId:row.externalId,refs,
+            expectedSource:{provider:row.provider,externalId:row.externalId},jobGuard:guard,checkpoint:current as unknown as Record<string,unknown>});
+          else if (game && payload.applyGameChanges !== true) await transferGameSnapshot({mediaItemId:row.id,provider:row.provider as "igdb"|"rawg",externalId:row.externalId,refs,
+            expectedSource:{provider:row.provider,externalId:row.externalId},jobGuard:guard,checkpoint:current as unknown as Record<string,unknown>});
+          else await upsertMediaItemMetadata({mediaItemId:row.id,facts:{},sourceProvider:row.provider,sourceExternalId:row.externalId,
             snapshotReferences:refs,enqueueCompanyLogos:network,jobGuard:guard,expectedSource:{provider:row.provider,externalId:row.externalId},checkpoint:current as unknown as Record<string,unknown>});
         } else if (payload.operation==="refresh") {
           await withSnapshotJobGuard(guard, async tx=>{
@@ -169,7 +181,7 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
           // Verification is read-only for domain data; its report is the job checkpoint.
           const animeSnapshot = anime ? await getSavedAniListCreatorSnapshot(row.provider,row.externalId) : null;
           if (anime && !animeSnapshot) throw new Error("PROVIDER_SNAPSHOT_MISSING");
-          const report = anime ? await getAniListCreatorMigrationComparison(row.id,animeSnapshot!) : row.provider === "tmdb"
+          const report = boardgame ? await getBggMigrationComparison(row.id, (await getSavedBggBundle(row.externalId)).projection) : game ? await getGameMigrationComparison(row.id, (await getSavedGameBundle(row.provider as "igdb" | "rawg", row.externalId)).projection) : anime ? await getAniListCreatorMigrationComparison(row.id,animeSnapshot!) : row.provider === "tmdb"
             ? row.mediaType === "series" ? await getTmdbSeriesMigrationComparison(row.id,(await getSavedTmdbSeriesBundle(row.externalId)).projection) : await getTmdbFilmMigrationComparison(row.id,(await getSavedTmdbFilmBundle(row.externalId)).projection)
             : await (await import("./snapshot-report")).getBookMigrationComparison(row.id,(await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId)).projection);
           if (report.blockers.length) throw new Error("migration-difference");
@@ -184,13 +196,14 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         const deferral = snapshotProviderDeferral(error, row.id);
         if (deferral) throw new JobError("provider-deferred", deferral.message, { deferSeconds: deferral.deferSeconds });
         const retries=state.retryId===row.id?(state.retryCount??0)+1:1;
-        const permanent=error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled","ANILIST_MEDIA_MISSING","AMBIGUOUS_ANILIST_SNAPSHOTS"].includes(code);
+        const permanent=error instanceof BggSnapshotDifferenceError || error instanceof GameSnapshotDifferenceError || error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled","ANILIST_MEDIA_MISSING","AMBIGUOUS_ANILIST_SNAPSHOTS"].includes(code);
         if (!permanent && retries<3) {
           state={...state,retryId:row.id,retryCount:retries};
           await checkpoint(guard,{...payload,checkpoint:state});
           throw new JobError("provider-retry","Повторная попытка обработки записи.",{deferSeconds:Math.max(60*retries,retryAfter??0)});
         }
         state={...state,afterId:row.id,failed:state.failed+1,retryId:undefined,retryCount:undefined,errors:[...state.errors,snapshotItemError(row.id,error)].slice(-100)};
+        if (error instanceof GameSnapshotDifferenceError || error instanceof BggSnapshotDifferenceError) state={...state,diagnostics:[...(state.diagnostics ?? []),{id:row.id,codes:error.diagnostics.slice(0,10)}].slice(-100)};
         await checkpoint(guard,{...payload,checkpoint:state});
       }
     }

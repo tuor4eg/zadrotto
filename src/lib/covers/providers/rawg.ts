@@ -1,6 +1,4 @@
 import { fetchRawgJson } from "@/lib/creators/game-company-api";
-import { getRawgCompanyReferences } from "@/lib/creators/game-company-references";
-import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { MediaProvider } from "@/lib/covers/types";
 import {
   buildUrl,
@@ -48,10 +46,6 @@ type RawgGameDetailsResponse = {
     name?: string;
   }>;
 };
-
-function getNames(values: Array<{ name?: string } | undefined> | undefined) {
-  return [...new Set((values ?? []).map((value) => value?.name?.trim()).filter(Boolean))];
-}
 
 function getPlatformNames(values: RawgGameDetailsResponse["platforms"]) {
   return [...new Set((values ?? []).map((value) => value.platform?.name?.trim()).filter((name): name is string => Boolean(name)))];
@@ -101,29 +95,8 @@ return {
       return null;
     }
 
-    const url = buildUrl(`https://api.rawg.io/api/games/${input.externalId}`, {
-      key: apiKey,
-    });
-    const details = await request<RawgGameDetailsResponse>(url);
-
-    if (!details?.id) {
-      return null;
-    }
-
-    const genreReferences = getProviderGenreReferences(details.genres);
-    return {
-      provider: "rawg",
-      externalId: input.externalId,
-      sourceUrl: details.slug ? `https://rawg.io/games/${details.slug}` : `https://rawg.io/games/${details.id}`,
-      facts: {
-        ...(getRawgCompanyReferences(details) !== undefined ? {gameCompanyReferences:getRawgCompanyReferences(details)} : {}),
-        platforms: getPlatformNames(details.platforms),
-        developers: getNames(details.developers),
-        publishers: getNames(details.publishers),
-        genres: getNames(details.genres),
-        ...(genreReferences.length > 0 ? { genreReferences } : {}),
-      },
-    };
+    const { fetchGameMetadata } = await import("@/lib/providers/game-service");
+    return fetchGameMetadata(input, options, request === fetchRawgJson ? {} : { rawgRequest: request });
   },
   async getCoverCandidatesByTitleSource(input, options) {
     const apiKey = options.providerCredentials?.rawg?.apiKey?.trim();

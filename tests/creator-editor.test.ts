@@ -27,7 +27,6 @@ test("editor loads one Creator and initial pseudonym selections instead of the w
 test("bindings show history and allow reopening FantLab; protected images cannot enqueue a refresh", () => {
   const variants = readFileSync("src/app/admin/(protected)/creators/provider-variants.tsx", "utf8");
   assert.match(variants, /binding.active === false/);
-  assert.match(variants, /binding.active !== false && \["bgg", "igdb", "rawg", "tmdb", "fantlab"\]/);
   const page = readFileSync("src/app/admin/(protected)/creators/[id]/edit/page.tsx", "utf8");
   assert.match(page, /getCreatorProviderBindings\(creatorId, true\)/);
   assert.match(page, /Удаление недоступно/);

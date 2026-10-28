@@ -1,6 +1,4 @@
 import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
-import { getIgdbCompanyReferences } from "@/lib/creators/game-company-references";
-import { getProviderGenreReferences } from "@/lib/media/genres";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   fetchSearchJson,
@@ -144,18 +142,6 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
         true,
       );
     },
-    async getGameMetadata(id: number) {
-      const [game] = await fetchGames(
-        [
-          "fields genres.id,genres.name,involved_companies.company.id,involved_companies.company.name,involved_companies.company.url,involved_companies.developer,involved_companies.publisher,platforms.name,slug,url;",
-          `where id = ${id};`,
-          "limit 1;",
-        ].join(" "),
-        true,
-      );
-
-      return game ?? null;
-    },
     async getGameForCover(id: number) {
       const [game] = await fetchGames([
         "fields name,slug,url,first_release_date,rating,total_rating,cover.image_id,cover.width,cover.height;",
@@ -169,20 +155,6 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
 
 function getUniqueNames(values: Array<{ name?: string } | undefined> | undefined) {
   return [...new Set((values ?? []).map((value) => value?.name?.trim()).filter((name): name is string => Boolean(name)))];
-}
-
-function getInvolvedCompanyNames(
-  game: NonNullable<IgdbGameResponse[number]>,
-  role: "developer" | "publisher",
-) {
-  return [
-    ...new Set(
-      (game.involved_companies ?? [])
-        .filter((company) => company[role])
-        .map((company) => company.company?.name?.trim())
-        .filter(Boolean),
-    ),
-  ];
 }
 
 export function createIgdbProvider(request = fetchGameProvider): MediaProvider {
@@ -240,26 +212,8 @@ return {
       return null;
     }
 
-    const game = await createIgdbClient(credentials, request).getGameMetadata(id);
-
-    if (!game) {
-      return null;
-    }
-
-    const genreReferences = getProviderGenreReferences(game.genres);
-    return {
-      provider: "igdb",
-      externalId: input.externalId,
-      sourceUrl: getIgdbSourcePageUrl(game),
-      facts: {
-        ...(getIgdbCompanyReferences(game.involved_companies ?? []) !== undefined ? {gameCompanyReferences:getIgdbCompanyReferences(game.involved_companies ?? [])} : {}),
-        platforms: getUniqueNames(game.platforms),
-        developers: getInvolvedCompanyNames(game, "developer"),
-        publishers: getInvolvedCompanyNames(game, "publisher"),
-        genres: getUniqueNames(game.genres),
-        ...(genreReferences.length > 0 ? { genreReferences } : {}),
-      },
-    };
+    const { fetchGameMetadata } = await import("@/lib/providers/game-service");
+    return fetchGameMetadata(input, options, { igdbRequest: request });
   },
   async getCoverCandidatesByTitleSource(input, options) {
     const clientId = options.providerCredentials?.igdb?.clientId?.trim();

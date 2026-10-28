@@ -134,7 +134,12 @@ async function fetchAndStoreMetadata(input: {
     return { kind: "retryable", error: result.error }
   }
 
-  if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !((input.item.mediaType === "film" || input.item.mediaType === "series") && input.provider === "tmdb" && result.metadata.snapshotReferences?.length))) {
+  const hasSnapshotMetadata = Boolean(result.metadata?.snapshotReferences?.length) && (
+    (["film", "series"].includes(input.item.mediaType) && input.provider === "tmdb") ||
+    (input.item.mediaType === "game" && ["igdb", "rawg"].includes(input.provider)) ||
+    (input.item.mediaType === "boardgame" && input.provider === "bgg")
+  )
+  if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !hasSnapshotMetadata)) {
     return { kind: "skip", issue: result.error ? "provider-error" : "no-provider-metadata" }
   }
 

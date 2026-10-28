@@ -1,3 +1,5 @@
+import { getBggSnapshotFacts } from "@/lib/providers/bgg-service";
+import { getGameSnapshotFacts } from "@/lib/providers/game-service";
 import { getTmdbSeriesGenreFacts } from "@/lib/providers/tmdb-series-service";
 import { getTmdbFilmGenreFacts } from "@/lib/providers/tmdb-film-service";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
@@ -298,7 +300,7 @@ export async function applyGenreRequest(requestId: number, input: { signal?: Abo
           if (request.decision === null && (metadata.sourceProvider !== request.provider || item.mediaType !== request.mediaType)) return;
           // Legacy metadata without a trustworthy provider is not a successful provider refresh.
           if (!metadata.sourceProvider?.trim()) return;
-          const genreFacts = await (item.mediaType === "series" ? getTmdbSeriesGenreFacts : getTmdbFilmGenreFacts)({ ...metadata, mediaType: item.mediaType }, tx);
+          const genreFacts = await (item.mediaType === "boardgame" ? getBggSnapshotFacts : item.mediaType === "game" ? getGameSnapshotFacts : item.mediaType === "series" ? getTmdbSeriesGenreFacts : getTmdbFilmGenreFacts)({ ...metadata, mediaType: item.mediaType }, tx);
           if (request.decision === null) {
             // Recalculate all current records of this provider/type. This also covers ID aliases
             // after a failed job's history has been deleted, without persisting a second rollback state.

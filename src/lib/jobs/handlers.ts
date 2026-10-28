@@ -1,4 +1,5 @@
 import { anilistCreatorApprovalHandler } from "@/lib/creators/anilist-creator-jobs";
+import { creatorAutoApprovalHandler } from "@/lib/creators/auto-approval-job";
 import { creatorNameLocalizationHandler } from "@/lib/creators/name-localization-job";
 import { genreSeriesApplyHandler } from "@/lib/media/genre-series-job";
 import { reputationInitializeHandler } from "@/lib/reputation/initialization-job";
@@ -570,6 +571,7 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   creatorImagesBackfillHandler,
   creatorImageRefreshHandler,
   anilistCreatorApprovalHandler,
+  creatorAutoApprovalHandler,
   tmdbDirectorApprovalHandler,
   tmdbCompanyApprovalHandler,
   platformLogosSyncHandler,

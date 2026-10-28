@@ -10,7 +10,7 @@ export const SNAPSHOT_MAX_PAUSE_HOURS = 8760;
 export type SnapshotOperation = typeof SNAPSHOT_OPERATIONS[number];
 export type SnapshotJobPayload = {
   entityType?: "media-item" | "creator";
-  mediaType?: "book" | "film" | "series" | "anime";
+  mediaType?: "book" | "film" | "series" | "anime" | "game" | "boardgame";
   creatorIds?: number[];
   bindingIds?: number[];
   profileTargets?: CreatorProfileTarget[];
@@ -20,8 +20,10 @@ export type SnapshotJobPayload = {
     errors: (SnapshotItemError & { target?: CreatorProfileTarget; creatorId?: number; bindingId?: number })[];
   };
   onlyMissingSnapshots?: boolean;
+  applyGameChanges?: boolean;
+  applyBoardgameChanges?: boolean;
   operation: SnapshotOperation;
-  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg" | "anilist";
+  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg" | "anilist" | "bgg";
   mediaItemIds?: number[];
   batchSize?: number;
   batchPauseHours?: number;
@@ -32,13 +34,18 @@ export type SnapshotJobPayload = {
 export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
   if (!value || typeof value!=="object" || Array.isArray(value)) throw new Error("INVALID_SNAPSHOT_JOB");
   const input=value as Record<string,unknown>;
-  if (Object.keys(input).some(key=>!["mediaType","entityType","creatorIds","bindingIds","profileTargets","profileCheckpoint","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
+  if (Object.keys(input).some(key=>!["applyBoardgameChanges","applyGameChanges","mediaType","entityType","creatorIds","bindingIds","profileTargets","profileCheckpoint","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
+  if (input.applyBoardgameChanges !== undefined && (typeof input.applyBoardgameChanges !== "boolean" || input.mediaType !== "boardgame" || input.entityType === "creator" || input.profileTargets !== undefined || !["process", "refresh-process"].includes(String(input.operation)))) throw new Error("INVALID_BOARDGAME_CHANGE_OPTION");
+  if (input.applyGameChanges !== undefined && (typeof input.applyGameChanges !== "boolean" || input.mediaType !== "game" || input.entityType === "creator" || input.profileTargets !== undefined || !["process", "refresh-process"].includes(String(input.operation)))) throw new Error("INVALID_GAME_CHANGE_OPTION");
   if (input.onlyMissingSnapshots !== undefined && (typeof input.onlyMissingSnapshots !== "boolean" || (input.onlyMissingSnapshots && !["refresh","refresh-process"].includes(String(input.operation))))) throw new Error("INVALID_MISSING_SNAPSHOT_FILTER");
   if (input.entityType !== undefined && input.entityType !== "media-item" && input.entityType !== "creator") throw new Error("INVALID_SNAPSHOT_ENTITY_TYPE");
-  if (input.mediaType !== undefined && (!["book", "film", "series", "anime"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
+  if (input.mediaType !== undefined && (!["book", "film", "series", "anime", "game", "boardgame"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
     || (["film", "series"].includes(String(input.mediaType)) && input.provider !== undefined && input.provider !== "tmdb")
     || (input.mediaType === "anime" && input.provider !== undefined && input.provider !== "anilist")
-    || (input.mediaType === "book" && ["tmdb", "anilist"].includes(String(input.provider))))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+    || (input.mediaType === "book" && input.provider !== undefined && !["fantlab", "google-books", "open-library"].includes(String(input.provider)))
+    || (input.mediaType === "boardgame" && input.provider !== undefined && input.provider !== "bgg")
+    || (input.mediaType === "game" && input.provider !== undefined && !["igdb", "rawg"].includes(String(input.provider))))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+  if (input.provider === "bgg" && input.mediaType !== "boardgame") throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.provider === "anilist" && (input.entityType === "creator" ? input.operation !== "refresh" : input.mediaType !== "anime" || input.profileTargets !== undefined)) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   const profiles = input.profileTargets !== undefined;
   if (profiles) {
@@ -52,7 +59,7 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
       || (input.operation !== "refresh" && (!["fantlab", "tmdb"].includes(String(input.provider)) || input.bindingIds !== undefined))) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   } else if (input.creatorIds !== undefined || input.bindingIds !== undefined) throw new Error("INVALID_CREATOR_SNAPSHOT_JOB");
   if (input.bindingIds !== undefined && (!Array.isArray(input.bindingIds) || !input.bindingIds.length || input.bindingIds.length > 200 || !input.bindingIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
-  if (!profiles && input.entityType !== "creator" && ["igdb", "rawg"].includes(String(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
+  if (!profiles && input.entityType !== "creator" && input.mediaType !== "game" && ["igdb", "rawg"].includes(String(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.profileCheckpoint !== undefined) {
     const cp = input.profileCheckpoint as SnapshotJobPayload["profileCheckpoint"];
     if ((!profiles && input.entityType !== "creator") || input.operation !== "refresh" || input.checkpoint !== undefined || !cp
@@ -64,7 +71,7 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
     cp.errors.forEach(row => { if (row.target) parseCreatorProfileTarget(row.target); });
   }
   if (input.creatorIds !== undefined && (!Array.isArray(input.creatorIds) || !input.creatorIds.length || input.creatorIds.length > 200 || !input.creatorIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
-  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg","anilist"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
+  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg","anilist","bgg"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.batchSize!==undefined && (!Number.isSafeInteger(input.batchSize) || Number(input.batchSize)<1 || Number(input.batchSize)>SNAPSHOT_MAX_BATCH_SIZE)) throw new Error("INVALID_SNAPSHOT_BATCH_SIZE");
   if (input.batchPauseHours!==undefined && (typeof input.batchPauseHours!=="number" || !Number.isFinite(input.batchPauseHours) || input.batchPauseHours<0 || input.batchPauseHours>SNAPSHOT_MAX_PAUSE_HOURS)) throw new Error("INVALID_SNAPSHOT_BATCH_PAUSE");
   for (const key of ["afterId","throughId"]) if (input[key]!==undefined && (!Number.isSafeInteger(input[key]) || Number(input[key])<0)) throw new Error("INVALID_SNAPSHOT_RANGE");

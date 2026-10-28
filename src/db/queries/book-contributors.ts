@@ -1,3 +1,4 @@
+import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { applyProviderCreatorName, getImportedCreatorNameLocalization } from "./creator-name-import";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
@@ -56,6 +57,7 @@ export async function syncFantlabBookContributors(tx: CreatorTransaction, entryI
     }
     if (!binding) {
       if (request && detectedIds.has(request.id)) {
+        await enqueueCreatorAutoApproval(tx, [request.id]);
         const event=await appendDomainEvent(tx,{type:"creator-request.created",actorAuthorId:null,aggregateType:"creator-request",aggregateId:String(request.id),payload:{requestId:request.id}});
         await createJobRun({type:"domain-events.dispatch",payload:{eventId:event.id},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},new Date(),tx);
       }
@@ -131,6 +133,7 @@ export async function syncBookPublisherContributors(tx:CreatorTransaction,entryI
       if(added) createdLinks++;
       await tx.insert(entryCreatorSources).values({entryId,creatorId:mapping.creatorId,roleId:role.id,provider,normalizedExternalCreatorName:normalizedName,sourcePosition:reference.position}).onConflictDoNothing();
     }
+    if (detected && !mapping && !excluded) await enqueueCreatorAutoApproval(tx, [request.id]);
     if(detected) {
       const event=await appendDomainEvent(tx,{type:"creator-request.created",actorAuthorId:null,aggregateType:"creator-request",aggregateId:String(request.id),payload:{requestId:request.id}});
       await createJobRun({type:"domain-events.dispatch",payload:{eventId:event.id},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},new Date(),tx);

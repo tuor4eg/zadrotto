@@ -1,3 +1,4 @@
+import { getGameSnapshotFacts } from "@/lib/providers/game-service";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { appendDomainEvent } from "@/lib/domain-events/persistence";
 import { createJobRun } from "@/db/queries/jobs";
@@ -311,20 +312,21 @@ export async function applyPlatformRequest(requestId: number, input: { signal?: 
             await tx.delete(platformRequestMediaItems).where(eq(platformRequestMediaItems.mediaItemId, occurrence.mediaItemId));
             return;
           }
+          const platformFacts = await getGameSnapshotFacts({ ...metadata, mediaType: item.mediaType }, tx);
           if (request.decision === null) {
             if (metadata.sourceProvider !== request.provider || item.mediaType !== request.mediaType) return;
             // Recalculate all current records of this provider/type. This also covers ID aliases
             // after a failed job's history has been deleted, without persisting a second rollback state.
-            try { extractExternalPlatforms(metadata.facts); } catch { return; }
+            try { extractExternalPlatforms(platformFacts); } catch { return; }
           }
           // Legacy metadata without a trustworthy provider is not a successful provider refresh.
           // Keep its existing normalized links; diagnostics remain in the import/migration logs.
           if (!metadata.sourceProvider?.trim()) return;
-          await lockPlatformRequestsForMetadata(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, mediaType: item.mediaType, facts: metadata.facts });
-          const resolved = await resolveProviderPlatforms({ provider: metadata.sourceProvider, mediaType: item.mediaType, facts: metadata.facts }, tx);
+          await lockPlatformRequestsForMetadata(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, mediaType: item.mediaType, facts: platformFacts });
+          const resolved = await resolveProviderPlatforms({ provider: metadata.sourceProvider, mediaType: item.mediaType, facts: platformFacts }, tx);
           await syncMediaItemProviderPlatforms(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider, platforms: resolved.platforms });
           await syncPlatformRequestOccurrences(tx, { mediaItemId: occurrence.mediaItemId, provider: metadata.sourceProvider,
-            mediaType: item.mediaType, externalPlatforms: extractExternalPlatforms(metadata.facts) });
+            mediaType: item.mediaType, externalPlatforms: extractExternalPlatforms(platformFacts) });
           input.signal?.throwIfAborted();
         });
         afterId = occurrence.mediaItemId;

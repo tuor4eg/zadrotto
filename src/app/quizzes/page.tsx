@@ -23,16 +23,16 @@ export default async function QuizzesPage() {
   const [headerState, statistics, leaderboard, archiveItems] = await Promise.all([
     getPublicSiteHeaderState(author),
     getAuthorQuizStatistics(author.id),
-    getQuizLeaderboard(),
-    getQuizArchive(),
+    getQuizLeaderboard(100),
+    getQuizArchive(100),
   ]);
   const { activeQuiz, activeQuizParticipant } = headerState;
 
   return (
-    <main className="archive-page flex min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
-      <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
+    <main className="archive-page quizzes-overview-page flex min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
+      <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="grid gap-3 lg:grid-cols-3">
+        <div className="grid shrink-0 gap-3 lg:grid-cols-3">
           <div className="lg:col-span-2">
             <QuizzesHero statistics={statistics} />
           </div>
@@ -43,10 +43,10 @@ export default async function QuizzesPage() {
             size="large"
           />
         </div>
-        <div className="grid flex-1 items-stretch gap-3 lg:grid-cols-3">
+        <div className="grid flex-1 items-stretch gap-3 lg:min-h-0 lg:grid-cols-3">
           <AuthorQuizStatistics statistics={statistics} />
-          <QuizLeaderboard items={leaderboard} />
-          <QuizArchiveList items={archiveItems} />
+          <QuizLeaderboard items={leaderboard} fitRows />
+          <QuizArchiveList items={archiveItems} fitRows />
         </div>
       </div>
     </main>

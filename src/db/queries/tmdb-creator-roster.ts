@@ -1,3 +1,4 @@
+import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { isAniListCreatorId } from "@/lib/creators/anilist-identity";
 import { and, asc, eq, inArray, or, sql } from "drizzle-orm";
 import { creatorRequests, creatorRequestMediaItems, creatorRoles, creatorTypes, creators, entryCreators, entryCreatorSources, providerCreatorBindings, providerCreatorExclusions } from "@/db/schema";
@@ -68,6 +69,7 @@ export async function syncProviderCreatorRoster(tx: CreatorTransaction, mediaIte
     const event = await appendDomainEvent(tx,{type:"creator-request.created",actorAuthorId:null,aggregateType:"creator-request",aggregateId:String(request.id),payload:{requestId:request.id}});
     await createJobRun({type:"domain-events.dispatch",payload:{eventId:event.id},source:"event",maxAttempts:3,timeoutSeconds:300,retryBaseSeconds:60,retryMaxSeconds:3600},new Date(),tx);
   }
+  await enqueueCreatorAutoApproval(tx, detected.map(row => row.id));
   await pruneEntryCreators(tx,mediaItemId);
   return {createdCreators:0,createdMappings:0,createdLinks};
 }

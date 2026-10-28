@@ -6,7 +6,7 @@ import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 import { History } from "lucide-react";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getSnapshotBatchSettings } from "@/lib/providers/snapshot-job-payload";
-import { snapshotItemErrorMessage } from "@/lib/providers/snapshot-item-errors";
+import { bggSnapshotDiagnosticMessage, gameSnapshotDiagnosticMessage, snapshotItemErrorMessage } from "@/lib/providers/snapshot-item-errors";
 import { getProviderSnapshotRun } from "@/db/queries/provider-snapshot-run";
 import { getCreatorNamesByIds } from "@/db/queries/creator-names";
 import { creatorAdminLabel } from "@/lib/creators/admin-label";
@@ -53,7 +53,7 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
             <CardTitle>{active ? "Ход обработки" : "Результат обработки"}</CardTitle>
             <Badge variant={run.status === "succeeded" ? "positive" : run.status === "failed" ? "destructive" : "outline"}>{statusLabels[run.status] ?? run.status}</Badge>
           </div>
-          <CardDescription>Задача №{run.id} · {run.payload.profileTargets ? "Внешние профили" : run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.mediaType === "anime" ? "Аниме" : run.payload.mediaType === "series" ? "Сериалы" : run.payload.provider === "tmdb" || run.payload.mediaType === "film" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
+          <CardDescription>Задача №{run.id} · {run.payload.profileTargets ? "Внешние профили" : run.payload.entityType === "creator" ? (run.payload.creatorIds?.length === 1 ? creatorAdminLabel(run.payload.creatorIds[0], creatorNames[run.payload.creatorIds[0]]) : "Создатели") : run.payload.mediaType === "boardgame" ? "Настольные игры" : run.payload.mediaType === "game" ? "Видеоигры" : run.payload.mediaType === "anime" ? "Аниме" : run.payload.mediaType === "series" ? "Сериалы" : run.payload.provider === "tmdb" || run.payload.mediaType === "film" ? "Фильмы" : "Книги"} · {run.payload.provider ? COVER_PROVIDER_LABELS[run.payload.provider] : "Все провайдеры"} · {((run.payload.mediaType === "game" && run.payload.applyGameChanges !== true) || (run.payload.mediaType === "boardgame" && run.payload.applyBoardgameChanges !== true)) && ["process", "refresh-process"].includes(run.payload.operation) ? "Проверенный перенос без изменения связей" : SNAPSHOT_OPERATIONS_UI[run.payload.operation].label}. Счётчики обновляются после каждой завершённой записи.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4" aria-live="polite">
           {batch && <p className="text-sm text-stone-600">Размер партии: {batch.batchSize}. Пауза между партиями: {batch.batchPauseHours === 0 ? "1 секунда" : `${batch.batchPauseHours} ч.`}</p>}
@@ -71,6 +71,14 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
               <Link className="font-medium underline" href={run.payload.entityType === "creator" ? `/admin/creators/${item.id}/edit` : `/admin/media/${item.id}/edit`}>{run.payload.entityType === "creator" ? creatorAdminLabel(item.id, creatorNames[item.id]) : `Запись №${item.id}`}</Link>: {snapshotItemErrorMessage(item)}
             </li>)}</ul>
             {failed > run.payload.checkpoint!.errors.length && <p className="text-stone-500">Показаны последние {run.payload.checkpoint!.errors.length} ошибок из {failed}.</p>}
+          </div>}
+          {["game", "boardgame"].includes(run.payload.mediaType ?? "") && Boolean(run.payload.checkpoint?.diagnostics?.length) && <div className="space-y-2 text-sm">
+            <h3 className="font-semibold">Расхождения при переносе записей</h3>
+            <p className="text-stone-600">Эти записи сохранены без изменения связей. Проверьте данные перед включением применения изменений.</p>
+            <ul className="space-y-3">{run.payload.checkpoint!.diagnostics!.map(item => <li key={item.id} className="rounded-md border border-stone-200 p-3">
+              <Link href={`/admin/media/${item.id}/snapshots`} className="font-medium underline">Запись №{item.id}</Link>
+              <ul className="mt-2 list-disc space-y-1 pl-5">{item.codes.map(code => <li key={code}>{run.payload.mediaType === "boardgame" ? bggSnapshotDiagnosticMessage(code) : gameSnapshotDiagnosticMessage(code)}</li>)}</ul>
+            </li>)}</ul>
           </div>}
           {run.payload.entityType === "creator" && Boolean(run.payload.checkpoint?.diagnostics?.length) && <div className="space-y-2 text-sm"><h3 className="font-semibold">Пропущенные данные</h3>{run.payload.checkpoint!.diagnostics!.map(item => <div key={item.id}><Link href={`/admin/creators/${item.id}/snapshots`} className="underline">{creatorAdminLabel(item.id, creatorNames[item.id])}</Link>{item.codes.map(code => <p key={code}>{creatorSnapshotDiagnosticMessage(code)}</p>)}</div>)}</div>}
           {run.payload.profileTargets && <div className="space-y-2"><h3 className="font-semibold">Исходные профили</h3>{run.payload.profileTargets.map(target => <Link key={`${target.provider}:${target.resourceType}:${target.externalId}`} className="block text-sm underline" href={`/admin/tools/providers/snapshots/profile?${new URLSearchParams(target)}`}>Посмотреть raw: {target.provider} · {target.resourceType} · {target.externalId}</Link>)}</div>}

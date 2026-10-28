@@ -11,13 +11,19 @@ Specialists live in `.codex/agents`:
 
 The primary agent normally implements, tests, and reviews focused changes itself. Spawn a
 specialist only when the task is large, risky, or contains an independent subtask that benefits
-from separate context. Do not create temporary agents duplicating these roles. Pass specialists a
-focused brief, applicable skill names, and the minimum useful conversation history.
+from separate context. Do not create temporary agents duplicating these roles.
+
+Start specialists with fresh context instead of inheriting the full chat. Pass a short brief:
+objective, owned files, relevant invariants/skills, agreed interfaces, and completed checks.
+Include conversation excerpts only when they contain a necessary decision. Give each agent a
+distinct responsibility and verification scope; avoid overlapping implementations or checks.
 
 ## Context discipline
 
 Keep context small. Before work, state the workflow phase and open only directly relevant skills
 or files. Do not scan the repository, agents, skills, or Next.js docs without a concrete need.
+Reuse instructions and findings already read in this task unless they changed. For long files,
+find the relevant section with `rg` and read that section instead of the whole document.
 
 Read `PROJECT_CONTEXT.md` for product meaning, architecture, data-model decisions, or large
 features. It is not required for local fixes, routine implementation, tests, or review when no
@@ -60,6 +66,15 @@ do not require architecture documentation updates.
 ## Verification
 
 Use the lightest relevant checks: focused diff, `rg`, targeted tests, typecheck, or targeted lint.
+Before delegation, assign one owner to each check. Specialists run checks for their own changes;
+the primary agent owns the final integration check unless explicitly delegated. Run a project-wide
+typecheck once after integration when relevant; do not have every agent repeat it.
+
+Reuse a successful check while its inputs and affected behavior remain unchanged. Repeat only the
+checks affected by subsequent edits, a failure, or a concrete unresolved concern. Documentation-only
+changes need a focused diff, not application tests or typecheck. Report results briefly; keep full
+logs outside the conversation and read failure excerpts when needed.
+
 Do not run `npm run build` unless the user explicitly asks or approves it; the production build can
 freeze or crash VS Code.
 
@@ -72,27 +87,21 @@ Do not create large synthetic fixtures or run EXPLAIN automatically for such cha
 only when there is a concrete concern: unindexed access, large relationship fan-out, locking,
 N+1 queries, or a reported performance problem.
 
-For queries whose cost grows with data volume (search, lists, aggregates, bulk operations),
-apply the checks below. Fast execution against a small local database alone does not establish
-scalability. Reuse relevant existing measurements when the query and access path are unchanged.
+For queries whose cost grows with data volume (search, lists, aggregates, bulk operations):
 
-- Inspect the generated SQL and its execution plan, including related count/pagination queries.
-  Check index compatibility with the actual expressions, join cardinality, correlated subquery
-  loops, repeated scans, sorts, JIT costs, and N+1 database round trips.
-- Use `EXPLAIN (ANALYZE, BUFFERS)` on safe reads. For writes, inspect `EXPLAIN` without executing
-  the mutation, or measure in an isolated test database; never run a mutation merely to benchmark
-  it against application data.
-- For queries whose cost grows with data volume (especially search, lists, aggregates, and bulk
-  operations), verify representative scale and data distribution in an isolated database with
-  synthetic fixtures, realistic relationship fan-out, and current planner statistics (`ANALYZE`).
-  Include common, rare, and absent search/filter matches where relevant. Do not populate the
-  application database with benchmark fixtures.
-- Compare plans and measurements before and after changes to existing queries. Judge work done
-  and expected growth, not only elapsed milliseconds; a sequential scan on a tiny table is not
-  automatically a defect, and an index alone does not prove the query is efficient.
-- Report what was checked, the data scale, and any remaining limits. If representative-scale
-  measurement is unavailable, explicitly report that gap and provide a concrete plan/index
-  analysis; do not claim performance is verified from local timings alone.
+- Start with generated SQL, index compatibility, joins/fan-out and pagination/count behavior.
+  Reuse existing plans and measurements when the access path is unchanged; an analogous query
+  does not need a new scale fixture merely because it serves another provider or media type.
+- For a new or materially changed access path, inspect its execution plan. Use
+  `EXPLAIN (ANALYZE, BUFFERS)` for safe reads; never execute a mutation just to benchmark it
+  against application data. Inspect write plans without execution or use an isolated test DB.
+- Build representative-scale fixtures only for a concrete scale risk: an unverified growing
+  scan, fan-out, sort, correlated loops/N+1, locking, or a reported performance problem.
+  State the risk first, measure only the affected query, and reuse existing fixture setup.
+  Use an isolated DB, realistic distributions and `ANALYZE`; never seed application data.
+- Report the checked access path, measured scale when applicable, and remaining limits.
+  Small local timings alone do not verify scalability. A sequential scan on a tiny table is
+  not automatically a defect, and an index alone does not prove efficiency.
 
 ## Skills
 

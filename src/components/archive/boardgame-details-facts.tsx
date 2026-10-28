@@ -32,8 +32,8 @@ export function BoardgameDetailsFacts({ facts, genres, creators = [], hasUnified
   const structured = facts?.bggCreators !== undefined;
   const contents: Record<string, React.ReactNode> = {
     ...values,
-    authors: linkedDesigners.length ? <MediaItemCreatorLinks creators={linkedDesigners} /> : structured ? null : values.authors,
-    artists: linkedArtists.length ? <MediaItemCreatorLinks creators={linkedArtists} /> : structured ? null : values.artists,
+    authors: linkedDesigners.length ? <MediaItemCreatorLinks creators={linkedDesigners} /> : structured ? null : values.authors ? <MediaItemCreatorLinks creators={getStringListFact(facts, "authors").map(name => ({name}))} /> : null,
+    artists: linkedArtists.length ? <MediaItemCreatorLinks creators={linkedArtists} /> : structured ? null : values.artists ? <MediaItemCreatorLinks creators={getStringListFact(facts, "artists").map(name => ({name}))} /> : null,
   };
   const providerGenres = !hasUnifiedGenres ? getStringListFact(facts, "genres") : [];
   const entries: { key: string; content: React.ReactNode }[] = FACT_PRESENTATION.flatMap(({ key, label, icon: Icon }) => contents[key] ? [{

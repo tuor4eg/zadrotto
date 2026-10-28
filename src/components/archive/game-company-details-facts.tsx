@@ -25,10 +25,9 @@ export function GameCompanyDetailsFacts({ companies, facts, separatorBefore = fa
       seen.add(identity);
       return true;
     });
-    const content = rows === undefined ? getStringListFact(facts, key).join(", ") : rows.length ? rows.map((company, index) => <Fragment key={`${company.provider}:${company.externalId}`}>
-      {index ? ", " : null}
-      {company.creatorId !== null && company.slug ? <MediaItemCreatorLinks creators={[{ id: company.creatorId, name: company.name, slug: company.slug }]} /> : company.name}
-    </Fragment>) : null;
+    const names = rows === undefined ? getStringListFact(facts, key).map(name => ({name}))
+      : rows.map(company => ({id:company.creatorId,name:company.name,slug:company.creatorId !== null ? company.slug : null}));
+    const content = names.length ? <MediaItemCreatorLinks creators={names} /> : null;
     return content ? [{ role, label, content }] : [];
   });
   return <>{groups.map(({ role, label, content }, index) => <Fragment key={role}>
