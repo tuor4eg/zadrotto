@@ -36,6 +36,7 @@ export default async function AchievementsPage() {
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
+        <div className="contents media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <section
           className="archive-paper archive-panel overflow-hidden px-2 py-6 sm:px-10 lg:px-14 lg:py-7"
           aria-labelledby="achievements-hero-title"
@@ -89,6 +90,7 @@ export default async function AchievementsPage() {
           items={items}
         />
         <AuthorAchievementsCatalog items={items} />
+        </div>
       </div>
     </main>
   )

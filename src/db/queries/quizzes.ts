@@ -413,6 +413,19 @@ export async function getQuizArchivePage(requestedPage = 1) {
   return { items, page, pageSize: QUIZ_ARCHIVE_PAGE_SIZE, totalCount, totalPages };
 }
 
+export async function getAdjacentQuizzes(endsAt: Date, id: number) {
+  const visible = and(eq(quizzes.enabled, true), lte(quizzes.startsAt, sql`now()`));
+  const [previous, next] = await Promise.all([
+    db.select({ id: quizzes.id }).from(quizzes)
+      .where(and(visible, or(lt(quizzes.endsAt, endsAt), and(eq(quizzes.endsAt, endsAt), lt(quizzes.id, id)))))
+      .orderBy(desc(quizzes.endsAt), desc(quizzes.id)).limit(1),
+    db.select({ id: quizzes.id }).from(quizzes)
+      .where(and(visible, or(gt(quizzes.endsAt, endsAt), and(eq(quizzes.endsAt, endsAt), gt(quizzes.id, id)))))
+      .orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1),
+  ]);
+  return { previousId: previous[0]?.id ?? null, nextId: next[0]?.id ?? null };
+}
+
 export async function getQuizArchive(limit = 5, now?: Date, offset = 0) {
   const currentTime = now ?? sql`now()`;
   const quizRows = await db

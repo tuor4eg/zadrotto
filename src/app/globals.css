@@ -628,6 +628,11 @@ body:has(.public-site-footer-layer) {
   font-family: "Inter", Arial, Helvetica, sans-serif;
 }
 
+.public-profile-content,
+.public-profile-content * {
+  font-family: "Inter", Arial, Helvetica, sans-serif !important;
+}
+
 .media-carrier-font-film-dvd {
   font-family: "Roboto Condensed", "Arial Narrow", Arial, sans-serif;
 }

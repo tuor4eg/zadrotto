@@ -49,6 +49,20 @@ export function normalizeBugReportRelativeUrl(value: string) {
   }
 }
 
+export function normalizeBugReportUrl(value: unknown, requestUrl: string, siteOrigin?: string) {
+  if (typeof value !== "string" || !value.trim() || value.length > BUG_REPORT_URL_MAX_LENGTH) return null;
+  try {
+    const origin = new URL(requestUrl).origin;
+    const parsed = new URL(value, origin);
+    if (parsed.origin !== origin && parsed.origin !== siteOrigin) return null;
+    if (parsed.pathname.startsWith("//")) return null;
+    const relative = `${parsed.pathname}${parsed.search}${parsed.hash}`;
+    return relative.length <= BUG_REPORT_URL_MAX_LENGTH ? relative : null;
+  } catch {
+    return null;
+  }
+}
+
 const ALLOWED_STATUS_TRANSITIONS: Record<BugReportStatus, readonly BugReportStatus[]> = {
   new: ["reviewing", "confirmed", "rejected"],
   reviewing: ["confirmed", "rejected"],

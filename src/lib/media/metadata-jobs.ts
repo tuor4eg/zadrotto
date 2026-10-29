@@ -137,7 +137,9 @@ async function fetchAndStoreMetadata(input: {
   const hasSnapshotMetadata = Boolean(result.metadata?.snapshotReferences?.length) && (
     (["film", "series"].includes(input.item.mediaType) && input.provider === "tmdb") ||
     (input.item.mediaType === "game" && ["igdb", "rawg"].includes(input.provider)) ||
-    (input.item.mediaType === "boardgame" && input.provider === "bgg")
+    (input.item.mediaType === "boardgame" && input.provider === "bgg") ||
+    (input.item.mediaType === "roblox" && input.provider === "roblox") ||
+    (input.item.mediaType === "comic" && input.provider === "comic-vine")
   )
   if (!result.metadata || (Object.keys(result.metadata.facts).length === 0 && !hasSnapshotMetadata)) {
     return { kind: "skip", issue: result.error ? "provider-error" : "no-provider-metadata" }

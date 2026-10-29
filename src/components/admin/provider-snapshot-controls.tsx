@@ -38,7 +38,7 @@ function SnapshotButtons({ canProcess, busy, creator, game, boardgame }: { canPr
 }
 
 export function ProviderSnapshotControls({ mediaItemId, creatorId, provider, mediaType, showActions = false, canProcess = false, busy = false }: {
-  mediaItemId?: number; creatorId?: number; mediaType?: "book" | "film" | "series" | "anime" | "game" | "boardgame"; provider?: "tmdb" | "anilist" | "igdb" | "rawg" | "bgg"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
+  mediaItemId?: number; creatorId?: number; mediaType?: "book" | "film" | "series" | "anime" | "game" | "boardgame" | "comic" | "roblox"; provider?: "tmdb" | "anilist" | "igdb" | "rawg" | "bgg" | "comic-vine" | "roblox"; showActions?: boolean; canProcess?: boolean; busy?: boolean;
 }) {
   const creator = creatorId !== undefined;
   return <section className="rounded-md border border-stone-200 p-4 space-y-3">

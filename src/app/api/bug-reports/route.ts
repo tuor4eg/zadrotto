@@ -3,12 +3,13 @@ import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import {
   BUG_REPORT_DESCRIPTION_MAX_LENGTH,
   BUG_REPORT_TIMEZONE_MAX_LENGTH,
-  BUG_REPORT_URL_MAX_LENGTH,
   BUG_REPORT_USER_AGENT_MAX_LENGTH,
   BUG_REPORT_VIEWPORT_MAX_DIMENSION,
   isBugReportEntityType,
+  normalizeBugReportUrl,
   type BugReportClientContext,
 } from "@/lib/bug-reports/model";
+import { getSiteOrigin } from "@/lib/site-url";
 
 function boundedDimension(value: unknown) {
   return typeof value === "number"
@@ -35,20 +36,6 @@ function parseClientContext(value: unknown, userAgent: string | null): BugReport
   return Object.keys(context).length > 0 ? context : null;
 }
 
-function normalizeReportUrl(value: unknown, requestUrl: string) {
-  if (typeof value !== "string" || !value.trim() || value.length > BUG_REPORT_URL_MAX_LENGTH) return null;
-  try {
-    const origin = new URL(requestUrl).origin;
-    const parsed = new URL(value, origin);
-    if (parsed.origin !== origin) return null;
-    if (parsed.pathname.startsWith("//")) return null;
-    const relative = `${parsed.pathname}${parsed.search}${parsed.hash}`;
-    return relative.length <= BUG_REPORT_URL_MAX_LENGTH ? relative : null;
-  } catch {
-    return null;
-  }
-}
-
 export async function POST(request: Request) {
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ error: "Требуется авторизация." }, { status: 401 });
@@ -66,7 +53,9 @@ export async function POST(request: Request) {
   if (!description || description.length > BUG_REPORT_DESCRIPTION_MAX_LENGTH) {
     return Response.json({ error: "Описание должно содержать от 1 до 2000 символов." }, { status: 400 });
   }
-  const url = normalizeReportUrl(body.url, request.url);
+  let siteOrigin: string | undefined;
+  try { siteOrigin = getSiteOrigin().origin; } catch { /* Relative paths and the request origin still work. */ }
+  const url = normalizeBugReportUrl(body.url, request.url, siteOrigin);
   if (!url) return Response.json({ error: "Некорректный адрес страницы." }, { status: 400 });
 
   const hasEntityType = body.entityType !== null && body.entityType !== undefined;

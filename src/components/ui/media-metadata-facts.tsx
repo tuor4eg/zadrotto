@@ -25,6 +25,8 @@ const FACT_LABELS: Record<string, string> = {
   mechanics: "Механики",
   minPlayers: "Минимум игроков",
   maxPlayers: "Максимум игроков",
+  paidAccess: "Платный доступ",
+  privateServers: "Приватные серверы",
   minPlayingTimeMinutes: "Минимальное время партии",
   maxPlayingTimeMinutes: "Максимальное время партии",
   minAge: "Возраст от",
@@ -112,10 +114,11 @@ function formatFactEntry(key: string, value: unknown) {
 }
 
 const RAW_GENRE_KEYS = new Set(["genres", "genreReferences", "genre", "genreLevel1", "genreLevel2"]);
+const COMIC_VINE_INTERNAL_KEYS = new Set(["comicVineIssueStatus", "comicVinePublisherCreators", "comicVinePersonCreators", "comicVineArtistWork", "comicVineIssuesAggregated"]);
 
 function getFactEntries(facts: Record<string, unknown>, hasCreatorLinks: boolean, hasGameCompanies: boolean) {
   return Object.entries(facts)
-    .filter(([key, value]) => !RAW_GENRE_KEYS.has(key) && key !== "platforms" && key !== "fantlabAuthors" && key !== "bggCreators" && key !== "gameCompanyReferences" && !(facts.bggCreators !== undefined && (key === "authors" || key === "artists")) && !(hasGameCompanies && (key === "developers" || key === "publishers")) && !(hasCreatorLinks && key === "authors") && isPresentFactValue(value))
+    .filter(([key, value]) => !RAW_GENRE_KEYS.has(key) && !COMIC_VINE_INTERNAL_KEYS.has(key) && key !== "platforms" && key !== "fantlabAuthors" && key !== "bggCreators" && key !== "gameCompanyReferences" && !(facts.bggCreators !== undefined && (key === "authors" || key === "artists")) && !(hasGameCompanies && (key === "developers" || key === "publishers")) && !(hasCreatorLinks && key === "authors") && isPresentFactValue(value))
     .map(([key, value]) => ({
       key,
       label: getFactLabel(key),

@@ -147,3 +147,32 @@ test("Russian name editor shows provenance and preserves untouched automatic nam
   assert.match(html, /Локализация: обработано/);
   assert.doesNotMatch(html, /name="nameRu"/);
 });
+
+test("creator approval shows provider identities and name-only mappings for people", () => {
+  const html = renderToStaticMarkup(createElement(CreatorDecisionForm, {
+    requestId: 10, name: "Henry Gilroy", provider: "anilist", people: [
+      { id: 1, name: "Henry Gilroy", bindings: [{ provider: "tmdb", externalCreatorId: "person:123" }, { provider: "fantlab", externalCreatorId: "42" }, { provider: "bgg", externalCreatorId: null, externalCreatorName: "H. Gilroy" }] },
+    ],
+  }));
+  assert.match(html, /tmdb · person:123/);
+  assert.match(html, /fantlab · 42/);
+  assert.match(html, /bgg · имя: H\. Gilroy/);
+});
+
+test("creator selection searches displayed, source and original names with shared normalization", async () => {
+  const { matchesCreatorOptionName } = await import("../src/lib/creators/creator-option-search");
+  const { normalizeSearchText } = await import("../src/lib/search/normalize");
+  const creator = { name: "Генри Гилрой", sourceName: "Henry Gilroy", originalName: "Ёж Гилрой" };
+  for (const query of ["ГЕНРИ", "henry", "ЕЖ", "gilroy"]) assert.equal(matchesCreatorOptionName(creator, normalizeSearchText(query)), true);
+  assert.equal(matchesCreatorOptionName(creator, normalizeSearchText("not found")), false);
+  assert.equal(matchesCreatorOptionName({ name: "Генри", sourceName: null, originalName: null }, ""), true);
+});
+
+test("creator selection links to the admin editor without wrapping the radio button", () => {
+  const html = renderToStaticMarkup(createElement(CreatorDecisionForm, { requestId: 1, name: "External", people: [{ id: 42, name: "Dave Stewart" }] }));
+  assert.match(html, /href="\/admin\/creators\/42\/edit"/);
+  assert.match(html, /target="_blank"/);
+  assert.match(html, /Выбрать создателя Dave Stewart/);
+  assert.match(html, /name="creator-choice"[^>]*value="42"/);
+  assert.match(html, /rel="noopener noreferrer"/);
+});

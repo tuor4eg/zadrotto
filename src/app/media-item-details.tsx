@@ -1,3 +1,6 @@
+import { ComicCreatorDetailsFacts } from "@/components/archive/comic-creator-details-facts";
+import { RobloxDetailsFacts } from "@/components/archive/roblox-details-facts";
+import { RobloxCreatorDetails } from "@/components/archive/roblox-creator-details";
 import { AnimeCreatorDetailsFacts } from "@/components/archive/anime-creator-details-facts";
 import type { AnimeCreatorDisplay } from "@/db/queries/anilist-creator-display";
 import { SeriesCreatorDetailsFacts } from "@/components/archive/series-creator-details-facts";
@@ -55,6 +58,7 @@ type MediaItemDetailsItem = {
   platforms?: MediaItemPlatform[];
   writerCreators?: WriterCreatorLink[];
   entryCreators?: EntryRoleCreatorLink[];
+  comicArtistWork?: { creatorId: number; work: string[] }[];
   gameCompanies?: GameCompanyDisplay[];
   filmCompanies?: FilmCompanyDisplay[];
   filmDirectors?: FilmDirectorDisplay[];
@@ -159,7 +163,7 @@ export function MediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
-    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
+    metadataFacts: item.mediaType === "comic" ? { ...item.metadataFacts, ...(item.entryCreators?.some(creator => creator.roleCode === "publisher") ? { publisher: null } : {}), ...(item.entryCreators?.some(creator => creator.roleCode === "screenwriter") ? { authors: [] } : {}) } : item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
   const resolvedRelatedFranchiseSections =
@@ -259,10 +263,12 @@ export function MediaItemDetails({
                 {item.mediaType === "game" && item.platforms?.length ? <span className="mr-2"><MediaItemPlatformLinks platforms={item.platforms} /></span> : null}
                 {item.mediaType === "book" && item.writerCreators?.length ? <div className="mt-1"><MediaItemWriterLinks creators={item.writerCreators} /></div> : null}
                 {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
+                {item.mediaType === "roblox" ? <><RobloxCreatorDetails creators={item.entryCreators} facts={item.metadataFacts} separatorBefore={Boolean(detailsYearLabel || detailsMetaLabels.length || item.genres.length)} /><RobloxDetailsFacts facts={item.metadataFacts} /></> : null}
                 {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "comic" ? <ComicCreatorDetailsFacts creators={item.entryCreators} artistWork={item.comicArtistWork} separatorBefore={detailsMetaLabels.length > 0 || Boolean(detailsYearLabel) || item.genres.length > 0} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
               </div>
@@ -408,7 +414,7 @@ function ArchiveMediaItemDetails({
     ...item,
     genres: [],
     writerCreators: [],
-    metadataFacts: item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
+    metadataFacts: item.mediaType === "comic" ? { ...item.metadataFacts, ...(item.entryCreators?.some(creator => creator.roleCode === "publisher") ? { publisher: null } : {}), ...(item.entryCreators?.some(creator => creator.roleCode === "screenwriter") ? { authors: [] } : {}) } : item.mediaType === "film" ? { ...item.metadataFacts, productionCompanies: [] } : item.mediaType === "series" ? { ...item.metadataFacts, networks: [], productionCompanies: [] } : item.mediaType === "anime" ? { ...item.metadataFacts, studios: [] } : item.metadataFacts,
     mediaTypeLabel: getMediaTypeLabel(item.mediaType, mediaTypes),
   });
 
@@ -591,10 +597,12 @@ function ArchiveMediaItemDetails({
                 </> : null}
                 {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
                 {item.mediaType === "game" ? <GameCompanyDetailsFacts companies={item.gameCompanies} facts={item.metadataFacts} separatorBefore /> : null}
+                {item.mediaType === "roblox" ? <><RobloxCreatorDetails creators={item.entryCreators} facts={item.metadataFacts} separatorBefore={archiveInfoLabels.length > 0 || item.genres.length > 0} /><RobloxDetailsFacts facts={item.metadataFacts} /></> : null}
                 {item.mediaType === "film" ? <FilmCompanyDetailsFacts companies={item.filmCompanies} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "comic" ? <ComicCreatorDetailsFacts creators={item.entryCreators} artistWork={item.comicArtistWork} separatorBefore={archiveInfoLabels.length > 0 || item.genres.length > 0} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}
                 {meta}

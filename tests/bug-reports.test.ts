@@ -9,6 +9,7 @@ import {
   isBugReportEntityType,
   isBugReportStatus,
   normalizeBugReportRelativeUrl,
+  normalizeBugReportUrl,
 } from "../src/lib/bug-reports/model";
 import {
   getExternalNotificationRoute,
@@ -96,12 +97,23 @@ describe("bug report creation API and domain facts", () => {
     assert.match(api, /hasEntityType !== hasEntityId/);
     assert.match(api, /isBugReportEntityType\(body\.entityType\)/);
     assert.match(api, /body\.entityId\.length > 200/);
-    assert.match(api, /parsed\.origin !== origin/);
-    assert.match(api, /parsed\.pathname\.startsWith\("\/\/"\)/);
-    assert.match(api, /`\$\{parsed\.pathname\}\$\{parsed\.search\}\$\{parsed\.hash\}`/);
+    assert.match(api, /normalizeBugReportUrl\(body\.url, request\.url, siteOrigin\)/);
     assert.match(api, /request\.headers\.get\("user-agent"\)/);
     assert.doesNotMatch(api, /body\.authorId|body\.userAgent|body\.createdAt/);
     assert.match(api, /Response\.json\(\{ id: report\.id \}, \{ status: 201 \}\)/);
+  });
+
+  it("accepts public URLs behind a proxy and rejects other origins", () => {
+    const internal = "http://localhost:3000/api/bug-reports";
+    const site = "https://archive.example";
+    assert.equal(normalizeBugReportUrl("/media/example?tab=reviews#item", internal, site), "/media/example?tab=reviews#item");
+    assert.equal(normalizeBugReportUrl("https://archive.example/media/example?tab=reviews#item", internal, site), "/media/example?tab=reviews#item");
+    assert.equal(normalizeBugReportUrl("http://localhost:3000/archive", internal, site), "/archive");
+    assert.equal(normalizeBugReportUrl("https://other.example/archive", internal, site), null);
+    assert.equal(normalizeBugReportUrl("//other.example/archive", internal, site), null);
+    assert.equal(normalizeBugReportUrl("/\\other.example/archive", internal, site), null);
+    assert.equal(normalizeBugReportUrl("/" + "x".repeat(2048), internal, site), null);
+    assert.equal(normalizeBugReportUrl("", internal, site), null);
   });
 
   it("atomically inserts the report and a minimal created event", () => {
@@ -247,6 +259,7 @@ describe("bug report HUD flow", () => {
     assert.match(modal, /pending \|\| !description\.trim\(\)/);
     assert.match(modal, /viewportHeight: window\.innerHeight/);
     assert.match(modal, /timezone: Intl\.DateTimeFormat/);
+    assert.match(modal, /window\.location\.pathname.*window\.location\.search.*window\.location\.hash/);
   });
 
   it("uses cleanup-based stacked entity registration for pages and the open quiz", () => {

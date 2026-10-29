@@ -71,20 +71,28 @@ function publicCreatorMembershipSql(mediaType?: string) {
     )`;
 }
 
+export type PublicCreatorMediaTypeTab = { code: string; name: string; creatorsCount: number; roles: { code: string; name: string; creatorsCount: number }[] };
 export async function getPublicCreatorMediaTypeTabs() {
-    return db.execute<{ code: string; name: string; creatorsCount: number }>(sql`
-        ${publicCreatorMembershipSql()}, counts as (
-            select m.media_type, count(distinct membership.creator_id)::int as total
-            from membership join media_items m on m.id=membership.entry_id group by m.media_type
+    return db.execute<PublicCreatorMediaTypeTab>(sql`
+        ${publicCreatorMembershipSql()}, counts as materialized (
+            select m.media_type, membership.role_id, grouping(membership.role_id) as is_total,
+              count(distinct membership.creator_id)::int as total
+            from membership join media_items m on m.id=membership.entry_id
+            group by grouping sets ((m.media_type), (m.media_type, membership.role_id))
+        ), role_counts as (
+            select c.media_type, jsonb_agg(jsonb_build_object('code', r.code, 'name', r.name, 'creatorsCount', c.total)
+              order by c.total desc, r.name, r.code) as roles
+            from counts c join creator_roles r on r.id=c.role_id where c.is_total=0 group by c.media_type
         )
-        select mt.code, mt.name, coalesce(c.total, 0)::int as "creatorsCount"
-        from media_types mt left join counts c on c.media_type=mt.code
-        where mt.is_publicly_available and coalesce(c.total, 0) > 0
+        select mt.code, mt.name, c.total as "creatorsCount", coalesce(rc.roles, '[]'::jsonb) as roles
+        from media_types mt join counts c on c.media_type=mt.code and c.is_total=1
+        left join role_counts rc on rc.media_type=mt.code
+        where mt.is_publicly_available and c.total > 0
         order by "creatorsCount" desc, mt.name, mt.code`);
 }
 
 export async function getPublicCreatorsPage(input: {
-    page: number; pageSize: number; letter?: string; mediaType?: string; searchQuery: string;
+    page: number; pageSize: number; letter?: string; mediaType?: string; roles?: readonly string[]; searchQuery: string;
 }) {
     const search = normalizeSearchText(input.searchQuery);
     const rows = await db.execute<{
@@ -178,7 +186,7 @@ export async function getCreatorRoles() {
     return db.select().from(creatorRoles).orderBy(asc(creatorRoles.name));
 }
 export async function getCreatorOptions() {
-    return db.select({ id: creators.id, name: creatorDisplayNameSql(), originalName: creators.originalName, birthDate: creators.birthDate, deathDate: creators.deathDate, slug: creators.slug, typeId: creators.typeId, typeCode: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).orderBy(asc(creatorDisplayNameSql()));
+    return db.select({ id: creators.id, name: creatorDisplayNameSql(), sourceName: creators.name, originalName: creators.originalName, birthDate: creators.birthDate, deathDate: creators.deathDate, slug: creators.slug, typeId: creators.typeId, typeCode: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).orderBy(asc(creatorDisplayNameSql()));
 }
 export async function getCreators(input: {
     q?: string;

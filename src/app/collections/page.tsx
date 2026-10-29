@@ -26,11 +26,11 @@ export default async function CollectionsPage() {
         <div className="flex min-h-0 w-full flex-1 flex-col">
           <div className="archive-paper archive-panel flex min-h-0 flex-1 flex-col overflow-hidden">
             <header className="shrink-0 p-5 pb-3 sm:p-6 sm:pb-4">
-              <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
+              <h1 className="media-carrier-font-pc-steam text-3xl leading-none text-stone-950">
                 Подборки
               </h1>
               <p className="mt-2 text-sm text-stone-600">
-                Редакционные маршруты по архиву.
+                Редакционные маршруты по архиву
               </p>
             </header>
 

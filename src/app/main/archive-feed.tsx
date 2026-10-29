@@ -54,7 +54,7 @@ function ArchiveFeedCard({
           <span aria-hidden="true">·</span>
           <time dateTime={item.createdAt.toISOString()}>{formatFeedDate(item.createdAt)}</time>
         </div>
-        <h3 className="mt-2 line-clamp-3 font-serif text-lg leading-tight text-stone-950">{displayTitle}</h3>
+        <h3 className="media-carrier-font-pc-steam mt-2 line-clamp-3 text-lg leading-tight text-stone-950">{displayTitle}</h3>
         <p className="mt-auto line-clamp-2 pt-2 text-xs leading-5 text-stone-600">{meta}</p>
       </div>
     </Link>

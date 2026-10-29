@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowLeft, CircleHelp, Heart, X } from "lucide-react";
+import { ArrowLeft, CircleHelp, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -8,9 +8,8 @@ import { createPortal } from "react-dom";
 import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
-import { Button } from "@/components/ui/button";
+import { QuizRules } from "@/components/quizzes/quiz-rules";
 import type { ActiveQuiz, QuizParticipantState } from "@/lib/quizzes/model";
-import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
 export function QuizModal({
   unavailableMediaTypeNames,
@@ -97,7 +96,7 @@ export function QuizModal({
         aria-modal="true"
         aria-labelledby="active-quiz-title"
         tabIndex={-1}
-        className={`archive-paper archive-panel relative flex h-[calc(100dvh-2.5rem)] max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
+        className={`archive-paper archive-panel relative flex h-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
       >
         <div className="pointer-events-auto left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3" style={{ position: "absolute" }}>
           {quiz ? (
@@ -134,7 +133,7 @@ export function QuizModal({
           <X className="size-4" />
         </button>
         <div className="pointer-events-none mb-5 px-12 text-center sm:px-32">
-          <h2 id="active-quiz-title" className="whitespace-nowrap font-serif text-2xl sm:text-3xl">
+          <h2 id="active-quiz-title" className="whitespace-nowrap media-carrier-font-pc-steam text-2xl sm:text-3xl">
             {view === "rules" ? "Как играть" : "Квиз"}
           </h2>
         </div>
@@ -143,48 +142,10 @@ export function QuizModal({
             <QuizNoActiveState />
           </div>
         ) : view === "rules" ? (
-          <div className="mx-auto max-w-xl text-sm leading-6 text-stone-700">
-            <ol className="list-decimal space-y-3 pl-5">
-              <li>Раз в день в 12:00 (MSK) публикуются вопросы квиза.</li>
-              <li>
-                Чтобы начать участие, нужно нажать следующую кнопку:
-                <div className="mt-2 text-center">
-                  <Button
-                    className="archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 disabled:opacity-100"
-                    disabled
-                    variant="outline"
-                  >
-                    Искать ответ в архиве
-                  </Button>
-                </div>
-              </li>
-              <li>
-                После этого в архиве нужно отыскать запись, которая, на ваш взгляд, является ответом на вопрос, и нажать кнопку:
-                <div className="mt-2 text-center">
-                  <Button
-                    className={`h-9 border px-4 font-mono uppercase tracking-[0.08em] disabled:opacity-100 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
-                    disabled
-                    size="sm"
-                    variant="positive"
-                  >
-                    Проверить догадку
-                    <CircleHelp />
-                  </Button>
-                </div>
-              </li>
-              <li>
-                За правильный ответ вы получаете столько очков, сколько осталось попыток, включая успешную. Например, при трёх попытках: с первой — 3 очка, со второй — 2, с последней — 1. Если неправильно, можно попробовать ещё, пока не кончатся все попытки. Оставшиеся попытки отображаются на экране как сердечко × число.
-                <div className="mt-3 flex justify-center">
-                  <span aria-label="Осталось попыток: 3" className="archive-paper-surface flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-sm">
-                    <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />
-                    <span aria-hidden="true" className="whitespace-nowrap font-medium tabular-nums text-red-900">× 3</span>
-                  </span>
-                </div>
-              </li>
-            </ol>
-          </div>
+          <QuizRules />
         ) : (
           <ActiveQuizPanel
+            variant="modal"
             onOpenArchive={openArchive}
             participant={participant}
             quiz={quiz}

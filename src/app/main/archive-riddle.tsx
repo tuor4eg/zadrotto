@@ -89,7 +89,7 @@ export function ArchiveRiddle({
 
       {quiz ? (
           <>
-            <p className="mt-1 shrink-0 text-center whitespace-pre-wrap font-serif text-xl leading-7 text-stone-900">
+            <p className="media-carrier-font-pc-steam mt-1 shrink-0 text-center whitespace-pre-wrap text-xl leading-7 text-stone-900">
               {quiz.question?.trim() || "Ответ спрятан среди записей архива."}
             </p>
             <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">

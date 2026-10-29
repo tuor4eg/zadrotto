@@ -64,7 +64,7 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex w-full flex-1">
-        <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden">
+        <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Все платформы

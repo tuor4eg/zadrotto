@@ -76,7 +76,7 @@ export async function saveGameCompanyRoster(tx: CreatorTransaction, input: { med
 
 /** Decision transaction holds request lock, but never entry locks. Removal is done by apply. */
 export async function resolveGameCompanyRequest(tx: CreatorTransaction, request: typeof creatorRequests.$inferSelect, input: { decision: "create" | "map" | "exclude"; creatorId?: number; name?: string }) {
-  if ((!isGameCompanyProvider(request.provider) && request.provider !== "tmdb" && request.provider !== "anilist") || !request.externalCreatorId || (request.provider === "tmdb" && !/^(company|network):/.test(request.externalCreatorId)) || (request.provider === "anilist" && !/^studio:[1-9]\d*$/.test(request.externalCreatorId))) throw new Error("Некорректная заявка организации.");
+  if ((!isGameCompanyProvider(request.provider) && request.provider !== "tmdb" && request.provider !== "anilist" && request.provider !== "comic-vine" && request.provider !== "roblox") || !request.externalCreatorId || (request.provider === "tmdb" && !/^(company|network):/.test(request.externalCreatorId)) || (request.provider === "anilist" && !/^studio:[1-9]\d*$/.test(request.externalCreatorId)) || (request.provider === "comic-vine" && !/^publisher:[1-9]\d*$/.test(request.externalCreatorId)) || (request.provider === "roblox" && !/^group:[1-9]\d*$/.test(request.externalCreatorId))) throw new Error("Некорректная заявка организации.");
   await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider), eq(providerCreatorExclusions.externalCreatorId, request.externalCreatorId)));
   if (input.decision === "exclude") {
     await removeGameCompanyBinding(tx, request.provider, request.externalCreatorId);
@@ -97,7 +97,7 @@ export async function resolveGameCompanyRequest(tx: CreatorTransaction, request:
   if (!creator || creator.type !== "organization") throw new Error("Выберите организацию.");
   await removeGameCompanyBinding(tx, request.provider, request.externalCreatorId);
   await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: request.externalCreatorId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
-  await enqueueCreatorImageFill(tx, creator.id);
+  if (request.provider !== "comic-vine" || input.decision === "create") await enqueueCreatorImageFill(tx, creator.id);
 }
 
 export async function removeGameCompanyBinding(tx: CreatorTransaction, provider: string, externalId: string) {

@@ -1982,7 +1982,7 @@ export const creators = pgTable("creators", {
   birthDate: date("birth_date", { mode: "string" }),
   deathDate: date("death_date", { mode: "string" }),
   avatarObjectKey: text("avatar_object_key"),
-  avatarSource: text("avatar_source").$type<"manual" | "fantlab" | "igdb" | "rawg" | "tmdb" | "anilist">(),
+  avatarSource: text("avatar_source").$type<"manual" | "fantlab" | "igdb" | "rawg" | "tmdb" | "anilist" | "comic-vine" | "roblox">(),
   avatarSourceExternalId: text("avatar_source_external_id"),
   avatarSourceUrl: text("avatar_source_url"),
   avatarOriginalUrl: text("avatar_original_url"),
@@ -2003,11 +2003,11 @@ export const creators = pgTable("creators", {
   check("creators_avatar_check", sql`(
     (${t.avatarObjectKey} is null and ${t.avatarSource} is null and ${t.avatarContentHash} is null
       and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
-    or (${t.avatarObjectKey} is not null and ${t.avatarSource} is not null and ${t.avatarSource} in ('manual','fantlab','igdb','rawg','tmdb','anilist')
+    or (${t.avatarObjectKey} is not null and ${t.avatarSource} is not null and ${t.avatarSource} in ('manual','fantlab','igdb','rawg','tmdb','anilist','comic-vine','roblox')
       and ${t.avatarContentHash} is not null and ${t.avatarContentHash} ~ '^[0-9a-f]{64}$'
       and ${t.avatarObjectKey} ~ '^avatars/creators/[1-9][0-9]*/[0-9a-f-]{36}[.]webp$'
       and ((${t.avatarSource} = 'manual' and ${t.avatarSourceExternalId} is null and ${t.avatarSourceUrl} is null and ${t.avatarOriginalUrl} is null and ${t.avatarFetchedAt} is null)
-        or (${t.avatarSource} in ('fantlab','igdb','rawg','tmdb','anilist') and ${t.avatarSourceExternalId} is not null and ((${t.avatarSource} = 'fantlab' and ${t.avatarSourceExternalId} ~ '^[1-9][0-9]*$') or (${t.avatarSource} = 'anilist' and ${t.avatarSourceExternalId} ~ '^person:[1-9][0-9]*$') or (${t.avatarSource} = 'igdb' and ${t.avatarSourceExternalId} ~ '^company:[1-9][0-9]*$') or (${t.avatarSource} = 'tmdb' and ${t.avatarSourceExternalId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.avatarSource} = 'rawg' and ${t.avatarSourceExternalId} ~ '^(developer|publisher):[1-9][0-9]*$'))
+        or (${t.avatarSource} in ('fantlab','igdb','rawg','tmdb','anilist','comic-vine','roblox') and ${t.avatarSourceExternalId} is not null and ((${t.avatarSource} = 'fantlab' and ${t.avatarSourceExternalId} ~ '^[1-9][0-9]*$') or (${t.avatarSource} = 'anilist' and ${t.avatarSourceExternalId} ~ '^person:[1-9][0-9]*$') or (${t.avatarSource} = 'igdb' and ${t.avatarSourceExternalId} ~ '^company:[1-9][0-9]*$') or (${t.avatarSource} = 'tmdb' and ${t.avatarSourceExternalId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.avatarSource} = 'rawg' and ${t.avatarSourceExternalId} ~ '^(developer|publisher):[1-9][0-9]*$') or (${t.avatarSource} = 'comic-vine' and ${t.avatarSourceExternalId} ~ '^(person|publisher):[1-9][0-9]*$') or (${t.avatarSource} = 'roblox' and ${t.avatarSourceExternalId} ~ '^(user|group):[1-9][0-9]*$'))
           and ${t.avatarSourceUrl} is not null and ${t.avatarOriginalUrl} is not null and ${t.avatarFetchedAt} is not null)))
   ) and ${t.avatarVersion} >= 0`),
   uniqueIndex("creators_avatar_object_key_unique").on(t.avatarObjectKey).where(sql`${t.avatarObjectKey} is not null`),
@@ -2050,7 +2050,7 @@ export const providerCreatorBindings = pgTable("provider_creator_bindings", {
   index("provider_creator_bindings_history_idx").on(t.provider, t.externalCreatorId),
   index("provider_creator_bindings_active_creator_idx").on(t.provider, t.creatorId).where(sql`${t.active}`),
   index("provider_creator_bindings_name_search_idx").using("gin", normalizedSearchIndexSql(t.externalCreatorName)).where(sql`${t.active}`),
-  check("provider_creator_bindings_values_check", sql`((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')) and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
+  check("provider_creator_bindings_values_check", sql`((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$') or (${t.provider} = 'comic-vine' and ${t.externalCreatorId} ~ '^(person|publisher):[1-9][0-9]*$') or (${t.provider} = 'roblox' and ${t.externalCreatorId} ~ '^(user|group):[1-9][0-9]*$')) and (${t.provider} <> 'bgg' or ${t.externalCreatorName} is not null)`),
 ]);
 export const providerCreatorMappings = pgTable("provider_creator_mappings", {
   bindingId: integer("binding_id"),
@@ -2075,7 +2075,7 @@ export const creatorRequests = pgTable("creator_requests", {
   applyStatus: text("apply_status").$type<"pending" | "applying" | "processed" | "failed">().default("pending").notNull(), jobError: text("job_error"),
   firstSeenAt: timestamp("first_seen_at", { withTimezone: true }).defaultNow().notNull(), lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
   manuallyReopened: boolean("manually_reopened").notNull().default(false), ...timestamps(),
-}, (t) => [uniqueIndex("creator_requests_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("creator_requests_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("creator_requests_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')))`), index("creator_requests_auto_approval_idx").on(t.id).where(sql`${t.decision} is null and ${t.manuallyReopened} = false and ${t.applyStatus}='pending'`), index("creator_requests_pending_idx").on(t.firstSeenAt, t.id).where(sql`${t.decision} is null`), index("creator_requests_seen_idx").on(t.firstSeenAt, t.id), index("creator_requests_job_idx").on(t.jobRunId), check("creator_requests_decision_check", sql`${t.decision} is null or ${t.decision} in ('create','map','exclude')`), check("creator_requests_status_check", sql`${t.applyStatus} in ('pending','applying','processed','failed')`)]);
+}, (t) => [uniqueIndex("creator_requests_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("creator_requests_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("creator_requests_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$') or (${t.provider} = 'comic-vine' and ${t.externalCreatorId} ~ '^(person|publisher):[1-9][0-9]*$') or (${t.provider} = 'roblox' and ${t.externalCreatorId} ~ '^(user|group):[1-9][0-9]*$')))`), index("creator_requests_auto_approval_idx").on(t.id).where(sql`${t.decision} is null and ${t.manuallyReopened} = false and ${t.applyStatus}='pending'`), index("creator_requests_pending_idx").on(t.firstSeenAt, t.id).where(sql`${t.decision} is null`), index("creator_requests_seen_idx").on(t.firstSeenAt, t.id), index("creator_requests_job_idx").on(t.jobRunId), check("creator_requests_decision_check", sql`${t.decision} is null or ${t.decision} in ('create','map','exclude')`), check("creator_requests_status_check", sql`${t.applyStatus} in ('pending','applying','processed','failed')`)]);
 export const creatorRequestMediaItems = pgTable("creator_request_media_items", {
   roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
   requestId: integer("request_id").notNull().references(() => creatorRequests.id, { onDelete: "cascade" }),
@@ -2103,7 +2103,7 @@ export const providerCreatorExclusions = pgTable("provider_creator_exclusions", 
   externalCreatorId: text("external_creator_id"),
   id: serial("id").primaryKey(), provider: text("provider").notNull(), mediaType: text("media_type").notNull().references(() => mediaTypes.code),
   externalCreatorName: text("external_creator_name").notNull(), normalizedExternalCreatorName: text("normalized_external_creator_name").notNull(), ...timestamps(),
-}, (t) => [uniqueIndex("provider_creator_exclusions_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("provider_creator_exclusions_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("provider_creator_exclusions_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$')))`)]);
+}, (t) => [uniqueIndex("provider_creator_exclusions_key_unique").on(t.provider, t.mediaType, t.normalizedExternalCreatorName).where(sql`${t.externalCreatorId} is null`), uniqueIndex("provider_creator_exclusions_identity_unique").on(t.provider, t.externalCreatorId).where(sql`${t.externalCreatorId} is not null`), check("provider_creator_exclusions_identity_check", sql`${t.externalCreatorId} is null or (((${t.provider} in ('fantlab','bgg') and ${t.externalCreatorId} ~ '^[1-9][0-9]*$') or (${t.provider} = 'igdb' and ${t.externalCreatorId} ~ '^company:[1-9][0-9]*$') or (${t.provider} = 'tmdb' and ${t.externalCreatorId} ~ '^(company|network|person):[1-9][0-9]*$') or (${t.provider} = 'anilist' and ${t.externalCreatorId} ~ '^(person|studio):[1-9][0-9]*$') or (${t.provider} = 'rawg' and ${t.externalCreatorId} ~ '^(developer|publisher):[1-9][0-9]*$') or (${t.provider} = 'comic-vine' and ${t.externalCreatorId} ~ '^(person|publisher):[1-9][0-9]*$') or (${t.provider} = 'roblox' and ${t.externalCreatorId} ~ '^(user|group):[1-9][0-9]*$')))`)]);
 // One source per provider value preserves aliases mapped to the same creator.
 export const entryCreatorSources = pgTable("entry_creator_sources", {
   bindingId: integer("binding_id"),
@@ -2544,6 +2544,17 @@ export const providerSnapshots = pgTable("provider_snapshots", {
   index("provider_snapshots_anilist_mal_idx").on(sql`(${t.payload}->>'idMal')`).where(sql`${t.providerCode}='anilist' and ${t.resourceType}='anime' and ${t.apiMethod}='anime.creators'`),
   check("provider_snapshots_identity_check",sql`btrim(${t.providerCode}) <> '' and btrim(${t.resourceType}) <> '' and btrim(${t.externalId}) <> '' and btrim(${t.apiMethod}) <> ''`),
   check("provider_snapshots_params_check",sql`jsonb_typeof(${t.requestParams}) = 'object'`),
+]);
+export const providerPartSnapshotLinks = pgTable("provider_part_snapshot_links", {
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  snapshotId: integer("snapshot_id").notNull().references(() => providerSnapshots.id, { onDelete: "cascade" }),
+  partId: integer("part_id").references(() => titleParts.id, { onDelete: "set null" }),
+}, (t) => [
+  primaryKey({ columns: [t.mediaItemId, t.snapshotId] }),
+  foreignKey({ name: "provider_part_snapshot_links_part_media_fk", columns: [t.mediaItemId, t.partId], foreignColumns: [titleParts.mediaItemId, titleParts.id] }),
+  index("provider_part_snapshot_links_snapshot_idx").on(t.snapshotId),
+  index("provider_part_snapshot_links_part_idx").on(t.mediaItemId, t.partId),
+  index("provider_part_snapshot_links_part_id_idx").on(t.partId),
 ]);
 export const providerSnapshotLinks = pgTable("provider_snapshot_links", {
   snapshotId: integer("snapshot_id").notNull().references(() => providerSnapshots.id,{onDelete:"cascade"}),

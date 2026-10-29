@@ -125,7 +125,7 @@ test("archived quiz page reuses the modal panel without offering active quiz par
 
   assert.match(page, /await requireAuthor\(\)/);
   assert.match(page, /if \(!detail\) notFound\(\)/);
-  assert.match(page, /<ActiveQuizPanel\s+finished=\{detail.finished\}/);
+  assert.match(page, /<QuizDetailContent\s+finished=\{detail.finished\}/);
   assert.match(page, /participant=\{detail.participant\}/);
   assert.match(detailQuery, /eq\(quizzes.id, id\), eq\(quizzes.enabled, true\), lte\(quizzes.startsAt/);
   assert.match(detailQuery, /eq\(quizParticipants.quizId, id\), eq\(quizParticipants.authorId, authorId\)/);

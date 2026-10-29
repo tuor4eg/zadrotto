@@ -255,7 +255,7 @@ function LatestReview({
                 Свежая рецензия одного из наших авторов
               </p>
               <div className="flex min-h-0 flex-1 flex-col pt-1">
-                <h3 className="shrink-0 font-serif text-xl leading-tight text-stone-950">
+                <h3 className="media-carrier-font-pc-steam shrink-0 text-xl leading-tight text-stone-950">
                   {resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle }).displayTitle}
                 </h3>
                 <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
@@ -464,7 +464,7 @@ export default async function MainPage() {
                       />
                     ) : null}
                     <span className="min-w-0 flex-1">
-                      <span className="line-clamp-2 [overflow-wrap:anywhere] font-serif text-xl leading-tight" title={latestAcquaintance.title}>
+                      <span className="media-carrier-font-pc-steam line-clamp-2 [overflow-wrap:anywhere] text-xl leading-tight" title={latestAcquaintance.title}>
                         {latestAcquaintance.title}
                       </span>
                       <span className="mt-1 block text-sm text-stone-600">
@@ -498,7 +498,7 @@ export default async function MainPage() {
                         </span>
                       )}
                     </Link>
-                    <span className="line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] font-serif text-xl leading-tight" title={authorHeroStatistics.latestAchievement.name}>
+                    <span className="media-carrier-font-pc-steam line-clamp-2 min-w-0 flex-1 [overflow-wrap:anywhere] text-xl leading-tight" title={authorHeroStatistics.latestAchievement.name}>
                       {authorHeroStatistics.latestAchievement.name}
                     </span>
                   </div>

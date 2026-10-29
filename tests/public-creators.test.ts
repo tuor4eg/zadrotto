@@ -57,7 +57,7 @@ test("creator images survive pagination and use the local route in catalog and s
 test("system roles survive pagination and filter creators before alphabet and pages", () => {
   const roles = [{ code: "custom-role", name: "Новая роль" }, { code: "artist", name: "Художник" }];
   const input = rows.map((row, index) => ({ ...row, roles: index === 1 ? roles : [] }));
-  const page = paginatePublicCreators(input, { page: 99, pageSize: 1, searchQuery: "", role: "custom-role" });
+  const page = paginatePublicCreators(input, { page: 99, pageSize: 1, searchQuery: "", roles: ["custom-role"] });
   assert.equal(page.paginationTotalCount, 1);
   assert.equal(page.page, 1);
   assert.deepEqual(page.availableLetters, ["F"]);
@@ -112,4 +112,45 @@ test("selected creator roles highlight the active role and provide an all-roles 
   assert.ok(selected);assert.match(selected,/aria-current="page"/);
   assert.match(html,/href="\/archive\?creator=ic-company"[^>]*>Все<\/a>/);
   assert.doesNotMatch(html,/creatorRole=publisher"[^>]*aria-current/);
+});
+
+test("media chips expand only the selected type and keep role counts and filters in links", async () => {
+  const { CreatorMediaTypeChips } = await import("../src/app/creators/creator-media-type-chips");
+  const mediaTypes = [
+    { code: "comic", name: "Комиксы", creatorsCount: 3, roles: [{ code: "screenwriter", name: "Сценарист", creatorsCount: 2 }, { code: "artist", name: "Художник", creatorsCount: 1 }] },
+    { code: "book", name: "Книги", creatorsCount: 1, roles: [{ code: "writer", name: "Писатель", creatorsCount: 1 }] },
+  ];
+  const html = renderToStaticMarkup(createElement(CreatorMediaTypeChips, { mediaTypes, selectedMediaType: "comic", selectedRoles: ["screenwriter"], searchQuery: "имя", pageSize: 48 }));
+  assert.match(html, /Сценарист/);
+  assert.match(html, /Художник/);
+  assert.doesNotMatch(html, /Писатель/);
+  assert.match(html, /type=comic&amp;q=/);
+  assert.match(html, /type=comic&amp;role=screenwriter%2Cartist&amp;q=/);
+  assert.match(html, /type=book&amp;q=/);
+  assert.match(html, /aria-current="true"/);
+});
+
+test("role filtering combines with search and pagination", () => {
+  const input = [
+    { ...rows[0], roles: [{ code: "artist", name: "Художник" }], nameMatches: true },
+    { ...rows[1], roles: [{ code: "writer", name: "Писатель" }], nameMatches: true },
+    { ...rows[2], roles: [{ code: "artist", name: "Художник" }], nameMatches: false },
+  ];
+  const page = paginatePublicCreators(input, { page: 9, pageSize: 1, roles: ["artist"], searchQuery: "найден" });
+  assert.equal(page.paginationTotalCount, 1);
+  assert.equal(page.page, 1);
+  assert.equal(page.items[0].id, rows[0].id);
+});
+
+
+test("multiple roles include creators with either role and toggle links remove only the selected role", async () => {
+  const { CreatorMediaTypeChips } = await import("../src/app/creators/creator-media-type-chips");
+  const mediaTypes = [{ code: "comic", name: "Комиксы", creatorsCount: 3, roles: [{ code: "screenwriter", name: "Сценарист", creatorsCount: 2 }, { code: "artist", name: "Художник", creatorsCount: 2 }] }];
+  const input = rows.slice(0, 3).map((row, index) => ({ ...row, roles: index === 0 ? [{code:"screenwriter",name:"Сценарист"}] : index === 1 ? [{code:"artist",name:"Художник"}] : [] }));
+  const page = paginatePublicCreators(input, { page: 1, pageSize: 24, roles: ["screenwriter", "artist"], searchQuery: "" });
+  assert.deepEqual(new Set(page.items.map(item => item.id)), new Set([input[0].id, input[1].id]));
+  const html = renderToStaticMarkup(createElement(CreatorMediaTypeChips, { mediaTypes, selectedMediaType: "comic", selectedRoles: ["screenwriter", "artist"], searchQuery: "" }));
+  assert.match(html, /href="\/creators\?type=comic&amp;role=artist"/);
+  assert.match(html, /href="\/creators\?type=comic&amp;role=screenwriter"/);
+  assert.equal((html.match(/aria-current="true"/g) ?? []).length, 2);
 });

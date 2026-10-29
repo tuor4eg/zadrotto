@@ -18,13 +18,13 @@ export function QuizDetailSidebar({ quizId, statistics, participants }: {
   ];
 
   return (
-    <aside className="media-carrier-font-pc-steam grid min-h-0 gap-3 lg:grid-rows-2">
+    <aside className="media-carrier-font-pc-steam grid min-h-0 gap-3 lg:grid-rows-[auto_minmax(0,1fr)]">
       <section className="archive-paper archive-panel flex min-h-0 flex-col p-4 sm:p-5" aria-labelledby="quiz-statistics-title">
         <h2 id="quiz-statistics-title" className="flex items-center gap-2 border-b border-stone-400/25 pb-3 text-xl leading-none sm:text-2xl">
           <ChartNoAxesColumnIncreasing aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
           Статистика квиза
         </h2>
-        <dl className="my-auto grid grid-cols-3 divide-x divide-dashed divide-stone-400/25 py-4">
+        <dl className="grid grid-cols-3 divide-x divide-dashed divide-stone-400/25 py-4">
           {metrics.map(({ Icon, label, value }) => (
             <div key={label} className="flex min-w-0 flex-col items-center px-2 text-center">
               <Icon aria-hidden="true" className="mb-2 size-6 text-red-950/65" />

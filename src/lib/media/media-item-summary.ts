@@ -37,8 +37,7 @@ export function getArchiveMediaItemInfoLabels(item: MediaItemSummaryInput) {
   const [, year, ...details] = getMediaItemSummaryParts(item);
   const robloxDetails = item.mediaType === "roblox"
     ? [
-        getDateFactYear(item.metadataFacts, "createdAt"),
-        getNonEmptyStringFact(item.metadataFacts, "creatorName"),
+        item.releaseYear ? null : getDateFactYear(item.metadataFacts, "createdAt"),
       ].filter((value): value is string => Boolean(value))
     : [];
 

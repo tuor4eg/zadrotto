@@ -5,9 +5,9 @@ import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 export type PublicCreator = { id: number; name: string; slug: string; roles?: { code: string; name: string }[]; avatarObjectKey?: string | null } & { mediaItemsCount: number };
 
 export function paginatePublicCreators(rows: readonly (PublicCreator & { nameMatches: boolean })[], input: {
-  page: number; pageSize: number; letter?: string; role?: string; searchQuery: string;
+  page: number; pageSize: number; letter?: string; roles?: readonly string[]; searchQuery: string;
 }) {
-  rows = input.role ? rows.filter(creator => creator.roles?.some(role => role.code === input.role)) : rows;
+  rows = input.roles?.length ? rows.filter(creator => creator.roles?.some(role => input.roles!.includes(role.code))) : rows;
   const availableLetters = [...new Set(rows.map((creator) => getCatalogAlphabetGroup(creator.name)))].sort(compareCatalogAlphabetGroups);
   const selectedLetter = !input.searchQuery.trim() && input.letter && availableLetters.includes(input.letter) ? input.letter : undefined;
   const filtered = rows.filter((creator) => creator.nameMatches && (!selectedLetter || getCatalogAlphabetGroup(creator.name) === selectedLetter))

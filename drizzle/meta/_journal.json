@@ -1051,6 +1051,34 @@
       "when": 1795564800000,
       "tag": "0149_creator_auto_approval",
       "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1795651200000,
+      "tag": "0150_provider_part_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1795737600000,
+      "tag": "0151_comic_vine_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1795824000000,
+      "tag": "0152_comic_screenwriter",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1795910400000,
+      "tag": "0153_roblox_creator_bindings",
+      "breakpoints": true
     }
   ]
 }

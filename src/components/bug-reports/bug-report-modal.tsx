@@ -85,7 +85,7 @@ export function BugReportModal({
           description: normalizedDescription,
           entityId: entityContext?.entityId ?? null,
           entityType: entityContext?.entityType ?? null,
-          url: window.location.href,
+          url: `${window.location.pathname}${window.location.search}${window.location.hash}`,
           clientContext: {
             viewportHeight: window.innerHeight,
             viewportWidth: window.innerWidth,

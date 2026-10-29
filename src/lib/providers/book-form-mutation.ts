@@ -1,4 +1,5 @@
 import "server-only";
+import { prepareComicVineSnapshotReferences } from "./comic-vine-service";
 import { prepareTmdbSeriesSnapshotReferences } from "./tmdb-series-service";
 import { prepareTmdbFilmSnapshotReferences } from "./tmdb-film-service";
 import type { MediaMetadataFormMutation } from "@/lib/media/metadata-form-mutation";
@@ -10,17 +11,22 @@ export async function validateBookFormMutation(mutation:MediaMetadataFormMutatio
   const film = mediaType === "film" && mutation.sourceProvider === "tmdb";
   const series = mediaType === "series" && mutation.sourceProvider === "tmdb";
   const tmdb = film || series;
+  const comic = mediaType === "comic" && mutation.sourceProvider === "comic-vine";
   // A source-only selection contains no imported metadata. Preserve the existing
   // ability to save it when the details request was unavailable.
-  if (tmdb && !mutation.snapshotReferences && mutation.fetchedAt === null && Object.keys(mutation.facts).length === 0) return mutation;
-  if (!tmdb && (mediaType!=="book" || !isBookSnapshotProvider(mutation.sourceProvider))) return mutation;
+  if ((tmdb || comic) && !mutation.snapshotReferences && mutation.fetchedAt === null && Object.keys(mutation.facts).length === 0) return mutation;
+  if (!tmdb && !comic && (mediaType!=="book" || !isBookSnapshotProvider(mutation.sourceProvider))) return mutation;
   try {
     let refs=mutation.snapshotReferences;
     if (!refs) {
       const {createMetadataProviderJobContext}=await import("@/lib/media/metadata-provider-fetch");
-      const result=await (await createMetadataProviderJobContext(0)).fetchTitleMetadata({provider:tmdb ? "tmdb" : mutation.sourceProvider as import("./types").BookProviderCode,externalId:mutation.sourceExternalId,mediaType:tmdb ? mediaType as "film" | "series" : "book"});
+      const result=await (await createMetadataProviderJobContext(0)).fetchTitleMetadata({provider:comic ? "comic-vine" : tmdb ? "tmdb" : mutation.sourceProvider as import("./types").BookProviderCode,externalId:mutation.sourceExternalId,mediaType:comic ? "comic" : tmdb ? mediaType as "film" | "series" : "book"});
       if (result.error || !result.metadata?.snapshotReferences) return {type:"reject"};
       refs=result.metadata.snapshotReferences;
+    }
+    if (comic) {
+      const bundle = await prepareComicVineSnapshotReferences(mutation.sourceExternalId, refs);
+      return {...mutation,facts:bundle.projection.facts,snapshotReferences:refs,providerSnapshot:{...mutation.providerSnapshot,facts:bundle.projection.facts}};
     }
     if (tmdb) {
       const bundle = await (series ? prepareTmdbSeriesSnapshotReferences : prepareTmdbFilmSnapshotReferences)(mutation.sourceExternalId,refs);

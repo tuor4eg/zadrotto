@@ -19,10 +19,22 @@ import { JobError } from "@/lib/jobs/types";
 
 /** Pure projection of an already validated full raw profile. */
 export function creatorProfileImage(target: CreatorProfileTarget, payload: JSONValue) {
+  if (target.provider === "roblox") {
+    const row = payload as Record<string, JSONValue>;
+    const url = typeof row.imageUrl === "string" ? row.imageUrl : null;
+    return { urls: url ? [url] : [], sourceUrl: target.resourceType === "user" ? `https://www.roblox.com/users/${target.externalId}/profile` : `https://www.roblox.com/groups/${target.externalId}` };
+  }
   if (target.provider === "anilist") return parseAniListPersonImage(payload, target.externalId);
   if (target.provider === "fantlab") {
     const author = parseFantlabAuthor(payload, target.externalId, { allowClosed: true });
     return { urls: [...new Set([author.imageUrl, author.previewUrl].filter((url): url is string => Boolean(url)))], sourceUrl: author.sourceUrl };
+  }
+  if (target.provider === "comic-vine") {
+    const envelope = payload as Record<string, JSONValue>;
+    const row = envelope.results as Record<string, JSONValue>;
+    const image = row.image && typeof row.image === "object" && !Array.isArray(row.image) ? row.image : null;
+    const urls = [image?.original_url, image?.super_url, image?.medium_url].filter((url): url is string => typeof url === "string" && Boolean(url));
+    return { urls: [...new Set(urls)], sourceUrl: typeof row.site_detail_url === "string" ? row.site_detail_url : `https://comicvine.gamespot.com/${target.resourceType}/${target.resourceType === "person" ? "4040" : "4010"}-${target.externalId}/` };
   }
   const row = payload as Record<string, JSONValue>;
   if (target.provider === "tmdb") {

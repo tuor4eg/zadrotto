@@ -4,8 +4,8 @@ import { notFound } from "next/navigation";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { BugReportEntityContextRegistration } from "@/components/bug-reports/bug-report-entity-context";
-import { ActiveQuizPanel } from "@/components/quizzes/active-quiz-panel";
-import { getQuizById, getAdminQuizAggregates, getAdminQuizParticipantPage } from "@/db/queries/quizzes";
+import { QuizDetailContent } from "@/components/quizzes/quiz-detail-content";
+import { getQuizById, getAdminQuizAggregates, getAdminQuizParticipantPage, getAdjacentQuizzes } from "@/db/queries/quizzes";
 import { QuizDetailSidebar } from "@/components/quizzes/quiz-detail-sidebar";
 import { parsePage } from "@/lib/common/pagination";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
@@ -25,9 +25,10 @@ export default async function QuizPage({ params, searchParams }: {
   if (!/^\d+$/.test(id) || !Number.isSafeInteger(quizId) || quizId < 1 || quizId > 2_147_483_647) notFound();
   const detail = await getQuizById(quizId, author.id);
   if (!detail) notFound();
-  const [headerState, statistics, filters, mediaTypes] = await Promise.all([
+  const [headerState, statistics, filters, mediaTypes, adjacent] = await Promise.all([
     getPublicSiteHeaderState(author), getAdminQuizAggregates(quizId), searchParams,
     getEffectiveMediaTypeOptions(author.id),
+    getAdjacentQuizzes(new Date(detail.quiz.endsAt), quizId),
   ]);
   const participants = await getAdminQuizParticipantPage({
     quizId,
@@ -41,7 +42,7 @@ export default async function QuizPage({ params, searchParams }: {
         <PublicSiteHeader {...headerState.headerProps} />
         <BugReportEntityContextRegistration context={{ entityId: String(quizId), entityType: "quiz" }} />
         <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-3">
-          <section className="archive-paper archive-panel grid min-h-[600px] w-full grid-rows-[auto_auto_minmax(0,1fr)] gap-3 p-5 sm:p-8 lg:col-span-2 lg:min-h-0" aria-labelledby="quiz-title">
+          <section className="archive-paper archive-panel grid min-h-[600px] w-full grid-rows-[auto_minmax(0,1fr)] gap-3 p-5 sm:p-8 lg:col-span-2 lg:min-h-0" aria-labelledby="quiz-title">
             <nav aria-label="Хлебные крошки" className="media-carrier-font-pc-steam mb-2 text-xs lowercase text-stone-600">
               <Link href="/quizzes" className="hover:text-red-950">Квизы</Link>
               <span aria-hidden="true"> / </span>
@@ -49,9 +50,9 @@ export default async function QuizPage({ params, searchParams }: {
               <span aria-hidden="true"> / </span>
               <span aria-current="page">Квиз №{quizId}</span>
             </nav>
-            <h1 id="quiz-title" className="media-carrier-font-pc-steam mb-5 text-center text-2xl sm:text-3xl">Квиз</h1>
-            <ActiveQuizPanel
+            <QuizDetailContent
               finished={detail.finished}
+              adjacent={adjacent}
               participant={detail.participant}
               quiz={detail.quiz}
               unavailableMediaTypeNames={mediaTypes.filter(({ code, isEnabled }) => !isEnabled && (

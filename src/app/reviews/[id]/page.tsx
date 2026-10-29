@@ -140,7 +140,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       <BugReportEntityContextRegistration context={{ entityId: String(review.mediaItemId), entityType: "media-item" }} />
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
-        <div className="flex min-h-0 w-full flex-1 flex-col">
+        <div className="flex min-h-0 w-full flex-1 flex-col media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <ReviewArticle
           key={currentAuthor?.id ?? "guest"}
           authenticated={Boolean(currentAuthor)}

@@ -46,7 +46,7 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
   const basePath = `/users/${profile.id}`
 
   return (
-    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+    <main className="archive-page flex min-h-0 flex-1 flex-col px-3 py-4 text-stone-950 sm:px-5 lg:px-7 public-profile-content">
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <PublicUserHeader currentAdmin={isAdmin} currentAuthor={Boolean(current)} level={level} profile={profile} returnTo={`${basePath}/achievements`} />

@@ -17,7 +17,7 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const mediaType = String(form.get("mediaType") ?? form.get("processingType"));
     const operation = String(form.get("operation") ?? "verify");
     const payload=parseSnapshotJobPayload({
-      ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
+      ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame", "comic", "roblox"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
       operation,
       ...(!creator && !standalone && mediaType === "boardgame" && ["process", "refresh-process"].includes(operation) ? { applyBoardgameChanges: form.get("applyBoardgameChanges") === "on" } : {}),
       ...(!creator && !standalone && mediaType === "game" && ["process", "refresh-process"].includes(operation) ? { applyGameChanges: form.get("applyGameChanges") === "on" } : {}),

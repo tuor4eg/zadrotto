@@ -185,7 +185,7 @@ export function ArchiveAuthorMediaSuggestion({
                     <div>
                       <div
                         id="archive-author-media-suggestion-title"
-                        className="font-serif text-3xl leading-none text-stone-950"
+                        className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950"
                       >
                         Предложить запись
                       </div>

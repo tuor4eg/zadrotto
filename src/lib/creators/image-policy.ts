@@ -2,6 +2,10 @@ import { creatorProfileTargetFromBinding } from "@/lib/providers/creator-profile
 import type { CreatorProfileTarget } from "@/lib/providers/creator-profile-targets";
 
 export const CREATOR_IMAGE_KINDS = [
+  { type: "person", provider: "roblox", resourceType: "user", prefix: "user:" },
+  { type: "organization", provider: "roblox", resourceType: "group", prefix: "group:" },
+  { type: "person", provider: "comic-vine", resourceType: "person", prefix: "person:" },
+  { type: "organization", provider: "comic-vine", resourceType: "publisher", prefix: "publisher:" },
   { type: "person", provider: "fantlab", resourceType: "author", prefix: "" },
   { type: "person", provider: "anilist", resourceType: "person", prefix: "person:" },
   { type: "person", provider: "tmdb", resourceType: "person", prefix: "person:" },

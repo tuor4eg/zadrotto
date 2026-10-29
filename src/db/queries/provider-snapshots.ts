@@ -1,6 +1,6 @@
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { jobRuns, providerSnapshotLinks as links, providerSnapshots as snapshots } from "@/db/schema";
+import { jobRuns, providerPartSnapshotLinks as partLinks, providerSnapshotLinks as links, providerSnapshots as snapshots, titleParts } from "@/db/schema";
 import type { DbTransaction } from "@/db/transaction";
 import { canonicalSnapshotEntity, lockSnapshotEntity, type SnapshotActor, type SnapshotEntity } from "@/lib/providers/entities";
 import type { RawSnapshot, SnapshotDescriptor } from "@/lib/providers/types";
@@ -46,13 +46,46 @@ export async function getProviderSnapshot(input: SnapshotDescriptor, tx: DbTrans
   return (await tx.select().from(snapshots).where(descriptorCondition(input)).limit(1))[0] ?? null;
 }
 export async function saveProviderSnapshot(input: RawSnapshot, guard?: SnapshotJobGuard): Promise<StoredProviderSnapshot> {
+  return withSnapshotJobGuard(guard, tx => upsertProviderSnapshot(tx, input));
+}
+async function upsertProviderSnapshot(tx: DbTransaction, input: RawSnapshot): Promise<StoredProviderSnapshot> {
   if ([input.providerCode,input.resourceType,input.externalId,input.apiMethod].some((value)=>!value.trim())) throw new Error("INVALID_SNAPSHOT_DESCRIPTOR");
+  const [saved] = await tx.insert(snapshots).values({providerCode:input.providerCode,resourceType:input.resourceType,externalId:input.externalId,apiMethod:input.apiMethod,
+    requestParams:input.requestParams,requestKey:snapshotHash(input.requestParams),payload:input.payload,payloadHash:snapshotHash(input.payload),contentType:input.contentType,
+    requestStartedAt:input.requestStartedAt,fetchedAt:input.fetchedAt})
+    .onConflictDoUpdate({target:[snapshots.providerCode,snapshots.resourceType,snapshots.externalId,snapshots.apiMethod,snapshots.requestKey],set:{payload:input.payload,payloadHash:snapshotHash(input.payload),contentType:input.contentType,requestStartedAt:input.requestStartedAt,fetchedAt:input.fetchedAt},setWhere:sql`${snapshots.requestStartedAt} < ${input.requestStartedAt.toISOString()}::timestamptz`}).returning();
+  return saved ?? (await getProviderSnapshot(input,tx))!;
+}
+export async function savePartProviderSnapshot(mediaItemId: number, input: RawSnapshot, actor: SnapshotActor, guard?: SnapshotJobGuard) {
   return withSnapshotJobGuard(guard, async tx => {
-    const [saved] = await tx.insert(snapshots).values({providerCode:input.providerCode,resourceType:input.resourceType,externalId:input.externalId,apiMethod:input.apiMethod,
-      requestParams:input.requestParams,requestKey:snapshotHash(input.requestParams),payload:input.payload,payloadHash:snapshotHash(input.payload),contentType:input.contentType,
-      requestStartedAt:input.requestStartedAt,fetchedAt:input.fetchedAt})
-      .onConflictDoUpdate({target:[snapshots.providerCode,snapshots.resourceType,snapshots.externalId,snapshots.apiMethod,snapshots.requestKey],set:{payload:input.payload,payloadHash:snapshotHash(input.payload),contentType:input.contentType,requestStartedAt:input.requestStartedAt,fetchedAt:input.fetchedAt},setWhere:sql`${snapshots.requestStartedAt} < ${input.requestStartedAt.toISOString()}::timestamptz`}).returning();
-    return saved ?? (await getProviderSnapshot(input,tx))!;
+    await lockSnapshotEntity(tx, { entityType: "media-item", entityId: String(mediaItemId) }, actor);
+    const snapshot = await upsertProviderSnapshot(tx, input);
+    await tx.insert(partLinks).values({ mediaItemId, snapshotId: snapshot.id }).onConflictDoNothing();
+    return snapshot;
+  });
+}
+export async function attachPartProviderSnapshot(tx: DbTransaction, mediaItemId: number, ref: SnapshotReference) {
+  await lockSnapshotEntity(tx, { entityType: "media-item", entityId: String(mediaItemId) }, { kind: "system" });
+  await lockProviderSnapshotReferences(tx, [ref]);
+  await tx.insert(partLinks).values({ mediaItemId, snapshotId: ref.id }).onConflictDoNothing();
+}
+export async function getPartProviderSnapshots(mediaItemId: number, identity?: { providerCode: string; externalId: string }) {
+  return db.select({ snapshot: snapshots, partId: partLinks.partId }).from(partLinks)
+    .innerJoin(snapshots, eq(snapshots.id, partLinks.snapshotId))
+    .where(and(eq(partLinks.mediaItemId, mediaItemId), identity ? eq(snapshots.providerCode, identity.providerCode) : undefined,
+      identity ? eq(snapshots.externalId, identity.externalId) : undefined)).orderBy(asc(snapshots.id));
+}
+export async function bindPartProviderSnapshot(mediaItemId: number, snapshotId: number, partId: number | null, actor: SnapshotActor) {
+  return db.transaction(async tx => {
+    await lockSnapshotEntity(tx, { entityType: "media-item", entityId: String(mediaItemId) }, actor);
+    if (partId !== null) {
+      const [part] = await tx.select({ id: titleParts.id }).from(titleParts)
+        .where(and(eq(titleParts.mediaItemId, mediaItemId), eq(titleParts.id, partId))).for("update");
+      if (!part) throw new Error("SNAPSHOT_PART_NOT_FOUND");
+    }
+    const [link] = await tx.update(partLinks).set({ partId }).where(and(eq(partLinks.mediaItemId, mediaItemId), eq(partLinks.snapshotId, snapshotId))).returning();
+    if (!link) throw new Error("SNAPSHOT_PART_LINK_NOT_FOUND");
+    return link;
   });
 }
 export async function lockProviderSnapshotReferences(tx: DbTransaction, refs: SnapshotReference[]) {

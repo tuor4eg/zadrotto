@@ -80,7 +80,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
     return item ? [{ currentAuthorScore: review.authorScore, href: `/reviews/${review.id}`, item: { ...item, title: review.partLabel ? `${item.title} — ${review.partLabel}` : item.title }, key: `review-${review.id}`, ratingDisplay: "author-only" as const }] : [];
   }) ?? [];
 
-  return <main className="archive-page min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
+  return <main className="archive-page public-profile-content min-h-screen px-3 py-4 text-stone-950 sm:px-5 lg:px-7">
     <div className="mx-auto w-full max-w-[1480px] space-y-3">
       <PublicSiteHeader {...headerState.headerProps} />
       {query.friendship === "error" || query.friendship === "conflict" ? <Alert variant="destructive">Не удалось изменить состояние дружбы. Возможно, оно уже изменилось.</Alert> : null}

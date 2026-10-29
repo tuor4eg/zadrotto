@@ -1,4 +1,5 @@
 import { describeBggSource } from "@/lib/providers/bgg-adapter";
+import { describeRobloxSource } from "@/lib/providers/roblox-adapter";
 import { snapshotHash } from "@/lib/providers/snapshot-values";
 import { and, asc, eq, gt, inArray, lte, notExists, or, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -84,6 +85,36 @@ export function providerSnapshotBoardgameBatchQuery(input: { afterId: number; th
       sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
       gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId),
       input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+export function providerSnapshotRobloxBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const descriptor = describeRobloxSource("1");
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).where(and(
+    eq(providerSnapshots.providerCode, "roblox"), eq(providerSnapshots.resourceType, descriptor.resourceType),
+    eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId), eq(providerSnapshots.apiMethod, descriptor.apiMethod),
+    eq(providerSnapshots.requestParams, descriptor.requestParams), eq(providerSnapshots.requestKey, snapshotHash(descriptor.requestParams)),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "roblox"), eq(mediaItemMetadata.sourceProvider, "roblox"),
+      gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+export function providerSnapshotComicBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).where(and(
+    eq(providerSnapshots.providerCode, "comic-vine"), eq(providerSnapshots.resourceType, "volume"), eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId),
+    eq(providerSnapshots.apiMethod, "volume.details"), eq(providerSnapshots.requestKey, snapshotHash({ version: 1 })), eq(providerSnapshots.requestParams, { version: 1 }),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "comic"), eq(mediaItemMetadata.sourceProvider, "comic-vine"),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId), input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
       input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
     .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
 }

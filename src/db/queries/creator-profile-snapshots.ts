@@ -68,7 +68,7 @@ export async function attachCreatorProfileSnapshot(input: { creatorId: number; b
     if (!creator) throw new Error("SNAPSHOT_ENTITY_NOT_FOUND");
     const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.id, input.bindingId), eq(providerCreatorBindings.creatorId, input.creatorId), eq(providerCreatorBindings.active, true))).for("share");
     const target = binding ? creatorProfileTargetFromBinding(binding) : null;
-    if (!target || ((target.resourceType === "person" || target.resourceType === "author") && creator.typeCode !== "person") || ((target.resourceType === "company" || target.resourceType === "network") && creator.typeCode !== "organization")) throw new Error("PROVIDER_SOURCE_CHANGED");
+    if (!target || ((target.resourceType === "person" || target.resourceType === "author" || target.resourceType === "user") && creator.typeCode !== "person") || ((target.resourceType === "company" || target.resourceType === "network" || target.resourceType === "group" || (target.provider === "comic-vine" && target.resourceType === "publisher")) && creator.typeCode !== "organization")) throw new Error("PROVIDER_SOURCE_CHANGED");
     await lockProviderSnapshotReferences(tx, [input.ref]);
     const [snapshot] = await tx.select().from(providerSnapshots).where(eq(providerSnapshots.id, input.ref.id));
     const expected = creatorProfileDescriptor(target);

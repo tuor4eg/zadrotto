@@ -578,9 +578,13 @@ export async function getTitleMetadata(
 
   // Connected book adapters persist full responses and reserve quota for every
   // HTTP request, including Open Library author dependencies.
-  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (["film", "series"].includes(input.mediaType) && input.provider === "tmdb"))) {
+  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (["film", "series"].includes(input.mediaType) && input.provider === "tmdb") || (input.mediaType === "comic" && input.provider === "comic-vine") || (input.mediaType === "roblox" && input.provider === "roblox"))) {
     try {
-      const fetchMetadata = input.mediaType === "series"
+      const fetchMetadata = input.mediaType === "roblox"
+        ? (await import("@/lib/providers/roblox-service")).fetchRobloxMetadata
+        : input.mediaType === "comic"
+        ? (await import("@/lib/providers/comic-vine-service")).fetchComicVineMetadata
+        : input.mediaType === "series"
         ? (await import("@/lib/providers/tmdb-series-service")).fetchTmdbSeriesMetadata
         : input.mediaType === "film"
         ? (await import("@/lib/providers/tmdb-film-service")).fetchTmdbFilmMetadata

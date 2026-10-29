@@ -1,4 +1,6 @@
+import { getSavedComicVineBundle, isComicVineSnapshotSupported } from "@/lib/providers/comic-vine-service";
 import { getSavedBggBundle, getBggMigrationComparison, isBggSnapshotSupported } from "@/lib/providers/bgg-service";
+import { getSavedRobloxBundle, isRobloxSnapshotSupported } from "@/lib/providers/roblox-service";
 import { bggSnapshotDiagnosticMessage, gameSnapshotDiagnosticMessage } from "@/lib/providers/snapshot-item-errors";
 import { getSavedGameBundle, getGameMigrationComparison, isGameSnapshotSupported } from "@/lib/providers/game-service";
 import { getSavedAniListCreatorSnapshot, getAniListCreatorMigrationComparison, isAniListCreatorSnapshotSupported } from "@/lib/providers/anilist-creators-service";
@@ -38,7 +40,7 @@ export default async function SnapshotPage({ params, searchParams }: {
     query.run ? getBookSnapshotRun(id, Number(query.run)) : null,
   ]);
   const outcome = run ? bookSnapshotRunStatus(run) : null;
-  const [savedPrimary, tmdbFilm, tmdbSeries, anime, game, boardgame] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id), isGameSnapshotSupported(id), isBggSnapshotSupported(id)]);
+  const [savedPrimary, tmdbFilm, tmdbSeries, anime, game, boardgame, comic, roblox] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id), isGameSnapshotSupported(id), isBggSnapshotSupported(id), isComicVineSnapshotSupported(id), isRobloxSnapshotSupported(id)]);
   let animeSnapshot: Awaited<ReturnType<typeof getSavedAniListCreatorSnapshot>> = null;
   if (anime && metadata?.sourceProvider && metadata.sourceExternalId) {
     try { animeSnapshot = await getSavedAniListCreatorSnapshot(metadata.sourceProvider, metadata.sourceExternalId); }
@@ -54,7 +56,17 @@ export default async function SnapshotPage({ params, searchParams }: {
     try { bggBundle = await getSavedBggBundle(metadata.sourceExternalId); }
     catch { /* Only a complete response can be transferred. */ }
   }
-  const primary = boardgame ? bggBundle?.primary ?? null : game ? gameBundle?.primary ?? null : anime ? animeSnapshot : savedPrimary;
+  let comicBundle: Awaited<ReturnType<typeof getSavedComicVineBundle>> | null = null;
+  if (comic && metadata?.sourceExternalId) {
+    try { comicBundle = await getSavedComicVineBundle(id, metadata.sourceExternalId); }
+    catch { /* Only linked, complete evidence for the current source is usable. */ }
+  }
+  let robloxBundle: Awaited<ReturnType<typeof getSavedRobloxBundle>> | null = null;
+  if (roblox && metadata?.sourceExternalId) {
+    try { robloxBundle = await getSavedRobloxBundle(metadata.sourceExternalId); }
+    catch { /* An incomplete snapshot cannot be processed. */ }
+  }
+  const primary = roblox ? robloxBundle?.primary ?? null : comic ? comicBundle?.primary ?? null : boardgame ? bggBundle?.primary ?? null : game ? gameBundle?.primary ?? null : anime ? animeSnapshot : savedPrimary;
   if (query.snapshot && (!Number.isSafeInteger(Number(query.snapshot)) || Number(query.snapshot) <= 0)) notFound();
   const selected = query.snapshot ? primary?.id === Number(query.snapshot) ? primary : await getRawEntitySnapshot(Number(query.snapshot), id) : null;
   if (query.snapshot && !selected) notFound();
@@ -63,7 +75,7 @@ export default async function SnapshotPage({ params, searchParams }: {
   let bggComparison: Awaited<ReturnType<typeof getBggMigrationComparison>> | null = null;
   let gameComparison: Awaited<ReturnType<typeof getGameMigrationComparison>> | null = null;
   let animeComparison: Awaited<ReturnType<typeof getAniListCreatorMigrationComparison>> | null = null;
-  const supported = boardgame || game || anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
+  const supported = roblox || comic || boardgame || game || anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
   if (primary && !outcome?.active && metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider)) {
     try {
       const bundle = await getSavedBookBundle(metadata.sourceProvider, metadata.sourceExternalId);
@@ -119,7 +131,8 @@ export default async function SnapshotPage({ params, searchParams }: {
           : <><strong>Сохранённых данных текущего источника пока нет.</strong> Начните с «Получить данные».</>}
     </Alert>
     {!supported && <Alert variant="warning">У записи не выбран поддерживаемый источник. Сначала выберите FantLab, Google Books, Open Library, TMDB для фильма или сериала, AniList/Jikan для аниме либо IGDB/RAWG для видеоигры или BGG для настольной игры в редакторе.</Alert>}
-    <ProviderSnapshotControls mediaItemId={id} provider={boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} showActions canProcess={Boolean(comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
+    {comicBundle && !comicBundle.issue && <Alert variant="warning">Данные первого выпуска отсутствуют. Существующие создатели выпуска сохранятся; повторите получение данных.</Alert>}
+    <ProviderSnapshotControls mediaItemId={id} provider={roblox ? "roblox" : comic ? "comic-vine" : boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={roblox ? "roblox" : comic ? "comic" : boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} showActions canProcess={Boolean(robloxBundle || comicBundle || comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
     <section id="comparison" className="space-y-3 scroll-mt-4">
       <h2 className="text-xl font-semibold">Сравнение с текущей записью</h2>
       {animeComparison ? <>

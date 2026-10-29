@@ -7,6 +7,7 @@ import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { CreatorSearch } from "./creators-search";
 import { CreatorCatalog } from "./creators-catalog";
+import { CreatorMediaTypeChips } from "./creator-media-type-chips";
 
 export const metadata = { title: "Создатели" };
 
@@ -23,6 +24,7 @@ type CreatorPageProps = {
     q?: string;
     letter?: string;
     type?: string;
+    role?: string | string[];
   }>;
 };
 
@@ -39,7 +41,11 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
   );
   const mediaTypes = await getPublicCreatorMediaTypeTabs();
   const selectedMediaType = mediaTypes.find(type => type.code === params.type)?.code ?? mediaTypes[0]?.code;
+  const requestedRoles = new Set((Array.isArray(params.role) ? params.role : [params.role ?? ""]).flatMap(value => value.split(",")).filter(Boolean));
+  const selectedRoles = (mediaTypes.find(type => type.code === selectedMediaType)?.roles ?? []).filter(role => requestedRoles.has(role.code)).map(role => role.code);
+  const selectedRoleParam = selectedRoles.length ? selectedRoles.join(",") : undefined;
   const creatorsPage = await getPublicCreatorsPage({
+    roles: selectedRoles,
     letter: params.letter,
     mediaType: selectedMediaType,
     page: parsePage(params.page),
@@ -51,48 +57,32 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
     q: searchQuery || undefined,
     letter: creatorsPage.selectedLetter,
     type: selectedMediaType,
+    role: selectedRoleParam,
   };
   const getLetterHref = (letter?: string) => {
     const nextParams = new URLSearchParams();
 
     if (pageSize !== DEFAULT_CREATORS_PAGE_SIZE) nextParams.set("pageSize", String(pageSize));
     if (selectedMediaType) nextParams.set("type", selectedMediaType);
+    if (selectedRoleParam) nextParams.set("role", selectedRoleParam);
     if (letter) nextParams.set("letter", letter);
 
     const queryString = nextParams.toString();
     return queryString ? `/creators?${queryString}` : "/creators";
   };
 
-  const getMediaTypeHref = (mediaType?: string) => {
-    const nextParams = new URLSearchParams();
-    if (mediaType) nextParams.set("type", mediaType);
-    if (searchQuery) nextParams.set("q", searchQuery);
-    if (pageSize !== DEFAULT_CREATORS_PAGE_SIZE) nextParams.set("pageSize", String(pageSize));
-    return nextParams.size ? `/creators?${nextParams}` : "/creators";
-  };
 
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex w-full flex-1">
-        <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden">
+        <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
             Создатели
           </h1>
-          <nav aria-label="Типы медиа создателей" className="mt-4 flex flex-wrap gap-2">
-            {mediaTypes.map(mediaType => {
-              return (
-              <Link key={mediaType.code} href={getMediaTypeHref(mediaType.code)}
-                aria-current={selectedMediaType === mediaType.code ? "page" : undefined}
-                className={`flex items-center gap-2 rounded-full border px-4 py-2 text-sm transition-colors ${selectedMediaType === mediaType.code ? "border-stone-900 bg-stone-900 text-stone-50" : "border-stone-300/80 bg-stone-50/60 text-stone-700 hover:border-stone-600"}`}>
-                {mediaType.name}
-                <span className="rounded-full bg-current/10 px-1.5 text-xs tabular-nums" aria-label={`Создателей: ${mediaType.creatorsCount}`}>{mediaType.creatorsCount}</span>
-              </Link>
-              );
-            })}
-          </nav>
+          <CreatorMediaTypeChips mediaTypes={mediaTypes} selectedMediaType={selectedMediaType} selectedRoles={selectedRoles} searchQuery={searchQuery} pageSize={pageSize !== DEFAULT_CREATORS_PAGE_SIZE ? pageSize : undefined} />
           <CreatorSearch searchQuery={searchQuery} />
           {!searchQuery && creatorsPage.availableLetters.length > 0 ? (
             <nav aria-label="Алфавит создателей" className="mt-4 flex flex-wrap gap-1.5">
@@ -120,12 +110,12 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
         {creatorsPage.items.length === 0 ? (
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-stone-300/60 p-6 text-sm text-stone-600">
             <span>
-              {searchQuery ? "По вашему запросу создатели не найдены." : selectedMediaType ? "В этом типе медиа пока нет создателей с опубликованными записями." : "Пока в архиве нет создателей."}
+              {searchQuery ? "По вашему запросу создатели не найдены." : selectedRoles.length ? "Для выбранных ролей пока нет создателей с опубликованными записями." : selectedMediaType ? "В этом типе медиа пока нет создателей с опубликованными записями." : "Пока в архиве нет создателей."}
             </span>
             {searchQuery ? (
               <Link
                 className="font-mono text-xs font-semibold uppercase tracking-[0.12em] text-stone-700 underline decoration-stone-400 underline-offset-4 hover:text-stone-950"
-                href={selectedMediaType ? `/creators?type=${encodeURIComponent(selectedMediaType)}` : "/creators"}
+                href={selectedMediaType ? `/creators?type=${encodeURIComponent(selectedMediaType)}${selectedRoleParam ? `&role=${encodeURIComponent(selectedRoleParam)}` : ""}` : "/creators"}
               >
                 Сбросить поиск
               </Link>

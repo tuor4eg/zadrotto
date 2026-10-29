@@ -1,3 +1,7 @@
+import { syncComicVineCreators } from "./comic-vine-creators";
+import { syncRobloxCreator } from "./roblox-creators";
+import { prepareRobloxSnapshotReferences } from "@/lib/providers/roblox-service";
+import type { ComicVineCreatorReference } from "@/lib/providers/comic-vine-adapter";
 import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { getBggSnapshotFacts } from "@/lib/providers/bgg-service";
 import { getGameSnapshotFacts } from "@/lib/providers/game-service";
@@ -13,7 +17,7 @@ export { CreatorRequestError } from "@/lib/creators/creator-request-error";
 import { syncTmdbFilmDirectors } from "./tmdb-directors";
 import { isTmdbPersonId } from "@/lib/creators/tmdb-directors";
 import { syncTmdbFilmCompanies } from "./tmdb-companies";
-import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
+import { lockProviderSnapshotReferences, withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { getWorkingBookPublishers } from "./book-publisher-roster";
 import { syncFantlabBookContributors, syncBookPublisherContributors, resolveFantlabBookRequest, removeFantlabBookBinding } from "./book-contributors";
 import { clearDeletedEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
@@ -27,11 +31,11 @@ import { createJobRun } from "@/db/queries/jobs";
 import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, creatorLogoCandidates, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns } from "@/db/schema";
+import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, creatorLogoCandidates, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns, providerSnapshots, providerSnapshotLinks } from "@/db/schema";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { extractExternalCreators, extractFantlabCreatorReferences } from "@/lib/media/creators";
 import { pruneEntryCreators, type CreatorTransaction } from "./creators";
-const isOrganizationProvider = (provider: unknown) => provider === "tmdb" || provider === "anilist" || isGameCompanyProvider(provider);
+const isOrganizationProvider = (provider: unknown) => provider === "comic-vine" || provider === "tmdb" || provider === "anilist" || provider === "roblox" || isGameCompanyProvider(provider);
 export const CREATOR_REQUEST_JOB_TYPE = "media.creator-request-apply";
 function key(provider: string, mediaType: string, name: string) {
     return and(eq(creatorRequests.provider, provider), eq(creatorRequests.mediaType, mediaType), eq(creatorRequests.normalizedExternalCreatorName, name), isNull(creatorRequests.externalCreatorId));
@@ -349,9 +353,9 @@ export async function resolveCreatorRequest(input: {
         const decisionInput = input.autoApprove && !input.animeCompanyLogoEvidence
             ? { ...input, ...await prepareAutomaticCreatorDecision(tx, request) }
             : input;
-        if (((request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) || (request.provider === "anilist" && isAniListPersonId(request.externalCreatorId)))) {
+        if (((request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) || (request.provider === "anilist" && isAniListPersonId(request.externalCreatorId)) || (request.provider === "comic-vine" && /^person:[1-9]\d*$/.test(request.externalCreatorId ?? "")) || (request.provider === "roblox" && /^user:[1-9]\d*$/.test(request.externalCreatorId ?? "")))) {
             const resolvedInput = { ...decisionInput };
-            const externalId = request.externalCreatorId;
+            const externalId = request.externalCreatorId!;
             const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, externalId), eq(providerCreatorBindings.active, true)));
 
             if (resolvedInput.decision === "exclude") {
@@ -367,11 +371,12 @@ export async function resolveCreatorRequest(input: {
                 const [creator] = creatorId ? await tx.select({ id: creators.id, type: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, creatorId)).for("update", { of: creators }) : [];
                 if (!creator || creator.type !== "person") throw new CreatorRequestError(decisionInput.autoApprove ? "auto-skip" : "invalid-type", "Выберите создателя типа person.");
                 if (binding && binding.creatorId !== creator.id) throw new CreatorRequestError("identity-conflict", "ID провайдера уже принадлежит другому Creator.");
-                const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.creatorId, creator.id), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like 'person:%'`, sql`${providerCreatorBindings.externalCreatorId} <> ${externalId}`)).limit(1);
+                const personPrefix = request.provider === "roblox" ? "user:%" : "person:%";
+                const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.creatorId, creator.id), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like ${personPrefix}`, sql`${providerCreatorBindings.externalCreatorId} <> ${externalId}`)).limit(1);
                 if (conflict) throw new CreatorRequestError(decisionInput.autoApprove ? "auto-skip" : "tmdb-person-conflict", "У Creator уже есть другой person ID провайдера.");
                 await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider), eq(providerCreatorExclusions.externalCreatorId, externalId)));
                 if (!binding) await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
-                await enqueueCreatorImageFill(tx, creator.id);
+                if (request.provider !== "comic-vine" || resolvedInput.decision === "create") await enqueueCreatorImageFill(tx, creator.id);
             }
             await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: decisionInput.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));
             const queued = await enqueue(tx, request.id, decisionInput.adminId);
@@ -539,7 +544,7 @@ export async function applyCreatorRequest(requestId: number, input: {
             const company = isGameCompanyProvider(request.provider) && request.externalCreatorId !== null;
             const items = company
                 ? (await getGameCompanyRosterBatch(request.provider, request.externalCreatorId!, afterId)).map(row => ({ id: row.mediaItemId }))
-                : request.decision === null && request.provider !== "tmdb" && request.provider !== "anilist"
+                : request.decision === null && request.provider !== "tmdb" && request.provider !== "anilist" && request.provider !== "roblox"
                 ? await db.select({ id: mediaItems.id }).from(mediaItems).innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id)).where(and(eq(mediaItems.mediaType, request.mediaType), eq(mediaItemMetadata.sourceProvider, request.provider), gt(mediaItems.id, afterId))).orderBy(asc(mediaItems.id)).limit(100)
                 : await db.selectDistinct({ id: creatorRequestMediaItems.mediaItemId }).from(creatorRequestMediaItems).where(and(eq(creatorRequestMediaItems.requestId, requestId), gt(creatorRequestMediaItems.mediaItemId, afterId))).orderBy(asc(creatorRequestMediaItems.mediaItemId)).limit(100);
             if (!items.length)
@@ -580,6 +585,22 @@ export async function applyCreatorRequest(requestId: number, input: {
                     if (!entry || !metadata)
                         return;
                     if (metadata.sourceProvider!==sourceBefore?.provider || metadata.sourceExternalId!==sourceBefore?.externalId) return;
+                    if (entry.mediaType === "roblox" && metadata.sourceProvider === "roblox" && metadata.sourceExternalId) {
+                        const [linked] = await tx.select({ id: providerSnapshots.id, payloadHash: providerSnapshots.payloadHash }).from(providerSnapshotLinks)
+                          .innerJoin(providerSnapshots, eq(providerSnapshots.id, providerSnapshotLinks.snapshotId))
+                          .where(and(eq(providerSnapshotLinks.entityType, "media-item"), eq(providerSnapshotLinks.entityId, String(item.id)), eq(providerSnapshotLinks.purpose, "primary"), eq(providerSnapshots.providerCode, "roblox"), eq(providerSnapshots.externalId, metadata.sourceExternalId)));
+                        if (!linked) throw new Error("PROVIDER_SNAPSHOT_MISSING");
+                        await lockProviderSnapshotReferences(tx, [linked]);
+                        const prepared = await prepareRobloxSnapshotReferences(metadata.sourceExternalId, [linked], tx);
+                        await syncRobloxCreator(tx, item.id, prepared.projection.creator, false);
+                        return;
+                    }
+                    if (entry.mediaType === "comic" && metadata.sourceProvider === "comic-vine") {
+                        const publisher = Array.isArray(metadata.facts.comicVinePublisherCreators) ? metadata.facts.comicVinePublisherCreators as ComicVineCreatorReference[] : [];
+                        const people = Array.isArray(metadata.facts.comicVinePersonCreators) ? metadata.facts.comicVinePersonCreators as ComicVineCreatorReference[] : null;
+                        await syncComicVineCreators(tx, item.id, publisher, people, false);
+                        return;
+                    }
                     if (entry.mediaType === "boardgame" && metadata.sourceProvider === "bgg") {
                         const facts = await getBggSnapshotFacts({...metadata,mediaItemId:item.id,mediaType:entry.mediaType},tx);
                         await syncBggCreators(tx,item.id,facts);
@@ -661,7 +682,7 @@ export async function reopenCreatorBinding(input: { bindingId: number; adminId: 
         const [binding] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
         if (!binding || !binding.active || (binding.provider !== "bgg" && binding.provider !== "fantlab" && !isOrganizationProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
         const name = binding.externalCreatorName ?? binding.externalCreatorId;
-        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "anilist" ? "anime" : binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
+        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "roblox" ? "roblox" : binding.provider === "comic-vine" ? "comic" : binding.provider === "anilist" ? "anime" : binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
         const [request] = await tx.select().from(creatorRequests).where(gameCompanyRequestKey(binding.provider, binding.externalCreatorId)).for("update");
         await assertIdle(tx, request);
         // Recheck the binding after request lock; a concurrent administrator may have remapped it.

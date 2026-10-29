@@ -1,3 +1,4 @@
+import { getComicArtistWork } from "@/db/queries/comic-artist-work";
 import { getAnimeCreatorDisplay } from "@/db/queries/anilist-creator-display";
 import { getSeriesCreatorDisplay } from "@/db/queries/tmdb-series-display";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
@@ -108,7 +109,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators] = await Promise.all([
+  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork] = await Promise.all([
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -128,6 +129,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     item.mediaType === "film" ? getFilmDirectorDisplay(item.id) : Promise.resolve(undefined),
     item.mediaType === "series" ? getSeriesCreatorDisplay(item.id) : Promise.resolve(undefined),
     item.mediaType === "anime" ? getAnimeCreatorDisplay(item.id) : Promise.resolve(undefined),
+    item.mediaType === "comic" ? getComicArtistWork(item.id) : Promise.resolve(undefined),
   ]);
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -137,7 +139,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
-          item={{ ...item, description: publicDescription, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators }}
+          item={{ ...item, description: publicDescription, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork }}
           variant="archive"
           headerActions={
             headerState.currentAdminUser ? (

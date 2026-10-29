@@ -1,4 +1,5 @@
 import { MediaItemPlatformLinks } from "@/components/archive/media-item-platform-links";
+import { RobloxCreatorDetails } from "@/components/archive/roblox-creator-details";
 import type { MediaItemPlatform } from "@/lib/media/platforms";
 import { MediaItemWriterLinks, type WriterCreatorLink } from "@/components/archive/media-item-creator-links";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
@@ -35,6 +36,7 @@ type ArchiveMediaItemIdentityProps = {
     genres: MediaItemGenre[]
     platforms?: MediaItemPlatform[]
     writerCreators?: WriterCreatorLink[]
+    entryCreators?: { id?: number; name: string; slug?: string; roleCode: string }[]
     originalTitle: string | null
     releaseYear: number | null
     title: string
@@ -154,6 +156,7 @@ export function ArchiveMediaItemIdentity({
           <MediaItemWriterLinks creators={item.writerCreators} />
         </> : null}
         {item.mediaType === "game" && item.platforms?.length ? <><span className="mx-1.5">•</span><MediaItemPlatformLinks platforms={item.platforms} /></> : null}
+        {item.mediaType === "roblox" ? <RobloxCreatorDetails creators={item.entryCreators} facts={item.metadataFacts} separatorBefore={infoLabels.length > 0} /> : null}
         {item.genres.length > 0 ? <>
           {infoLabels.length > 0 ? <span className="mx-1.5">•</span> : null}
           <MediaItemGenreLinks genres={item.genres} />
