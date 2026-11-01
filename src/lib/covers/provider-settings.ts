@@ -6,6 +6,7 @@ export type TitleSearchMode = (typeof TITLE_SEARCH_MODES)[number];
 
 // This module is also consumed by client forms. Keep server adapters out of its import graph.
 const DEFAULT_PROVIDER_CATALOG = [
+  { code: "mangaupdates", mediaTypes: ["manga"] },
   { code: "bgg", mediaTypes: ["boardgame"] },
   { code: "tmdb", mediaTypes: ["film"] },
   { code: "tmdb", mediaTypes: ["series"] },
@@ -31,6 +32,7 @@ export type CoverProviderMediaSetting = {
 };
 
 export const COVER_PROVIDER_LABELS = {
+  mangaupdates: "MangaUpdates",
   bgg: "BoardGameGeek",
   tmdb: "TMDB",
   "comic-vine": "ComicVine",

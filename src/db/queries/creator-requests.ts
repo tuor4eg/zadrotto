@@ -1,3 +1,5 @@
+import { syncMangaUpdatesCreators } from "./mangaupdates-creators";
+import { prepareMangaUpdatesSnapshotReferences } from "@/lib/providers/mangaupdates-service";
 import { syncComicVineCreators } from "./comic-vine-creators";
 import { syncRobloxCreator } from "./roblox-creators";
 import { prepareRobloxSnapshotReferences } from "@/lib/providers/roblox-service";
@@ -35,7 +37,7 @@ import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries,
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { extractExternalCreators, extractFantlabCreatorReferences } from "@/lib/media/creators";
 import { pruneEntryCreators, type CreatorTransaction } from "./creators";
-const isOrganizationProvider = (provider: unknown) => provider === "comic-vine" || provider === "tmdb" || provider === "anilist" || provider === "roblox" || isGameCompanyProvider(provider);
+const isOrganizationProvider = (provider: unknown) => provider === "comic-vine" || provider === "mangaupdates" || provider === "tmdb" || provider === "anilist" || provider === "roblox" || isGameCompanyProvider(provider);
 export const CREATOR_REQUEST_JOB_TYPE = "media.creator-request-apply";
 function key(provider: string, mediaType: string, name: string) {
     return and(eq(creatorRequests.provider, provider), eq(creatorRequests.mediaType, mediaType), eq(creatorRequests.normalizedExternalCreatorName, name), isNull(creatorRequests.externalCreatorId));
@@ -353,7 +355,7 @@ export async function resolveCreatorRequest(input: {
         const decisionInput = input.autoApprove && !input.animeCompanyLogoEvidence
             ? { ...input, ...await prepareAutomaticCreatorDecision(tx, request) }
             : input;
-        if (((request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) || (request.provider === "anilist" && isAniListPersonId(request.externalCreatorId)) || (request.provider === "comic-vine" && /^person:[1-9]\d*$/.test(request.externalCreatorId ?? "")) || (request.provider === "roblox" && /^user:[1-9]\d*$/.test(request.externalCreatorId ?? "")))) {
+        if (((request.provider === "tmdb" && isTmdbPersonId(request.externalCreatorId)) || (request.provider === "anilist" && isAniListPersonId(request.externalCreatorId)) || ((request.provider === "comic-vine" || request.provider === "mangaupdates") && /^person:[1-9]\d*$/.test(request.externalCreatorId ?? "")) || (request.provider === "roblox" && /^user:[1-9]\d*$/.test(request.externalCreatorId ?? "")))) {
             const resolvedInput = { ...decisionInput };
             const externalId = request.externalCreatorId!;
             const [binding] = await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.externalCreatorId, externalId), eq(providerCreatorBindings.active, true)));
@@ -595,6 +597,16 @@ export async function applyCreatorRequest(requestId: number, input: {
                         await syncRobloxCreator(tx, item.id, prepared.projection.creator, false);
                         return;
                     }
+                    if (entry.mediaType === "manga" && metadata.sourceProvider === "mangaupdates" && metadata.sourceExternalId) {
+                        const [linked] = await tx.select({ id: providerSnapshots.id, payloadHash: providerSnapshots.payloadHash }).from(providerSnapshotLinks)
+                            .innerJoin(providerSnapshots, eq(providerSnapshots.id, providerSnapshotLinks.snapshotId))
+                            .where(and(eq(providerSnapshotLinks.entityType, "media-item"), eq(providerSnapshotLinks.entityId, String(item.id)), eq(providerSnapshotLinks.purpose, "primary"), eq(providerSnapshots.providerCode, "mangaupdates"), eq(providerSnapshots.externalId, metadata.sourceExternalId)));
+                        if (!linked) throw new Error("PROVIDER_SNAPSHOT_MISSING");
+                        await lockProviderSnapshotReferences(tx, [linked]);
+                        const prepared = await prepareMangaUpdatesSnapshotReferences(metadata.sourceExternalId, [linked], tx);
+                        await syncMangaUpdatesCreators(tx, item.id, prepared.projection.creators, false);
+                        return;
+                    }
                     if (entry.mediaType === "comic" && metadata.sourceProvider === "comic-vine") {
                         const publisher = Array.isArray(metadata.facts.comicVinePublisherCreators) ? metadata.facts.comicVinePublisherCreators as ComicVineCreatorReference[] : [];
                         const people = Array.isArray(metadata.facts.comicVinePersonCreators) ? metadata.facts.comicVinePersonCreators as ComicVineCreatorReference[] : null;
@@ -682,7 +694,7 @@ export async function reopenCreatorBinding(input: { bindingId: number; adminId: 
         const [binding] = await tx.select().from(providerCreatorBindings).where(eq(providerCreatorBindings.id, input.bindingId));
         if (!binding || !binding.active || (binding.provider !== "bgg" && binding.provider !== "fantlab" && !isOrganizationProvider(binding.provider))) throw new CreatorRequestError("not-found", "Привязка не найдена.");
         const name = binding.externalCreatorName ?? binding.externalCreatorId;
-        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "roblox" ? "roblox" : binding.provider === "comic-vine" ? "comic" : binding.provider === "anilist" ? "anime" : binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
+        await tx.insert(creatorRequests).values({ provider: binding.provider, externalCreatorId: binding.externalCreatorId, mediaType: binding.provider === "roblox" ? "roblox" : binding.provider === "comic-vine" ? "comic" : binding.provider === "mangaupdates" ? "manga" : binding.provider === "anilist" ? "anime" : binding.provider === "bgg" ? "boardgame" : binding.provider === "fantlab" ? "book" : binding.provider === "tmdb" ? (binding.externalCreatorId.startsWith("network:") ? "series" : "film") : "game", externalCreatorName: name, normalizedExternalCreatorName: normalizeSearchText(name) }).onConflictDoNothing();
         const [request] = await tx.select().from(creatorRequests).where(gameCompanyRequestKey(binding.provider, binding.externalCreatorId)).for("update");
         await assertIdle(tx, request);
         // Recheck the binding after request lock; a concurrent administrator may have remapped it.

@@ -13,6 +13,7 @@ import { Tooltip } from "@/components/ui/tooltip";
 import { EmptyState, PageHeader } from "@/app/admin/(protected)/admin-ui";
 import {
   deleteAdminMediaItemAction,
+  setAdminMediaMetadataSearchAction,
   updateAdminMediaItemAction,
   updateAdminMediaItemPublicationStatusAction,
 } from "@/app/admin/(protected)/media/actions";
@@ -377,6 +378,16 @@ export default async function EditAdminMediaPage({
             )}
           </div>
 
+          <form action={setAdminMediaMetadataSearchAction} className="grid gap-3 border-t border-stone-100 pt-4">
+            <input type="hidden" name="mediaItemId" value={item.id} />
+            <label className="flex items-start gap-2 text-sm font-medium">
+              <input type="checkbox" name="metadataSearchDisabled" defaultChecked={item.metadataSearchDisabled} className="mt-1" />
+              Не искать метаданные
+            </label>
+            <p className="text-xs text-stone-500">Отключает фоновое заполнение и обновление метаданных. Сохранённые данные остаются, ручной поиск доступен.</p>
+            <Button type="submit" variant="outline">Сохранить настройку</Button>
+          </form>
+
           <div className="space-y-2 text-sm text-stone-600">
             {item.authorName ? (
               <p>Автор: {item.authorName}</p>
@@ -388,7 +399,7 @@ export default async function EditAdminMediaPage({
           </div>
         </CardContent>
       </Card>
-      {item.mediaType === "book" || item.mediaType === "film" || item.mediaType === "series" || item.mediaType === "anime" || item.mediaType === "game" || item.mediaType === "boardgame" ? (
+      {item.mediaType === "book" || item.mediaType === "film" || item.mediaType === "series" || item.mediaType === "anime" || item.mediaType === "game" || item.mediaType === "boardgame" || item.mediaType === "comic" || item.mediaType === "manga" || item.mediaType === "roblox" ? (
         <div className="xl:col-span-2">
           <ProviderSnapshotControls mediaItemId={mediaItemId} mediaType={item.mediaType} />
         </div>

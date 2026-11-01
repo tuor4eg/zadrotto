@@ -1,3 +1,4 @@
+import { comicVineIssuesJobHandler } from "@/lib/providers/comic-vine-issues-job";
 import { anilistCreatorApprovalHandler } from "@/lib/creators/anilist-creator-jobs";
 import { creatorAutoApprovalHandler } from "@/lib/creators/auto-approval-job";
 import { creatorNameLocalizationHandler } from "@/lib/creators/name-localization-job";
@@ -29,7 +30,8 @@ import { deliverPendingNotificationTransports } from "@/lib/notifications/outbox
 import { isMediaTypeCode } from "@/lib/media/types";
 import { backfillMediaMetadata, type MetadataBackfillPayload } from "@/lib/media/metadata-backfill";
 import { refreshStaleMediaMetadata, type MetadataRefreshPayload } from "@/lib/media/metadata-refresh";
-import { backfillAnimeFromShikimori } from "@/lib/media/anime-shikimori-backfill";
+import { backfillFromShikimori } from "@/lib/media/shikimori-backfill";
+import { parseShikimoriBackfillPayload, type ShikimoriBackfillPayload } from "@/lib/media/manga-shikimori-model";
 import { generateEditorialSummary, sweepEditorialSummaries } from "@/lib/media/editorial-summary-jobs";
 import { EDITORIAL_SUMMARY_GENERATE_TYPE, EDITORIAL_SUMMARY_SWEEP_TYPE } from "@/lib/media/editorial-summary";
 import { cleanupAdminExports, generateAdminExport } from "@/lib/admin-exports/generate";
@@ -321,14 +323,15 @@ const metadataRefreshHandler: JobHandlerDefinition<MetadataRefreshPayload> = {
   },
 };
 
-const animeShikimoriBackfillHandler: JobHandlerDefinition<Record<string, never>> = {
+const animeShikimoriBackfillHandler: JobHandlerDefinition<ShikimoriBackfillPayload> = {
   type: "media.anime-shikimori-backfill",
-  label: "Русские названия и описания аниме",
-  defaultMaxAttempts: 1,
-  defaultTimeoutSeconds: 60,
-  parsePayload: parseEmptyPayload,
-  async execute({ runId, lockToken, signal }) {
-    await backfillAnimeFromShikimori(jobGuard(runId, lockToken), signal);
+  label: "Русские названия и описания аниме и манги",
+  defaultMaxAttempts: 3,
+  defaultTimeoutSeconds: 300,
+  parsePayload: parseShikimoriBackfillPayload,
+  async execute({ payload, runId, lockToken, signal }) {
+    if (!lockToken) throw new JobError("lease-lost", "Запуск задачи не имеет действующей блокировки.", { retryable: false });
+    await backfillFromShikimori(payload, { runId, lockToken }, signal);
   },
 };
 
@@ -567,6 +570,7 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
 export const jobHandlerRegistry = createJobHandlerRegistry([
   creatorNameLocalizationHandler,
   providerSnapshotJobHandler,
+  comicVineIssuesJobHandler,
   creatorImageFillHandler,
   creatorImagesBackfillHandler,
   creatorImageRefreshHandler,

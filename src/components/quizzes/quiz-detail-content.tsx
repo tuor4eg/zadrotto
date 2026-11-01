@@ -17,7 +17,7 @@ export function QuizDetailContent({ quiz, participant, finished, unavailableMedi
 }) {
   const [showRules, setShowRules] = useState(false);
   const router = useRouter();
-  return <div className={`flex min-h-0 flex-col ${showRules ? "overflow-y-auto" : ""}`}>
+  return <div className={`flex min-h-0 min-w-0 flex-col ${showRules ? "overflow-y-auto" : ""}`}>
     <div className="relative mb-5 shrink-0 px-12 text-center">
       <button type="button" onClick={() => setShowRules(value => !value)}
         aria-label={showRules ? "Назад к квизу" : "Открыть правила квиза"}
@@ -26,8 +26,8 @@ export function QuizDetailContent({ quiz, participant, finished, unavailableMedi
       </button>
       <h1 id="quiz-title" className="media-carrier-font-pc-steam text-center text-2xl sm:text-3xl">{showRules ? "Как играть" : "Квиз"}</h1>
     </div>
-    {showRules ? <QuizRules /> : <div className="relative min-h-0 flex-1 px-8 sm:px-10">
-      <div className="pointer-events-none absolute inset-x-0 top-1/2 z-10 flex -translate-y-1/2 justify-between">
+    {showRules ? <QuizRules /> : <div className="relative min-h-0 min-w-0 flex-1 lg:overflow-y-auto lg:px-10">
+      <div className="pointer-events-none mb-3 flex justify-between lg:absolute lg:inset-x-0 lg:top-1/2 lg:z-10 lg:mb-0 lg:-translate-y-1/2">
         <CarouselArrowButton direction="previous" size="default" className="pointer-events-auto disabled:invisible" aria-label="Предыдущий квиз" disabled={adjacent.previousId === null} onClick={() => router.push(`/quizzes/${adjacent.previousId}`)} />
         <CarouselArrowButton direction="next" size="default" className="pointer-events-auto disabled:invisible" aria-label="Следующий квиз" disabled={adjacent.nextId === null} onClick={() => router.push(`/quizzes/${adjacent.nextId}`)} />
       </div>

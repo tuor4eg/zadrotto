@@ -6,7 +6,6 @@ import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
-import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
 import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
 
@@ -19,18 +18,12 @@ type ArchiveRiddleProps = {
 
 export function ArchiveRiddle({
   authenticated,
-  isCompleted,
   quiz,
   size = "default",
 }: ArchiveRiddleProps) {
   const router = useRouter();
-  const { quizParticipant } = useExternalInterface();
   const [loginOpen, setLoginOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
-  const isLocallyCompleted = Boolean(
-    quizParticipant && quizParticipant.quizId === quiz?.id && quizParticipant.completed,
-  );
-  const quizCompleted = isCompleted || isLocallyCompleted;
 
   function openQuiz() {
     if (!quiz) return;
@@ -75,7 +68,7 @@ export function ArchiveRiddle({
       role={quiz ? "link" : undefined}
       tabIndex={quiz ? 0 : undefined}
     >
-      <div className="flex flex-wrap shrink-0 items-start gap-x-2 gap-y-1 md:h-8 sm:flex-nowrap">
+      <div className="flex flex-wrap shrink-0 items-baseline gap-x-2 gap-y-1 md:h-8 sm:flex-nowrap">
           <CircleHelp aria-hidden="true" className="mt-0.5 size-5 shrink-0 text-red-950/70" />
           <h2 id="main-archive-riddle" className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">
             Загадка архива
@@ -92,7 +85,7 @@ export function ArchiveRiddle({
             <p className="media-carrier-font-pc-steam mt-1 shrink-0 text-center whitespace-pre-wrap text-xl leading-7 text-stone-900">
               {quiz.question?.trim() || "Ответ спрятан среди записей архива."}
             </p>
-            <div className="relative flex min-h-0 flex-1 items-center justify-center py-2">
+            <div className="relative mt-4 flex min-h-0 flex-1 items-center justify-center py-2">
               {quiz.imageUrl ? (
                 <div
                   className={`flex max-w-[90%] items-center justify-center ${imageMaxHeightClassName}`}
@@ -106,11 +99,6 @@ export function ArchiveRiddle({
                 </div>
               ) : null}
             </div>
-            {quizCompleted ? (
-              <p className="mt-auto font-mono text-[10px] uppercase tracking-wider text-stone-500">
-                Загадка уже разгадана
-              </p>
-            ) : null}
           </>
         ) : (
           <QuizNoActiveState compact={size === "default"} />

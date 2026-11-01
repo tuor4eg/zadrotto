@@ -6,8 +6,8 @@ export function QuizResult({ participant }: { participant: QuizParticipantState 
   const correct = participant.outcome === "correct";
 
   return (
-    <div className="media-carrier-font-pc-steam flex h-[90px] w-full shrink-0 items-center gap-4 rounded-md border border-amber-800/25 bg-amber-700/5 px-4 py-3 text-left sm:gap-6 sm:px-6">
-      <div aria-hidden="true" className="relative grid h-16 w-24 shrink-0 place-items-center sm:w-32">
+    <div className="media-carrier-font-pc-steam flex min-h-[90px] min-w-0 w-full shrink-0 items-center gap-3 rounded-md border border-amber-800/25 bg-amber-700/5 px-4 py-3 text-left sm:gap-6 sm:px-6">
+      <div aria-hidden="true" className="relative grid h-16 w-16 shrink-0 place-items-center sm:w-32">
         <svg viewBox="0 0 128 72" className="absolute inset-0 h-full w-full fill-amber-700/35" focusable="false">
           {[false, true].map((mirrored) => (
             <g key={String(mirrored)} transform={mirrored ? "translate(128 0) scale(-1 1)" : undefined}>
@@ -27,10 +27,10 @@ export function QuizResult({ participant }: { participant: QuizParticipantState 
       </div>
       <div className="min-w-0">
         <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-amber-950/55">Ваш результат</p>
-        <p className="mt-0.5 truncate text-lg leading-tight text-stone-950 sm:text-2xl">
+        <p className="mt-0.5 break-words text-lg leading-tight text-stone-950 sm:text-2xl">
           {correct ? "Вы ответили правильно!" : "Вы исчерпали попытки"}
         </p>
-        <p className="mt-1 truncate text-sm leading-snug text-stone-800 sm:text-lg">
+        <p className="mt-1 break-words text-sm leading-snug text-stone-800 sm:text-lg">
           {correct ? `Очков: ${participant.points}` : "Повезёт в следующий раз"}
         </p>
       </div>

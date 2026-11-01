@@ -3,6 +3,7 @@ import { fetchJson, fetchSearchJson, normalizeSearchQuery, ProviderHttpError } f
 import { fetchAniList, aniListRetryAfterSeconds } from "@/lib/covers/anilist-request";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { sanitizeShikimoriDescription } from "@/lib/media/shikimori-description";
+import { ANILIST_MEDIA_FIELDS } from "@/lib/providers/anilist-metadata-adapter";
 
 type AniListMedia = {
   id?: number;
@@ -59,38 +60,6 @@ type ShikimoriResponse = {
 
 const ANILIST_URL = new URL("https://graphql.anilist.co");
 const SHIKIMORI_URL = new URL("https://shikimori.io/api/graphql");
-
-const ANILIST_MEDIA_FIELDS = `
-  id
-  idMal
-  title {
-    english
-    romaji
-    native
-  }
-  description(asHtml: false)
-  coverImage {
-    extraLarge
-    large
-    medium
-  }
-  siteUrl
-  startDate {
-    year
-  }
-  seasonYear
-  popularity
-  episodes
-  duration
-  format
-  genres
-  status
-  studios {
-    nodes {
-      name
-    }
-  }
-`;
 
 export type AniListShikimoriEnrichmentResult =
   | { kind: "terminal"; description: string | null; russian: string | null; status: "enriched" | "no-mal-id" | "not-found" }
@@ -427,9 +396,10 @@ const anilistProvider: MediaProvider = {
     return candidates.slice(0, options.candidateLimit);
   },
 };
-return { provider: anilistProvider, getAniListShikimoriEnrichment };
+return { provider: anilistProvider, getAniListShikimoriEnrichment, getShikimoriAnime };
 }
 
 const client = createAniListClient();
 export const anilistProvider = client.provider;
 export const getAniListShikimoriEnrichment = client.getAniListShikimoriEnrichment;
+export const getShikimoriAnime = client.getShikimoriAnime;

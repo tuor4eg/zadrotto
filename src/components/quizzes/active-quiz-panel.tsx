@@ -27,18 +27,18 @@ export function ActiveQuizPanel({
   quiz: ActiveQuiz;
 }) {
   return (
-    <div className={`relative flex min-h-0 flex-col items-center gap-3 pb-3 text-center ${variant === "page" && quiz.imageUrl ? `lg:grid lg:h-full lg:content-start lg:justify-items-center ${quiz.question ? "lg:grid-rows-[auto_minmax(0,max-content)_auto]" : "lg:grid-rows-[minmax(0,max-content)_auto]"}` : ""}`}>
+    <div className={`relative flex min-h-0 min-w-0 flex-col items-center gap-3 pb-3 text-center ${variant === "page" && quiz.imageUrl ? `lg:grid lg:h-full lg:min-h-[360px] lg:justify-items-center ${quiz.question ? "lg:grid-rows-[auto_minmax(0,1fr)_auto]" : "lg:grid-rows-[minmax(0,1fr)_auto]"}` : ""}`}>
       {quiz.question ? (
-        <p className="whitespace-pre-wrap text-lg">{quiz.question}</p>
+        <p className="w-full break-words whitespace-pre-wrap text-lg">{quiz.question}</p>
       ) : null}
       {quiz.imageUrl ? (
-        <div className={variant === "page" ? "w-full lg:grid lg:min-h-0 lg:place-items-center" : "w-full"}>
-        {/* Protected quiz images need browser credentials and retain their intrinsic size. */}
+        <div className={variant === "page" ? "relative w-full lg:h-full lg:min-h-0" : "w-full"}>
+        {/* Protected quiz images need browser credentials. On desktop the image fits its grid row. */}
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={quiz.imageUrl} alt="Изображение к вопросу" className={`mx-auto h-auto w-auto max-w-full rounded-md object-contain ${variant === "page" ? "max-h-[min(50dvh,32rem)] lg:min-h-0 lg:max-h-full" : "max-h-[min(42dvh,22rem)]"}`} />
+        <img src={quiz.imageUrl} alt="Изображение к вопросу" className={`mx-auto h-auto w-auto max-w-full rounded-md object-contain ${variant === "page" ? "max-h-[min(50dvh,32rem)] lg:absolute lg:inset-0 lg:h-full lg:w-full lg:max-h-full" : "max-h-[min(42dvh,22rem)]"}`} />
         </div>
       ) : null}
-      <div className="grid w-full shrink-0 justify-items-center gap-3">
+      <div className="grid min-w-0 w-full shrink-0 justify-items-center gap-3">
         <QuizAnswerReveal key={quiz.id} quizId={quiz.id} endsAt={quiz.endsAt} solved={participant?.outcome === "correct"} />
         {participant?.completed ? (
           <QuizResult participant={participant} />

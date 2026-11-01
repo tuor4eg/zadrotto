@@ -4,6 +4,7 @@ export type SnapshotItemError = { id: number; code: string; targetExternalId?: s
 
 export function gameSnapshotDiagnosticMessage(code: string) {
   const messages: Record<string, string> = {
+    "comic-issue-list-incomplete": "В снимке тома нет полного списка выпусков. Обновите снимок Comic Vine и создайте новый запуск.",
     "genres-differ": "Состав жанров в снимке отличается от прежних данных источника.",
     "platforms-differ": "Состав платформ в снимке отличается от прежних данных источника.",
     "companies-differ": "Состав разработчиков или издателей отличается либо ещё не подтверждён сохранёнными данными.",
@@ -72,6 +73,7 @@ export function snapshotItemError(id: number, error: unknown): SnapshotItemError
     "CREATOR_BINDING_MISSING": "missing-binding", "CREATOR_BINDING_AMBIGUOUS": "ambiguous-binding",
     "SNAPSHOT_ENTITY_NOT_FOUND": "creator-missing", "INVALID_CREATOR_SNAPSHOT": "invalid-provider-response",
     "PROVIDER_SOURCE_CHANGED": "source-changed", "provider-disabled": "provider-disabled", "migration-difference": "migration-difference",
+    "INCOMPLETE_COMIC_VINE_ISSUE_LIST": "comic-issue-list-incomplete",
     "INCOMPLETE_PROVIDER_SNAPSHOTS": "incomplete-snapshots", "PROVIDER_SNAPSHOT_MISSING": "missing-snapshot",
     "PROVIDER_SNAPSHOT_CHANGED": "snapshot-changed",
     "ANILIST_MEDIA_MISSING": "anilist-media-missing", "AMBIGUOUS_ANILIST_SNAPSHOTS": "anilist-ambiguous",

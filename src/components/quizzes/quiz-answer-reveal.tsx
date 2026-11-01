@@ -51,7 +51,7 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
   const expired = now !== null && now.getTime() >= new Date(endsAt).getTime();
 
   return (
-    <div className="media-carrier-font-pc-steam relative isolate flex h-[90px] w-full shrink-0 items-center gap-4 overflow-hidden rounded-md border border-emerald-950/20 bg-emerald-900/5 px-4 py-3 text-left sm:gap-6 sm:px-6">
+    <div className="media-carrier-font-pc-steam relative isolate flex min-h-[90px] min-w-0 w-full shrink-0 items-center gap-4 overflow-hidden rounded-md border border-emerald-950/20 bg-emerald-900/5 px-4 py-3 text-left sm:gap-6 sm:px-6">
       {answer?.coverUrl ? (
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 opacity-25" style={{ maskImage: "linear-gradient(to right, transparent 20%, black 100%)" }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -63,8 +63,8 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
         <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-950/70">Правильный ответ{revealed ? ":" : ""}</p>
         {answer ? (
           <>
-            <Link href={`/media/${answer.code}`} className="mt-0.5 block truncate text-lg leading-tight text-stone-950 hover:underline sm:text-2xl">{answer.title}</Link>
-            {answer.comment ? <p className="mt-1 truncate text-sm leading-snug text-stone-600 sm:text-base">{answer.comment}</p> : null}
+            <Link href={`/media/${answer.code}`} className="mt-0.5 block break-words text-lg leading-tight text-stone-950 hover:underline sm:text-2xl">{answer.title}</Link>
+            {answer.comment ? <p className="mt-1 break-words text-sm leading-snug text-stone-600 sm:text-base">{answer.comment}</p> : null}
           </>
         ) : (
           <p className="mt-1 line-clamp-2 text-base leading-snug text-stone-800 sm:text-xl">

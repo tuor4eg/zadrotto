@@ -6,6 +6,7 @@ import { PROVIDER_SNAPSHOT_JOB_TYPE, parseSnapshotJobPayload } from "@/lib/provi
 export async function enqueueProviderSnapshotAction(form: FormData) {
   const admin=await requireAdminUser();
   const creator = form.get("entityType") === "creator";
+  const standalone = form.get("profileTarget") === "on";
   const id=String(form.get(creator ? "creatorId" : "mediaItemId")??"");
   const recordPath = creator ? "/admin/creators" : "/admin/media";
   let runId:number;
@@ -13,12 +14,12 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const provider=String(form.get("provider")??"");
     const rawCreatorIds = String(form.get("creatorIds") ?? "").trim();
     const creatorIds = rawCreatorIds ? rawCreatorIds.split(/[\s,]+/).map(value => /^\d+$/.test(value) ? Number(value) : NaN) : undefined;
-    const standalone = form.get("profileTarget") === "on";
     const mediaType = String(form.get("mediaType") ?? form.get("processingType"));
     const operation = String(form.get("operation") ?? "verify");
     const payload=parseSnapshotJobPayload({
-      ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame", "comic", "roblox"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
+      ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame", "comic", "manga", "roblox"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
       operation,
+      ...(!creator && mediaType === "anime" ? { animeSnapshot: String(form.get("animeSnapshot") ?? "metadata") } : {}),
       ...(!creator && !standalone && mediaType === "boardgame" && ["process", "refresh-process"].includes(operation) ? { applyBoardgameChanges: form.get("applyBoardgameChanges") === "on" } : {}),
       ...(!creator && !standalone && mediaType === "game" && ["process", "refresh-process"].includes(operation) ? { applyGameChanges: form.get("applyGameChanges") === "on" } : {}),
       ...(form.get("batchSize")?{batchSize:Number(form.get("batchSize"))}:{}),
@@ -32,6 +33,7 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const run=await enqueueJobRun({type:PROVIDER_SNAPSHOT_JOB_TYPE,payload,source:"manual",createdByAdminId:admin.id});
     runId=run.id;
   } catch {
+    if (standalone) redirect("/admin/tools/providers/additional?error=invalid");
     if (Number.isSafeInteger(Number(id)) && Number(id) > 0) redirect(`${recordPath}/${Number(id)}/snapshots?error=enqueue`);
     redirect("/admin/tools/providers/snapshots?error=invalid");
   }

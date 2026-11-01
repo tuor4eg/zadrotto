@@ -7,6 +7,7 @@ const TOKEN_MAX_AGE_SECONDS = 5 * 60;
 const FETCH_TIMEOUT_MS = 10_000;
 const ALLOWED_CONTENT_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const PROVIDER_IMAGE_HOSTS: Record<CoverProviderCode, readonly string[]> = {
+  mangaupdates: ["cdn.mangaupdates.com"],
   bgg: ["cf.geekdo-images.com"],
   tmdb: ["image.tmdb.org"],
   "comic-vine": ["comicvine.gamespot.com", ".gamespot.com"],

@@ -53,6 +53,7 @@ export type MetadataJobContext = {
 }
 
 export type MetadataJobStore = {
+  prepareSource?: (item: MetadataJobItem, action: "media.metadata-backfill.failed" | "media.metadata-refresh.failed") => Promise<boolean>
   logProviderFailure: (input: {
     action: "media.metadata-backfill.failed" | "media.metadata-refresh.failed"
     error: string
@@ -112,6 +113,8 @@ async function fetchAndStoreMetadata(input: {
   item: MetadataJobItem
   provider: string
   store: MetadataJobStore
+  reuseSavedSnapshot?: boolean
+  action?: "media.metadata-backfill.failed" | "media.metadata-refresh.failed"
 }): Promise<ItemOutcome> {
   if (!isCoverProviderCode(input.provider) || !isMediaTypeCode(input.item.mediaType)) {
     return { kind: "skip", issue: "unsupported-source" }
@@ -121,10 +124,13 @@ async function fetchAndStoreMetadata(input: {
   if (!externalId) return { kind: "skip", issue: "unsupported-source" }
 
   input.context.signal?.throwIfAborted()
+  if (input.store.prepareSource && !await input.store.prepareSource(input.item, input.action ?? "media.metadata-backfill.failed")) return { kind: "skip", issue: "unsupported-source" }
+  input.context.signal?.throwIfAborted()
   const result = await input.context.fetchTitleMetadata({
     externalId,
     mediaType: input.item.mediaType,
     provider: input.provider,
+    ...(input.reuseSavedSnapshot ? { reuseSavedSnapshot: true } : {}),
   })
 
   input.context.signal?.throwIfAborted()
@@ -135,6 +141,8 @@ async function fetchAndStoreMetadata(input: {
   }
 
   const hasSnapshotMetadata = Boolean(result.metadata?.snapshotReferences?.length) && (
+    (input.item.mediaType === "manga" && input.provider === "mangaupdates") ||
+    (input.item.mediaType === "anime" && input.provider === "anilist") ||
     (["film", "series"].includes(input.item.mediaType) && input.provider === "tmdb") ||
     (input.item.mediaType === "game" && ["igdb", "rawg"].includes(input.provider)) ||
     (input.item.mediaType === "boardgame" && input.provider === "bgg") ||
@@ -248,6 +256,7 @@ export async function runMetadataBackfill(input: {
     const outcome = hasKnownMetadataSource(item)
       ? await fetchAndStoreMetadata({
           context,
+          reuseSavedSnapshot: true,
           externalId: item.sourceExternalId!,
           item,
           provider: item.sourceProvider!,
@@ -292,6 +301,7 @@ export async function runMetadataRefresh(input: {
     context.signal?.throwIfAborted()
     const outcome = hasKnownMetadataSource(item)
       ? await fetchAndStoreMetadata({
+          action: "media.metadata-refresh.failed",
           context,
           externalId: item.sourceExternalId!,
           item,

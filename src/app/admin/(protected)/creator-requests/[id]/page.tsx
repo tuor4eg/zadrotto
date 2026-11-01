@@ -1,3 +1,4 @@
+import { getCreatorAutoApprovalFeedback } from "@/db/queries/creator-auto-approval-feedback";
 import { getAnimeCompanyLogoCandidates } from "@/db/queries/anime-company-logo-binding";
 import { confirmLogoCandidateAction, rejectLogoCandidateAction, repairLogoIgnoreAction } from "../logo-actions";
 import { getCreatorRequestErrorMessage } from "../messages";
@@ -28,7 +29,7 @@ export default async function CreatorRequestPage({ params, searchParams }: { par
   const { id } = await params;
   const requestId = Number(id);
   if (!Number.isSafeInteger(requestId) || requestId < 1) notFound();
-  const [requests, creators, entries, logoCandidates, query] = await Promise.all([getCreatorRequests({ all: true, requestId }), getCreatorOptions(), getCreatorRequestEntries(requestId), getAnimeCompanyLogoCandidates(requestId), searchParams]);
+  const [requests, creators, entries, logoCandidates, query, autoApprovalFeedback] = await Promise.all([getCreatorRequests({ all: true, requestId }), getCreatorOptions(), getCreatorRequestEntries(requestId), getAnimeCompanyLogoCandidates(requestId), searchParams, getCreatorAutoApprovalFeedback(requestId)]);
   const request = requests.find(row => row.id === requestId);
   if (!request) notFound();
   const isOrganization = isOrganizationCreatorRequest(request.provider, request.externalCreatorId);
@@ -89,7 +90,7 @@ export default async function CreatorRequestPage({ params, searchParams }: { par
     {!isLogoSearchOnly ? <section className="grid gap-2"><h2 className="font-semibold">Связанные записи</h2>{entries.length ? <ul className="grid gap-2 text-sm">{entries.map(entry => <li key={`${entry.id}:${entry.roleName ?? "writer"}`}><Link href={`/admin/media/${entry.id}/edit`} className="underline underline-offset-4">{entry.title}</Link>{entry.roleName ? <span className="ml-2 text-stone-500">{entry.roleName}</span> : null}</li>)}</ul> : <p className="text-sm text-stone-500">Нет текущих связанных записей.</p>}</section> : null}
     <GenreRequestAutoRefresh enabled={request.status === "applying"} />
     <AdminToasts clearParams={["error"]} messages={[...(query.error ? [{ id: "action-error", tone: "error" as const, text: getCreatorRequestErrorMessage(query.error) }] : []), ...(request.jobError ? [{ id: "job-error", tone: "error" as const, text: request.jobError }] : [])]} />
-    {request.status === "pending" && !isLogoSearchOnly ? <CreatorDecisionForm requestId={request.id} name={request.externalCreatorName} provider={request.provider} externalCreatorId={request.externalCreatorId} people={people} suggestedCreatorIds={suggestedCreatorIds} /> : null}
+    {request.status === "pending" && !isLogoSearchOnly ? <CreatorDecisionForm requestId={request.id} name={request.externalCreatorName} provider={request.provider} externalCreatorId={request.externalCreatorId} people={people} suggestedCreatorIds={suggestedCreatorIds} autoApprovalFeedback={autoApprovalFeedback} /> : null}
     {request.status === "applying" ? <p className="text-sm text-stone-500">{isLogoSearchOnly ? "Привязка организации обрабатывается. Страница обновится автоматически." : "Связи записей пересчитываются. Страница обновится автоматически."}</p> : null}
     {request.status === "failed" ? <form action={retryCreatorAction}><input type="hidden" name="requestId" value={request.id} /><Button type="submit" variant="outline">Повторить применение</Button></form> : null}
     {request.status === "processed" ? <p className="text-sm text-stone-500">{isLogoSearchOnly ? "Решение по совпадению организаций применено." : "Решение применено к записям."}</p> : null}

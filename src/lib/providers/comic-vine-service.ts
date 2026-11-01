@@ -28,7 +28,7 @@ export async function prepareComicVineSnapshotReferences(externalId: string, ref
   return { primary, issue: issue ?? null, projection, issueCreators: issue ? normalizeComicVineIssue(issue, externalId) : null };
 }
 
-async function fetchSnapshot(descriptor: SnapshotDescriptor, options: TitleMetadataOptions, volumeId?: string) {
+export async function fetchComicVineSnapshot(descriptor: SnapshotDescriptor, options: TitleMetadataOptions, volumeId?: string) {
   const cached = options.snapshotReuseAfter ? await getProviderSnapshot(descriptor) : null;
   if (cached && cached.fetchedAt >= options.snapshotReuseAfter!) return cached;
   const apiKey = options.providerCredentials?.["comic-vine"]?.apiKey?.trim();
@@ -50,12 +50,12 @@ async function fetchSnapshot(descriptor: SnapshotDescriptor, options: TitleMetad
 
 export async function fetchComicVineMetadata(input: TitleMetadataInput, options: TitleMetadataOptions): Promise<MediaTitleMetadata> {
   if (input.provider !== "comic-vine" || input.mediaType !== "comic") throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
-  const primary = await fetchSnapshot(describeComicVineVolume(input.externalId), options);
+  const primary = await fetchComicVineSnapshot(describeComicVineVolume(input.externalId), options);
   const projection = normalizeComicVineVolume(primary);
   let issue: typeof primary | null = null;
   if (projection.firstIssueId) {
     try {
-      const candidate = await fetchSnapshot(describeComicVineIssue(projection.firstIssueId), options, input.externalId);
+      const candidate = await fetchComicVineSnapshot(describeComicVineIssue(projection.firstIssueId), options, input.externalId);
       normalizeComicVineIssue(candidate, input.externalId);
       issue = candidate;
     } catch (error) {
@@ -88,4 +88,13 @@ export async function isComicVineSnapshotSupported(id: number) {
   const [row] = await db.select({ mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId }).from(mediaItems)
     .innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id)).where(eq(mediaItems.id, id));
   return row?.mediaType === "comic" && row.provider === "comic-vine" && Boolean(row.externalId);
+}
+
+/** Durable issue progress survives separate scheduled runs. */
+export async function getLinkedComicVineIssueIds(mediaItemId: number) {
+  const { providerPartSnapshotLinks } = await import("@/db/schema");
+  const rows = await db.select({ externalId: providerSnapshots.externalId }).from(providerPartSnapshotLinks)
+    .innerJoin(providerSnapshots, eq(providerSnapshots.id, providerPartSnapshotLinks.snapshotId))
+    .where(and(eq(providerPartSnapshotLinks.mediaItemId, mediaItemId), eq(providerSnapshots.providerCode, "comic-vine"), eq(providerSnapshots.resourceType, "issue"), eq(providerSnapshots.apiMethod, "issue.details"), eq(providerSnapshots.requestKey, snapshotHash({ version: 1 }))));
+  return new Set(rows.map(row => row.externalId));
 }

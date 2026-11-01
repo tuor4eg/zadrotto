@@ -18,8 +18,9 @@ import { snapshotHash, validateSnapshotReferences, type SnapshotReference } from
 export async function fetchAniListCreatorSnapshot(input: TitleMetadataInput, options: TitleMetadataOptions) {
   if (input.mediaType !== "anime" || !["anilist", "jikan"].includes(input.provider)) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
   let requestStartedAt = await providerRequestStartedAt();
-  const saved = options.snapshotReuseAfter ? await getSavedAniListCreatorSnapshot(input.provider, input.externalId) : null;
-  if (saved && saved.fetchedAt >= options.snapshotReuseAfter!) {
+  const reuseAfter = input.reuseSavedSnapshot ? new Date(0) : options.snapshotReuseAfter;
+  const saved = reuseAfter ? await getSavedAniListCreatorSnapshot(input.provider, input.externalId) : null;
+  if (saved && saved.fetchedAt >= reuseAfter!) {
     await seedAniListDirectorImageSnapshots(saved, options.snapshotJobGuard, options.signal);
     return [{ id: saved.id, payloadHash: saved.payloadHash }];
   }

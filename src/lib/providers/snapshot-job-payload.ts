@@ -10,7 +10,9 @@ export const SNAPSHOT_MAX_PAUSE_HOURS = 8760;
 export type SnapshotOperation = typeof SNAPSHOT_OPERATIONS[number];
 export type SnapshotJobPayload = {
   entityType?: "media-item" | "creator";
-  mediaType?: "book" | "film" | "series" | "anime" | "game" | "boardgame" | "comic" | "roblox";
+  mediaType?: "book" | "film" | "series" | "anime" | "game" | "boardgame" | "comic" | "manga" | "roblox";
+  /** Missing on old queued jobs: preserve the previous creator-roster operation. */
+  animeSnapshot?: "metadata" | "creators";
   creatorIds?: number[];
   bindingIds?: number[];
   profileTargets?: CreatorProfileTarget[];
@@ -23,7 +25,7 @@ export type SnapshotJobPayload = {
   applyGameChanges?: boolean;
   applyBoardgameChanges?: boolean;
   operation: SnapshotOperation;
-  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg" | "anilist" | "bgg" | "comic-vine" | "roblox";
+  provider?: BookProviderCode | "tmdb" | "igdb" | "rawg" | "anilist" | "bgg" | "comic-vine" | "mangaupdates" | "roblox";
   mediaItemIds?: number[];
   batchSize?: number;
   batchPauseHours?: number;
@@ -34,19 +36,22 @@ export type SnapshotJobPayload = {
 export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
   if (!value || typeof value!=="object" || Array.isArray(value)) throw new Error("INVALID_SNAPSHOT_JOB");
   const input=value as Record<string,unknown>;
-  if (Object.keys(input).some(key=>!["applyBoardgameChanges","applyGameChanges","mediaType","entityType","creatorIds","bindingIds","profileTargets","profileCheckpoint","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
+  if (input.animeSnapshot !== undefined && (input.mediaType !== "anime" || !["metadata", "creators"].includes(String(input.animeSnapshot)))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+  if (Object.keys(input).some(key=>!["animeSnapshot","applyBoardgameChanges","applyGameChanges","mediaType","entityType","creatorIds","bindingIds","profileTargets","profileCheckpoint","onlyMissingSnapshots","operation","provider","mediaItemIds","batchSize","batchPauseHours","afterId","throughId","checkpoint"].includes(key)) || !SNAPSHOT_OPERATIONS.includes(input.operation as SnapshotOperation)) throw new Error("INVALID_SNAPSHOT_JOB");
   if (input.applyBoardgameChanges !== undefined && (typeof input.applyBoardgameChanges !== "boolean" || input.mediaType !== "boardgame" || input.entityType === "creator" || input.profileTargets !== undefined || !["process", "refresh-process"].includes(String(input.operation)))) throw new Error("INVALID_BOARDGAME_CHANGE_OPTION");
   if (input.applyGameChanges !== undefined && (typeof input.applyGameChanges !== "boolean" || input.mediaType !== "game" || input.entityType === "creator" || input.profileTargets !== undefined || !["process", "refresh-process"].includes(String(input.operation)))) throw new Error("INVALID_GAME_CHANGE_OPTION");
   if (input.onlyMissingSnapshots !== undefined && (typeof input.onlyMissingSnapshots !== "boolean" || (input.onlyMissingSnapshots && !["refresh","refresh-process"].includes(String(input.operation))))) throw new Error("INVALID_MISSING_SNAPSHOT_FILTER");
   if (input.entityType !== undefined && input.entityType !== "media-item" && input.entityType !== "creator") throw new Error("INVALID_SNAPSHOT_ENTITY_TYPE");
-  if (input.mediaType !== undefined && (!["book", "film", "series", "anime", "game", "boardgame", "comic", "roblox"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
+  if (input.mediaType !== undefined && (!["book", "film", "series", "anime", "game", "boardgame", "comic", "manga", "roblox"].includes(String(input.mediaType)) || input.entityType === "creator" || input.profileTargets !== undefined
     || (["film", "series"].includes(String(input.mediaType)) && input.provider !== undefined && input.provider !== "tmdb")
     || (input.mediaType === "anime" && input.provider !== undefined && input.provider !== "anilist")
     || (input.mediaType === "book" && input.provider !== undefined && !["fantlab", "google-books", "open-library"].includes(String(input.provider)))
+    || (input.mediaType === "manga" && input.provider !== undefined && input.provider !== "mangaupdates")
     || (input.mediaType === "comic" && input.provider !== undefined && input.provider !== "comic-vine")
     || (input.mediaType === "roblox" && input.provider !== undefined && input.provider !== "roblox")
     || (input.mediaType === "boardgame" && input.provider !== undefined && input.provider !== "bgg")
     || (input.mediaType === "game" && input.provider !== undefined && !["igdb", "rawg"].includes(String(input.provider))))) throw new Error("INVALID_SNAPSHOT_MEDIA_TYPE");
+  if (input.provider === "mangaupdates" && (input.entityType === "creator" || input.mediaType !== "manga")) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.provider === "comic-vine" && input.entityType !== "creator" && input.mediaType !== "comic") throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.provider === "roblox" && input.entityType !== "creator" && input.mediaType !== "roblox") throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.provider === "bgg" && input.mediaType !== "boardgame") throw new Error("INVALID_SNAPSHOT_PROVIDER");
@@ -75,7 +80,7 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
     cp.errors.forEach(row => { if (row.target) parseCreatorProfileTarget(row.target); });
   }
   if (input.creatorIds !== undefined && (!Array.isArray(input.creatorIds) || !input.creatorIds.length || input.creatorIds.length > 200 || !input.creatorIds.every(id => Number.isSafeInteger(id) && id > 0))) throw new Error("INVALID_SNAPSHOT_IDS");
-  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg","anilist","bgg","comic-vine","roblox"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
+  if (input.provider!==undefined && (typeof input.provider!=="string" || !["fantlab","google-books","open-library","tmdb","igdb","rawg","anilist","bgg","comic-vine","mangaupdates","roblox"].includes(input.provider))) throw new Error("INVALID_SNAPSHOT_PROVIDER");
   if (input.batchSize!==undefined && (!Number.isSafeInteger(input.batchSize) || Number(input.batchSize)<1 || Number(input.batchSize)>SNAPSHOT_MAX_BATCH_SIZE)) throw new Error("INVALID_SNAPSHOT_BATCH_SIZE");
   if (input.batchPauseHours!==undefined && (typeof input.batchPauseHours!=="number" || !Number.isFinite(input.batchPauseHours) || input.batchPauseHours<0 || input.batchPauseHours>SNAPSHOT_MAX_PAUSE_HOURS)) throw new Error("INVALID_SNAPSHOT_BATCH_PAUSE");
   for (const key of ["afterId","throughId"]) if (input[key]!==undefined && (!Number.isSafeInteger(input[key]) || Number(input[key])<0)) throw new Error("INVALID_SNAPSHOT_RANGE");

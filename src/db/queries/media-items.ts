@@ -1174,6 +1174,7 @@ export async function getAdminMediaItemForEdit(mediaItemId: number) {
       genres: mediaItemGenresJsonSql(),
       platforms: mediaItemPlatformsJsonSql(),
       id: mediaItems.id,
+      metadataSearchDisabled: mediaItems.metadataSearchDisabled,
       code: mediaItems.code,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,

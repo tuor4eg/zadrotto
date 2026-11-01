@@ -16,7 +16,6 @@ import { Badge } from "@/components/ui/badge";
 import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ProfileTargetForm } from "./profile-target-form";
 import { SnapshotBatchForm } from "./snapshot-batch-form";
 
 export default async function ProviderSnapshotsPage({ searchParams }: { searchParams: Promise<{ error?: string; run?: string }> }) {
@@ -44,7 +43,6 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
     {query.error === "invalid" && <Alert variant="destructive" role="alert">Не удалось запустить обработку. Проверьте параметры и повторите попытку.</Alert>}
     <div className="space-y-3">
       <p className="text-sm leading-6 text-stone-600">Обработка запускается вручную и проходит партиями с выбранным размером и паузой, с учётом лимитов провайдера. Для обработки одного объекта откройте «Данные источника» в его редакторе.</p>
-      <ProfileTargetForm busy={active} />
       <SnapshotBatchForm key={run?.id ?? "new"} busy={active} values={run?.payload} />
       {query.run && !run && <Alert variant="warning">Запуск не найден. Его можно проверить в журнале.</Alert>}
       {run && <Card>

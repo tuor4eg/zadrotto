@@ -89,9 +89,10 @@ test("anime batches restore AniList, all operations and the exact-MAL supplement
     const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "anime", provider: "anilist", operation } }));
     assert.match(html, /value="anime" selected=""/);
     assert.match(html, /value="anilist" selected=""/);
-    assert.match(html, /Jikan через точное соответствие MAL ID/);
-    assert.match(html, /режиссёры, производственные компании и продюсеры/);
-    assert.match(html, /остальные характеристики записи не меняются/);
+    assert.match(html, /AniList и Jikan по точному MAL ID/);
+    assert.match(html, /name="animeSnapshot"/);
+    assert.match(html, /value="creators" selected=""/);
+    assert.match(html, /Основные характеристики не меняются/);
     const providers = html.match(/<select[^>]*name="provider"[^>]*>(.*?)<\/select>/)?.[1];
     assert.ok(providers);
     assert.doesNotMatch(providers, /value="tmdb"|value="fantlab"/);
@@ -104,7 +105,11 @@ test("individual anime snapshot controls submit explicit anime scope and AniList
   assert.match(html, /name="mediaType" value="anime"/);
   assert.match(html, /name="provider" value="anilist"/);
   assert.match(html, /name="mediaItemId" value="9"/);
-  assert.match(html, /остальные характеристики записи не меняются/);
+  assert.match(html, /name="animeSnapshot" value="metadata"/);
+  assert.match(html, /обновляет факты и жанры/);
+  const creators = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 9, mediaType: "anime", provider: "anilist", animeSnapshot: "creators", showActions: true, canProcess: true }));
+  assert.match(creators, /name="animeSnapshot" value="creators"/);
+  assert.match(creators, /Зависимый снимок состава/);
   for (const operation of ["refresh", "process", "refresh-process", "verify"]) assert.match(html, new RegExp(`<button(?=[^>]*name="operation")(?=[^>]*value="${operation}")[^>]*>`));
 });
 
@@ -167,4 +172,34 @@ test("XML raw viewer shows the original XML text without JSON string quoting", a
   const xml = '<?xml version="1.0"?>\n<items><item id="42"/></items>';
   const html = renderToStaticMarkup(createElement(SnapshotJsonViewer, { value: xml }));
   assert.match(html, /XML · строк/); assert.match(html, /&lt;items&gt;/); assert.doesNotMatch(html, /\\n/);
+});
+
+test("large provider JSON stays highlighted while only a small window is rendered", async () => {
+  const { SnapshotJsonViewer } = await import("../src/components/admin/snapshot-json-viewer");
+  const value = { staff: Array.from({ length: 5000 }, (_, id) => ({ id, name: id === 4999 ? "Last creator" : "Director", role: "Director" })) };
+  const text = JSON.stringify(value, null, 2);
+  assert.ok(text.length > 50_000);
+  const html = renderToStaticMarkup(createElement(SnapshotJsonViewer, { value }));
+  assert.match(html, /text-sky-300/);
+  assert.match(html, /text-emerald-300/);
+  assert.match(html, /text-amber-300/);
+  assert.doesNotMatch(html, /Last creator/);
+  assert.ok(html.length < 30_000, "large raw evidence must not produce thousands of highlighted DOM nodes");
+});
+
+test("provider JSON highlighting escapes untrusted strings", async () => {
+  const { SnapshotJsonViewer } = await import("../src/components/admin/snapshot-json-viewer");
+  const html = renderToStaticMarkup(createElement(SnapshotJsonViewer, { value: { description: "<script>alert(1)</script>", available: true } }));
+  assert.doesNotMatch(html, /<script>/);
+  assert.match(html, /&lt;script&gt;/);
+  assert.match(html, /text-violet-300/);
+});
+
+
+test("primary anime migration restores its own scope and explains the missing-link transition", () => {
+  const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "anime", provider: "anilist", animeSnapshot: "metadata", operation: "refresh-process", onlyMissingSnapshots: true } }));
+  assert.match(html, /value="metadata" selected=""/);
+  assert.match(html, /основным источником AniList/);
+  assert.match(html, /без повторной загрузки/);
+  assert.match(html, /без привязанного основного снимка/);
 });

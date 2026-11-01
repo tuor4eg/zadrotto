@@ -98,6 +98,18 @@ export async function attachProviderSnapshots(tx: DbTransaction, entity: Snapsho
   await lockProviderSnapshotReferences(tx,refs);
   if (refs.length) await tx.insert(links).values(refs.map(ref=>({snapshotId:ref.id,...target,purpose:ref.purpose}))).onConflictDoNothing();
 }
+/** Reclassify one entity link atomically without changing shared raw evidence. */
+export async function changeProviderSnapshotPurpose(tx: DbTransaction, entity: SnapshotEntity, ref: SnapshotReference,
+  from: "primary" | "dependency", to: "primary" | "dependency", actor: SnapshotActor) {
+  const target = await lockSnapshotEntity(tx, entity, actor);
+  await lockProviderSnapshotReferences(tx, [ref]);
+  if (from === to) return;
+  const condition = and(eq(links.snapshotId, ref.id), eq(links.entityType, target.entityType), eq(links.entityId, target.entityId), eq(links.purpose, from));
+  const [current] = await tx.select({ id: links.snapshotId }).from(links).where(condition);
+  if (!current) return;
+  await tx.insert(links).values({ snapshotId: ref.id, ...target, purpose: to }).onConflictDoNothing();
+  await tx.delete(links).where(condition);
+}
 export async function deleteEntitySnapshotLinks(tx: DbTransaction, entity: SnapshotEntity) {
   const target = await lockSnapshotEntity(tx,entity,{kind:"system"});
   await tx.delete(links).where(and(eq(links.entityType,target.entityType),eq(links.entityId,target.entityId)));

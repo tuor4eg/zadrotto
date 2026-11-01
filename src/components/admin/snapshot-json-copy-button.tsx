@@ -4,12 +4,10 @@ import { useState } from "react";
 import { Check, Copy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
-export function SnapshotJsonCopyButton({ codeId }: { codeId: string }) {
+export function SnapshotJsonCopyButton({ text }: { text: string }) {
   const [status, setStatus] = useState<"idle" | "copied" | "error">("idle");
   async function copy() {
     try {
-      const text = document.getElementById(codeId)?.textContent;
-      if (text === undefined || text === null) throw new Error("JSON_NOT_FOUND");
       await navigator.clipboard.writeText(text);
       setStatus("copied");
     } catch { setStatus("error"); }

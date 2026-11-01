@@ -1,5 +1,5 @@
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
-import { and, asc, eq, isNotNull, isNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, isNotNull, isNull, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { mediaItemMetadata, mediaItems, mediaItemTitleAliases } from "@/db/schema";
@@ -71,23 +71,25 @@ const itemSelect = {
   title: mediaItems.title,
 };
 
-export async function getPendingAnimeShikimoriBackfillItems() {
+export async function getPendingAnimeShikimoriBackfillItems(options?: { afterMediaItemId: number; limit: number }) {
   const rows = await db
     .select(itemSelect)
     .from(mediaItems)
     .innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id))
     .where(and(
       eq(mediaItems.mediaType, "anime"),
+      eq(mediaItems.metadataSearchDisabled, false),
+      options ? gt(mediaItems.id, options.afterMediaItemId) : undefined,
       isNull(mediaItems.shikimoriEnrichmentAttemptedAt),
       eq(mediaItemMetadata.sourceProvider, "anilist"),
       sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`,
     ))
-    .orderBy(asc(mediaItems.id));
+    .orderBy(asc(mediaItems.id)).limit(options?.limit ?? 2147483647);
 
   return rows as AnimeShikimoriBackfillItem[];
 }
 
-async function getLockedItem(tx: DbTransaction, mediaItemId: number) {
+async function getLockedItem(tx: DbTransaction, mediaItemId: number, sourceExternalId?: string) {
   const [item] = await tx.select({
     description: mediaItems.description,
     id: mediaItems.id,
@@ -96,10 +98,14 @@ async function getLockedItem(tx: DbTransaction, mediaItemId: number) {
   }).from(mediaItems).where(and(
     eq(mediaItems.id, mediaItemId),
     eq(mediaItems.mediaType, "anime"),
+    eq(mediaItems.metadataSearchDisabled, false),
     isNull(mediaItems.shikimoriEnrichmentAttemptedAt),
   )).for("update").limit(1);
 
   if (!item) return null;
+
+  const [metadata] = await tx.select({ sourceExternalId: mediaItemMetadata.sourceExternalId }).from(mediaItemMetadata).where(and(eq(mediaItemMetadata.mediaItemId, mediaItemId), eq(mediaItemMetadata.sourceProvider, "anilist"), sourceExternalId ? eq(mediaItemMetadata.sourceExternalId, sourceExternalId) : sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`)).for("update").limit(1);
+  if (!metadata) return null;
 
   const aliases = await tx.select({ id: mediaItemTitleAliases.id, value: mediaItemTitleAliases.value })
     .from(mediaItemTitleAliases)
@@ -112,15 +118,18 @@ async function getLockedItem(tx: DbTransaction, mediaItemId: number) {
 export async function markAnimeShikimoriBackfillSkipped(input: {
   mediaItemId: number;
   jobGuard?: SnapshotJobGuard;
+  sourceExternalId?: string;
+  checkpoint?: (tx: DbTransaction) => Promise<void>;
   shouldMark: (item: NonNullable<Awaited<ReturnType<typeof getLockedItem>>>) => boolean;
 }) {
   return withSnapshotJobGuard(input.jobGuard, async (tx) => {
-    const item = await getLockedItem(tx, input.mediaItemId);
+    const item = await getLockedItem(tx, input.mediaItemId, input.sourceExternalId);
     if (!item || !input.shouldMark(item)) return false;
 
     await tx.update(mediaItems)
       .set({ shikimoriEnrichmentAttemptedAt: new Date() })
       .where(eq(mediaItems.id, item.id));
+    await input.checkpoint?.(tx);
     return true;
   });
 }
@@ -132,9 +141,11 @@ export async function applyAnimeShikimoriBackfillResult(input: {
   };
   mediaItemId: number;
   jobGuard?: SnapshotJobGuard;
+  sourceExternalId?: string;
+  checkpoint?: (tx: DbTransaction, current: { aliases: string[]; description: string | null }, decision: { aliases: string[]; description: string | null }) => Promise<void>;
 }) {
   return withSnapshotJobGuard(input.jobGuard, async (tx) => {
-    const item = await getLockedItem(tx, input.mediaItemId);
+    const item = await getLockedItem(tx, input.mediaItemId, input.sourceExternalId);
     if (!item) return false;
 
     const decision = input.decide(item);
@@ -154,6 +165,7 @@ export async function applyAnimeShikimoriBackfillResult(input: {
       }
     }
 
+    await input.checkpoint?.(tx, { aliases: currentAliases, description: item.description }, decision);
     return true;
   });
 }

@@ -20,6 +20,7 @@ export type MediaMetadataRefreshSourceInput = {
 };
 
 const MEDIA_PROVIDER_CODES = [
+  "mangaupdates",
   "bgg",
   "tmdb",
   "comic-vine",
@@ -75,6 +76,11 @@ export function normalizeMetadataExternalId(
   pageUrl?: string | null,
 ) {
   const value = externalId?.trim() || "";
+
+  if (provider === "mangaupdates") {
+    const id = getColonPartExternalId(value, "series") ?? value;
+    return /^[1-9]\d*$/.test(id) && Number.isSafeInteger(Number(id)) ? id : null;
+  }
 
   if (provider === "bgg") {
     const id = /^\d+$/.test(value) ? Number(value) : NaN;

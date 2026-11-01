@@ -52,7 +52,7 @@ export async function applyComicVineIssueAggregation(tx: DbTransaction, input: {
   });
   const people: ComicVineCreatorReference[] = complete ? proposed : [...partial, ...old.filter(row => !current.has(`${row.externalId}:${row.roleCode}`))];
   const publisher = Array.isArray(metadata.facts.comicVinePublisherCreators) ? metadata.facts.comicVinePublisherCreators as ComicVineCreatorReference[] : [];
-  const facts = { ...metadata.facts, comicVineIssuesAggregated: true, comicVinePersonCreators: people,
+  const facts = { ...metadata.facts, comicVineIssuesAggregated: true, comicVineIssuesComplete: complete, comicVinePersonCreators: people,
     comicVineArtistWork: people.filter(row => row.roleCode === "artist").map(row => ({ externalId: row.externalId, work: row.work })) };
   await tx.update(mediaItemMetadata).set({ facts, updatedAt: new Date() }).where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId));
   await syncComicVineCreators(tx, input.mediaItemId, publisher, people);

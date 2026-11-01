@@ -22,7 +22,7 @@ export async function backfillAniListCreators(input: MetadataBackfillPayload & {
   for (const item of items) {
     input.signal?.throwIfAborted();
     try {
-      const refs = await context.fetchAniListCreators!({ provider: item.sourceProvider as "anilist" | "jikan", externalId: item.sourceExternalId!, mediaType: "anime" });
+      const refs = await context.fetchAniListCreators!({ provider: item.sourceProvider as "anilist" | "jikan", externalId: item.sourceExternalId!, mediaType: "anime", reuseSavedSnapshot: !input.force });
       input.signal?.throwIfAborted();
       await withSnapshotJobGuard(guard, async tx => {
         const [entry] = await tx.select({ mediaType: mediaItems.mediaType }).from(mediaItems).where(eq(mediaItems.id, item.id)).for("update");

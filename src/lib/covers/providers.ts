@@ -1,3 +1,4 @@
+import { mangaUpdatesProvider } from "@/lib/covers/providers/mangaupdates";
 import type { MediaProvider } from "@/lib/covers/types";
 import { bggProvider } from "@/lib/covers/providers/bgg";
 import { anilistProvider } from "@/lib/covers/providers/anilist";
@@ -12,6 +13,7 @@ import { robloxProvider } from "@/lib/covers/providers/roblox";
 import { createTmdbProvider } from "@/lib/covers/providers/tmdb";
 
 export const COVER_PROVIDERS = [
+  mangaUpdatesProvider,
   bggProvider,
   createTmdbProvider("film"),
   createTmdbProvider("series"),

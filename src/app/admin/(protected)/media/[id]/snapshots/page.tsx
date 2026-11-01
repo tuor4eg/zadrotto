@@ -1,3 +1,5 @@
+import { getSavedMangaUpdatesBundle } from "@/lib/providers/mangaupdates-service";
+import { getSavedAniListMetadataBundle, getAniListMetadataComparison } from "@/lib/providers/anilist-metadata-service";
 import { getSavedComicVineBundle, isComicVineSnapshotSupported } from "@/lib/providers/comic-vine-service";
 import { getSavedBggBundle, getBggMigrationComparison, isBggSnapshotSupported } from "@/lib/providers/bgg-service";
 import { getSavedRobloxBundle, isRobloxSnapshotSupported } from "@/lib/providers/roblox-service";
@@ -41,8 +43,14 @@ export default async function SnapshotPage({ params, searchParams }: {
   ]);
   const outcome = run ? bookSnapshotRunStatus(run) : null;
   const [savedPrimary, tmdbFilm, tmdbSeries, anime, game, boardgame, comic, roblox] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id), isGameSnapshotSupported(id), isBggSnapshotSupported(id), isComicVineSnapshotSupported(id), isRobloxSnapshotSupported(id)]);
+  const animeMetadataSource = anime && metadata?.sourceProvider === "anilist";
+  let animeMetadataBundle: Awaited<ReturnType<typeof getSavedAniListMetadataBundle>> | null = null;
+  if (animeMetadataSource && metadata?.sourceExternalId) {
+    try { animeMetadataBundle = await getSavedAniListMetadataBundle(metadata.sourceExternalId); }
+    catch { /* Only complete, current-source evidence can be applied. */ }
+  }
   let animeSnapshot: Awaited<ReturnType<typeof getSavedAniListCreatorSnapshot>> = null;
-  if (anime && metadata?.sourceProvider && metadata.sourceExternalId) {
+  if (anime && !animeMetadataSource && metadata?.sourceProvider && metadata.sourceExternalId) {
     try { animeSnapshot = await getSavedAniListCreatorSnapshot(metadata.sourceProvider, metadata.sourceExternalId); }
     catch { /* Only complete snapshots for the current exact source can be applied. */ }
   }
@@ -66,7 +74,13 @@ export default async function SnapshotPage({ params, searchParams }: {
     try { robloxBundle = await getSavedRobloxBundle(metadata.sourceExternalId); }
     catch { /* An incomplete snapshot cannot be processed. */ }
   }
-  const primary = roblox ? robloxBundle?.primary ?? null : comic ? comicBundle?.primary ?? null : boardgame ? bggBundle?.primary ?? null : game ? gameBundle?.primary ?? null : anime ? animeSnapshot : savedPrimary;
+  const manga = metadata?.sourceProvider === "mangaupdates";
+  let mangaBundle: Awaited<ReturnType<typeof getSavedMangaUpdatesBundle>> | null = null;
+  if (manga && metadata?.sourceExternalId) {
+    try { mangaBundle = await getSavedMangaUpdatesBundle(id, metadata.sourceExternalId); }
+    catch { /* A missing snapshot can be obtained with the existing controls. */ }
+  }
+  const primary = manga ? mangaBundle?.primary ?? null : roblox ? robloxBundle?.primary ?? null : comic ? comicBundle?.primary ?? null : boardgame ? bggBundle?.primary ?? null : game ? gameBundle?.primary ?? null : animeMetadataSource ? animeMetadataBundle?.primary ?? null : anime ? animeSnapshot : savedPrimary;
   if (query.snapshot && (!Number.isSafeInteger(Number(query.snapshot)) || Number(query.snapshot) <= 0)) notFound();
   const selected = query.snapshot ? primary?.id === Number(query.snapshot) ? primary : await getRawEntitySnapshot(Number(query.snapshot), id) : null;
   if (query.snapshot && !selected) notFound();
@@ -75,7 +89,7 @@ export default async function SnapshotPage({ params, searchParams }: {
   let bggComparison: Awaited<ReturnType<typeof getBggMigrationComparison>> | null = null;
   let gameComparison: Awaited<ReturnType<typeof getGameMigrationComparison>> | null = null;
   let animeComparison: Awaited<ReturnType<typeof getAniListCreatorMigrationComparison>> | null = null;
-  const supported = roblox || comic || boardgame || game || anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
+  const supported = manga || roblox || comic || boardgame || game || anime || tmdbFilm || tmdbSeries || Boolean(metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider));
   if (primary && !outcome?.active && metadata?.sourceProvider && metadata.sourceExternalId && isBookSnapshotProvider(metadata.sourceProvider)) {
     try {
       const bundle = await getSavedBookBundle(metadata.sourceProvider, metadata.sourceExternalId);
@@ -98,7 +112,8 @@ export default async function SnapshotPage({ params, searchParams }: {
   }
   if (gameBundle && !outcome?.active) gameComparison = await getGameMigrationComparison(id, gameBundle.projection);
   if (bggBundle && !outcome?.active) bggComparison = await getBggMigrationComparison(id, bggBundle.projection);
-  const metadataComparison = bggComparison ?? gameComparison ?? filmComparison;
+  const aniMetadataComparison = animeMetadataBundle && !outcome?.active ? await getAniListMetadataComparison(id, animeMetadataBundle.projection) : null;
+  const metadataComparison = aniMetadataComparison ?? bggComparison ?? gameComparison ?? filmComparison;
   const summaryHref = `?view=summary${run ? `&run=${run.id}` : ""}#provider-json`;
   const fullHref = (snapshotId: number) => `?snapshot=${snapshotId}${run ? `&run=${run.id}` : ""}#provider-json`;
   return <main className="space-y-5">
@@ -132,10 +147,10 @@ export default async function SnapshotPage({ params, searchParams }: {
     </Alert>
     {!supported && <Alert variant="warning">У записи не выбран поддерживаемый источник. Сначала выберите FantLab, Google Books, Open Library, TMDB для фильма или сериала, AniList/Jikan для аниме либо IGDB/RAWG для видеоигры или BGG для настольной игры в редакторе.</Alert>}
     {comicBundle && !comicBundle.issue && <Alert variant="warning">Данные первого выпуска отсутствуют. Существующие создатели выпуска сохранятся; повторите получение данных.</Alert>}
-    <ProviderSnapshotControls mediaItemId={id} provider={roblox ? "roblox" : comic ? "comic-vine" : boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={roblox ? "roblox" : comic ? "comic" : boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} showActions canProcess={Boolean(robloxBundle || comicBundle || comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
+    <ProviderSnapshotControls mediaItemId={id} provider={manga ? "mangaupdates" : roblox ? "roblox" : comic ? "comic-vine" : boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={manga ? "manga" : roblox ? "roblox" : comic ? "comic" : boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} animeSnapshot={animeMetadataSource ? "metadata" : "creators"} showActions canProcess={Boolean(animeMetadataSource ? aniMetadataComparison : mangaBundle || robloxBundle || comicBundle || comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
     <section id="comparison" className="space-y-3 scroll-mt-4">
       <h2 className="text-xl font-semibold">Сравнение с текущей записью</h2>
-      {animeComparison ? <>
+      {animeComparison && !animeMetadataSource ? <>
         <p className="text-sm text-stone-600">Сравнение режиссёров, производственных компаний и продюсеров AniList. Ручные назначения сохраняются; остальные характеристики записи не меняются.</p>
         <div className="grid gap-4 md:grid-cols-2">
           <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={animeComparison.current} /></article>
@@ -188,14 +203,14 @@ export default async function SnapshotPage({ params, searchParams }: {
       </div>
       <p className="text-sm text-stone-600">{selected
         ? "Полные сохранённые данные провайдера без сокращений. Просмотр не меняет запись."
-        : boardgame || game || tmdbFilm || tmdbSeries ? "Краткая сводка: текущие и предлагаемые характеристики записи и расхождения." : "Краткая сводка: текущие участники записи, участники из данных провайдера и расхождения."}</p>
-      {selected || comparison || filmComparison || animeComparison || gameComparison || bggComparison ? <SnapshotJsonViewer key={selected ? `${selected.id}:${selected.payloadHash}` : "summary"} value={selected ? selected.payload : bggComparison ?? gameComparison ?? animeComparison ?? filmComparison ?? comparison} />
+        : animeMetadataSource || boardgame || game || tmdbFilm || tmdbSeries ? "Краткая сводка: текущие и предлагаемые характеристики записи и расхождения." : "Краткая сводка: текущие участники записи, участники из данных провайдера и расхождения."}</p>
+      {selected || comparison || metadataComparison || animeComparison ? <SnapshotJsonViewer key={selected ? `${selected.id}:${selected.payloadHash}` : "summary"} value={selected ? selected.payload : metadataComparison ?? animeComparison ?? comparison} />
         : <p className="text-sm text-stone-500">Краткие данные пока недоступны.</p>}
-      {headers.length > 1 && <div className="space-y-2 text-sm">
+      {headers.length > 0 && <div className="space-y-2 text-sm">
         <p className="font-medium">Сохранённые данные по отдельным ресурсам</p>
-        <ul className="space-y-2">{headers.map(row => <li key={row.id}>
-          {selected?.id === row.id ? <span>{row.providerCode} · {row.resourceType} · {row.externalId} — открыто</span>
-            : <Link className="underline" href={fullHref(row.id)}>{row.providerCode} · {row.resourceType} · {row.externalId} — полные данные</Link>}
+        <ul className="space-y-2">{headers.map(row => <li key={`${row.id}:${row.purpose}`}>
+          {selected?.id === row.id ? <span>{row.purpose === "primary" ? "Основной снимок" : "Зависимый снимок"} · {row.apiMethod} · {row.providerCode} · {row.resourceType} · {row.externalId} — открыто</span>
+            : <Link className="underline" href={fullHref(row.id)}>{row.purpose === "primary" ? "Основной снимок" : "Зависимый снимок"} · {row.apiMethod} · {row.providerCode} · {row.resourceType} · {row.externalId} — полные данные</Link>}
         </li>)}</ul>
       </div>}
     </details>

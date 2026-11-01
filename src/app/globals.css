@@ -304,13 +304,10 @@ body:has(.public-site-footer-layer) {
     height: 100dvh;
   }
 
+  .quiz-detail-page:has(+ .public-site-footer-layer),
   .quizzes-overview-page:has(+ .public-site-footer-layer) {
     flex: 1 1 0;
   }
-}
-
-.quiz-detail-page:has(+ .public-site-footer-layer) {
-  flex: 1 1 0;
 }
 
 .archive-page:not(.archive-catalog-page):has(.public-site-header) {

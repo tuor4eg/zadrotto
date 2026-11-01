@@ -1,3 +1,5 @@
+import { prepareMangaUpdatesSnapshotReferences } from "@/lib/providers/mangaupdates-service";
+import { syncMangaUpdatesCreators } from "./mangaupdates-creators";
 import { syncComicVineCreators } from "./comic-vine-creators";
 import { syncRobloxCreator } from "./roblox-creators";
 import { prepareRobloxSnapshotReferences } from "@/lib/providers/roblox-service";
@@ -7,7 +9,9 @@ import { prepareBggSnapshotReferences } from "@/lib/providers/bgg-service";
 import { BGG_LEGACY_FACT_KEYS, BGG_FACT_KEYS } from "@/lib/providers/bgg-adapter";
 import { prepareGameSnapshotReferences } from "@/lib/providers/game-service";
 import { clearAniListCreators, syncAniListCreators } from "./anilist-creators";
-import { prepareAniListCreatorSnapshot } from "@/lib/providers/anilist-creators-service";
+import { prepareAniListSnapshotBundle } from "@/lib/providers/anilist-metadata-service";
+import { ANILIST_METADATA_FACT_KEYS } from "@/lib/providers/anilist-metadata-adapter";
+import { missingAniListMetadataSnapshotSql, hasPrimaryAniListCreatorSnapshotSql, repairAniListCreatorSnapshotLinksInTransaction } from "./anilist-metadata";
 import { syncTmdbSeriesCreators, clearTmdbSeriesCreators } from "./tmdb-series-creators";
 import { prepareTmdbSeriesSnapshotReferences } from "@/lib/providers/tmdb-series-service";
 import { TMDB_SERIES_FACT_KEYS } from "@/lib/providers/tmdb-series-adapter";
@@ -121,14 +125,20 @@ export async function upsertMediaItemMetadata(
       ? await prepareTmdbFilmSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
     const seriesPrepared = input.snapshotReferences && provider === "tmdb" && item.mediaType === "series" && input.sourceExternalId
       ? await prepareTmdbSeriesSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
-    const animePrepared = input.snapshotReferences && item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "") && input.sourceExternalId
-      ? await prepareAniListCreatorSnapshot(provider!, input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const animeBundle = input.snapshotReferences && item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "") && input.sourceExternalId
+      ? await prepareAniListSnapshotBundle(provider!, input.sourceExternalId, input.snapshotReferences, tx) : null;
+    const animePrepared = animeBundle?.creators;
+    const animeMetadata = animeBundle?.metadata;
     const gamePrepared = input.snapshotReferences && item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId
       ? await prepareGameSnapshotReferences(provider, input.sourceExternalId, input.snapshotReferences, tx) : null;
     if (input.snapshotReferences && isGameCompanyProvider(provider) && !gamePrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     const bggPrepared = input.snapshotReferences && item.mediaType === "boardgame" && provider === "bgg" && input.sourceExternalId
       ? await prepareBggSnapshotReferences(input.sourceExternalId,input.snapshotReferences,tx) : null;
     if (input.snapshotReferences && provider === "bgg" && !bggPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
+    const mangaPrepared = input.snapshotReferences && item.mediaType === "manga" && provider === "mangaupdates" && input.sourceExternalId
+      ? await prepareMangaUpdatesSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
+    if (input.snapshotReferences && provider === "mangaupdates" && !mangaPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
+    if (item.mediaType === "manga" && provider === "mangaupdates" && !mangaPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
     const comicPrepared = input.snapshotReferences && item.mediaType === "comic" && provider === "comic-vine" && input.sourceExternalId
       ? await prepareComicVineSnapshotReferences(input.sourceExternalId, input.snapshotReferences, tx) : null;
     if (input.snapshotReferences && provider === "comic-vine" && !comicPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
@@ -137,12 +147,15 @@ export async function upsertMediaItemMetadata(
     if (input.snapshotReferences && provider === "roblox" && !robloxPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     const tmdbPrepared = filmPrepared ?? seriesPrepared;
     if (input.snapshotReferences && provider === "tmdb" && !tmdbPrepared) throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
-    const fetchedAt = input.fetchedAt === undefined ? robloxPrepared?.primary.fetchedAt ?? bggPrepared?.primary.fetchedAt ?? gamePrepared?.primary.fetchedAt ?? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
+    const fetchedAt = input.fetchedAt === undefined ? mangaPrepared?.primary.fetchedAt ?? animeMetadata?.primary.fetchedAt ?? robloxPrepared?.primary.fetchedAt ?? bggPrepared?.primary.fetchedAt ?? gamePrepared?.primary.fetchedAt ?? tmdbPrepared?.primary.fetchedAt ?? prepared?.primary.fetchedAt ?? now : input.fetchedAt;
     const normalizedBook = item.mediaType === "book" && isBookSnapshotProvider(provider ?? "");
     const [previous] = await tx.select({mediaItemId:mediaItemMetadata.mediaItemId,sourceProvider:mediaItemMetadata.sourceProvider,sourceExternalId:mediaItemMetadata.sourceExternalId,
       facts:mediaItemMetadata.facts}).from(mediaItemMetadata)
       .where(eq(mediaItemMetadata.mediaItemId, input.mediaItemId));
     if (input.expectedSource && ((previous?.sourceProvider ?? null) !== input.expectedSource.provider || (previous?.sourceExternalId ?? null) !== input.expectedSource.externalId)) throw new Error("PROVIDER_SOURCE_CHANGED");
+    if (animeMetadata && provider === previous?.sourceProvider && input.sourceExternalId === previous.sourceExternalId) {
+      await repairAniListCreatorSnapshotLinksInTransaction(tx, input.mediaItemId, input.sourceExternalId!);
+    }
     if (filmPrepared && item.mediaType !== "film") throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     if (prepared && item.mediaType !== "book") throw new Error("INVALID_PROVIDER_SNAPSHOT_TARGET");
     if (input.snapshotReferences) await lockProviderSnapshotReferences(tx,input.snapshotReferences);
@@ -151,7 +164,7 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && !gamePrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
     if (item.mediaType === "comic" && provider === "comic-vine" && !comicPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
     if (item.mediaType === "boardgame" && provider === "bgg" && !bggPrepared && Object.keys(input.facts).length > 0) throw new Error("PROVIDER_SNAPSHOT_REQUIRED");
-    const sourceFacts = robloxPrepared ? robloxPrepared.projection.facts : comicPrepared ? comicPrepared.projection.facts : bggPrepared ? {...bggPrepared.projection.facts,...bggPrepared.projection.genreFacts,bggCreators:bggPrepared.projection.creatorReferences} : gamePrepared ? { ...gamePrepared.projection.genreFacts, ...gamePrepared.projection.platformFacts, gameCompanyReferences: gamePrepared.projection.companyReferences } : tmdbPrepared ? { ...tmdbPrepared.projection.facts, ...tmdbPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
+    const sourceFacts = mangaPrepared ? mangaPrepared.projection.facts : animeMetadata ? { ...animeMetadata.projection.facts, ...animeMetadata.projection.genreFacts } : robloxPrepared ? robloxPrepared.projection.facts : comicPrepared ? comicPrepared.projection.facts : bggPrepared ? {...bggPrepared.projection.facts,...bggPrepared.projection.genreFacts,bggCreators:bggPrepared.projection.creatorReferences} : gamePrepared ? { ...gamePrepared.projection.genreFacts, ...gamePrepared.projection.platformFacts, gameCompanyReferences: gamePrepared.projection.companyReferences } : tmdbPrepared ? { ...tmdbPrepared.projection.facts, ...tmdbPrepared.projection.genreFacts } : prepared ? bookProjectionLegacyFacts(prepared.projection) : input.facts;
     const publishers = prepared && previous?.sourceProvider === provider ? await getWorkingBookPublishers(tx,input.mediaItemId,provider!) : [];
     const contributors = prepared ? [...prepared.projection.contributors,...publishers] : undefined;
     const facts = normalizedBook ? compactBookFacts(previous?.facts ?? {}) : {
@@ -161,6 +174,9 @@ export async function upsertMediaItemMetadata(
         ? Object.fromEntries(Object.entries(previous.facts).filter(([key]) => !([...(seriesPrepared ? TMDB_SERIES_FACT_KEYS : TMDB_FILM_FACT_KEYS), "productionCompanies", "genres", "genreReferences"] as readonly string[]).includes(key)))
         : item.mediaType === "book" && previous?.sourceProvider === provider ? previous.facts : {}), ...(tmdbPrepared ? tmdbPrepared.projection.facts : sourceFacts),
     };
+    if (mangaPrepared?.projection.fields.releaseYear) {
+      await tx.update(mediaItems).set({ releaseYear: sql`coalesce(${mediaItems.releaseYear}, ${mangaPrepared.projection.fields.releaseYear})` }).where(eq(mediaItems.id, input.mediaItemId));
+    }
     if (robloxPrepared) {
       for (const key of [...ROBLOX_LEGACY_FACT_KEYS, "maxPlayers", "paidAccess", "privateServers"]) delete facts[key];
       Object.assign(facts, robloxPrepared.projection.facts);
@@ -195,6 +211,11 @@ export async function upsertMediaItemMetadata(
       }
     }
     if (item.mediaType === "anime") {
+      if (animeMetadata) {
+        const preserved = previous?.sourceProvider === provider && previous.sourceExternalId === input.sourceExternalId ? previous.facts : {};
+        for (const key of Object.keys(facts)) delete facts[key];
+        Object.assign(facts, Object.fromEntries(Object.entries(preserved).filter(([key]) => ![...ANILIST_METADATA_FACT_KEYS, "genres", "genreReferences", "studios"].includes(key))), animeMetadata.projection.facts);
+      }
       // Completion is established only by applying trusted, complete provider evidence.
       delete facts.anilistCreatorsComplete;
       delete facts.anilistCreatorsUnavailable;
@@ -211,7 +232,7 @@ export async function upsertMediaItemMetadata(
         facts,
         sourceProvider: provider,
         sourceExternalId: bggPrepared?.projection.externalId ?? gamePrepared?.projection.externalId ?? tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-        sourceUrl: robloxPrepared?.projection.sourceUrl ?? bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+        sourceUrl: mangaPrepared?.projection.sourceUrl ?? animeMetadata?.projection.sourceUrl ?? robloxPrepared?.projection.sourceUrl ?? bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
         fetchedAt,
         updatedAt: now,
       })
@@ -221,7 +242,7 @@ export async function upsertMediaItemMetadata(
           facts,
           sourceProvider: provider,
           sourceExternalId: bggPrepared?.projection.externalId ?? gamePrepared?.projection.externalId ?? tmdbPrepared?.projection.externalId ?? prepared?.projection.externalId ?? input.sourceExternalId ?? null,
-          sourceUrl: robloxPrepared?.projection.sourceUrl ?? bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
+          sourceUrl: mangaPrepared?.projection.sourceUrl ?? animeMetadata?.projection.sourceUrl ?? robloxPrepared?.projection.sourceUrl ?? bggPrepared?.projection.sourceUrl ?? gamePrepared?.projection.sourceUrl ?? input.sourceUrl ?? tmdbPrepared?.projection.sourceUrl ?? prepared?.projection.sourceUrl ?? null,
           fetchedAt,
           updatedAt: now,
         },
@@ -254,7 +275,7 @@ export async function upsertMediaItemMetadata(
       externalPlatforms: item.mediaType === "game" ? extractExternalPlatforms(sourceFacts) : [] });
 
     }
-    if (prepared || tmdbPrepared || gamePrepared || bggPrepared || robloxPrepared || Object.keys(input.facts).length > 0) {
+    if (mangaPrepared || prepared || animeMetadata || tmdbPrepared || gamePrepared || bggPrepared || robloxPrepared || Object.keys(input.facts).length > 0) {
       await tx.update(mediaItems).set({ metadataIssueCode: null })
         .where(eq(mediaItems.id, input.mediaItemId));
     }
@@ -269,7 +290,18 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "game" && isGameCompanyProvider(provider) && input.sourceExternalId) {
       const references = gamePrepared?.projection.companyReferences ?? extractGameCompanyReferences(sourceFacts, provider);
       if (references !== null) await saveGameCompanyRoster(tx, { mediaItemId: input.mediaItemId, provider, sourceExternalId: input.sourceExternalId, references, enqueueEnrichment: input.enqueueCompanyLogos !== false });
-    } else if (!robloxPrepared && !(item.mediaType === "comic" && provider === "comic-vine") && !(item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "")) && !tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    } else if (!(item.mediaType === "manga" && provider === "mangaupdates") && !robloxPrepared && !(item.mediaType === "comic" && provider === "comic-vine") && !(item.mediaType === "anime" && ["anilist", "jikan"].includes(provider ?? "")) && !tmdbPrepared && !(provider === "tmdb" && (item.mediaType === "film" || item.mediaType === "series"))) await syncProviderCreators(tx, { mediaItemId: input.mediaItemId, provider, mediaType: item.mediaType, facts: sourceFacts, contributors });
+    if (item.mediaType === "manga" && previous?.sourceProvider === "mangaupdates" && (provider !== previous.sourceProvider || input.sourceExternalId !== previous.sourceExternalId)) {
+      await syncMangaUpdatesCreators(tx, input.mediaItemId, [], false);
+      await tx.update(mediaItems).set({ shikimoriEnrichmentAttemptedAt: null }).where(eq(mediaItems.id, input.mediaItemId));
+    }
+    if (mangaPrepared) {
+      await syncMangaUpdatesCreators(tx, input.mediaItemId, mangaPrepared.projection.creators);
+      await attachProviderSnapshots(tx, { entityType: "media-item", entityId: String(input.mediaItemId) }, [{ id: mangaPrepared.primary.id, payloadHash: mangaPrepared.primary.payloadHash, purpose: "primary" }], { kind: "system" });
+    }
+    if (item.mediaType === "manga" && provider === "mangaupdates" && !mangaPrepared && input.requestProviderParts && input.sourceExternalId) {
+      await createJobRun({ type: "media.metadata-backfill", payload: { mediaItemId: input.mediaItemId, force: true }, source: "event", maxAttempts: 3, timeoutSeconds: 300, retryBaseSeconds: 60, retryMaxSeconds: 3600 }, now, tx);
+    }
     if (robloxPrepared) {
       await syncRobloxCreator(tx, input.mediaItemId, robloxPrepared.projection.creator);
       await attachProviderSnapshots(tx, { entityType: "media-item", entityId: String(input.mediaItemId) }, [{ id: robloxPrepared.primary.id, payloadHash: robloxPrepared.primary.payloadHash, purpose: "primary" }], { kind: "system" });
@@ -280,6 +312,9 @@ export async function upsertMediaItemMetadata(
     if (item.mediaType === "anime") {
       const sourceChanged = previous && (provider !== previous.sourceProvider || (input.sourceExternalId ?? null) !== previous.sourceExternalId);
       if (sourceChanged) await clearAniListCreators(tx, input.mediaItemId);
+      if (animeMetadata) await attachProviderSnapshots(tx, { entityType: "media-item", entityId: String(input.mediaItemId) }, [
+        { id: animeMetadata.primary.id, payloadHash: animeMetadata.primary.payloadHash, purpose: "primary" },
+      ], { kind: "system" });
       if (animePrepared) {
         await attachProviderSnapshots(tx, {entityType:"media-item",entityId:String(input.mediaItemId)}, [
           {id:animePrepared.id,payloadHash:animePrepared.payloadHash,purpose:"dependency"},
@@ -391,6 +426,7 @@ export async function deleteMediaItemMetadata(mediaItemId: number) {
     const [item] = await tx.select({ id: mediaItems.id, mediaType: mediaItems.mediaType }).from(mediaItems).where(eq(mediaItems.id, mediaItemId)).for("update");
     if (item?.mediaType === "series") await clearTmdbSeriesCreators(tx, mediaItemId);
     if (item?.mediaType === "anime") await clearAniListCreators(tx, mediaItemId);
+    if (item?.mediaType === "manga") await syncMangaUpdatesCreators(tx, mediaItemId, [], false);
     await tx.delete(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, mediaItemId));
     await tx.delete(gameCompanyRosters).where(eq(gameCompanyRosters.mediaItemId, mediaItemId));
     await syncProviderCreators(tx, { mediaItemId, provider: null, mediaType: "", facts: {} });
@@ -410,6 +446,8 @@ const hasMetadataSourceSql = sql`(
 
 const missingMetadataFactsSql = sql`case when ${mediaItems.mediaType}='book' and ${bookSnapshotProviderSql()}
  then ${mediaItemMetadata.fetchedAt} is null
+ when ${mediaItems.mediaType}='anime' and ${mediaItemMetadata.sourceProvider}='anilist'
+ then (${missingAniListMetadataSnapshotSql()} or ${hasPrimaryAniListCreatorSnapshotSql()})
  else (${mediaItemMetadata.fetchedAt} is null or ${mediaItemMetadata.facts} = '{}'::jsonb) end`
 
 export const METADATA_REFRESH_MEDIA_TYPES = ["series", "anime"] as const
@@ -462,16 +500,19 @@ const metadataJobItemSelect = {
   title: mediaItems.title,
 }
 
-export async function getMediaItemsMissingMetadata(input: {
+type MissingMetadataSelection = {
   limit?: number
   mediaItemId?: number
   partsOnly?: boolean
   force?: boolean
   mediaType?: string
-} = {}) {
+};
+
+export function getMediaItemsMissingMetadataQuery(input: MissingMetadataSelection = {}) {
   const knownMissing = and(hasMetadataSourceSql, missingMetadataFactsSql)
   const unmatched = sql`not ${hasMetadataSourceSql}`
   const conditions = [
+    eq(mediaItems.metadataSearchDisabled, false),
     input.partsOnly && input.mediaItemId ? undefined : eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     input.partsOnly ? and(eq(mediaItems.mediaType, "series"), eq(mediaItemMetadata.sourceProvider, "tmdb"), hasMetadataSourceSql,
       input.mediaItemId || input.force ? undefined : sql`not exists (select 1 from ${titleParts} where ${titleParts.mediaItemId} = ${mediaItems.id} and ${titleParts.sourceProvider} = 'tmdb')`) : input.force ? undefined : or(knownMissing, unmatched),
@@ -494,7 +535,11 @@ export async function getMediaItemsMissingMetadata(input: {
       asc(mediaItems.id),
     )
 
-  const rows = await (input.limit ? query.limit(input.limit) : query)
+  return input.limit ? query.limit(input.limit) : query
+}
+
+export async function getMediaItemsMissingMetadata(input: MissingMetadataSelection = {}) {
+  const rows = await getMediaItemsMissingMetadataQuery(input)
   return rows.map(mapMetadataJobItem)
 }
 
@@ -504,6 +549,7 @@ export async function getMediaItemsStaleMetadata(input: {
   staleDays: number
 }) {
   const conditions = [
+    eq(mediaItems.metadataSearchDisabled, false),
     eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
     hasMetadataSourceSql,
     sql`not ${missingMetadataFactsSql}`,
@@ -534,4 +580,12 @@ export async function markMediaItemMetadataAttempt(mediaItemId: number, issueCod
   await withSnapshotJobGuard(jobGuard, async tx=>{
     await tx.update(mediaItems).set({metadataAttemptedAt:new Date(),metadataIssueCode:issueCode}).where(eq(mediaItems.id,mediaItemId));
   });
+}
+
+export async function setMediaItemMetadataSearchDisabled(mediaItemId: number, disabled: boolean) {
+  const [item] = await db.update(mediaItems)
+    .set({ metadataSearchDisabled: disabled, updatedAt: new Date() })
+    .where(eq(mediaItems.id, mediaItemId))
+    .returning({ id: mediaItems.id, title: mediaItems.title });
+  return item ?? null;
 }

@@ -1,3 +1,4 @@
+import { MangaCreatorDetailsFacts } from "@/components/archive/manga-creator-details-facts";
 import { ComicCreatorDetailsFacts } from "@/components/archive/comic-creator-details-facts";
 import { RobloxDetailsFacts } from "@/components/archive/roblox-details-facts";
 import { RobloxCreatorDetails } from "@/components/archive/roblox-creator-details";
@@ -268,6 +269,7 @@ export function MediaItemDetails({
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "manga" ? <MangaCreatorDetailsFacts creators={item.entryCreators} separatorBefore={detailsMetaLabels.length > 0 || Boolean(detailsYearLabel) || item.genres.length > 0} /> : null}
                 {item.mediaType === "comic" ? <ComicCreatorDetailsFacts creators={item.entryCreators} artistWork={item.comicArtistWork} separatorBefore={detailsMetaLabels.length > 0 || Boolean(detailsYearLabel) || item.genres.length > 0} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore /> : null}
                 {meta}
@@ -430,7 +432,7 @@ function ArchiveMediaItemDetails({
               className="pointer-events-none absolute inset-0 -z-10 hidden overflow-hidden rounded-tr-[8px] lg:col-start-2 lg:row-start-1 lg:-top-8 lg:block"
             >
               <div
-                className="absolute right-0 top-0 aspect-[4/3] w-1/2 bg-contain bg-right-top bg-no-repeat sm:w-[calc(100%-min(50%,420px))]"
+                className="absolute right-0 top-0 aspect-[4/3] w-1/2 bg-cover bg-right-top bg-no-repeat sm:w-[calc(100%-min(50%,420px))]"
                 style={{
                   backgroundImage: `url(${mediaCarrierFrame.detailBackgroundPath})`,
                   maskImage: "linear-gradient(to right, transparent, black 55%), linear-gradient(to top, transparent, black 65%)",
@@ -602,6 +604,7 @@ function ArchiveMediaItemDetails({
                 {item.mediaType === "film" ? <FilmDirectorDetailsFacts directors={item.filmDirectors} /> : null}
                 {item.mediaType === "series" ? <SeriesCreatorDetailsFacts creators={item.seriesCreators} facts={item.metadataFacts} /> : null}
                 {item.mediaType === "anime" ? <AnimeCreatorDetailsFacts creators={item.animeCreators} facts={item.metadataFacts} /> : null}
+                {item.mediaType === "manga" ? <MangaCreatorDetailsFacts creators={item.entryCreators} separatorBefore={archiveInfoLabels.length > 0 || item.genres.length > 0} /> : null}
                 {item.mediaType === "comic" ? <ComicCreatorDetailsFacts creators={item.entryCreators} artistWork={item.comicArtistWork} separatorBefore={archiveInfoLabels.length > 0 || item.genres.length > 0} /> : null}
                 {isBoardgame ? <BoardgameDetailsFacts facts={item.metadataFacts} creators={item.entryCreators} genres={item.genres} hasUnifiedGenres={item.hasUnifiedGenres} separatorBefore={archiveInfoLabels.length > 0} /> : null}
                 {meta && (archiveInfoLabels.length > 0 || hasBoardgameFacts || (!isBoardgame && item.genres.length > 0)) ? <span className="mx-1.5">•</span> : null}

@@ -3,10 +3,22 @@ import { describeRobloxSource } from "@/lib/providers/roblox-adapter";
 import { snapshotHash } from "@/lib/providers/snapshot-values";
 import { and, asc, eq, gt, inArray, lte, notExists, or, sql } from "drizzle-orm";
 import { db } from "@/db";
-import { mediaItems, mediaItemMetadata, providerSnapshots } from "@/db/schema";
+import { mediaItems, mediaItemMetadata, providerSnapshots, providerSnapshotLinks } from "@/db/schema";
 import { SNAPSHOT_DEFAULT_BATCH_SIZE } from "@/lib/providers/snapshot-job-payload";
 import type { BookProviderCode } from "@/lib/providers/types";
 import { describeGameSource } from "@/lib/providers/game-adapter";
+import { missingAniListMetadataSnapshotSql, hasPrimaryAniListCreatorSnapshotSql } from "./anilist-metadata";
+
+/** Metadata migration includes published and draft AniList entries within the durable ID range. */
+export function providerSnapshotAniListMetadataBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "anime"), eq(mediaItemMetadata.sourceProvider, "anilist"),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? or(missingAniListMetadataSnapshotSql(), hasPrimaryAniListCreatorSnapshotSql(), input.retryId ? eq(mediaItems.id, input.retryId) : undefined) : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
 
 /** Exact primary request; deliberately never reads payload or snapshot links. */
 function missingPrimarySnapshot() {
@@ -113,6 +125,21 @@ export function providerSnapshotComicBatchQuery(input: { afterId: number; throug
   return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
     .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
     .where(and(eq(mediaItems.mediaType, "comic"), eq(mediaItemMetadata.sourceProvider, "comic-vine"),
+      sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
+      gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId), input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
+      input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))
+    .orderBy(asc(mediaItemMetadata.mediaItemId)).limit((input.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE) + 1);
+}
+
+export function providerSnapshotMangaBatchQuery(input: { afterId: number; throughId: number; mediaItemIds?: number[]; batchSize?: number; onlyMissingSnapshots?: boolean; retryId?: number }) {
+  const missing = notExists(db.select({ id: providerSnapshots.id }).from(providerSnapshots).innerJoin(providerSnapshotLinks, eq(providerSnapshotLinks.snapshotId, providerSnapshots.id)).where(and(
+    eq(providerSnapshotLinks.entityType, "media-item"), eq(providerSnapshotLinks.entityId, sql`${mediaItems.id}::text`), eq(providerSnapshotLinks.purpose, "primary"),
+    eq(providerSnapshots.providerCode, "mangaupdates"), eq(providerSnapshots.resourceType, "series"), eq(providerSnapshots.externalId, mediaItemMetadata.sourceExternalId),
+    eq(providerSnapshots.apiMethod, "series.details"), eq(providerSnapshots.requestKey, snapshotHash({ version: 1 })), eq(providerSnapshots.requestParams, { version: 1 }),
+  )));
+  return db.select({ id: mediaItems.id, mediaType: mediaItems.mediaType, provider: mediaItemMetadata.sourceProvider, externalId: mediaItemMetadata.sourceExternalId })
+    .from(mediaItemMetadata).innerJoin(mediaItems, eq(mediaItems.id, mediaItemMetadata.mediaItemId))
+    .where(and(eq(mediaItems.mediaType, "manga"), eq(mediaItemMetadata.sourceProvider, "mangaupdates"),
       sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, gt(mediaItemMetadata.mediaItemId, input.afterId), lte(mediaItemMetadata.mediaItemId, input.throughId),
       gt(mediaItems.id, input.afterId), lte(mediaItems.id, input.throughId), input.mediaItemIds ? inArray(mediaItemMetadata.mediaItemId, input.mediaItemIds) : undefined,
       input.onlyMissingSnapshots ? input.retryId ? or(missing, eq(mediaItemMetadata.mediaItemId, input.retryId)) : missing : undefined))

@@ -95,6 +95,8 @@ async function canSearchProvider(
   providerCode: MediaProviderCode,
   options: ProviderSearchOptions,
 ): Promise<{ allowed: boolean; error: ProviderSearchError | null }> {
+  // MangaUpdates charges quota at the HTTP boundary, after cache lookup.
+  if (providerCode === "mangaupdates") return { allowed: true, error: null };
   const result = options.beforeProviderSearch
     ? await options.beforeProviderSearch(providerCode)
     : true;
@@ -578,9 +580,13 @@ export async function getTitleMetadata(
 
   // Connected book adapters persist full responses and reserve quota for every
   // HTTP request, including Open Library author dependencies.
-  if (providers === COVER_PROVIDERS && ((input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (["film", "series"].includes(input.mediaType) && input.provider === "tmdb") || (input.mediaType === "comic" && input.provider === "comic-vine") || (input.mediaType === "roblox" && input.provider === "roblox"))) {
+  if (providers === COVER_PROVIDERS && ((input.mediaType === "manga" && input.provider === "mangaupdates") || (input.mediaType === "anime" && input.provider === "anilist") || (input.mediaType === "book" && ["fantlab", "google-books", "open-library"].includes(input.provider)) || (["film", "series"].includes(input.mediaType) && input.provider === "tmdb") || (input.mediaType === "comic" && input.provider === "comic-vine") || (input.mediaType === "roblox" && input.provider === "roblox"))) {
     try {
-      const fetchMetadata = input.mediaType === "roblox"
+      const fetchMetadata = input.mediaType === "manga"
+        ? (await import("@/lib/providers/mangaupdates-service")).fetchMangaUpdatesMetadata
+        : input.mediaType === "anime"
+        ? (await import("@/lib/providers/anilist-metadata-service")).fetchAniListMetadata
+        : input.mediaType === "roblox"
         ? (await import("@/lib/providers/roblox-service")).fetchRobloxMetadata
         : input.mediaType === "comic"
         ? (await import("@/lib/providers/comic-vine-service")).fetchComicVineMetadata

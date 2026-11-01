@@ -16,6 +16,7 @@ import { franchiseIdsExist } from "@/db/queries/franchises";
 import { getMediaCarrierSupportedMediaTypesById } from "@/db/queries/media-carriers";
 import {
   deleteMediaItemMetadata,
+  setMediaItemMetadataSearchDisabled,
   upsertMediaItemMetadata,
 } from "@/db/queries/media-item-metadata";
 import { mediaTypeExistsByCode } from "@/db/queries/media-types";
@@ -610,4 +611,21 @@ export async function updateAdminMediaItemPublicationStatusAction(formData: Form
       nextStatus === "published" ? "published" : "unpublished"
     }`,
   );
+}
+
+export async function setAdminMediaMetadataSearchAction(formData: FormData) {
+  const adminUser = await requireAdminUser();
+  const id = parseRequiredMediaItemId(getFormString(formData, "mediaItemId"));
+  if (!id.ok) redirect("/admin/media?error=invalid-media");
+  const disabled = getFormString(formData, "metadataSearchDisabled") === "on";
+  const item = await setMediaItemMetadataSearchDisabled(id.value, disabled);
+  if (!item) redirect("/admin/media?error=invalid-media");
+  await logActivity({
+    action: "media.updated", actorType: "admin", adminUserId: adminUser.id,
+    entityType: "media-item", entityId: item.id, entityLabel: item.title,
+    message: disabled ? "Автоматический поиск метаданных отключён." : "Автоматический поиск метаданных включён.",
+    metadata: { metadataSearchDisabled: disabled },
+  });
+  revalidatePath(`/admin/media/${id.value}/edit`);
+  redirect(`/admin/media/${id.value}/edit?updated=1`);
 }

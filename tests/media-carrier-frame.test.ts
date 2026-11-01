@@ -77,6 +77,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "nes" }),
       {
         assetPath: "/mediaCarriers/game/nes/cartridge.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[3/2]",
         coverAreaClassName: "left-[9.5%] top-[18.5%] h-[58.5%] w-[81%]",
         displayFontClassName: "media-carrier-font-nes",
@@ -94,6 +95,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "mobile" }),
       {
         assetPath: "/mediaCarriers/game/mobile/phone.png",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         ratingPanelVariant: "smartphone",
         aspectRatioClassName: "aspect-[133/260]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
@@ -136,6 +138,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "sega" }),
       {
         assetPath: "/mediaCarriers/game/sega/cartridge.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         ratingPanelVariant: "standard",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[15.2%] top-[7.8%] h-[79.5%] w-[69.6%]",
@@ -150,6 +153,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "snes" }),
       {
         assetPath: "/mediaCarriers/game/snes/cartridge.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         ratingPanelVariant: "standard",
         aspectRatioClassName: "aspect-[4/3]",
         coverAreaClassName: "left-[14.6%] top-[4.5%] h-[41.5%] w-[70.8%]",
@@ -167,6 +171,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "game", mediaCarrierCode: "ps1" }),
       {
         assetPath: "/mediaCarriers/game/ps1/jewel.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[209/208]",
         coverAreaClassName: "left-[19.7%] top-[1.9%] h-[95%] w-[76.8%]",
         displayFontClassName: "media-carrier-font-ps1",
@@ -192,6 +197,7 @@ describe("media carrier frames", () => {
       }),
       {
         assetPath: "/mediaCarriers/game/pc/dos/diskette.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[1228/1281]",
         coverAreaClassName: "left-[12.6%] top-[35.3%] h-[54.2%] w-[75%]",
         displayFontClassName: "media-carrier-font-pc-dos",
@@ -227,6 +233,7 @@ describe("media carrier frames", () => {
       }),
       {
         assetPath: "/mediaCarriers/game/pc/win9x/jewel.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[10/9]",
         coverAreaClassName: "left-[12.6%] top-[9.4%] h-[87.3%] w-[64.2%]",
         displayFontClassName: "media-carrier-font-pc-win9x",
@@ -260,6 +267,7 @@ describe("media carrier frames", () => {
       }),
       {
         assetPath: "/mediaCarriers/game/pc/windvd/dvd.webp",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[3/4]",
         compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
         compactViewportClassName: "h-[min(28vh,260px)] max-w-full sm:h-[min(32vh,300px)]",
@@ -297,6 +305,7 @@ describe("media carrier frames", () => {
       }),
       {
         assetPath: "/mediaCarriers/game/pc/steam/steam.jpg",
+        detailBackgroundPath: "/mediaCarriers/game/game.webp",
         aspectRatioClassName: "aspect-[3/4]",
         bottomOverlayClassName: "h-auto",
         bottomOverlayPath: "/mediaCarriers/game/pc/steam/steam.jpg",
@@ -323,6 +332,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "vhs" }),
       {
         assetPath: "/mediaCarriers/video/vhs/vhs.webp",
+        detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
         aspectRatioClassName: "aspect-[993/1529]",
         compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
         compactViewportClassName: "h-[min(32vh,300px)]",
@@ -341,6 +351,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/video/dvd/dvd.webp",
+        detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
         aspectRatioClassName: "aspect-[357/490]",
         compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
         compactViewportClassName: "aspect-[357/490] w-full max-w-[min(23vh,219px)]",
@@ -364,6 +375,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "film", mediaCarrierCode: null, releaseYear: 1979 }),
       {
         assetPath: "/mediaCarriers/video/reel/reel.webp",
+        detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
         aspectRatioClassName: "aspect-[1000/1040]",
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",
@@ -401,6 +413,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "anime", mediaCarrierCode: "dvd" }),
       {
         assetPath: "/mediaCarriers/anime/anime.webp",
+        detailBackgroundPath: "/mediaCarriers/anime/background.webp",
         aspectRatioClassName: "aspect-[954/1346]",
         compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
         compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
@@ -420,6 +433,7 @@ describe("media carrier frames", () => {
       getMediaCarrierFrame({ mediaType: "series", mediaCarrierCode: null, releaseYear: 2003 }),
       {
         assetPath: "/mediaCarriers/video/tv/tv.webp",
+        detailBackgroundPath: "/mediaCarriers/video/series.webp",
         aspectRatioClassName: "aspect-[1033/910]",
         compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
         compactViewportClassName: "w-[min(100%,18rem)] max-w-full",

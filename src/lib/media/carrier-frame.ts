@@ -98,8 +98,21 @@ type MediaCarrierFrameInput = {
 };
 
 const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
+  "manga/manga": {
+    assetPath: "/mediaCarriers/manga/cover.webp",
+    aspectRatioClassName: "aspect-[3/4]",
+    compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
+    compactViewportClassName: "h-[min(32vh,300px)]",
+    coverAreaClassName: "inset-0",
+    placeholderVariant: "dvd-label",
+    ratingPanelVariant: "anime-manga",
+    renderKind: "cartridge",
+    sizeClassName: "h-[min(58vh,520px)] w-auto max-w-full",
+    viewportClassName: "h-[min(58vh,520px)]",
+  },
   "anime/anime": {
     assetPath: "/mediaCarriers/anime/anime.webp",
+    detailBackgroundPath: "/mediaCarriers/anime/background.webp",
     aspectRatioClassName: "aspect-[954/1346]",
     compactSizeClassName: "w-full max-w-[min(23vh,213px)]",
     compactViewportClassName: "aspect-[954/1346] w-full max-w-[min(23vh,213px)]",
@@ -112,6 +125,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "book/book": {
     assetPath: "/mediaCarriers/book/book.webp",
+    detailBackgroundPath: "/mediaCarriers/book/background.webp",
     aspectRatioClassName: "aspect-[679/1000]",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
     compactViewportClassName: "h-[min(32vh,300px)]",
@@ -137,6 +151,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "roblox/roblox": {
     assetPath: "/mediaCarriers/roblox/roblox.webp",
+    detailBackgroundPath: "/mediaCarriers/roblox/background.webp",
     aspectRatioClassName: "aspect-[1008/1499]",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
     compactViewportClassName: "h-[min(32vh,300px)]",
@@ -152,6 +167,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   },
   "comic/comic-book": {
     assetPath: "/mediaCarriers/comic/pp.webp",
+    detailBackgroundPath: "/mediaCarriers/comic/comic.webp",
     aspectRatioClassName: "aspect-[619/960]",
     compactViewportClassName: "aspect-[619/960] w-full max-w-[13rem]",
     coverAreaClassName: "left-[4.8%] top-[5.2%] h-[91.1%] w-[92.5%]",
@@ -165,6 +181,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "aspect-[619/960] w-full max-w-[360px]",
   },
   "game/nes": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/nes/cartridge.webp",
     aspectRatioClassName: "aspect-[3/2]",
     coverAreaClassName: "left-[9.5%] top-[18.5%] h-[58.5%] w-[81%]",
@@ -176,6 +193,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "game/mobile": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     ratingPanelVariant: "smartphone",
     assetPath: "/mediaCarriers/game/mobile/phone.png",
     aspectRatioClassName: "aspect-[133/260]",
@@ -188,6 +206,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(58vh,520px)]",
   },
   "game/pc": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/pc/dos/diskette.webp",
     aspectRatioClassName: "aspect-[1228/1281]",
     coverAreaClassName: "left-[12.6%] top-[35.3%] h-[54.2%] w-[75%]",
@@ -201,6 +220,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     titleTemplate: "C:\\{title}>",
   },
   "game/pc/win9x": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/pc/win9x/jewel.webp",
     aspectRatioClassName: "aspect-[10/9]",
     coverAreaClassName: "left-[12.6%] top-[9.4%] h-[87.3%] w-[64.2%]",
@@ -216,6 +236,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     titleTemplate: "C:\\{title}",
   },
   "game/pc/windvd": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/pc/windvd/dvd.webp",
     aspectRatioClassName: "aspect-[3/4]",
     compactSizeClassName: "h-[min(28vh,260px)] w-auto max-w-full sm:h-[min(32vh,300px)]",
@@ -235,6 +256,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
   },
   "game/pc/steam": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/pc/steam/steam.jpg",
     aspectRatioClassName: "aspect-[3/4]",
     bottomOverlayClassName: "h-auto",
@@ -255,6 +277,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(44vh,380px)] max-w-full sm:h-[min(58vh,520px)]",
   },
   "game/ps1": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     assetPath: "/mediaCarriers/game/ps1/jewel.webp",
     aspectRatioClassName: "aspect-[209/208]",
     coverAreaClassName: "left-[19.7%] top-[1.9%] h-[95%] w-[76.8%]",
@@ -266,6 +289,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "game/sega": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     ratingPanelVariant: "standard",
     assetPath: "/mediaCarriers/game/sega/cartridge.webp",
     aspectRatioClassName: "aspect-[4/3]",
@@ -277,6 +301,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "game/snes": {
+    detailBackgroundPath: "/mediaCarriers/game/game.webp",
     ratingPanelVariant: "standard",
     assetPath: "/mediaCarriers/game/snes/cartridge.webp",
     aspectRatioClassName: "aspect-[4/3]",
@@ -288,6 +313,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     renderKind: "cartridge",
   },
   "film/vhs": {
+    detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
     assetPath: "/mediaCarriers/video/vhs/vhs.webp",
     aspectRatioClassName: "aspect-[993/1529]",
     coverAreaClassName: "left-[5.7%] top-[8.2%] h-[83.5%] w-[66%]",
@@ -303,6 +329,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(58vh,520px)]",
   },
   "film/dvd": {
+    detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
     assetPath: "/mediaCarriers/video/dvd/dvd.webp",
     aspectRatioClassName: "aspect-[357/490]",
     compactSizeClassName: "w-full max-w-[min(23vh,219px)]",
@@ -318,6 +345,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "aspect-[357/490] w-full max-w-[min(42vh,379px)]",
   },
   "film/reel": {
+    detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
     assetPath: "/mediaCarriers/video/reel/reel.webp",
     aspectRatioClassName: "aspect-[1000/1040]",
     compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
@@ -334,6 +362,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "w-[min(100%,22rem)] max-w-full lg:w-[min(100%,24rem)]",
   },
   "film/streaming": {
+    detailBackgroundPath: "/mediaCarriers/video/movie.jpg",
     assetPath: "",
     aspectRatioClassName: "aspect-[2/3]",
     compactSizeClassName: "h-[min(30vh,280px)] w-auto max-w-full sm:h-[min(34vh,320px)]",
@@ -350,6 +379,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "h-[min(48vh,420px)] max-w-full sm:h-[min(62vh,560px)]",
   },
   "series/tv": {
+    detailBackgroundPath: "/mediaCarriers/video/series.webp",
     assetPath: "/mediaCarriers/video/tv/tv.webp",
     aspectRatioClassName: "aspect-[1033/910]",
     compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
@@ -365,6 +395,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
   },
   "series/modern-tv": {
+    detailBackgroundPath: "/mediaCarriers/video/series.webp",
     assetPath: "/mediaCarriers/video/moderntv/tv.webp",
     aspectRatioClassName: "aspect-[820/713]",
     compactSizeClassName: "w-[min(100%,18rem)] max-w-full",
@@ -380,6 +411,7 @@ const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
     viewportClassName: "w-[min(100%,31rem)] max-w-full lg:w-[min(100%,34rem)]",
   },
   "series/streaming": {
+    detailBackgroundPath: "/mediaCarriers/video/series.webp",
     assetPath: "",
     aspectRatioClassName: "aspect-[2/3]",
     compactSizeClassName: "h-[min(30vh,280px)] w-auto max-w-full sm:h-[min(34vh,320px)]",
@@ -541,6 +573,10 @@ export function getMediaCarrierFrame(
 
   if (item.mediaType === "anime") {
     return MEDIA_CARRIER_FRAMES["anime/anime"] ?? null;
+  }
+
+  if (item.mediaType === "manga") {
+    return MEDIA_CARRIER_FRAMES["manga/manga"] ?? null;
   }
 
   if (item.mediaType === "roblox") {

@@ -14,6 +14,7 @@ const TEST_QUERIES_BY_MEDIA_TYPE: Record<string, string> = {
   series: "Breaking Bad",
   anime: "Cowboy Bebop",
   comic: "Batman",
+  manga: "Berserk",
   book: "Гарри Поттер",
   game: "The Witcher 3",
   roblox: "Adopt Me",

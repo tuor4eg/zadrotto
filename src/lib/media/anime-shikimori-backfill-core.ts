@@ -62,11 +62,13 @@ export type AnimeShikimoriBackfillDependencies = {
   applyResult: (input: {
     decide: (item: LockedAnimeItem) => { aliases: string[]; description: string | null };
     mediaItemId: number;
+    sourceExternalId?: string;
   }) => Promise<boolean>;
   fetchEnrichment: (anilistId: number) => Promise<AniListShikimoriEnrichmentResult>;
   getItems: () => Promise<AnimeShikimoriBackfillItem[]>;
   markSkipped: (input: {
     mediaItemId: number;
+    sourceExternalId?: string;
     shouldMark: (item: LockedAnimeItem) => boolean;
   }) => Promise<boolean>;
   maxTitleAliases: number;
@@ -81,6 +83,7 @@ export async function runAnimeShikimoriBackfill(
     if (!needsAnimeShikimoriEnrichment(item)) {
       const marked = await dependencies.markSkipped({
         mediaItemId: item.id,
+        sourceExternalId: item.sourceExternalId,
         shouldMark: (current) => !needsAnimeShikimoriEnrichment({
           aliases: current.aliases.map((alias) => alias.value),
           description: current.description,
@@ -94,6 +97,7 @@ export async function runAnimeShikimoriBackfill(
 
     const updated = await dependencies.applyResult({
       mediaItemId: item.id,
+        sourceExternalId: item.sourceExternalId,
       decide: (current) => decideAnimeShikimoriBackfill({
         aliases: current.aliases.map((alias) => alias.value),
         description: current.description,

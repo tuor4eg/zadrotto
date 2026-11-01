@@ -1,0 +1,1 @@
+CREATE INDEX "media_item_metadata_comic_vine_issues_pending_idx" ON "media_item_metadata" ((coalesce(facts->>'comicVineIssueLastAttemptAt', '')), "media_item_id") WHERE source_provider = 'comic-vine' AND NOT (facts @> '{"comicVineIssuesComplete":true}'::jsonb);

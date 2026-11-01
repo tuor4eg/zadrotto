@@ -25,10 +25,12 @@ test("issue aggregation applies linked snapshots without losing partial creators
     const partial = await db.transaction(tx => applyComicVineIssueAggregation(tx, { mediaItemId: item.id, externalId: "444", volume: ref(volume), issue: ref(a) }));
     assert.equal(partial.complete, false);
     const [first] = await db.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
+    assert.equal(first.facts.comicVineIssuesComplete, false);
     assert.ok((first.facts.comicVinePersonCreators as { externalId: string }[]).some(row => row.externalId === "person:55"));
     const complete = await db.transaction(tx => applyComicVineIssueAggregation(tx, { mediaItemId: item.id, externalId: "444", volume: ref(volume), issue: ref(b) }));
     assert.equal(complete.complete, true);
     const [final] = await db.select().from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, item.id));
+    assert.equal(final.facts.comicVineIssuesComplete, true);
     const people = final.facts.comicVinePersonCreators as { externalId: string; roleCode: string; issueCount: number; work?: string[] }[];
     assert.equal(people.length, 2);
     assert.ok(people.every(row => row.issueCount === 2));

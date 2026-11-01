@@ -4,10 +4,12 @@ import { useState } from "react";
 import { Input, Select } from "@/components/ui/form";
 
 const FIELDS: Record<string, { key: string; label: string; min: number; max?: number }[]> = {
+  "media.comic-vine-issue-creators": [{ key: "limit", label: "Лимит выпусков за запуск (по умолчанию 25)", min: 1, max: 200 }, { key: "mediaItemId", label: "ID записи (необязательно)", min: 1, max: 2147483647 }],
   "media.creator-name-localization": [{ key: "batchSize", label: "Персон за запрос (по умолчанию 20)", min: 1, max: 50 }, { key: "requestsPerMinute", label: "Запросов в минуту (по умолчанию 5)", min: 1, max: 100 }, { key: "requestsPerDay", label: "Запросов в сутки (по умолчанию 200)", min: 1, max: 100000 }],
   "media.metadata-backfill": [{ key: "limit", label: "Лимит записей", min: 1, max: 200 }, { key: "quotaReserve", label: "Резерв квоты", min: 0, max: 10000 }, { key: "mediaItemId", label: "ID записи (необязательно)", min: 1 }],
   "media.metadata-refresh": [{ key: "limit", label: "Лимит записей", min: 1, max: 200 }, { key: "staleDays", label: "Порог устаревания, дней", min: 1, max: 3650 }, { key: "quotaReserve", label: "Резерв квоты", min: 0, max: 10000 }, { key: "mediaItemId", label: "ID записи (необязательно)", min: 1 }],
   "media.cover-thumbnails-backfill": [{ key: "limit", label: "Лимит записей", min: 1, max: 200 }, { key: "mediaItemId", label: "ID записи (необязательно)", min: 1 }],
+  "media.anime-shikimori-backfill": [{ key: "batchSize", label: "Размер партии (по умолчанию 1)", min: 1, max: 100 }, { key: "pauseMs", label: "Пауза между записями, мс", min: 0, max: 60000 }, { key: "afterMediaItemId", label: "После ID записи", min: 0 }],
   "media.rating-stats-reconcile": [{ key: "batchSize", label: "Размер партии", min: 1, max: 500 }, { key: "afterMediaItemId", label: "После ID записи (необязательно)", min: 1 }],
 };
 
@@ -26,6 +28,7 @@ export function JobPayloadFields({ type, initialPayload = {}, mediaTypes = [], p
   if (!fields) return <div className="col-span-full rounded-md border bg-stone-50 p-3 text-sm text-stone-600">Параметры этого обработчика управляются его предметными настройками. Сохранённые параметры не изменяются.{preserveWithoutFields ? null : <input type="hidden" name="payload" value={JSON.stringify(payload)} />}</div>;
   return <div className="col-span-full grid gap-3 rounded-md border bg-stone-50 p-3 sm:grid-cols-2">
     <input type="hidden" name="payload" value={JSON.stringify(payload)} />
+    {type === "media.anime-shikimori-backfill" ? <label className="grid gap-2"><span className="text-sm">Типы записей</span><Select value={!Array.isArray(payload.mediaTypes) ? "both" : payload.mediaTypes.includes("manga") ? payload.mediaTypes.includes("anime") ? "both" : "manga" : "anime"} onChange={event => { set("mediaTypes", event.currentTarget.value === "both" ? ["anime", "manga"] : [event.currentTarget.value]); set("checkpoint", undefined); }}><option value="anime">Аниме</option><option value="manga">Манга</option><option value="both">Аниме и манга</option></Select></label> : null}
     {fields.map(field => <label key={field.key} className="grid gap-2"><span className="text-sm">{field.label}</span><Input type="number" min={field.min} max={field.max} step={1} value={typeof payload[field.key] === "number" ? String(payload[field.key]) : ""} placeholder="По умолчанию" onChange={event => set(field.key, event.currentTarget.value === "" ? undefined : Number(event.currentTarget.value))} /></label>)}
     {type === "media.metadata-backfill" ? <>
       <label className="grid gap-2"><span className="text-sm">Тип записи</span><Select value={typeof payload.mediaType === "string" ? payload.mediaType : ""} onChange={event => set("mediaType", event.currentTarget.value || undefined)}><option value="">Все типы</option>{mediaTypes.map(item => <option key={item.code} value={item.code}>{item.name}</option>)}</Select></label>

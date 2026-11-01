@@ -3,6 +3,9 @@ const record = (value: unknown): Record<string, unknown> => value !== null && ty
 const count = (value: unknown) => typeof value === "number" && Number.isSafeInteger(value) && value >= 0 ? value : null;
 const STAGES: Record<string, string> = { identity: "Сопоставление", catalogue: "Каталог", profiles: "Профили", images: "Изображения", request: "Заявки", complete: "Завершение" };
 const STATS = [
+  ["matched", "Совпадений Shikimori"], ["unmatched", "Совпадений не найдено"],
+  ["russianTitles", "Русских названий"], ["russianDescriptions", "Русских описаний"], ["requestErrors", "Ошибок запросов"],
+  ["noRussian", "Совпадений без русской локализации"],
   ["processed", "Обработано"], ["failed", "Ошибок"], ["skipped", "Пропущено"], ["created", "Создано"],
   ["updated", "Обновлено"], ["approved", "Одобрено"], ["storedImages", "Изображений сохранено"], ["missingImages", "Без портрета у источника"],
   ["processedPlatforms", "Платформ обработано"], ["remainingPlatforms", "Платформ осталось"], ["errors", "Ошибок"],

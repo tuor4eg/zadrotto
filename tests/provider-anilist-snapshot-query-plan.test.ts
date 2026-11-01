@@ -10,7 +10,7 @@ test("AniList snapshot batches and exact MAL lookup use indexed evidence at 100k
   url.searchParams.set("options", `-c search_path=${schema}`);
   process.env.DATABASE_URL = url.toString();
   const { getDbClient } = await import("../src/db");
-  const { providerSnapshotAnimeBatchQuery } = await import("../src/db/queries/provider-snapshot-jobs");
+  const { providerSnapshotAnimeBatchQuery, providerSnapshotAniListMetadataBatchQuery } = await import("../src/db/queries/provider-snapshot-jobs");
   const { savedAniListCreatorSnapshotQuery } = await import("../src/lib/providers/anilist-creators-service");
   const { snapshotHash } = await import("../src/lib/providers/snapshot-values");
   const client = getDbClient();
@@ -55,6 +55,29 @@ test("AniList snapshot batches and exact MAL lookup use indexed evidence at 100k
     }
     const selected = await explain("batch-selected-retry", providerSnapshotAnimeBatchQuery({ afterId: 0, throughId: 100000, mediaItemIds: [41, 42], onlyMissingSnapshots: true, retryId: 42 }).toSQL());
     assert.equal(selected.Plan["Actual Rows"], 1);
+    // Reuse the same scale fixture for the new exact-primary-link access path.
+    await client.unsafe(`create unlogged table provider_snapshot_links(snapshot_id integer,entity_type text,entity_id text,purpose text,primary key(snapshot_id,entity_type,entity_id,purpose));
+      create index provider_snapshot_links_entity_idx on provider_snapshot_links(entity_type,entity_id,purpose,snapshot_id);
+      insert into provider_snapshots select g+100000,'anilist','anime',g::text,'anime.details','{"version":1}', '${snapshotHash({ version: 1 })}', '{}','application/json','hash',now(),now() from generate_series(1,100000)g;
+      insert into provider_snapshot_links select g+100000,'media-item',g::text,'primary' from generate_series(1,100000)g;
+      analyze;`);
+    for (const state of ["no-missing", "rare-missing", "common-missing"]) {
+      if (state === "rare-missing") await client.unsafe("delete from provider_snapshot_links where entity_id='50999'; analyze provider_snapshot_links");
+      if (state === "common-missing") await client.unsafe("delete from provider_snapshot_links where snapshot_id>150000; analyze provider_snapshot_links");
+      const plan = await explain(`primary-batch:${state}`, providerSnapshotAniListMetadataBatchQuery({ afterId: 50000, throughId: 51000, onlyMissingSnapshots: true, batchSize: 25 }).toSQL());
+      assert.equal(plan.Plan["Actual Rows"], state === "no-missing" ? 0 : state === "rare-missing" ? 1 : 26);
+      assert.ok(!nodes(plan.Plan).some(n => ["provider_snapshots", "provider_snapshot_links"].includes(String(n["Relation Name"])) && n["Node Type"] === "Seq Scan" && Number(n["Actual Loops"]) > 1), "primary selection must not repeatedly scan raw snapshots or entity links");
+      if (state === "no-missing") await explain("primary-batch-full-range:no-missing", providerSnapshotAniListMetadataBatchQuery({ afterId: 0, throughId: 100000, onlyMissingSnapshots: true }).toSQL());
+    }
+    await client.unsafe(`alter table media_items add publication_status text default 'published', add media_carrier_id integer,
+      add title text default 'Anime', add original_title text, add release_year integer, add metadata_attempted_at timestamptz;
+      alter table media_item_metadata add facts jsonb default '{"episodeCount":12}', add fetched_at timestamptz default now();
+      create unlogged table media_carriers(id integer primary key,code text);
+      create index media_items_metadata_attempted_at_idx on media_items(metadata_attempted_at); analyze;`);
+    const { getMediaItemsMissingMetadataQuery } = await import("../src/db/queries/media-item-metadata");
+    const backfill = await explain("metadata-backfill:primary-missing", getMediaItemsMissingMetadataQuery({ mediaType: "anime", limit: 25 }).toSQL());
+    assert.equal(backfill.Plan["Actual Rows"], 25);
+    assert.ok(!nodes(backfill.Plan).some(n => ["provider_snapshots", "provider_snapshot_links"].includes(String(n["Relation Name"])) && n["Node Type"] === "Seq Scan" && Number(n["Actual Loops"]) > 1), "general backfill must not repeatedly scan evidence tables");
   } finally {
     await client.unsafe(`drop schema ${schema} cascade`);
     await client.end();

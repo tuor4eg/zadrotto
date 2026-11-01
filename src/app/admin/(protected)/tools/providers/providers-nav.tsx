@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Database, Gauge, ServerCog } from "lucide-react";
+import { Database, Gauge, ServerCog, Wrench } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -21,6 +21,11 @@ const PROVIDER_NAV_ITEMS = [
     href: "/admin/tools/providers/snapshots",
     label: "Снимки",
     icon: Database,
+  },
+  {
+    href: "/admin/tools/providers/additional",
+    label: "Дополнительно",
+    icon: Wrench,
   },
 ] as const;
 

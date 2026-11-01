@@ -1,3 +1,6 @@
+import { fetchMangaUpdatesMetadata, getSavedMangaUpdatesBundle } from "./mangaupdates-service";
+import { fetchAniListMetadata, getSavedAniListMetadataBundle, getAniListMetadataComparison } from "./anilist-metadata-service";
+import { repairAniListCreatorSnapshotLinks } from "@/db/queries/anilist-metadata";
 import { fetchComicVineMetadata, getSavedComicVineBundle } from "./comic-vine-service";
 import { fetchRobloxMetadata, getSavedRobloxBundle } from "./roblox-service";
 import { fetchBggMetadata, getSavedBggBundle, getBggMigrationComparison } from "./bgg-service";
@@ -11,7 +14,7 @@ import { fetchTmdbSeriesMetadata, getSavedTmdbSeriesBundle, getTmdbSeriesMigrati
 import { getSavedCreatorProfileSnapshot, fetchCreatorProfileSnapshot } from "./creator-profile-service";
 import { runCreatorProfileSnapshots } from "./creator-profile-job";
 import { fetchTmdbFilmMetadata, getSavedTmdbFilmBundle, getTmdbFilmMigrationComparison } from "./tmdb-film-service";
-import { providerSnapshotAnimeBatchQuery, providerSnapshotBookBatchQuery, providerSnapshotGameBatchQuery, providerSnapshotBoardgameBatchQuery, providerSnapshotComicBatchQuery, providerSnapshotRobloxBatchQuery } from "@/db/queries/provider-snapshot-jobs";
+import { providerSnapshotMangaBatchQuery, providerSnapshotAniListMetadataBatchQuery, providerSnapshotAnimeBatchQuery, providerSnapshotBookBatchQuery, providerSnapshotGameBatchQuery, providerSnapshotBoardgameBatchQuery, providerSnapshotComicBatchQuery, providerSnapshotRobloxBatchQuery } from "@/db/queries/provider-snapshot-jobs";
 import "server-only";
 import { eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
@@ -110,9 +113,10 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
     await checkpoint(guard,current);
     const batch = getSnapshotBatchSettings(current);
     const batchInput={afterId:state.afterId,throughId:state.throughId,mediaItemIds:payload.mediaItemIds,batchSize:batch.remaining,onlyMissingSnapshots:payload.onlyMissingSnapshots,retryId:state.retryId};
-    const candidates=await (payload.mediaType === "roblox" ? providerSnapshotRobloxBatchQuery(batchInput)
+    const candidates=await (payload.mediaType === "manga" ? providerSnapshotMangaBatchQuery(batchInput)
+      : payload.mediaType === "roblox" ? providerSnapshotRobloxBatchQuery(batchInput)
       : payload.mediaType === "comic" ? providerSnapshotComicBatchQuery(batchInput)
-      : payload.mediaType === "anime" ? providerSnapshotAnimeBatchQuery(batchInput)
+      : payload.mediaType === "anime" ? (payload.animeSnapshot === "metadata" ? providerSnapshotAniListMetadataBatchQuery(batchInput) : providerSnapshotAnimeBatchQuery(batchInput))
       : payload.mediaType === "boardgame" ? providerSnapshotBoardgameBatchQuery(batchInput)
       : payload.mediaType === "game" ? providerSnapshotGameBatchQuery({ ...batchInput, provider: payload.provider as "igdb" | "rawg" | undefined })
       : providerSnapshotBookBatchQuery({...batchInput,mediaType:payload.mediaType,provider:payload.provider as import("./types").BookProviderCode | "tmdb" | undefined}));
@@ -128,19 +132,29 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         state={...state,retryId:row.id};
         await checkpoint(guard,{...payload,checkpoint:state});
       }
+      const manga = row.mediaType === "manga";
       const comic = row.mediaType === "comic";
       const roblox = row.mediaType === "roblox";
       const anime = row.mediaType === "anime";
+      const animeMetadata = anime && payload.animeSnapshot === "metadata";
       const game = row.mediaType === "game";
       const boardgame = row.mediaType === "boardgame";
-      if (!row.provider || !row.externalId || (roblox ? row.provider !== "roblox" : comic ? row.provider !== "comic-vine" : anime ? !["anilist", "jikan"].includes(row.provider) : boardgame ? row.provider !== "bgg" : game ? !["igdb", "rawg"].includes(row.provider) : !isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
+      if (!row.provider || !row.externalId || (manga ? row.provider !== "mangaupdates" : roblox ? row.provider !== "roblox" : comic ? row.provider !== "comic-vine" : anime ? !["anilist", "jikan"].includes(row.provider) : boardgame ? row.provider !== "bgg" : game ? !["igdb", "rawg"].includes(row.provider) : !isBookSnapshotProvider(row.provider) && row.provider !== "tmdb")) {
         state={...state,afterId:row.id,failed:state.failed+1,retryId:undefined,retryCount:undefined,errors:[...state.errors,{id:row.id,code:"missing-source"}].slice(-100)};
         await checkpoint(guard,{...payload,checkpoint:state});continue;
       }
       try {
         if (network && !providerSettings.some(item=>item.mediaType===row.mediaType && item.providerCode===(anime ? "anilist" : row.provider) && item.enabled!==false)) throw new Error("provider-disabled");
         let refs: SnapshotReference[];
-        if (anime) {
+        if (animeMetadata) {
+          if (payload.operation !== "verify") await repairAniListCreatorSnapshotLinks(row.id, row.externalId, guard);
+          const metadata = network ? await runWithProviderRequestTimeout(settings!.providerRequestTimeoutMs, () => fetchAniListMetadata({ provider: "anilist", externalId: row.externalId!, mediaType: "anime" }, {
+            candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: settings!.providerRequestTimeoutMs, beforeProviderSearch: before,
+            snapshotJobGuard: guard, snapshotReuseAfter: payload.onlyMissingSnapshots ? new Date(0) : run.createdAt, signal,
+          })) : null;
+          const saved = metadata ? null : await getSavedAniListMetadataBundle(row.externalId);
+          refs = metadata?.snapshotReferences ?? [{ id: saved!.primary.id, payloadHash: saved!.primary.payloadHash }];
+        } else if (anime) {
           if (network) {
             const evidence=await runWithProviderRequestTimeout(settings!.providerRequestTimeoutMs, () => fetchAniListCreatorSnapshot({provider:row.provider as "anilist"|"jikan",externalId:row.externalId!,mediaType:"anime"}, {
               candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,beforeProviderSearch:before,snapshotJobGuard:guard,
@@ -154,16 +168,16 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
             refs=[{id:snapshot.id,payloadHash:snapshot.payloadHash}];
           }
         } else if (network) {
-          const metadata=await (roblox ? fetchRobloxMetadata : comic ? fetchComicVineMetadata : boardgame ? fetchBggMetadata : game ? fetchGameMetadata : row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb" | "igdb" | "rawg" | "bgg" | "comic-vine" | "roblox",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
+          const metadata=await (manga ? fetchMangaUpdatesMetadata : roblox ? fetchRobloxMetadata : comic ? fetchComicVineMetadata : boardgame ? fetchBggMetadata : game ? fetchGameMetadata : row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb" | "igdb" | "rawg" | "bgg" | "comic-vine" | "mangaupdates" | "roblox",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
             providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal});
           refs=metadata.snapshotReferences!;
         } else {
-          const bundle = roblox ? await getSavedRobloxBundle(row.externalId) : comic ? await getSavedComicVineBundle(row.id,row.externalId) : boardgame ? await getSavedBggBundle(row.externalId) : game ? await getSavedGameBundle(row.provider as "igdb" | "rawg", row.externalId) : row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId);
+          const bundle = manga ? { ...(await getSavedMangaUpdatesBundle(row.id,row.externalId)), dependencies: [] } : roblox ? await getSavedRobloxBundle(row.externalId) : comic ? await getSavedComicVineBundle(row.id,row.externalId) : boardgame ? await getSavedBggBundle(row.externalId) : game ? await getSavedGameBundle(row.provider as "igdb" | "rawg", row.externalId) : row.provider === "tmdb" ? row.mediaType === "series" ? await getSavedTmdbSeriesBundle(row.externalId) : await getSavedTmdbFilmBundle(row.externalId) : await getSavedBookBundle(row.provider as import("./types").BookProviderCode,row.externalId);
           refs = [bundle.primary,...("issue" in bundle ? bundle.issue ? [bundle.issue] : [] : bundle.dependencies)].map(item=>({id:item.id,payloadHash:item.payloadHash}));
         }
         const nextState={...state,afterId:row.id,processed:state.processed+1,retryId:undefined,retryCount:undefined};
         current={...payload,checkpoint:nextState};
-        if (anime && payload.operation !== "verify") {
+        if (anime && !animeMetadata && payload.operation !== "verify") {
           await commitAniListCreatorSnapshot({mediaItemId:row.id,expectedSource:{provider:row.provider,externalId:row.externalId},references:refs,
             process:payload.operation!=="refresh",jobGuard:guard,checkpoint:current as unknown as Record<string,unknown>});
         } else if (payload.operation==="process" || payload.operation==="refresh-process") {
@@ -191,9 +205,13 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
           });
         } else {
           // Verification is read-only for domain data; its report is the job checkpoint.
-          const animeSnapshot = anime ? await getSavedAniListCreatorSnapshot(row.provider,row.externalId) : null;
-          if (anime && !animeSnapshot) throw new Error("PROVIDER_SNAPSHOT_MISSING");
-          const report = roblox ? await (async () => {
+          const animeSnapshot = anime && !animeMetadata ? await getSavedAniListCreatorSnapshot(row.provider,row.externalId) : null;
+          if (anime && !animeMetadata && !animeSnapshot) throw new Error("PROVIDER_SNAPSHOT_MISSING");
+          const report = manga ? await (async () => {
+            const bundle = await getSavedMangaUpdatesBundle(row.id, row.externalId!);
+            const [current] = await db.select({ facts: mediaItemMetadata.facts }).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, row.id));
+            return { blockers: Object.keys(bundle.projection.facts).filter(key => JSON.stringify(current?.facts[key] ?? null) !== JSON.stringify(bundle.projection.facts[key as keyof typeof bundle.projection.facts] ?? null)) };
+          })() : animeMetadata ? await getAniListMetadataComparison(row.id, (await getSavedAniListMetadataBundle(row.externalId)).projection) : roblox ? await (async () => {
             const bundle = await getSavedRobloxBundle(row.externalId!);
             const [current] = await db.select({ facts: mediaItemMetadata.facts }).from(mediaItemMetadata).where(eq(mediaItemMetadata.mediaItemId, row.id));
             const keys = ["maxPlayers", "paidAccess", "privateServers"];
@@ -218,7 +236,7 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         const deferral = snapshotProviderDeferral(error, row.id);
         if (deferral) throw new JobError("provider-deferred", deferral.message, { deferSeconds: deferral.deferSeconds });
         const retries=state.retryId===row.id?(state.retryCount??0)+1:1;
-        const permanent=error instanceof BggSnapshotDifferenceError || error instanceof GameSnapshotDifferenceError || error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled","ANILIST_MEDIA_MISSING","AMBIGUOUS_ANILIST_SNAPSHOTS"].includes(code);
+        const permanent=error instanceof BggSnapshotDifferenceError || error instanceof GameSnapshotDifferenceError || error instanceof OpenLibraryWorkRedirectError || payload.operation==="verify" || ["PROVIDER_SOURCE_CHANGED","provider-disabled","ANILIST_MEDIA_MISSING","AMBIGUOUS_ANILIST_SNAPSHOTS","INVALID_PROVIDER_SNAPSHOT_REFERENCES","INVALID_PROVIDER_SNAPSHOT_TARGET"].includes(code);
         if (!permanent && retries<3) {
           state={...state,retryId:row.id,retryCount:retries};
           await checkpoint(guard,{...payload,checkpoint:state});

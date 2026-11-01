@@ -5,6 +5,7 @@ import {
   getStringListFact,
 } from "@/lib/media/metadata-facts";
 import type { MediaItemGenre } from "@/lib/media/genres";
+import { parseMangaVolumeCount } from "@/lib/media/manga-facts";
 
 type MediaItemSummaryInput = {
   mediaType: string;
@@ -94,6 +95,13 @@ export function getMediaItemSummaryParts(item: MediaItemSummaryInput) {
   } else if (item.mediaType === "book") {
     const names = (item.writerCreators ?? []).map((creator) => creator.name);
     details = names.length ? [formatFactList(names)] : [];
+  } else if (item.mediaType === "manga") {
+    // Older saved metadata has only the provider's publication status.
+    const issues = getPositiveIntegerFact(facts, "issueCount") ?? parseMangaVolumeCount(facts?.status);
+    details = [
+      issues ? formatPluralCount(issues, { one: "выпуск", few: "выпуска", many: "выпусков" }) : null,
+      facts?.completed === true ? "Завершено" : null,
+    ].filter((value): value is string => Boolean(value));
   } else if (item.mediaType === "comic") {
     const authors = formatAuthorsFact(facts);
     const issues = getPositiveIntegerFact(facts, "issueCount");

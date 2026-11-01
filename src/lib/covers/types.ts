@@ -1,6 +1,7 @@
 import type { MediaType } from "@/lib/media/types";
 
 export type MediaProviderCode =
+  | "mangaupdates"
   | "bgg"
   | "tmdb"
   | "comic-vine"
@@ -16,6 +17,7 @@ export type MediaProviderCode =
 export type CoverProviderCode = MediaProviderCode;
 
 export const COVER_PROVIDER_CODES = [
+  "mangaupdates",
   "bgg",
   "tmdb",
   "comic-vine",
@@ -66,6 +68,8 @@ export type TitleMetadataInput = {
   provider: MediaProviderCode;
   externalId: string;
   mediaType: MediaType;
+  /** Missing-only jobs may reuse saved evidence; periodic refreshes fetch a new response. */
+  reuseSavedSnapshot?: boolean;
 };
 
 export type MediaTitleCandidate = {

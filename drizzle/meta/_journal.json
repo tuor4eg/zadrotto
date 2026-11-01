@@ -1079,6 +1079,27 @@
       "when": 1795910400000,
       "tag": "0153_roblox_creator_bindings",
       "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1795996800000,
+      "tag": "0154_media_metadata_search_disabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1796083200000,
+      "tag": "0155_comic_vine_issues_pending",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1796169600000,
+      "tag": "0156_manga_mangaupdates",
+      "breakpoints": true
     }
   ]
 }

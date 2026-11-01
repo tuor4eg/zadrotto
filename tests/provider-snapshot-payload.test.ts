@@ -107,3 +107,10 @@ test("BGG jobs are scoped to boardgames and preserve safe transfer unless explic
     { mediaType: "boardgame", provider: "bgg", operation: "process", applyBoardgameChanges: "true" },
   ]) assert.throws(() => parseSnapshotJobPayload(value));
 });
+
+
+test("primary AniList metadata has an explicit scope while old queued anime jobs retain roster semantics", () => {
+  for (const animeSnapshot of ["metadata", "creators"] as const) assert.equal(parseSnapshotJobPayload({ mediaType: "anime", provider: "anilist", operation: "refresh-process", animeSnapshot }).animeSnapshot, animeSnapshot);
+  assert.equal(parseSnapshotJobPayload({ mediaType: "anime", operation: "process" }).animeSnapshot, undefined);
+  for (const input of [{ operation: "process", animeSnapshot: "metadata" }, { operation: "refresh", mediaType: "book", animeSnapshot: "metadata" }, { operation: "process", mediaType: "anime", animeSnapshot: "invalid" }]) assert.throws(() => parseSnapshotJobPayload(input));
+});

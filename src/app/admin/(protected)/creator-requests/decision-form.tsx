@@ -16,7 +16,7 @@ function SubmitDecision({ disabled }: { disabled: boolean }) {
   return <Button type="submit" disabled={pending || disabled}>{pending ? "Сохранение…" : "Применить решение"}</Button>;
 }
 
-export function CreatorDecisionForm({ requestId, name, people, provider, externalCreatorId, suggestedCreatorIds = [] }: { requestId: number; name: string; people: { id: number; name: string; sourceName?: string | null; originalName?: string | null; bindings?: { provider: string; externalCreatorId: string | null; externalCreatorName?: string }[] }[]; provider?: string; externalCreatorId?: string | null; suggestedCreatorIds?: number[] }) {
+export function CreatorDecisionForm({ requestId, name, people, provider, externalCreatorId, suggestedCreatorIds = [], autoApprovalFeedback }: { requestId: number; name: string; people: { id: number; name: string; sourceName?: string | null; originalName?: string | null; bindings?: { provider: string; externalCreatorId: string | null; externalCreatorName?: string }[] }[]; provider?: string; externalCreatorId?: string | null; suggestedCreatorIds?: number[]; autoApprovalFeedback?: { message: string; candidates: { id: number; name: string }[] } | null }) {
   const isOrganization = isOrganizationCreatorRequest(provider, externalCreatorId);
   const [decision, setDecision] = useState("map");
   const [search, setSearch] = useState("");
@@ -32,6 +32,26 @@ export function CreatorDecisionForm({ requestId, name, people, provider, externa
 
   return <form action={resolveCreatorAction} className="grid gap-5">
     <input type="hidden" name="requestId" value={requestId} />
+    {autoApprovalFeedback ? <section aria-label="Результат автоодобрения" className="grid gap-3 rounded-md border border-amber-200 bg-amber-50 p-4 text-sm">
+      <h2 className="font-medium">Почему автоодобрение не сработало</h2>
+      <p>{autoApprovalFeedback.message}</p>
+      {autoApprovalFeedback.candidates.length ? <>
+        <p className="text-stone-600">При последней автоматической проверке найдены возможные дубли. Проверьте, что это тот же создатель.</p>
+        <ul className="grid gap-3">{autoApprovalFeedback.candidates.map(candidate => {
+          const person = people.find(person => person.id === candidate.id);
+          return <li key={candidate.id} className="flex flex-wrap items-center justify-between gap-2">
+            <div className="min-w-0">
+              {person ? <Link href={`/admin/creators/${person.id}/edit`} target="_blank" rel="noopener noreferrer" className="break-words underline underline-offset-4">{person.name}</Link> : <span className="break-words">{candidate.name}</span>}
+              <span className="ml-2 text-xs text-stone-500">#{candidate.id}</span>
+              {!person ? <p className="text-xs text-stone-500">Создатель удалён или его тип не подходит для этой заявки.</p> : null}
+            </div>
+            {person ? <Button type="button" variant="outline" size="sm" onClick={() => { setDecision("map"); setSelectedId(person.id); }}>
+              {decision === "map" && selectedId === person.id ? "Выбран" : `Выбрать: ${person.name}`}
+            </Button> : null}
+          </li>;
+        })}</ul>
+      </> : null}
+    </section> : null}
     <fieldset className="grid gap-3"><legend className="mb-3 text-sm font-medium">Решение</legend>
       {decisions.map(([value, label]) => <label key={value} className="flex items-start gap-2 text-sm">
         <input type="radio" name="decision" value={value} checked={decision === value} onChange={() => setDecision(value)} className="mt-0.5" />{label}
