@@ -13,7 +13,7 @@ test("completed production transfers no longer appear as migrations or allow new
   }
 });
 test("schema cleanup refuses unfinished work and drops only disposable checkpoint storage", () => {
-  const migration = readFileSync("drizzle/0139_retire_completed_job_migrations.sql", "utf8");
+  const migration = readFileSync("drizzle-archive/pre-baseline/0139_retire_completed_job_migrations.sql", "utf8");
   assert.match(migration, /status IN \('queued','running'\)/);
   for (const type of completed) assert.ok(migration.includes(`'${type}'`));
   assert.match(migration, /status IN \('pending','ready','error'\)/);

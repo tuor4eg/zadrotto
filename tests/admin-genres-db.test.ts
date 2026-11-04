@@ -31,7 +31,7 @@ test("admin genres load in two queries and rename only the shared display name",
           normalized_external_genre_name text, job_run_id integer, apply_status text);
         INSERT INTO media_items VALUES (1,'film'),(2,'series');
         INSERT INTO media_item_metadata VALUES (1,'tmdb','{"genres":["боевик"]}'),(2,'tmdb','{"genres":["Боевик и Приключения"]}');`);
-      for (const statement of readFileSync("drizzle/0103_unified_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+      for (const statement of readFileSync("drizzle-archive/pre-baseline/0103_unified_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
       await tx.unsafe("ALTER TABLE genres ADD COLUMN replacement_franchise_id integer REFERENCES franchises(id) ON DELETE SET NULL");
     });
     const originalUnsafe = client.unsafe;

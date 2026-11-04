@@ -12,11 +12,11 @@ import {
   REPUTATION_ACTION_LABELS,
 } from "../src/lib/reputation/model";
 
-const migration = readFileSync("drizzle/0098_author_levels_trust.sql", "utf8");
-const levelNamesMigration = readFileSync("drizzle/0099_level_names.sql", "utf8");
-const simplifiedTrustMigration = readFileSync("drizzle/0100_simplify_author_trust.sql", "utf8");
-const unifiedTrustMigration = readFileSync("drizzle/0101_unify_trust_action_accounting.sql", "utf8");
-const trustedPromotionMigration = readFileSync("drizzle/0102_reputation_trusted_promotion_job.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0098_author_levels_trust.sql", "utf8");
+const levelNamesMigration = readFileSync("drizzle-archive/pre-baseline/0099_level_names.sql", "utf8");
+const simplifiedTrustMigration = readFileSync("drizzle-archive/pre-baseline/0100_simplify_author_trust.sql", "utf8");
+const unifiedTrustMigration = readFileSync("drizzle-archive/pre-baseline/0101_unify_trust_action_accounting.sql", "utf8");
+const trustedPromotionMigration = readFileSync("drizzle-archive/pre-baseline/0102_reputation_trusted_promotion_job.sql", "utf8");
 const jobHandlers = readFileSync("src/lib/jobs/handlers.ts", "utf8");
 const schema = readFileSync("src/db/schema.ts", "utf8");
 const consumer = readFileSync("src/lib/reputation/service.ts", "utf8");

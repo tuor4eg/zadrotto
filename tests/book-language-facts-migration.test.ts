@@ -9,7 +9,7 @@ test("book language migration preserves visible language, cleans normalized fact
   const { default: postgres } = await import("postgres");
   const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   const schema = `book_language_${process.pid}_${Date.now()}`;
-  const migration = await readFile("drizzle/0132_book_language_facts.sql", "utf8");
+  const migration = await readFile("drizzle-archive/pre-baseline/0132_book_language_facts.sql", "utf8");
   const apply = () => client.begin(async tx => {
     for (const statement of migration.split("--> statement-breakpoint")) if (statement.trim()) await tx.unsafe(statement);
   });
@@ -65,7 +65,7 @@ test("book language migration and compacting queries scale linearly on isolated 
       insert into media_item_metadata select id,case id%3 when 0 then 'fantlab' when 1 then 'tmdb' else 'google-books' end,
         case when id%3=1 then '{"originalLanguage":"en","runtimeMinutes":120}'::jsonb else '{"originalLanguage":"en","authors":["A","B"]}'::jsonb end,'ru' from media_items;
       analyze media_items;analyze media_item_metadata;analyze provider_settings;`);
-    const statements = (await readFile("drizzle/0132_book_language_facts.sql", "utf8")).split("--> statement-breakpoint");
+    const statements = (await readFile("drizzle-archive/pre-baseline/0132_book_language_facts.sql", "utf8")).split("--> statement-breakpoint");
     const update = statements.find(statement => statement.includes("WITH prepared AS"));
     assert.ok(update);
     // Writes are measured only against this disposable fixture schema.

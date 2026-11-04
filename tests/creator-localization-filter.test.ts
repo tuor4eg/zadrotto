@@ -62,7 +62,7 @@ test("localized creator filters include real names only, combine with search/typ
       CASE WHEN n%2=0 THEN 'Автор '||n END,
       CASE WHEN n%6=0 THEN 'ai' WHEN n%2=0 THEN 'provider' END,true,null,'person-'||n,1
       FROM generate_series(100,100099)n;`);
-    await client.unsafe(readFileSync("drizzle/0142_creator_admin_pagination.sql", "utf8"));
+    await client.unsafe(readFileSync("drizzle-archive/pre-baseline/0142_creator_admin_pagination.sql", "utf8"));
     await client.unsafe(`INSERT INTO provider_creator_bindings(creator_id,provider,active)
       SELECT n,CASE WHEN n%2=0 THEN 'bgg' ELSE 'fantlab' END,true FROM generate_series(100,100099)n CROSS JOIN generate_series(1,2)copy;
       INSERT INTO provider_creator_mappings(creator_id,provider,media_type,normalized_external_creator_name)

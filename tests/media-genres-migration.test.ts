@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import postgres from "postgres";
 
-const migration = readFileSync("drizzle/0103_unified_genres.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0103_unified_genres.sql", "utf8");
 const testUrl = process.env.GENRES_TEST_DATABASE_URL;
 
 test("genre migration seeds 53 genres, expands mappings and preserves raw facts", { skip: !testUrl }, async () => {

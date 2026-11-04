@@ -8,7 +8,7 @@ import {
   getCoverSettings,
 } from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { createCoverCandidateToken } from "@/lib/covers/candidates";
 import {
@@ -50,6 +50,8 @@ function normalizeTitleSource(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const consentDenial = (await getCurrentAdminUser()) ? null : await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [adminUser, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
 
   if (!adminUser && !author) {

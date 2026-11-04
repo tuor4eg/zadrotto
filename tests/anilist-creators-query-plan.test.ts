@@ -92,7 +92,7 @@ test("AniList working projections and archive membership stay bounded at 100k an
       await client.unsafe("drop index if exists media_item_metadata_anilist_creators_pending_idx");
       const beforeCursorPushdown = db.select({ id: mediaItems.id, title: mediaItems.title, sourceProvider: mediaItemMetadata.sourceProvider, sourceExternalId: mediaItemMetadata.sourceExternalId }).from(mediaItems).innerJoin(mediaItemMetadata, eq(mediaItemMetadata.mediaItemId, mediaItems.id)).where(and(eq(mediaItems.mediaType, "anime"), gt(mediaItems.id, 50000), eq(mediaItems.publicationStatus, "published"), inArray(mediaItemMetadata.sourceProvider, ["anilist", "jikan"]), sql`${mediaItemMetadata.sourceExternalId} ~ '^[1-9][0-9]*$'`, sql`not (${mediaItemMetadata.facts} @> '{"anilistCreatorsComplete":true}'::jsonb or ${mediaItemMetadata.facts} @> '{"anilistCreatorsUnavailable":true}'::jsonb)`)).orderBy(asc(mediaItems.id)).limit(25);
       await explain(`backfill-before-cursor-and-index:${state}`, beforeCursorPushdown.toSQL());
-      const statement = readFileSync("drizzle/0144_anilist_creators.sql", "utf8").split("--> statement-breakpoint").find(part => part.includes("CREATE INDEX media_item_metadata_anilist_creators_pending_idx"));
+      const statement = readFileSync("drizzle-archive/pre-baseline/0144_anilist_creators.sql", "utf8").split("--> statement-breakpoint").find(part => part.includes("CREATE INDEX media_item_metadata_anilist_creators_pending_idx"));
       assert.ok(statement);
       await client.unsafe(statement);
       await client.unsafe("analyze media_item_metadata");

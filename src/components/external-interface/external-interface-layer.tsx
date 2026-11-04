@@ -49,6 +49,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   const pageUnavailable = usePageUnavailable();
   const isAdminRoute = pathname === "/admin" || pathname.startsWith("/admin/");
   const [authenticated, setAuthenticated] = useState(false);
+  const [consentRequired, setConsentRequired] = useState(false);
   const [bugReportContext, setBugReportContext] = useState<BugReportEntityContext | null>(null);
   const [hudReady, setHudReady] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
@@ -82,6 +83,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     requestGenerationRef.current = requestGeneration;
     if (isAdminRoute) {
       setAuthenticated(false);
+      setConsentRequired(false);
       setAuthorId(null);
       setHudReady(false);
       setQuizParticipantState(null);
@@ -95,6 +97,20 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
         cache: "no-store",
         credentials: "same-origin",
       });
+      if (response.status === 403) {
+        const denied = await response.json() as { code?: string };
+        if (denied.code === "consent_required" && requestGenerationRef.current === requestGeneration) {
+          // A pending consent is still a real session, never a transition to demo.
+          setAuthenticated(true);
+          setConsentRequired(true);
+          setAuthorId(null);
+          setQuizParticipantState(null);
+          setRatingsCount(0);
+          setHudReady(true);
+          setIsBugReportOpen(false);
+        }
+        return;
+      }
       if (!response.ok) return;
       const data = await response.json() as {
         authenticated?: boolean;
@@ -103,6 +119,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
         ratingsCount?: number;
       };
       if (requestGenerationRef.current === requestGeneration) {
+        setConsentRequired(false);
         setAuthenticated(data.authenticated === true);
         setAuthorId(typeof data.authorId === "number" ? data.authorId : null);
         setQuizParticipantState(data.quizParticipant ?? null);
@@ -148,7 +165,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     demo: isDemo,
     pathname,
     ratingsCount: effectiveRatingsCount,
-    ready: onboardingReady,
+    ready: onboardingReady && !consentRequired,
   });
 
   const value = useMemo(
@@ -156,9 +173,10 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
       quizParticipant,
       registerBugReportEntityContext,
       setQuizParticipant,
-      showRatingCoachMark: !pageUnavailable && onboarding.showRatingCoachMark,
+      showRatingCoachMark: !consentRequired && !pageUnavailable && onboarding.showRatingCoachMark,
     }),
     [
+      consentRequired,
       onboarding.showRatingCoachMark,
       pageUnavailable,
       quizParticipant,
@@ -169,8 +187,8 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   const visibleParticipant = quizParticipant && !quizParticipant.completed
     ? quizParticipant
     : null;
-  const showTools = authenticated && !isAdminRoute;
-  const showOnboardingCard = Boolean(onboarding.card);
+  const showTools = authenticated && !consentRequired && !isAdminRoute;
+  const showOnboardingCard = !consentRequired && Boolean(onboarding.card);
   const showDemoLoginPrompt = isDemo && !isAdminRoute;
   const showHudStack = !pageUnavailable && (showTools || showOnboardingCard || showDemoLoginPrompt);
 
@@ -237,7 +255,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     <ExternalInterfaceContext.Provider value={value}>
       {children}
       {!pageUnavailable ? (
-        <DemoProfileImportBridge authenticated={authenticated} authorId={authorId} />
+        <DemoProfileImportBridge authenticated={authenticated && !consentRequired} authorId={authorId} />
       ) : null}
       {showHudStack ? (
         <div

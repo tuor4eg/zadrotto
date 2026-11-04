@@ -226,7 +226,7 @@ describe("anime Shikimori backfill run", () => {
 
 describe("anime Shikimori backfill wiring", () => {
   it("registers a minute schedule and selects only stored AniList sources", () => {
-    const migration = readFileSync("drizzle/0096_anime_shikimori_backfill.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0096_anime_shikimori_backfill.sql", "utf8");
     const query = readFileSync("src/db/queries/anime-shikimori-backfill.ts", "utf8");
     const handlers = readFileSync("src/lib/jobs/handlers.ts", "utf8");
 

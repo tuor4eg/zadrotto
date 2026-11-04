@@ -2537,7 +2537,7 @@ describe("cover settings form", () => {
   });
 
   it("keeps migration defaults independent from the legacy master switch", () => {
-    const migration = readFileSync("drizzle/0044_provider_search_modes.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0044_provider_search_modes.sql", "utf8");
 
     assert.match(
       migration,

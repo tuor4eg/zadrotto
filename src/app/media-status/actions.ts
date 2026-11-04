@@ -9,7 +9,7 @@ import {
 } from "@/db/queries/author-media-statuses";
 import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import { isAuthorMediaStatus } from "@/lib/media/author-media-status";
 
 export type ToggleAuthorMediaStatusState = { error: string | null };
@@ -18,7 +18,7 @@ export async function toggleAuthorMediaStatusAction(
   _state: ToggleAuthorMediaStatusState,
   formData: FormData,
 ): Promise<ToggleAuthorMediaStatusState> {
-  const author = await getCurrentAuthor();
+  const author = await requireAuthor();
 
   if (!author) {
     redirect("/author/login");

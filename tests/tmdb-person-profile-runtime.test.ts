@@ -32,7 +32,7 @@ test("TMDB person raw, dates and portrait commits preserve manual data and rejec
       create table job_runs(id integer primary key,status text,lock_token text,lock_expires_at timestamptz,payload jsonb,updated_at timestamptz default now());
       insert into creators(id,name,slug,type_id,birth_date) values(1,'Manual name','manual',1,'1901-01-01'),(2,'Other','other',2,null);
       insert into provider_creator_bindings(id,provider,external_creator_id,creator_id) values(1,'tmdb','person:17',1);`);
-    for (const statement of readFileSync("drizzle/0127_provider_snapshots.sql", "utf8").split("--> statement-breakpoint").slice(0, 4)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8").split("--> statement-breakpoint").slice(0, 4)) await client.unsafe(statement);
     const target = { provider: "tmdb", resourceType: "person", externalId: "17" } as const;
     const save = () => snapshots.saveProviderSnapshot({ ...creatorProfileDescriptor(target), payload: { id: 17, name: "Provider name", birthday: "1900-01-01", deathday: "2000-01-01", profile_path: "/portrait.jpg" }, payloadHash: "", contentType: "application/json", requestStartedAt: new Date(), fetchedAt: new Date() });
     let snapshot = await save();

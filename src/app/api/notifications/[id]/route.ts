@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getCurrentAuthor } from "@/lib/auth/author-auth"
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth"
 import { parsePositiveInt } from "@/lib/notifications/catalog"
 import { deleteRecipientNotification } from "@/lib/notifications/inbox"
 
@@ -9,6 +9,8 @@ type RouteContext = {
 }
 
 export async function DELETE(_request: Request, { params }: RouteContext) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor()
   if (!author) {
     return NextResponse.json({ ok: false }, { status: 401 })

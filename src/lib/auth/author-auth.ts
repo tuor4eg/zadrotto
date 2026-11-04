@@ -1,6 +1,8 @@
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
+import { hasRequiredPersonalDataConsent } from "@/db/queries/personal-data-consent";
+
 import { createAuthorSession } from "@/db/operations/author-auth";
 import {
   getActiveAuthorSessionByTokenHash,
@@ -40,17 +42,31 @@ export async function getCurrentAuthorSession() {
 }
 
 export async function getCurrentAuthor() {
-  return (await getCurrentAuthorSession())?.author ?? null;
+  const current = await getCurrentAuthorSession();
+  return current && await hasRequiredPersonalDataConsent(current.author.id) ? current.author : null;
+}
+
+/** Account actions and protected pages must use this instead of the raw session. */
+export async function requireAuthorSession() {
+  const current = await getCurrentAuthorSession();
+  if (!current) redirect("/author/login");
+  if (!(await hasRequiredPersonalDataConsent(current.author.id))) redirect("/author/consent");
+  return current;
 }
 
 export async function requireAuthor() {
-  const author = await getCurrentAuthor();
+  return (await requireAuthorSession()).author;
+}
 
-  if (!author) {
-    redirect("/author/login");
+/** Route handlers retain their existing unauthenticated behavior, but cannot bypass consent. */
+export async function getPersonalDataConsentDenial() {
+  const current = await getCurrentAuthorSession();
+  if (current && !(await hasRequiredPersonalDataConsent(current.author.id))) {
+    return Response.json({ error: "consent_required", code: "consent_required" }, {
+      status: 403, headers: { "Cache-Control": "no-store" },
+    });
   }
-
-  return author;
+  return null;
 }
 
 export async function setAuthorSessionCookie(
@@ -66,6 +82,11 @@ export async function setAuthorSessionCookie(
     userAgent: requestHeaders.get("user-agent"),
   });
 
+  await writeAuthorSessionCookie(token);
+}
+
+// Also used after a session is created atomically with an external identity operation.
+export async function writeAuthorSessionCookie(token: string) {
   (await cookies()).set({
     name: AUTHOR_SESSION_COOKIE_NAME,
     value: token,

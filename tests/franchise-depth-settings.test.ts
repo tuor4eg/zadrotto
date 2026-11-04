@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const schema = readFileSync("src/db/schema.ts", "utf8");
-const migration = readFileSync("drizzle/0040_archive_settings_franchise_depth.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0040_archive_settings_franchise_depth.sql", "utf8");
 const settingsQuery = readFileSync("src/db/queries/archive-settings.ts", "utf8");
 const franchiseQuery = readFileSync("src/db/queries/franchises.ts", "utf8");
 const settingsNav = readFileSync("src/app/admin/(protected)/settings/settings-nav.tsx", "utf8");

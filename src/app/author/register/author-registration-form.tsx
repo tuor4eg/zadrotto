@@ -1,6 +1,10 @@
 "use client";
 
-import { useActionState, useCallback, useState } from "react";
+import { getPersonalDataConsentRequirement } from "@/app/author/consent/actions";
+import { CURRENT_CONSENT_VERSION } from "@/lib/privacy/consent";
+import Link from "next/link";
+
+import { useActionState, useCallback, useEffect, useState } from "react";
 
 import { AuthorToasts } from "@/app/author/(protected)/author-toasts";
 import { PasswordField, PasswordInput } from "@/components/auth/password-field";
@@ -22,6 +26,7 @@ const ERROR_MESSAGES: Record<
   NonNullable<AuthorRegistrationState>["error"],
   string
 > = {
+  consent: "Подтверди согласие с действующей версией документа. Если она изменилась, обнови страницу.",
   "email-taken": "Этот email уже используется другим аккаунтом.",
   "login-taken": "Этот логин уже занят.",
   invalid: "Проверь имя, логин, email и пароль.",
@@ -30,13 +35,31 @@ const ERROR_MESSAGES: Record<
 };
 
 export function AuthorRegistrationForm({
+  consentRequired: initialConsentRequired,
   turnstileRequired,
   turnstileSiteKey,
 }: {
+  consentRequired: boolean;
   turnstileRequired: boolean;
   turnstileSiteKey: string | null;
 }) {
   const [state, formAction, isPending] = useActionState(registerAuthorAction, null);
+  const [consentRequired, setConsentRequired] = useState(initialConsentRequired);
+  const [consentAccepted, setConsentAccepted] = useState(false);
+  useEffect(() => {
+    let active = true;
+    const refresh = () => {
+      void getPersonalDataConsentRequirement().then((required) => {
+        if (!active) return;
+        setConsentRequired(required);
+        if (!required) setConsentAccepted(false);
+      }).catch(() => { /* Keep the last server value; submission is checked again on the server. */ });
+    };
+    refresh();
+    window.addEventListener("focus", refresh);
+    const timer = window.setInterval(refresh, 30_000);
+    return () => { active = false; window.removeEventListener("focus", refresh); window.clearInterval(timer); };
+  }, [initialConsentRequired]);
   const [name, setName] = useState("");
   const [login, setLogin] = useState("");
   const [email, setEmail] = useState("");
@@ -104,7 +127,17 @@ export function AuthorRegistrationForm({
           siteKey={turnstileSiteKey}
         />
       ) : null}
-      <Button type="submit" disabled={isPending || !isTurnstileVerified}>
+      {consentRequired ? <>
+      <input type="hidden" name="consentVersion" value={CURRENT_CONSENT_VERSION} />
+      <div className="flex items-start gap-2 text-sm leading-5">
+        <input id="consentAccepted" name="consentAccepted" type="checkbox" value="yes" required checked={consentAccepted}
+          onChange={(event) => setConsentAccepted(event.currentTarget.checked)} className="mt-1 shrink-0" />
+        <label htmlFor="consentAccepted">Даю согласие на обработку персональных данных в соответствии с{' '}
+          <Link href="/consent" target="_blank" rel="noopener noreferrer" className="underline">Согласием на обработку персональных данных</Link>.
+        </label>
+      </div>
+      </> : null}
+      <Button type="submit" disabled={isPending || !isTurnstileVerified || (consentRequired && !consentAccepted)}>
         {isPending ? "Регистрируем…" : "Регистрация"}
       </Button>
     </form>

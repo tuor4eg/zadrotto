@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-const migrationSource = readFileSync("drizzle/0079_media_item_rating_stats.sql", "utf8");
+const migrationSource = readFileSync("drizzle-archive/pre-baseline/0079_media_item_rating_stats.sql", "utf8");
 const querySource = readFileSync("src/db/queries/media-item-rating-stats.ts", "utf8");
 const handlerSource = readFileSync("src/lib/jobs/handlers.ts", "utf8");
 

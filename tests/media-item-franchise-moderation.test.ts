@@ -6,7 +6,7 @@ import { mapFranchiseSuggestionOptions } from "../src/lib/media/franchise-sugges
 
 describe("media item franchise moderation migration", () => {
   it("adds independent relation status, author attribution, and a queue index", () => {
-    const migration = readFileSync("drizzle/0030_media_item_franchise_moderation.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0030_media_item_franchise_moderation.sql", "utf8");
 
     assert.match(migration, /ADD COLUMN "created_by_author_id" integer/);
     assert.match(migration, /ADD COLUMN "publication_status" "publication_status" DEFAULT 'published' NOT NULL/);

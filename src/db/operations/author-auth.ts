@@ -1,3 +1,5 @@
+import { hasRequiredPersonalDataConsent, insertPersonalDataConsent, isPersonalDataConsentRequired } from "@/db/queries/personal-data-consent";
+import { CURRENT_CONSENT_VERSION, PersonalDataConsentRequiredError } from "@/lib/privacy/consent";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { randomUUID } from "node:crypto";
 
@@ -12,6 +14,7 @@ import {
   authorSessions,
   authors,
   emailOutbox,
+  domainEvents,
 } from "@/db/schema";
 import { createAuthorAuthChallenge, insertAuthorSession } from "@/db/queries/author-auth";
 import { enqueueEmailOutbox } from "@/db/queries/email-outbox";
@@ -120,6 +123,7 @@ export async function onboardExistingAuthor(input: {
   }
   const now = new Date();
   return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, input.authorId)).for("update");
     const [account] = await tx
       .insert(authorAccounts)
       .values({
@@ -158,6 +162,7 @@ export async function registerAuthorAccount(input: {
   passwordHash: string;
   email: string;
   normalizedEmail: string;
+  consentVersion?: string;
 }) {
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
@@ -165,6 +170,8 @@ export async function registerAuthorAccount(input: {
   }
   const now = new Date();
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const consentRequired = await isPersonalDataConsentRequired(tx);
+    if (consentRequired && input.consentVersion !== CURRENT_CONSENT_VERSION) throw new PersonalDataConsentRequiredError();
     const { profile: registrationProfile } = await resolveAuthorRegistrationAccessProfile(tx);
     const [author] = await tx
       .insert(authors)
@@ -174,6 +181,7 @@ export async function registerAuthorAccount(input: {
         accessProfileId: registrationProfile.id,
       })
       .returning({ id: authors.id });
+    if (consentRequired) await insertPersonalDataConsent(tx, author.id, CURRENT_CONSENT_VERSION);
     await tx.insert(authorAccounts).values({
       authorId: author.id,
       login: input.login,
@@ -214,8 +222,12 @@ export async function replacePendingAuthorRegistrationEmail(input: {
   authorId: number;
   email: string;
   normalizedEmail: string;
+  consentVersion?: string;
 }) {
   return db.transaction(async (tx) => {
+    const consentRequired = await isPersonalDataConsentRequired(tx);
+    if (consentRequired && input.consentVersion !== CURRENT_CONSENT_VERSION) throw new PersonalDataConsentRequiredError();
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, input.authorId)).for("update");
     const [pendingEmail] = await tx
       .select({ id: authorEmails.id })
       .from(authorEmails)
@@ -229,6 +241,7 @@ export async function replacePendingAuthorRegistrationEmail(input: {
       .limit(1)
       .for("update");
     if (!pendingEmail) return null;
+    if (consentRequired) await insertPersonalDataConsent(tx, input.authorId, CURRENT_CONSENT_VERSION);
 
     const now = new Date();
     await tx.update(authorAuthChallenges).set({ consumedAt: now }).where(and(
@@ -253,6 +266,11 @@ export async function replacePendingAuthorRegistrationEmail(input: {
 
 export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Date()) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [candidate] = await tx.select({ authorId: authorAuthChallenges.authorId, purpose: authorAuthChallenges.purpose }).from(authorAuthChallenges)
+      .where(eq(authorAuthChallenges.tokenHash, tokenHash)).limit(1);
+    if (!candidate) return null;
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, candidate.authorId)).for("update");
+    if (candidate.purpose === "change_email" && !(await hasRequiredPersonalDataConsent(candidate.authorId, tx))) return null;
     const [challenge] = await tx
       .update(authorAuthChallenges)
       .set({ consumedAt: now })
@@ -308,13 +326,22 @@ export async function verifyAuthorEmailChallenge(tokenHash: string, now = new Da
       ))
       .returning({ authorId: authorAccounts.authorId });
     if (!activatedAccount) return null;
-    await appendEvent({
-      type: "author.registration.submitted",
-      aggregateType: "author",
-      aggregateId: String(activatedAccount.authorId),
-      actorAuthorId: activatedAccount.authorId,
-      payload: { authorId: activatedAccount.authorId },
-    });
+    // External registration has already published this fact, even if its identity
+    // was subsequently unlinked. The author lock serializes verification attempts.
+    const [registrationEvent] = await tx.select({ id: domainEvents.id }).from(domainEvents).where(and(
+      eq(domainEvents.type, "author.registration.submitted"),
+      eq(domainEvents.aggregateType, "author"),
+      eq(domainEvents.aggregateId, String(activatedAccount.authorId)),
+    )).limit(1);
+    if (!registrationEvent) {
+      await appendEvent({
+        type: "author.registration.submitted",
+        aggregateType: "author",
+        aggregateId: String(activatedAccount.authorId),
+        actorAuthorId: activatedAccount.authorId,
+        payload: { authorId: activatedAccount.authorId },
+      });
+    }
     return { authorId: challenge.authorId, status: "active" as const, purpose: "verify_email" as const };
   });
 }
@@ -325,6 +352,7 @@ export async function requestAuthorEmailChange(input: {
   normalizedEmail: string;
 }) {
   return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, input.authorId)).for("update");
     const now = new Date();
     await tx.update(authorAuthChallenges).set({ consumedAt: now }).where(and(
       eq(authorAuthChallenges.authorId, input.authorId),
@@ -361,6 +389,7 @@ export async function requestAuthorEmailChange(input: {
 
 export async function resendAuthorEmailVerification(authorId: number) {
   return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, authorId)).for("update");
     const [email] = await tx.select({ id: authorEmails.id, email: authorEmails.email })
       .from(authorEmails)
       .innerJoin(authorAccounts, eq(authorAccounts.authorId, authorEmails.authorId))
@@ -397,6 +426,10 @@ export async function resendAuthorEmailVerification(authorId: number) {
 export async function resetAuthorPassword(input: { tokenHash: string; passwordHash: string }) {
   return db.transaction(async (tx) => {
     const now = new Date();
+    const [candidate] = await tx.select({ authorId: authorAuthChallenges.authorId }).from(authorAuthChallenges)
+      .where(eq(authorAuthChallenges.tokenHash, input.tokenHash)).limit(1);
+    if (!candidate) return false;
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, candidate.authorId)).for("update");
     const [challenge] = await tx.update(authorAuthChallenges).set({ consumedAt: now }).where(and(
       eq(authorAuthChallenges.tokenHash, input.tokenHash),
       eq(authorAuthChallenges.purpose, "reset_password"),
@@ -455,6 +488,7 @@ export async function cleanupAuthorAuthData(
         and aa.status = 'pending_email'
         and aa.created_at < ${registrationCutoff.toISOString()}
         and not exists (select 1 from author_access_tokens t where t.author_id = a.id)
+        and not exists (select 1 from author_auth_identities i where i.author_id = a.id)
         and not exists (select 1 from ratings r where r.author_id = a.id)
         and not exists (select 1 from author_media_experiences e where e.author_id = a.id)
         and not exists (select 1 from contributions c where c.author_id = a.id)

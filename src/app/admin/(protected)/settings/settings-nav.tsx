@@ -12,6 +12,7 @@ const SETTINGS_NAV_ITEMS = [
     label: "Общие",
     icon: Archive,
   },
+  { href: "/admin/settings/consent", label: "Персональные данные", icon: ShieldCheck },
   {
     href: "/admin/settings/administrator",
     label: "Администратор",

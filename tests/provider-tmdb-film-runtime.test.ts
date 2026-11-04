@@ -29,7 +29,7 @@ test("TMDB film raw import and offline replay preserve manual data and commit ch
       await client.unsafe(`alter table ${quote(column.table_name)} alter column ${quote(column.column_name)} set default nextval('${schema}.test_serial_${index}')`);
     }
     if (!tables.some(row => row.tablename === "provider_snapshots")) {
-      for (const statement of (await readFile("drizzle/0127_provider_snapshots.sql", "utf8")).split("--> statement-breakpoint")) await client.unsafe(statement);
+      for (const statement of (await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8")).split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     for (const table of ["media_types", "creator_types", "creator_roles"]) await client.unsafe(`insert into ${quote(table)} select * from public.${quote(table)}`);
     await client.unsafe(`insert into media_items(id,code,title,media_type,publication_status) values(1,'manual-film','Ручное название','film','published');

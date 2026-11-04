@@ -35,7 +35,7 @@ test("AniList snapshot batches and exact MAL lookup use indexed evidence at 100k
       return result;
     };
     for (const externalId of ["100042", "999999"]) await explain(`mal-before:${externalId}`, savedAniListCreatorSnapshotQuery("jikan", externalId).toSQL());
-    await client.unsafe(readFileSync("drizzle/0145_anilist_snapshot_mal_index.sql", "utf8"));
+    await client.unsafe(readFileSync("drizzle-archive/pre-baseline/0145_anilist_snapshot_mal_index.sql", "utf8"));
     await client.unsafe("analyze provider_snapshots");
     for (const externalId of ["100042", "999999"]) {
       const plan = await explain(`mal-after:${externalId}`, savedAniListCreatorSnapshotQuery("jikan", externalId).toSQL());

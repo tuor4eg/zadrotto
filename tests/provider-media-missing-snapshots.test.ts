@@ -32,7 +32,7 @@ test("media missing-raw selector uses exact primary descriptors and interrupted 
       await client.unsafe(`alter table ${quote(column.table_name)} alter column ${quote(column.column_name)} set default nextval('${schema}.test_serial_${index}')`);
     }
     if (!tables.some(row => row.tablename === "provider_snapshots")) {
-      for (const statement of (await readFile("drizzle/0127_provider_snapshots.sql", "utf8")).split("--> statement-breakpoint")) await client.unsafe(statement);
+      for (const statement of (await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8")).split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     await client.unsafe('insert into media_types select * from public.media_types');
     const { describeBookSource } = await import("../src/lib/providers/book-adapters");

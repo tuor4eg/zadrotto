@@ -19,7 +19,7 @@ test("provider snapshots: raw preservation, CAS, ownership, races and scale", {
   const { db, getDbClient } = await import("../src/db");
   const client = getDbClient();
   try {
-    const migration = await readFile("drizzle/0127_provider_snapshots.sql", "utf8");
+    const migration = await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8");
     await client.unsafe(migration.split("ALTER TABLE entry_creator_sources")[0].replaceAll("--> statement-breakpoint", ""));
     await client.unsafe(`create table snapshot_entities(id text primary key); insert into snapshot_entities values ('a'),('b'),('race');
       create table job_runs(id integer primary key,status text,lock_token text,lock_expires_at timestamptz);

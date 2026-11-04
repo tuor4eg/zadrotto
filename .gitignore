@@ -47,3 +47,6 @@ yarn-error.log*
 next-env.d.ts
 
 .data/admin-exports/
+.data/recovery-*/
+
+.data/generated-imports/

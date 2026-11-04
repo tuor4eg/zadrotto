@@ -116,7 +116,7 @@ test("entry groups preserve ordered documents, counts and publication integrity"
             VALUES (1,0,'heading',NULL,'Раздел'),(1,1,'media',1,'Комментарий'),(1,2,'text',NULL,'Текст');
         `);
         for (const file of ["0110_editorial_entry_group_type.sql", "0111_editorial_entry_groups.sql"]) {
-          const migration = readFileSync(`drizzle/${file}`, "utf8").replace('"public"."editorial_document_block_type"', `"${schema}"."editorial_document_block_type"`);
+          const migration = readFileSync(`drizzle-archive/pre-baseline/${file}`, "utf8").replace('"public"."editorial_document_block_type"', `"${schema}"."editorial_document_block_type"`);
           for (const statement of migration.split("--> statement-breakpoint")) await tx.unsafe(statement);
         }
       });

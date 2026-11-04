@@ -3,10 +3,10 @@ import { existsSync, readFileSync } from "node:fs";
 import test from "node:test";
 
 const schema = readFileSync("src/db/schema.ts", "utf8");
-const migration = readFileSync("drizzle/0080_archive_exploration_settings.sql", "utf8");
-const onboardingMigration = readFileSync("drizzle/0081_archive_exploration_onboarding.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0080_archive_exploration_settings.sql", "utf8");
+const onboardingMigration = readFileSync("drizzle-archive/pre-baseline/0081_archive_exploration_onboarding.sql", "utf8");
 const onboardingStepMigration = readFileSync(
-  "drizzle/0082_archive_exploration_onboarding_step.sql",
+  "drizzle-archive/pre-baseline/0082_archive_exploration_onboarding_step.sql",
   "utf8",
 );
 const catalogControls = readFileSync("src/app/catalog-header-controls.tsx", "utf8");

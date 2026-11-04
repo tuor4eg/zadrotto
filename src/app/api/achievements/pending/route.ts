@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { claimPendingAchievementAnnouncement } from "@/db/queries/achievements";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 
 export async function GET() {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
 
   if (!author) {

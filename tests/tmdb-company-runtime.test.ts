@@ -41,10 +41,10 @@ test("TMDB companies use ordinary moderation and preserve provenance offline", {
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     await client.unsafe(`CREATE TABLE media_item_provider_snapshots(media_item_id integer PRIMARY KEY,provider_code text,external_id text,media_type text,title text,original_title text,description text,release_year integer,source_url text,facts jsonb DEFAULT '{}',payload_hash text,fetched_at timestamptz DEFAULT now(),created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql", "drizzle/0127_provider_snapshots.sql", "drizzle/0131_creator_life_dates.sql", "drizzle/0135_tmdb_company_creators.sql", "drizzle/0136_tmdb_director_creators.sql"]) {
+    for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql", "drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "drizzle-archive/pre-baseline/0131_creator_life_dates.sql", "drizzle-archive/pre-baseline/0135_tmdb_company_creators.sql", "drizzle-archive/pre-baseline/0136_tmdb_director_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
-    for (const statement of readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`ALTER TABLE creators ADD COLUMN name_ru text,ADD COLUMN name_ru_source text,ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false`);
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
@@ -333,7 +333,7 @@ test("TMDB companies use ordinary moderation and preserve provenance offline", {
       assert.ok(captured.some(item => item.query.includes('regexp_replace')));
       assert.ok(captured.some(item => item.query.includes('entry_creators')));
       const candidateQuery = captured.find(item => item.query.includes('regexp_replace') && item.query.includes('"creators"'))!;
-      const indexes = readFileSync('drizzle/0135_tmdb_company_creators.sql', 'utf8').split('--> statement-breakpoint').filter(statement => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(statement));
+      const indexes = readFileSync('drizzle-archive/pre-baseline/0135_tmdb_company_creators.sql', 'utf8').split('--> statement-breakpoint').filter(statement => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(statement));
       assert.equal(indexes.length, 2);
       const definitions = await client`select indexdef from pg_indexes where schemaname=${schema} and indexname in ('creators_name_exact_idx','creators_original_name_exact_idx')`;
       t.diagnostic(JSON.stringify({ exactNameIndexes: definitions.map(row => row.indexdef) }));

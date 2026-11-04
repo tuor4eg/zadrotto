@@ -31,7 +31,7 @@ test("Creator raw snapshots are independent of entities and attachment preserves
       create index provider_creator_bindings_active_creator_idx on provider_creator_bindings(provider,creator_id) where active;
       create table job_runs(id integer primary key,status text,lock_token text,lock_expires_at timestamptz,payload jsonb,updated_at timestamptz default now());`);
     // Apply the production snapshot DDL, omitting unrelated ALTERs from this migration.
-    for (const statement of readFileSync("drizzle/0127_provider_snapshots.sql", "utf8").split("--> statement-breakpoint").slice(0, 4)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8").split("--> statement-breakpoint").slice(0, 4)) await client.unsafe(statement);
     const target = (provider: CreatorProfileTarget["provider"], resourceType: CreatorProfileTarget["resourceType"], externalId: string): CreatorProfileTarget => ({ provider, resourceType, externalId });
     const save = async (input: CreatorProfileTarget) => snapshots.saveProviderSnapshot({
       ...creatorProfileDescriptor(input), payload: { id: Number(input.externalId), name: "External name", future: { nested: [1, true, null] } },

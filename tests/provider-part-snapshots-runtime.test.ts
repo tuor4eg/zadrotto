@@ -12,9 +12,9 @@ test("part snapshots preserve bindings and isolate parent records", { skip: proc
       insert into media_items values (1,null,'published'),(2,null,'published');
       insert into title_parts values (10,1),(20,2);
       insert into job_runs values (1,'running','expired',now()-interval '1 second');`);
-    const migration = await readFile("drizzle/0127_provider_snapshots.sql", "utf8");
+    const migration = await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8");
     await client.unsafe(migration.split("ALTER TABLE entry_creator_sources")[0].replaceAll("--> statement-breakpoint", ""));
-    await client.unsafe((await readFile("drizzle/0150_provider_part_snapshots.sql", "utf8")).replaceAll("--> statement-breakpoint", ""));
+    await client.unsafe((await readFile("drizzle-archive/pre-baseline/0150_provider_part_snapshots.sql", "utf8")).replaceAll("--> statement-breakpoint", ""));
     const core = await import("../src/db/queries/provider-snapshots");
     const actor = { kind: "system" } as const;
     const raw = { providerCode: "example", resourceType: "issue", externalId: "42", apiMethod: "detail", requestParams: {}, payload: { value: 1 }, payloadHash: "", contentType: "application/json", requestStartedAt: new Date("2026-01-02"), fetchedAt: new Date("2026-01-02") };

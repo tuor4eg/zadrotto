@@ -5,7 +5,7 @@ import test from "node:test";
 const query = readFileSync("src/db/queries/media-items.ts", "utf8");
 const page = readFileSync("src/app/admin/(protected)/media/page.tsx", "utf8");
 const filters = readFileSync("src/app/admin/(protected)/media/media-filters-form.tsx", "utf8");
-const migration = readFileSync("drizzle/0087_media_metadata_issue.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0087_media_metadata_issue.sql", "utf8");
 const metadataQuery = readFileSync("src/db/queries/media-item-metadata.ts", "utf8");
 
 test("metadata filters share the same missing-facts condition, with an attempt required only for not found", () => {

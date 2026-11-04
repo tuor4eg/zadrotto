@@ -11,7 +11,7 @@ test("TMDB film genre migration requires linked evidence and preserves unrelated
   const { default: postgres } = await import("postgres");
   const client = postgres(process.env.DATABASE_URL!, { max: 1, prepare: false });
   const schema = `film_genres_${process.pid}_${Date.now()}`;
-  const migration = await readFile("drizzle/0134_tmdb_film_genre_facts.sql", "utf8");
+  const migration = await readFile("drizzle-archive/pre-baseline/0134_tmdb_film_genre_facts.sql", "utf8");
   const statements = migration.split("--> statement-breakpoint").filter(value => value.trim());
   const apply = () => client.begin(async tx => { for (const statement of statements) await tx.unsafe(statement); });
   const params = describeTmdbFilmSource("42").requestParams;

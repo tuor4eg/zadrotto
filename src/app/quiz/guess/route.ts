@@ -1,7 +1,9 @@
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getPersonalDataConsentDenial, getCurrentAuthor } from "@/lib/auth/author-auth";
 import { checkQuizGuess } from "@/db/queries/quizzes";
 
 export async function POST(request: Request) {
+  const denial = await getPersonalDataConsentDenial();
+  if (denial) return denial;
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ error: "Требуется авторизация." }, { status: 401 });
   let titleId: unknown;

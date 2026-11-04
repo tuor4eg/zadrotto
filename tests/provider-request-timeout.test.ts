@@ -188,7 +188,7 @@ describe("provider request timeout admin wiring", () => {
     const form = readProjectFile(
       "src/app/admin/(protected)/tools/providers/provider-limits-form.tsx",
     )
-    const migration = readProjectFile("drizzle/0092_cover_provider_request_timeout.sql")
+    const migration = readProjectFile("drizzle-archive/pre-baseline/0092_cover_provider_request_timeout.sql")
 
     assert.match(coverRoute, /requestTimeoutMs: coverSettings\.providerRequestTimeoutMs/)
     assert.match(titleRoute, /requestTimeoutMs: coverSettings\.providerRequestTimeoutMs/)

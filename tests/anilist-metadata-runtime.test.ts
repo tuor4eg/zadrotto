@@ -18,7 +18,7 @@ test("AniList metadata upsert attaches evidence before composition and preserves
     // Clone the migrated integration schema so ancillary genre/platform queries stay isolated too.
     const tables = await admin<{tablename:string}[]>`select tablename from pg_tables where schemaname='public'`;
     for (const {tablename} of tables) await admin.unsafe(`create unlogged table ${schema}."${tablename.replaceAll('"','""')}" (like public."${tablename.replaceAll('"','""')}" including all)`);
-    for (const statement of readFileSync("drizzle/0146_anilist_creator_portraits.sql", "utf8").split("--> statement-breakpoint")) await admin.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0146_anilist_creator_portraits.sql", "utf8").split("--> statement-breakpoint")) await admin.unsafe(statement);
     await admin.unsafe(`create sequence creators_id_seq owned by creators.id; alter table creators alter column id set default nextval('creators_id_seq')`);
     await admin`insert into creator_types select * from public.creator_types`;
     await admin`insert into creator_roles select * from public.creator_roles`;

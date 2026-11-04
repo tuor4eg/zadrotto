@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
 
-const migrationSource = readFileSync("drizzle/0039_media_item_franchise_removal_requests.sql", "utf8");
+const migrationSource = readFileSync("drizzle-archive/pre-baseline/0039_media_item_franchise_removal_requests.sql", "utf8");
 const schemaSource = readFileSync("src/db/schema.ts", "utf8");
 const franchiseQueriesSource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const mediaItemQueriesSource = readFileSync("src/db/queries/media-items.ts", "utf8");

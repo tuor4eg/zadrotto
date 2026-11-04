@@ -1,3 +1,4 @@
+import { AnalyticsConfigProvider } from "@/components/archive/analytics-config-provider";
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
 
@@ -9,6 +10,7 @@ import { ExternalInterfaceLayer } from "@/components/external-interface/external
 import { PageAvailabilityProvider } from "@/components/external-interface/page-availability";
 import { PublicSiteFooterLayer } from "@/components/archive/public-site-footer-layer";
 import { AnalyticsConsentLayer } from "@/components/archive/analytics-consent-layer";
+import { PersonalDataConsentGate } from "@/components/auth/personal-data-consent-gate";
 import { getSiteOrigin } from "@/lib/site-url";
 
 import "./globals.css";
@@ -31,23 +33,28 @@ export default function RootLayout({
   return (
     <html lang="ru" className="h-full antialiased">
       <body className="min-h-dvh flex flex-col">
-        <ToastSettingsProvider>
-          <PageAvailabilityProvider>
-            <NotificationInboxProvider>
-              <ExternalInterfaceLayer>
-                {children}
-                <PublicSiteFooterLayer />
-                <AnalyticsConsentLayer />
-                <Suspense fallback={null}>
-                  <AchievementToastHost />
-                </Suspense>
-                <Suspense fallback={null}>
-                  <RouteTransitionProgress />
-                </Suspense>
-              </ExternalInterfaceLayer>
-            </NotificationInboxProvider>
-          </PageAvailabilityProvider>
-        </ToastSettingsProvider>
+        <AnalyticsConfigProvider>
+          <ToastSettingsProvider>
+            <PageAvailabilityProvider>
+              <NotificationInboxProvider>
+                <ExternalInterfaceLayer>
+                  {children}
+                  <PublicSiteFooterLayer />
+                  <AnalyticsConsentLayer />
+                  <Suspense fallback={null}>
+                    <PersonalDataConsentGate />
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <AchievementToastHost />
+                  </Suspense>
+                  <Suspense fallback={null}>
+                    <RouteTransitionProgress />
+                  </Suspense>
+                </ExternalInterfaceLayer>
+              </NotificationInboxProvider>
+            </PageAvailabilityProvider>
+          </ToastSettingsProvider>
+        </AnalyticsConfigProvider>
       </body>
     </html>
   );

@@ -1,25 +1,28 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
+import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthorSession } from "@/lib/auth/author-auth";
 import { AuthorLoginForm } from "./author-login-form";
 
 type AuthorLoginPageProps = {
   searchParams: Promise<{
     error?: string;
+    externalError?: string;
+    externalUnlinked?: string;
   }>;
 };
 
 export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageProps) {
-  const author = await getCurrentAuthor();
+  const author = await getCurrentAuthorSession();
 
   if (author) {
     redirect("/author/profile");
   }
 
-  const { error } = await searchParams;
+  const { error, externalError, externalUnlinked } = await searchParams;
   const initialError =
     error === "invalid" || error === "rate-limit" || error === "rate-limit-unavailable"
       ? error
@@ -44,6 +47,8 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
           </CardHeader>
 
           <CardContent>
+            {externalError ? <Alert variant="destructive" className="mb-4">{externalError === "cancelled" ? "Вход через внешний сервис отменён." : "Не удалось завершить внешний вход. Попробуй ещё раз или выбери другой способ."}</Alert> : null}
+            {externalUnlinked ? <Alert className="mb-4">Способ входа отключён, текущая сессия завершена. Войди другим способом.</Alert> : null}
             <AuthorLoginForm initialError={initialError} redirectOnSuccess />
           </CardContent>
         </Card>

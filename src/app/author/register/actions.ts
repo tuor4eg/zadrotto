@@ -1,5 +1,8 @@
 "use server";
 
+import { isPersonalDataConsentRequired } from "@/db/queries/personal-data-consent";
+import { isCurrentConsentSubmission, PersonalDataConsentRequiredError } from "@/lib/privacy/consent";
+
 import { redirect } from "next/navigation";
 
 import {
@@ -26,13 +29,16 @@ function read(formData: FormData, key: string) {
 }
 
 export type AuthorRegistrationState = {
-  error: "email-taken" | "invalid" | "login-taken" | "turnstile" | "unavailable";
+  error: "consent" | "email-taken" | "invalid" | "login-taken" | "turnstile" | "unavailable";
 } | null;
 
 export async function registerAuthorAction(
   _previousState: AuthorRegistrationState,
   formData: FormData,
 ): Promise<AuthorRegistrationState> {
+  const submittedVersion = read(formData, "consentVersion");
+  const consentVersion = isCurrentConsentSubmission(submittedVersion, formData.get("consentAccepted")) ? submittedVersion : undefined;
+  if (await isPersonalDataConsentRequired() && !consentVersion) return { error: "consent" };
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   if (!isAuthorRegistrationEnabled()) redirect("/author/login");
   if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
@@ -74,9 +80,11 @@ export async function registerAuthorAction(
       passwordHash: await hashPassword(password),
       email,
       normalizedEmail,
+      consentVersion,
     });
     registeredAuthorId = author.id;
   } catch (error) {
+    if (error instanceof PersonalDataConsentRequiredError) return { error: "consent" };
     const constraint = getUniqueViolationConstraint(error);
 
     if (constraint === "author_accounts_normalized_login_unique") {
@@ -88,11 +96,13 @@ export async function registerAuthorAction(
             authorId: account.authorId,
             email,
             normalizedEmail,
+            consentVersion,
           });
           registeredAuthorId = corrected?.authorId ?? null;
           correctedPendingEmail = Boolean(corrected);
         }
       } catch (correctionError) {
+        if (correctionError instanceof PersonalDataConsentRequiredError) return { error: "consent" };
         if (getUniqueViolationConstraint(correctionError) === "author_emails_normalized_email_unique") {
           return { error: "email-taken" };
         }

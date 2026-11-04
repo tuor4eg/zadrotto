@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import { findPublishedMediaItemDuplicateCandidates } from "@/db/queries/media-items";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import {
   createMediaItemDuplicateAcknowledgementToken,
@@ -42,6 +42,8 @@ function normalizeOptionalReleaseYear(value: unknown) {
 }
 
 export async function POST(request: Request) {
+  const consentDenial = (await getCurrentAdminUser()) ? null : await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [adminUser, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
 
   if (!adminUser && !author) {

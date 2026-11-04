@@ -35,7 +35,7 @@ test("FantLab typed contributor identity, moderation, order and manual safety", 
         timeout_seconds integer,retry_base_seconds integer,retry_max_seconds integer,locked_at timestamptz,locked_by text,lock_token text,
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql", "drizzle/0127_provider_snapshots.sql"]) {
+    for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql", "drizzle-archive/pre-baseline/0127_provider_snapshots.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date,ADD COLUMN death_date date;

@@ -41,7 +41,7 @@ test("admin creator pagination avoids unused per-row record counts and uses loca
       ANALYZE creators; ANALYZE creator_types; ANALYZE media_items; ANALYZE media_types;
       ANALYZE entry_creators; ANALYZE entry_creator_pseudonyms; ANALYZE creator_relations; ANALYZE creator_roles;`);
     // Use production DDL verbatim so normalized index expressions match generated SQL.
-    for (const file of ["drizzle/0140_creator_editor_search.sql", "drizzle/0141_creator_name_localization.sql"]) {
+    for (const file of ["drizzle-archive/pre-baseline/0140_creator_editor_search.sql", "drizzle-archive/pre-baseline/0141_creator_name_localization.sql"]) {
       for (const statement of readFileSync(file, "utf8").split("\n").filter(line => line.startsWith("CREATE INDEX creators_") && line.includes("_search_idx"))) {
         await client.unsafe(statement);
       }
@@ -75,7 +75,7 @@ test("admin creator pagination avoids unused per-row record counts and uses loca
     }
     for (const stage of ["without-order-index", "with-order-index"]) {
       if (stage === "with-order-index") {
-        await client.unsafe(readFileSync("drizzle/0142_creator_admin_pagination.sql", "utf8"));
+        await client.unsafe(readFileSync("drizzle-archive/pre-baseline/0142_creator_admin_pagination.sql", "utf8"));
         await client.unsafe("ANALYZE creators");
       }
       for (const input of [{ page: 1 }, { page: 1000 }, { page: 4000 }, { page: 1, q: "Автор" }, { page: 1, q: "Редкое Имя" }, { page: 1, q: "Неттакогоимени" }, { page: 1000, typeCode: "person" }, { page: 1000, roleCode: "writer" }]) {

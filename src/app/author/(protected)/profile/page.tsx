@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input, Label } from "@/components/ui/form";
 import { getAuthorProfileAccountState } from "@/db/queries/author-auth";
 import { AUTHOR_PASSWORD_MAX_LENGTH, AUTHOR_PASSWORD_MIN_LENGTH } from "@/lib/auth/author-account";
-import { getCurrentAuthorSession } from "@/lib/auth/author-auth";
+import { requireAuthorSession } from "@/lib/auth/author-auth";
 import { AUTHOR_DISPLAY_NAME_MAX_LENGTH } from "@/lib/authors/display-name";
 import {
   isAuthorEmailDeliveryConfigured,
@@ -12,10 +12,14 @@ import {
 } from "@/lib/auth/features";
 import { changeAuthorEmailAction, changeAuthorPasswordAction, logoutAuthorToTokenLogin, resendAuthorVerificationAction, updateAuthorDiscoverabilityAction, updateAuthorDisplayNameAction } from "./actions";
 import { AuthorOnboardingForm } from "./author-onboarding-form";
+import { ExternalAuthMethods } from "./external-auth-methods";
 import { AvatarEditor } from "./avatar-editor";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
 
 type ProfileQuery = {
+  externalError?: string;
+  externalLinked?: string;
+  externalUnlinked?: string;
   avatarError?: string;
   avatarRemoved?: string;
   avatarUpdated?: string;
@@ -36,7 +40,7 @@ function TokenReloginPrompt() {
 }
 
 export default async function AuthorProfilePage({ searchParams }: { searchParams: Promise<ProfileQuery> }) {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) return null;
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   const [account, query, emailDeliveryConfigured] = await Promise.all([
@@ -46,7 +50,7 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
       ? Promise.resolve(true)
       : isAuthorEmailDeliveryConfigured(),
   ]);
-  const isAccessTokenSession = current.session.authMethod === "access_token";
+  const canSetupCredentials = (current.session.authMethod === "access_token" || current.session.authMethod === "external");
   const avatarEditor = (
     <AvatarEditor
       authorName={current.author.name}
@@ -113,6 +117,14 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
       : null;
   const profileIdentitySettings = (
     <>
+      <AuthorToasts clearParams={["externalError", "externalLinked", "externalUnlinked"]} messages={query.externalError
+        ? [{ id: "external-error", tone: "error", text: query.externalError === "cancelled" ? "Подключение внешнего сервиса отменено." : query.externalError === "last-method"
+          ? "Сначала добавь другой работающий способ входа. Последний способ отключить нельзя."
+          : query.externalError === "conflict" ? "Не удалось подключить аккаунт: он уже привязан или для этого сервиса подключён другой аккаунт."
+          : query.externalError === "session-changed" ? "Сессия изменилась. Начни подключение заново."
+          : "Внешний способ входа временно недоступен. Попробуй позже." }]
+        : query.externalLinked || query.externalUnlinked ? [{ id: "external-updated", tone: "success",
+          text: query.externalLinked ? "Способ входа подключён." : "Способ входа отключён." }] : []} />
       {avatarEditor}
       {displayNameForm}
       <AuthorToasts
@@ -146,7 +158,8 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
       {avatarToasts}
       {displayNameToasts}
       {profileIdentitySettings}
-      {!isAccessTokenSession ? <TokenReloginPrompt /> : !emailDeliveryConfigured ? <Alert variant="destructive">Настройка входа временно недоступна: отправка писем не настроена.</Alert> : <AuthorOnboardingForm bypassEmailVerification={bypassEmailVerification} />}
+      <ExternalAuthMethods authorId={current.author.id} currentIdentityId={current.session.identityId} />
+      {!canSetupCredentials ? <TokenReloginPrompt /> : !emailDeliveryConfigured ? <Alert variant="destructive">Настройка входа временно недоступна: отправка писем не настроена.</Alert> : <AuthorOnboardingForm bypassEmailVerification={bypassEmailVerification} />}
     </div>;
   }
 
@@ -163,12 +176,14 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
       <Alert>Подтверди email по ссылке из письма.</Alert>
       <div className="rounded-md border p-5"><p className="font-medium">Ожидает подтверждения</p><p className="mt-1 text-sm text-stone-600">Email: {account.primaryEmail ?? "—"}</p></div>
       {profileIdentitySettings}
-      {!isAccessTokenSession ? <TokenReloginPrompt /> : <form action={resendAuthorVerificationAction}><Button type="submit" variant="outline" disabled={!emailDeliveryConfigured}>Отправить письмо ещё раз</Button></form>}
+      <ExternalAuthMethods authorId={current.author.id} currentIdentityId={current.session.identityId} />
+      {!canSetupCredentials ? <TokenReloginPrompt /> : <form action={resendAuthorVerificationAction}><Button type="submit" variant="outline" disabled={!emailDeliveryConfigured}>Отправить письмо ещё раз</Button></form>}
     </div>;
   }
 
   if (account.status !== "active") {
-    return <div className="max-w-2xl space-y-5"><h2 className="font-serif text-3xl">Общие</h2>{avatarToasts}{displayNameToasts}{profileIdentitySettings}<Alert variant="destructive">Аккаунт недоступен. Войди заново или обратись к администратору.</Alert></div>;
+    return <div className="max-w-2xl space-y-5"><h2 className="font-serif text-3xl">Общие</h2>{avatarToasts}{displayNameToasts}{profileIdentitySettings}
+      <ExternalAuthMethods authorId={current.author.id} currentIdentityId={current.session.identityId} /><Alert variant="destructive">Аккаунт недоступен. Войди заново или обратись к администратору.</Alert></div>;
   }
 
   const toast: AuthorToast | null = query.verified
@@ -189,6 +204,7 @@ export default async function AuthorProfilePage({ searchParams }: { searchParams
     {displayNameToasts}
     <AuthorToasts clearParams={["error", "updated", "verified"]} messages={toast ? [toast] : []} />
     {profileIdentitySettings}
+      <ExternalAuthMethods authorId={current.author.id} currentIdentityId={current.session.identityId} />
     <div className="grid items-end gap-4 rounded-md border p-5 sm:grid-cols-2">
       <div className="grid gap-1"><p className="text-xs text-stone-500">Логин</p><p className="font-medium">{account.login ?? "—"}</p></div>
       <div className="grid gap-1"><p className="text-xs text-stone-500">Основной email</p><p className="font-medium">{account.primaryEmail ?? "—"}</p></div>

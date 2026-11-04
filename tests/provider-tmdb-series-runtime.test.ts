@@ -116,7 +116,7 @@ test("TV snapshot import preserves identities, roles, manual data, seasons and a
     await metadata.deleteMediaItemMetadata(2);
     assert.equal((await client`SELECT count(*)::int count FROM entry_creators WHERE entry_id=2 AND is_manual`)[0].count, 1);
     // DDL is also exercised by the full migration run; retain a source-level guard for role scope.
-    assert.match(readFileSync("drizzle/0143_tmdb_series_creators.sql", "utf8"), /network\|person/);
+    assert.match(readFileSync("drizzle-archive/pre-baseline/0143_tmdb_series_creators.sql", "utf8"), /network\|person/);
   } finally {
     globalThis.fetch = originalFetch;
     await dbClient.end();

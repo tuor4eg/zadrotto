@@ -53,7 +53,7 @@ describe("top archive settings", () => {
 
   it("keeps the persisted admin settings and deterministic grouping helpers", () => {
     const schema = readFileSync("src/db/schema.ts", "utf8");
-    const migration = readFileSync("drizzle/0051_top_archive_settings.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0051_top_archive_settings.sql", "utf8");
     const settings = readFileSync("src/db/queries/archive-settings.ts", "utf8");
     const action = readFileSync("src/app/admin/(protected)/settings/actions.ts", "utf8");
     const form = readFileSync(

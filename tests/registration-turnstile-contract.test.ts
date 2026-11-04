@@ -40,7 +40,7 @@ describe("registration Turnstile contracts", () => {
     assert.match(page, /turnstileRequired=\{!turnstileBypassed\}/);
     assert.match(page, /turnstileSiteKey=\{turnstileBypassed \? null : getTurnstileSiteKey\(\)\}/);
     assert.match(form, /<TurnstileWidget[\s\S]*fieldName="turnstileToken"/);
-    assert.match(form, /disabled=\{isPending \|\| !isTurnstileVerified\}/);
+    assert.match(form, /disabled=\{isPending \|\| !isTurnstileVerified \|\| \(consentRequired && !consentAccepted\)\}/);
     assert.match(form, /resetKey=\{state\}/);
     assert.match(widget, /api\.js\?render=explicit/);
     assert.match(widget, /window\.turnstile\.reset\(widgetIdRef\.current\)/);

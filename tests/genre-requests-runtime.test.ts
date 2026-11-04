@@ -43,14 +43,14 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
         INSERT INTO media_item_provider_snapshots VALUES (4,'film','tmdb','{"genres":["комедия","Неизвестный legacy"]}');`);
       const rawBeforeMigration = await tx`SELECT * FROM media_item_metadata ORDER BY media_item_id`;
       for (const file of ["0103_unified_genres.sql", "0104_genre_requests.sql", "0107_genre_mapping_reopen.sql"]) {
-        for (const statement of readFileSync(`drizzle/${file}`, "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+        for (const statement of readFileSync(`drizzle-archive/pre-baseline/${file}`, "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
         if (file === "0103_unified_genres.sql") {
           await tx`INSERT INTO provider_genre_mappings(provider,media_type,external_genre_id,external_genre_name,normalized_external_genre_name,genre_id)
             SELECT 'tmdb','film','999','By id','by id',id FROM genres WHERE slug='comedy'`;
         }
       }
       assert.deepEqual(await tx`SELECT * FROM media_item_metadata ORDER BY media_item_id`, rawBeforeMigration);
-      const dml = readFileSync("drizzle/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint");
+      const dml = readFileSync("drizzle-archive/pre-baseline/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint");
       const begin = dml.findIndex((statement) => statement.trimStart().startsWith("INSERT INTO provider_genre_exclusions"));
       const end = dml.findIndex((statement) => statement.includes("CREATE FUNCTION preserve_genre_request_job_result"));
       await tx`DROP TABLE pending_genre_sources, pending_genre_backfill`;
@@ -346,7 +346,7 @@ test("genre requests deduplicate, resolve atomically and apply latest metadata w
     await client`INSERT INTO media_item_genres(media_item_id,genre_id,is_manual) VALUES(205,${oldOrphan.id},true)`;
     const factsBeforeCleanup = await client`SELECT * FROM media_item_metadata ORDER BY media_item_id`;
     await client.begin(async tx => {
-      for (const statement of readFileSync("drizzle/0109_remove_unmapped_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+      for (const statement of readFileSync("drizzle-archive/pre-baseline/0109_remove_unmapped_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
     });
     assert.equal((await client`SELECT count(*)::int AS n FROM genres WHERE id=${oldOrphan.id}`)[0].n, 0);
     assert.equal((await client`SELECT count(*)::int AS n FROM media_item_genres WHERE genre_id=${oldOrphan.id}`)[0].n, 0);

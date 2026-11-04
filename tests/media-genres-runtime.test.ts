@@ -38,8 +38,8 @@ test("genre runtime atomically synchronizes metadata, preserves manual links, an
           author_id integer, action text, entity_type text, entity_id integer, entity_label text, status text, severity text, message text,
           ip_address text, user_agent text, metadata jsonb);
         INSERT INTO media_items VALUES (1,'Series','series',NULL),(2,'Game','game',NULL),(3,'Anime','anime',NULL);`);
-      for (const statement of readFileSync("drizzle/0103_unified_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
-      for (const statement of readFileSync("drizzle/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+      for (const statement of readFileSync("drizzle-archive/pre-baseline/0103_unified_genres.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
+      for (const statement of readFileSync("drizzle-archive/pre-baseline/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint")) await tx.unsafe(statement);
     });
 
     const input = { mediaItemId: 1, sourceProvider: "tmdb", facts: { genres: ["Боевик и Приключения", "НФ и Фэнтези", "Неизвестный"] } };

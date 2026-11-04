@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import {
   suggestFranchisesForMediaItem,
@@ -61,6 +61,8 @@ function parseInput(value: unknown): SuggestFranchisesMediaInput | null {
 }
 
 export async function POST(request: Request) {
+  const consentDenial = (await getCurrentAdminUser()) ? null : await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [admin, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
   if (!admin && !author) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });

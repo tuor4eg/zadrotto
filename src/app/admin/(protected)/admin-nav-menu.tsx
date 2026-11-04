@@ -156,7 +156,9 @@ function getAdminNavGroups({
       label: "Инструменты",
       items: [
         { href: "/admin/settings/general", icon: Settings, label: "Настройки" },
+        { href: "/admin/tools/statistics", icon: Activity, label: "Статистика" },
         { href: "/admin/tools/providers", icon: Plug, label: "Провайдеры" },
+        { href: "/admin/tools/auth", icon: KeyRound, label: "Авторизация" },
         { href: "/admin/tools/ai", icon: BrainCircuit, label: "AI" },
         { href: "/admin/tools/services", icon: ServerCog, label: "Сервисы" },
         { href: "/admin/tools/email", icon: Mail, label: "Email" },

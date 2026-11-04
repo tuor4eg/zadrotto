@@ -26,7 +26,7 @@ test("book import preserves raw answers and manual decisions across offline repl
       await client.unsafe(`alter table ${quote(column.table_name)} alter column ${quote(column.column_name)} set default nextval('${schema}.test_serial_${i}')`);
     }
     if(!tables.some(row=>row.tablename==='provider_snapshots')) {
-      const migration=await readFile("drizzle/0127_provider_snapshots.sql","utf8");
+      const migration=await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql","utf8");
       for(const statement of migration.split('--> statement-breakpoint'))await client.unsafe(statement);
     }
     const [flagColumn]=await client`select 1 from information_schema.columns where table_schema=${schema} and table_name='provider_settings' and column_name='normalized_book_metadata'`;

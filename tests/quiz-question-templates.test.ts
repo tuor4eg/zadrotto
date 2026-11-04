@@ -9,8 +9,8 @@ import {
 
 describe("quiz question templates", () => {
   it("defines an independent case-sensitive template catalog in schema and migration", () => {
-    const migration = readFileSync("drizzle/0078_quiz_question_templates.sql", "utf8");
-    const journal = readFileSync("drizzle/meta/_journal.json", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0078_quiz_question_templates.sql", "utf8");
+    const journal = readFileSync("drizzle-archive/pre-baseline/meta/_journal.json", "utf8");
     const schema = readFileSync("src/db/schema.ts", "utf8");
     const quizzesSchema = schema.slice(
       schema.indexOf("export const quizzes"),

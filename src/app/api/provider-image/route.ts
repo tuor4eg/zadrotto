@@ -2,11 +2,13 @@ import { NextResponse } from "next/server";
 
 import { getCoverProviderImageSetting, getCoverSettings } from "@/db/queries/cover-settings";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { fetchProviderImage, verifyProviderImageToken } from "@/lib/covers/provider-image-relay";
 import { checkProviderImageRelayRateLimit } from "@/lib/covers/rate-limits";
 
 export async function GET(request: Request) {
+  const consentDenial = (await getCurrentAdminUser()) ? null : await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [adminUser, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
   if (!adminUser && !author) return new NextResponse(null, { status: 401 });
 

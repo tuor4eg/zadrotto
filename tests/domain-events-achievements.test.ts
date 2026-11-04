@@ -12,8 +12,8 @@ import {
 } from "../src/lib/achievements/catalog";
 
 const schemaSource = readFileSync("src/db/schema.ts", "utf8");
-const migrationSource = readFileSync("drizzle/0060_domain_events_achievements.sql", "utf8");
-const mechanicsMigrationSource = readFileSync("drizzle/0065_achievement_mechanics_levels.sql", "utf8");
+const migrationSource = readFileSync("drizzle-archive/pre-baseline/0060_domain_events_achievements.sql", "utf8");
+const mechanicsMigrationSource = readFileSync("drizzle-archive/pre-baseline/0065_achievement_mechanics_levels.sql", "utf8");
 const transactionSource = readFileSync("src/db/transaction.ts", "utf8");
 const dispatcherSource = readFileSync("src/lib/domain-events/dispatcher.ts", "utf8");
 const ratingSource = readFileSync("src/db/queries/ratings.ts", "utf8");
@@ -276,7 +276,7 @@ describe("achievement consumer", () => {
   });
 
   it("keeps the catalog name on the achievement and images only on levels", () => {
-    const presentationMigration = readFileSync("drizzle/0072_achievement_presentation_levels.sql", "utf8")
+    const presentationMigration = readFileSync("drizzle-archive/pre-baseline/0072_achievement_presentation_levels.sql", "utf8")
     const editPageSource = readFileSync("src/app/admin/(protected)/achievements/[id]/edit/page.tsx", "utf8")
     const levelsSource = readFileSync(
       "src/app/admin/(protected)/achievements/achievement-levels-tab.tsx",

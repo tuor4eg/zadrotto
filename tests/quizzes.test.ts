@@ -180,15 +180,15 @@ describe("quizzes", () => {
     assert.doesNotMatch(section, /answerMediaItemId/);
   });
   it("has migration constraints and indexes", () => {
-    const migration = readFileSync("drizzle/0063_quizzes.sql", "utf8");
-    const participantsMigration = readFileSync("drizzle/0064_quiz_participants.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0063_quizzes.sql", "utf8");
+    const participantsMigration = readFileSync("drizzle-archive/pre-baseline/0064_quiz_participants.sql", "utf8");
     assert.match(migration, /quizzes_period_check/); assert.match(migration, /quizzes_content_check/);
     assert.match(migration, /PRIMARY KEY\("quiz_id", "media_type"\)/); assert.match(migration, /quizzes_active_idx/);
     assert.match(migration, /quiz_media_types_media_type_idx/);
     assert.match(participantsMigration, /PRIMARY KEY\("quiz_id", "author_id"\)/);
     assert.match(participantsMigration, /quiz_participants_author_id_idx/);
     assert.match(participantsMigration, /ON DELETE cascade/);
-    const attemptsMigration = readFileSync("drizzle/0074_quiz_attempts.sql", "utf8");
+    const attemptsMigration = readFileSync("drizzle-archive/pre-baseline/0074_quiz_attempts.sql", "utf8");
     assert.match(attemptsMigration, /"attempt_limit" integer DEFAULT 3 NOT NULL/);
     assert.match(attemptsMigration, /quizzes_attempt_limit_check/);
     assert.match(attemptsMigration, /"attempts_remaining" integer DEFAULT 3 NOT NULL/);
@@ -196,12 +196,12 @@ describe("quizzes", () => {
     assert.match(attemptsMigration, /quiz_participants_outcome_check/);
     assert.match(attemptsMigration, /quiz_participants_completion_check/);
     assert.match(attemptsMigration, /quiz_participants_attempt_state_check/);
-    const winnersMigration = readFileSync("drizzle/0075_quiz_winners.sql", "utf8");
+    const winnersMigration = readFileSync("drizzle-archive/pre-baseline/0075_quiz_winners.sql", "utf8");
     assert.match(winnersMigration, /SELECT DISTINCT ON \("quiz_id"\)/);
     assert.match(winnersMigration, /ORDER BY "quiz_id", "completed_at" ASC, "author_id" ASC/);
     assert.match(winnersMigration, /quiz_participants_winner_check/);
     assert.match(winnersMigration, /CREATE UNIQUE INDEX "quiz_participants_one_winner_idx"[\s\S]*WHERE "is_winner" = true/);
-    const pointsMigration = readFileSync("drizzle/0105_quiz_points.sql", "utf8");
+    const pointsMigration = readFileSync("drizzle-archive/pre-baseline/0105_quiz_points.sql", "utf8");
     assert.match(pointsMigration, /DROP INDEX "quiz_participants_one_winner_idx"/);
     assert.match(pointsMigration, /DROP CONSTRAINT "quiz_participants_winner_check"/);
     assert.match(pointsMigration, /DROP COLUMN "is_winner"/);
@@ -209,13 +209,13 @@ describe("quizzes", () => {
 
   });
   it("queues the historical achievement backfill during container migrations", () => {
-    const migration = readFileSync("drizzle/0106_quiz_achievements_backfill.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0106_quiz_achievements_backfill.sql", "utf8");
     assert.match(migration, /INSERT INTO "job_runs"/);
     assert.match(migration, /'achievements.backfill'/);
     assert.match(migration, /jsonb_build_object\('achievementIds', jsonb_agg\("id" ORDER BY "id"\), 'batchSize', 100\)/);
     assert.match(migration, /WHERE "mechanic" = 'quiz.win.count' AND "enabled" = true/);
     assert.match(migration, /HAVING count\(\*\) > 0/);
-    const journal = JSON.parse(readFileSync("drizzle/meta/_journal.json", "utf8"));
+    const journal = JSON.parse(readFileSync("drizzle-archive/pre-baseline/meta/_journal.json", "utf8"));
     assert.ok(journal.entries.some((entry: { tag: string }) => entry.tag === "0106_quiz_achievements_backfill"));
     assert.doesNotMatch(readFileSync("package.json", "utf8"), /quizzes:backfill-achievements/);
   });
@@ -292,7 +292,7 @@ describe("quizzes", () => {
     const participationRoute = readFileSync("src/app/api/quizzes/active/participation/route.ts", "utf8");
     const statusRoute = readFileSync("src/app/api/quizzes/active/status/route.ts", "utf8");
     const guessRoute = readFileSync("src/app/quiz/guess/route.ts", "utf8");
-    const commentMigration = readFileSync("drizzle/0076_quiz_comment.sql", "utf8");
+    const commentMigration = readFileSync("drizzle-archive/pre-baseline/0076_quiz_comment.sql", "utf8");
     const form = readFileSync("src/app/admin/(protected)/quizzes/quiz-form.tsx", "utf8");
     const newPage = readFileSync("src/app/admin/(protected)/quizzes/new/page.tsx", "utf8");
     const editPage = readFileSync("src/app/admin/(protected)/quizzes/[id]/edit/page.tsx", "utf8");

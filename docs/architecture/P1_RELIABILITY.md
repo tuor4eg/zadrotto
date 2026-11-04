@@ -29,7 +29,7 @@ NODE_PATH=./node_modules/next/dist/compiled NODE_OPTIONS=--conditions=react-serv
 
 В текущей модели историческое отправленное тело/ключ не сохраняются. Поэтому миграция `0129` консервативно переводит все legacy `sending` в существующий `failed` с понятной причиной неизвестного исхода. ID, attempts и payload сохраняются. Она не возвращает их автоматически в очередь. Перед явным операторским повтором нужно проверить прежний запрос/аккаунт и окно идемпотентности; возраст строки менее 23 часов — только консервативное условие времени, не доказательство неизменности тела. Автоматического исключения по возрасту в миграции нет.
 
-Источники: [outbox](../../src/db/queries/email-outbox.ts), [delivery](../../src/lib/auth/email-outbox-delivery.ts), [preflight](../../tools/check-email-lease-cutover.ts), [миграция](../../drizzle/0129_email_outbox_lease.sql).
+Источники: [outbox](../../src/db/queries/email-outbox.ts), [delivery](../../src/lib/auth/email-outbox-delivery.ts), [preflight](../../tools/check-email-lease-cutover.ts), [миграция](../../drizzle-archive/pre-baseline/0129_email_outbox_lease.sql).
 
 ## Восстановление автомодерации
 
@@ -49,7 +49,7 @@ Consumer effects, consumption marks и `dispatched_at` по-прежнему ф�
 
 Фиксированная пауза управляет **новыми допусками**, а не является строгим лимитом «одно выполнение раз в 60 секунд». Ранее допущенный живой исполнитель может вернуться после другой неуспешной попытки; блокировка и транзакционная идемпотентность сохраняют корректность без поколения. Успешное событие повторно не применяется.
 
-Источники: [dispatcher](../../src/lib/domain-events/dispatcher.ts), [handler и сводка ошибок](../../src/lib/jobs/handlers.ts), [миграция](../../drizzle/0130_domain_event_recovery_backoff.sql).
+Источники: [dispatcher](../../src/lib/domain-events/dispatcher.ts), [handler и сводка ошибок](../../src/lib/jobs/handlers.ts), [миграция](../../drizzle-archive/pre-baseline/0130_domain_event_recovery_backoff.sql).
 
 ## Выкладка и проверка
 

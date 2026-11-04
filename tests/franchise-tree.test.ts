@@ -5,7 +5,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { MediaItemFranchiseLinks } from "../src/components/archive/media-item-franchise-links";
 
-const migrationSource = readFileSync("drizzle/0038_franchise_tree.sql", "utf8");
+const migrationSource = readFileSync("drizzle-archive/pre-baseline/0038_franchise_tree.sql", "utf8");
 const schemaSource = readFileSync("src/db/schema.ts", "utf8");
 const franchisesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const mediaItemsQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");

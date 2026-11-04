@@ -21,7 +21,7 @@ test("matches е and ё in both directions", () => {
 
 test("SQL helper and trigram indexes use the same normalization expression", () => {
   const sqlHelper = readFileSync("src/db/search.ts", "utf8");
-  const migration = readFileSync("drizzle/0056_normalized_trigram_search.sql", "utf8");
+  const migration = readFileSync("drizzle-archive/pre-baseline/0056_normalized_trigram_search.sql", "utf8");
   const sharedExpression = String.raw`replace(lower(regexp_replace(btrim(coalesce(`;
 
   assert.match(sqlHelper, /replace\(lower\(regexp_replace\(btrim\(coalesce\(/);

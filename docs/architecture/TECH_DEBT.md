@@ -27,13 +27,13 @@ Production-выкладка подтверждена владельцем **20 �
 
 FK на snapshot есть, а универсального FK на целевую запись/создателя нет. Реестр ограничивает типы и блокирует целевую сущность; общие helpers обслуживают attach/detach/move. Прямой SQL, новый cascade или скрипт, обходящий helpers, способен оставить ссылку на удалённый объект. Это осознанная цена общего механизма, а не доказательство уже существующих orphan links.
 
-**Следующий шаг:** сохранять единый протокол и отдельно проверять будущие import/delete/merge scripts; при необходимости добавить диагностическую сверку ссылок. Не заменять реестр произвольным именем таблицы из запроса. [Registry](../../src/lib/providers/entities.ts), [helpers](../../src/db/queries/provider-snapshots.ts), [миграция](../../drizzle/0127_provider_snapshots.sql).
+**Следующий шаг:** сохранять единый протокол и отдельно проверять будущие import/delete/merge scripts; при необходимости добавить диагностическую сверку ссылок. Не заменять реестр произвольным именем таблицы из запроса. [Registry](../../src/lib/providers/entities.ts), [helpers](../../src/db/queries/provider-snapshots.ts), [миграция](../../drizzle-archive/pre-baseline/0127_provider_snapshots.sql).
 
 ### P2. Импорт не обеспечивает глобальную уникальность внешней записи
 
 Проверка дублей использует названия, aliases и год; shared raw snapshot идентифицирует внешний ответ, но его связь с доменной записью не является уникальным ключом «один внешний ID — одна запись архива». Для BGG ограничение явно зафиксировано; приватные записи, отредактированные имена и конкурентные импорты остаются сложными случаями.
 
-**Следующий шаг:** сначала определить продуктовую идентичность: допускаются ли разные записи/издания одного внешнего объекта. Только затем решать, нужен ли уникальный binding для `MediaItem`; не переносить правила identity создателей механически на произведения. [Duplicate identity](../../src/lib/media/media-item-duplicate-identity.ts), [duplicates](../../src/lib/media/media-item-duplicates.ts), [BGG](../integrations/bgg.md), [snapshot links](../../drizzle/0127_provider_snapshots.sql).
+**Следующий шаг:** сначала определить продуктовую идентичность: допускаются ли разные записи/издания одного внешнего объекта. Только затем решать, нужен ли уникальный binding для `MediaItem`; не переносить правила identity создателей механически на произведения. [Duplicate identity](../../src/lib/media/media-item-duplicate-identity.ts), [duplicates](../../src/lib/media/media-item-duplicates.ts), [BGG](../integrations/bgg.md), [snapshot links](../../drizzle-archive/pre-baseline/0127_provider_snapshots.sql).
 
 ### P2. Эксплуатационные данные Redis непостоянны
 

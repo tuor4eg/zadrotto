@@ -6,7 +6,7 @@ import { FRIENDS_PAGE_SIZE, parseFriendsTab } from "../src/lib/friends/model";
 
 const read = (path: string) => readFileSync(path, "utf8");
 const schema = read("src/db/schema.ts");
-const migration = read("drizzle/0058_author_friendships.sql");
+const migration = read("drizzle-archive/pre-baseline/0058_author_friendships.sql");
 const queries = read("src/db/queries/friends.ts");
 const actions = read("src/app/users/actions.ts");
 const profilePage = read("src/app/users/[id]/page.tsx");

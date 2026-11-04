@@ -6,8 +6,8 @@ const read = (path: string) => readFileSync(path, "utf8");
 
 test("migration and schema define singleton author registration settings", () => {
   const schema = read("src/db/schema.ts");
-  const migration = read("drizzle/0033_author_registration_settings.sql");
-  const journal = read("drizzle/meta/_journal.json");
+  const migration = read("drizzle-archive/pre-baseline/0033_author_registration_settings.sql");
+  const journal = read("drizzle-archive/pre-baseline/meta/_journal.json");
 
   assert.match(schema, /authorRegistrationSettings = pgTable\([\s\S]*"author_registration_settings"/);
   assert.match(schema, /author_registration_settings_singleton_id_check/);

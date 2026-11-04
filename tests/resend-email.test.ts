@@ -157,7 +157,7 @@ describe("Resend author email", () => {
 
   it("uses a singleton email settings table in schema and migration", () => {
     const schema = readFileSync("src/db/schema.ts", "utf8");
-    const migration = readFileSync("drizzle/0032_yielding_blockbuster.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0032_yielding_blockbuster.sql", "utf8");
 
     for (const source of [schema, migration]) {
       assert.match(source, /email_delivery_settings/);

@@ -29,9 +29,9 @@ test("sanitizes delivery errors before persistence and bounds length", () => {
 
 test("schema keeps email settings while the cutover migration removes the legacy scheduler", () => {
   const schema = read("src/db/schema.ts");
-  const migration = read("drizzle/0034_email_automation.sql");
-  const cutover = read("drizzle/0055_remove_legacy_email_automation.sql");
-  const journal = read("drizzle/meta/_journal.json");
+  const migration = read("drizzle-archive/pre-baseline/0034_email_automation.sql");
+  const cutover = read("drizzle-archive/pre-baseline/0055_remove_legacy_email_automation.sql");
+  const journal = read("drizzle-archive/pre-baseline/meta/_journal.json");
   assert.match(schema, /email_automation_settings/);
   assert.doesNotMatch(schema, /emailAutomationJobs|deliveryIntervalSeconds|cleanupIntervalSeconds/);
   for (const source of [schema, migration]) {

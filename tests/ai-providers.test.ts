@@ -264,7 +264,7 @@ describe("AI persistence and UI security contracts", () => {
   });
 
   it("stores only technical call metadata and defines the required indexes", async () => {
-    const migration = await readFile(path.join(root, "drizzle/0045_ai_providers.sql"), "utf8");
+    const migration = await readFile(path.join(root, "drizzle-archive/pre-baseline/0045_ai_providers.sql"), "utf8");
     const logQuery = await readFile(path.join(root, "src/db/queries/ai-call-logs.ts"), "utf8");
 
     assert.doesNotMatch(migration, /prompt|messages|response_payload|output_text/i);
@@ -276,7 +276,7 @@ describe("AI persistence and UI security contracts", () => {
 
   it("makes the scenario model override nullable without rewriting existing values", async () => {
     const migration = await readFile(
-      path.join(root, "drizzle/0046_ai_scenario_inheritance.sql"),
+      path.join(root, "drizzle-archive/pre-baseline/0046_ai_scenario_inheritance.sql"),
       "utf8",
     );
     assert.match(migration, /DROP CONSTRAINT "ai_scenario_profiles_model_id_check"/);
@@ -789,7 +789,7 @@ describe("AI persistence and UI security contracts", () => {
     const schema = await readFile(path.join(root, "src/db/schema.ts"), "utf8");
     const migration = await readFile(path.join(
       root,
-      "drizzle/0047_ai_scenario_catalog_config.sql",
+      "drizzle-archive/pre-baseline/0047_ai_scenario_catalog_config.sql",
     ), "utf8");
 
     assert.match(operation, /getEnabledAiScenarioProfile\(AI_SCENARIO_KEYS\.SUGGEST_SERIES\)/);

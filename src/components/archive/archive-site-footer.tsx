@@ -1,3 +1,6 @@
+"use client";
+
+import { useConsentRequirement } from "@/lib/privacy/use-consent-requirement";
 import Link from "next/link"
 
 import { AnalyticsSettingsButton } from "@/components/archive/analytics-settings-button"
@@ -6,6 +9,8 @@ const FOOTER_LINKS = [
   { href: "/about", label: "О проекте" },
   { href: "/rules", label: "Правила" },
   { href: "/help", label: "Помощь" },
+  { href: "/privacy", label: "Конфиденциальность" },
+  { href: "/consent", label: "Согласие" },
 ] as const
 
 function TelegramIcon() {
@@ -17,20 +22,19 @@ function TelegramIcon() {
 }
 
 export function ArchiveSiteFooter() {
+  const documentsEnabled = useConsentRequirement();
   return (
     <footer className="archive-paper archive-panel flex flex-col items-center gap-2 px-4 py-3 text-stone-600 sm:px-5">
-      <div className="flex flex-nowrap items-center justify-center whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.05em] sm:text-[10px] sm:tracking-[0.12em]">
+      <div className="flex flex-wrap items-center justify-center gap-y-2 whitespace-nowrap font-mono text-[9px] uppercase tracking-[0.05em] sm:text-[10px] sm:tracking-[0.12em]">
         <span className="px-1.5 first:pl-0 sm:px-3">{new Date().getFullYear()}</span>
-        {FOOTER_LINKS.map((item) => (
+        {FOOTER_LINKS.filter((item) => documentsEnabled || (item.href !== "/privacy" && item.href !== "/consent")).map((item) => (
           <span key={item.href} className="border-l border-stone-400/40 px-1.5 sm:px-3">
             <Link className="hover:text-stone-950" href={item.href}>
               {item.label}
             </Link>
           </span>
         ))}
-        <span className="border-l border-stone-400/40 px-1.5 sm:px-3">
-          <AnalyticsSettingsButton />
-        </span>
+        <AnalyticsSettingsButton />
         <span className="flex items-center border-l border-stone-400/40 px-1.5 sm:px-3">
           <a
             aria-label="Telegram-канал Гикотека"

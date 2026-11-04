@@ -41,7 +41,7 @@ test("game company identities and moderation persist through PostgreSQL", { skip
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     await client.unsafe(`CREATE TABLE media_item_provider_snapshots(media_item_id integer PRIMARY KEY,provider_code text,external_id text,media_type text,title text,original_title text,description text,release_year integer,source_url text,facts jsonb DEFAULT '{}',payload_hash text,fetched_at timestamptz DEFAULT now(),created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
+    for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,

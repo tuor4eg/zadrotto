@@ -42,7 +42,7 @@ test("book fields survive DB, metadata service and JSON transport without changi
   let budgetCalls = 0;
   globalThis.fetch = async () => { networkCalls++; throw new Error("SAVED_BOOK_FIELDS_MUST_NOT_FETCH"); };
   try {
-    const migration = await readFile("drizzle/0127_provider_snapshots.sql", "utf8");
+    const migration = await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8");
     await client.unsafe(migration.split("ALTER TABLE entry_creator_sources")[0].replaceAll("--> statement-breakpoint", ""));
     const { saveProviderSnapshot } = await import("../src/db/queries/provider-snapshots");
     const { describeBookSource } = await import("../src/lib/providers/book-adapters");

@@ -139,7 +139,7 @@ test("logo moderation plans remain bounded for details and measure full queues a
     await explainWrite("repair-pending-pairs", db.update(s.creatorLogoCandidates).set({ decision: "reject", resolvedByAdminId: 1, resolvedAt: new Date(), updatedAt: new Date() }).where(and(eq(s.creatorLogoCandidates.requestId, 100000), isNull(s.creatorLogoCandidates.decision))).toSQL());
     await explainWrite("repair-delete-exclusion", db.delete(s.providerCreatorExclusions).where(and(eq(s.providerCreatorExclusions.provider, "tmdb"), eq(s.providerCreatorExclusions.externalCreatorId, "company:100000"), eq(s.providerCreatorExclusions.mediaType, "anime"))).toSQL());
     await explainWrite("repair-reset-request", db.update(s.creatorRequests).set({ decision: null, resolvedByAdminId: null, resolvedAt: null, jobRunId: null, applyStatus: "pending", jobError: null, manuallyReopened: false, updatedAt: new Date() }).where(eq(s.creatorRequests.id, 100000)).toSQL());
-    const migration = readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint");
     const backfill = migration.find(statement => /INSERT INTO creator_logo_candidates/.test(statement))!;
     await client.unsafe(`create unlogged table game_company_profiles (like public.game_company_profiles including all)`);
     await client.unsafe(`insert into game_company_profiles(provider,external_id,name,details) select 'tmdb','company:'||g,'Company '||g,jsonb_build_object('anilistStudioId','studio:'||g,'suggestedCreatorIds',jsonb_build_array(g,((g%100000)+1))) from generate_series(1,100000)g; analyze game_company_profiles`);

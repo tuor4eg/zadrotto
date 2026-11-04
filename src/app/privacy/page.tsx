@@ -1,9 +1,13 @@
+import { notFound } from "next/navigation";
+import { isPersonalDataConsentRequired } from "@/db/queries/personal-data-consent";
+import Link from "next/link";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
 export const dynamic = "force-dynamic";
 
 export default async function PrivacyPage() {
+  if (!(await isPersonalDataConsentRequired())) notFound();
   const headerState = await getPublicSiteHeaderState();
 
   return (
@@ -18,6 +22,7 @@ export default async function PrivacyPage() {
               </h1>
               <p className="mt-3">Последнее обновление: 20 сентября 2026 года.</p>
             </div>
+            <p>Для аккаунта действует отдельное <Link href="/consent" className="underline">согласие на обработку персональных данных со сведениями об операторе и контактом для обращений</Link>.</p>
             <section>
               <h2 className="font-serif text-2xl text-stone-950">Аналитика</h2>
               <p className="mt-2">
@@ -31,7 +36,7 @@ export default async function PrivacyPage() {
               <h2 className="font-serif text-2xl text-stone-950">Cookies и выбор пользователя</h2>
               <p className="mt-2">
                 До согласия скрипт Google Analytics не загружается. При согласии Google может
-                установить cookies с префиксом <code>_ga</code>. Вы можете изменить решение через
+                установить cookies с префиксом <code>_ga</code>. Когда аналитика включена в настройках сайта, вы можете изменить решение через
                 кнопку «Cookies» внизу сайта; при отказе доступные сайту аналитические cookies
                 удаляются.
               </p>

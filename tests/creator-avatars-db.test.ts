@@ -19,7 +19,7 @@ test("creator avatar migration and assignments preserve data, identity ownership
       INSERT INTO creators(id,name,slug,type_id) VALUES(1,'Автор А','a',1),(2,'Автор Б','b',1),(3,'Другой провайдер','c',1);
       INSERT INTO provider_creator_mappings(provider,media_type,external_creator_name,normalized_external_creator_name,creator_id) VALUES('fantlab','book','Автор А','автор а',1),('fantlab','book','Author A','author a',1),('fantlab','book','Автор Б','автор б',2),('bgg','boardgame','Other','other',3);`);
     const before = await sql`SELECT id,name,slug,original_name,type_id,created_at,updated_at FROM creators ORDER BY id`;
-    for (const statement of readFileSync("drizzle/0123_creator_avatars.sql", "utf8").split("--> statement-breakpoint")) await sql.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0123_creator_avatars.sql", "utf8").split("--> statement-breakpoint")) await sql.unsafe(statement);
     // Later migration 0124 adds a diagnostic name to the binding projection.
     await sql.unsafe("ALTER TABLE provider_creator_bindings ADD COLUMN external_creator_name text, ADD COLUMN active boolean NOT NULL DEFAULT true");
     assert.deepEqual(await sql`SELECT id,name,slug,original_name,type_id,created_at,updated_at FROM creators ORDER BY id`, before);

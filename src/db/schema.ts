@@ -62,6 +62,9 @@ export const firstExperiencedPrecisionEnum = pgEnum(
 export const editorialDocumentKindEnum = pgEnum("editorial_document_kind", ["collection", "article"]);
 export const editorialDocumentBlockTypeEnum = pgEnum("editorial_document_block_type", ["media", "heading", "text", "entry_group"]);
 
+// DDL cannot bind parameters. Escape code-owned enum values before emitting CHECK literals.
+const schemaStringLiteral = (value: string) => sql.raw(`'${value.replaceAll("'", "''")}'`);
+
 const timestamps = () => ({
   createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
@@ -241,6 +244,7 @@ export const providerSettings = pgTable(
 export const providerCredentials = pgTable(
   "provider_credentials",
   {
+    purpose: text("purpose").default("content").notNull(),
     providerCode: text("provider_code").notNull(),
     encryptedPayload: text("encrypted_payload").notNull(),
     keyHint: text("key_hint").notNull(),
@@ -250,12 +254,21 @@ export const providerCredentials = pgTable(
     ...timestamps(),
   },
   (table) => [
+    check("provider_credentials_purpose_check", sql`${table.purpose} IN ('content', 'auth')`),
     primaryKey({
-      columns: [table.providerCode],
+      columns: [table.purpose, table.providerCode],
       name: "provider_credentials_pk",
     }),
   ],
 );
+
+export const authProviderSettings = pgTable("auth_provider_settings", {
+  providerCode: text("provider_code").primaryKey(),
+  enabled: boolean("enabled").default(false).notNull(),
+  revision: uuid("revision").defaultRandom().notNull(),
+  updatedByAdminId: integer("updated_by_admin_id").references(() => adminUsers.id, { onDelete: "set null" }),
+  ...timestamps(),
+});
 
 export const providerRateLimits = pgTable(
   "provider_rate_limits",
@@ -379,6 +392,9 @@ export const authors = pgTable("authors", {
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   avatarObjectKey: text("avatar_object_key"),
+  nameSourceIdentityId: integer("name_source_identity_id").references((): AnyPgColumn => authorAuthIdentities.id, { onDelete: "set null" }),
+  avatarSourceIdentityId: integer("avatar_source_identity_id").references((): AnyPgColumn => authorAuthIdentities.id, { onDelete: "set null" }),
+  avatarVersion: integer("avatar_version").notNull().default(0),
   isSystem: boolean("is_system").default(false).notNull(),
   isDiscoverable: boolean("is_discoverable").default(true).notNull(),
   accessProfileId: integer("access_profile_id")
@@ -391,6 +407,8 @@ export const authors = pgTable("authors", {
   ...timestamps(),
 }, (table) => [
   index("authors_access_profile_id_idx").on(table.accessProfileId),
+  index("authors_name_source_identity_id_idx").on(table.nameSourceIdentityId),
+  index("authors_avatar_source_identity_id_idx").on(table.avatarSourceIdentityId),
   uniqueIndex("authors_avatar_object_key_unique")
     .on(table.avatarObjectKey)
     .where(sql`${table.avatarObjectKey} is not null`),
@@ -625,7 +643,7 @@ export const bugReports = pgTable(
     check(
       "bug_reports_entity_type_check",
       sql`${table.entityType} is null or ${table.entityType} in (${sql.join(
-        BUG_REPORT_ENTITY_TYPES.map((value) => sql`${value}`),
+        BUG_REPORT_ENTITY_TYPES.map(schemaStringLiteral),
         sql`, `,
       )})`,
     ),
@@ -635,7 +653,7 @@ export const bugReports = pgTable(
     ),
     check(
       "bug_reports_status_check",
-      sql`${table.status} in (${sql.join(BUG_REPORT_STATUSES.map((value) => sql`${value}`), sql`, `)})`,
+      sql`${table.status} in (${sql.join(BUG_REPORT_STATUSES.map(schemaStringLiteral), sql`, `)})`,
     ),
     check(
       "bug_reports_confirmed_at_check",
@@ -734,6 +752,7 @@ export const authorAuthIdentities = pgTable(
   },
   (table) => [
     index("author_auth_identities_author_id_idx").on(table.authorId),
+    unique("author_auth_identities_author_provider_unique").on(table.authorId, table.provider),
     unique("author_auth_identities_provider_subject_unique").on(
       table.provider,
       table.providerSubject,
@@ -776,6 +795,8 @@ export const authorSessions = pgTable(
       .references(() => authors.id, { onDelete: "cascade" }),
     tokenHash: text("token_hash").notNull().unique(),
     authMethod: text("auth_method").notNull(),
+    identityId: integer("identity_id").references(() => authorAuthIdentities.id, { onDelete: "set null" }),
+    provider: text("provider"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
     lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).defaultNow().notNull(),
     expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
@@ -785,10 +806,11 @@ export const authorSessions = pgTable(
   },
   (table) => [
     index("author_sessions_author_id_idx").on(table.authorId),
+    index("author_sessions_identity_id_idx").on(table.identityId),
     index("author_sessions_expires_at_idx").on(table.expiresAt),
     check(
       "author_sessions_auth_method_check",
-      sql`${table.authMethod} in ('password', 'access_token', 'telegram')`,
+      sql`${table.authMethod} in ('password', 'access_token', 'telegram', 'external')`,
     ),
   ],
 );
@@ -971,8 +993,8 @@ export const jobRuns = pgTable(
     uniqueIndex("job_runs_creator_image_fill_active_unique").on(sql`(${table.payload}->>'creatorId')`, sql`(${table.payload}->>'bindingFingerprint')`).where(sql`${table.type} = 'media.creator-image-fill' and ${table.status} in ('queued', 'running')`),
     uniqueIndex("job_runs_creator_request_apply_active_unique").on(sql`(${table.payload}->>'requestId')`).where(sql`${table.type} = 'media.creator-request-apply' and ${table.status} in ('queued', 'running')`),
     check("job_runs_type_check", sql`btrim(${table.type}) <> ''`),
-    check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map((value) => sql`${value}`), sql`, `)})`),
-    check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map((value) => sql`${value}`), sql`, `)})`),
+    check("job_runs_source_check", sql`${table.source} in (${sql.join(JOB_RUN_SOURCES.map(schemaStringLiteral), sql`, `)})`),
+    check("job_runs_status_check", sql`${table.status} in (${sql.join(JOB_RUN_STATUSES.map(schemaStringLiteral), sql`, `)})`),
     check("job_runs_attempts_check", sql`${table.attempts} >= 0 and ${table.attempts} <= ${table.maxAttempts}`),
     check("job_runs_max_attempts_check", sql`${table.maxAttempts} >= 1`),
     check("job_runs_timeout_seconds_check", sql`${table.timeoutSeconds} >= 1`),
@@ -1027,6 +1049,8 @@ export const domainEvents = pgTable(
   },
   (table) => [
     index("domain_events_type_occurred_at_idx").on(table.type, table.occurredAt),
+    index("domain_events_author_registration_idx").on(table.aggregateId)
+      .where(sql`${table.type} = 'author.registration.submitted' and ${table.aggregateType} = 'author'`),
     index("domain_events_actor_occurred_at_idx").on(table.actorAuthorId, table.occurredAt),
     check("domain_events_type_check", sql`btrim(${table.type}) <> ''`),
     check("domain_events_schema_version_check", sql`${table.schemaVersion} >= 1`),
@@ -1087,7 +1111,7 @@ export const xpActionRules = pgTable("xp_action_rules", {
   ...timestamps(),
 }, (table) => [
   check("xp_action_rules_code_check", sql`btrim(${table.actionCode}) <> ''`),
-  check("xp_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map((code) => sql`${code}`), sql`, `)})`),
+  check("xp_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map(schemaStringLiteral), sql`, `)})`),
   check("xp_action_rules_xp_check", sql`${table.xp} >= 0`),
   check("xp_action_rules_display_order_check", sql`${table.displayOrder} >= 0`),
 ]);
@@ -1128,7 +1152,7 @@ export const trustActionRules = pgTable("trust_action_rules", {
   ...timestamps(),
 }, (table) => [
   check("trust_action_rules_code_check", sql`btrim(${table.actionCode}) <> ''`),
-  check("trust_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map((code) => sql`${code}`), sql`, `)})`),
+  check("trust_action_rules_known_code_check", sql`${table.actionCode} in (${sql.join(REPUTATION_ACTION_CODES.map(schemaStringLiteral), sql`, `)})`),
   check("trust_action_rules_points_check", sql`${table.trustPoints} >= 1`),
   check("trust_action_rules_display_order_check", sql`${table.displayOrder} >= 0`),
 ]);
@@ -1312,7 +1336,7 @@ export const notificationTransportSettings = pgTable(
     ...timestamps(),
   },
   (table) => [
-    check("notification_transport_settings_code_check", sql`${table.code} in (${sql`${TELEGRAM_TRANSPORT_CODE}`})`),
+    check("notification_transport_settings_code_check", sql`${table.code} in (${schemaStringLiteral(TELEGRAM_TRANSPORT_CODE)})`),
     check("notification_transport_settings_code_trim_check", sql`btrim(${table.code}) <> ''`),
   ],
 );
@@ -1331,7 +1355,7 @@ export const notificationTransportRoutes = pgTable(
     check(
       "notification_transport_routes_code_check",
       sql`${table.code} in (${sql.join(
-        EXTERNAL_NOTIFICATION_ROUTE_CODES.map((value) => sql`${value}`),
+        EXTERNAL_NOTIFICATION_ROUTE_CODES.map(schemaStringLiteral),
         sql`, `,
       )})`,
     ),
@@ -1385,7 +1409,7 @@ export const achievementLevels = pgTable(
     check("achievement_levels_description_check", sql`${table.description} is null or btrim(${table.description}) <> ''`),
     check(
       "achievement_levels_rarity_check",
-      sql`${table.rarity} in (${sql.join(ACHIEVEMENT_RARITIES.map((value) => sql`${value}`), sql`, `)})`,
+      sql`${table.rarity} in (${sql.join(ACHIEVEMENT_RARITIES.map(schemaStringLiteral), sql`, `)})`,
     ),
   ],
 );
@@ -1560,7 +1584,7 @@ export const mediaItems = pgTable(
     index("media_items_metadata_attempted_at_idx").on(table.metadataAttemptedAt),
     check(
       "media_items_metadata_issue_code_check",
-      sql`${table.metadataIssueCode} is null or ${table.metadataIssueCode} in (${sql.join(Object.keys(METADATA_ISSUE_LABELS).map((code) => sql`${code}`), sql`, `)})`,
+      sql`${table.metadataIssueCode} is null or ${table.metadataIssueCode} in (${sql.join(Object.keys(METADATA_ISSUE_LABELS).map(schemaStringLiteral), sql`, `)})`,
     ),
     check("media_items_moderation_revision_check", sql`${table.moderationRevision} >= 0`),
     uniqueIndex("media_items_author_creation_request_id_unique_idx").on(
@@ -2334,7 +2358,7 @@ export const authorMediaStatuses = pgTable(
     index("author_media_statuses_media_item_id_idx").on(table.mediaItemId),
     check(
       "author_media_statuses_status_check",
-      sql`${table.status} in (${sql.join(AUTHOR_MEDIA_STATUSES.map((status) => sql`${status}`), sql`, `)})`,
+      sql`${table.status} in (${sql.join(AUTHOR_MEDIA_STATUSES.map(schemaStringLiteral), sql`, `)})`,
     ),
   ],
 );
@@ -2569,3 +2593,29 @@ export const providerSnapshotLinks = pgTable("provider_snapshot_links", {
   index("provider_snapshot_links_entity_idx").on(t.entityType,t.entityId,t.purpose,t.snapshotId),
   check("provider_snapshot_links_values_check",sql`btrim(${t.entityType}) <> '' and btrim(${t.entityId}) <> '' and ${t.purpose} in ('primary','dependency')`),
 ]);
+
+/** Revoked confirmations remain historical; accepting again creates a new row. */
+export const personalDataConsents = pgTable("personal_data_consents", {
+  id: serial("id").primaryKey(),
+  authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "cascade" }),
+  version: text("version").notNull(),
+  acceptedAt: timestamp("accepted_at", { withTimezone: true }).defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at", { withTimezone: true }),
+}, (table) => [
+  uniqueIndex("personal_data_consents_active_unique").on(table.authorId, table.version).where(sql`${table.revokedAt} is null`),
+  index("personal_data_consents_author_idx").on(table.authorId),
+  check("personal_data_consents_version_check", sql`btrim(${table.version}) <> ''`),
+  check("personal_data_consents_revoked_check", sql`${table.revokedAt} is null or ${table.revokedAt} >= ${table.acceptedAt}`),
+]);
+
+export const personalDataConsentSettings = pgTable("personal_data_consent_settings", {
+  requireConsent: boolean("require_consent").notNull().default(false),
+  id: integer("id").primaryKey().default(1),
+  operatorDetails: text("operator_details").notNull().default(""),
+  contact: text("contact").notNull().default(""),
+}, (table) => [check("personal_data_consent_settings_singleton_check", sql`${table.id} = 1`)]);
+
+export const analyticsSettings = pgTable("analytics_settings", {
+  id: integer("id").primaryKey().default(1),
+  enabled: boolean("enabled").notNull().default(false),
+}, (table) => [check("analytics_settings_singleton_check", sql`${table.id} = 1`)]);

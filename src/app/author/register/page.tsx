@@ -1,3 +1,4 @@
+import { isPersonalDataConsentRequired } from "@/db/queries/personal-data-consent";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -24,7 +25,7 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
   const turnstileConfigured = isTurnstileConfigured();
   const isRegistrationAvailable = isEmailDeliveryConfigured
     && (turnstileBypassed || turnstileConfigured);
-  const query = await searchParams;
+  const [query, consentRequired] = await Promise.all([searchParams, isPersonalDataConsentRequired()]);
   return (
     <main className="archive-page min-h-screen px-4 py-8 text-stone-950">
       <Card className="archive-paper-surface mx-auto max-w-lg border-stone-500/40">
@@ -54,7 +55,7 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
               <Link className={buttonVariants()} href="/">На сайт</Link>
             </div>
           ) : (
-            <AuthorRegistrationForm
+            <AuthorRegistrationForm consentRequired={consentRequired}
               turnstileRequired={!turnstileBypassed}
               turnstileSiteKey={turnstileBypassed ? null : getTurnstileSiteKey()}
             />

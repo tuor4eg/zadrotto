@@ -65,7 +65,7 @@ describe("contribution status rules", () => {
 
 describe("author contribution migration", () => {
   it("enforces one review per author and primary media item", () => {
-    const migration = readFileSync("drizzle/0008_author_contributions.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0008_author_contributions.sql", "utf8");
 
     assert.match(migration, /CREATE UNIQUE INDEX "contributions_review_author_media_unique"/);
     assert.match(migration, /"author_id","primary_media_item_id"/);

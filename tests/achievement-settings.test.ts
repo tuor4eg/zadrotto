@@ -6,11 +6,11 @@ const read = (path: string) => readFileSync(path, "utf8")
 
 test("migration and schema define singleton achievement settings", () => {
   const schema = read("src/db/schema.ts")
-  const migration = read("drizzle/0071_achievement_settings.sql")
+  const migration = read("drizzle-archive/pre-baseline/0071_achievement_settings.sql")
   const defaultShowcaseMigration = read(
-    "drizzle/0089_achievement_settings_default_showcase_background.sql",
+    "drizzle-archive/pre-baseline/0089_achievement_settings_default_showcase_background.sql",
   )
-  const journal = read("drizzle/meta/_journal.json")
+  const journal = read("drizzle-archive/pre-baseline/meta/_journal.json")
 
   assert.match(schema, /achievementSettings = pgTable\([\s\S]*"achievement_settings"/)
   assert.match(schema, /lockedImageObjectKey: text\("locked_image_object_key"\)/)

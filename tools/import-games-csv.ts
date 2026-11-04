@@ -1,4 +1,4 @@
-import { readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 
 import Papa from "papaparse";
@@ -21,7 +21,7 @@ type GameRow = {
   rowNumber: number;
 };
 
-const DEFAULT_OUT = "drizzle/0001_import_games_catalog.sql";
+const DEFAULT_OUT = ".data/generated-imports/games-catalog.sql";
 
 function readCliArgs(argv: string[]): CliArgs {
   const args = new Map<string, string>();
@@ -372,6 +372,7 @@ async function generateImportMigration(args: CliArgs) {
     rows: enrichRows(rows),
   });
 
+  await mkdir(path.dirname(args.out), { recursive: true });
   await writeFile(args.out, sql);
 
   return {

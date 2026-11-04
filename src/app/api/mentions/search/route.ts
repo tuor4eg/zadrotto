@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { searchPublishedMediaItems } from "@/db/queries/inline-mention-media-items";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import type { MentionSuggestion } from "@/lib/inline-mentions/markup";
 import { getMentionTriggerConfig } from "@/lib/inline-mentions/registry";
 import { normalizeSearchText } from "@/lib/search/normalize";
@@ -10,6 +10,8 @@ import { normalizeSearchText } from "@/lib/search/normalize";
 const MAX_QUERY_LENGTH = 100;
 
 export async function GET(request: Request) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
   if (!author) return NextResponse.json({ items: [] }, { status: 401 });
 

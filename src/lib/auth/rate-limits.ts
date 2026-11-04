@@ -9,6 +9,9 @@ import {
 export type AuthRateLimitScope =
   | "admin"
   | "author"
+  | "author-external-unlink"
+  | "author-external-start"
+  | "author-external-callback"
   | "author-password"
   | "author-access-token"
   | "author-challenge"

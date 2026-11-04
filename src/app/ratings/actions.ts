@@ -12,7 +12,7 @@ import { getMediaItemIdentityForAuthorRating } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { deleteAuthorRating, upsertAuthorRating } from "@/db/queries/ratings";
 import { getTitlePart } from "@/db/queries/title-parts";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { requireAuthor } from "@/lib/auth/author-auth";
 import {
   isFirstExperienceBeforeRelease,
   parseFirstExperiencedInput,
@@ -45,7 +45,7 @@ export async function saveAuthorRatingAction(
   _state: SaveAuthorRatingState,
   formData: FormData,
 ): Promise<SaveAuthorRatingState> {
-  const author = await getCurrentAuthor();
+  const author = await requireAuthor();
 
   if (!author) {
     redirect("/author/login");

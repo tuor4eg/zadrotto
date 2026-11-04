@@ -1,12 +1,13 @@
+import { EXTERNAL_AUTH_PROVIDER_DEFINITIONS } from "@/lib/auth/external/provider-definitions";
 import { ActivityLogTime } from "@/app/admin/(protected)/tools/activity/activity-log-time";
 import { Button } from "@/components/ui/button";
 import { getAuthorSessions } from "@/db/queries/author-auth";
-import { getCurrentAuthorSession } from "@/lib/auth/author-auth";
+import { requireAuthorSession } from "@/lib/auth/author-auth";
 
 import { revokeAuthorSessionAction } from "../actions";
 
 export default async function AuthorSessionsPage() {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) return null;
 
   const sessions = await getAuthorSessions(current.author.id);
@@ -44,7 +45,7 @@ export default async function AuthorSessionsPage() {
                 {session.id === current.session.sessionId ? "Текущая сессия" : "Сессия"}
               </p>
               <p className="text-xs text-stone-500">
-                {session.authMethod} ·{" "}
+                {session.authMethod === "external" ? (session.provider ? EXTERNAL_AUTH_PROVIDER_DEFINITIONS.find((provider) => provider.code === session.provider)?.name ?? session.provider : "Внешний сервис") : session.authMethod} ·{" "}
                 <ActivityLogTime value={session.lastSeenAt.toISOString()} />
               </p>
             </div>

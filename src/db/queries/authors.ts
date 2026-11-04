@@ -285,7 +285,7 @@ export async function replaceAuthorAvatarObjectKey(input: {
 
     await tx
       .update(authors)
-      .set({ avatarObjectKey: input.objectKey, updatedAt: new Date() })
+      .set({ avatarObjectKey: input.objectKey, avatarSourceIdentityId: null, avatarVersion: sql`${authors.avatarVersion} + 1`, updatedAt: new Date() })
       .where(eq(authors.id, input.authorId));
 
     return { previousObjectKey: existing.avatarObjectKey };
@@ -295,7 +295,7 @@ export async function replaceAuthorAvatarObjectKey(input: {
 export async function updateAuthorDisplayName(authorId: number, name: string) {
   const [author] = await db
     .update(authors)
-    .set({ name, updatedAt: new Date() })
+    .set({ name, nameSourceIdentityId: null, updatedAt: new Date() })
     .where(eq(authors.id, authorId))
     .returning({ id: authors.id, name: authors.name });
 
@@ -331,6 +331,7 @@ export async function updateAuthor(input: {
     .update(authors)
     .set({
       name: input.name,
+      nameSourceIdentityId: null,
       accessProfileId: input.accessProfileId,
       updatedAt: new Date(),
     })

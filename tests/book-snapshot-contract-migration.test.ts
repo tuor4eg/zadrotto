@@ -7,7 +7,7 @@ test("0133 requires completed cutover only for providers with existing books", {
   const {default:postgres}=await import("postgres");
   const client=postgres(process.env.DATABASE_URL!,{max:1,prepare:false});
   const schema=`book_contract_${process.pid}_${Date.now()}`;
-  const migration=await readFile("drizzle/0133_book_snapshot_contract.sql","utf8");
+  const migration=await readFile("drizzle-archive/pre-baseline/0133_book_snapshot_contract.sql","utf8");
   const apply=()=>client.begin(async tx=>{
     for(const statement of migration.split("--> statement-breakpoint"))if(statement.trim())await tx.unsafe(statement);
   });

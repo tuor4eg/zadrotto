@@ -7,7 +7,7 @@ export const AUTHOR_ACCOUNT_STATUSES = [
 
 export type AuthorAccountStatus = (typeof AUTHOR_ACCOUNT_STATUSES)[number];
 
-export const AUTHOR_AUTH_METHODS = ["password", "access_token", "telegram"] as const;
+export const AUTHOR_AUTH_METHODS = ["password", "access_token", "telegram", "external"] as const;
 export type AuthorAuthMethod = (typeof AUTHOR_AUTH_METHODS)[number];
 
 export const AUTHOR_AUTH_CHALLENGE_PURPOSES = [

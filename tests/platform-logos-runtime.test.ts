@@ -35,7 +35,7 @@ test("platform asset identity and logo lifecycle uses cached evidence without ch
     for (const file of ["0120_normalized_platforms.sql", "0121_platform_initial_mappings.sql", "0122_platform_backfill.sql", "0126_platform_logos.sql"]) {
       const before=file==="0126_platform_logos.sql"?await client`select 'platform' kind,id,slug value,name from platforms union all select 'mapping',id,provider,external_platform_name from provider_platform_mappings order by kind,id`:null;
       await client.begin(async tx => {
-        for (const statement of readFileSync(`drizzle/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
+        for (const statement of readFileSync(`drizzle-archive/pre-baseline/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
       });
       if(before)assert.deepEqual(await client`select 'platform' kind,id,slug value,name from platforms union all select 'mapping',id,provider,external_platform_name from provider_platform_mappings order by kind,id`,before,"0126 must not create or rename platforms and bindings");
     }

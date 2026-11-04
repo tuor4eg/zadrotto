@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import { onboardExistingAuthor, requestAuthorEmailChange, resendAuthorEmailVerification } from "@/db/operations/author-auth";
 import { getAuthorAccountByAuthorId, getAuthorCredentialConflicts, revokeAllAuthorSessions, revokeAuthorSessionById, updateAuthorAccountCredentials } from "@/db/queries/author-auth";
-import { clearAuthorSessionCookie, getCurrentAuthorSession } from "@/lib/auth/author-auth";
+import { clearAuthorSessionCookie, requireAuthorSession } from "@/lib/auth/author-auth";
 import { isValidAuthorEmail, isValidAuthorLogin, normalizeAuthorEmail, normalizeAuthorLogin, validateAuthorPassword } from "@/lib/auth/author-account";
 import {
   isAuthorEmailDeliveryConfigured,
@@ -33,7 +33,7 @@ export async function logoutAuthorToTokenLogin() {
 }
 
 export async function updateAuthorAvatarAction(formData: FormData) {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
 
   const file = formData.get("avatarFile");
@@ -83,7 +83,7 @@ export async function updateAuthorAvatarAction(formData: FormData) {
 }
 
 export async function removeAuthorAvatarAction() {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
 
   const replaced = await replaceAuthorAvatarObjectKey({
@@ -107,7 +107,7 @@ export async function removeAuthorAvatarAction() {
 }
 
 export async function updateAuthorDisplayNameAction(formData: FormData) {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
 
   const value = formData.get("displayName");
@@ -134,7 +134,7 @@ export async function updateAuthorDisplayNameAction(formData: FormData) {
 }
 
 export async function updateAuthorDiscoverabilityAction(formData: FormData) {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
   const isDiscoverable = formData.get("isDiscoverable") === "1";
   const updated = await updateAuthorDiscoverability(current.author.id, isDiscoverable);
@@ -154,15 +154,15 @@ function readPassword(formData: FormData, key: string) {
   return typeof value === "string" ? value : "";
 }
 
-async function requireAccessTokenSession() {
-  const current = await getCurrentAuthorSession();
+async function requireCredentialSetupSession() {
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
-  if (current.session.authMethod !== "access_token") redirect(`${PROFILE_PATH}?error=token-required`);
+  if (current.session.authMethod !== "access_token" && current.session.authMethod !== "external") redirect(`${PROFILE_PATH}?error=token-required`);
   return current;
 }
 
 async function requireActiveAccount() {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
   const account = await getAuthorAccountByAuthorId(current.author.id);
   if (!account || account.status !== "active") redirect(`${PROFILE_PATH}?error=unavailable`);
@@ -177,7 +177,7 @@ export async function onboardExistingAuthorAction(
   _previousState: AuthorOnboardingState,
   formData: FormData,
 ): Promise<AuthorOnboardingState> {
-  const current = await requireAccessTokenSession();
+  const current = await requireCredentialSetupSession();
   const bypassEmailVerification = isAuthorEmailVerificationBypassed();
   if (!bypassEmailVerification && !(await isAuthorEmailDeliveryConfigured())) {
     return { error: "unavailable" };
@@ -230,7 +230,7 @@ export async function onboardExistingAuthorAction(
 }
 
 export async function resendAuthorVerificationAction() {
-  const current = await requireAccessTokenSession();
+  const current = await requireCredentialSetupSession();
   if (!(await isAuthorEmailDeliveryConfigured())) redirect(`${PROFILE_PATH}?resendError=1`);
   const rateLimit = await checkAuthorAuthMutationRateLimit("author-verify", String(current.author.id));
   if (!rateLimit.ok) redirect(`${PROFILE_PATH}?resendError=1`);
@@ -269,7 +269,7 @@ export async function changeAuthorEmailAction(formData: FormData) {
 }
 
 export async function revokeAuthorSessionAction(formData: FormData) {
-  const current = await getCurrentAuthorSession();
+  const current = await requireAuthorSession();
   if (!current) redirect("/author/login");
   const intent = String(formData.get("intent") ?? "one");
   if (intent === "all") {

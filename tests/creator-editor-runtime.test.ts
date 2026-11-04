@@ -95,7 +95,7 @@ test("Creator editor validates type changes and organization dates, loads target
       const plans: unknown[] = [];
       for (const stage of ["before", "after"]) {
         if (stage === "after") {
-          for (const statement of readFileSync("drizzle/0140_creator_editor_search.sql", "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
+          for (const statement of readFileSync("drizzle-archive/pre-baseline/0140_creator_editor_search.sql", "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
           await client.unsafe("ANALYZE creators");
         }
         for (const query of ["creator", "редкое имя", "неттакогоимени"]) {

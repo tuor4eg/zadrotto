@@ -173,7 +173,7 @@ test("manual editing locks the text and invalid responses are never saved", asyn
 });
 
 test("deduplication is enforced by a partial unique index and conflict-safe enqueue", () => {
-  const migration = readFileSync("drizzle/0086_media_item_editorial_summaries.sql", "utf8");
+  const migration = readFileSync("drizzle-archive/pre-baseline/0086_media_item_editorial_summaries.sql", "utf8");
   const query = readFileSync("src/db/queries/editorial-summaries.ts", "utf8");
   assert.match(migration, /CREATE UNIQUE INDEX "job_runs_editorial_summary_active_unique"/);
   assert.match(migration, /"status" IN \('queued', 'running'\)/);

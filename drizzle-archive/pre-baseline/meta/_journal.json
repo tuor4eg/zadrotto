@@ -1,0 +1,1140 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1777885885713,
+      "tag": "0000_fast_stepford_cuckoos",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1778598291570,
+      "tag": "0001_import_games_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1778599799408,
+      "tag": "0002_catalog_pagination_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1779254148288,
+      "tag": "0003_dark_sabretooth",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1779261660332,
+      "tag": "0004_premium_wendell_vaughn",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1779433023868,
+      "tag": "0005_handy_thunderbolt_ross",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1779624182618,
+      "tag": "0006_author_access_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1779630400000,
+      "tag": "0007_access_profile_daily_private_limit",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1779786621156,
+      "tag": "0008_author_contributions",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780073936103,
+      "tag": "0009_clear_pasha_game_completion_descriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780256400000,
+      "tag": "0010_media_carriers",
+      "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780256500000,
+      "tag": "0011_seed_game_media_carriers",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780342800000,
+      "tag": "0012_media_types_dictionary",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1780776000000,
+      "tag": "0013_media_item_cover_source",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1780815600000,
+      "tag": "0014_cover_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1780819200000,
+      "tag": "0015_cover_provider_settings_by_media_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1780822800000,
+      "tag": "0016_normalize_cover_provider_priorities",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1780826400000,
+      "tag": "0017_cover_provider_credentials",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1780830000000,
+      "tag": "0018_media_item_cover_thumbs",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1780833600000,
+      "tag": "0019_cover_search_rate_limits",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1780916400000,
+      "tag": "0020_media_carrier_media_types",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781971433000,
+      "tag": "0021_admin_session_invalidated_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "7",
+      "when": 1782060000000,
+      "tag": "0022_admin_activity_logs",
+      "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1782063600000,
+      "tag": "0023_admin_activity_log_severity",
+      "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1782067200000,
+      "tag": "0024_media_item_franchises",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1782070800000,
+      "tag": "0025_rename_provider_tables",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1782074400000,
+      "tag": "0026_rename_provider_primary_keys",
+      "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1782078000000,
+      "tag": "0027_media_item_metadata",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1782081600000,
+      "tag": "0028_comic_vine_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1782085200000,
+      "tag": "0029_franchise_publication_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1782088800000,
+      "tag": "0030_media_item_franchise_moderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1782092400000,
+      "tag": "0031_normalize_franchise_media_activity",
+      "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784529612834,
+      "tag": "0032_yielding_blockbuster",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784533200000,
+      "tag": "0033_author_registration_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784536800000,
+      "tag": "0034_email_automation",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1784751399564,
+      "tag": "0035_anilist_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1784829335938,
+      "tag": "0036_media_item_title_aliases",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1784916000000,
+      "tag": "0037_fantlab_provider",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1785002400000,
+      "tag": "0038_franchise_tree",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1785088800000,
+      "tag": "0039_media_item_franchise_removal_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1785175200000,
+      "tag": "0040_archive_settings_franchise_depth",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1785261600000,
+      "tag": "0041_media_type_visibility",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1785348000000,
+      "tag": "0042_media_type_guest_access",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1785434400000,
+      "tag": "0043_author_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1785520800000,
+      "tag": "0044_provider_search_modes",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1785607200000,
+      "tag": "0045_ai_providers",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1785693600000,
+      "tag": "0046_ai_scenario_inheritance",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1785780000000,
+      "tag": "0047_ai_scenario_catalog_config",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1785866400000,
+      "tag": "0048_author_media_statuses",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1785952800000,
+      "tag": "0049_daily_dossier_min_average_score",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1786039200000,
+      "tag": "0050_recently_viewed_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1786125600000,
+      "tag": "0051_top_archive_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1786212000000,
+      "tag": "0052_provider_image_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1786300000000,
+      "tag": "0053_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1786300100000,
+      "tag": "0054_jobs_email_seed",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1786300200000,
+      "tag": "0055_remove_legacy_email_automation",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1786300300000,
+      "tag": "0056_normalized_trigram_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1786300400000,
+      "tag": "0057_job_run_history",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1786300500000,
+      "tag": "0058_author_friendships",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1786300600000,
+      "tag": "0059_author_media_creation_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1786300700000,
+      "tag": "0060_domain_events_achievements",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1786300800000,
+      "tag": "0061_achievement_presentation",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1786636800000,
+      "tag": "0062_roblox_media_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1786900000000,
+      "tag": "0063_quizzes",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1786900100000,
+      "tag": "0064_quiz_participants",
+      "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1786900200000,
+      "tag": "0065_achievement_mechanics_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1786900300000,
+      "tag": "0066_achievement_levels_full_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1786900400000,
+      "tag": "0067_notifications",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1786900500000,
+      "tag": "0068_notification_transport_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1786900600000,
+      "tag": "0069_notification_transport_routes",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1786900700000,
+      "tag": "0070_media_metadata_refresh",
+      "breakpoints": true
+    },
+    {
+      "idx": 71,
+      "version": "7",
+      "when": 1786900800000,
+      "tag": "0071_achievement_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 72,
+      "version": "7",
+      "when": 1786900900000,
+      "tag": "0072_achievement_presentation_levels",
+      "breakpoints": true
+    },
+    {
+      "idx": 73,
+      "version": "7",
+      "when": 1786901000000,
+      "tag": "0073_toast_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1786901100000,
+      "tag": "0074_quiz_attempts",
+      "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1786901200000,
+      "tag": "0075_quiz_winners",
+      "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1786901300000,
+      "tag": "0076_quiz_comment",
+      "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1786901400000,
+      "tag": "0077_bug_reports",
+      "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1787716800000,
+      "tag": "0078_quiz_question_templates",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1787803200000,
+      "tag": "0079_media_item_rating_stats",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1787889600000,
+      "tag": "0080_archive_exploration_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1787893200000,
+      "tag": "0081_archive_exploration_onboarding",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1787896800000,
+      "tag": "0082_archive_exploration_onboarding_step",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1788307200000,
+      "tag": "0083_editorial_collections",
+      "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1788386400000,
+      "tag": "0084_editorial_documents",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1788904800000,
+      "tag": "0085_notification_transport_outbox",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1789286400000,
+      "tag": "0086_media_item_editorial_summaries",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1789372800000,
+      "tag": "0087_media_metadata_issue",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1789722000000,
+      "tag": "0088_achievement_level_rarity_showcase_background",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1789810000000,
+      "tag": "0089_achievement_settings_default_showcase_background",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1789905600000,
+      "tag": "0090_daily_dossier_min_ratings_count",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1789905600001,
+      "tag": "0091_bug_reports_author_id_idx",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1789992000000,
+      "tag": "0092_cover_provider_request_timeout",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1790501061421,
+      "tag": "0093_review_reactions",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1790587461421,
+      "tag": "0094_admin_exports",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1790673861421,
+      "tag": "0095_media_automoderation",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1790985600000,
+      "tag": "0096_anime_shikimori_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1791072000000,
+      "tag": "0097_anime_shikimori_markup_refresh",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1791158400000,
+      "tag": "0098_author_levels_trust",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1791244800000,
+      "tag": "0099_level_names",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1791331200000,
+      "tag": "0100_simplify_author_trust",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1791417600000,
+      "tag": "0101_unify_trust_action_accounting",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1791504000000,
+      "tag": "0102_reputation_trusted_promotion_job",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1791590400000,
+      "tag": "0103_unified_genres",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1791676800000,
+      "tag": "0104_genre_requests",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1791763200000,
+      "tag": "0105_quiz_points",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1791849600000,
+      "tag": "0106_quiz_achievements_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1791936000000,
+      "tag": "0107_genre_mapping_reopen",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1792022400000,
+      "tag": "0108_genre_replacement_series",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1792108800000,
+      "tag": "0109_remove_unmapped_genres",
+      "breakpoints": true
+    },
+    {
+      "idx": 110,
+      "version": "7",
+      "when": 1792195200000,
+      "tag": "0110_editorial_entry_group_type",
+      "breakpoints": true
+    },
+    {
+      "idx": 111,
+      "version": "7",
+      "when": 1792281600000,
+      "tag": "0111_editorial_entry_groups",
+      "breakpoints": true
+    },
+    {
+      "idx": 112,
+      "version": "7",
+      "when": 1792368000000,
+      "tag": "0112_collection_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 113,
+      "version": "7",
+      "when": 1792454400000,
+      "tag": "0113_admin_database_dump",
+      "breakpoints": true
+    },
+    {
+      "idx": 114,
+      "version": "7",
+      "when": 1792540800000,
+      "tag": "0114_title_parts",
+      "breakpoints": true
+    },
+    {
+      "idx": 115,
+      "version": "7",
+      "when": 1792627200000,
+      "tag": "0115_title_part_descriptions",
+      "breakpoints": true
+    },
+    {
+      "idx": 116,
+      "version": "7",
+      "when": 1792713600000,
+      "tag": "0116_unrated_specials",
+      "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1792800000000,
+      "tag": "0117_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1792886400000,
+      "tag": "0118_creator_original_name",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1792972800000,
+      "tag": "0119_creator_relations",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1793059200000,
+      "tag": "0120_normalized_platforms",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1793145600000,
+      "tag": "0121_platform_initial_mappings",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1793232000000,
+      "tag": "0122_platform_backfill",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1793318400000,
+      "tag": "0123_creator_avatars",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1793404800000,
+      "tag": "0124_bgg_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1793491200000,
+      "tag": "0125_game_company_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1793577600000,
+      "tag": "0126_platform_logos",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1793664000000,
+      "tag": "0127_provider_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1793750400000,
+      "tag": "0128_book_provider_cutover_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1793836800000,
+      "tag": "0129_email_outbox_lease",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1793923200000,
+      "tag": "0130_domain_event_recovery_backoff",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1794009600000,
+      "tag": "0131_creator_life_dates",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1794096000000,
+      "tag": "0132_book_language_facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1794182400000,
+      "tag": "0133_book_snapshot_contract",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1794268800000,
+      "tag": "0134_tmdb_film_genre_facts",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1794355200000,
+      "tag": "0135_tmdb_company_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1794441600000,
+      "tag": "0136_tmdb_director_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1794528000000,
+      "tag": "0137_current_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1794614400000,
+      "tag": "0138_creator_image_jobs",
+      "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1794700800000,
+      "tag": "0139_retire_completed_job_migrations",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1794787200000,
+      "tag": "0140_creator_editor_search",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1794873600000,
+      "tag": "0141_creator_name_localization",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1794960000000,
+      "tag": "0142_creator_admin_pagination",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1795046400000,
+      "tag": "0143_tmdb_series_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1795132800000,
+      "tag": "0144_anilist_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1795219200000,
+      "tag": "0145_anilist_snapshot_mal_index",
+      "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1795305600000,
+      "tag": "0146_anilist_creator_portraits",
+      "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1795392000000,
+      "tag": "0147_creator_logo_candidates",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1795478400000,
+      "tag": "0148_creator_requests_pagination",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1795564800000,
+      "tag": "0149_creator_auto_approval",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1795651200000,
+      "tag": "0150_provider_part_snapshots",
+      "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1795737600000,
+      "tag": "0151_comic_vine_creators",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1795824000000,
+      "tag": "0152_comic_screenwriter",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1795910400000,
+      "tag": "0153_roblox_creator_bindings",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1795996800000,
+      "tag": "0154_media_metadata_search_disabled",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1796083200000,
+      "tag": "0155_comic_vine_issues_pending",
+      "breakpoints": true
+    },
+    {
+      "idx": 156,
+      "version": "7",
+      "when": 1796169600000,
+      "tag": "0156_manga_mangaupdates",
+      "breakpoints": true
+    },
+    {
+      "idx": 157,
+      "version": "7",
+      "when": 1796256000000,
+      "tag": "0157_external_auth",
+      "breakpoints": true
+    },
+    {
+      "idx": 158,
+      "version": "7",
+      "when": 1796342400000,
+      "tag": "0158_auth_provider_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 159,
+      "version": "7",
+      "when": 1796428800000,
+      "tag": "0159_personal_data_consent",
+      "breakpoints": true
+    },
+    {
+      "idx": 160,
+      "version": "7",
+      "when": 1796515200000,
+      "tag": "0160_analytics_settings",
+      "breakpoints": true
+    },
+    {
+      "idx": 161,
+      "version": "7",
+      "when": 1796601600000,
+      "tag": "0161_personal_data_consent_requirement",
+      "breakpoints": true
+    }
+  ]
+}

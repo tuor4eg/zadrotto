@@ -192,7 +192,7 @@ test("job history is retained per schedule and cleanup preserves active runs", a
     readFile(new URL("../src/db/queries/jobs.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/db/schema.ts", import.meta.url), "utf8"),
     readFile(new URL("../src/lib/jobs/handlers.ts", import.meta.url), "utf8"),
-    readFile(new URL("../drizzle/0057_job_run_history.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle-archive/pre-baseline/0057_job_run_history.sql", import.meta.url), "utf8"),
   ]);
   assert.match(schema, /historyRetentionDays: integer\("history_retention_days"\)\.default\(30\)\.notNull\(\)/);
   assert.match(schema, /jobs_history_retention_days_check/);
@@ -256,7 +256,7 @@ test("job journal href omits the default all-runs filter", () => {
 test("metadata jobs seed two enabled schedules with split cron and payloads", async () => {
   const [handlers, migration, manager] = await Promise.all([
     readFile(new URL("../src/lib/jobs/handlers.ts", import.meta.url), "utf8"),
-    readFile(new URL("../drizzle/0070_media_metadata_refresh.sql", import.meta.url), "utf8"),
+    readFile(new URL("../drizzle-archive/pre-baseline/0070_media_metadata_refresh.sql", import.meta.url), "utf8"),
     readFile(new URL("../src/app/admin/(protected)/tools/jobs/jobs-manager.tsx", import.meta.url), "utf8"),
   ]);
 

@@ -3,10 +3,12 @@ import { NextResponse } from "next/server";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { getMediaItemIdentityByCode } from "@/db/queries/media-items";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { recordRecentlyViewed } from "@/lib/main-page/recently-viewed";
 
 export async function POST(request: Request) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
   if (!author) return new NextResponse(null, { status: 204 });
 

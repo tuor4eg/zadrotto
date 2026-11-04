@@ -28,7 +28,7 @@ test("TMDB exact company candidate indexes match generated normalization at scal
       return result;
     };
     await measure('before-exact-indexes');
-    const statements = readFileSync('drizzle/0135_tmdb_company_creators.sql', 'utf8').split('--> statement-breakpoint').filter(statement => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(statement));
+    const statements = readFileSync('drizzle-archive/pre-baseline/0135_tmdb_company_creators.sql', 'utf8').split('--> statement-breakpoint').filter(statement => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(statement));
     assert.equal(statements.length, 2);
     for (const statement of statements) await client.unsafe(statement);
     await client.unsafe('analyze creators');

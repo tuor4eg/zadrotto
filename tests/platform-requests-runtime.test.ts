@@ -54,7 +54,7 @@ test("platform requests apply current metadata, reopen mappings and survive fail
     const initialFacts = await client`SELECT facts FROM media_item_metadata ORDER BY media_item_id`;
     for (const file of ["0120_normalized_platforms.sql", "0121_platform_initial_mappings.sql", "0122_platform_backfill.sql", "0126_platform_logos.sql"]) {
       await client.begin(async tx => {
-        for (const statement of readFileSync(`drizzle/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
+        for (const statement of readFileSync(`drizzle-archive/pre-baseline/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
       });
     }
     assert.deepEqual(await client`SELECT facts FROM media_item_metadata ORDER BY media_item_id`, initialFacts);

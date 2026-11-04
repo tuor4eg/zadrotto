@@ -392,7 +392,8 @@ export async function getCoverProviderCredentialStatuses(): Promise<
       keyHint: providerCredentials.keyHint,
       updatedAt: providerCredentials.updatedAt,
     })
-    .from(providerCredentials);
+    .from(providerCredentials)
+    .where(eq(providerCredentials.purpose, "content"));
   const rowsByProviderCode = new Map(
     rows
       .filter((row): row is {
@@ -421,7 +422,8 @@ export async function getCoverProviderCredentialsForSearch() {
       providerCode: providerCredentials.providerCode,
       encryptedPayload: providerCredentials.encryptedPayload,
     })
-    .from(providerCredentials);
+    .from(providerCredentials)
+    .where(eq(providerCredentials.purpose, "content"));
   const credentials: Partial<Record<CoverProviderCode, Record<string, string>>> = {};
 
   for (const row of rows) {
@@ -464,6 +466,7 @@ export async function updateCoverProviderCredentials(input: {
   await db
     .insert(providerCredentials)
     .values({
+      purpose: "content",
       providerCode: input.providerCode,
       encryptedPayload,
       keyHint,
@@ -471,7 +474,7 @@ export async function updateCoverProviderCredentials(input: {
       updatedAt: new Date(),
     })
     .onConflictDoUpdate({
-      target: providerCredentials.providerCode,
+      target: [providerCredentials.purpose, providerCredentials.providerCode],
       set: {
         encryptedPayload,
         keyHint,

@@ -25,8 +25,8 @@ describe("achievement level rarity and showcase background", () => {
     assert.equal(isAchievementRarity("unknown"), false)
     assert.equal(isAchievementRarity(null), false)
 
-    const migration = read("drizzle/0088_achievement_level_rarity_showcase_background.sql")
-    const journal = read("drizzle/meta/_journal.json")
+    const migration = read("drizzle-archive/pre-baseline/0088_achievement_level_rarity_showcase_background.sql")
+    const journal = read("drizzle-archive/pre-baseline/meta/_journal.json")
     assert.match(migration, /"rarity" text DEFAULT 'common' NOT NULL/)
     assert.match(migration, /"showcase_background_image_object_key" text/)
     assert.match(migration, /CHECK \("rarity" IN \('common', 'rare', 'epic', 'legendary'\)\)/)

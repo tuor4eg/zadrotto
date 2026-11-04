@@ -38,16 +38,16 @@ test("creator automatic decisions preserve manual review and atomicity", { skip:
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     await client.unsafe(`CREATE TABLE media_item_provider_snapshots(media_item_id integer PRIMARY KEY,provider_code text,external_id text,media_type text,title text,original_title text,description text,release_year integer,source_url text,facts jsonb DEFAULT '{}',payload_hash text,fetched_at timestamptz DEFAULT now(),created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql", "drizzle/0127_provider_snapshots.sql", "drizzle/0131_creator_life_dates.sql", "drizzle/0135_tmdb_company_creators.sql", "drizzle/0136_tmdb_director_creators.sql", "drizzle/0143_tmdb_series_creators.sql", "drizzle/0144_anilist_creators.sql"]) {
+    for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql", "drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "drizzle-archive/pre-baseline/0131_creator_life_dates.sql", "drizzle-archive/pre-baseline/0135_tmdb_company_creators.sql", "drizzle-archive/pre-baseline/0136_tmdb_director_creators.sql", "drizzle-archive/pre-baseline/0143_tmdb_series_creators.sql", "drizzle-archive/pre-baseline/0144_anilist_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
     await client.unsafe(`ALTER TABLE creators ADD COLUMN name_ru text,ADD COLUMN name_ru_source text,ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false`);
     await client.unsafe(`CREATE TABLE domain_events(id uuid PRIMARY KEY DEFAULT gen_random_uuid(),type text NOT NULL,schema_version integer NOT NULL DEFAULT 1,
       actor_author_id integer,aggregate_type text NOT NULL,aggregate_id text NOT NULL,payload jsonb NOT NULL DEFAULT '{}',occurred_at timestamptz NOT NULL DEFAULT now());
       CREATE TABLE domain_event_outbox(event_id uuid PRIMARY KEY REFERENCES domain_events(id),dispatched_at timestamptz,next_attempt_at timestamptz default now(),created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const statement of readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`CREATE EXTENSION IF NOT EXISTS pg_trgm WITH SCHEMA public`);
-    for(const statement of readFileSync("drizzle/0149_creator_auto_approval.sql","utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
+    for(const statement of readFileSync("drizzle-archive/pre-baseline/0149_creator_auto_approval.sql","utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     let sequence = 1000;
     const request = async (name: string, provider = "google-books", externalId: string | null = null, mediaType = "book", role = "writer") => {
       const [row] = await client`insert into creator_requests(provider,media_type,external_creator_id,external_creator_name,normalized_external_creator_name)

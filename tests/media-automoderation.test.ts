@@ -10,7 +10,7 @@ import {
 const read = (path: string) => readFileSync(path, "utf8");
 
 describe("media automoderation contracts", () => {
-  const migration = read("drizzle/0095_media_automoderation.sql");
+  const migration = read("drizzle-archive/pre-baseline/0095_media_automoderation.sql");
   const consumer = read("src/lib/automoderation/consumer.ts");
   const policy = read("src/lib/automoderation/media-policy.ts");
   const process = read("src/lib/automoderation/process.ts");

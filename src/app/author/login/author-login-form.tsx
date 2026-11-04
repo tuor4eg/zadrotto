@@ -4,6 +4,7 @@ import { useActionState, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 
+import { ExternalProviderButtons } from "@/components/auth/external-provider-buttons";
 import { PasswordInput } from "@/components/auth/password-field";
 import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 import { ArchiveToasts } from "@/components/ui/archive-toasts";
@@ -55,6 +56,7 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
 
   return (
     <div className="flex flex-col gap-5">
+      <ExternalProviderButtons />
       <ArchiveToasts
         messages={error
           ? [{ id: `author-login-${error}`, tone: "error", text: ERROR_MESSAGES[error] }]

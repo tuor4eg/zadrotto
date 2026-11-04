@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthorSession } from "@/lib/auth/author-auth";
 import { AuthorTokenLoginForm } from "./author-token-login-form";
 
 export const metadata: Metadata = {
@@ -15,7 +15,7 @@ export const metadata: Metadata = {
 };
 
 export default async function AuthorTokenLoginPage() {
-  const author = await getCurrentAuthor();
+  const author = await getCurrentAuthorSession();
 
   if (author) {
     redirect("/author/profile");

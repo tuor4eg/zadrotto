@@ -192,7 +192,7 @@ describe("activity log labels", () => {
 describe("franchise media activity migration", () => {
   it("separates attached events from suggestions and removes only known boilerplate", () => {
     const actionSource = readFileSync("src/app/media/franchise-actions.ts", "utf8");
-    const migration = readFileSync("drizzle/0031_normalize_franchise_media_activity.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0031_normalize_franchise_media_activity.sql", "utf8");
 
     assert.match(
       actionSource,

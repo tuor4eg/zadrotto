@@ -10,7 +10,7 @@ describe("Google Analytics consent", () => {
     const consent = read("src/lib/analytics/consent.ts");
 
     assert.match(consent, /zadrotto:analytics-consent:v1/);
-    assert.match(layer, /consent === "granted"[\s\S]*<GoogleAnalytics gaId=\{measurementId\}/);
+    assert.match(layer, /enabled && measurementId && consent === "granted"[\s\S]*<GoogleAnalytics gaId=\{measurementId\}/);
     assert.match(layer, /Только необходимые/);
     assert.match(layer, /Разрешить аналитику/);
     assert.match(layer, /clearGoogleAnalyticsCookies\(\)/);
@@ -25,6 +25,8 @@ describe("Google Analytics consent", () => {
 
     assert.match(analytics, /\^G-\[A-Z0-9\]\+\$/i);
     assert.match(analytics, /process\.env\.GOOGLE_ANALYTICS_ID/);
+    assert.match(config, /enabled \? getGoogleAnalyticsId\(\) : null/);
+    assert.match(config, /getAnalyticsSettings\(\)/);
     assert.match(config, /Cache-Control": "no-store"/);
     assert.match(exampleEnv, /^GOOGLE_ANALYTICS_ID=$/m);
     assert.match(compose, /GOOGLE_ANALYTICS_ID: \$\{GOOGLE_ANALYTICS_ID:-\}/);

@@ -4,7 +4,7 @@ import {
   getPublishedFranchiseIdentityByCode,
   searchPublishedMediaItemsForFranchise,
 } from "@/db/queries/franchises";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 
 type RouteContext = {
@@ -12,6 +12,8 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, { params }: RouteContext) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [author, { code }] = await Promise.all([getCurrentAuthor(), params]);
 
   if (!author) {

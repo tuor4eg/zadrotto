@@ -7,7 +7,7 @@ import {
   isAuthorMediaStatus,
 } from "../src/lib/media/author-media-status";
 
-const migration = readFileSync("drizzle/0048_author_media_statuses.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0048_author_media_statuses.sql", "utf8");
 const schema = readFileSync("src/db/schema.ts", "utf8");
 const statusQueries = readFileSync("src/db/queries/author-media-statuses.ts", "utf8");
 const ratingQueries = readFileSync("src/db/queries/ratings.ts", "utf8");

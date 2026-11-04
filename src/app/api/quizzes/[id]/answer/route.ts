@@ -1,7 +1,9 @@
 import { getRevealedQuizAnswer } from "@/db/queries/quizzes";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 
 export async function GET(_request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ answer: null }, { status: 401 });
   const { id } = await params;

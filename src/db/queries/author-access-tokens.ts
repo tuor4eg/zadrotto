@@ -73,24 +73,24 @@ export async function updateAuthorAccessTokenLastUsedAt(id: number) {
     .where(eq(authorAccessTokens.id, id));
 }
 
+async function mutateAuthorAccessToken(id: number, action: "revoke" | "restore" | "delete") {
+  return db.transaction(async (tx) => {
+    const [token] = await tx.select({ authorId: authorAccessTokens.authorId }).from(authorAccessTokens).where(eq(authorAccessTokens.id, id));
+    if (!token) return;
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, token.authorId)).for("update");
+    if (action === "delete") {
+      await tx.delete(authorAccessTokens).where(eq(authorAccessTokens.id, id));
+    } else {
+      await tx.update(authorAccessTokens).set({ revokedAt: action === "restore" ? null : new Date() }).where(eq(authorAccessTokens.id, id));
+    }
+  });
+}
 export async function revokeAuthorAccessToken(id: number) {
-  await db
-    .update(authorAccessTokens)
-    .set({
-      revokedAt: new Date(),
-    })
-    .where(and(eq(authorAccessTokens.id, id), isNull(authorAccessTokens.revokedAt)));
+  await mutateAuthorAccessToken(id, "revoke");
 }
-
 export async function restoreAuthorAccessToken(id: number) {
-  await db
-    .update(authorAccessTokens)
-    .set({
-      revokedAt: null,
-    })
-    .where(eq(authorAccessTokens.id, id));
+  await mutateAuthorAccessToken(id, "restore");
 }
-
 export async function deleteAuthorAccessToken(id: number) {
-  await db.delete(authorAccessTokens).where(eq(authorAccessTokens.id, id));
+  await mutateAuthorAccessToken(id, "delete");
 }

@@ -1,6 +1,6 @@
 import { getPublishedReviewReactionSummary } from "@/db/queries/review-reactions";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -12,6 +12,8 @@ function parseReviewId(value: string) {
 }
 
 export async function GET(_request: Request, { params }: RouteContext) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const [author, { id: idValue }] = await Promise.all([getCurrentAuthor(), params]);
   const reviewId = parseReviewId(idValue);
 

@@ -23,7 +23,7 @@ test("creator snapshots: transactional dates, fencing, source CAS and resumable 
   const { getDbClient } = await import("../src/db");
   const client = getDbClient();
   try {
-    const migration = await readFile("drizzle/0127_provider_snapshots.sql", "utf8");
+    const migration = await readFile("drizzle-archive/pre-baseline/0127_provider_snapshots.sql", "utf8");
     await client.unsafe(migration.split("ALTER TABLE entry_creator_sources")[0].replaceAll("--> statement-breakpoint", ""));
     await client.unsafe(`
       create table creator_types(id integer primary key, code text not null);
@@ -43,7 +43,7 @@ test("creator snapshots: transactional dates, fencing, source CAS and resumable 
       insert into creators(id,type_id,name,original_name,slug) select g,1,'Name '||g,'Original '||g,'creator-'||g from generate_series(1,20) g;
       insert into provider_creator_bindings(creator_id,provider,external_creator_id) select g,'fantlab',g::text from generate_series(1,20) g;
     `);
-    await client.unsafe((await readFile("drizzle/0131_creator_life_dates.sql", "utf8")).replaceAll("--> statement-breakpoint", ""));
+    await client.unsafe((await readFile("drizzle-archive/pre-baseline/0131_creator_life_dates.sql", "utf8")).replaceAll("--> statement-breakpoint", ""));
     const [preserved] = await client`select count(*)::int as count,count(birth_date)::int as births,count(death_date)::int as deaths from creators`;
     assert.deepEqual({ ...preserved }, { count: 20, births: 0, deaths: 0 }, "migration preserves existing creators and starts nullable");
     const core = await import("../src/db/queries/provider-snapshots");

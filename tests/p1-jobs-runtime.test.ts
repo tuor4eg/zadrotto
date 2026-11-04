@@ -76,7 +76,7 @@ test("P1 jobs: real recovery, terminal states, manual retry and guarded export r
         create index domain_event_outbox_pending_idx on domain_event_outbox(created_at) where dispatched_at is null;
         insert into domain_event_outbox values('00000000-0000-4000-8000-000000000001',null,now()-interval '2 days');`);
       for(const file of ["0129_email_outbox_lease","0130_domain_event_recovery_backoff"]) {
-        const source=await readFile(`drizzle/${file}.sql`,"utf8");
+        const source=await readFile(`drizzle-archive/pre-baseline/${file}.sql`,"utf8");
         for(const statement of source.split("--> statement-breakpoint")) if(statement.trim())await client.unsafe(statement);
       }
       const [legacy]=await client`select id,status,attempts,last_error,lease_token from email_outbox where id=1`;

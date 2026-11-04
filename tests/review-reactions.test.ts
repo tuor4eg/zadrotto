@@ -11,7 +11,7 @@ import {
 
 const read = (path: string) => readFileSync(path, "utf8");
 const schema = read("src/db/schema.ts");
-const migration = read("drizzle/0093_review_reactions.sql");
+const migration = read("drizzle-archive/pre-baseline/0093_review_reactions.sql");
 const queries = read("src/db/queries/review-reactions.ts");
 const reviewQueries = read("src/db/queries/contribution-reviews.ts");
 const collectionRoute = read("src/app/api/reviews/[id]/reactions/route.ts");

@@ -82,6 +82,8 @@ export async function getAuthorSessions(authorId: number) {
     .select({
       id: authorSessions.id,
       authMethod: authorSessions.authMethod,
+      provider: authorSessions.provider,
+      identityId: authorSessions.identityId,
       createdAt: authorSessions.createdAt,
       lastSeenAt: authorSessions.lastSeenAt,
       expiresAt: authorSessions.expiresAt,
@@ -169,8 +171,11 @@ export async function createAuthorAccount(input: {
   passwordHash: string;
   status: AuthorAccountStatus;
 }) {
-  const [account] = await db.insert(authorAccounts).values(input).returning();
-  return account;
+  return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, input.authorId)).for("update");
+    const [account] = await tx.insert(authorAccounts).values(input).returning();
+    return account;
+  });
 }
 
 export async function updateAuthorAccountStatus(input: {
@@ -182,12 +187,14 @@ export async function updateAuthorAccountStatus(input: {
   rejectedByAdminId?: number | null;
 }) {
   const { authorId, ...values } = input;
-  const [account] = await db
-    .update(authorAccounts)
-    .set({ ...values, updatedAt: new Date() })
-    .where(eq(authorAccounts.authorId, authorId))
-    .returning();
-  return account ?? null;
+  return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, authorId)).for("update");
+    const [account] = await tx.update(authorAccounts)
+      .set({ ...values, updatedAt: new Date() })
+      .where(eq(authorAccounts.authorId, authorId))
+      .returning();
+    return account ?? null;
+  });
 }
 
 export async function updateAuthorAccountCredentials(input: {
@@ -197,11 +204,14 @@ export async function updateAuthorAccountCredentials(input: {
   passwordHash?: string;
 }) {
   const { authorId, ...values } = input;
-  const [account] = await db.update(authorAccounts)
-    .set({ ...values, updatedAt: new Date() })
-    .where(and(eq(authorAccounts.authorId, authorId), eq(authorAccounts.status, "active")))
-    .returning();
-  return account ?? null;
+  return db.transaction(async (tx) => {
+    await tx.select({ id: authors.id }).from(authors).where(eq(authors.id, authorId)).for("update");
+    const [account] = await tx.update(authorAccounts)
+      .set({ ...values, updatedAt: new Date() })
+      .where(and(eq(authorAccounts.authorId, authorId), eq(authorAccounts.status, "active")))
+      .returning();
+    return account ?? null;
+  });
 }
 
 export async function createAuthorEmail(input: {
@@ -289,6 +299,8 @@ export async function getActiveAuthorSessionByTokenHash(tokenHash: string, now =
       sessionId: authorSessions.id,
       lastSeenAt: authorSessions.lastSeenAt,
       authMethod: authorSessions.authMethod,
+      provider: authorSessions.provider,
+      identityId: authorSessions.identityId,
       createdAt: authorSessions.createdAt,
       authorId: authors.id,
       authorCode: authors.code,
@@ -307,7 +319,7 @@ export async function getActiveAuthorSessionByTokenHash(tokenHash: string, now =
           isNull(authorAccounts.authorId),
           eq(authorAccounts.status, "active"),
           and(
-            eq(authorSessions.authMethod, "access_token"),
+            or(eq(authorSessions.authMethod, "access_token"), eq(authorSessions.authMethod, "external")),
             eq(authorAccounts.status, "pending_email"),
           ),
         ),

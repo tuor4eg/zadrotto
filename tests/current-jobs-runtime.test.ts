@@ -84,7 +84,7 @@ test("current jobs and universal cancellation keep indexed reads, checkpoints an
     };
     await measure('before-count',queries.currentJobCountsQuery().toSQL());
     await measure('before-page',queries.currentJobRunsQuery(1,50).toSQL());
-    await client.unsafe(readFileSync('drizzle/0137_current_jobs.sql','utf8')); await client.unsafe('analyze job_runs');
+    await client.unsafe(readFileSync('drizzle-archive/pre-baseline/0137_current_jobs.sql','utf8')); await client.unsafe('analyze job_runs');
     for (const q of cancelledQuery.filter(q=>/^select/i.test(q.query))) {
       await measure('dependent-lookup',{ sql:q.query,params:q.params });
     }

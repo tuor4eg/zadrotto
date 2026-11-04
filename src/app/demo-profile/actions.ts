@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache"
 
 import { importDemoProfile } from "@/db/operations/demo-profile-import"
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types"
-import { getCurrentAuthor } from "@/lib/auth/author-auth"
+import { requireAuthor } from "@/lib/auth/author-auth"
 import { parseDemoProfile } from "@/lib/user-state/demo-profile"
 
 export type ImportDemoProfileResult = {
@@ -21,7 +21,7 @@ export type ImportDemoProfileResult = {
 export async function importDemoProfileAction(
   rawProfile: unknown,
 ): Promise<ImportDemoProfileResult> {
-  const author = await getCurrentAuthor()
+  const author = await requireAuthor()
   if (!author) {
     return { ok: false, error: "Нужно войти в аккаунт." }
   }

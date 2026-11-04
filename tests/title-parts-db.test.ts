@@ -70,7 +70,7 @@ describe("title parts PostgreSQL migration and constraints", { skip: !enabled },
     appDb = await import("../src/db")
     await db.unsafe(fixture)
     // LOCK TABLE requires the same explicit transaction used by migrations.
-    await db.begin(async (tx) => { await tx.unsafe(readFileSync("drizzle/0114_title_parts.sql", "utf8")); await tx.unsafe(readFileSync("drizzle/0115_title_part_descriptions.sql", "utf8")) })
+    await db.begin(async (tx) => { await tx.unsafe(readFileSync("drizzle-archive/pre-baseline/0114_title_parts.sql", "utf8")); await tx.unsafe(readFileSync("drizzle-archive/pre-baseline/0115_title_part_descriptions.sql", "utf8")) })
     await db`INSERT INTO title_parts(id,media_item_id,type,number,sort_order) VALUES(1,1,'season',1,1),(2,1,'season',2,2),(3,1,'season',3,3),(4,2,'volume',1,1)`
   })
   after(async () => {
@@ -269,7 +269,7 @@ describe("title parts PostgreSQL migration and constraints", { skip: !enabled },
     await db.unsafe("INSERT INTO title_parts (id,media_item_id,type,number,sort_order) VALUES (999,1,'season',0,999)");
     const [special] = await db.unsafe("SELECT id FROM title_parts WHERE media_item_id=1 AND type='season' AND number=0");
     await db.unsafe(`INSERT INTO ratings (media_item_id,author_id,part_id,score) VALUES (1,999,${special.id},100)`);
-    await db.begin(async (tx) => { await tx.unsafe(readFileSync("drizzle/0116_unrated_specials.sql", "utf8")); });
+    await db.begin(async (tx) => { await tx.unsafe(readFileSync("drizzle-archive/pre-baseline/0116_unrated_specials.sql", "utf8")); });
     const [count] = await db.unsafe("SELECT count(*)::int AS n FROM ratings WHERE author_id=999");
     assert.equal(count.n, 1);
     const { getAuthorRatingSummary } = await import("../src/db/queries/ratings");

@@ -26,7 +26,7 @@ test("genre series replacement follows published branches without changing sourc
       CREATE TABLE media_item_genres(media_item_id integer,genre_id integer,provider text,is_manual boolean,PRIMARY KEY(media_item_id,genre_id));
       CREATE INDEX media_item_genres_genre_id_idx ON media_item_genres(genre_id);`);
     // Keep the migration's FK local to this isolated schema.
-    for (const statement of readFileSync("drizzle/0108_genre_replacement_series.sql", "utf8").split("--> statement-breakpoint")) {
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0108_genre_replacement_series.sql", "utf8").split("--> statement-breakpoint")) {
       await client.unsafe(statement.replace('"public"."franchises"', `"${schema}"."franchises"`));
     }
     await client.unsafe(`INSERT INTO franchises VALUES(1,NULL,'West','west','published'),(2,1,'Child','child','published'),

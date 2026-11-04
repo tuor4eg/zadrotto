@@ -2,9 +2,11 @@ import { NextResponse } from "next/server"
 
 import { searchPublishedMediaItemsForReview } from "@/db/queries/contribution-reviews"
 import { getEnabledMediaTypeCodes } from "@/db/queries/media-types"
-import { getCurrentAuthor } from "@/lib/auth/author-auth"
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth"
 
 export async function GET(request: Request) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor()
 
   if (!author) {

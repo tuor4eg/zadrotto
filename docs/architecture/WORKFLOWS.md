@@ -83,7 +83,7 @@ sequenceDiagram
 
 Периодический recovery выбирает старейшие pending события и продолжает текущий батч после отдельной ошибки. Это страхует потерянную immediate job, но требует включённого расписания и живых scheduler/worker. Recovery выбирает готовые события по next_attempt_at/event_id, сохраняя 60-секундную отсрочку до consumers. Ошибки остаются pending и отображаются в activity log и failed-запусках. [Границы backoff](P1_RELIABILITY.md#продвижение-событий-и-диагностика). Новый consumer автоматически не воспроизводит уже dispatched историю — ему нужен специализированный backfill.
 
-Источники: [transaction wrapper](../../src/db/transaction.ts), [persistence](../../src/lib/domain-events/persistence.ts), [dispatcher](../../src/lib/domain-events/dispatcher.ts), [registry](../../src/lib/domain-events/registry.ts), [best-effort enqueue](../../src/lib/domain-events/queue.ts), [seed recovery](../../drizzle/0060_domain_events_achievements.sql).
+Источники: [transaction wrapper](../../src/db/transaction.ts), [persistence](../../src/lib/domain-events/persistence.ts), [dispatcher](../../src/lib/domain-events/dispatcher.ts), [registry](../../src/lib/domain-events/registry.ts), [best-effort enqueue](../../src/lib/domain-events/queue.ts), [seed recovery](../../drizzle-archive/pre-baseline/0060_domain_events_achievements.sql).
 
 ## 5. Фоновые задачи и ограничения API
 
@@ -107,7 +107,7 @@ Timeout подаёт `AbortSignal`, но не принудительно ост�
 
 Рецензия хранится в `contributions` и `contribution_reviews`, привязана к записи и необязательной части. Сохранение сериализует операции автора над записью, проверяет scope/конфликты и разрешённое состояние редактирования. Текст и оценка независимы: карточка рецензии получает оценку автора из рейтингов, администратор принимает публикационное решение, не переписывая текст. Новая отправка и переход в публикацию создают соответствующие события; исправление одной привязки части при неизменном тексте сохраняет прежний статус и историю.
 
-Источники: [ratings](../../src/db/queries/ratings.ts), [statuses](../../src/db/queries/author-media-statuses.ts), [experiences](../../src/db/queries/author-media-experiences.ts), [effective ratings](../../src/db/queries/effective-ratings.ts), [parts and aggregate triggers](../../drizzle/0114_title_parts.sql), [reconciliation](../../src/db/queries/media-item-rating-stats.ts), [reviews](../../src/db/queries/contribution-reviews.ts).
+Источники: [ratings](../../src/db/queries/ratings.ts), [statuses](../../src/db/queries/author-media-statuses.ts), [experiences](../../src/db/queries/author-media-experiences.ts), [effective ratings](../../src/db/queries/effective-ratings.ts), [parts and aggregate triggers](../../drizzle-archive/pre-baseline/0114_title_parts.sql), [reconciliation](../../src/db/queries/media-item-rating-stats.ts), [reviews](../../src/db/queries/contribution-reviews.ts).
 
 ## 7. Ачивки, уровни и доверие
 
@@ -117,7 +117,7 @@ Timeout подаёт `AbortSignal`, но не принудительно ост�
 
 Первичная инициализация репутации восстанавливает ledger из доступной текущей/исторической модели в одной транзакции под глобальной блокировкой. Это не полное переигрывание всех событий. Обычные consumers используют совместимую shared-блокировку системы и lock автора. Периодическое продвижение trusted нужно в том числе для порога давности, который может пересечься без нового действия автора.
 
-Источники: [achievement consumer](../../src/lib/achievements/consumer.ts), [evaluation](../../src/lib/achievements/service.ts), [backfill](../../src/lib/achievements/backfill.ts), [announcement claim](../../src/db/queries/achievements.ts), [reputation](../../src/lib/reputation/service.ts), [initialization](../../src/lib/reputation/initialize.ts), [promotion schedule](../../drizzle/0102_reputation_trusted_promotion_job.sql).
+Источники: [achievement consumer](../../src/lib/achievements/consumer.ts), [evaluation](../../src/lib/achievements/service.ts), [backfill](../../src/lib/achievements/backfill.ts), [announcement claim](../../src/db/queries/achievements.ts), [reputation](../../src/lib/reputation/service.ts), [initialization](../../src/lib/reputation/initialize.ts), [promotion schedule](../../drizzle-archive/pre-baseline/0102_reputation_trusted_promotion_job.sql).
 
 ## 8. Викторина
 
@@ -135,9 +135,9 @@ Consumer уведомлений создаёт внутренние inbox-стр
 
 ## 10. Регистрация и перенос demo-истории
 
-Обычная регистрация создаёт автора, аккаунт, email, challenge и письмо проверки в одной транзакции. При включённом bootstrap bypass проверки email аккаунт сразу активен, challenge и письмо не создаются. Проверка challenge завершает соответствующий этап обычной регистрации; серверная авторизация не выводится из локальных demo-данных. Отправка письма асинхронна и может отставать от создания аккаунта.
+Обычная регистрация создаёт автора, аккаунт, email, challenge и письмо проверки в одной транзакции. При включённом в админке требовании согласия она дополнительно требует явного подтверждения действующей версии и записывает его в той же транзакции. При выключенном требовании подтверждение не запрашивается и не создаётся. При включённом bootstrap bypass проверки email аккаунт сразу активен, challenge и письмо не создаются. Проверка challenge завершает соответствующий этап обычной регистрации; серверная авторизация не выводится из локальных demo-данных. Отправка письма асинхронна и может отставать от создания аккаунта.
 
-После входа клиент передаёт снимок demo-профиля. Сервер заново разбирает формат, получает доступные автору типы и переносит только опубликованные доступные записи/части. Блокировки автора и личного состояния защищают импорт от конкурентных изменений; существующее серверное состояние имеет приоритет, конфликтующие элементы пропускаются. Только действительно вставленные оценки порождают события. После успешного ответа клиент очищает локальный профиль, только если он всё ещё совпадает с отправленным снимком; ошибка сохраняет локальную историю для повтора. Demo-ачивки остаются локальной проекцией и не импортируются как выданные серверные награды.
+После входа и принятия действующей версии согласия клиент передаёт снимок demo-профиля. При включённом требовании до принятия импорт заблокирован сервером, локальные данные сохраняются. При выключенном требовании импорт работает после обычного входа. Сервер заново разбирает формат, получает доступные автору типы и переносит только опубликованные доступные записи/части. Блокировки автора и личного состояния защищают импорт от конкурентных изменений; существующее серверное состояние имеет приоритет, конфликтующие элементы пропускаются. Только действительно вставленные оценки порождают события. После успешного ответа клиент очищает локальный профиль, только если он всё ещё совпадает с отправленным снимком; ошибка сохраняет локальную историю для повтора. Demo-ачивки остаются локальной проекцией и не импортируются как выданные серверные награды.
 
 Источники: [registration operations](../../src/db/operations/author-auth.ts), [demo action](../../src/app/demo-profile/actions.ts), [import transaction](../../src/db/operations/demo-profile-import.ts), [conditional local cleanup](../../src/lib/user-state/demo-storage.ts).
 

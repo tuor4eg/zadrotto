@@ -179,7 +179,7 @@ test("anime company discovery uses real cache, requests and evidence resolver wi
       await admin`delete from creator_logo_candidates where request_id=${request.id}`;
       await admin`update creator_requests set decision='exclude',apply_status='processed',resolved_at=now() where id=${request.id}`;
       await admin`insert into provider_creator_exclusions(provider,media_type,external_creator_id,external_creator_name,normalized_external_creator_name) values('tmdb','anime','company:1501','Legacy Candidate','legacy candidate')`;
-      const migration = readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").find(statement => statement.includes("INSERT INTO creator_logo_candidates"))!;
+      const migration = readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").find(statement => statement.includes("INSERT INTO creator_logo_candidates"))!;
       await admin.unsafe(migration);
       assert.equal((await admin`select decision from creator_logo_candidates where request_id=${request.id}`)[0].decision, null);
       assert.equal((await admin`select count(*)::int n from provider_creator_exclusions where external_creator_id='company:1501'`)[0].n, 1);
@@ -209,7 +209,7 @@ test("anime company discovery uses real cache, requests and evidence resolver wi
       await setup(22, "Old Search Studio"); results = [candidate(2201, "Old Unrelated Result")];
       await ensureAnimeCompanyLogoBinding(22, options(), deps);
       await admin`update game_company_profiles set image_url=null,image_status='missing' where external_id in ('company:2201','company:1301')`;
-      const cleanup = readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").find(statement => statement.includes("DELETE FROM creator_requests"))!;
+      const cleanup = readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").find(statement => statement.includes("DELETE FROM creator_requests"))!;
       await admin.unsafe(cleanup);
       assert.equal((await admin`select count(*)::int n from creator_requests where external_creator_id='company:2201'`)[0].n, 0);
       assert.equal((await admin`select count(*)::int n from creator_requests where external_creator_id='company:1301'`)[0].n, 1, "real participation and its deliberate global ignore are kept");

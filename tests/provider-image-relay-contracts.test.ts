@@ -9,7 +9,7 @@ function readProjectFile(path: string) {
 describe("provider image relay data contracts", () => {
   it("stores one global disabled-by-default setting per provider with mandatory BGG relay", () => {
     const schema = readProjectFile("src/db/schema.ts");
-    const migration = readProjectFile("drizzle/0052_provider_image_settings.sql");
+    const migration = readProjectFile("drizzle-archive/pre-baseline/0052_provider_image_settings.sql");
     const queries = readProjectFile("src/db/queries/cover-settings.ts");
 
     assert.match(schema, /providerImageSettings[\s\S]*providerCode: text\("provider_code"\)\.primaryKey\(\)/);

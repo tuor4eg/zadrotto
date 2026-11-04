@@ -54,6 +54,8 @@ export const ACTIVITY_ACTIONS = [
   "author.password.changed",
   "author.email.changed",
   "author.session.revoked",
+  "author.external.linked",
+  "author.external.unlinked",
   "author.avatar.updated",
   "author.avatar.removed",
   "author.display-name.updated",
@@ -170,6 +172,7 @@ export const ACTIVITY_ACTIONS = [
   "collection.deleted",
   "collection.published",
   "collection.unpublished",
+  "auth-provider-settings.updated",
   "cover-providers.updated",
   "book-provider.normalized-metadata.enabled",
   "cover-provider-image-relay.updated",
@@ -282,6 +285,8 @@ export const ACTIVITY_ACTION_LABELS = {
   "author.password.changed": "Пароль автора изменён",
   "author.email.changed": "Email автора изменён",
   "author.session.revoked": "Сессия автора отозвана",
+  "author.external.linked": "Внешний способ входа подключён",
+  "author.external.unlinked": "Внешний способ входа отключён",
   "author.avatar.updated": "Аватар автора обновлён",
   "author.avatar.removed": "Аватар автора удалён",
   "author.display-name.updated": "Отображаемое имя автора изменено",
@@ -398,6 +403,7 @@ export const ACTIVITY_ACTION_LABELS = {
   "collection.deleted": "Подборка удалена",
   "collection.published": "Подборка опубликована",
   "collection.unpublished": "Подборка снята с публикации",
+  "auth-provider-settings.updated": "Настройки провайдера входа изменены",
   "cover-providers.updated": "Провайдеры обложек изменены",
   "domain-event.dispatch.failed": "Ошибка обработки доменного события",
   "book-provider.normalized-metadata.enabled": "Включены нормализованные метаданные книг",
@@ -438,6 +444,7 @@ export const ACTIVITY_ACTION_LABELS = {
 } satisfies Record<ActivityAction, string>;
 
 const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([
+  "auth-provider-settings.updated",
   "admin.login",
   "admin.login.failed",
   "admin.logout",
@@ -452,6 +459,8 @@ const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([
   "author.password.changed",
   "author.email.changed",
   "author.session.revoked",
+  "author.external.linked",
+  "author.external.unlinked",
   "email-provider.saved",
   "email-provider.enabled",
   "email-provider.disabled",
@@ -472,6 +481,8 @@ const SECURITY_ACTIVITY_ACTIONS = new Set<ActivityAction>([
   "author.password.changed",
   "author.email.changed",
   "author.session.revoked",
+  "author.external.linked",
+  "author.external.unlinked",
 ]);
 
 const CRITICAL_ACTIVITY_ACTIONS = new Set<ActivityAction>([
@@ -485,6 +496,7 @@ const CRITICAL_ACTIVITY_ACTIONS = new Set<ActivityAction>([
   "author.blocked",
   "author.deleted",
   "cover-provider-credentials.updated",
+  "auth-provider-settings.updated",
   "ai-provider.credentials.updated",
 ]);
 

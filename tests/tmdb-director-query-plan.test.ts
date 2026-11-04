@@ -67,7 +67,7 @@ test("director queries use bounded indexes at representative scale", { skip: !te
     await explain("alias-before", tmdbPersonAliasCandidateQuery("absent").toSQL());
     const before = await explain("name-before", tmdbPersonNameCandidateQuery("absent").toSQL());
     assert.match(JSON.stringify(before), /Seq Scan/);
-    for (const statement of readFileSync("drizzle/0135_tmdb_company_creators.sql", "utf8").split("--> statement-breakpoint").filter(s => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(s))) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0135_tmdb_company_creators.sql", "utf8").split("--> statement-breakpoint").filter(s => /CREATE INDEX creators_(name|original_name)_exact_idx/.test(s))) await client.unsafe(statement);
     await client.unsafe("create index provider_creator_mappings_name_creator_idx on provider_creator_mappings(normalized_external_creator_name,creator_id); analyze creators; analyze provider_creator_mappings");
     for (const name of ["common", "rare original", "absent"]) {
       const result = await explain("name-after:" + name, tmdbPersonNameCandidateQuery(name).toSQL());

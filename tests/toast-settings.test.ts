@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 
 const schema = readFileSync("src/db/schema.ts", "utf8");
-const migration = readFileSync("drizzle/0073_toast_settings.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0073_toast_settings.sql", "utf8");
 const nav = readFileSync("src/app/admin/(protected)/settings/settings-nav.tsx", "utf8");
 const page = readFileSync("src/app/admin/(protected)/settings/notifications/page.tsx", "utf8");
 const toasts = readFileSync("src/components/ui/archive-toasts.tsx", "utf8");

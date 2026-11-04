@@ -9,8 +9,8 @@ import {
 } from "@/lib/notifications/transports/telegram"
 
 const schema = readFileSync("src/db/schema.ts", "utf8")
-const migration = readFileSync("drizzle/0068_notification_transport_settings.sql", "utf8")
-const journal = readFileSync("drizzle/meta/_journal.json", "utf8")
+const migration = readFileSync("drizzle-archive/pre-baseline/0068_notification_transport_settings.sql", "utf8")
+const journal = readFileSync("drizzle-archive/pre-baseline/meta/_journal.json", "utf8")
 const catalog = readFileSync("src/lib/notifications/transports/catalog.ts", "utf8")
 const telegramApi = readFileSync("src/lib/notifications/transports/telegram-api.ts", "utf8")
 const crypto = readFileSync("src/lib/notifications/transports/credential-crypto.ts", "utf8")

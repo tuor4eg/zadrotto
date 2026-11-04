@@ -50,7 +50,7 @@ describe("author display name", () => {
   it("persists the name and modification timestamp for the selected author", () => {
     const query = exportedFunction(authorQueries, "updateAuthorDisplayName", "createAuthor");
 
-    assert.match(query, /\.set\(\{ name, updatedAt: new Date\(\) \}\)/);
+    assert.match(query, /\.set\(\{ name, nameSourceIdentityId: null, updatedAt: new Date\(\) \}\)/);
     assert.match(query, /\.where\(eq\(authors\.id, authorId\)\)/);
     assert.match(query, /\.returning\(\{ id: authors\.id, name: authors\.name \}\)/);
   });

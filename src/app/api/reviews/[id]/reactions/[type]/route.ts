@@ -3,7 +3,7 @@ import {
   removePublishedReviewReaction,
 } from "@/db/queries/review-reactions";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import { isReviewReactionType, type ReviewReactionType } from "@/lib/reviews/reactions";
 
 type RouteContext = {
@@ -59,9 +59,13 @@ async function mutateReaction(
 }
 
 export async function PUT(_request: Request, context: RouteContext) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   return mutateReaction("add", context);
 }
 
 export async function DELETE(_request: Request, context: RouteContext) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   return mutateReaction("remove", context);
 }

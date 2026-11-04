@@ -53,7 +53,7 @@ describe("media type effective visibility", () => {
 describe("media type visibility persistence contracts", () => {
   it("defines defaults and sparse per-author overrides in schema and migration", () => {
     const schema = read("src/db/schema.ts");
-    const migration = read("drizzle/0041_media_type_visibility.sql");
+    const migration = read("drizzle-archive/pre-baseline/0041_media_type_visibility.sql");
 
     assert.match(schema, /isPubliclyAvailable: boolean\("is_publicly_available"\)\.default\(false\)\.notNull\(\)/);
     assert.match(schema, /enabledByDefault: boolean\("enabled_by_default"\)\.default\(true\)\.notNull\(\)/);
@@ -100,7 +100,7 @@ describe("media type visibility persistence contracts", () => {
 describe("media type access contracts", () => {
   it("defines additive guest and access-profile grants without seeded profile mappings", () => {
     const schema = read("src/db/schema.ts");
-    const migration = read("drizzle/0042_media_type_guest_access.sql");
+    const migration = read("drizzle-archive/pre-baseline/0042_media_type_guest_access.sql");
 
     assert.match(
       schema,

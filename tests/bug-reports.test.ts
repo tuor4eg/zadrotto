@@ -21,8 +21,8 @@ import {
   getNotificationTitle,
 } from "../src/lib/notifications/catalog";
 
-const migration = readFileSync("drizzle/0077_bug_reports.sql", "utf8");
-const journal = readFileSync("drizzle/meta/_journal.json", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0077_bug_reports.sql", "utf8");
+const journal = readFileSync("drizzle-archive/pre-baseline/meta/_journal.json", "utf8");
 const schema = readFileSync("src/db/schema.ts", "utf8");
 const api = readFileSync("src/app/api/bug-reports/route.ts", "utf8");
 const query = readFileSync("src/db/queries/bug-reports.ts", "utf8");

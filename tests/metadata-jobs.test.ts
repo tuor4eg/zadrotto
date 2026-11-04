@@ -18,7 +18,7 @@ const backfillSource = readFileSync("src/lib/media/metadata-backfill.ts", "utf8"
 const refreshSource = readFileSync("src/lib/media/metadata-refresh.ts", "utf8")
 const fetchSource = readFileSync("src/lib/media/metadata-provider-fetch.ts", "utf8")
 const schemaSource = readFileSync("src/db/schema.ts", "utf8")
-const migrationSource = readFileSync("drizzle/0070_media_metadata_refresh.sql", "utf8")
+const migrationSource = readFileSync("drizzle-archive/pre-baseline/0070_media_metadata_refresh.sql", "utf8")
 
 function candidate(input: Partial<MediaTitleCandidate> & Pick<MediaTitleCandidate, "id" | "title">): MediaTitleCandidate {
   return {

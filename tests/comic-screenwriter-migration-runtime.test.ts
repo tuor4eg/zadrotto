@@ -6,7 +6,7 @@ const url = process.env.COMIC_VINE_TEST_DATABASE_URL;
 test("screenwriter migration preserves comic provenance, manual flags, requests and book writers", { skip: !url }, async () => {
   const { default: postgres } = await import("postgres");
   const client = postgres(url!, { max: 1, prepare: false });
-  const migration = (await readFile("drizzle/0152_comic_screenwriter.sql", "utf8")).replaceAll("--> statement-breakpoint", "");
+  const migration = (await readFile("drizzle-archive/pre-baseline/0152_comic_screenwriter.sql", "utf8")).replaceAll("--> statement-breakpoint", "");
   try {
     await assert.rejects(client.begin(async tx => {
       const [comic] = await tx`insert into media_items(code,title,media_type) values ('migration-comic-test','Comic','comic') returning id`;

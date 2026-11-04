@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 
-import { getCurrentAuthor } from "@/lib/auth/author-auth"
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth"
 import {
   deleteAllInboxNotifications,
   getNotificationInbox,
@@ -8,6 +8,8 @@ import {
 } from "@/lib/notifications/inbox"
 
 export async function GET() {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor()
   if (!author) {
     return NextResponse.json(unauthenticatedNotificationInbox())
@@ -22,6 +24,8 @@ export async function GET() {
 }
 
 export async function DELETE() {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor()
   if (!author) {
     return NextResponse.json({ ok: false }, { status: 401 })

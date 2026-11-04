@@ -40,10 +40,10 @@ test("creator approval, provenance, backfill and stable codes persist through re
         timeout_seconds integer,retry_base_seconds integer,retry_max_seconds integer,locked_at timestamptz,locked_by text,lock_token text,
         lock_expires_at timestamptz,started_at timestamptz,finished_at timestamptz,cancelled_at timestamptz,error_code text,error_message text,
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
-    for (const migration of ["drizzle/0117_creators.sql", "drizzle/0118_creator_original_name.sql", "drizzle/0119_creator_relations.sql", "drizzle/0123_creator_avatars.sql", "drizzle/0124_bgg_creators.sql", "drizzle/0125_game_company_creators.sql"]) {
+    for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
     }
-    for (const statement of readFileSync("drizzle/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date, ADD COLUMN death_date date, ADD COLUMN name_ru text, ADD COLUMN name_ru_source text,
       ADD COLUMN name_ru_processed boolean NOT NULL DEFAULT false;
       ALTER TABLE entry_creator_sources ADD COLUMN source_position integer;
@@ -345,7 +345,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await client.unsafe(`CREATE TABLE genres(id integer PRIMARY KEY,slug text,name text,is_active boolean);
       CREATE TABLE provider_genre_mappings(provider text,media_type text,external_genre_id text,normalized_external_genre_name text,genre_id integer);
       CREATE TABLE provider_genre_exclusions(provider text,media_type text,normalized_external_genre_name text);`);
-    for (const statement of readFileSync("drizzle/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint").slice(0, 2)) await client.unsafe(statement);
+    for (const statement of readFileSync("drizzle-archive/pre-baseline/0104_genre_requests.sql", "utf8").split("--> statement-breakpoint").slice(0, 2)) await client.unsafe(statement);
     const { lockGenreRequestsForMetadata } = await import("../src/db/queries/genre-requests");
     const detectGenre = (mediaItemId: number, name: string) => db.transaction(tx => lockGenreRequestsForMetadata(tx, {
       mediaItemId, provider: "test-provider", mediaType: "book", facts: { genres: [name] },

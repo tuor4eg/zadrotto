@@ -34,7 +34,7 @@ const verifyPage = readFileSync("src/app/author/verify-email/page.tsx", "utf8");
 const verifyActions = readFileSync("src/app/author/verify-email/actions.ts", "utf8");
 const adminNavigation = readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8");
 const outboxQueries = readFileSync("src/db/queries/email-outbox.ts", "utf8");
-const migration = readFileSync("drizzle/0032_yielding_blockbuster.sql", "utf8");
+const migration = readFileSync("drizzle-archive/pre-baseline/0032_yielding_blockbuster.sql", "utf8");
 
 function functionSource(source: string, name: string, nextName?: string) {
   const start = source.indexOf(`export async function ${name}`);
@@ -53,7 +53,7 @@ describe("author auth persistence contracts", () => {
     }
     assert.match(register, /if \(!bypassEmailVerification\) \{[\s\S]*insertVerificationChallenge[\s\S]*\} else \{\s*await appendEvent/);
     assert.match(register, /payload: \{ authorId: author\.id \}/);
-    assert.match(verify, /if \(!activatedAccount\) return null;\s*await appendEvent/);
+    assert.match(verify, /if \(!activatedAccount\) return null;[\s\S]*if \(!registrationEvent\) \{\s*await appendEvent/);
     assert.match(verify, /payload: \{ authorId: activatedAccount\.authorId \}/);
     const emailChange = verify.slice(verify.indexOf('if (challenge.purpose === "change_email")'), verify.indexOf('purpose: "change_email" as const'));
     assert.doesNotMatch(emailChange, /appendEvent/);

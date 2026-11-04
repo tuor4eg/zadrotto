@@ -7,7 +7,7 @@ const testUrl = process.env.PLATFORMS_TEST_DATABASE_URL;
 test("platform backfill preserves JSON, diagnoses invalid sources and creates unknown requests once", { skip: !testUrl }, async () => {
   const schema = `platform_backfill_${Date.now()}`;
   const client = postgres(testUrl!, { max: 1, onnotice() {} });
-  const migration = (name: string) => readFileSync(`drizzle/${name}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint");
+  const migration = (name: string) => readFileSync(`drizzle-archive/pre-baseline/${name}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint");
   try {
     await client.unsafe(`CREATE SCHEMA ${schema}`);
     await client.unsafe(`SET search_path TO ${schema}`);

@@ -1,5 +1,5 @@
 import { createBugReport } from "@/db/queries/bug-reports";
-import { getCurrentAuthor } from "@/lib/auth/author-auth";
+import { getCurrentAuthor, getPersonalDataConsentDenial } from "@/lib/auth/author-auth";
 import {
   BUG_REPORT_DESCRIPTION_MAX_LENGTH,
   BUG_REPORT_TIMEZONE_MAX_LENGTH,
@@ -37,6 +37,8 @@ function parseClientContext(value: unknown, userAgent: string | null): BugReport
 }
 
 export async function POST(request: Request) {
+  const consentDenial = await getPersonalDataConsentDenial();
+  if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ error: "Требуется авторизация." }, { status: 401 });
 

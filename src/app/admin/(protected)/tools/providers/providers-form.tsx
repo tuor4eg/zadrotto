@@ -16,7 +16,8 @@ import {
 import { useEffect, useId, useState, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/form";
+import { Select } from "@/components/ui/form";
+import { ProviderCredentialFields } from "@/components/ui/provider-credential-fields";
 import { Tooltip } from "@/components/ui/tooltip";
 import type {
   CoverProviderCredentialStatus,
@@ -631,38 +632,17 @@ function ProviderCredentialsModal({
         />
 
         <div className="grid gap-4">
-          {definition.fields.map((field) => (
-            <div key={field.name} className="flex flex-col gap-2">
-              <Label htmlFor={`credential-${provider.providerCode}-${field.name}`}>
-                {field.label}
-              </Label>
-              <Input
-                id={`credential-${provider.providerCode}-${field.name}`}
-                name={`credential:${field.name}`}
-                type="password"
-                autoComplete="off"
-                defaultValue={hasExistingCredentials ? STORED_CREDENTIAL_MASK : ""}
-                placeholder={"placeholder" in field ? field.placeholder : undefined}
-                disabled={isPending}
-                onFocus={(event) => {
-                  if (event.currentTarget.value === STORED_CREDENTIAL_MASK) {
-                    event.currentTarget.value = "";
-                  }
-
-                  setAreCredentialFieldsReady(
-                    areCredentialFieldsFilled(event.currentTarget.closest("[role='dialog']")),
-                  );
-                }}
-                onInput={(event) => {
-                  setAreCredentialFieldsReady(
-                    areCredentialFieldsFilled(event.currentTarget.closest("[role='dialog']")),
-                  );
-                }}
-                data-credential-field
-                data-has-stored-credential={hasExistingCredentials ? "true" : undefined}
-              />
-            </div>
-          ))}
+          <ProviderCredentialFields fields={definition.fields} idPrefix={`credential-${provider.providerCode}`} inputProps={() => ({
+            defaultValue: hasExistingCredentials ? STORED_CREDENTIAL_MASK : "",
+            disabled: isPending,
+            onFocus: (event) => {
+              if (event.currentTarget.value === STORED_CREDENTIAL_MASK) event.currentTarget.value = "";
+              setAreCredentialFieldsReady(areCredentialFieldsFilled(event.currentTarget.closest("[role='dialog']")));
+            },
+            onInput: (event) => setAreCredentialFieldsReady(areCredentialFieldsFilled(event.currentTarget.closest("[role='dialog']"))),
+            "data-credential-field": true,
+            "data-has-stored-credential": hasExistingCredentials ? "true" : undefined,
+          })} />
         </div>
 
         <div className="flex flex-wrap justify-end gap-2">

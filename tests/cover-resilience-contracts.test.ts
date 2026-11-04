@@ -18,7 +18,7 @@ const thumbnailBackfillSource = readFileSync("src/lib/covers/thumbnail-backfill.
 describe("resilient author media creation", () => {
   it("persists a per-author idempotency key with a unique database constraint", () => {
     const schema = readFileSync("src/db/schema.ts", "utf8");
-    const migration = readFileSync("drizzle/0059_author_media_creation_requests.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0059_author_media_creation_requests.sql", "utf8");
 
     assert.match(schema, /authorCreationRequestId: text\("author_creation_request_id"\)/);
     assert.match(
@@ -149,7 +149,7 @@ describe("cover thumbnail recovery job", () => {
   });
 
   it("seeds an enabled daily thumbnail recovery schedule", () => {
-    const migration = readFileSync("drizzle/0059_author_media_creation_requests.sql", "utf8");
+    const migration = readFileSync("drizzle-archive/pre-baseline/0059_author_media_creation_requests.sql", "utf8");
 
     assert.match(
       migration,

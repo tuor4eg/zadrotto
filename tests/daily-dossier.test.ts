@@ -95,11 +95,11 @@ describe("daily dossier UTC cache helpers", () => {
   it("persists and exposes the dossier threshold in general settings", () => {
     const schema = readFileSync("src/db/schema.ts", "utf8");
     const migration = readFileSync(
-      "drizzle/0049_daily_dossier_min_average_score.sql",
+      "drizzle-archive/pre-baseline/0049_daily_dossier_min_average_score.sql",
       "utf8",
     );
     const ratingsCountMigration = readFileSync(
-      "drizzle/0090_daily_dossier_min_ratings_count.sql",
+      "drizzle-archive/pre-baseline/0090_daily_dossier_min_ratings_count.sql",
       "utf8",
     );
     const settingsQuery = readFileSync("src/db/queries/archive-settings.ts", "utf8");
