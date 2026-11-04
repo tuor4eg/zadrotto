@@ -18,6 +18,9 @@ services:
 
   app:
     image: ghcr.io/tuor4eg/zadrotto:latest
+    networks:
+      - default
+      - database
     restart: unless-stopped
     ports:
       - "127.0.0.1:3001:3000"
@@ -56,12 +59,18 @@ services:
 
   jobs-scheduler:
     image: ghcr.io/tuor4eg/zadrotto-jobs:latest
+    networks:
+      - default
+      - database
     restart: unless-stopped
     command: npm run jobs:scheduler
     environment: *jobs-environment
 
   jobs-worker:
     image: ghcr.io/tuor4eg/zadrotto-jobs:latest
+    networks:
+      - default
+      - database
     restart: unless-stopped
     command: npm run jobs:worker
     environment:
@@ -90,6 +99,9 @@ services:
 
   migrate:
     image: ghcr.io/tuor4eg/zadrotto-migrator:latest
+    networks:
+      - default
+      - database
     command: npm run db:migrate
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -97,6 +109,9 @@ services:
 
   seed-admin:
     image: ghcr.io/tuor4eg/zadrotto-migrator:latest
+    networks:
+      - default
+      - database
     command: npm run db:seed:admin
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -106,6 +121,9 @@ services:
 
   cover-thumbs:
     image: ghcr.io/tuor4eg/zadrotto-migrator:latest
+    networks:
+      - default
+      - database
     command: npm run covers:backfill-thumbs
     environment:
       DATABASE_URL: ${DATABASE_URL}
@@ -130,6 +148,11 @@ services:
     volumes:
       - minio_data:/data
     profiles: [local]
+
+networks:
+  database:
+    external: true
+    name: backend
 
 volumes:
   admin_exports:

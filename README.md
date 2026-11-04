@@ -151,6 +151,8 @@ docker compose up -d app redis jobs-scheduler jobs-worker
 ```
 
 Перед запуском заполни production `.env` и установи `SECURE_COOKIES=true`.
+Сервисы, работающие с БД, подключаются к существующей внешней Docker-сети `backend`,
+где PostgreSQL доступен по имени `postgres`. Сеть `default` сохраняется для Redis и локального MinIO.
 
 Миграция `0103_unified_genres` создаёт справочник жанров, provider mappings и заполняет
 нормализованные связи из сохранённых metadata. Отдельные команды seed/backfill не нужны.
