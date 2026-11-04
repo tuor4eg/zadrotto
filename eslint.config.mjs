@@ -7,6 +7,8 @@ const eslintConfig = defineConfig([
   ...nextTs,
   // Override default ignores of eslint-config-next.
   globalIgnores([
+    // Local backups and one-off recovery artifacts are not application source.
+    ".data/**",
     // Default ignores of eslint-config-next:
     ".next/**",
     "out/**",
