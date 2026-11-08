@@ -4,6 +4,14 @@ import {
 } from "@/lib/covers/config";
 import type { CoverSearchInput, TitleSearchInput } from "@/lib/covers/types";
 
+let strictHttpErrorsResolver: (() => boolean) | null = null;
+export function bindProviderStrictHttpErrorsResolver(resolver: () => boolean) { strictHttpErrorsResolver = resolver; }
+export function getActiveProviderStrictHttpErrors() { return strictHttpErrorsResolver?.() === true; }
+
+let activeSignalResolver: (() => AbortSignal | undefined) | null = null;
+export function bindProviderRequestSignalResolver(resolver: () => AbortSignal | undefined) { activeSignalResolver = resolver; }
+export function getActiveProviderRequestSignal() { return activeSignalResolver?.(); }
+
 let activeTimeoutResolver: (() => number) | null = null;
 
 export function bindProviderRequestTimeoutResolver(resolver: () => number) {
@@ -48,11 +56,8 @@ export function withProviderTimeout(
 ): AbortSignal {
   const timeoutSignal = AbortSignal.timeout(resolveProviderRequestTimeoutMs(timeoutMs));
 
-  if (!signal) {
-    return timeoutSignal;
-  }
-
-  return AbortSignal.any([timeoutSignal, signal]);
+  const signals = [timeoutSignal, signal, getActiveProviderRequestSignal()].filter((s): s is AbortSignal => Boolean(s));
+  return signals.length === 1 ? timeoutSignal : AbortSignal.any(signals);
 }
 
 function buildProviderFetchInit(init?: RequestInit): RequestInit {
@@ -73,6 +78,10 @@ export async function fetchJson<T>(url: URL, init?: RequestInit) {
   const response = await fetch(url, buildProviderFetchInit(init));
 
   if (!response.ok) {
+    if (getActiveProviderStrictHttpErrors() && ![404, 410].includes(response.status)) {
+      await response.body?.cancel();
+      throw new ProviderHttpError(response.status, null);
+    }
     return null;
   }
 

@@ -2,8 +2,8 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { ChevronDown, CircleHelp, Menu, Search, Shield, UserRound, X } from "lucide-react";
-import { useRouter } from "next/navigation";
+import { ChevronDown, CircleHelp, Menu, Plus, Search, Shield, UserRound, X } from "lucide-react";
+import { usePathname, useRouter } from "next/navigation";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -11,8 +11,10 @@ import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
 import { QuizModal } from "@/components/quizzes/quiz-modal";
 import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { Avatar } from "@/components/ui/avatar";
 import { NotificationBadge } from "@/components/ui/notification-badge";
+import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/lib/media/suggestion-events";
 import type { ActiveQuiz, QuizParticipantState } from "@/lib/quizzes/model";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
@@ -24,6 +26,7 @@ export type PublicSiteHeaderProps = {
     name: string;
   } | null;
   controls?: ReactNode;
+  showMediaSuggestion?: boolean;
   currentAdminUser: boolean;
   quiz?: {
     participant: QuizParticipantState | null;
@@ -34,7 +37,7 @@ export type PublicSiteHeaderProps = {
 
 const BASE_MENU_ITEMS = [
   { href: "/archive", label: "Архив" },
-  { href: null, label: "Путеводитель" },
+  { href: "/feed", label: "Лента" },
   { href: "/collections", label: "Подборки" },
   { href: "/reviews", label: "Рецензии" },
 ] as const;
@@ -94,10 +97,25 @@ function GuideMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigat
   );
 }
 
+function MediaSuggestionButton({ className }: { className: string }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  return <ArchiveTooltip label="Добавить запись" side="bottom" portal className={`shrink-0 ${className}`}><button
+    type="button"
+    aria-label="Добавить запись"
+    onClick={() => {
+      if (pathname === "/archive") window.dispatchEvent(new CustomEvent(ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT));
+      else router.push("/archive?add=1");
+    }}
+    className={`grid size-9 shrink-0 place-items-center rounded-full border-2 border-[#d9c7a5] bg-stone-950 text-stone-50 shadow-[0_8px_16px_rgba(28,25,23,0.3)] transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9c7a5]`}
+  ><Plus className="size-4" aria-hidden="true" /></button></ArchiveTooltip>;
+}
+
 export function PublicSiteHeader({
   adminNotificationCount,
   author,
   controls,
+  showMediaSuggestion = Boolean(author),
   currentAdminUser,
   quiz = null,
 }: PublicSiteHeaderProps) {
@@ -115,6 +133,7 @@ export function PublicSiteHeader({
     ...BASE_MENU_ITEMS,
     ...(author ? [QUIZZES_MENU_ITEM] : []),
     ...(showAchievements ? [{ href: "/achievements", label: "Ачивки" } as const] : []),
+    { href: null, label: "Путеводитель" } as const,
   ];
   const currentQuizParticipant = quizParticipant?.quizId === quiz?.quiz.id
     ? quizParticipant
@@ -159,17 +178,21 @@ export function PublicSiteHeader({
             </span>
           </Link>
 
+          <div className="ml-auto flex items-center gap-1.5 lg:hidden">
+          {showMediaSuggestion ? <MediaSuggestionButton className="grid" /> : null}
+
           <button
             ref={menuButtonRef}
             type="button"
             aria-label={isMenuOpen ? "Закрыть меню" : "Открыть меню"}
             aria-expanded={isMenuOpen}
             aria-controls="public-header-mobile-menu"
-            className="ml-auto grid size-10 shrink-0 place-items-center rounded-lg text-stone-100 hover:bg-white/10 lg:hidden"
+            className="grid size-9 shrink-0 place-items-center rounded-lg text-stone-100 hover:bg-white/10"
             onClick={() => setIsMenuOpen((open) => !open)}
           >
             {isMenuOpen ? <X className="size-5" /> : <Menu className="size-5" />}
           </button>
+          </div>
 
           <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
             {MENU_ITEMS.map((item) => item.href === null ? (
@@ -227,8 +250,9 @@ export function PublicSiteHeader({
           ) : null}
 
           <div className="flex min-w-0 w-full items-center gap-1.5 lg:ml-auto lg:w-auto lg:flex-1 lg:justify-end">
+            {showMediaSuggestion ? <MediaSuggestionButton className="hidden lg:grid" /> : null}
             {controls ? (
-              <div className="min-w-0 flex-1 text-stone-950">{controls}</div>
+              <div className="min-w-0 flex-1 text-stone-950 lg:flex-none">{controls}</div>
             ) : (
               <form
                 action="/archive"

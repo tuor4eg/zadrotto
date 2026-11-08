@@ -37,7 +37,7 @@ export function HomeIntroHero({
               <dt className="order-2 mt-2 font-mono text-[8px] uppercase tracking-[0.08em] text-stone-600 sm:text-[9px] sm:tracking-[0.12em]">
                 {statistic.label}
               </dt>
-              <dd className="order-1 font-serif text-lg leading-none tabular-nums text-stone-950 sm:text-2xl">
+              <dd className="media-carrier-font-pc-steam order-1 text-lg leading-none tabular-nums text-stone-950 sm:text-2xl">
                 {statistic.value}
               </dd>
             </div>

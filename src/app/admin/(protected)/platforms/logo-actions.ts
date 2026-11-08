@@ -8,6 +8,7 @@ import { AVATAR_MAX_BYTES } from "@/lib/avatars/config";
 import { uploadPlatformLogoBuffer, deletePlatformLogoBestEffort } from "@/lib/platforms/logo-storage";
 import { getPlatformLogoState, setManualPlatformLogo, clearManualPlatformLogo, setPlatformLogoMode } from "@/db/queries/platform-logos";
 import { createJobRun } from "@/db/queries/jobs";
+import { enqueueJobRun } from "@/lib/jobs/queue";
 import { DEFAULT_JOB_MAX_ATTEMPTS, DEFAULT_JOB_RETRY_BASE_SECONDS, DEFAULT_JOB_RETRY_MAX_SECONDS, DEFAULT_JOB_TIMEOUT_SECONDS } from "@/lib/jobs/model";
 
 function parse(formData: FormData) {
@@ -73,4 +74,17 @@ export async function syncPlatformLogoAction(formData: FormData) {
       retryMaxSeconds: DEFAULT_JOB_RETRY_MAX_SECONDS, timeoutSeconds: DEFAULT_JOB_TIMEOUT_SECONDS });
   } catch { finish(platformId, true); }
   finish(platformId);
+}
+
+export async function syncAllPlatformLogosAction(formData: FormData) {
+  const admin = await requireAdminUser();
+  try {
+    const provider = formData.get("provider");
+    if (provider !== "igdb" && provider !== "rawg" && provider !== "all") throw new Error("Некорректный провайдер.");
+    await enqueueJobRun({ type: "media.platform-logos-sync", payload: { force: true, ...(provider === "all" ? {} : { provider }) }, source: "manual", createdByAdminId: admin.id });
+  } catch {
+    redirect("/admin/platforms?error=logoSync");
+  }
+  revalidatePath("/admin/tools/jobs/current");
+  redirect("/admin/tools/jobs/current");
 }

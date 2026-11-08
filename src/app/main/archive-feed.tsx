@@ -1,112 +1,30 @@
-import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import Link from "next/link";
-import { Clock3, FileText, Layers3, Library, MessageSquareQuote, type LucideIcon } from "lucide-react";
+import { Clock3 } from "lucide-react";
+import { FeedEventCard } from "@/app/feed/event-card";
+import type { FeedItem } from "@/lib/feed/model";
+import type { EditorialCollectionGroupItem } from "@/db/queries/editorial-collections";
 
-import type { ArchiveFeedItem } from "@/db/queries/archive-feed";
-
-const KIND_DETAILS: Record<ArchiveFeedItem["kind"], { icon: LucideIcon; label: string }> = {
-  collection: { icon: Library, label: "Подборка" },
-  media: { icon: FileText, label: "Запись" },
-  review: { icon: MessageSquareQuote, label: "Рецензия" },
-  series: { icon: Layers3, label: "Серия" },
-};
-
-const MOBILE_STRIP_CLASS_NAME =
-  "mt-5 flex gap-3 overflow-x-auto pb-1 md:hidden [scrollbar-width:thin] [scrollbar-color:rgba(168,162,158,.45)_transparent]";
-
-function formatFeedDate(date: Date) {
-  return new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    timeZone: "Europe/Moscow",
-  }).format(date);
-}
-
-function ArchiveFeedCard({
-  className,
-  item,
-}: {
-  className: string;
-  item: ArchiveFeedItem;
+export function ArchiveFeed({ items, tiles, currentAuthor }: {
+  items: FeedItem[];
+  tiles: EditorialCollectionGroupItem[];
+  currentAuthor: { id: number; name: string; code: string } | null;
 }) {
-  const displayTitle = item.kind === "media" ? resolveMediaItemDisplayTitles(item).displayTitle : item.title;
-  const meta = item.kind === "review" && item.mediaItemTitle
-    ? `${resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle }).displayTitle}${item.partLabel ? ` · ${item.partLabel}` : ""} · ${item.authorName}`
-    : item.meta;
-  const { icon: KindIcon, label } = KIND_DETAILS[item.kind];
-
-  return (
-    <Link href={item.href} className={className}>
-      <div className="relative aspect-[2/3] w-20 shrink-0 overflow-hidden rounded-md bg-stone-800/10 sm:w-24">
-        {item.imageUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.imageUrl} alt="" className="size-full object-cover transition-transform duration-300 group-hover:scale-105" />
-        ) : (
-          <div className="grid size-full place-items-center text-stone-500">
-            <KindIcon className="size-8" aria-hidden="true" />
-          </div>
-        )}
-      </div>
-      <div className="flex min-w-0 flex-1 flex-col py-1">
-        <div className="flex items-center gap-1 font-mono text-[9px] uppercase tracking-[0.12em] text-stone-500">
-          <KindIcon className="size-3" aria-hidden="true" />
-          <span>{label}</span>
-          <span aria-hidden="true">·</span>
-          <time dateTime={item.createdAt.toISOString()}>{formatFeedDate(item.createdAt)}</time>
-        </div>
-        <h3 className="media-carrier-font-pc-steam mt-2 line-clamp-3 text-lg leading-tight text-stone-950">{displayTitle}</h3>
-        <p className="mt-auto line-clamp-2 pt-2 text-xs leading-5 text-stone-600">{meta}</p>
-      </div>
-    </Link>
-  );
-}
-
-export function ArchiveFeed({ items }: { items: ArchiveFeedItem[] }) {
-  const desktopItems = items.slice(0, 5);
-
-  return (
-    <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-labelledby="main-archive-feed-title">
-      <div className="flex items-center gap-2">
-        <Clock3 aria-hidden="true" className="size-5 text-red-950/70" />
-        <h2 id="main-archive-feed-title" className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950">
-          Новое в архиве
-        </h2>
-      </div>
-
-      {items.length > 0 ? (
-        <>
-          <div className={MOBILE_STRIP_CLASS_NAME}>
-            {items.map((item) => (
-              <ArchiveFeedCard
-                key={`mobile-${item.key}`}
-                className="group flex w-[15rem] shrink-0 items-stretch gap-3 transition-transform hover:-translate-y-0.5"
-                item={item}
-              />
-            ))}
-          </div>
-          <div className="mt-5 hidden grid-cols-1 gap-x-3 gap-y-4 sm:grid-cols-2 md:grid lg:grid-cols-3 xl:grid-cols-5">
-            {desktopItems.map((item, index) => {
-              const visibilityClassName = index >= 3
-                ? "hidden xl:flex"
-                : index >= 2
-                  ? "hidden lg:flex"
-                  : "flex";
-
-              return (
-                <ArchiveFeedCard
-                  key={item.key}
-                  className={`${visibilityClassName} group min-w-0 items-stretch gap-3 transition-transform hover:-translate-y-0.5`}
-                  item={item}
-                />
-              );
-            })}
-          </div>
-        </>
-      ) : (
-        <p className="py-12 text-center font-mono text-xs uppercase tracking-wider text-stone-500">
-          В архиве пока ничего нового.
-        </p>
-      )}
-    </section>
-  );
+  const tileById = new Map(tiles.map(tile => [tile.mediaItemId, tile]));
+  return <section className="archive-paper archive-panel overflow-hidden p-4 sm:p-5" aria-labelledby="main-archive-feed-title">
+    <div className="mb-5 flex items-center justify-between gap-3">
+      <h2 id="main-archive-feed-title" className="media-carrier-font-pc-steam flex items-center gap-2 text-2xl leading-none text-stone-950">
+        <Clock3 aria-hidden="true" className="size-5 shrink-0 text-red-950/70" />
+        Новое в архиве
+      </h2>
+      <Link href="/feed" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">Смотреть всё →</Link>
+    </div>
+    <div className="media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
+      {items.length > 0 ? <ol className="archive-scrollbar flex snap-x snap-proximity gap-4 overflow-x-auto pb-2 md:grid md:grid-cols-2 md:overflow-visible lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+        {items.slice(0, 5).map((item, index) => <li key={item.key} className={`w-72 min-w-0 shrink-0 snap-start md:w-auto ${index === 4 ? "md:hidden 2xl:block" : index === 3 ? "md:hidden xl:block" : index === 2 ? "md:hidden lg:block" : ""}`}>
+          <FeedEventCard item={item} tile={item.mediaItemId ? tileById.get(item.mediaItemId) : undefined} currentAuthorId={currentAuthor?.id} ratingAuthor={currentAuthor} horizontalScroll />
+        </li>)}
+      </ol>
+        : <p className="py-12 text-center text-xs text-stone-500">В архиве пока ничего нового.</p>}
+    </div>
+  </section>;
 }

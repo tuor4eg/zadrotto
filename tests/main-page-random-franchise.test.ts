@@ -85,7 +85,7 @@ describe("main page random franchise preview", () => {
       pageSource,
       /<Suspense[\s\S]*<RandomFranchiseSection promise=\{randomFranchisePromise\} \/>/,
     )
-    assert.match(pageSource, /<ArchiveFeed items=\{archiveFeed\} \/>[\s\S]*<RandomFranchiseSection/)
+    assert.match(pageSource, /<ArchiveFeed items=\{archiveFeed\}[^\n]*\/>[\s\S]*<RandomFranchiseSection/)
     assert.doesNotMatch(pageSource, /await\s+getRandomPublishedFranchisePreview\(/)
     assert.match(sectionSource, /<span className="shrink-0">Случайная серия<\/span>/)
     assert.match(

@@ -87,6 +87,8 @@ export const franchises = pgTable("franchises", {
     .notNull(),
   ...timestamps(),
 }, (table) => [
+  index("franchises_feed_author_created_idx").on(table.createdByAuthorId, sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.publicationStatus}='published'`),
+  index("franchises_feed_created_idx").on(sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.publicationStatus}='published'`),
   index("franchises_parent_id_idx").on(table.parentId),
   index("franchises_created_by_author_id_idx").on(table.createdByAuthorId),
   index("franchises_publication_status_idx").on(table.publicationStatus),
@@ -389,6 +391,7 @@ export const aiCallLogs = pgTable(
 
 export const authors = pgTable("authors", {
   id: serial("id").primaryKey(),
+  mergedIntoAuthorId: integer("merged_into_author_id").references((): AnyPgColumn => authors.id, { onDelete: "restrict" }),
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   avatarObjectKey: text("avatar_object_key"),
@@ -396,6 +399,8 @@ export const authors = pgTable("authors", {
   avatarSourceIdentityId: integer("avatar_source_identity_id").references((): AnyPgColumn => authorAuthIdentities.id, { onDelete: "set null" }),
   avatarVersion: integer("avatar_version").notNull().default(0),
   isSystem: boolean("is_system").default(false).notNull(),
+  // Настройка временно убрана из кабинета автора; у всех пользователей на проде true.
+  // Поле и проверки видимости сохранены для возможного возвращения настройки.
   isDiscoverable: boolean("is_discoverable").default(true).notNull(),
   accessProfileId: integer("access_profile_id")
     .notNull()
@@ -406,6 +411,8 @@ export const authors = pgTable("authors", {
   }),
   ...timestamps(),
 }, (table) => [
+  index("authors_merged_into_author_idx").on(table.mergedIntoAuthorId),
+  check("authors_merge_not_self", sql`${table.mergedIntoAuthorId} is null or ${table.mergedIntoAuthorId} <> ${table.id}`),
   index("authors_access_profile_id_idx").on(table.accessProfileId),
   index("authors_name_source_identity_id_idx").on(table.nameSourceIdentityId),
   index("authors_avatar_source_identity_id_idx").on(table.avatarSourceIdentityId),
@@ -548,6 +555,7 @@ export const editorialCollections = pgTable(
     ...timestamps(),
   },
   (table) => [
+    index("editorial_collections_feed_created_idx").on(sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.publicationStatus}='published'`),
     index("editorial_collections_publication_updated_idx").on(
       table.publicationStatus,
       table.updatedAt,
@@ -1436,7 +1444,7 @@ export const userAchievements = pgTable(
       table.authorId,
       table.achievementLevelId,
     ),
-    index("user_achievements_author_awarded_at_idx").on(table.authorId, table.awardedAt),
+    index("user_achievements_author_awarded_at_idx").on(table.authorId, table.awardedAt, table.id),
     index("user_achievements_pending_announcement_idx")
       .on(table.authorId, table.awardGroupId, table.awardedAt)
       .where(sql`${table.announcedAt} is null`),
@@ -1572,6 +1580,8 @@ export const mediaItems = pgTable(
   },
   (table) => [
     index("media_items_shikimori_pending_idx").on(table.mediaType, table.id).where(sql`${table.shikimoriEnrichmentAttemptedAt} is null`),
+    index("media_items_feed_author_created_idx").on(table.createdByAuthorId, sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.publicationStatus}='published'`),
+    index("media_items_feed_created_idx").on(sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.publicationStatus}='published'`),
     index("media_items_publication_status_idx").on(table.publicationStatus),
     index("media_items_media_type_idx").on(table.mediaType),
     index("media_items_release_year_idx").on(table.releaseYear),
@@ -2302,6 +2312,7 @@ export const ratings = pgTable(
     ...timestamps(),
   },
   (table) => [
+    index("ratings_author_updated_id_idx").on(table.authorId, sql`${table.updatedAt} desc`, sql`${table.id} desc`),
     index("ratings_author_id_idx").on(table.authorId),
     uniqueIndex("ratings_overall_unique").on(table.mediaItemId, table.authorId).where(sql`${table.partId} is null`),
     uniqueIndex("ratings_part_unique").on(table.mediaItemId, table.authorId, table.partId).where(sql`${table.partId} is not null`),
@@ -2353,6 +2364,7 @@ export const authorMediaStatuses = pgTable(
     ...timestamps(),
   },
   (table) => [
+    index("author_media_statuses_author_updated_id_idx").on(table.authorId, sql`${table.updatedAt} desc`, sql`${table.id} desc`),
     unique("author_media_statuses_author_media_unique").on(table.authorId, table.mediaItemId),
     index("author_media_statuses_author_status_idx").on(table.authorId, table.status),
     index("author_media_statuses_media_item_id_idx").on(table.mediaItemId),
@@ -2408,6 +2420,8 @@ export const contributions = pgTable(
     ...timestamps(),
   },
   (table) => [
+    index("contributions_feed_author_created_idx").on(table.authorId, sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.type}='review' and ${table.status}='published'`),
+    index("contributions_feed_review_created_idx").on(sql`${table.createdAt} desc`, sql`${table.id} desc`).where(sql`${table.type}='review' and ${table.status}='published'`),
     index("contributions_status_submitted_at_idx").on(table.status, table.submittedAt),
     index("contributions_author_id_updated_at_idx").on(table.authorId, table.updatedAt),
     index("contributions_primary_media_item_id_idx").on(table.primaryMediaItemId),
@@ -2619,3 +2633,41 @@ export const analyticsSettings = pgTable("analytics_settings", {
   id: integer("id").primaryKey().default(1),
   enabled: boolean("enabled").notNull().default(false),
 }, (table) => [check("analytics_settings_singleton_check", sql`${table.id} = 1`)]);
+
+// OAuth proof grants are session-bound; no provider tokens are persisted.
+export const accountMergeGrants = pgTable("account_merge_grants", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  initiatorAuthorId: integer("initiator_author_id").notNull().references(() => authors.id),
+  initiatorSessionId: integer("initiator_session_id").notNull(),
+  secondaryAuthorId: integer("secondary_author_id").notNull().references(() => authors.id),
+  identityId: integer("identity_id").notNull(),
+  provider: text("provider").notNull(),
+  configurationRevision: uuid("configuration_revision").notNull(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  resultAuthorId: integer("result_author_id").references(() => authors.id),
+  resultSessionId: integer("result_session_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index("account_merge_grants_expiry_idx").on(t.expiresAt),
+  index("account_merge_grants_initiator_idx").on(t.initiatorAuthorId),
+  index("account_merge_grants_secondary_idx").on(t.secondaryAuthorId),
+  index("account_merge_grants_result_idx").on(t.resultAuthorId),
+  check("account_merge_grants_distinct", sql`${t.initiatorAuthorId} <> ${t.secondaryAuthorId}`),
+  check("account_merge_grants_result", sql`(${t.consumedAt} is null and ${t.resultAuthorId} is null and ${t.resultSessionId} is null) or (${t.consumedAt} is not null and ${t.resultAuthorId} is not null and ${t.resultSessionId} is not null)`),
+]);
+
+// Private operational archive: never expose through public/profile queries.
+export const accountMergeArchive = pgTable("account_merge_archive", {
+  id: serial("id").primaryKey(),
+  mergeId: uuid("merge_id").notNull().references(() => accountMergeGrants.id),
+  sourceAuthorId: integer("source_author_id").notNull().references(() => authors.id),
+  tableName: text("table_name").notNull(),
+  entityKey: text("entity_key").notNull(),
+  reason: text("reason").notNull(),
+  snapshot: jsonb("snapshot").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, t => [
+  index("account_merge_archive_merge_idx").on(t.mergeId),
+  index("account_merge_archive_entity_idx").on(t.tableName, t.entityKey),
+]);

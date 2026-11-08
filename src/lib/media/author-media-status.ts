@@ -1,4 +1,4 @@
-export const AUTHOR_MEDIA_STATUSES = ["wanted", "skipped"] as const;
+export const AUTHOR_MEDIA_STATUSES = ["wanted"] as const;
 
 export type AuthorMediaStatus = (typeof AUTHOR_MEDIA_STATUSES)[number];
 

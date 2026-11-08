@@ -1,5 +1,7 @@
 "use client"
 
+import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
+
 import { getDemoRatedCodes } from "@/lib/user-state/demo-profile"
 
 import Image from "next/image"
@@ -115,7 +117,7 @@ export function DemoAchievementsPage({
         <PublicSiteHeader {...headerProps} />
         <div className="contents media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <section
-          className="archive-paper archive-panel overflow-hidden px-2 py-6 sm:px-10 lg:px-14 lg:py-7"
+          className="archive-paper archive-panel overflow-hidden p-4 pb-3 sm:p-6 sm:pb-4"
           aria-labelledby="achievements-hero-title"
         >
           <Image
@@ -146,15 +148,7 @@ export function DemoAchievementsPage({
             }}
           />
           <div className="relative z-10">
-          <h1
-            id="achievements-hero-title"
-            className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
-          >
-            Твои ачивки
-          </h1>
-          <p className="mt-3 max-w-4xl text-base leading-7 text-stone-700 sm:text-lg">
-            Маленькие победы. Большая история
-          </p>
+          <ArchivePageHeading id="achievements-hero-title" title="Твои ачивки" description="Маленькие победы. Большая история" />
           <AuthorAchievementHeroStats
             completedCount={stats.completedCount}
             earnedCount={stats.earnedCount}
@@ -163,7 +157,7 @@ export function DemoAchievementsPage({
           </div>
         </section>
         {state == null ? (
-          <section className="archive-paper archive-panel flex flex-1 flex-col px-6 py-6 sm:px-10 lg:px-14 lg:py-7">
+          <section className="archive-paper archive-panel flex flex-1 flex-col px-4 py-6 sm:px-6 lg:py-7">
             <p className="text-sm text-stone-600">Загружаем ачивки…</p>
           </section>
         ) : (

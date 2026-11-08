@@ -12,11 +12,11 @@ export function QuizNoActiveState({ compact = false }: { compact?: boolean }) {
           className="object-contain"
         />
       </div>
-      <p className="mt-2 max-w-md font-serif text-xl leading-6 text-stone-800 sm:text-2xl sm:leading-7">
-        Новый квиз уже готовится.
+      <p className="media-carrier-font-pc-steam mt-2 max-w-md text-xl leading-6 text-stone-800 sm:text-2xl sm:leading-7">
+        Новый квиз уже готовится
       </p>
       <p className="mt-2 max-w-md text-sm leading-5 text-stone-500 sm:text-base sm:leading-6">
-        Загляни чуть позже — хорошие вопросы всегда возвращаются.
+        Загляни чуть позже — хорошие вопросы всегда возвращаются
       </p>
     </div>
   );

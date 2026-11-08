@@ -15,7 +15,7 @@ import {
   getAuthorReviewSummary,
   getLatestPublishedReviewCard,
 } from "@/db/queries/contribution-reviews";
-import { getLatestArchiveFeed } from "@/db/queries/archive-feed";
+import { getFeedPage, getFeedMediaTiles } from "@/db/queries/feed";
 import { getRandomPublishedFranchisePreview } from "@/db/queries/franchises";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getPublishedEditorialCollections } from "@/db/queries/editorial-collections";
@@ -171,7 +171,7 @@ function DailyRecommendation({
 
         {item ? (
           <div className="flex flex-1 flex-col pt-1">
-            <h3 className="font-serif text-2xl leading-tight text-stone-950">{resolveMediaItemDisplayTitles(item).displayTitle}</h3>
+            <h3 className="media-carrier-font-pc-steam text-2xl leading-tight text-stone-950">{resolveMediaItemDisplayTitles(item).displayTitle}</h3>
             <p className="mt-1 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-600">
               {mediaTypeName ?? item.mediaType}
               {item.releaseYear ? ` · ${item.releaseYear}` : ""}
@@ -307,7 +307,9 @@ export default async function MainPage() {
   const latestReview = await getLatestPublishedReviewCard(
     enabledMediaTypeCodes,
   );
-  const archiveFeed = await getLatestArchiveFeed(mediaTypes.filter((mediaType) => mediaType.isEnabled));
+  const archiveFeedPage = await getFeedPage({ publicOnly: true, pageSize: 5, authorId: author?.id, mediaTypeCodes: enabledMediaTypeCodes });
+  const archiveFeed = archiveFeedPage.items;
+  const archiveFeedTiles = await getFeedMediaTiles(archiveFeed, author?.id);
   const latestReviewMediaTypeName = latestReview
     ? mediaTypes.find((mediaType) => mediaType.code === latestReview.mediaType)?.name ?? null
     : null;
@@ -525,7 +527,7 @@ export default async function MainPage() {
 
         <EditorialCollectionsStrip collections={editorialCollections} />
 
-        <ArchiveFeed items={archiveFeed} />
+        <ArchiveFeed items={archiveFeed} tiles={archiveFeedTiles} currentAuthor={author ? { id: author.id, name: author.name, code: author.code } : null} />
 
         <Suspense fallback={<RandomFranchiseSectionFallback />}>
           <RandomFranchiseSection promise={randomFranchisePromise} />

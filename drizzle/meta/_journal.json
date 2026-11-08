@@ -8,6 +8,41 @@
       "when": 1793811697130,
       "tag": "0000_baseline",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1794045444713,
+      "tag": "0001_remove_skipped_media_status",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1794048270381,
+      "tag": "0002_feed_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1794049905200,
+      "tag": "0003_feed_friends_filter_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1794050367155,
+      "tag": "0004_feed_achievement_order",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1794140503387,
+      "tag": "0005_account_merge",
+      "breakpoints": true
     }
   ]
 }

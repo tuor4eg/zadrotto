@@ -232,6 +232,23 @@ function ActivityLogDetails({
           ].filter(Boolean).join(" · ")}
         </div>
       ) : null}
+      {item.action === "author.accounts.merge.failed" ? (
+        <div className="break-words font-mono text-[11px] text-stone-600">
+          {([
+            ["incidentId", "Код обращения"],
+            ["stage", "Этап"],
+            ["sqlState", "PostgreSQL"],
+            ["driverCode", "Драйвер"],
+            ["causeName", "Причина"],
+            ["constraint", "Ограничение"],
+            ["table", "Таблица"],
+            ["errorName", "Ошибка"],
+          ] as const).flatMap(([key, label]) => {
+            const value = item.metadata?.[key];
+            return typeof value === "string" && value ? [`${label}: ${value}`] : [];
+          }).join(" · ")}
+        </div>
+      ) : null}
       {item.ipAddress || item.userAgent ? (
         <div className="break-words">
           {[item.ipAddress ? `IP: ${item.ipAddress}` : null, item.userAgent]

@@ -1,3 +1,4 @@
+import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
 import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
@@ -25,16 +26,11 @@ export default async function CollectionsPage() {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
           <div className="archive-paper archive-panel flex min-h-0 flex-1 flex-col overflow-hidden">
-            <header className="shrink-0 p-5 pb-3 sm:p-6 sm:pb-4">
-              <h1 className="media-carrier-font-pc-steam text-3xl leading-none text-stone-950">
-                Подборки
-              </h1>
-              <p className="mt-2 text-sm text-stone-600">
-                Редакционные маршруты по архиву
-              </p>
+            <header className="shrink-0 p-4 pb-3 sm:p-6 sm:pb-4">
+              <ArchivePageHeading title="Подборки" description="Редакционные маршруты по архиву" />
             </header>
 
-            <div className="min-h-0 flex-1 px-5 pb-5 sm:px-6 sm:pb-6">
+            <div className="min-h-0 flex-1 px-4 pb-5 sm:px-6 sm:pb-6">
               {items.length === 0 ? (
                 <p className="text-sm text-stone-500">Опубликованных подборок пока нет.</p>
               ) : (

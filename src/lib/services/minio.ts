@@ -190,15 +190,15 @@ function buildS3AuthorizationHeader(input: {
   amzDate: string;
   payloadHash: string;
   contentType?: string;
+  ifNoneMatch?: "*";
 }) {
   const dateStamp = getDateStamp(input.amzDate);
   const host = input.url.host;
-  const signedHeaders = input.contentType
-    ? "content-type;host;x-amz-content-sha256;x-amz-date"
-    : "host;x-amz-content-sha256;x-amz-date";
+  const signedHeaders = [input.contentType ? "content-type" : null, "host", input.ifNoneMatch ? "if-none-match" : null, "x-amz-content-sha256", "x-amz-date"].filter(Boolean).join(";");
   const canonicalHeaders = [
     input.contentType ? `content-type:${input.contentType}` : null,
     `host:${host}`,
+    input.ifNoneMatch ? `if-none-match:${input.ifNoneMatch}` : null,
     `x-amz-content-sha256:${input.payloadHash}`,
     `x-amz-date:${input.amzDate}`,
     "",
@@ -253,7 +253,8 @@ export async function fetchS3Object(input: {
   const payloadHash = sha256Hex("");
   const response = await fetch(url, {
     method: "GET",
-    signal: input.signal,
+    redirect: "error",
+    signal: AbortSignal.any([AbortSignal.timeout(15_000), ...(input.signal ? [input.signal] : [])]),
     headers: {
       Authorization: buildS3AuthorizationHeader({
         config,
@@ -272,6 +273,69 @@ export async function fetchS3Object(input: {
   }
 
   return response;
+}
+
+export type S3ObjectProbeResult =
+  | { status: "exists" }
+  | { status: "missing" }
+  | { status: "error"; code: string; retryable: boolean; fatal: boolean };
+
+/** Probe the object itself: bucket listing permissions are deliberately unnecessary. */
+export async function probeS3Object(input: {
+  objectKey: string;
+  env?: S3StorageEnv;
+  signal?: AbortSignal;
+}): Promise<S3ObjectProbeResult> {
+  const failure = (code: string, retryable = false): S3ObjectProbeResult =>
+    ({ status: "error", code, retryable, fatal: !retryable });
+  const config = getS3StorageConfig(input.env);
+  if (!config) return failure("StorageNotConfigured");
+  const signal = AbortSignal.any([AbortSignal.timeout(10_000), ...(input.signal ? [input.signal] : [])]);
+  try {
+    const url = getS3ObjectUrl(config, input.objectKey);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return failure("InvalidStorageConfig");
+    const request = (method: "HEAD" | "GET") => {
+      const amzDate = formatAmzDate(new Date());
+      const payloadHash = sha256Hex("");
+      return fetch(url, { method, redirect: "manual", signal, headers: {
+        Authorization: buildS3AuthorizationHeader({ config, method, url, amzDate, payloadHash }),
+        "X-Amz-Content-Sha256": payloadHash, "X-Amz-Date": amzDate,
+      } });
+    };
+    let response = await request("HEAD");
+    if (response.ok) { await response.body?.cancel(); return { status: "exists" }; }
+    const headerCode = response.headers.get("x-amz-error-code");
+    if (headerCode === "NoSuchBucket") return failure(headerCode);
+    if (response.status === 404 && headerCode === "NoSuchKey") return { status: "missing" };
+    if (response.status === 404) {
+      await response.body?.cancel();
+      response = await request("GET");
+      if (response.ok) { await response.body?.cancel(); return { status: "exists" }; }
+      // Bound error XML even when a proxy returns an unexpected or unbounded body.
+      const reader = response.body?.getReader();
+      const chunks: Uint8Array[] = [];
+      let length = 0;
+      if (reader) {
+        try {
+          while (length < 16_384) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunks.push(value.subarray(0, 16_384 - length));
+            length += value.byteLength;
+          }
+        } finally { await reader.cancel(); }
+      }
+      const code = Buffer.concat(chunks).toString("utf8").match(/<Code>\s*([^<]+)\s*<\/Code>/)?.[1]?.trim();
+      if (code === "NoSuchBucket") return failure(code);
+      if (response.status === 404 && code === "NoSuchKey") return { status: "missing" };
+      return failure(code ?? `Http${response.status}`, response.status === 429 || response.status >= 500);
+    }
+    await response.body?.cancel();
+    return failure(headerCode ?? `Http${response.status}`, response.status === 429 || response.status >= 500);
+  } catch (error) {
+    if (error instanceof TypeError && /invalid url/i.test(error.message)) return failure("InvalidStorageConfig");
+    return failure(signal.aborted ? "AbortedOrTimeout" : "NetworkError", true);
+  }
 }
 
 export class S3BucketAccessError extends Error {
@@ -385,18 +449,26 @@ export async function uploadS3Object(input: {
   body: Buffer;
   contentType: string;
   env?: S3StorageEnv;
+  signal?: AbortSignal;
+  ifNoneMatch?: "*";
 }) {
   const config = getS3StorageConfig(input.env);
 
   if (!config) {
-    throw new Error("S3 storage is not configured.");
+    throw new S3UploadError(400);
   }
 
-  const url = getS3ObjectUrl(config, input.objectKey);
+  let url: URL;
+  try {
+    url = getS3ObjectUrl(config, input.objectKey);
+    if (url.protocol !== "https:" && url.protocol !== "http:") throw new Error("Invalid storage protocol");
+  } catch { throw new S3UploadError(400); }
   const amzDate = formatAmzDate(new Date());
   const payloadHash = sha256Hex(input.body);
   const response = await fetch(url, {
     method: "PUT",
+    redirect: "error",
+    signal: AbortSignal.any([AbortSignal.timeout(15_000), ...(input.signal ? [input.signal] : [])]),
     headers: {
       Authorization: buildS3AuthorizationHeader({
         config,
@@ -405,7 +477,9 @@ export async function uploadS3Object(input: {
         amzDate,
         payloadHash,
         contentType: input.contentType,
+        ifNoneMatch: input.ifNoneMatch,
       }),
+      ...(input.ifNoneMatch ? { "If-None-Match": input.ifNoneMatch } : {}),
       "Content-Type": input.contentType,
       "X-Amz-Content-Sha256": payloadHash,
       "X-Amz-Date": amzDate,

@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo, useSyncExternalStore } from "react"
+import { useEffect, useMemo, useSyncExternalStore } from "react"
 
 import {
   getDemoRatingsCount,
@@ -12,9 +12,11 @@ import {
   EMPTY_DEMO_PROFILE_SNAPSHOT,
   getDemoProfileSnapshot,
   subscribeDemoProfile,
+  migrateStoredDemoProfile,
 } from "@/lib/user-state/demo-storage"
 
 export function useDemoProfile() {
+  useEffect(() => { migrateStoredDemoProfile() }, [])
   const snapshot = useSyncExternalStore(
     subscribeDemoProfile,
     getDemoProfileSnapshot,

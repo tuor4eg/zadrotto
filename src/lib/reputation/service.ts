@@ -107,6 +107,7 @@ async function getFact(tx: DbTransaction, event: PersistedDomainEvent): Promise<
 async function promoteTrustedAuthorIfEligible(tx: DbTransaction, authorId: number) {
   const [candidate] = await tx.select({
     blockedAt: authors.blockedAt,
+    mergedIntoAuthorId: authors.mergedIntoAuthorId,
     currentProfileCode: authorAccessProfiles.code,
     level: authorProgress.currentLevel,
     trustPoints: authorTrust.trustPoints,
@@ -119,7 +120,7 @@ async function promoteTrustedAuthorIfEligible(tx: DbTransaction, authorId: numbe
     .innerJoin(authorProgress, eq(authorProgress.authorId, authors.id))
     .innerJoin(authorTrust, eq(authorTrust.authorId, authors.id))
     .where(eq(authors.id, authorId)).limit(1);
-  if (!candidate || candidate.blockedAt || candidate.suppressedAt || candidate.currentProfileCode !== REGULAR_AUTHOR_ACCESS_PROFILE_CODE) return null;
+  if (!candidate || candidate.blockedAt || candidate.mergedIntoAuthorId !== null || candidate.suppressedAt || candidate.currentProfileCode !== REGULAR_AUTHOR_ACCESS_PROFILE_CODE) return null;
   const [settings] = await tx.select().from(trustSettings).where(eq(trustSettings.id, 1)).limit(1);
   if (!settings?.autoPromotionEnabled || !candidate.firstQualifyingActionAt) return null;
   const decisions = candidate.successfulOutcomes + candidate.rejectedOutcomes;
@@ -133,7 +134,7 @@ async function promoteTrustedAuthorIfEligible(tx: DbTransaction, authorId: numbe
     .where(eq(authorAccessProfiles.code, TRUSTED_AUTHOR_ACCESS_PROFILE_CODE)).limit(1);
   if (!trustedProfile) return null;
   const [promoted] = await tx.update(authors).set({ accessProfileId: trustedProfile.id, updatedAt: new Date() })
-    .where(and(eq(authors.id, authorId), eq(authors.accessProfileId, sql`(select id from author_access_profiles where code = ${REGULAR_AUTHOR_ACCESS_PROFILE_CODE})`), isNull(authors.blockedAt)))
+    .where(and(eq(authors.id, authorId), eq(authors.accessProfileId, sql`(select id from author_access_profiles where code = ${REGULAR_AUTHOR_ACCESS_PROFILE_CODE})`), isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId)))
     .returning({ id: authors.id });
   if (promoted) {
     await tx.update(authorTrust).set({ autoTrustedAt: new Date(), updatedAt: new Date() }).where(eq(authorTrust.authorId, authorId));
@@ -166,7 +167,7 @@ export async function promoteEligibleTrustedAuthors(jobGuard?: SnapshotJobGuard)
         where trusted_profile.code = ${TRUSTED_AUTHOR_ACCESS_PROFILE_CODE}
           and settings.id = 1 and system.id = 1 and system.status = 'enabled'
           and settings.auto_promotion_enabled
-          and authors.blocked_at is null and trust.auto_trust_suppressed_at is null
+          and authors.blocked_at is null and authors.merged_into_author_id is null and trust.auto_trust_suppressed_at is null
           and progress.current_level >= settings.minimum_level
           and trust.trust_points >= settings.minimum_trust_points
           and trust.successful_outcomes + trust.rejected_outcomes > 0
@@ -211,7 +212,17 @@ export async function applyReputationEvent(tx: DbTransaction, event: PersistedDo
   if (!xpRule[0] || !trustRule[0]) return;
   const successful = fact.outcome !== "rejected";
   const rewardKey = `${fact.actionCode}:${fact.authorId}:${fact.sourceType}:${fact.sourceKey}`;
-  const [reward] = successful ? await tx.insert(authorActionLedger).values({
+  // A merge preserves the primary's historical keys. Detect existing facts by meaning
+  // as well, so an older initialization key cannot earn a second successful outcome.
+  const [existing] = successful ? await tx.execute(sql`select
+    exists(select 1 from author_action_ledger where author_id = ${fact.authorId}
+      and action_code = ${fact.actionCode} and source_type = ${fact.sourceType}
+      and source_key = ${fact.sourceKey} and entry_kind = 'reward') as reward,
+    exists(select 1 from author_action_ledger where author_id = ${fact.authorId}
+      and action_code = ${fact.actionCode} and source_type = ${fact.sourceType}
+      and source_key = ${fact.sourceKey} and entry_kind = 'outcome' and outcome <> 'rejected') as success
+  `) : [];
+  const [reward] = successful && !existing?.reward ? await tx.insert(authorActionLedger).values({
     actionCode: fact.actionCode,
     authorId: fact.authorId,
     entryKind: "reward",
@@ -228,7 +239,7 @@ export async function applyReputationEvent(tx: DbTransaction, event: PersistedDo
   const outcomeIdempotencyKey = successful
     ? `outcome:success:${rewardKey}`
     : `outcome:rejected:${event.id}:${fact.actionCode}`;
-  const [outcome] = trustRule[0].countsTowardTrust
+  const [outcome] = trustRule[0].countsTowardTrust && (!successful || !existing?.success)
     ? await tx.insert(authorActionLedger).values({
       actionCode: fact.actionCode,
       authorId: fact.authorId,

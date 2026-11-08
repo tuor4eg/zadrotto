@@ -3,7 +3,7 @@ import { fetchBggXml } from "@/lib/providers/bgg-fetch";
 export { normalizeBggId, parseBggXml } from "@/lib/providers/bgg-xml";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate, ProviderSearchOptions } from "@/lib/covers/types";
-import { getActiveProviderRequestTimeoutMs } from "./shared";
+import { getActiveProviderRequestTimeoutMs, withProviderTimeout } from "./shared";
 import { BggRequestError, createBggRuntime } from "./bgg-runtime";
 
 const TYPES = "boardgame,boardgameexpansion";
@@ -29,7 +29,7 @@ export function createBggProvider(dependencies: { fetch?: typeof fetch; runtime?
   function context(options: ProviderSearchOptions) {
     const token = options.providerCredentials?.bgg?.accessToken?.trim();
     if (!token) throw new BggRequestError("provider-unavailable", 401, 60, true);
-    return { token, bypassCache: options.bypassCache === true, signal: AbortSignal.timeout(options.requestTimeoutMs ?? getActiveProviderRequestTimeoutMs()) };
+    return { token, bypassCache: options.bypassCache === true, signal: withProviderTimeout(options.requestTimeoutMs ?? getActiveProviderRequestTimeoutMs()) };
   }
   async function request(path: "search" | "thing", params: Record<string, string>, ctx: ReturnType<typeof context>) {
     return parseBggXml(await fetchBggXml(path, params, ctx, { fetch: fetchImplementation, runtime }));

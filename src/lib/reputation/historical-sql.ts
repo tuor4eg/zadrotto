@@ -5,13 +5,20 @@ import { sql } from "drizzle-orm";
 /** Canonical read-only stream shared by preview and production initialization. */
 export function historicalReputationFactsSql() {
   return sql`
-    with creator_links as (
+    with recursive author_aliases as (
+      select id as source_author_id, id as canonical_author_id, merged_into_author_id
+      from authors
+      union
+      select aliases.source_author_id, target.id, target.merged_into_author_id
+      from author_aliases aliases
+      inner join authors target on target.id = aliases.merged_into_author_id
+    ), creator_links as (
       select links.media_item_id, links.franchise_id, links.created_by_author_id,
         row_number() over (partition by links.franchise_id order by links.created_at, links.media_item_id) as creator_link_number
       from media_item_franchises links
       inner join franchises series on series.id = links.franchise_id
       where links.created_by_author_id is not null and links.created_by_author_id = series.created_by_author_id
-    )
+    ), facts as (
     select ratings.author_id, 'rating.created'::text action_code, 'rating'::text source_type,
       ratings.id::text source_key, 'published'::text outcome, ratings.created_at occurred_at
     from ratings
@@ -54,5 +61,11 @@ export function historicalReputationFactsSql() {
     from domain_events events
     where events.type in ('media-franchise.removal.approved', 'media-franchise.removal.rejected', 'media-franchise.removed')
       and events.payload->>'authorId' ~ '^[1-9][0-9]*$'
+    )
+    select aliases.canonical_author_id as author_id, facts.action_code, facts.source_type,
+      facts.source_key, facts.outcome, facts.occurred_at
+    from facts
+    inner join author_aliases aliases on aliases.source_author_id = facts.author_id
+      and aliases.merged_into_author_id is null
   `;
 }

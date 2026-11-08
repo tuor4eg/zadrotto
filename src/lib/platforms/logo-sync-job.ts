@@ -34,6 +34,9 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
     const run=await assertPlatformLogoJobLease(lease);
     if(!run.adminId)throw new JobError("admin-required","Запуск должен принадлежать администратору.",{retryable:false});
     const adminId=run.adminId;
+    const executionStartedAt=Date.now();
+    const selectedProvider=payload.provider;
+    const includesProvider=(provider:string)=>!selectedProvider||provider===selectedProvider;
     let cp=payload.checkpoint;
     if(!cp) {
       const scopeIds=await getPlatformLogoScope(payload.platformId);
@@ -55,6 +58,7 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
     // Bound each worker execution; the durable stage advances independently for each platform.
     for(let processed=0;processed<50;processed++) {
       signal.throwIfAborted();
+      if(Date.now()-executionStartedAt>=30_000) {await progress(lease,payload,cp);defer();}
       if(cp.position>=cp.queue.length) {
         if(cp.retryIds.length) {
           const ready=cp.retryIds.filter(id=>Date.parse(cp.retryAt[id])<=Date.now());
@@ -71,10 +75,10 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
         await assertPlatformLogoJobLease(lease);
         if(cp.stage==="identity") {
           const bindings=await getPlatformBindings(platformId);
-          const missing=bindings.find(row=>!row.externalId&&(row.provider==="igdb"||row.provider==="rawg")&&!cp!.directory[row.provider].complete);
+          const missing=bindings.find(row=>includesProvider(row.provider)&&!row.externalId&&(row.provider==="igdb"||row.provider==="rawg")&&!cp!.directory[row.provider].complete);
           if(missing) {cp.stage="catalogue";cp.currentProvider=missing.provider as PlatformProvider;}
           else {
-            const ids=await resolveMissingPlatformProviderIds(platformId,lease);
+            const ids=await resolveMissingPlatformProviderIds(platformId,lease,selectedProvider);
             if(ids.missing||ids.ambiguous)await logSystemActivity({action:"media.platform-logos-sync.progress",entityType:"job-run",entityId:runId,
               message:`Платформа #${platformId}: пропущено ID без точного совпадения — ${ids.missing}, неоднозначных — ${ids.ambiguous}.`,
               metadata:{platformId,...ids}});
@@ -95,7 +99,7 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
         }
         if(cp.stage==="profiles") {
           const bindings=await getPlatformBindings(platformId);
-          const pending=bindings.find(row=>row.externalId&&(row.provider==="igdb"||row.provider==="rawg")&&
+          const pending=bindings.find(row=>includesProvider(row.provider)&&row.externalId&&(row.provider==="igdb"||row.provider==="rawg")&&
             (!row.profileFetchedAt||row.profileFetchedAt.getTime()<(payload.force?Date.parse(cp!.startedAt):Date.now()-day)));
           if(pending) {
             const provider=pending.provider as PlatformProvider;
@@ -112,6 +116,12 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
         if(cp.stage==="images") {
           const images=await getMappedPlatformLogoProfiles([platformId],cp.afterImageKey);
           for(const profile of images) {
+            if(!includesProvider(profile.provider)) {
+              cp.afterImageKey=`${profile.provider}:${profile.externalId}`;
+              await checkpointPlatformLogoJob(lease,payload);
+              continue;
+            }
+            if(Date.now()-executionStartedAt>=30_000) {await progress(lease,payload,cp);defer();}
             signal.throwIfAborted();
             try {await saveProviderPlatformImage({lease,payload,profile,signal});}
             catch(error) {
@@ -144,8 +154,9 @@ export const platformLogosSyncHandler:JobHandlerDefinition<PlatformLogoSyncPaylo
         else cp.failedIds.push(platformId);
         await logSystemActivity({action:"media.platform-logos-sync.progress",entityType:"job-run",entityId:runId,
           message:`Не удалось обработать логотип платформы #${platformId}; ${attempts<3?"повтор после остальных платформ":"повторы исчерпаны"}.`,
-          metadata:{platformId,attempts}});
+          metadata:{platformId,attempts,stage:cp.stage,provider:cp.currentProvider??null,error:error instanceof Error?error.name:"UnknownError"}});
         advance(cp);await checkpointPlatformLogoJob(lease,payload);
+        defer();
       }
     }
     await progress(lease,payload,cp);defer();

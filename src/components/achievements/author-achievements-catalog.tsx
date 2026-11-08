@@ -1,4 +1,4 @@
-import { AchievementAwardHistory } from "@/components/achievements/achievement-award-history"
+import { AchievementHistoryLayout } from "@/components/achievements/achievement-history-layout"
 import { AuthorAchievementGallery } from "@/components/achievements/author-achievement-gallery"
 import type { AchievementShowcaseItem } from "@/components/achievements/achievement-card"
 
@@ -8,11 +8,8 @@ export function AuthorAchievementsCatalog({
   items: AchievementShowcaseItem[]
 }) {
   return (
-    <div className="grid min-h-0 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,24rem)]">
+    <AchievementHistoryLayout items={items}>
       <AuthorAchievementGallery items={items} />
-      <div className="min-h-0 lg:h-0 lg:min-h-full">
-        <AchievementAwardHistory items={items} />
-      </div>
-    </div>
+    </AchievementHistoryLayout>
   )
 }

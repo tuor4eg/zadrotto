@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react"
+import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react"
 import { createPortal } from "react-dom"
 import { Check, ChevronDown } from "lucide-react"
 
@@ -9,6 +9,8 @@ import { cn } from "@/lib/common/utils"
 type ArchiveSelectOption<TValue extends string> = {
   icon?: React.ReactNode
   label: string
+  group?: string
+  indent?: boolean
   value: TValue
 }
 
@@ -199,16 +201,20 @@ export function ArchiveSelect<TValue extends string>({
             style={{
               left: menuLayout.left,
               maxHeight: menuLayout.maxHeight,
+              scrollbarGutter: "auto",
               top: menuLayout.top,
               width: menuLayout.width,
             }}
           >
-            {options.map((option) => {
+            {options.map((option, index) => {
               const selected = option.value === value
 
               return (
+                <Fragment key={option.value}>
+                {option.group && option.group !== options[index - 1]?.group ? (
+                  <div role="presentation" className="px-2.5 pb-1 pt-3 text-xs font-semibold text-stone-500">{option.group}</div>
+                ) : null}
                 <button
-                  key={option.value}
                   type="button"
                   role="option"
                   aria-selected={selected}
@@ -218,6 +224,7 @@ export function ArchiveSelect<TValue extends string>({
                   }}
                   className={cn(
                     "flex h-9 w-full items-center gap-2 rounded-sm px-2.5 text-left font-mono text-xs uppercase tracking-[0.1em] transition-colors",
+                    (option.group || option.indent) && "pl-5",
                     selected
                       ? "bg-red-900/10 text-stone-950"
                       : "text-stone-700 hover:bg-stone-200/60 hover:text-stone-950",
@@ -244,11 +251,11 @@ export function ArchiveSelect<TValue extends string>({
                     >
                       {option.icon}
                     </span>
-                  ) : (
+                  ) : option.icon ? (
                     <span className="grid size-4 shrink-0 place-items-center text-stone-600">
                       {option.icon}
                     </span>
-                  )}
+                  ) : null}
                   <span className="min-w-0 flex-1 truncate">{option.label}</span>
                   <Check
                     className={cn(
@@ -257,6 +264,7 @@ export function ArchiveSelect<TValue extends string>({
                     )}
                   />
                 </button>
+                </Fragment>
               )
             })}
           </div>,
@@ -279,9 +287,11 @@ export function ArchiveSelect<TValue extends string>({
           triggerClassName,
         )}
       >
-        <span className="grid size-4 shrink-0 place-items-center text-stone-600">
-          {selectedOption.icon}
-        </span>
+        {selectedOption.icon ? (
+          <span className="grid size-4 shrink-0 place-items-center text-stone-600">
+            {selectedOption.icon}
+          </span>
+        ) : null}
         <span className={compact ? "sr-only" : "truncate"}>{selectedOption.label}</span>
         {compact ? null : <ChevronDown className="ml-auto size-3.5 shrink-0 text-stone-500" />}
       </button>

@@ -26,7 +26,7 @@ export function AuthorAchievementGallery({ items }: { items: AchievementShowcase
   )
 
   return (
-    <section className="archive-paper archive-panel flex h-full min-h-0 flex-col px-2 py-6 sm:px-10 lg:px-14 lg:py-7" aria-label="Список ачивок">
+    <section className="archive-paper archive-panel flex h-full min-h-0 flex-col px-4 py-6 sm:px-6 lg:py-7" aria-label="Список ачивок">
       <div className="flex flex-wrap gap-2" role="tablist" aria-label="Статус ачивок">
         {GALLERY_FILTERS.map((item) => {
           const selected = filter === item.id

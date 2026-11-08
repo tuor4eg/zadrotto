@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
-import { EyeOff, Heart } from "lucide-react";
+import { Heart } from "lucide-react";
 
 import {
   toggleAuthorMediaStatusAction,
@@ -9,6 +9,7 @@ import {
 } from "@/app/media-status/actions";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { cn } from "@/lib/common/utils";
+import { RATING_PILL_SHADOW_CLASS_NAME, RATING_PILL_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 import type { AuthorMediaStatus } from "@/lib/media/author-media-status";
 import { hasDemoRating } from "@/lib/user-state/demo-profile";
 import { toggleDemoStatus } from "@/lib/user-state/demo-actions";
@@ -23,12 +24,6 @@ const STATUS_OPTIONS = [
     label: "В желаемое",
     activeLabel: "Убрать из желаемого",
     Icon: Heart,
-  },
-  {
-    status: "skipped",
-    label: "Пропустить",
-    activeLabel: "Отменить пропуск",
-    Icon: EyeOff,
   },
 ] as const;
 
@@ -73,15 +68,15 @@ export function AuthorMediaStatusControls({
   }
 
   return (
-    <div className={cn(variant === "detail" && "mt-2", variant === "preview" && "w-full", className)}>
-      <div className={variant === "preview" ? "grid grid-cols-2 gap-2" : variant === "detail" ? "flex gap-2" : "flex gap-1"}>
+    <div className={cn(variant === "detail" && "mt-2", variant === "preview" && "w-14 shrink-0", className)}>
+      <div className={variant === "preview" ? "grid grid-cols-1 gap-2" : variant === "detail" ? "flex gap-2" : "flex gap-1"}>
         {STATUS_OPTIONS.map(({ status, label, activeLabel, Icon }) => {
           const active = effectiveStatus === status;
           const actionLabel = active ? activeLabel : label;
           if (isDemo) {
             return (
               <div key={status} className={variant === "preview" ? "min-w-0" : undefined}>
-                <ArchiveTooltip className={variant === "preview" ? "w-full" : undefined} label={actionLabel} side="bottom">
+                <ArchiveTooltip className={variant === "preview" ? "w-full" : undefined} label={actionLabel} side="bottom" portal={variant === "tile"} align={variant === "tile" ? "start" : "center"}>
                   <button
                     type="button"
                     disabled={disabled}
@@ -90,19 +85,21 @@ export function AuthorMediaStatusControls({
                     onClick={() => handleDemoToggle(status)}
                     className={`inline-flex items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                       variant === "preview"
-                        ? "h-9 w-full rounded-md"
+                        ? "size-14 rounded-md"
                         : variant === "detail"
                           ? "size-9 rounded-md"
-                        : "size-7 rounded-full shadow-sm backdrop-blur-[1px]"
+                        : "size-7 rounded-full backdrop-blur-[1px]"
                     } ${
                       active
-                        ? "border-red-900/40 bg-red-900/10 text-red-950"
+                        ? variant === "tile"
+                          ? `${RATING_PILL_SHADOW_CLASS_NAME} border-red-900/30 bg-stone-100/75 text-red-900 [--rating-glow:rgba(127,29,29,0.35)] hover:brightness-125`
+                          : "border-red-900/40 bg-red-900/10 text-red-950"
                         : variant === "detail" || variant === "preview"
                           ? "border-stone-300/80 bg-stone-50/50 text-stone-700 hover:border-stone-700 hover:text-stone-950"
-                          : "border-stone-50/40 bg-stone-950/62 text-stone-50 hover:border-stone-50/80 hover:bg-stone-950/80"
+                          : `${RATING_PILL_TONE_CLASS_NAMES.empty} ${RATING_PILL_SHADOW_CLASS_NAME} border-[color:var(--rating-author-border)] hover:brightness-125`
                     }`}
                   >
-                    <Icon className={`${variant === "tile" ? "size-3.5" : "size-4"} ${active ? "fill-current" : ""}`} />
+                    <Icon className={`${variant === "tile" ? "size-3.5" : variant === "preview" ? "size-6" : "size-4"} ${active ? "fill-current" : ""}`} />
                   </button>
                 </ArchiveTooltip>
               </div>
@@ -113,7 +110,7 @@ export function AuthorMediaStatusControls({
             <form key={status} action={action} className={variant === "preview" ? "min-w-0" : undefined}>
               <input type="hidden" name="mediaItemCode" value={mediaItemCode} />
               <input type="hidden" name="status" value={status} />
-              <ArchiveTooltip className={variant === "preview" ? "w-full" : undefined} label={actionLabel} side="bottom">
+              <ArchiveTooltip className={variant === "preview" ? "w-full" : undefined} label={actionLabel} side="bottom" portal={variant === "tile"} align={variant === "tile" ? "start" : "center"}>
                 <button
                   type="submit"
                   disabled={disabled}
@@ -121,19 +118,21 @@ export function AuthorMediaStatusControls({
                   aria-pressed={active}
                   className={`inline-flex items-center justify-center border transition-colors disabled:cursor-not-allowed disabled:opacity-45 ${
                     variant === "preview"
-                      ? "h-9 w-full rounded-md"
+                      ? "size-14 rounded-md"
                       : variant === "detail"
                         ? "size-9 rounded-md"
-                      : "size-7 rounded-full shadow-sm backdrop-blur-[1px]"
+                      : "size-7 rounded-full backdrop-blur-[1px]"
                   } ${
                     active
-                      ? "border-red-900/40 bg-red-900/10 text-red-950"
+                      ? variant === "tile"
+                          ? `${RATING_PILL_SHADOW_CLASS_NAME} border-red-900/30 bg-stone-100/75 text-red-900 [--rating-glow:rgba(127,29,29,0.35)] hover:brightness-125`
+                          : "border-red-900/40 bg-red-900/10 text-red-950"
                       : variant === "detail" || variant === "preview"
                         ? "border-stone-300/80 bg-stone-50/50 text-stone-700 hover:border-stone-700 hover:text-stone-950"
-                        : "border-stone-50/40 bg-stone-950/62 text-stone-50 hover:border-stone-50/80 hover:bg-stone-950/80"
+                        : `${RATING_PILL_TONE_CLASS_NAMES.empty} ${RATING_PILL_SHADOW_CLASS_NAME} border-[color:var(--rating-author-border)] hover:brightness-125`
                   }`}
                 >
-                  <Icon className={`${variant === "tile" ? "size-3.5" : "size-4"} ${active ? "fill-current" : ""}`} />
+                  <Icon className={`${variant === "tile" ? "size-3.5" : variant === "preview" ? "size-6" : "size-4"} ${active ? "fill-current" : ""}`} />
                 </button>
               </ArchiveTooltip>
             </form>

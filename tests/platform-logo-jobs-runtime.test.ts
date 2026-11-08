@@ -32,7 +32,7 @@ test("platform logo jobs resume catalogue and image checkpoints under their work
         for (const statement of readFileSync(`drizzle-archive/pre-baseline/${file}`, "utf8").replaceAll('"public".', `"${schema}".`).split("--> statement-breakpoint")) await tx.unsafe(statement);
       });
     }
-    await client.unsafe(`CREATE TABLE provider_credentials(provider_code text,encrypted_payload text)`);
+    await client.unsafe(`CREATE TABLE provider_credentials(provider_code text,encrypted_payload text,purpose text DEFAULT 'content')`);
     const queries=await import('../src/db/queries/platform-logo-jobs');
     const {platformProviderApi}=await import('../src/lib/platforms/provider-api');
     const {platformLogosSyncHandler}=await import('../src/lib/platforms/logo-sync-job');
@@ -113,6 +113,7 @@ test("platform logo jobs resume catalogue and image checkpoints under their work
           afterImageKey:'',retryIds:[],retryAt:{},attempts:{},doneIds:[],failedIds:[],startedAt:now,initialMappedIds:2};
         images.saveProviderPlatformImage=async(input)=>{if(input.profile.externalId==='902')throw new Error('image unavailable');return 'cached';};
         const next=await start({checkpoint:cp});
+        assert.equal(await tick(next),1,'a failed network operation yields before trying the next platform');
         assert.equal(await tick(next),2);
         const state=await saved(next);
         assert.deepEqual(state.checkpoint.retryIds,[bad.id]);
@@ -124,6 +125,29 @@ test("platform logo jobs resume catalogue and image checkpoints under their work
         assert.equal((await client`select imported_logo_object_key from platforms where id=${good.id}`)[0].imported_logo_object_key!==null,true);
         assert.equal(profileCalls,1,'image retries never refetch successful game platform profiles');
         await finish(next);images.saveProviderPlatformImage=previousStore;
+      });
+      await t.test('IGDB-only sync applies a logo despite an unavailable RAWG catalogue',async()=>{
+        const [isolated]=await client`insert into platforms(slug,name) values('igdb-only','IGDB Only') returning id`;
+        await client`insert into provider_platform_mappings(provider,media_type,external_platform_name,normalized_external_platform_name,platform_id,external_platform_id)
+          values('igdb','game','Ready Image','ready image',${isolated.id},'903'),('rawg','game','Unavailable RAWG','unavailable rawg',${isolated.id},null)`;
+        // Even an existing cached RAWG match must not be resolved by an IGDB-only run.
+        await client`insert into platform_provider_profiles(provider,external_id,name,normalized_name,profile_fetched_at)
+          values('rawg','990','Unavailable RAWG','unavailable rawg',now())`;
+        const oldCatalogue=platformProviderApi.fetchCataloguePage;
+        const oldProfiles=platformProviderApi.fetchProfiles;
+        platformProviderApi.fetchCataloguePage=async()=>assert.fail('must not request RAWG catalogue');
+        platformProviderApi.fetchProfiles=async()=>assert.fail('fresh IGDB profile must be reused');
+        const next=await start({platformId:isolated.id,provider:'igdb'});
+        try {
+          assert.equal(await tick(next),2);
+          assert.equal((await client`select external_platform_id from provider_platform_mappings where platform_id=${isolated.id} and provider='rawg'`)[0].external_platform_id,null);
+          const [choice]=await client`select * from platform_requests where target_platform_id=${isolated.id} and kind='logo'`;
+          assert.equal(choice.apply_status,'applying');
+          await requests.applyPlatformAssetRequest(choice.id,{jobRunId:choice.job_run_id});await finish(choice.job_run_id);
+          assert.equal(await tick(next),null);
+          assert.ok((await client`select imported_logo_object_key from platforms where id=${isolated.id}`)[0].imported_logo_object_key);
+          await finish(next);
+        } finally {platformProviderApi.fetchCataloguePage=oldCatalogue;platformProviderApi.fetchProfiles=oldProfiles;}
       });
       await t.test('lost lease cannot persist cache, binding progress or checkpoint',async()=>{
         const next=await start({platformId:target.id});

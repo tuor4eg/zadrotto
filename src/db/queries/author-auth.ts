@@ -139,6 +139,7 @@ export async function getActiveAuthorAccountByLoginOrEmail(normalizedIdentity: s
       and(
         eq(authorAccounts.status, "active"),
         isNull(authors.blockedAt),
+        isNull(authors.mergedIntoAuthorId),
         eq(authors.isSystem, false),
         or(
           eq(authorAccounts.normalizedLogin, normalizedIdentity),
@@ -249,6 +250,7 @@ export async function getAuthorByAuthIdentity(provider: string, providerSubject:
         eq(authorAuthIdentities.provider, provider),
         eq(authorAuthIdentities.providerSubject, providerSubject),
         isNull(authors.blockedAt),
+        isNull(authors.mergedIntoAuthorId),
       ),
     )
     .limit(1);
@@ -314,6 +316,7 @@ export async function getActiveAuthorSessionByTokenHash(tokenHash: string, now =
         isNull(authorSessions.revokedAt),
         gt(authorSessions.expiresAt, now),
         isNull(authors.blockedAt),
+        isNull(authors.mergedIntoAuthorId),
         eq(authors.isSystem, false),
         or(
           isNull(authorAccounts.authorId),

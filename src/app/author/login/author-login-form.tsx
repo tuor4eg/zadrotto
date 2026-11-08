@@ -56,7 +56,6 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
 
   return (
     <div className="flex flex-col gap-5">
-      <ExternalProviderButtons />
       <ArchiveToasts
         messages={error
           ? [{ id: `author-login-${error}`, tone: "error", text: ERROR_MESSAGES[error] }]
@@ -101,21 +100,22 @@ export function AuthorLoginForm({ initialError = null, onSuccess, redirectOnSucc
         >
           {isPasswordPending ? "Входим…" : "Войти"}
         </Button>
-        <div className="flex flex-wrap justify-between gap-2 text-sm">
-          <Link
-            className="text-stone-700 underline underline-offset-4 hover:text-stone-950"
-            href="/author/register"
-          >
-            Зарегистрироваться
-          </Link>
-          <Link
-            className="text-stone-500 underline underline-offset-4 hover:text-stone-950"
-            href="/author/forgot-password"
-          >
-            Восстановить пароль
-          </Link>
-        </div>
       </form>
+      <ExternalProviderButtons />
+      <div className="flex flex-wrap justify-between gap-2 text-sm">
+        <Link
+          className="text-stone-700 underline underline-offset-4 hover:text-stone-950"
+          href="/author/register"
+        >
+          Зарегистрироваться
+        </Link>
+        <Link
+          className="text-stone-500 underline underline-offset-4 hover:text-stone-950"
+          href="/author/forgot-password"
+        >
+          Восстановить пароль
+        </Link>
+      </div>
 
     </div>
   );

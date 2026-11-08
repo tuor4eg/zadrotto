@@ -157,13 +157,6 @@ export function ReviewArticle({
     <>
       <ArchiveToasts messages={toastMessages} />
       <div className="relative flex min-h-0 flex-1 flex-col">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/clip-transparent-trimmed.png"
-          alt=""
-          aria-hidden="true"
-          className="pointer-events-none absolute right-[22px] -top-[13px] z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-7 sm:top-0 sm:h-28 lg:right-8 lg:top-[-12px] lg:h-32"
-        />
         <article className="archive-paper archive-panel relative flex flex-1 flex-col px-6 pb-3 pt-11 sm:px-10 sm:pb-5 sm:pt-12">
         {mediaItemIdentity}
 

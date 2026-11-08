@@ -65,7 +65,7 @@ export function MediaCatalogPreview({
   if (!item) {
     return (
       <div className="grid min-h-[420px] place-items-center p-6 text-sm text-stone-600">
-        Ничего не найдено.
+        Ничего не найдено
       </div>
     );
   }
@@ -222,18 +222,18 @@ export function MediaCatalogPreview({
               <FolderOpen />
               Открыть досье
             </Link>
+            {(currentAuthor || isDemo) && item.currentAuthorScore === null ? (
+              <AuthorMediaStatusControls
+                className="mt-0"
+                currentAuthorScore={item.currentAuthorScore}
+                currentAuthorHasRating={item.currentAuthorRatedAt != null}
+                isAuthorized={Boolean(currentAuthor)}
+                currentAuthorStatus={item.currentAuthorStatus}
+                mediaItemCode={item.code}
+                variant="preview"
+              />
+            ) : null}
           </div>
-          {(currentAuthor || isDemo) && item.currentAuthorScore === null ? (
-            <AuthorMediaStatusControls
-              className="mt-0"
-              currentAuthorScore={item.currentAuthorScore}
-              currentAuthorHasRating={item.currentAuthorRatedAt != null}
-              isAuthorized={Boolean(currentAuthor)}
-              currentAuthorStatus={item.currentAuthorStatus}
-              mediaItemCode={item.code}
-              variant="preview"
-            />
-          ) : null}
           {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
             <QuizGuessButton titleId={item.id} variant="preview" />
           ) : null}

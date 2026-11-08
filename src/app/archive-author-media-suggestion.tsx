@@ -1,15 +1,15 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { Plus, X } from "lucide-react";
-import { usePathname, useSearchParams } from "next/navigation";
+import { X } from "lucide-react";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import {
   MediaItemForm,
   type MediaItemFormAction,
 } from "@/app/author/(protected)/media/media-item-form";
-import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
+import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/lib/media/suggestion-events";
 import type { getFranchiseOptions } from "@/db/queries/franchises";
 import type { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import type { getMediaTypeOptions } from "@/db/queries/media-types";
@@ -35,11 +35,11 @@ type SuggestionModalState = {
   title: string;
 };
 
-export const ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT = "archive-author-media-suggest";
 
 function getCurrentArchivePath(pathname: string, searchParams: URLSearchParams) {
   const nextSearchParams = new URLSearchParams(searchParams.toString());
 
+  nextSearchParams.delete("add");
   nextSearchParams.delete("suggested");
   nextSearchParams.delete("suggestedItemCode");
   nextSearchParams.delete("suggestedItemId");
@@ -75,6 +75,8 @@ export function ArchiveAuthorMediaSuggestion({
   maxTitleAliases,
 }: ArchiveAuthorMediaSuggestionProps) {
   const pathname = usePathname();
+  const router = useRouter();
+  const openedFromLink = useRef(false);
   const searchParams = useSearchParams();
   const [modalState, setModalState] = useState<SuggestionModalState | null>(null);
   const defaultMediaType = mediaTypes[0]?.code ?? null;
@@ -118,6 +120,13 @@ export function ArchiveAuthorMediaSuggestion({
   }, [mediaTypes, searchQuery, selectedMediaType]);
 
   useEffect(() => {
+    if (searchParams.get("add") !== "1" || openedFromLink.current || !selectedMediaType) return;
+    openedFromLink.current = true;
+    openModal();
+    router.replace(currentArchivePath, { scroll: false });
+  }, [searchParams, selectedMediaType, openModal, router, currentArchivePath]);
+
+  useEffect(() => {
     function handleSuggestRequest(event: Event) {
       const mediaType = (event as CustomEvent<{ mediaType?: MediaTypeFilter }>).detail?.mediaType;
       openModal(mediaType ?? selectedMediaType);
@@ -152,25 +161,8 @@ export function ArchiveAuthorMediaSuggestion({
     };
   }, [modalState]);
 
-  const picker = (
-    <div className="fixed bottom-[max(0.5rem,env(safe-area-inset-bottom))] left-[max(0.75rem,env(safe-area-inset-left))] z-[70] sm:bottom-5 sm:left-5">
-      <ArchiveTooltip label="Предложить запись" side="right">
-        <button
-          type="button"
-          className="grid size-14 place-items-center rounded-full border-2 border-[#d9c7a5] bg-stone-950 text-stone-50 shadow-[0_18px_36px_rgba(28,25,23,0.3)] transition-colors hover:bg-stone-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#d9c7a5]"
-          aria-label="Предложить запись"
-          onClick={() => openModal()}
-        >
-          <Plus className="size-6" />
-        </button>
-      </ArchiveTooltip>
-    </div>
-  );
-
   return (
     <>
-      {picker}
-
       {modalState
         ? createPortal(
             <div

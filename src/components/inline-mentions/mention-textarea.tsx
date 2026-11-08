@@ -303,7 +303,7 @@ export function MentionTextarea({
               Ищем…
             </p>
           ) : suggestions.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-stone-600">Ничего не найдено.</p>
+            <p className="px-3 py-2 text-sm text-stone-600">Ничего не найдено</p>
           ) : (
             <ul id={listboxId} role="listbox" aria-label="Результаты поиска упоминаний">
               {suggestions.map((suggestion, index) => (

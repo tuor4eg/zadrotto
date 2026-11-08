@@ -8,7 +8,7 @@ import { isOrganizationCreatorRequest } from "@/lib/creators/request-kind";
 import { getCreatorAutoApprovalCandidates } from "./creator-auto-approval-candidates";
 import type { CreatorTransaction } from "./creators";
 
-/** Must run under the shared approval lock, before any creation. Names never prove identity. */
+/** Must run under the shared approval lock, before any creation. Person names never prove identity. */
 export async function prepareAutomaticCreatorDecision(tx: CreatorTransaction, request: typeof creatorRequests.$inferSelect): Promise<{
   decision: "create" | "map";
   creatorId?: number;
@@ -57,7 +57,14 @@ export async function prepareAutomaticCreatorDecision(tx: CreatorTransaction, re
       return { decision: "map", creatorId: binding.creatorId, name: request.externalCreatorName, typeCode: binding.type as "person" | "collective" | "organization" };
     }
   }
-  const candidates = await getCreatorAutoApprovalCandidates(tx, request.externalCreatorName);
+  if (organization) {
+    const exact = await getCreatorAutoApprovalCandidates(tx, request.externalCreatorName, { exactOrganization: true });
+    if (exact.length === 1) {
+      return { decision: "map", creatorId: exact[0].id, name: request.externalCreatorName, typeCode };
+    }
+    if (exact.length > 1) throw new CreatorRequestError("auto-skip", "Несколько организаций с одинаковым названием требуют проверки.", exact);
+  }
+  const candidates = await getCreatorAutoApprovalCandidates(tx, request.externalCreatorName, { organization });
   if (candidates.length) throw new CreatorRequestError("auto-skip", "Совпадение имени требует ручной проверки.", candidates);
   return { decision: "create", name: request.externalCreatorName, typeCode };
 }

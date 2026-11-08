@@ -88,7 +88,7 @@ describe("public media reviews layout", () => {
     assert.match(reviewPage, /archive-page flex min-h-0 flex-1 flex-col/);
     assert.match(reviewPage, /max-w-\[1480px\] flex-1 flex-col/);
     assert.match(reviewPage, /flex min-h-0 w-full flex-1 flex-col/);
-    assert.match(reviewArticle, /<div className="relative flex min-h-0 flex-1 flex-col">[\s\S]*src="\/clip-transparent-trimmed\.png"[\s\S]*<article className="archive-paper archive-panel[^\"]*flex-1 flex-col/);
+    assert.match(reviewArticle, /<div className="relative flex min-h-0 flex-1 flex-col">[\s\S]*<article className="archive-paper archive-panel[^\"]*flex-1 flex-col/);
     assert.doesNotMatch(reviewArticle, /min-h-\[calc\(100dvh/);
     assert.match(globals, /\.archive-panel\.archive-panel-overflow-visible \{\s*overflow: visible;/);
     assert.doesNotMatch(reviewArticle, />Досье</);

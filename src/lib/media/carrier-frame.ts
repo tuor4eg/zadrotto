@@ -100,6 +100,7 @@ type MediaCarrierFrameInput = {
 const MEDIA_CARRIER_FRAMES: Record<string, MediaCarrierFrame> = {
   "manga/manga": {
     assetPath: "/mediaCarriers/manga/cover.webp",
+    detailBackgroundPath: "/mediaCarriers/manga/background.webp",
     aspectRatioClassName: "aspect-[3/4]",
     compactSizeClassName: "h-[min(32vh,300px)] w-auto max-w-full",
     compactViewportClassName: "h-[min(32vh,300px)]",

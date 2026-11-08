@@ -66,7 +66,7 @@ export async function evaluateAchievements(tx: DbTransaction, input: EvaluateAch
       .where(and(eq(achievements.enabled, true), achievementIds ? inArray(achievements.id, achievementIds) : undefined))
       .for("share", { of: achievements }),
     tx.select({ id: authors.id }).from(authors).where(and(
-      inArray(authors.id, authorIds), eq(authors.isSystem, false), isNull(authors.blockedAt),
+      inArray(authors.id, authorIds), eq(authors.isSystem, false), isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId),
     )),
   ]);
   const eligibleAuthorIds = eligibleAuthors.map((author) => author.id);

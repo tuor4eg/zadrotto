@@ -231,7 +231,8 @@ export function AchievementCard({
   const canBrowse = browseAwardedLevels && item.awardedLevels.length > 1
   const slides = getCardSlides(item, canBrowse)
   const currentIndex = slides.length - 1
-  const [viewIndex, setViewIndex] = useState(currentIndex)
+  const [selectedIndex, setViewIndex] = useState<number | null>(null)
+  const viewIndex = Math.min(selectedIndex ?? currentIndex, currentIndex)
   const isAwarded = item.awardedAt !== null
   const pointerStart = useRef<{ x: number; y: number } | null>(null)
 
@@ -261,24 +262,17 @@ export function AchievementCard({
         const dx = event.clientX - start.x
         const dy = event.clientY - start.y
         if (Math.abs(dx) < SWIPE_THRESHOLD_PX || Math.abs(dx) <= Math.abs(dy)) return
-        if (dx < 0) setViewIndex((index) => Math.min(currentIndex, index + 1))
-        else setViewIndex((index) => Math.max(0, index - 1))
+        if (dx < 0) setViewIndex((index) => Math.min(currentIndex, (index ?? currentIndex) + 1))
+        else setViewIndex((index) => Math.max(0, (index ?? currentIndex) - 1))
       } : undefined}
       onPointerCancel={canBrowse ? clearPointer : undefined}
     >
-      <div
-        className={`flex h-full w-full ${canBrowse ? "transition-transform duration-300 ease-out" : ""}`}
-        style={{ transform: `translateX(-${viewIndex * 100}%)` }}
-      >
-        {slides.map((slide, index) => (
-          <AchievementCardPanel
-            key={`${item.code}-${slide.level ?? "locked"}-${index}`}
-            isAwarded={isAwarded}
-            item={item}
-            slide={slide}
-          />
-        ))}
-      </div>
+      <AchievementCardPanel
+        key={`${item.code}-${slides[Math.min(viewIndex, currentIndex)]!.level ?? "locked"}`}
+        isAwarded={isAwarded}
+        item={item}
+        slide={slides[Math.min(viewIndex, currentIndex)]!}
+      />
       {canBrowse ? (
         <>
           {viewIndex > 0 ? (
@@ -286,7 +280,7 @@ export function AchievementCard({
               direction="previous"
               aria-label="Предыдущий уровень"
               className="absolute left-1 top-14 z-10 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100"
-              onClick={() => setViewIndex((index) => Math.max(0, index - 1))}
+              onClick={() => setViewIndex((index) => Math.max(0, (index ?? currentIndex) - 1))}
             />
           ) : null}
           {viewIndex < currentIndex ? (
@@ -294,7 +288,7 @@ export function AchievementCard({
               direction="next"
               aria-label="Следующий уровень"
               className="absolute right-1 top-14 z-10 opacity-0 pointer-events-none group-hover:pointer-events-auto group-hover:opacity-100"
-              onClick={() => setViewIndex((index) => Math.min(currentIndex, index + 1))}
+              onClick={() => setViewIndex((index) => Math.min(currentIndex, (index ?? currentIndex) + 1))}
             />
           ) : null}
         </>

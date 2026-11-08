@@ -96,7 +96,7 @@ export function AdHocJobButton({ handlers, mediaTypes, creatorTypes, creatorRole
             {manualHandlers.map((item) => <option key={item.type} value={item.type}>{item.label}</option>)}
           </Select>
         </Field>
-        {["media.cover-thumbnails-backfill", "media.rating-stats-reconcile", "media.creator-name-localization"].includes(selectedType) ? <JobPayloadFields key={selectedType} type={selectedType} /> : <input type="hidden" name="payload" value={JSON.stringify(payload)} />}
+        {["media.creator-images-reconcile", "media.covers-reconcile", "media.cover-thumbnails-backfill", "media.rating-stats-reconcile", "media.creator-name-localization"].includes(selectedType) ? <JobPayloadFields key={selectedType} type={selectedType} mediaTypes={mediaTypes} /> : <input type="hidden" name="payload" value={JSON.stringify(payload)} />}
         {isCreatorImagesBackfill ? <>
           <p className="rounded-md border bg-stone-50 p-3 text-sm text-stone-600">Заполняет только отсутствующие изображения по подтверждённым источникам; существующие сохраняет.</p>
           <Field label="Тип создателя" hint="Тип и роль применяются совместно.">
@@ -132,7 +132,7 @@ export function AdHocJobButton({ handlers, mediaTypes, creatorTypes, creatorRole
             <input type="checkbox" checked={force} onChange={(event) => setForce(event.currentTarget.checked)} className="mt-1" />
             <span>{partsOnly ? "Повторно синхронизировать части" : "Повторно загрузить метаданные"}<span className="mt-1 block text-xs text-stone-500">{partsOnly ? "Обновить сезоны даже если они уже есть. Без этой галки уже заполненные записи не берутся снова." : "Обновить данные из источника, даже если они уже заполнены. Части, оценки и рецензии сохранятся."}</span></span>
           </label>
-        </> : <p className="rounded-md border bg-stone-50 p-3 text-sm text-stone-600">Дополнительные параметры для этого обработчика не требуются.</p>}
+        </> : ["media.covers-reconcile", "media.creator-images-reconcile"].includes(selectedType) ? null : <p className="rounded-md border bg-stone-50 p-3 text-sm text-stone-600">Дополнительные параметры для этого обработчика не требуются.</p>}
         <div className="flex flex-wrap justify-end gap-2"><Button type="button" variant="outline" onClick={() => setOpen(false)}>Отмена</Button><Button type="submit">Поставить в очередь</Button></div>
       </form>
     </div> : null}

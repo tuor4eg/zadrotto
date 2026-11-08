@@ -1,3 +1,4 @@
+import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
 import Image from "next/image";
 
 import { QuizHeroStatistics } from "@/components/quizzes/quiz-hero-statistics";
@@ -6,7 +7,7 @@ import type { AuthorQuizStatistics } from "@/lib/quizzes/model";
 export function QuizzesHero({ statistics }: { statistics: AuthorQuizStatistics }) {
   return (
     <section
-      className="archive-paper archive-panel media-carrier-font-pc-steam relative flex min-h-[320px] items-center overflow-hidden px-4 py-6 sm:px-5 lg:h-[360px] lg:py-7"
+      className="archive-paper archive-panel media-carrier-font-pc-steam relative flex min-h-[320px] items-start overflow-hidden p-4 pb-3 sm:p-6 sm:pb-4 lg:h-[360px]"
       aria-labelledby="quizzes-title"
     >
       <Image
@@ -38,17 +39,7 @@ export function QuizzesHero({ statistics }: { statistics: AuthorQuizStatistics }
       />
 
       <div className="relative z-20 flex h-full w-full flex-col lg:max-w-[58%]">
-        <div>
-          <h1
-            id="quizzes-title"
-            className="text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
-          >
-            Квизы
-          </h1>
-          <p className="mt-4 max-w-xl text-sm leading-6 text-stone-700 sm:text-lg sm:leading-7">
-            Проверь свои знания или узнай что-то новое. Здесь тебя ждут интересные вопросы и хорошая компания
-          </p>
-        </div>
+        <ArchivePageHeading id="quizzes-title" title="Квизы" description="Проверь свои знания или узнай что-то новое. Здесь тебя ждут интересные вопросы и хорошая компания" />
         <QuizHeroStatistics
           currentCorrectStreak={statistics.currentCorrectStreak}
           playedCount={statistics.playedCount}

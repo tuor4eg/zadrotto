@@ -271,11 +271,14 @@ describe("author auth persistence contracts", () => {
     assert.match(resend, /isNull\(authorAuthChallenges\.consumedAt\)/);
   });
 
-  it("keeps forgot-password success generic for unknown identities", () => {
+  it("warns when no recoverable account is found", () => {
     assert.match(forgotActions, /const account = email \? await getActiveAuthorAccountByPrimaryEmail/);
     assert.match(forgotActions, /if \(account\) \{/);
     assert.match(forgotActions, /redirect\("\/author\/forgot-password\?sent=1"\)/);
-    assert.doesNotMatch(forgotActions, /not-found|unknown-email|account-missing/);
+    assert.match(forgotActions, /if \(!accountFound\) redirect\("\/author\/forgot-password\?notFound=1"\)/);
+    const page = readFileSync("src/app/author/forgot-password/page.tsx", "utf8");
+    assert.match(page, /Пользователь с таким email не найден/);
+    assert.match(page, /role="alert"/);
   });
 
   it("logs security settings mutations and notifies the previous email", () => {

@@ -102,13 +102,13 @@ test("friends journal exposes ratings through the shared archive", () => {
   assert.match(profileHeader, /index % 3 !== 0/);
 });
 
-test("friends UI contains all MVP lists, actions, setting, and pagination", () => {
+test("friends UI contains all MVP lists, actions, and pagination", () => {
   assert.equal(FRIENDS_PAGE_SIZE, 20);
   assert.equal(parseFriendsTab("incoming"), "incoming");
   assert.equal(parseFriendsTab("invalid"), "friends");
   for (const label of ["Друзья", "Входящие", "Исходящие", "Поиск"]) assert.match(friendsPage, new RegExp(label));
   assert.match(friendsPage, /PaginationNav/);
-  assert.match(settingsPage, /Показывать меня в поиске пользователей/);
+  assert.doesNotMatch(settingsPage, /Показывать меня в поиске пользователей/);
   assert.match(profileHeader, /FriendshipControls/);
 });
 

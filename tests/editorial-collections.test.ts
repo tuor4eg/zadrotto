@@ -94,10 +94,9 @@ describe("collection surfaces", () => {
     assert.match(archiveFeedQuery, /kind: "collection"/);
     assert.match(archiveFeedQuery, /resolveCollectionImageUrl/);
     assert.match(archiveFeedQuery, /`\/collections\/\$\{item\.slug\}`/);
-    assert.match(archiveFeedView, /collection: \{ icon: Library, label: "Подборка" \}/);
-    assert.match(archiveFeedView, /overflow-x-auto pb-1 md:hidden/);
-    assert.match(archiveFeedView, /items\.slice\(0, 5\)/);
-    assert.match(archiveFeedView, /hidden grid-cols-1[\s\S]*md:grid[\s\S]*xl:grid-cols-5/);
+    assert.match(archiveFeedView, /<FeedEventCard/);
+    assert.match(archiveFeedView, /href="\/feed"/);
+    assert.match(archiveFeedView, /Смотреть всё →/);
   });
 
   it("supports bulk browsing and accessible ordering", () => {

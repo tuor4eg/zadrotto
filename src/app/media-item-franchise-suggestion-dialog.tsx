@@ -185,8 +185,8 @@ export function MediaItemFranchiseSuggestionDialog({
           <div className="archive-paper archive-panel relative min-h-[500px] w-full max-w-xl p-5 shadow-2xl">
             <div className="flex items-start justify-between gap-4">
               <div>
-                <h2 id="media-franchise-dialog-title" className="font-serif text-3xl leading-none text-stone-950">{label}</h2>
-                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">{canPublishWithoutReview ? "Серии в карточке будут изменены." : "Серии в карточке будут изменены после одобрения."}</p>
+                <h2 id="media-franchise-dialog-title" className="media-carrier-font-pc-steam text-3xl leading-none text-stone-950">{label}</h2>
+                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">{canPublishWithoutReview ? "Серии в карточке будут изменены" : "Серии в карточке будут изменены после одобрения"}</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <ArchiveTooltip label={label} side="bottom">

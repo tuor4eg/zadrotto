@@ -1,6 +1,7 @@
 import { getExternalAuthIdentities } from "@/db/operations/external-auth";
 import { getExternalAuthAdapters } from "@/lib/auth/external/registry";
 import { isExternalProviderAvailable } from "@/lib/auth/external/model";
+import { YandexIdButton } from "@/components/auth/yandex-id-button";
 import { Button } from "@/components/ui/button";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { unlinkExternalProviderAction } from "./external-auth-actions";
@@ -31,7 +32,13 @@ export async function ExternalAuthMethods({ authorId, currentIdentityId }: {
     {available.filter((adapter) => !identities.some(({ provider }) => provider === adapter.code)).map((adapter) =>
       <form key={adapter.code} method="post" action={`/author/auth/${encodeURIComponent(adapter.code)}/start`}>
         <input type="hidden" name="intent" value="link" />
-        <Button type="submit" variant="outline">Подключить {adapter.name}</Button>
+        {adapter.code === "yandex" ? (
+          <div className="w-full max-w-[300px]">
+            <YandexIdButton label="Подключить Яндекс ID" />
+          </div>
+        ) : (
+          <Button type="submit" variant="outline">Подключить {adapter.name}</Button>
+        )}
       </form>)}
   </section>;
 }

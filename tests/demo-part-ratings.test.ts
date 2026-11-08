@@ -14,7 +14,7 @@ describe("demo part ratings", () => {
     const old = { ...createEmptyDemoProfile(), schemaVersion: 1, ratings: { alien: entry(80) } }
     assert.deepEqual(parseDemoProfile(old)?.partRatings, {})
     assert.equal(parseDemoProfile(old)?.ratings.alien.score, 80)
-    assert.equal(parseDemoProfile({ ...old, schemaVersion: 3 }), null)
+    assert.equal(parseDemoProfile({ ...old, schemaVersion: 4 }), null)
   })
 
   it("filters malformed scopes and strips experience from parts", () => {
@@ -71,7 +71,7 @@ describe("demo part ratings", () => {
       upsertDemoPartRating("series", 1, 80)
       upsertDemoPartRating("series", 2, 70)
       assert.equal(readDemoProfile()?.statuses.series, undefined)
-      assert.throws(() => setDemoStatus("series", "skipped"))
+      assert.throws(() => setDemoStatus("series", "wanted"))
       deleteDemoPartRating("series", 1)
       assert.equal(readDemoProfile()?.partRatings.series[2].score, 70)
       deleteDemoPartRating("series", 2)

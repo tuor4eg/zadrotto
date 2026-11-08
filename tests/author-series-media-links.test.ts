@@ -8,13 +8,6 @@ const seriesContextSource = readFileSync("src/app/archive/archive-series-context
 const querySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 const routeSource = readFileSync("src/app/api/series/[code]/media-search/route.ts", "utf8");
 
-function getFunctionSource(source: string, name: string, nextName: string) {
-  const start = source.indexOf(`export async function ${name}`);
-  const end = source.indexOf(`export async function ${nextName}`, start);
-  assert.notEqual(start, -1, `Missing ${name}`);
-  assert.notEqual(end, -1, `Missing boundary after ${name}`);
-  return source.slice(start, end);
-}
 
 describe("archive series media search access", () => {
   it("hides author controls from guests and rejects unauthenticated search", () => {
@@ -31,12 +24,15 @@ describe("archive series media search access", () => {
   });
 
   it("searches published records and excludes current published links before limiting", () => {
-    const searchQuery = getFunctionSource(querySource, "searchPublishedMediaItemsForFranchise", "getPublishedFranchisesPage");
+    const searchQuery = querySource.slice(querySource.indexOf("export function publishedMediaItemsForFranchiseSearchSql"), querySource.indexOf("export async function getPublishedFranchisesPage"));
     assert.match(searchQuery, /publishedMediaItemCondition/);
-    assert.match(searchQuery, /linkStatus: mediaItemFranchises\.publicationStatus/);
+    assert.match(searchQuery, /mediaItemFranchises\.publicationStatus} as "linkStatus"/);
     assert.match(searchQuery, /const isOwnLink = linkAuthorId === input\.authorId/);
     assert.match(searchQuery, /isNull\(mediaItemFranchises\.publicationStatus\)/);
-    assert.ok(searchQuery.indexOf(".orderBy(") < searchQuery.indexOf(".limit(10)"));
+    assert.match(searchQuery, /with recursive published_branch as materialized/);
+    assert.match(searchQuery, /and not exists/);
+    assert.ok(searchQuery.indexOf("and not exists") < searchQuery.indexOf("limit 10"));
+    assert.ok(searchQuery.indexOf("order by") < searchQuery.indexOf("limit 10"));
   });
 });
 

@@ -27,7 +27,7 @@ test("external auth: atomic registration, linking, unlinking, profile ownership 
         max_draft_media_items int,max_draft_media_items_per_day int);
       insert into author_access_profiles(code,name) values('default','Default');
       create table author_registration_settings(id int primary key,access_profile_id int);
-      create table authors(id serial primary key,code text not null unique,name text not null,avatar_object_key text unique,
+      create table authors(id serial primary key,merged_into_author_id int,code text not null unique,name text not null,avatar_object_key text unique,
         is_system boolean not null default false,is_discoverable boolean not null default true,access_profile_id int not null references author_access_profiles(id),
         blocked_at timestamptz,blocked_by_admin_id int,created_at timestamptz default now(),updated_at timestamptz default now());
       create table author_accounts(author_id int primary key references authors(id) on delete cascade,login text not null,normalized_login text not null unique,

@@ -29,7 +29,7 @@ export function FeaturedAchievementShowcase({
   return (
     <section
       aria-labelledby="featured-achievements-title"
-      className="archive-paper archive-panel overflow-hidden px-2 py-4 sm:px-10 lg:px-14 lg:py-5"
+      className="archive-paper archive-panel overflow-hidden px-4 py-4 sm:px-6 lg:py-5"
     >
       <div className="mb-4 flex items-center justify-between gap-3 border-b border-stone-400/25 pb-3">
         <h2

@@ -29,7 +29,7 @@ type ProviderImageTokenPayload = {
 
 export type ProviderImageFetchResult =
   | { ok: true; body: Buffer; contentType: string }
-  | { ok: false; error: "invalid-url" | "unavailable" | "unsupported-type" | "too-large" };
+  | { ok: false; error: "invalid-url" | "unavailable" | "unsupported-type" | "too-large"; status?: number; retryable?: boolean };
 
 function getSecret() {
   const secret = process.env.PROVIDER_IMAGE_RELAY_SECRET?.trim()
@@ -105,23 +105,25 @@ export async function fetchProviderImage(input: {
   providerCode: CoverProviderCode;
   imageUrl: string;
   maxBytes: number;
+  signal?: AbortSignal;
 }): Promise<ProviderImageFetchResult> {
   if (input.providerCode !== "bgg") return fetchUncachedProviderImage(input);
   if (!isSafeProviderImageUrl(input.providerCode, input.imageUrl)) return { ok: false, error: "invalid-url" };
   try {
-    const cached = await bggImageCache.cached("public-images", `image:${input.maxBytes}:${input.imageUrl}`, 86_400, AbortSignal.timeout(FETCH_TIMEOUT_MS), async () => {
+    const cached = await bggImageCache.cached("public-images", `image:${input.maxBytes}:${input.imageUrl}`, 86_400, AbortSignal.any([AbortSignal.timeout(FETCH_TIMEOUT_MS), ...(input.signal ? [input.signal] : [])]), async () => {
       const image = await fetchUncachedProviderImage(input);
       if (!image.ok) throw new BggImageFetchError(image);
       return { body: image.body.toString("base64"), contentType: image.contentType };
     });
     return { ok: true, body: Buffer.from(cached.body, "base64"), contentType: cached.contentType };
-  } catch (error) { return error instanceof BggImageFetchError ? error.result : { ok: false, error: "unavailable" }; }
+  } catch (error) { return error instanceof BggImageFetchError ? error.result : { ok: false, error: "unavailable", retryable: true }; }
 }
 
 async function fetchUncachedProviderImage(input: {
   providerCode: CoverProviderCode;
   imageUrl: string;
   maxBytes: number;
+  signal?: AbortSignal;
 }): Promise<ProviderImageFetchResult> {
   if (!isSafeProviderImageUrl(input.providerCode, input.imageUrl)) {
     return { ok: false, error: "invalid-url" };
@@ -132,11 +134,14 @@ async function fetchUncachedProviderImage(input: {
     const response = await fetch(input.imageUrl, {
       headers: { accept: "image/jpeg,image/png,image/webp" },
       redirect: "error",
-      signal: controller.signal,
+      signal: AbortSignal.any([controller.signal, ...(input.signal ? [input.signal] : [])]),
     });
-    if (!response.ok || !response.body) return { ok: false, error: "unavailable" };
+    if (!response.ok || !response.body) {
+      await response.body?.cancel();
+      return { ok: false, error: "unavailable", status: response.status, retryable: response.status === 429 || response.status >= 500 };
+    }
     const contentType = response.headers.get("content-type")?.split(";")[0]?.trim().toLowerCase() ?? "";
-    if (!ALLOWED_CONTENT_TYPES.has(contentType)) return { ok: false, error: "unsupported-type" };
+    if (!ALLOWED_CONTENT_TYPES.has(contentType)) { await response.body.cancel(); return { ok: false, error: "unsupported-type", retryable: false }; }
     const declaredSize = Number(response.headers.get("content-length"));
     if (Number.isFinite(declaredSize) && declaredSize > input.maxBytes) {
       await response.body.cancel();
@@ -157,7 +162,7 @@ async function fetchUncachedProviderImage(input: {
     }
     return { ok: true, body: Buffer.concat(chunks), contentType };
   } catch {
-    return { ok: false, error: "unavailable" };
+    return { ok: false, error: "unavailable", retryable: true };
   } finally {
     clearTimeout(timeout);
   }

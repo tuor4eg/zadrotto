@@ -9,10 +9,11 @@ import type { EditorialCollectionGroupItem } from "@/db/queries/editorial-collec
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useUserStateMode } from "@/lib/user-state/use-demo-profile";
 
-export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuthor, ratingAuthor, horizontalScroll = true }: Omit<EditorialCollectionGroupItem, "mediaItemId"> & {
+export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuthor, ratingAuthor, horizontalScroll = true, showMetadata = true }: Omit<EditorialCollectionGroupItem, "mediaItemId"> & {
   currentAuthor: boolean;
   ratingAuthor: { name: string; code: string } | null;
   horizontalScroll?: boolean;
+  showMetadata?: boolean;
 }) {
   const [ratingRequest, setRatingRequest] = useState(0);
   const mode = useUserStateMode(currentAuthor);
@@ -24,8 +25,8 @@ export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuth
   return <div className="grid gap-2">
     {mode === "plain"
       ? <MediaItemTile {...tileProps} />
-      : <MediaItemStatusTile {...tileProps} currentAuthorStatus={status} horizontalScroll={horizontalScroll} />}
-    <p className="text-sm leading-5 text-stone-500">{[item.releaseYear, item.mediaTypeName].filter(Boolean).join(" · ")}</p>
+      : <MediaItemStatusTile {...tileProps} currentAuthorStatus={status} isAuthorized={currentAuthor} horizontalScroll={horizontalScroll} />}
+    {showMetadata ? <p className="text-sm leading-5 text-stone-500">{[item.releaseYear, item.mediaTypeName].filter(Boolean).join(" · ")}</p> : null}
     {ratingRequest > 0 ? <div hidden>
       <MediaItemRatingDialog
         key={ratingRequest}

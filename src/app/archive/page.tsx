@@ -159,7 +159,7 @@ export default async function Home({ searchParams }: HomeProps) {
     ? parseAuthorRatingFilter(params.mine ?? null)
     : "all";
   const urlAuthorRatingFilter = parseAuthorRatingFilter(params.mine ?? null);
-  const parsedSort = selectedSeries && !selectedCreator
+  const parsedSort = selectedSeries && !selectedCreator && params.sort === undefined
     ? "release_year"
     : parseCatalogSort(params.sort ?? null);
   const sort = (
@@ -167,9 +167,7 @@ export default async function Home({ searchParams }: HomeProps) {
   ) || (
     ratedByAuthorId && parsedSort === "my_first_experience_year"
   ) ? "title" : parsedSort;
-  const sortDirection = selectedSeries && !selectedCreator
-    ? "asc"
-    : parseCatalogSortDirection(params.dir ?? null, sort);
+  const sortDirection = parseCatalogSortDirection(params.dir ?? null, sort);
   const yearFilter = parseCatalogYear(params.year ?? null);
   const parsedYearMode = parseCatalogYearMode(params.yearMode ?? null);
   const yearMode = (
@@ -375,6 +373,7 @@ export default async function Home({ searchParams }: HomeProps) {
       />
       <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader
+        showMediaSuggestion={Boolean(currentAuthor && authorMediaSuggestionData)}
         adminNotificationCount={headerState.adminNotificationCount}
         author={currentAuthor
           ? { avatarObjectKey: currentAuthor.avatarObjectKey, name: currentAuthor.name }

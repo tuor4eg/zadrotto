@@ -21,7 +21,7 @@ async function enqueue(tx: Tx, requestId: number, adminId: number) {
 }
 
 /** Complete only existing bindings. Ambiguity is a sync diagnostic, not an editorial request. */
-export async function resolveMissingPlatformProviderIds(platformId:number,lease?:{runId:number;lockToken:string}) {
+export async function resolveMissingPlatformProviderIds(platformId:number,lease?:{runId:number;lockToken:string},provider?:"igdb"|"rawg") {
   return withSnapshotJobGuard(lease, async tx=>{
     const result={resolved:0,missing:0,ambiguous:0};
     await tx.select({id:providerPlatformMappings.id}).from(providerPlatformMappings)
@@ -32,6 +32,7 @@ export async function resolveMissingPlatformProviderIds(platformId:number,lease?
         from provider_platform_mappings m left join platform_provider_profiles p
           on p.provider=m.provider and p.normalized_name=m.normalized_external_platform_name and p.is_available
         where m.platform_id=${platformId} and m.external_platform_id is null and m.provider in ('igdb','rawg')
+          ${provider ? sql`and m.provider=${provider}` : sql``}
         group by m.id
       ), changed as (
         update provider_platform_mappings m set external_platform_id=matches.external_id,updated_at=now()

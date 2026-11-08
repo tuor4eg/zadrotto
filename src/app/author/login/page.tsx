@@ -40,10 +40,7 @@ export default async function AuthorLoginPage({ searchParams }: AuthorLoginPageP
 
         <Card className="archive-paper-surface border-stone-500/40">
           <CardHeader>
-            <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-red-900">
-              Автор
-            </p>
-            <CardTitle className="font-serif text-3xl leading-none">Вход</CardTitle>
+            <CardTitle className="media-carrier-font-pc-steam text-3xl leading-none">Вход</CardTitle>
           </CardHeader>
 
           <CardContent>

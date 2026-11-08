@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useState, type CSSProperties } from "react";
 
 type ArchiveTooltipProps = {
-  align?: "center" | "end";
+  align?: "start" | "center" | "end";
   children: React.ReactNode;
   className?: string;
   label: string;
@@ -36,7 +36,7 @@ export function ArchiveTooltip({
         : side === "left"
           ? { left: rect.left - 9, top: rect.top + rect.height / 2 }
           : side === "bottom"
-            ? { left: align === "end" ? rect.right : rect.left + rect.width / 2, top: rect.bottom + 7 }
+            ? { left: align === "start" ? rect.left : align === "end" ? rect.right : rect.left + rect.width / 2, top: rect.bottom + 7 }
             : { left: rect.left + rect.width / 2, top: rect.top - 7 },
     );
   }
@@ -65,12 +65,16 @@ export function ArchiveTooltip({
           ? "right-full top-1/2 -translate-x-[0.55rem] -translate-y-1/2"
           : null,
         portal && side === "top" ? "-translate-x-1/2 -translate-y-[calc(100%+0.45rem)]" : null,
+        portal && side === "bottom" && align === "start" ? "translate-y-[0.45rem]" : null,
         portal && side === "bottom" && align === "center" ? "-translate-x-1/2 translate-y-[0.45rem]" : null,
         portal && side === "bottom" && align === "end" ? "-translate-x-full translate-y-[0.45rem]" : null,
         portal && side === "right" ? "-translate-y-1/2" : null,
         portal && side === "left" ? "-translate-x-full -translate-y-1/2" : null,
         side === "top"
           ? "before:left-1/2 before:top-full before:-translate-x-1/2 before:-translate-y-1/2 before:border-b before:border-r before:bg-[rgb(var(--archive-paper-end))]"
+          : null,
+        side === "bottom" && align === "start"
+          ? "before:bottom-full before:left-3 before:translate-y-1/2 before:border-l before:border-t before:bg-[rgb(var(--archive-paper-start))]"
           : null,
         side === "bottom" && align === "center"
           ? "before:bottom-full before:left-1/2 before:-translate-x-1/2 before:translate-y-1/2 before:border-l before:border-t before:bg-[rgb(var(--archive-paper-start))]"

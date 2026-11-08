@@ -218,17 +218,21 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               />
             ) : null
           }
+          cornerActions={currentAuthor && item.currentAuthorScore === null ? (
+            <AuthorMediaStatusControls
+              className="mt-0"
+              currentAuthorScore={item.currentAuthorScore}
+              currentAuthorHasRating={item.currentAuthorRatedAt !== null}
+              isAuthorized
+              currentAuthorStatus={item.currentAuthorStatus}
+              mediaItemCode={item.code}
+            />
+          ) : null}
           titleActions={
             currentAuthor && item.currentAuthorScore === null ? (
               <div className="flex flex-wrap gap-2">
-                <AuthorMediaStatusControls
-                  className="mt-0"
-                  currentAuthorScore={item.currentAuthorScore}
-                  currentAuthorHasRating={item.currentAuthorRatedAt !== null}
-                  isAuthorized
-                  currentAuthorStatus={item.currentAuthorStatus}
-                  mediaItemCode={item.code}
-                />
+                {/* Preserve the title action row when its button moves to the corner. */}
+                <span aria-hidden="true" className="size-9 shrink-0" />
                 {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
                   <QuizGuessButton titleId={item.id} />
                 ) : null}

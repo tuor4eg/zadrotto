@@ -1,0 +1,1753 @@
+BEGIN
+SET
+                                                                                         QUERY PLAN                                                                                          
+---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Append  (cost=478.91..20849012.25 rows=35 width=12) (actual time=11589.608..12362.572 rows=34.00 loops=1)
+   Buffers: shared hit=8285
+   ->  GroupAggregate  (cost=478.91..479.22 rows=1 width=12) (actual time=11589.606..11589.611 rows=1.00 loops=1)
+         Buffers: shared hit=133
+         ->  Sort  (cost=478.91..479.06 rows=60 width=8) (actual time=11589.572..11589.582 rows=86.00 loops=1)
+               Sort Key: r.media_item_id
+               Sort Method: quicksort  Memory: 27kB
+               Buffers: shared hit=133
+               ->  Hash Join  (cost=384.44..477.14 rows=60 width=8) (actual time=11589.146..11589.533 rows=86.00 loops=1)
+                     Hash Cond: (r.media_item_id = m.id)
+                     Buffers: shared hit=133
+                     ->  Bitmap Heap Scan on ratings r  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.118..0.461 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.094..0.094 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=352.21..352.21 rows=133 width=4) (actual time=11588.809..11588.810 rows=135.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 13kB
+                           Buffers: shared hit=81
+                           ->  Bitmap Heap Scan on media_items m  (cost=5.31..352.21 rows=133 width=4) (actual time=11588.287..11588.681 rows=135.00 loops=1)
+                                 Recheck Cond: (media_type = 'anime'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Heap Blocks: exact=79
+                                 Buffers: shared hit=81
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..5.28 rows=133 width=0) (actual time=0.065..0.066 rows=136.00 loops=1)
+                                       Index Cond: (media_type = 'anime'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=2
+   ->  GroupAggregate  (cost=806.45..807.35 rows=1 width=12) (actual time=1.652..1.657 rows=1.00 loops=1)
+         Buffers: shared hit=246
+         ->  Sort  (cost=806.45..806.90 rows=178 width=8) (actual time=1.615..1.627 rows=179.00 loops=1)
+               Sort Key: r_1.media_item_id
+               Sort Method: quicksort  Memory: 29kB
+               Buffers: shared hit=246
+               ->  Hash Join  (cost=707.10..799.80 rows=178 width=8) (actual time=1.100..1.572 rows=179.00 loops=1)
+                     Hash Cond: (r_1.media_item_id = m_1.id)
+                     Buffers: shared hit=246
+                     ->  Bitmap Heap Scan on ratings r_1  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.102..0.386 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.078..0.078 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=671.58..671.58 rows=396 width=4) (actual time=0.966..0.967 rows=394.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 22kB
+                           Buffers: shared hit=194
+                           ->  Bitmap Heap Scan on media_items m_1  (cost=7.36..671.58 rows=396 width=4) (actual time=0.062..0.911 rows=394.00 loops=1)
+                                 Recheck Cond: (media_type = 'book'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Rows Removed by Filter: 3
+                                 Heap Blocks: exact=192
+                                 Buffers: shared hit=194
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..7.26 rows=397 width=0) (actual time=0.030..0.030 rows=397.00 loops=1)
+                                       Index Cond: (media_type = 'book'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=2
+   ->  GroupAggregate  (cost=617.80..618.30 rows=1 width=12) (actual time=0.789..0.799 rows=1.00 loops=1)
+         Buffers: shared hit=94
+         ->  Sort  (cost=617.80..618.04 rows=98 width=8) (actual time=0.772..0.782 rows=5.00 loops=1)
+               Sort Key: r_2.media_item_id
+               Sort Method: quicksort  Memory: 25kB
+               Buffers: shared hit=94
+               ->  Hash Join  (cost=521.86..614.56 rows=98 width=8) (actual time=0.365..0.770 rows=5.00 loops=1)
+                     Hash Cond: (r_2.media_item_id = m_2.id)
+                     Buffers: shared hit=94
+                     ->  Bitmap Heap Scan on ratings r_2  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.101..0.345 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.083..0.083 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=488.58..488.58 rows=217 width=4) (actual time=0.245..0.252 rows=217.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 16kB
+                           Buffers: shared hit=42
+                           ->  Bitmap Heap Scan on media_items m_2  (cost=5.96..488.58 rows=217 width=4) (actual time=0.035..0.173 rows=217.00 loops=1)
+                                 Recheck Cond: (media_type = 'comic'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Heap Blocks: exact=40
+                                 Buffers: shared hit=42
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..5.91 rows=217 width=0) (actual time=0.019..0.019 rows=217.00 loops=1)
+                                       Index Cond: (media_type = 'comic'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=2
+   ->  GroupAggregate  (cost=1057.26..1062.49 rows=1 width=12) (actual time=4.912..4.917 rows=1.00 loops=1)
+         Buffers: shared hit=826
+         ->  Sort  (cost=1057.26..1059.87 rows=1045 width=8) (actual time=4.759..4.821 rows=1359.00 loops=1)
+               Sort Key: r_3.media_item_id
+               Sort Method: quicksort  Memory: 80kB
+               Buffers: shared hit=826
+               ->  Hash Join  (cost=912.16..1004.85 rows=1045 width=8) (actual time=3.900..4.517 rows=1359.00 loops=1)
+                     Hash Cond: (r_3.media_item_id = m_3.id)
+                     Buffers: shared hit=826
+                     ->  Bitmap Heap Scan on ratings r_3  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.106..0.387 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.085..0.085 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=852.59..852.59 rows=2320 width=4) (actual time=3.739..3.740 rows=2320.00 loops=1)
+                           Buckets: 4096  Batches: 1  Memory Usage: 114kB
+                           Buffers: shared hit=774
+                           ->  Seq Scan on media_items m_3  (cost=0.00..852.59 rows=2320 width=4) (actual time=0.032..3.411 rows=2320.00 loops=1)
+                                 Filter: ((publication_status = 'published'::publication_status) AND (media_type = 'film'::text))
+                                 Rows Removed by Filter: 2921
+                                 Buffers: shared hit=774
+   ->  GroupAggregate  (cost=1001.91..1005.22 rows=1 width=12) (actual time=2.263..2.268 rows=1.00 loops=1)
+         Buffers: shared hit=383
+         ->  Sort  (cost=1001.91..1003.56 rows=659 width=8) (actual time=2.203..2.225 rows=418.00 loops=1)
+               Sort Key: r_4.media_item_id
+               Sort Method: quicksort  Memory: 34kB
+               Buffers: shared hit=383
+               ->  Hash Join  (cost=878.36..971.06 rows=659 width=8) (actual time=1.544..2.114 rows=418.00 loops=1)
+                     Hash Cond: (r_4.media_item_id = m_4.id)
+                     Buffers: shared hit=383
+                     ->  Bitmap Heap Scan on ratings r_4  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.151..0.440 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.134..0.134 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=829.49..829.49 rows=1464 width=4) (actual time=1.354..1.356 rows=1463.00 loops=1)
+                           Buckets: 2048  Batches: 1  Memory Usage: 68kB
+                           Buffers: shared hit=331
+                           ->  Bitmap Heap Scan on media_items m_4  (cost=23.64..829.49 rows=1464 width=4) (actual time=0.198..1.175 rows=1463.00 loops=1)
+                                 Recheck Cond: (media_type = 'game'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Heap Blocks: exact=328
+                                 Buffers: shared hit=331
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..23.28 rows=1466 width=0) (actual time=0.084..0.084 rows=1463.00 loops=1)
+                                       Index Cond: (media_type = 'game'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=3
+   ->  GroupAggregate  (cost=436.89..437.15 rows=1 width=12) (actual time=0.777..0.781 rows=0.00 loops=1)
+         Buffers: shared hit=106
+         ->  Sort  (cost=436.89..437.01 rows=50 width=8) (actual time=0.776..0.779 rows=0.00 loops=1)
+               Sort Key: r_5.media_item_id
+               Sort Method: quicksort  Memory: 25kB
+               Buffers: shared hit=106
+               ->  Hash Join  (cost=342.78..435.48 rows=50 width=8) (actual time=0.767..0.770 rows=0.00 loops=1)
+                     Hash Cond: (r_5.media_item_id = m_5.id)
+                     Buffers: shared hit=106
+                     ->  Bitmap Heap Scan on ratings r_5  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.095..0.346 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.064..0.065 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=310.81..310.81 rows=112 width=4) (actual time=0.244..0.246 rows=109.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 12kB
+                           Buffers: shared hit=54
+                           ->  Bitmap Heap Scan on media_items m_5  (cost=5.15..310.81 rows=112 width=4) (actual time=0.049..0.222 rows=109.00 loops=1)
+                                 Recheck Cond: (media_type = 'roblox'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Rows Removed by Filter: 3
+                                 Heap Blocks: exact=52
+                                 Buffers: shared hit=54
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..5.12 rows=112 width=0) (actual time=0.025..0.025 rows=112.00 loops=1)
+                                       Index Cond: (media_type = 'roblox'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=2
+   ->  GroupAggregate  (cost=899.18..900.41 rows=1 width=12) (actual time=1.343..1.348 rows=1.00 loops=1)
+         Buffers: shared hit=277
+         ->  Sort  (cost=899.18..899.79 rows=244 width=8) (actual time=1.303..1.320 rows=305.00 loops=1)
+               Sort Key: r_6.media_item_id
+               Sort Method: quicksort  Memory: 32kB
+               Buffers: shared hit=277
+               ->  Hash Join  (cost=796.81..889.50 rows=244 width=8) (actual time=0.859..1.258 rows=305.00 loops=1)
+                     Hash Cond: (r_6.media_item_id = m_6.id)
+                     Buffers: shared hit=277
+                     ->  Bitmap Heap Scan on ratings r_6  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.075..0.286 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.063..0.063 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=759.47..759.47 rows=541 width=4) (actual time=0.753..0.755 rows=545.00 loops=1)
+                           Buckets: 1024  Batches: 1  Memory Usage: 28kB
+                           Buffers: shared hit=225
+                           ->  Bitmap Heap Scan on media_items m_6  (cost=12.48..759.47 rows=541 width=4) (actual time=0.074..0.683 rows=545.00 loops=1)
+                                 Recheck Cond: (media_type = 'series'::text)
+                                 Filter: (publication_status = 'published'::publication_status)
+                                 Heap Blocks: exact=223
+                                 Buffers: shared hit=225
+                                 ->  Bitmap Index Scan on media_items_media_type_idx  (cost=0.00..12.35 rows=542 width=0) (actual time=0.037..0.037 rows=545.00 loops=1)
+                                       Index Cond: (media_type = 'series'::text)
+                                       Index Searches: 1
+                                       Buffers: shared hit=2
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=27.596..27.608 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=27.239..27.594 rows=38.00 loops=1)
+               Merge Cond: (r_7.media_item_id = m_7.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=25.564..25.576 rows=38.00 loops=1)
+                     Sort Key: r_7.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_7  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.841..25.555 rows=38.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 4).col1))
+                           Rows Removed by Filter: 2324
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 4
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.842..15.253 rows=64.00 loops=1)
+                                   Hash Cond: (st.id = mf.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.424..13.805 rows=14.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises  (cost=0.28..8.29 rows=1 width=4) (actual time=13.420..13.425 rows=1.00 loops=1)
+                                                 Index Cond: (id = 209)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.105..0.184 rows=6.50 loops=2)
+                                                 Hash Cond: (child.parent_id = parent.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child  (cost=0.00..25.14 rows=730 width=8) (actual time=0.024..0.117 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.009..0.009 rows=7.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent  (cost=0.00..0.20 rows=10 width=4) (actual time=0.005..0.006 rows=7.00 loops=2)
+                                   ->  CTE Scan on series_tree st  (cost=0.00..13.22 rows=661 width=4) (actual time=13.428..13.810 rows=14.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.361..1.362 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.079..0.728 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.619..1.771 rows=3555.00 loops=1)
+                     Sort Key: m_7.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_7  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.047..0.866 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.200..26.214 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.737..26.191 rows=84.00 loops=1)
+               Merge Cond: (r_8.media_item_id = m_8.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.232..24.248 rows=84.00 loops=1)
+                     Sort Key: r_8.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_8  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.641..24.216 rows=84.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 8).col1))
+                           Rows Removed by Filter: 2278
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 8
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.792..15.366 rows=106.00 loops=1)
+                                   Hash Cond: (st_1.id = mf_1.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.066..13.601 rows=21.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_1  (cost=0.28..8.29 rows=1 width=4) (actual time=13.061..13.066 rows=1.00 loops=1)
+                                                 Index Cond: (id = 210)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.098..0.173 rows=6.67 loops=3)
+                                                 Hash Cond: (child_1.parent_id = parent_1.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_1  (cost=0.00..25.14 rows=730 width=8) (actual time=0.021..0.104 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.006..0.007 rows=7.00 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_1  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.003 rows=7.00 loops=3)
+                                   ->  CTE Scan on series_tree st_1  (cost=0.00..13.22 rows=661 width=4) (actual time=13.069..13.606 rows=21.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.673..1.674 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_1  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.070..0.570 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.442..1.640 rows=4213.00 loops=1)
+                     Sort Key: m_8.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_8  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.031..0.744 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=31.094..31.105 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=30.664..31.092 rows=28.00 loops=1)
+               Merge Cond: (r_9.media_item_id = m_9.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=29.426..29.437 rows=28.00 loops=1)
+                     Sort Key: r_9.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_9  (cost=0.28..771369.90 rows=1180 width=8) (actual time=28.824..29.416 rows=28.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 12).col1))
+                           Rows Removed by Filter: 2334
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 12
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=16.824..17.384 rows=52.00 loops=1)
+                                   Hash Cond: (st_2.id = mf_2.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=15.024..15.543 rows=8.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_2  (cost=0.28..8.29 rows=1 width=4) (actual time=15.019..15.025 rows=1.00 loops=1)
+                                                 Index Cond: (id = 272)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.110..0.167 rows=2.33 loops=3)
+                                                 Hash Cond: (child_2.parent_id = parent_2.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_2  (cost=0.00..25.14 rows=730 width=8) (actual time=0.015..0.094 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.007..0.007 rows=2.67 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_2  (cost=0.00..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=2.67 loops=3)
+                                   ->  CTE Scan on series_tree st_2  (cost=0.00..13.22 rows=661 width=4) (actual time=15.027..15.559 rows=8.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.736..1.737 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_2  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.076..0.796 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.215..1.405 rows=4467.00 loops=1)
+                     Sort Key: m_9.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_9  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.036..0.627 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=27.953..27.965 rows=1.00 loops=1)
+         Buffers: shared hit=251
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=27.227..27.920 rows=517.00 loops=1)
+               Merge Cond: (r_10.media_item_id = m_10.id)
+               Buffers: shared hit=251
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=25.806..25.847 rows=517.00 loops=1)
+                     Sort Key: r_10.media_item_id
+                     Sort Method: quicksort  Memory: 37kB
+                     Buffers: shared hit=156
+                     ->  Index Scan using ratings_author_id_idx on ratings r_10  (cost=0.28..771369.90 rows=1180 width=8) (actual time=25.055..25.726 rows=517.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 16).col1))
+                           Rows Removed by Filter: 1845
+                           Index Searches: 1
+                           Buffers: shared hit=156
+                           SubPlan 16
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.045..15.911 rows=803.00 loops=1)
+                                   Hash Cond: (st_3.id = mf_3.franchise_id)
+                                   Buffers: shared hit=104
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.598..14.298 rows=73.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 35kB
+                                           Buffers: shared hit=67
+                                           ->  Index Scan using franchises_pkey on franchises franchises_3  (cost=0.28..8.29 rows=1 width=4) (actual time=13.593..13.599 rows=1.00 loops=1)
+                                                 Index Cond: (id = 275)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.077..0.165 rows=18.00 loops=4)
+                                                 Hash Cond: (child_3.parent_id = parent_3.id)
+                                                 Buffers: shared hit=64
+                                                 ->  Seq Scan on franchises child_3  (cost=0.00..25.14 rows=730 width=8) (actual time=0.010..0.097 rows=732.00 loops=4)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=64
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.006..0.006 rows=18.25 loops=4)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                                       ->  WorkTable Scan on series_tree parent_3  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.003 rows=18.25 loops=4)
+                                   ->  CTE Scan on series_tree st_3  (cost=0.00..13.22 rows=661 width=4) (actual time=13.602..14.324 rows=73.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 19kB
+                                         Buffers: shared hit=67
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.387..1.387 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_3  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.063..0.621 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.394..1.646 rows=5148.00 loops=1)
+                     Sort Key: m_10.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_10  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.033..0.724 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=24.904..24.915 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=24.364..24.888 rows=33.00 loops=1)
+               Merge Cond: (r_11.media_item_id = m_11.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=23.156..23.167 rows=33.00 loops=1)
+                     Sort Key: r_11.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_11  (cost=0.28..771369.90 rows=1180 width=8) (actual time=22.584..23.148 rows=33.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 20).col1))
+                           Rows Removed by Filter: 2329
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 20
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=13.902..14.292 rows=41.00 loops=1)
+                                   Hash Cond: (st_4.id = mf_4.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.630..13.000 rows=6.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_4  (cost=0.28..8.29 rows=1 width=4) (actual time=12.627..12.633 rows=1.00 loops=1)
+                                                 Index Cond: (id = 276)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.105..0.178 rows=2.50 loops=2)
+                                                 Hash Cond: (child_4.parent_id = parent_4.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_4  (cost=0.00..25.14 rows=730 width=8) (actual time=0.019..0.108 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.007..0.007 rows=3.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_4  (cost=0.00..0.20 rows=10 width=4) (actual time=0.003..0.003 rows=3.00 loops=2)
+                                   ->  CTE Scan on series_tree st_4  (cost=0.00..13.22 rows=661 width=4) (actual time=12.634..13.004 rows=6.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.221..1.222 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_4  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.070..0.531 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.191..1.421 rows=5209.00 loops=1)
+                     Sort Key: m_11.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_11  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.023..0.617 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.433..25.444 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=24.862..25.410 rows=222.00 loops=1)
+               Merge Cond: (r_12.media_item_id = m_12.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=23.587..23.609 rows=222.00 loops=1)
+                     Sort Key: r_12.media_item_id
+                     Sort Method: quicksort  Memory: 30kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_12  (cost=0.28..771369.90 rows=1180 width=8) (actual time=22.871..23.548 rows=222.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 24).col1))
+                           Rows Removed by Filter: 2140
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 24
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=13.609..14.326 rows=723.00 loops=1)
+                                   Hash Cond: (st_5.id = mf_5.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.481..13.014 rows=96.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 35kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_5  (cost=0.28..8.29 rows=1 width=4) (actual time=12.478..12.484 rows=1.00 loops=1)
+                                                 Index Cond: (id = 279)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.079..0.166 rows=31.67 loops=3)
+                                                 Hash Cond: (child_5.parent_id = parent_5.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_5  (cost=0.00..25.14 rows=730 width=8) (actual time=0.017..0.101 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.009..0.009 rows=32.00 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 11kB
+                                                       ->  WorkTable Scan on series_tree parent_5  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.005 rows=32.00 loops=3)
+                                   ->  CTE Scan on series_tree st_5  (cost=0.00..13.22 rows=661 width=4) (actual time=12.485..13.056 rows=96.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 20kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.091..1.092 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_5  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.062..0.519 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.245..1.456 rows=4869.00 loops=1)
+                     Sort Key: m_12.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_12  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.033..0.693 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.629..25.646 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.160..25.632 rows=49.00 loops=1)
+               Merge Cond: (r_13.media_item_id = m_13.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=23.855..23.872 rows=49.00 loops=1)
+                     Sort Key: r_13.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_13  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.190..23.851 rows=49.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 28).col1))
+                           Rows Removed by Filter: 2313
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 28
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=13.555..14.011 rows=94.00 loops=1)
+                                   Hash Cond: (st_6.id = mf_6.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.438..12.854 rows=9.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_6  (cost=0.28..8.29 rows=1 width=4) (actual time=12.434..12.441 rows=1.00 loops=1)
+                                                 Index Cond: (id = 280)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.103..0.200 rows=4.00 loops=2)
+                                                 Hash Cond: (child_6.parent_id = parent_6.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_6  (cost=0.00..25.14 rows=730 width=8) (actual time=0.029..0.138 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.007 rows=4.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_6  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=4.50 loops=2)
+                                   ->  CTE Scan on series_tree st_6  (cost=0.00..13.22 rows=661 width=4) (actual time=12.442..12.856 rows=9.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.048..1.051 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_6  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.025..0.484 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.260..1.463 rows=4752.00 loops=1)
+                     Sort Key: m_13.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_13  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.025..0.665 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.219..25.231 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=24.641..25.189 rows=46.00 loops=1)
+               Merge Cond: (r_14.media_item_id = m_14.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=23.221..23.235 rows=46.00 loops=1)
+                     Sort Key: r_14.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_14  (cost=0.28..771369.90 rows=1180 width=8) (actual time=22.675..23.212 rows=46.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 32).col1))
+                           Rows Removed by Filter: 2316
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 32
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=13.867..14.257 rows=89.00 loops=1)
+                                   Hash Cond: (st_7.id = mf_7.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.748..13.103 rows=14.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_7  (cost=0.28..8.29 rows=1 width=4) (actual time=12.744..12.750 rows=1.00 loops=1)
+                                                 Index Cond: (id = 282)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.100..0.170 rows=6.50 loops=2)
+                                                 Hash Cond: (child_7.parent_id = parent_7.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_7  (cost=0.00..25.14 rows=730 width=8) (actual time=0.028..0.113 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.005 rows=7.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_7  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=7.00 loops=2)
+                                   ->  CTE Scan on series_tree st_7  (cost=0.00..13.22 rows=661 width=4) (actual time=12.752..13.109 rows=14.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.085..1.086 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_7  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.025..0.480 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.367..1.611 rows=4869.00 loops=1)
+                     Sort Key: m_14.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_14  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.023..0.735 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.632..26.647 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.003..26.620 rows=35.00 loops=1)
+               Merge Cond: (r_15.media_item_id = m_15.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.717..24.732 rows=35.00 loops=1)
+                     Sort Key: r_15.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_15  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.160..24.710 rows=35.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 36).col1))
+                           Rows Removed by Filter: 2327
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 36
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.710..15.135 rows=141.00 loops=1)
+                                   Hash Cond: (st_8.id = mf_8.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.597..13.973 rows=18.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_8  (cost=0.28..8.29 rows=1 width=4) (actual time=13.593..13.599 rows=1.00 loops=1)
+                                                 Index Cond: (id = 283)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.103..0.178 rows=8.50 loops=2)
+                                                 Hash Cond: (child_8.parent_id = parent_8.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_8  (cost=0.00..25.14 rows=730 width=8) (actual time=0.023..0.111 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.006..0.008 rows=9.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_8  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=9.00 loops=2)
+                                   ->  CTE Scan on series_tree st_8  (cost=0.00..13.22 rows=661 width=4) (actual time=13.600..13.977 rows=18.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.075..1.075 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_8  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.025..0.452 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.228..1.453 rows=4626.00 loops=1)
+                     Sort Key: m_15.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_15  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.024..0.666 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.696..25.707 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.216..25.691 rows=42.00 loops=1)
+               Merge Cond: (r_16.media_item_id = m_16.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=23.798..23.810 rows=42.00 loops=1)
+                     Sort Key: r_16.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_16  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.190..23.774 rows=42.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 40).col1))
+                           Rows Removed by Filter: 2320
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 40
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.457..14.827 rows=66.00 loops=1)
+                                   Hash Cond: (st_9.id = mf_9.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.895..13.239 rows=8.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_9  (cost=0.28..8.29 rows=1 width=4) (actual time=12.890..12.896 rows=1.00 loops=1)
+                                                 Index Cond: (id = 284)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.096..0.162 rows=3.50 loops=2)
+                                                 Hash Cond: (child_9.parent_id = parent_9.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_9  (cost=0.00..25.14 rows=730 width=8) (actual time=0.023..0.106 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=4.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_9  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=4.00 loops=2)
+                                   ->  CTE Scan on series_tree st_9  (cost=0.00..13.22 rows=661 width=4) (actual time=12.900..13.242 rows=8.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.504..1.505 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_9  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.079..0.731 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.345..1.542 rows=4492.00 loops=1)
+                     Sort Key: m_16.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_16  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.025..0.700 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.565..26.575 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.110..26.548 rows=59.00 loops=1)
+               Merge Cond: (r_17.media_item_id = m_17.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.825..24.837 rows=59.00 loops=1)
+                     Sort Key: r_17.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_17  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.190..24.806 rows=59.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 44).col1))
+                           Rows Removed by Filter: 2303
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 44
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.129..15.609 rows=73.00 loops=1)
+                                   Hash Cond: (st_10.id = mf_10.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.949..14.401 rows=3.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_10  (cost=0.28..8.29 rows=1 width=4) (actual time=13.945..13.950 rows=1.00 loops=1)
+                                                 Index Cond: (id = 285)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.156..0.219 rows=1.00 loops=2)
+                                                 Hash Cond: (child_10.parent_id = parent_10.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_10  (cost=0.00..25.14 rows=730 width=8) (actual time=0.029..0.123 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.031..0.032 rows=1.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_10  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=1.50 loops=2)
+                                   ->  CTE Scan on series_tree st_10  (cost=0.00..13.22 rows=661 width=4) (actual time=13.952..14.405 rows=3.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.130..1.130 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_10  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.064..0.516 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.169..1.397 rows=5139.00 loops=1)
+                     Sort Key: m_17.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_17  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.025..0.616 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=35.575..35.587 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=35.103..35.561 rows=43.00 loops=1)
+               Merge Cond: (r_18.media_item_id = m_18.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=33.741..33.754 rows=43.00 loops=1)
+                     Sort Key: r_18.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_18  (cost=0.28..771369.90 rows=1180 width=8) (actual time=33.105..33.730 rows=43.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 48).col1))
+                           Rows Removed by Filter: 2319
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 48
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=22.866..23.246 rows=86.00 loops=1)
+                                   Hash Cond: (st_11.id = mf_11.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=18.819..19.165 rows=13.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_11  (cost=0.28..8.29 rows=1 width=4) (actual time=18.814..18.820 rows=1.00 loops=1)
+                                                 Index Cond: (id = 289)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.098..0.166 rows=6.00 loops=2)
+                                                 Hash Cond: (child_11.parent_id = parent_11.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_11  (cost=0.00..25.14 rows=730 width=8) (actual time=0.021..0.104 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.006 rows=6.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_11  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=6.50 loops=2)
+                                   ->  CTE Scan on series_tree st_11  (cost=0.00..13.22 rows=661 width=4) (actual time=18.824..19.172 rows=13.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=3.932..3.932 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_11  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.055..0.545 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.291..1.494 rows=4541.00 loops=1)
+                     Sort Key: m_18.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_18  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.034..0.646 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=29.545..29.557 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=29.143..29.536 rows=17.00 loops=1)
+               Merge Cond: (r_19.media_item_id = m_19.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=27.261..27.272 rows=17.00 loops=1)
+                     Sort Key: r_19.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_19  (cost=0.28..771369.90 rows=1180 width=8) (actual time=26.411..27.250 rows=17.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 52).col1))
+                           Rows Removed by Filter: 2345
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 52
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=16.179..16.691 rows=28.00 loops=1)
+                                   Hash Cond: (st_12.id = mf_12.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=14.857..15.350 rows=4.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_12  (cost=0.28..8.29 rows=1 width=4) (actual time=14.853..14.859 rows=1.00 loops=1)
+                                                 Index Cond: (id = 290)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.164..0.239 rows=1.50 loops=2)
+                                                 Hash Cond: (child_12.parent_id = parent_12.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_12  (cost=0.00..25.14 rows=730 width=8) (actual time=0.026..0.146 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.010..0.011 rows=2.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_12  (cost=0.00..0.20 rows=10 width=4) (actual time=0.006..0.006 rows=2.00 loops=2)
+                                   ->  CTE Scan on series_tree st_12  (cost=0.00..13.22 rows=661 width=4) (actual time=14.859..15.353 rows=4.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.242..1.242 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_12  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.048..0.569 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.789..1.987 rows=4620.00 loops=1)
+                     Sort Key: m_19.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_19  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.034..1.071 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=28.546..28.557 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=28.023..28.524 rows=15.00 loops=1)
+               Merge Cond: (r_20.media_item_id = m_20.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=26.653..26.664 rows=15.00 loops=1)
+                     Sort Key: r_20.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_20  (cost=0.28..771369.90 rows=1180 width=8) (actual time=26.030..26.647 rows=15.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 56).col1))
+                           Rows Removed by Filter: 2347
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 56
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.712..15.088 rows=27.00 loops=1)
+                                   Hash Cond: (st_13.id = mf_13.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.639..13.999 rows=4.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_13  (cost=0.28..8.29 rows=1 width=4) (actual time=13.634..13.640 rows=1.00 loops=1)
+                                                 Index Cond: (id = 291)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.116..0.173 rows=1.50 loops=2)
+                                                 Hash Cond: (child_13.parent_id = parent_13.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_13  (cost=0.00..25.14 rows=730 width=8) (actual time=0.024..0.105 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.006 rows=2.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_13  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.002 rows=2.00 loops=2)
+                                   ->  CTE Scan on series_tree st_13  (cost=0.00..13.22 rows=661 width=4) (actual time=13.642..14.002 rows=4.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.040..1.042 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_13  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.051..0.484 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.289..1.504 rows=4632.00 loops=1)
+                     Sort Key: m_20.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_20  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.026..0.706 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=27.283..27.293 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.921..27.266 rows=33.00 loops=1)
+               Merge Cond: (r_21.media_item_id = m_21.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=25.520..25.530 rows=33.00 loops=1)
+                     Sort Key: r_21.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_21  (cost=0.28..771369.90 rows=1180 width=8) (actual time=25.047..25.510 rows=33.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 60).col1))
+                           Rows Removed by Filter: 2329
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 60
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.918..16.271 rows=38.00 loops=1)
+                                   Hash Cond: (st_14.id = mf_14.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=14.646..14.982 rows=3.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_14  (cost=0.28..8.29 rows=1 width=4) (actual time=14.641..14.647 rows=1.00 loops=1)
+                                                 Index Cond: (id = 294)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.119..0.162 rows=1.00 loops=2)
+                                                 Hash Cond: (child_14.parent_id = parent_14.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_14  (cost=0.00..25.14 rows=730 width=8) (actual time=0.024..0.105 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=1.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_14  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=1.50 loops=2)
+                                   ->  CTE Scan on series_tree st_14  (cost=0.00..13.22 rows=661 width=4) (actual time=14.649..14.985 rows=3.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.226..1.227 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_14  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.052..0.622 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.202..1.427 rows=4625.00 loops=1)
+                     Sort Key: m_21.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_21  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.025..0.617 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.857..26.869 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.403..26.846 rows=46.00 loops=1)
+               Merge Cond: (r_22.media_item_id = m_22.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.682..24.695 rows=46.00 loops=1)
+                     Sort Key: r_22.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_22  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.016..24.672 rows=46.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 64).col1))
+                           Rows Removed by Filter: 2316
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 64
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.862..16.236 rows=114.00 loops=1)
+                                   Hash Cond: (st_15.id = mf_15.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=14.678..15.016 rows=13.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_15  (cost=0.28..8.29 rows=1 width=4) (actual time=14.673..14.679 rows=1.00 loops=1)
+                                                 Index Cond: (id = 300)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.090..0.160 rows=6.00 loops=2)
+                                                 Hash Cond: (child_15.parent_id = parent_15.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_15  (cost=0.00..25.14 rows=730 width=8) (actual time=0.023..0.104 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.006 rows=6.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_15  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=6.50 loops=2)
+                                   ->  CTE Scan on series_tree st_15  (cost=0.00..13.22 rows=661 width=4) (actual time=14.681..15.021 rows=13.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.140..1.141 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_15  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.089..0.562 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.655..1.852 rows=4569.00 loops=1)
+                     Sort Key: m_22.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_22  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.026..0.837 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=33.676..33.686 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=33.016..33.660 rows=21.00 loops=1)
+               Merge Cond: (r_23.media_item_id = m_23.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=30.805..30.817 rows=21.00 loops=1)
+                     Sort Key: r_23.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_23  (cost=0.28..771369.90 rows=1180 width=8) (actual time=29.906..30.793 rows=21.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 68).col1))
+                           Rows Removed by Filter: 2341
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 68
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=17.723..18.373 rows=31.00 loops=1)
+                                   Hash Cond: (st_16.id = mf_16.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=15.515..16.146 rows=2.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_16  (cost=0.28..8.29 rows=1 width=4) (actual time=15.511..15.517 rows=1.00 loops=1)
+                                                 Index Cond: (id = 301)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.252..0.305 rows=0.50 loops=2)
+                                                 Hash Cond: (child_16.parent_id = parent_16.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_16  (cost=0.00..25.14 rows=730 width=8) (actual time=0.031..0.200 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.006..0.007 rows=1.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_16  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.002 rows=1.00 loops=2)
+                                   ->  CTE Scan on series_tree st_16  (cost=0.00..13.22 rows=661 width=4) (actual time=15.519..16.149 rows=2.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=2.082..2.083 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_16  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.068..0.852 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=2.146..2.460 rows=3575.00 loops=1)
+                     Sort Key: m_23.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_23  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.038..1.139 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=30.005..30.015 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=29.524..29.999 rows=27.00 loops=1)
+               Merge Cond: (r_24.media_item_id = m_24.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=28.255..28.265 rows=27.00 loops=1)
+                     Sort Key: r_24.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_24  (cost=0.28..771369.90 rows=1180 width=8) (actual time=27.463..28.240 rows=27.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 72).col1))
+                           Rows Removed by Filter: 2335
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 72
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=18.194..18.563 rows=46.00 loops=1)
+                                   Hash Cond: (st_17.id = mf_17.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=16.385..16.730 rows=8.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_17  (cost=0.28..8.29 rows=1 width=4) (actual time=16.366..16.372 rows=1.00 loops=1)
+                                                 Index Cond: (id = 302)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.097..0.166 rows=3.50 loops=2)
+                                                 Hash Cond: (child_17.parent_id = parent_17.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_17  (cost=0.00..25.14 rows=730 width=8) (actual time=0.025..0.106 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.005..0.005 rows=4.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_17  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=4.00 loops=2)
+                                   ->  CTE Scan on series_tree st_17  (cost=0.00..13.22 rows=661 width=4) (actual time=16.389..16.736 rows=8.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.716..1.717 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_17  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.051..0.545 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.216..1.440 rows=4486.00 loops=1)
+                     Sort Key: m_24.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_24  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.026..0.658 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=34.530..34.541 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=33.766..34.508 rows=66.00 loops=1)
+               Merge Cond: (r_25.media_item_id = m_25.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=31.892..31.909 rows=66.00 loops=1)
+                     Sort Key: r_25.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_25  (cost=0.28..771369.90 rows=1180 width=8) (actual time=31.049..31.863 rows=66.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 76).col1))
+                           Rows Removed by Filter: 2296
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 76
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=18.945..19.661 rows=112.00 loops=1)
+                                   Hash Cond: (st_18.id = mf_18.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=16.870..17.541 rows=10.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_18  (cost=0.28..8.29 rows=1 width=4) (actual time=16.866..16.873 rows=1.00 loops=1)
+                                                 Index Cond: (id = 303)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.107..0.216 rows=3.00 loops=3)
+                                                 Hash Cond: (child_18.parent_id = parent_18.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_18  (cost=0.00..25.14 rows=730 width=8) (actual time=0.018..0.127 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=3.33 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_18  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=3.33 loops=3)
+                                   ->  CTE Scan on series_tree st_18  (cost=0.00..13.22 rows=661 width=4) (actual time=16.874..17.548 rows=10.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.998..1.999 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_18  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.077..0.886 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.708..2.105 rows=4839.00 loops=1)
+                     Sort Key: m_25.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_25  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.033..0.867 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.056..26.067 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.536..26.040 rows=30.00 loops=1)
+               Merge Cond: (r_26.media_item_id = m_26.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.258..24.268 rows=30.00 loops=1)
+                     Sort Key: r_26.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_26  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.626..24.240 rows=30.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 80).col1))
+                           Rows Removed by Filter: 2332
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 80
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.599..15.151 rows=60.00 loops=1)
+                                   Hash Cond: (st_19.id = mf_19.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.480..13.998 rows=11.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_19  (cost=0.28..8.29 rows=1 width=4) (actual time=13.475..13.481 rows=1.00 loops=1)
+                                                 Index Cond: (id = 304)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.105..0.167 rows=3.33 loops=3)
+                                                 Hash Cond: (child_19.parent_id = parent_19.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_19  (cost=0.00..25.14 rows=730 width=8) (actual time=0.014..0.107 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.003..0.004 rows=3.67 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_19  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=3.67 loops=3)
+                                   ->  CTE Scan on series_tree st_19  (cost=0.00..13.22 rows=661 width=4) (actual time=13.484..14.011 rows=11.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.064..1.065 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_19  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.048..0.471 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.241..1.466 rows=5052.00 loops=1)
+                     Sort Key: m_26.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_26  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.039..0.675 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.334..26.344 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.292..26.324 rows=49.00 loops=1)
+               Merge Cond: (r_27.media_item_id = m_27.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.863..24.875 rows=49.00 loops=1)
+                     Sort Key: r_27.media_item_id
+                     Sort Method: quicksort  Memory: 26kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_27  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.475..24.855 rows=49.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 84).col1))
+                           Rows Removed by Filter: 2313
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 84
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.260..14.802 rows=49.00 loops=1)
+                                   Hash Cond: (st_20.id = mf_20.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=12.953..13.475 rows=7.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_20  (cost=0.28..8.29 rows=1 width=4) (actual time=12.931..12.938 rows=1.00 loops=1)
+                                                 Index Cond: (id = 365)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.207..0.253 rows=3.00 loops=2)
+                                                 Hash Cond: (child_20.parent_id = parent_20.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_20  (cost=0.00..25.14 rows=730 width=8) (actual time=0.023..0.116 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=3.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_20  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=3.50 loops=2)
+                                   ->  CTE Scan on series_tree st_20  (cost=0.00..13.22 rows=661 width=4) (actual time=12.956..13.480 rows=7.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.252..1.253 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_20  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.057..0.567 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.230..1.314 rows=1968.00 loops=1)
+                     Sort Key: m_27.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_27  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.023..0.677 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=26.135..26.157 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.728..26.143 rows=16.00 loops=1)
+               Merge Cond: (r_28.media_item_id = m_28.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.401..24.422 rows=16.00 loops=1)
+                     Sort Key: r_28.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_28  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.853..24.406 rows=16.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 88).col1))
+                           Rows Removed by Filter: 2346
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 88
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.108..15.499 rows=39.00 loops=1)
+                                   Hash Cond: (st_21.id = mf_21.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.888..14.260 rows=4.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_21  (cost=0.28..8.29 rows=1 width=4) (actual time=13.880..13.885 rows=1.00 loops=1)
+                                                 Index Cond: (id = 383)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.121..0.179 rows=1.50 loops=2)
+                                                 Hash Cond: (child_21.parent_id = parent_21.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_21  (cost=0.00..25.14 rows=730 width=8) (actual time=0.025..0.114 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.006 rows=2.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_21  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=2.00 loops=2)
+                                   ->  CTE Scan on series_tree st_21  (cost=0.00..13.22 rows=661 width=4) (actual time=13.892..14.253 rows=4.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.164..1.165 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_21  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.060..0.527 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.198..1.426 rows=4566.00 loops=1)
+                     Sort Key: m_28.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_28  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.024..0.625 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=27.131..27.144 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=26.645..27.121 rows=29.00 loops=1)
+               Merge Cond: (r_29.media_item_id = m_29.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=25.355..25.368 rows=29.00 loops=1)
+                     Sort Key: r_29.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_29  (cost=0.28..771369.90 rows=1180 width=8) (actual time=24.780..25.347 rows=29.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 92).col1))
+                           Rows Removed by Filter: 2333
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 92
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=15.433..15.887 rows=69.00 loops=1)
+                                   Hash Cond: (st_22.id = mf_22.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.745..14.170 rows=6.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_22  (cost=0.28..8.29 rows=1 width=4) (actual time=13.725..13.732 rows=1.00 loops=1)
+                                                 Index Cond: (id = 417)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.141..0.205 rows=2.50 loops=2)
+                                                 Hash Cond: (child_22.parent_id = parent_22.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_22  (cost=0.00..25.14 rows=730 width=8) (actual time=0.025..0.137 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.006..0.007 rows=3.00 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_22  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=3.00 loops=2)
+                                   ->  CTE Scan on series_tree st_22  (cost=0.00..13.22 rows=661 width=4) (actual time=13.748..14.173 rows=6.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.587..1.589 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_22  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.026..0.790 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.251..1.461 rows=4893.00 loops=1)
+                     Sort Key: m_29.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_29  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.026..0.674 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.938..25.950 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.452..25.930 rows=19.00 loops=1)
+               Merge Cond: (r_30.media_item_id = m_30.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.196..24.207 rows=19.00 loops=1)
+                     Sort Key: r_30.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_30  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.672..24.194 rows=19.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 96).col1))
+                           Rows Removed by Filter: 2343
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 96
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.977..15.494 rows=66.00 loops=1)
+                                   Hash Cond: (st_23.id = mf_23.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.795..14.284 rows=4.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_23  (cost=0.28..8.29 rows=1 width=4) (actual time=13.790..13.797 rows=1.00 loops=1)
+                                                 Index Cond: (id = 419)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.121..0.157 rows=1.00 loops=3)
+                                                 Hash Cond: (child_23.parent_id = parent_23.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_23  (cost=0.00..25.14 rows=730 width=8) (actual time=0.017..0.101 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.005 rows=1.33 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_23  (cost=0.00..0.20 rows=10 width=4) (actual time=0.002..0.002 rows=1.33 loops=3)
+                                   ->  CTE Scan on series_tree st_23  (cost=0.00..13.22 rows=661 width=4) (actual time=13.798..14.287 rows=4.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.080..1.080 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_23  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.026..0.473 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.159..1.390 rows=5086.00 loops=1)
+                     Sort Key: m_30.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_30  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.030..0.614 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=25.857..25.868 rows=1.00 loops=1)
+         Buffers: shared hit=219
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=25.652..25.845 rows=20.00 loops=1)
+               Merge Cond: (r_31.media_item_id = m_31.id)
+               Buffers: shared hit=219
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=24.215..24.225 rows=20.00 loops=1)
+                     Sort Key: r_31.media_item_id
+                     Sort Method: quicksort  Memory: 25kB
+                     Buffers: shared hit=124
+                     ->  Index Scan using ratings_author_id_idx on ratings r_31  (cost=0.28..771369.90 rows=1180 width=8) (actual time=23.689..24.208 rows=20.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 100).col1))
+                           Rows Removed by Filter: 2342
+                           Index Searches: 1
+                           Buffers: shared hit=124
+                           SubPlan 100
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=14.853..15.319 rows=37.00 loops=1)
+                                   Hash Cond: (st_24.id = mf_24.franchise_id)
+                                   Buffers: shared hit=72
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=13.645..14.087 rows=5.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=35
+                                           ->  Index Scan using franchises_pkey on franchises franchises_24  (cost=0.28..8.29 rows=1 width=4) (actual time=13.623..13.629 rows=1.00 loops=1)
+                                                 Index Cond: (id = 433)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.139..0.212 rows=2.00 loops=2)
+                                                 Hash Cond: (child_24.parent_id = parent_24.id)
+                                                 Buffers: shared hit=32
+                                                 ->  Seq Scan on franchises child_24  (cost=0.00..25.14 rows=730 width=8) (actual time=0.036..0.143 rows=732.00 loops=2)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=32
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.008..0.008 rows=2.50 loops=2)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_24  (cost=0.00..0.20 rows=10 width=4) (actual time=0.004..0.004 rows=2.50 loops=2)
+                                   ->  CTE Scan on series_tree st_24  (cost=0.00..13.22 rows=661 width=4) (actual time=13.650..14.093 rows=5.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=35
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.147..1.148 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_24  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.033..0.489 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.269..1.418 rows=3206.00 loops=1)
+                     Sort Key: m_31.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_31  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.027..0.671 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=29.054..29.065 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=28.517..29.040 rows=109.00 loops=1)
+               Merge Cond: (r_32.media_item_id = m_32.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=27.256..27.270 rows=109.00 loops=1)
+                     Sort Key: r_32.media_item_id
+                     Sort Method: quicksort  Memory: 27kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_32  (cost=0.28..771369.90 rows=1180 width=8) (actual time=26.575..27.234 rows=109.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 104).col1))
+                           Rows Removed by Filter: 2253
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 104
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=16.061..16.633 rows=218.00 loops=1)
+                                   Hash Cond: (st_25.id = mf_25.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=14.311..14.813 rows=33.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 34kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_25  (cost=0.28..8.29 rows=1 width=4) (actual time=14.290..14.296 rows=1.00 loops=1)
+                                                 Index Cond: (id = 506)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.087..0.161 rows=10.67 loops=3)
+                                                 Hash Cond: (child_25.parent_id = parent_25.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_25  (cost=0.00..25.14 rows=730 width=8) (actual time=0.017..0.101 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.004 rows=11.00 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 10kB
+                                                       ->  WorkTable Scan on series_tree parent_25  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.002 rows=11.00 loops=3)
+                                   ->  CTE Scan on series_tree st_25  (cost=0.00..13.22 rows=661 width=4) (actual time=14.314..14.825 rows=33.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 18kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.622..1.623 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_25  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.035..0.658 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.221..1.450 rows=5203.00 loops=1)
+                     Sort Key: m_32.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_32  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.027..0.633 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=771924.02..771970.32 rows=1 width=12) (actual time=31.945..31.955 rows=1.00 loops=1)
+         Buffers: shared hit=235
+         ->  Merge Join  (cost=771924.02..771967.36 rows=1178 width=8) (actual time=31.390..31.926 rows=102.00 loops=1)
+               Merge Cond: (r_33.media_item_id = m_33.id)
+               Buffers: shared hit=235
+               ->  Sort  (cost=771430.10..771433.05 rows=1180 width=8) (actual time=30.140..30.154 rows=102.00 loops=1)
+                     Sort Key: r_33.media_item_id
+                     Sort Method: quicksort  Memory: 27kB
+                     Buffers: shared hit=140
+                     ->  Index Scan using ratings_author_id_idx on ratings r_33  (cost=0.28..771369.90 rows=1180 width=8) (actual time=29.457..30.120 rows=102.00 loops=1)
+                           Index Cond: (author_id = 2)
+                           Filter: (ANY (media_item_id = (hashed SubPlan 108).col1))
+                           Rows Removed by Filter: 2260
+                           Index Searches: 1
+                           Buffers: shared hit=140
+                           SubPlan 108
+                             ->  Hash Join  (cost=465.64..707.59 rows=4447 width=4) (actual time=18.540..19.137 rows=127.00 loops=1)
+                                   Hash Cond: (st_26.id = mf_26.franchise_id)
+                                   Buffers: shared hit=88
+                                   CTE series_tree
+                                     ->  Recursive Union  (cost=0.28..303.51 rows=661 width=4) (actual time=16.386..16.928 rows=18.00 loops=1)
+                                           Storage: Memory  Maximum Storage: 33kB
+                                           Buffers: shared hit=51
+                                           ->  Index Scan using franchises_pkey on franchises franchises_26  (cost=0.28..8.29 rows=1 width=4) (actual time=16.367..16.373 rows=1.00 loops=1)
+                                                 Index Cond: (id = 507)
+                                                 Filter: (publication_status = 'published'::publication_status)
+                                                 Index Searches: 1
+                                                 Buffers: shared hit=3
+                                           ->  Hash Join  (cost=0.33..28.86 rows=66 width=4) (actual time=0.090..0.171 rows=5.67 loops=3)
+                                                 Hash Cond: (child_26.parent_id = parent_26.id)
+                                                 Buffers: shared hit=48
+                                                 ->  Seq Scan on franchises child_26  (cost=0.00..25.14 rows=730 width=8) (actual time=0.023..0.109 rows=732.00 loops=3)
+                                                       Filter: (publication_status = 'published'::publication_status)
+                                                       Rows Removed by Filter: 1
+                                                       Buffers: shared hit=48
+                                                 ->  Hash  (cost=0.20..0.20 rows=10 width=4) (actual time=0.004..0.004 rows=6.00 loops=3)
+                                                       Buckets: 1024  Batches: 1  Memory Usage: 9kB
+                                                       ->  WorkTable Scan on series_tree parent_26  (cost=0.00..0.20 rows=10 width=4) (actual time=0.001..0.001 rows=6.00 loops=3)
+                                   ->  CTE Scan on series_tree st_26  (cost=0.00..13.22 rows=661 width=4) (actual time=16.389..16.942 rows=18.00 loops=1)
+                                         Storage: Memory  Maximum Storage: 17kB
+                                         Buffers: shared hit=51
+                                   ->  Hash  (cost=99.58..99.58 rows=5005 width=8) (actual time=1.953..1.954 rows=4934.00 loops=1)
+                                         Buckets: 8192  Batches: 1  Memory Usage: 257kB
+                                         Buffers: shared hit=37
+                                         ->  Seq Scan on media_item_franchises mf_26  (cost=0.00..99.58 rows=5005 width=8) (actual time=0.047..0.714 rows=4934.00 loops=1)
+                                               Filter: (publication_status = 'published'::publication_status)
+                                               Rows Removed by Filter: 1
+                                               Buffers: shared hit=37
+               ->  Sort  (cost=493.92..507.00 rows=5232 width=4) (actual time=1.223..1.454 rows=5209.00 loops=1)
+                     Sort Key: m_33.id
+                     Sort Method: quicksort  Memory: 193kB
+                     Buffers: shared hit=95
+                     ->  Index Only Scan using media_items_feed_created_idx on media_items m_33  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.026..0.618 rows=5235.00 loops=1)
+                           Heap Fetches: 100
+                           Index Searches: 1
+                           Buffers: shared hit=95
+   ->  GroupAggregate  (cost=491.45..503.25 rows=1 width=12) (actual time=3.364..3.366 rows=1.00 loops=1)
+         Buffers: shared hit=147
+         ->  Sort  (cost=491.45..497.35 rows=2357 width=8) (actual time=3.083..3.196 rows=2362.00 loops=1)
+               Sort Key: r_34.media_item_id
+               Sort Method: quicksort  Memory: 152kB
+               Buffers: shared hit=147
+               ->  Hash Join  (cost=266.74..359.43 rows=2357 width=8) (actual time=1.745..2.490 rows=2362.00 loops=1)
+                     Hash Cond: (r_34.media_item_id = m_34.id)
+                     Buffers: shared hit=147
+                     ->  Bitmap Heap Scan on ratings r_34  (cost=30.57..117.07 rows=2360 width=8) (actual time=0.080..0.413 rows=2362.00 loops=1)
+                           Recheck Cond: (author_id = 2)
+                           Heap Blocks: exact=48
+                           Buffers: shared hit=52
+                           ->  Bitmap Index Scan on ratings_author_id_idx  (cost=0.00..29.98 rows=2360 width=0) (actual time=0.063..0.063 rows=2362.00 loops=1)
+                                 Index Cond: (author_id = 2)
+                                 Index Searches: 1
+                                 Buffers: shared hit=4
+                     ->  Hash  (cost=170.76..170.76 rows=5232 width=4) (actual time=1.547..1.548 rows=5235.00 loops=1)
+                           Buckets: 8192  Batches: 1  Memory Usage: 249kB
+                           Buffers: shared hit=95
+                           ->  Index Only Scan using media_items_feed_created_idx on media_items m_34  (cost=0.28..170.76 rows=5232 width=4) (actual time=0.038..0.720 rows=5235.00 loops=1)
+                                 Heap Fetches: 100
+                                 Index Searches: 1
+                                 Buffers: shared hit=95
+ Planning:
+   Buffers: shared hit=1175
+ Planning Time: 36.285 ms
+ JIT:
+   Functions: 2043
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 152.540 ms (Deform 72.331 ms), Inlining 257.385 ms, Optimization 6914.049 ms, Emission 5035.979 ms, Total 12359.954 ms
+ Execution Time: 12590.294 ms
+(1746 rows)
+
+ROLLBACK

@@ -15,7 +15,7 @@ contracts in `src/lib/user-state`; do not emulate authorization with a fake auth
 - Version the persisted shape. When its schema changes, deliberately migrate or reject older and
   newer versions; do not silently reinterpret an unknown version as current.
 - Demo data stays device-local until an authenticated server action validates and imports it.
-- Keep ratings and `wanted / skipped` mutually exclusive for the same record.
+- Keep ratings and `wanted` mutually exclusive for the same record. `wanted` is the only personal archive status.
 - Clear demo profile, onboarding, and demo toast state together only after a successful import or an
   explicit reset. Preserve recoverable local data after an import failure.
 

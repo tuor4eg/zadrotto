@@ -1,7 +1,7 @@
 import { getEffectiveRating } from "@/lib/media/title-parts"
 export const DEMO_PROFILE_STORAGE_KEY = "zadrotto.demo-profile"
 export const DEMO_PROFILE_STORAGE_EVENT = "zadrotto:demo-profile"
-export const DEMO_PROFILE_SCHEMA_VERSION = 2
+export const DEMO_PROFILE_SCHEMA_VERSION = 3
 export const DEMO_LOGIN_PROMPT_RATING_THRESHOLD = 12
 export const DEMO_ONBOARDING_STORAGE_AUTHOR_KEY = "demo"
 
@@ -19,7 +19,7 @@ export type DemoRatingEntry = {
 }
 
 export type DemoStatusEntry = {
-  status: "wanted" | "skipped"
+  status: "wanted"
   updatedAt: string
 }
 
@@ -117,7 +117,7 @@ function parseStatusEntry(raw: unknown): DemoStatusEntry | null {
   if (!raw || typeof raw !== "object") return null
   const value = raw as Record<string, unknown>
   if (
-    (value.status !== "wanted" && value.status !== "skipped")
+    value.status !== "wanted"
     || typeof value.updatedAt !== "string"
   ) {
     return null
@@ -134,7 +134,7 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
   const value = raw as Record<string, unknown>
   // Unknown versions require an explicit migration. Silently interpreting a
   // future shape as the current one can corrupt or discard local demo data.
-  if (value.schemaVersion !== 1 && value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) return null
+  if (value.schemaVersion !== 1 && value.schemaVersion !== 2 && value.schemaVersion !== DEMO_PROFILE_SCHEMA_VERSION) return null
 
   const base = createEmptyDemoProfile(
     typeof value.createdAt === "string" ? value.createdAt : undefined,
@@ -149,7 +149,7 @@ export function parseDemoProfile(raw: unknown): DemoProfile | null {
   }
 
   const partRatings: DemoProfile["partRatings"] = {}
-  if (value.schemaVersion === DEMO_PROFILE_SCHEMA_VERSION && value.partRatings && typeof value.partRatings === "object") {
+  if ((value.schemaVersion === 2 || value.schemaVersion === DEMO_PROFILE_SCHEMA_VERSION) && value.partRatings && typeof value.partRatings === "object") {
     for (const [code, rawParts] of Object.entries(value.partRatings as Record<string, unknown>)) {
       if (!rawParts || typeof rawParts !== "object") continue
       const parts: Record<string, DemoRatingEntry> = {}

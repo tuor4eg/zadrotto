@@ -20,7 +20,7 @@ export type PlatformLogoSyncCheckpoint = {
   initialMappedIds:number;
   counters?: {recoveredIds:number;createdRequests:number;autoApproved:number;applied:number;manualPending:number;skipped:number;processedPlatforms:number;remainingPlatforms:number;reusedImages:number;errors:number;storedImages:number;applying:number};
 };
-export type PlatformLogoSyncPayload={platformId?:number;force?:boolean;checkpoint?:PlatformLogoSyncCheckpoint};
+export type PlatformLogoSyncPayload={platformId?:number;force?:boolean;provider?:'igdb'|'rawg';checkpoint?:PlatformLogoSyncCheckpoint};
 const positiveInteger=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>0&&value<=2_147_483_647;
 const nonnegativeInteger=(value:unknown):value is number=>typeof value==='number'&&Number.isSafeInteger(value)&&value>=0;
 const validDate=(value:unknown):value is string=>typeof value==='string'&&Number.isFinite(Date.parse(value));
@@ -29,7 +29,7 @@ function invalid():never {throw new JobError('invalid-payload','Некоррек
 export function parsePlatformLogoSyncPayload(value:unknown):PlatformLogoSyncPayload {
   if(!value||typeof value!=='object'||Array.isArray(value))return invalid();
   const row=value as Record<string,unknown>;
-  if(Object.keys(row).some(key=>!['platformId','force','checkpoint'].includes(key))||(row.platformId!==undefined&&!positiveInteger(row.platformId))||(row.force!==undefined&&typeof row.force!=='boolean'))return invalid();
+  if(Object.keys(row).some(key=>!['platformId','force','provider','checkpoint'].includes(key))||(row.platformId!==undefined&&!positiveInteger(row.platformId))||(row.force!==undefined&&typeof row.force!=='boolean')||(row.provider!==undefined&&row.provider!=='igdb'&&row.provider!=='rawg'))return invalid();
   if(row.checkpoint!==undefined) {
     if(!row.checkpoint||typeof row.checkpoint!=='object'||Array.isArray(row.checkpoint))return invalid();
     const cp=row.checkpoint as Partial<PlatformLogoSyncCheckpoint>;

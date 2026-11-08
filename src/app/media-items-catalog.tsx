@@ -6,7 +6,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useMemo, useState, useTransition } from "react";
 
 import { MediaCatalogPreview } from "@/app/media-catalog-preview";
-import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/app/archive-author-media-suggestion";
+import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/lib/media/suggestion-events";
 import {
   type AuthorRatingFilter,
   type CatalogSort,
@@ -280,7 +280,7 @@ export function MediaItemsCatalog({
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <span>
               {mediaTypeFilter === "all"
-                ? "Ничего не найдено."
+                ? "Ничего не найдено"
                 : "Записи выбранного типа не найдены."}
             </span>
             {currentAuthor ? (
@@ -295,7 +295,7 @@ export function MediaItemsCatalog({
                   );
                 }}
               >
-                Предложить запись
+                Добавить запись
               </button>
             ) : null}
           </div>

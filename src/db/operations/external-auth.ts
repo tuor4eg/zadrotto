@@ -17,7 +17,7 @@ export class ExternalAuthError extends Error {
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 async function lockAuthor(tx: Tx, authorId: number) {
   const [author] = await tx.select().from(authors).where(eq(authors.id, authorId)).for("update");
-  if (!author || author.blockedAt || author.isSystem) throw new ExternalAuthError("unavailable");
+  if (!author || author.blockedAt || author.isSystem || author.mergedIntoAuthorId) throw new ExternalAuthError("unavailable");
   const [account] = await tx.select().from(authorAccounts).where(eq(authorAccounts.authorId, authorId));
   if (account && account.status !== "active" && account.status !== "pending_email") throw new ExternalAuthError("unavailable");
   return author;

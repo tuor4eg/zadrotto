@@ -90,7 +90,7 @@ export async function getPublicUserProfile(
       name: authors.name,
     })
     .from(authors)
-    .where(and(eq(authors.id, profileAuthorId), eq(authors.isSystem, false), isNull(authors.blockedAt)))
+    .where(and(eq(authors.id, profileAuthorId), eq(authors.isSystem, false), isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId)))
     .limit(1);
   if (!author) return null;
   const relationState = await getFriendshipViewState(currentAuthorId, profileAuthorId);
@@ -102,11 +102,13 @@ export async function getPublicUserProfile(
   };
 }
 
+// Сейчас настройка недоступна в кабинете автора. Запись и проверки видимости
+// профиля, поиска и заявок в друзья сохранены для её возможного возвращения.
 export async function updateAuthorDiscoverability(authorId: number, isDiscoverable: boolean) {
   const [updated] = await db
     .update(authors)
     .set({ isDiscoverable, updatedAt: new Date() })
-    .where(and(eq(authors.id, authorId), eq(authors.isSystem, false), isNull(authors.blockedAt)))
+    .where(and(eq(authors.id, authorId), eq(authors.isSystem, false), isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId)))
     .returning({ id: authors.id });
   return Boolean(updated);
 }
@@ -123,7 +125,7 @@ export async function sendFriendRequest(authorId: number, targetAuthorId: number
         eq(authors.id, targetAuthorId),
         eq(authors.isDiscoverable, true),
         eq(authors.isSystem, false),
-        isNull(authors.blockedAt),
+        isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId),
       ))
       .limit(1)
       .for("update");
@@ -233,13 +235,12 @@ export async function getFriendshipList(authorId: number, kind: ListKind, reques
 
 export async function searchDiscoverableUsers(authorId: number, query: string, requestedPage: number): Promise<Paginated<UserListRow>> {
   const normalizedQuery = normalizeSearchText(query);
-  if (!normalizedQuery) return { items: [], page: 1, pageSize: FRIENDS_PAGE_SIZE, totalCount: 0, totalPages: 1 };
   const filter = and(
     ne(authors.id, authorId),
     eq(authors.isDiscoverable, true),
     eq(authors.isSystem, false),
-    isNull(authors.blockedAt),
-    containsNormalizedSearchSql(authors.name, normalizedQuery),
+    isNull(authors.blockedAt), isNull(authors.mergedIntoAuthorId),
+    normalizedQuery ? containsNormalizedSearchSql(authors.name, normalizedQuery) : undefined,
   );
   const [countRow] = await db.select({ count: sql<number>`count(*)::int` }).from(authors).where(filter);
   const totalCount = countRow?.count ?? 0;

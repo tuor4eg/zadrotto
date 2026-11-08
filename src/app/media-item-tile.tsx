@@ -701,7 +701,7 @@ export function MediaItemTile({
     ? "right-2 sm:right-2.5"
     : "right-1.5 sm:right-2";
   const ratingPillClassName = `absolute ${ratingPillRightClassName} top-1.5 inline-flex h-7 items-center justify-center rounded-full pl-1.5 pr-0.5 font-sans font-semibold leading-none tabular-nums backdrop-blur-[1px] ${RATING_PILL_SHADOW_CLASS_NAME} sm:top-2 sm:h-8 sm:pl-2 sm:pr-1 ${ratingPillToneClassName}`;
-  const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] ${hoverEffect ? "transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] focus-visible:-translate-y-0.5" : ""} focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
+  const className = `group relative aspect-[2/3] overflow-hidden rounded-md border bg-stone-100 text-left shadow-[0_2px_0_rgba(68,64,60,0.10)] ${hoverEffect ? "transition-[border-color,box-shadow,transform] hover:-translate-y-0.5 hover:border-stone-400/80 hover:shadow-[0_8px_18px_rgba(68,64,60,0.20)] group-hover/media-status:-translate-y-0.5 group-hover/media-status:border-stone-400/80 group-hover/media-status:shadow-[0_8px_18px_rgba(68,64,60,0.20)] group-focus-within/media-status:-translate-y-0.5 focus-visible:-translate-y-0.5" : ""} focus-visible:border-stone-400/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-500/35 border-stone-300/80`;
   const tileCoverItem = {
     ...item,
     title: displayTitle,
@@ -729,7 +729,7 @@ export function MediaItemTile({
       ) : null}
       {showTitle ? <span className="absolute bottom-3 left-2.5 right-2.5 flex min-h-16 min-w-0 flex-col justify-end text-stone-50">
         {subtitle ? <span className="mb-1 block text-xs leading-tight text-stone-200 drop-shadow">{subtitle}</span> : null}
-        <span className="block line-clamp-2 font-serif text-base leading-tight drop-shadow">
+        <span className="media-carrier-font-pc-steam block line-clamp-2 text-base leading-tight drop-shadow">
           {displayTitle}
         </span>
       </span> : null}

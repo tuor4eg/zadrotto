@@ -455,7 +455,7 @@ function catalogFilterConditions(input: {
 
     if (input.authorRatingFilter === "rated") {
       conditions.push(ratingExistsCondition);
-    } else if (input.authorRatingFilter === "wanted" || input.authorRatingFilter === "skipped") {
+    } else if (input.authorRatingFilter === "wanted") {
       conditions.push(currentAuthorStatusCondition(input.currentAuthorId, input.authorRatingFilter));
     } else {
       conditions.push(

@@ -6,9 +6,9 @@ import {
   getCoverFileExtension,
   validateCoverFileInput,
 } from "@/lib/forms/author-media";
-import { deleteS3Object, fetchS3Object, uploadS3Object } from "@/lib/services/minio";
+import { deleteS3Object, fetchS3Object, S3UploadError, uploadS3Object } from "@/lib/services/minio";
 import { verifyCoverCandidateToken } from "@/lib/covers/candidates";
-import type { CoverSourceInput } from "@/lib/covers/types";
+import type { CoverCandidate, CoverSourceInput } from "@/lib/covers/types";
 import { fetchProviderImage } from "@/lib/covers/provider-image-relay";
 
 export type CoverUploadResult =
@@ -18,11 +18,16 @@ export type CoverUploadResult =
       coverThumbUrl: string | null;
       thumbnailError: "cover-thumbnail-generate" | "cover-thumbnail-upload" | null;
       source: CoverSourceInput;
+      thumbnailRetryable?: boolean;
+      fatalStorage?: boolean;
     }
   | {
       ok: false;
       error: "cover-type" | "cover-too-large" | "cover-upload";
       diagnostic?: CoverStorageDiagnostic;
+      retryable?: boolean;
+      httpStatusCode?: number;
+      fatalStorage?: boolean;
     };
 
 export type CoverStorageDiagnostic = {
@@ -118,17 +123,19 @@ export type CoverThumbnailResult =
       ok: false;
       error: "cover-thumbnail-source" | "cover-thumbnail-generate" | "cover-thumbnail-upload";
       retryable: boolean;
+      fatalStorage?: boolean;
     };
 
 export async function createCoverThumbFromObjectKey(
   coverUrl: string | null,
+  options?: { objectKey?: string; signal?: AbortSignal },
 ): Promise<CoverThumbnailResult> {
   if (!isS3ObjectKey(coverUrl)) {
     return { ok: false, error: "cover-thumbnail-source", retryable: false };
   }
 
   const objectKey = coverUrl!.trim();
-  const thumbObjectKey = buildCoverThumbObjectKey(objectKey);
+  const thumbObjectKey = options?.objectKey ?? buildCoverThumbObjectKey(objectKey);
 
   if (!thumbObjectKey) {
     return { ok: false, error: "cover-thumbnail-source", retryable: false };
@@ -136,7 +143,7 @@ export async function createCoverThumbFromObjectKey(
 
   let response: Awaited<ReturnType<typeof fetchS3Object>>;
   try {
-    response = await fetchS3Object({ objectKey });
+    response = await fetchS3Object({ objectKey, signal: AbortSignal.any([AbortSignal.timeout(15_000), ...(options?.signal ? [options.signal] : [])]) });
   } catch (error) {
     logCoverStorageError("thumbnail-source", error);
     return { ok: false, error: "cover-thumbnail-source", retryable: true };
@@ -146,7 +153,8 @@ export async function createCoverThumbFromObjectKey(
     return { ok: false, error: "cover-thumbnail-source", retryable: true };
   }
 
-  const body = Buffer.from(await response.arrayBuffer());
+  let body: Buffer;
+  try { body = Buffer.from(await response.arrayBuffer()); } catch { return { ok: false, error: "cover-thumbnail-source", retryable: true }; }
   const thumbBody = await createCoverThumbBuffer(body);
 
   if (!thumbBody) {
@@ -158,10 +166,11 @@ export async function createCoverThumbFromObjectKey(
       objectKey: thumbObjectKey,
       body: thumbBody,
       contentType: "image/webp",
+      signal: options?.signal,
     });
   } catch (error) {
     logCoverStorageError("thumbnail-upload", error);
-    return { ok: false, error: "cover-thumbnail-upload", retryable: true };
+    return { ok: false, error: "cover-thumbnail-upload", ...classifyStorageError(error) };
   }
 
   return { ok: true, coverThumbUrl: thumbObjectKey };
@@ -187,7 +196,7 @@ function logCoverStorageError(stage: string, error: unknown): CoverStorageDiagno
           : null,
     errorName: error instanceof Error ? error.name : typeof error,
     httpStatusCode:
-      typeof metadata?.httpStatusCode === "number" ? metadata.httpStatusCode : null,
+      error instanceof S3UploadError ? error.status : typeof metadata?.httpStatusCode === "number" ? metadata.httpStatusCode : null,
     requestId: typeof metadata?.requestId === "string" ? metadata.requestId : null,
   };
 
@@ -200,18 +209,28 @@ function logCoverStorageError(stage: string, error: unknown): CoverStorageDiagno
   return diagnostic;
 }
 
+function classifyStorageError(error: unknown) {
+  const fatalStorage = error instanceof S3UploadError && error.status < 500 && error.status !== 429;
+  return { retryable: !fatalStorage, fatalStorage };
+}
+
 async function uploadCoverBuffer(input: {
   body: Buffer;
   contentType: string;
   objectKey: string | null;
   source: CoverSourceInput;
+  signal?: AbortSignal;
 }): Promise<CoverUploadResult> {
   if (!input.objectKey) {
     return { ok: false, error: "cover-type" };
   }
 
+  const thumbBody = await createCoverThumbBuffer(input.body);
+  if (!thumbBody) return { ok: false, error: "cover-type", retryable: false };
+
   try {
     await uploadS3Object({
+      signal: input.signal,
       objectKey: input.objectKey,
       body: input.body,
       contentType: input.contentType,
@@ -220,17 +239,19 @@ async function uploadCoverBuffer(input: {
     let uploadedThumbObjectKey: string | null = null;
     let thumbnailError: "cover-thumbnail-generate" | "cover-thumbnail-upload" | null = null;
     const thumbObjectKey = buildCoverThumbObjectKey(input.objectKey);
-    const thumbBody = await createCoverThumbBuffer(input.body);
+    let thumbnailFailure: ReturnType<typeof classifyStorageError> | undefined;
 
     if (thumbObjectKey && thumbBody) {
       try {
         await uploadS3Object({
+          signal: input.signal,
           objectKey: thumbObjectKey,
           body: thumbBody,
           contentType: "image/webp",
         });
         uploadedThumbObjectKey = thumbObjectKey;
       } catch (error) {
+        thumbnailFailure = classifyStorageError(error);
         thumbnailError = "cover-thumbnail-upload";
         logCoverStorageError("thumbnail-upload", error);
       }
@@ -244,10 +265,12 @@ async function uploadCoverBuffer(input: {
       coverThumbUrl: uploadedThumbObjectKey,
       thumbnailError,
       source: input.source,
+      thumbnailRetryable: thumbnailFailure?.retryable,
+      fatalStorage: thumbnailFailure?.fatalStorage,
     };
   } catch (error) {
     const diagnostic = logCoverStorageError("original-upload", error);
-    return { ok: false, error: "cover-upload", diagnostic };
+    return { ok: false, error: "cover-upload", diagnostic, httpStatusCode: diagnostic.httpStatusCode ?? undefined, ...classifyStorageError(error) };
   }
 }
 
@@ -314,7 +337,20 @@ export async function uploadExternalCoverFromToken(input: {
     return { ok: false, error: "cover-upload" };
   }
 
+  return uploadExternalCoverCandidate({ ...input, candidate });
+}
+
+/** Trusted server-side candidate; interactive callers must verify their token first. */
+export async function uploadExternalCoverCandidate(input: {
+  authorId?: number;
+  mediaItemCode: string;
+  candidate: CoverCandidate;
+  maxBytes?: number;
+  signal?: AbortSignal;
+}): Promise<CoverUploadResult> {
+  const candidate = input.candidate;
   const image = await fetchProviderImage({
+    signal: input.signal,
     providerCode: candidate.provider,
     imageUrl: candidate.imageUrl,
     maxBytes: input.maxBytes ?? 5 * 1024 * 1024,
@@ -323,7 +359,7 @@ export async function uploadExternalCoverFromToken(input: {
   if (!image.ok) {
     if (image.error === "too-large") return { ok: false, error: "cover-too-large" };
     if (image.error === "unsupported-type") return { ok: false, error: "cover-type" };
-    return { ok: false, error: "cover-upload" };
+    return { ok: false, error: "cover-upload", retryable: image.retryable ?? false, httpStatusCode: image.status };
   }
 
   const contentType = image.contentType;
@@ -348,6 +384,7 @@ export async function uploadExternalCoverFromToken(input: {
     : buildAdminCoverObjectKey(input.mediaItemCode, contentType);
 
   return uploadCoverBuffer({
+    signal: input.signal,
     objectKey,
     body,
     contentType,
@@ -389,13 +426,13 @@ export async function resolveCoverUpload(input: {
 }
 
 /** Server-only provider import; the relay enforces the provider host allowlist. */
-export async function uploadTitlePartPoster(input: { partId: number; imageUrl: string }): Promise<CoverUploadResult> {
-  const image = await fetchProviderImage({ providerCode: "tmdb", imageUrl: input.imageUrl, maxBytes: 5 * 1024 * 1024 });
-  if (!image.ok) return { ok: false, error: image.error === "too-large" ? "cover-too-large" : image.error === "unsupported-type" ? "cover-type" : "cover-upload" };
+export async function uploadTitlePartPoster(input: { partId: number; imageUrl: string; signal?: AbortSignal }): Promise<CoverUploadResult> {
+  const image = await fetchProviderImage({ signal: input.signal, providerCode: "tmdb", imageUrl: input.imageUrl, maxBytes: 5 * 1024 * 1024 });
+  if (!image.ok) return { ok: false, error: image.error === "too-large" ? "cover-too-large" : image.error === "unsupported-type" ? "cover-type" : "cover-upload", retryable: image.retryable ?? false, httpStatusCode: image.status };
   const validation = validateCoverFileInput({ size: image.body.byteLength, type: image.contentType });
   if (!validation.ok) return validation;
   const extension = getCoverFileExtension(image.contentType);
-  return uploadCoverBuffer({ body: image.body, contentType: image.contentType,
+  return uploadCoverBuffer({ signal: input.signal, body: image.body, contentType: image.contentType,
     objectKey: extension ? `covers/title-parts/${input.partId}-${randomUUID()}.${extension}` : null,
     source: { provider: "tmdb", externalId: String(input.partId), pageUrl: null } });
 }

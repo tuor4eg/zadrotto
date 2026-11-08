@@ -1,3 +1,4 @@
+import { isAuthorMediaStatus } from "@/lib/media/author-media-status"
 import {
   getDemoRatingsCount,
   getDemoRatedCodes,
@@ -60,6 +61,7 @@ export function deleteDemoRating(mediaItemCode: string) {
 }
 
 export function setDemoStatus(mediaItemCode: string, status: DemoStatusEntry["status"]) {
+  if (!isAuthorMediaStatus(status)) throw new Error("Неизвестный статус записи")
   const profile = readDemoProfile()
   if (!profile || profile.import.importedAt != null) {
     throw new Error("Demo profile is not active")

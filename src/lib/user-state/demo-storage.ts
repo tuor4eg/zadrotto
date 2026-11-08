@@ -3,6 +3,7 @@ import {
   DEMO_ONBOARDING_STORAGE_AUTHOR_KEY,
   DEMO_PROFILE_STORAGE_EVENT,
   DEMO_PROFILE_STORAGE_KEY,
+  DEMO_PROFILE_SCHEMA_VERSION,
   parseDemoProfile,
   type DemoProfile,
 } from "@/lib/user-state/demo-profile"
@@ -14,6 +15,25 @@ import {
 } from "@/lib/onboarding/storage"
 
 export const EMPTY_DEMO_PROFILE_SNAPSHOT = "null"
+
+/** Persist known legacy profiles after subscription, never while reading a snapshot. */
+export function migrateStoredDemoProfile() {
+  if (typeof window === "undefined") return
+  try {
+    const stored = window.localStorage.getItem(DEMO_PROFILE_STORAGE_KEY)
+    if (!stored) return
+    const raw: unknown = JSON.parse(stored)
+    if (!raw || typeof raw !== "object") return
+    const version = (raw as Record<string, unknown>).schemaVersion
+    if (version === DEMO_PROFILE_SCHEMA_VERSION || (version !== 1 && version !== 2)) return
+    const profile = parseDemoProfile(raw)
+    if (!profile) return
+    window.localStorage.setItem(DEMO_PROFILE_STORAGE_KEY, JSON.stringify(profile))
+    window.dispatchEvent(new Event(DEMO_PROFILE_STORAGE_EVENT))
+  } catch {
+    // Keep the readable in-memory profile even when storage is unavailable.
+  }
+}
 
 export function readDemoProfile(): DemoProfile | null {
   if (typeof window === "undefined") return null
@@ -33,11 +53,15 @@ export function getDemoProfileSnapshot() {
 }
 
 export function subscribeDemoProfile(onStoreChange: () => void) {
-  window.addEventListener(DEMO_PROFILE_STORAGE_EVENT, onStoreChange)
-  window.addEventListener("storage", onStoreChange)
+  const onChange = () => {
+    migrateStoredDemoProfile()
+    onStoreChange()
+  }
+  window.addEventListener(DEMO_PROFILE_STORAGE_EVENT, onChange)
+  window.addEventListener("storage", onChange)
   return () => {
-    window.removeEventListener(DEMO_PROFILE_STORAGE_EVENT, onStoreChange)
-    window.removeEventListener("storage", onStoreChange)
+    window.removeEventListener(DEMO_PROFILE_STORAGE_EVENT, onChange)
+    window.removeEventListener("storage", onChange)
   }
 }
 

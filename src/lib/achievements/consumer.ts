@@ -9,6 +9,7 @@ import { evaluateAchievements } from "./service";
 export const achievementDomainEventConsumer: DomainEventConsumer = {
   key: "achievements.evaluate",
   eventTypes: [
+    "author.accounts.merged",
     "rating.created",
     "review.published",
     "media.published",
@@ -20,7 +21,8 @@ export const achievementDomainEventConsumer: DomainEventConsumer = {
   async handle(tx, event) {
     let authorIds: number[];
     if (
-      event.type === "rating.created"
+      event.type === "author.accounts.merged"
+      || event.type === "rating.created"
       || event.type === "review.published"
       || event.type === "quiz.completed"
       || event.type === "bug-report.confirmed"
@@ -58,7 +60,7 @@ export const achievementDomainEventConsumer: DomainEventConsumer = {
     await evaluateAchievements(tx, {
       authorIds,
       awardGroupId: event.id,
-      eventType: event.type,
+      eventType: event.type === "author.accounts.merged" ? undefined : event.type,
       sourceEventId: event.id,
     });
   },

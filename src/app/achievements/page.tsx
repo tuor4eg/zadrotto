@@ -1,3 +1,4 @@
+import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
 import type { Metadata } from "next"
 import Image from "next/image"
 
@@ -38,7 +39,7 @@ export default async function AchievementsPage() {
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="contents media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <section
-          className="archive-paper archive-panel overflow-hidden px-2 py-6 sm:px-10 lg:px-14 lg:py-7"
+          className="archive-paper archive-panel overflow-hidden p-4 pb-3 sm:p-6 sm:pb-4"
           aria-labelledby="achievements-hero-title"
         >
           <Image
@@ -69,15 +70,7 @@ export default async function AchievementsPage() {
             }}
           />
           <div className="relative z-10">
-          <h1
-            id="achievements-hero-title"
-            className="font-serif text-4xl leading-[0.95] tracking-tight text-stone-950 sm:text-5xl lg:text-6xl"
-          >
-            Твои ачивки
-          </h1>
-          <p className="mt-3 max-w-4xl text-base leading-7 text-stone-700 sm:text-lg">
-            Маленькие победы. Большая история
-          </p>
+          <ArchivePageHeading id="achievements-hero-title" title="Твои ачивки" description="Маленькие победы. Большая история" />
           <AuthorAchievementHeroStats
             completedCount={stats.completedCount}
             earnedCount={stats.earnedCount}

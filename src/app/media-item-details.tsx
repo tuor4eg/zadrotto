@@ -112,6 +112,7 @@ type MediaItemDetailsProps = {
   noteSlot?: React.ReactNode;
   franchiseActions?: React.ReactNode;
   headerActions?: React.ReactNode;
+  cornerActions?: React.ReactNode;
   showFranchiseSection?: boolean;
   relatedItems?: RelatedMediaItem[];
   relatedFranchiseSections?: RelatedFranchiseSection[];
@@ -155,6 +156,7 @@ export function MediaItemDetails({
   noteSlot,
   franchiseActions,
   headerActions,
+  cornerActions,
   showFranchiseSection = false,
   relatedItems = [],
   relatedFranchiseSections,
@@ -197,6 +199,7 @@ export function MediaItemDetails({
         noteSlot={noteSlot}
         franchiseActions={franchiseActions}
         headerActions={headerActions}
+        cornerActions={cornerActions}
         showFranchiseSection={showFranchiseSection}
         relatedFranchiseSections={resolvedRelatedFranchiseSections}
       />
@@ -395,6 +398,7 @@ function ArchiveMediaItemDetails({
   noteSlot,
   franchiseActions,
   headerActions,
+  cornerActions,
   showFranchiseSection,
   relatedFranchiseSections,
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
@@ -426,6 +430,7 @@ function ArchiveMediaItemDetails({
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
         <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+          {cornerActions ? <div className="absolute left-6 top-3 z-40 sm:left-10 lg:left-8">{cornerActions}</div> : null}
           {mediaCarrierFrame?.detailBackgroundPath ? (
             <div
               aria-hidden="true"
@@ -441,13 +446,6 @@ function ArchiveMediaItemDetails({
               />
             </div>
           ) : null}
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/clip-transparent-trimmed.png"
-            alt=""
-            aria-hidden="true"
-            className="pointer-events-none absolute -top-[13px] right-5 z-30 h-24 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-28 lg:right-8 lg:h-32"
-          />
 
           <div className="contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline">
             <div className="relative order-1 min-w-0 px-6 pt-3 sm:px-10 lg:px-8 lg:pt-0">

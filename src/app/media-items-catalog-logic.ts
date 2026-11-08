@@ -3,7 +3,7 @@ import type { AuthorMediaStatus } from "../lib/media/author-media-status";
 import { matchesNormalizedSearch, normalizeSearchText } from "../lib/search/normalize";
 
 export type MediaTypeFilter = MediaType | "all";
-export type AuthorRatingFilter = "all" | "rated" | "wanted" | "skipped" | "unmarked";
+export type AuthorRatingFilter = "all" | "rated" | "wanted" | "unmarked";
 export type CatalogYearMode = "release" | "experience" | "rating";
 export type CatalogYearFilter = number | null;
 export type ArchiveRatingComparison = "average" | "mine";
@@ -111,7 +111,6 @@ export function filterCatalogItems<TItem extends CatalogFilterItem>(
       (authorRatingFilter === "all" ||
         (authorRatingFilter === "rated" && item.currentAuthorScore !== null) ||
         (authorRatingFilter === "wanted" && item.currentAuthorStatus === "wanted") ||
-        (authorRatingFilter === "skipped" && item.currentAuthorStatus === "skipped") ||
         (authorRatingFilter === "unmarked" &&
           item.currentAuthorScore === null &&
           item.currentAuthorStatus == null)) &&
@@ -134,7 +133,7 @@ export function parseAuthorRatingFilter(filter: string | null): AuthorRatingFilt
     return "unmarked";
   }
 
-  return filter === "rated" || filter === "wanted" || filter === "skipped" || filter === "unmarked"
+  return filter === "rated" || filter === "wanted" || filter === "unmarked"
     ? filter
     : "all";
 }

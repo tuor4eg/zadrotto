@@ -4,6 +4,7 @@ import "server-only";
 import { cookies, headers } from "next/headers";
 import { NextResponse } from "next/server";
 
+import { createAccountMergeGrant } from "@/db/operations/account-merge";
 import { completeExternalAuth, commitExternalAvatar, ExternalAuthError } from "@/db/operations/external-auth";
 import { getCurrentAuthorSession, writeAuthorSessionCookie } from "@/lib/auth/author-auth";
 import { shouldUseSecureCookies } from "@/lib/auth/cookies";
@@ -132,9 +133,16 @@ export async function finishExternalAuth(request: Request, provider: string) {
     const latest = await getExternalAuthAdapter(provider);
     if (!latest || !isExternalProviderAvailable(latest) || latest.configurationRevision !== adapter.configurationRevision) throw new ExternalAuthError("unavailable");
     const requestHeaders = await headers();
-    const result = await completeExternalAuth({ ...identity, provider, configurationRevision: adapter.configurationRevision, intent: attempt.intent,
-      authorId: attempt.authorId, sessionId: attempt.sessionId,
-      ipAddress: await getAuthRequestIpAddress(), userAgent: requestHeaders.get("user-agent") });
+    let result;
+    try {
+      result = await completeExternalAuth({ ...identity, provider, configurationRevision: adapter.configurationRevision, intent: attempt.intent,
+        authorId: attempt.authorId, sessionId: attempt.sessionId,
+        ipAddress: await getAuthRequestIpAddress(), userAgent: requestHeaders.get("user-agent") });
+    } catch (error) {
+      if (!(error instanceof ExternalAuthError) || error.code !== "conflict" || attempt.intent !== "link" || !current) throw error;
+      const { grantId } = await createAccountMergeGrant({ authorId: current.author.id, sessionId: current.session.sessionId, provider, subject: identity.subject, configurationRevision: adapter.configurationRevision! });
+      return redirect(`/author/profile/merge?grant=${encodeURIComponent(grantId)}`);
+    }
     if (result.token) await writeAuthorSessionCookie(result.token);
     const consentRequired = attempt.intent === "login" && !(await hasRequiredPersonalDataConsent(result.authorId));
     if (!consentRequired && attempt.intent === "login" && identity.avatarUrl && result.avatarSourceIdentityId === result.identityId) {

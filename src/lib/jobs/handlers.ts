@@ -22,6 +22,8 @@ import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
 import { cleanupJobRunHistory } from "@/db/queries/jobs";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
+import { creatorImagesReconcileHandler } from "@/lib/covers/creator-images-reconcile-job";
+import { coverReconcileHandler } from "@/lib/covers/reconcile-job";
 import { backfillCoverThumbnails } from "@/lib/covers/thumbnail-backfill";
 import { backfillAchievements, type AchievementBackfillPayload } from "@/lib/achievements/backfill";
 import { dispatchDomainEvent, recoverPendingDomainEvents } from "@/lib/domain-events/dispatcher";
@@ -590,6 +592,8 @@ export const jobHandlerRegistry = createJobHandlerRegistry([
   adminExportGenerateHandler,
   adminExportCleanupHandler,
   coverThumbnailBackfillHandler,
+  coverReconcileHandler,
+  creatorImagesReconcileHandler,
   titlePartPosterHandler,
   metadataBackfillHandler,
   metadataRefreshHandler,

@@ -3,6 +3,7 @@ import { reopenPlatformMappingAction } from "./actions";
 import Link from "next/link";
 import { Edit3 } from "lucide-react";
 
+import { Select } from "@/components/ui/form";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
@@ -13,6 +14,8 @@ import { getPlatformErrorMessage } from "./messages";
 import { PlatformProviderVariants } from "./provider-variants";
 import { PlatformSearch } from "./platform-search";
 import { CancelledPlatforms } from "./cancelled-platforms";
+import { syncAllPlatformLogosAction } from "./logo-actions";
+import { SyncLogosButton } from "./sync-logos-button";
 
 function PlatformIdentity({ platform }: { platform: AdminPlatform }) {
   return <div className="flex min-w-0 items-start gap-3"><PlatformLogo name={platform.name} logoUrl={platform.logoUrl} /><div className="min-w-0">
@@ -44,12 +47,19 @@ export default async function PlatformsPage({ searchParams }: { searchParams: Pr
   const result = await getAdminPlatformsPage({ searchQuery, page: Number(query.page ?? 1) });
   const platforms = result.items;
   const pageUrl = (page: number) => `/admin/platforms?${new URLSearchParams({ ...(searchQuery ? { q: searchQuery } : {}), page: String(page) })}`;
-  const error = getPlatformErrorMessage(query.error);
+  const error = query.error === "logoSync" ? "Не удалось запустить обновление логотипов платформ. Попробуйте ещё раз." : getPlatformErrorMessage(query.error);
   return (
     <div className="grid gap-5">
       <PageHeader title="Платформы" description="Названия платформ в карточках записей и их варианты у провайдеров." />
       <AdminToasts clearParams={["error"]} messages={error ? [{ id: "error", tone: "error", text: error }] : []} />
       {tabs}<PlatformSearch searchQuery={searchQuery} />
+      <form action={syncAllPlatformLogosAction} className="grid justify-items-start gap-2">
+        <div className="flex flex-wrap items-end gap-3">
+          <label className="grid gap-2 text-sm">Источник логотипов<Select name="provider" defaultValue="igdb"><option value="igdb">IGDB</option><option value="rawg">RAWG</option><option value="all">IGDB и RAWG</option></Select></label>
+          <SyncLogosButton />
+        </div>
+        <p className="text-sm text-stone-500">Загрузит варианты у провайдеров для всех платформ независимо от поиска и страницы. По умолчанию используется IGDB. Спорные варианты появятся в заявках на платформы.</p>
+      </form>
       <p className="text-sm text-stone-500">Платформ: {result.total}</p>
       {platforms.length === 0 ? <EmptyState>{searchQuery ? "Платформы не найдены." : "Платформы пока не добавлены."}</EmptyState> : <>
         <div className="grid gap-3 md:hidden">

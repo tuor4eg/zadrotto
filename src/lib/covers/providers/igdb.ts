@@ -2,6 +2,8 @@ import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
 import type { CoverCandidate, MediaProvider, MediaTitleCandidate } from "@/lib/covers/types";
 import {
   fetchSearchJson,
+  getActiveProviderStrictHttpErrors,
+  ProviderHttpError,
   getActiveProviderRequestTimeoutMs,
   getFirstYear,
   normalizeSearchQuery,
@@ -118,6 +120,10 @@ function createIgdbClient(credentials: { clientId: string; clientSecret: string 
     });
 
     if (!response.ok) {
+      if (getActiveProviderStrictHttpErrors()) {
+        await response.body?.cancel();
+        throw new ProviderHttpError(response.status, null);
+      }
       if (strict) {
         throw new Error(`Provider search failed with HTTP ${response.status}.`);
       }

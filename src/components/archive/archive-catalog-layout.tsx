@@ -42,13 +42,6 @@ export function ArchiveCatalogLayout({
         {/* Sticky wrapper stays outside .archive-textured-block: that class forces position:relative. */}
         <div className="xl:sticky xl:top-4 xl:z-20 xl:flex xl:h-[calc(100dvh-1.75rem)] xl:max-h-[calc(100dvh-1.75rem)] xl:self-start">
           <article className="archive-textured-block flex h-full min-h-0 w-full min-w-0 flex-col overflow-visible">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src="/clip-transparent-trimmed.png"
-              alt=""
-              aria-hidden="true"
-              className="pointer-events-none absolute -top-3 right-4 z-50 h-20 w-auto object-contain drop-shadow-[0_12px_12px_rgba(28,25,23,0.24)] sm:right-6 sm:h-24"
-            />
             <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {preview}
             </div>

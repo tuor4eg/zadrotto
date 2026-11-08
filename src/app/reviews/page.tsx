@@ -1,3 +1,4 @@
+import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
 import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
@@ -41,7 +42,7 @@ import { ReviewsViewToggle } from "./reviews-view-toggle"
 
 export const metadata: Metadata = {
   title: "Рецензии",
-  description: "Мнения авторов о фильмах, играх, книгах и прочем.",
+  description: "Мнения авторов о фильмах, играх, книгах и прочем",
 }
 
 export const dynamic = "force-dynamic"
@@ -157,14 +158,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
             <div className="archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
               <header className="relative z-20 p-4 pb-3 sm:p-6 sm:pb-4">
                 <div className="flex flex-wrap items-start justify-between gap-3">
-                  <div>
-                    <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
-                      Рецензии
-                    </h1>
-                    <p className="mt-2 text-sm text-stone-600">
-                      Ваши рецензии на фильмы, игры, книги и прочее.
-                    </p>
-                  </div>
+                  <ArchivePageHeading title="Рецензии" description="Ваши рецензии на фильмы, игры, книги и прочее." />
                   <ReviewsViewToggle view="mine" />
                 </div>
 
@@ -301,14 +295,7 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
           <div className="archive-paper archive-panel flex min-h-0 w-full flex-1 flex-col overflow-hidden media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
             <header className="relative z-20 p-4 pb-3 sm:p-6 sm:pb-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
-                <div>
-                  <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
-                    Рецензии
-                  </h1>
-                  <p className="mt-2 text-sm text-stone-600">
-                    Мнения авторов о фильмах, играх, книгах и прочем.
-                  </p>
-                </div>
+                <ArchivePageHeading title="Рецензии" description="Мнения авторов о фильмах, играх, книгах и прочем" />
                 {currentAuthor ? <ReviewsViewToggle view="all" /> : null}
               </div>
 

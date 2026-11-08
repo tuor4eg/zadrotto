@@ -3,6 +3,7 @@ import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
+import { publishedSeriesBranchSql, publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { mediaItemAverageScoreSql, mediaItemRatingsCountSql } from "@/db/queries/media-item-rating-stats";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
@@ -478,67 +479,62 @@ export async function getPublishedFranchiseOptionById(id: number) {
   };
 }
 
-export async function searchPublishedMediaItemsForFranchise(input: {
+type SeriesMediaSearchInput = {
   authorId: number;
   enabledMediaTypeCodes: readonly string[];
   franchiseId: number;
   searchQuery: string;
-}) {
+};
+type SeriesMediaSearchRow = Pick<typeof mediaItems.$inferSelect,
+  "id" | "code" | "title" | "originalTitle" | "mediaType" | "releaseYear"> & {
+  aliases: string[];
+  linkStatus: typeof mediaItemFranchises.$inferSelect.publicationStatus | null;
+  linkAuthorId: number | null;
+};
+
+/** The branch is materialized once for the whole search, never per matching record. */
+export function publishedMediaItemsForFranchiseSearchSql(input: SeriesMediaSearchInput) {
   const normalizedSearchQuery = normalizeSearchText(input.searchQuery);
-
-  if (normalizedSearchQuery.length < 2) {
-    return [];
-  }
-
   const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
-  const rows = await db
-    .select({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      aliases: mediaItemTitleAliasesSql(),
-      mediaType: mediaItems.mediaType,
-      releaseYear: mediaItems.releaseYear,
-      linkStatus: mediaItemFranchises.publicationStatus,
-      linkAuthorId: mediaItemFranchises.createdByAuthorId,
-    })
-    .from(mediaItems)
-    .leftJoin(
-      mediaItemFranchises,
-      and(
-        eq(mediaItemFranchises.mediaItemId, mediaItems.id),
-        eq(mediaItemFranchises.franchiseId, input.franchiseId),
-      ),
+  return sql`
+    with recursive published_branch as materialized (
+      ${publishedSeriesBranchSql(sql`${input.franchiseId}`)}
     )
-    .where(
-      and(
-        publishedMediaItemCondition,
-        getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
-        or(
-          isNull(mediaItemFranchises.publicationStatus),
-          ne(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-        ),
-        or(
-          containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
-          containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
-          sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
-          exists(
-            db
-              .select({ id: mediaItemTitleAliases.id })
-              .from(mediaItemTitleAliases)
-              .where(
-                and(
-                  eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                  containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
-                ),
-              ),
-          ),
-        ),
+    select ${mediaItems.id} as id, ${mediaItems.code} as code, ${mediaItems.title} as title,
+      ${mediaItems.originalTitle} as "originalTitle", ${mediaItemTitleAliasesSql()} as aliases,
+      ${mediaItems.mediaType} as "mediaType", ${mediaItems.releaseYear} as "releaseYear",
+      ${mediaItemFranchises.publicationStatus} as "linkStatus", ${mediaItemFranchises.createdByAuthorId} as "linkAuthorId"
+    from ${mediaItems}
+    left join ${mediaItemFranchises} on ${mediaItemFranchises.mediaItemId} = ${mediaItems.id}
+      and ${mediaItemFranchises.franchiseId} = ${input.franchiseId}
+    where ${and(
+      publishedMediaItemCondition,
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes),
+      or(isNull(mediaItemFranchises.publicationStatus), ne(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS)),
+      or(
+        containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
+        containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
+        sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
+        exists(db.select({ id: mediaItemTitleAliases.id }).from(mediaItemTitleAliases).where(and(
+          eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
+          containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
+        ))),
       ),
+    )}
+    and not exists (
+      select 1 from ${mediaItemFranchises} branch_link
+      inner join published_branch branch on branch.id = branch_link.franchise_id
+      where branch_link.media_item_id = ${mediaItems.id}
+        and branch_link.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
     )
-    .orderBy(asc(mediaItems.title), asc(mediaItems.code), asc(mediaItems.id))
-    .limit(10);
+    order by ${mediaItems.title} asc, ${mediaItems.code} asc, ${mediaItems.id} asc
+    limit 10
+  `;
+}
+
+export async function searchPublishedMediaItemsForFranchise(input: SeriesMediaSearchInput) {
+  if (normalizeSearchText(input.searchQuery).length < 2) return [];
+  const rows = await db.execute<SeriesMediaSearchRow>(publishedMediaItemsForFranchiseSearchSql(input));
 
   return rows.map(({ linkAuthorId, ...item }) => {
     const isOwnLink = linkAuthorId === input.authorId;
@@ -1627,6 +1623,13 @@ export async function createAuthorMediaItemFranchiseLinks(input: {
     if (existingLinks.length > 0) {
       return null;
     }
+
+    // Recheck under the existing record mutation lock: a search result may be stale.
+    const requestedRoots = sql`any(array[${sql.join(franchiseIds.map(id => sql`${id}`), sql`, `)}]::integer[])`;
+    const [membership] = await tx.execute<{ alreadyInBranch: boolean }>(sql`
+      select ${publishedSeriesMembershipSql(sql`${input.mediaItemId}`, requestedRoots)} as "alreadyInBranch"
+    `);
+    if (membership.alreadyInBranch) return null;
 
     await tx
       .insert(mediaItemFranchises)

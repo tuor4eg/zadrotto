@@ -8,6 +8,7 @@ import { logSystemActivity } from "@/lib/activity-logs/system";
 import { JobError } from "@/lib/jobs/types";
 import { isDomainEventType, type PersistedDomainEvent } from "./catalog";
 import { enqueueDomainEventDispatch, enqueueNotificationTransportDelivery } from "./queue";
+import { projectMergedAccountEvent } from "./merge-event";
 import { domainEventConsumerRegistry } from "./registry";
 
 const DEFAULT_RECOVERY_BATCH_SIZE = 50;
@@ -45,10 +46,10 @@ export async function dispatchDomainEvent(eventId: string, context: DispatchCont
       if (!event) throw new JobError("event-missing", "Доменное событие отсутствует.", { retryable: false });
       eventType = event.type;
       if (!isDomainEventType(event.type)) throw new JobError("event-type-unsupported", "Неизвестный тип доменного события.", { retryable: false });
-      const typedEvent = event as PersistedDomainEvent;
+      const typedEvent = await projectMergedAccountEvent(tx, event as PersistedDomainEvent);
       const followUpEventIds: string[] = [];
       let shouldDeliverNotifications = false;
-      for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
+      if (typedEvent) for (const consumer of domainEventConsumerRegistry.forType(typedEvent.type)) {
         context.signal?.throwIfAborted();
         consumerKey = consumer.key;
         const [claimedRow] = await tx.insert(domainEventConsumptions).values({ consumerKey: consumer.key, eventId })

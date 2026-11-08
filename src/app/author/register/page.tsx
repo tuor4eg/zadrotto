@@ -29,7 +29,7 @@ export default async function AuthorRegisterPage({ searchParams }: { searchParam
   return (
     <main className="archive-page min-h-screen px-4 py-8 text-stone-950">
       <Card className="archive-paper-surface mx-auto max-w-lg border-stone-500/40">
-        <CardHeader><CardTitle className="font-serif text-3xl">Регистрация автора</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="media-carrier-font-pc-steam text-3xl">Регистрация</CardTitle></CardHeader>
         <CardContent>
           {!isRegistrationAvailable ? (
             <div className="grid gap-4">

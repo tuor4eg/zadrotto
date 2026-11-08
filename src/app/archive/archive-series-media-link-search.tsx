@@ -300,7 +300,7 @@ export function ArchiveSeriesMediaLinkSearch({
             <p className="px-3 py-3 text-sm text-red-700" role="alert">{searchError}</p>
           ) : null}
           {hasResolvedCurrentQuery && !searchError && !message && visibleItems.length === 0 ? (
-            <p className="px-3 py-3 text-sm text-stone-500">Ничего не найдено.</p>
+            <p className="px-3 py-3 text-sm text-stone-500">Ничего не найдено</p>
           ) : null}
           {visibleItems.length > 0 ? (
             <ul className="min-w-0 divide-y divide-stone-200 overflow-hidden">

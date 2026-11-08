@@ -41,7 +41,8 @@ test('RAWG pagination never follows a provider supplied next URL',async()=>{
 });
 test('sync payload accepts manual options and rejects malformed checkpoints',()=>{
   assert.deepEqual(parsePlatformLogoSyncPayload({platformId:2,force:true}),{platformId:2,force:true});
-  for(const value of [null,[],{platformId:-1},{force:'yes'},{checkpoint:{stage:'complete'}},{automatic:true}]) assert.throws(()=>parsePlatformLogoSyncPayload(value),{code:'invalid-payload'});
+  assert.deepEqual(parsePlatformLogoSyncPayload({provider:'igdb',force:true}),{provider:'igdb',force:true});
+  for(const value of [null,[],{provider:'all'},{provider:42},{platformId:-1},{force:'yes'},{checkpoint:{stage:'complete'}},{automatic:true}]) assert.throws(()=>parsePlatformLogoSyncPayload(value),{code:'invalid-payload'});
 });
 
 test('known platform IDs request only provider detail endpoints',async()=>{

@@ -225,10 +225,16 @@ async function loadAchievementShowcase(authorId: number, recentOnly: boolean) {
 
   const byAchievement = new Map<number, typeof rows>();
   for (const row of rows) byAchievement.set(row.achievementId, [...(byAchievement.get(row.achievementId) ?? []), row]);
-  const progress = recentOnly ? [] : await db.transaction((tx) => getAchievementProgressValues(tx, {
-    achievementIds: [...byAchievement.keys()],
-    authorIds: [authorId],
-  }));
+  const progressIds = [...byAchievement].filter(([, levels]) => levels.some(level => level.awardedAt === null)).map(([id]) => id);
+  const progress = recentOnly || progressIds.length === 0 ? [] : await db.transaction(async (tx) => {
+    // The UNION of progress filters triggers costly JIT compilation on small datasets.
+    // Keep this setting local to the showcase transaction, including on pooled connections.
+    await tx.execute(sql`SET LOCAL jit = off`);
+    return getAchievementProgressValues(tx, {
+      achievementIds: progressIds,
+      authorIds: [authorId],
+    });
+  });
   const valueByAchievement = new Map(progress.map((item) => [item.achievementId, item.value]));
   const items = [...byAchievement.values()].map((levels) => {
     const awarded = levels.filter((item) => item.awardedAt !== null).at(-1) ?? null;

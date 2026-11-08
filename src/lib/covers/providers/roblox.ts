@@ -1,3 +1,4 @@
+import { withProviderTimeout } from "./shared";
 import type {
   CoverCandidate,
   MediaProvider,
@@ -80,7 +81,7 @@ async function fetchRobloxJson(
   try {
     const response = await fetchImplementation(url, {
       headers: { accept: "application/json" },
-      signal: controller.signal,
+      signal: withProviderTimeout(timeoutMs, controller.signal),
     });
     if (response.status === 429) {
       const retryAfter = Number(response.headers.get("retry-after"));

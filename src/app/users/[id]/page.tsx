@@ -1,3 +1,5 @@
+import { getMergedAuthorTarget } from "@/db/queries/authors";
+import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -40,13 +42,15 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function PublicUserPage({ params, searchParams }: PageProps) {
   const id = parseId((await params).id);
   if (!id) notFound();
+  const mergedTarget = await getMergedAuthorTarget(id);
+  if (mergedTarget) permanentRedirect(`/users/${mergedTarget}`);
   const [headerState, query] = await Promise.all([getPublicSiteHeaderState(), searchParams]);
   const current = headerState.author;
   const isAdmin = headerState.currentAdminUser;
   const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
   const [achievementItems, level, journal, quizStatistics] = await Promise.all([
-    getRecentAwardedAchievements(profile.id),
+    profile.canViewJournal ? getRecentAwardedAchievements(profile.id) : Promise.resolve([]),
     getPublicAuthorLevel(profile.id),
     (async () => {
       if (!profile.canViewJournal) return { mediaTypes: [], statistics: null };
@@ -118,7 +122,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
           <HomeAuthorStatistics mediaTypes={mediaTypes} ratingSummary={statistics.ratingSummary} title="Интересы по годам" />
       </section> : <p className="archive-paper-surface archive-panel p-5 text-stone-600 sm:p-7">Архив пользователя доступен только его друзьям.</p>}
 
-      <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} />
+      {profile.canViewJournal ? <RecentAchievementShowcase allHref={`${basePath}/achievements`} items={achievementItems} /> : null}
     </div>
   </main>;
 }

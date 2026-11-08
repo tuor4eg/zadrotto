@@ -173,12 +173,12 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-1 flex-col gap-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-serif text-3xl leading-none text-stone-950">Мои предложения</h2>
           <p className="mt-2 text-sm text-stone-600">
-            Здесь остаются черновики и записи на проверке. Опубликованное уходит в общий архив.
+            Здесь остаются черновики и записи на проверке. Опубликованное уходит в общий архив
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">

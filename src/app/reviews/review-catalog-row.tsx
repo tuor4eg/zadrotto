@@ -6,8 +6,7 @@ import { ArchiveCover } from "@/app/media-item-tile"
 import { Avatar } from "@/components/ui/avatar"
 import { formatRelativeArchiveDate } from "@/lib/archive/relative-date"
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types"
-import { formatScore } from "@/lib/ratings/score"
-import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone"
+import { AuthorScoreBadge } from "@/components/author-score-badge"
 
 export type ReviewCatalogRowItem = {
   partLabel?: string | null
@@ -41,7 +40,6 @@ export function ReviewCatalogRow({
   const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: item.mediaItemTitle, aliases: item.mediaItemAliases, originalTitle: item.mediaItemOriginalTitle })
   const mediaTypeLabel = getMediaTypeLabel(item.mediaType, mediaTypes)
   const publishedLabel = formatRelativeArchiveDate(item.publishedAt ?? item.updatedAt)
-  const ratingToneClassName = AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(item.authorScore)]
 
   return (
     <Link
@@ -115,18 +113,7 @@ export function ReviewCatalogRow({
           <Heart aria-hidden="true" className="size-3.5" />
           {item.reactionCounts.like}
         </span>
-        {item.authorScore !== null ? (
-        <span
-          className={`inline-flex size-9 shrink-0 items-center justify-center rounded-md border font-mono text-sm tabular-nums shadow-sm sm:size-10 sm:text-base ${ratingToneClassName}`}
-          aria-label={
-            item.authorScore === null
-              ? "Оценка автора не указана"
-              : `Оценка автора: ${formatScore(item.authorScore)}`
-          }
-        >
-          {formatScore(item.authorScore)}
-        </span>
-        ) : null}
+        <AuthorScoreBadge score={item.authorScore} />
       </span>
     </Link>
   )

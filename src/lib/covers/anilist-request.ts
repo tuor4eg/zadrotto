@@ -1,6 +1,6 @@
 import { setTimeout as delay } from "node:timers/promises";
 import { getRedisClient } from "@/lib/services/redis";
-import { getActiveProviderRequestTimeoutMs, ProviderHttpError, withProviderTimeout } from "./providers/shared";
+import { getActiveProviderRequestTimeoutMs, getActiveProviderRequestSignal, ProviderHttpError, withProviderTimeout } from "./providers/shared";
 
 // Shared by app and workers. AniList currently documents a degraded 30 requests/minute limit.
 export const ANILIST_REQUEST_INTERVAL_MS = 2100;
@@ -54,7 +54,8 @@ async function acquire(redis: Redis, signal: AbortSignal) {
 export async function fetchAniList(input: RequestInfo | URL, init: RequestInit = {}, options: {
   beforeRequest?: () => Promise<void>; fetchImpl?: typeof fetch; redis?: Redis;
 } = {}) {
-  const signal = init.signal ?? AbortSignal.timeout(120_000);
+  const activeSignal = getActiveProviderRequestSignal();
+  const signal = init.signal && activeSignal ? AbortSignal.any([init.signal, activeSignal]) : init.signal ?? activeSignal ?? AbortSignal.timeout(120_000);
   const redis = options.redis ?? await getRedisClient();
   if (!redis) throw new Error("rate-limit-unavailable");
   await acquire(redis, signal);

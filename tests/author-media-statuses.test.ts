@@ -20,10 +20,10 @@ const mediaItemTile = readFileSync("src/app/media-item-tile.tsx", "utf8");
 const mediaItemStatusTile = readFileSync("src/app/media-item-status-tile.tsx", "utf8");
 
 describe("author media status values", () => {
-  it("accepts only the two supported statuses", () => {
-    assert.deepEqual(AUTHOR_MEDIA_STATUSES, ["wanted", "skipped"]);
+  it("accepts only wanted", () => {
+    assert.deepEqual(AUTHOR_MEDIA_STATUSES, ["wanted"]);
     assert.equal(isAuthorMediaStatus("wanted"), true);
-    assert.equal(isAuthorMediaStatus("skipped"), true);
+    assert.equal(isAuthorMediaStatus("skipped"), false);
     assert.equal(isAuthorMediaStatus("rated"), false);
     assert.equal(isAuthorMediaStatus(""), false);
   });
@@ -73,19 +73,19 @@ describe("author media status action and controls", () => {
     assert.match(action, /revalidatePath\("\/archive"\)/);
   });
 
-  it("renders both toggle values and disables them when an author rating exists", () => {
+  it("renders the wanted toggle and disables them when an author rating exists", () => {
     assert.match(controls, /activeLabel: "Убрать из желаемого"/);
-    assert.match(controls, /activeLabel: "Отменить пропуск"/);
+    assert.doesNotMatch(controls, /EyeOff|Отменить пропуск|status: "skipped"/);
     assert.match(controls, /hasDemoRating\(demoProfile, mediaItemCode\)/);
     assert.match(controls, /!isAuthorized && demoProfile/);
     assert.match(controls, /const disabled = hasRating \|\| effectiveScore !== null \|\| \(isDemo \? demoPending : pending\)/);
     assert.match(controls, /const actionLabel = active \? activeLabel : label/);
     assert.match(
       controls,
-      /<ArchiveTooltip[\s\S]*?label=\{actionLabel\}[\s\S]*?side="bottom">/,
+      /<ArchiveTooltip[\s\S]*?label=\{actionLabel\}[\s\S]*?side="bottom"[^>]*>/,
     );
     assert.match(controls, /variant\?: "detail" \| "preview" \| "tile"/);
-    assert.match(controls, /variant === "preview" \? "grid grid-cols-2 gap-2"/);
+    assert.match(controls, /variant === "preview" \? "grid grid-cols-1 gap-2"/);
     assert.match(controls, /aria-label=\{actionLabel\}/);
     assert.match(controls, /aria-pressed=\{active\}/);
     assert.match(catalogPreview, /\(currentAuthor \|\| isDemo\) && item\.currentAuthorScore === null/);

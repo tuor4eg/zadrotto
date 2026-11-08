@@ -98,6 +98,39 @@ test("creator automatic decisions preserve manual review and atomicity", { skip:
       await requests.resolveCreatorRequest({requestId:manual,decision:"create",name:"Иван Петров Второй",adminId:1});
       assert.equal((await client`select decision from creator_requests where id=${manual}`)[0].decision,"create");
     });
+    await t.test("organizations map exact normalized names but preserve ambiguous and partial matches", async () => {
+      const org = async (name: string) => {
+        const id = await creator(name);
+        await client`update creators set type_id=(select id from creator_types where code='organization') where id=${id}`;
+        return id;
+      };
+      const owner = await org("Scott Free Productions");
+      const id = await request("  SCOTT Free Productions  ", "tmdb", "company:9201", "film", "production_company");
+      await auto(id);
+      const [resolved] = await client`select decision from creator_requests where id=${id}`;
+      assert.equal(resolved.decision, "map");
+      assert.equal((await client`select creator_id from provider_creator_bindings where provider='tmdb' and external_creator_id='company:9201' and active`)[0].creator_id, owner);
+      await skip(await request("Scott Free", "tmdb", "company:9202", "film", "production_company"));
+      await org("A Film Group");
+      const distinctCompany = await request("B Film Group", "tmdb", "company:9207", "film", "production_company");
+      await auto(distinctCompany);
+      assert.equal((await client`select decision from creator_requests where id=${distinctCompany}`)[0].decision, "create");
+      await org("Duplicate Studio");
+      await org("Duplicate Studio");
+      await skip(await request("Duplicate Studio", "tmdb", "company:9203", "film", "production_company"));
+      await creator("Person Only Studio");
+      for (const crossType of [
+        await request("Person Only Studio", "tmdb", "company:9204", "film", "production_company"),
+        await request("Scott Free Productions", "tmdb", "person:9205", "film", "director"),
+      ]) {
+        await auto(crossType);
+        assert.equal((await client`select decision from creator_requests where id=${crossType}`)[0].decision, "create");
+      }
+      await client`update creators set original_name='Studio Alias' where id=${owner}`;
+      const alias = await request("Studio Alias", "anilist", "studio:9206", "anime", "production_company");
+      await auto(alias);
+      assert.equal((await client`select creator_id from provider_creator_bindings where provider='anilist' and external_creator_id='studio:9206' and active`)[0].creator_id, owner);
+    });
     await t.test("reopened, excluded, historical IDs and conflicting observations preserve pending state", async () => {
       const reopened = await request("Reopened Unique");
       await client`update creator_requests set manually_reopened=true where id=${reopened}`;

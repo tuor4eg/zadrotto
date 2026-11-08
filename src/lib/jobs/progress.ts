@@ -16,6 +16,32 @@ export function getJobProgress(type: string, payloadValue: unknown): JobProgress
   const payload = record(payloadValue);
   const checkpoint = record(payload.profileCheckpoint ?? payload.checkpoint);
   const counters = record(checkpoint.counters);
+  if (type === "media.creator-images-reconcile") {
+    const labels = [["checked", "Проверено"], ["healthy", "Исправных"], ["missing", "Нет изображения"], ["restored", "Восстановлено"], ["skipped", "Пропущено"], ["failed", "Ошибок"]] as const;
+    return {
+      done: count(counters.checked), total: null, percent: null, stage: checkpoint.phase === "platforms" ? "Логотипы платформ" : "Фотографии и логотипы создателей",
+      stats: labels.flatMap(([key, label]) => {
+        const value = count(counters[key]);
+        return value === null ? [] : [{ label, value }];
+      }),
+    };
+  }
+  if (type === "media.covers-reconcile") {
+    const labels = [
+      ["checked", "Проверено"], ["healthy", "Исправных"], ["missingOriginal", "Нет оригинала"],
+      ["missingThumbnail", "Нет миниатюры"], ["empty", "Без обложки"], ["restored", "Восстановлено"],
+      ["replaced", "Заменено"], ["skipped", "Пропущено"], ["failed", "Ошибок"], ["external", "Внешние ссылки"],
+    ] as const;
+    const stats = labels.flatMap(([key, label]) => {
+      const value = count(counters[key]);
+      return value === null ? [] : [{ label, value }];
+    });
+    return {
+      done: count(counters.checked), total: null, percent: null,
+      stage: checkpoint.phase === "media-items" ? "Обложки записей" : checkpoint.phase === "title-parts" ? "Обложки частей" : null,
+      stats,
+    };
+  }
   const values = { ...payload, ...checkpoint, ...counters };
   const stats: JobProgress["stats"] = [];
   for (const [key, label] of STATS) {

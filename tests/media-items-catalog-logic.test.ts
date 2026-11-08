@@ -62,11 +62,11 @@ const items: TestCatalogItem[] = [
     id: 4,
     title: "Неинтересная запись",
     originalTitle: null,
-    code: "skipped-item",
+    code: "unmarked-film",
     mediaType: "film",
     releaseYear: 2000,
     currentAuthorScore: null,
-    currentAuthorStatus: "skipped",
+    currentAuthorStatus: null,
     currentAuthorRatedAt: null,
     currentAuthorFirstExperiencedAt: null,
   },
@@ -203,12 +203,8 @@ describe("filterCatalogItems", () => {
       [2],
     );
     assert.deepEqual(
-      filterCatalogItems(items, "", "all", "skipped").map((item) => item.id),
-      [4],
-    );
-    assert.deepEqual(
       filterCatalogItems(items, "", "all", "unmarked").map((item) => item.id),
-      [5],
+      [4, 5],
     );
     assert.deepEqual(
       filterCatalogItems(items, "solar", "film", "rated").map((item) => item.id),
@@ -264,7 +260,7 @@ describe("parseAuthorRatingFilter", () => {
   it("keeps known author rating filters and falls back to all", () => {
     assert.equal(parseAuthorRatingFilter("rated"), "rated");
     assert.equal(parseAuthorRatingFilter("wanted"), "wanted");
-    assert.equal(parseAuthorRatingFilter("skipped"), "skipped");
+    assert.equal(parseAuthorRatingFilter("skipped"), "all");
     assert.equal(parseAuthorRatingFilter("unmarked"), "unmarked");
     assert.equal(parseAuthorRatingFilter("unknown"), "all");
     assert.equal(parseAuthorRatingFilter(null), "all");

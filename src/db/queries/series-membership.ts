@@ -2,6 +2,19 @@ import { sql, type SQLWrapper } from "drizzle-orm";
 
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 
+/** Body of a published_branch recursive CTE, rooted by a server-supplied ID expression. */
+export function publishedSeriesBranchSql(franchiseId: SQLWrapper) {
+  return sql`
+    select series.id from franchises series
+    where series.id = ${franchiseId}
+      and series.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+    union all
+    select child.id from franchises child
+    inner join published_branch parent on child.parent_id = parent.id
+    where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+  `;
+}
+
 /** Uses the same published branch and link rules as the public series filter. */
 export function publishedSeriesMembershipSql(mediaItemId: SQLWrapper, franchiseId: SQLWrapper, includeDescendants = true) {
   if (!includeDescendants) {
@@ -16,13 +29,7 @@ export function publishedSeriesMembershipSql(mediaItemId: SQLWrapper, franchiseI
   }
   return sql<boolean>`exists (
     with recursive published_branch as (
-      select series.id from franchises series
-      where series.id = ${franchiseId}
-        and series.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
-      union all
-      select child.id from franchises child
-      inner join published_branch parent on child.parent_id = parent.id
-      where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+      ${publishedSeriesBranchSql(franchiseId)}
     )
     select 1 from media_item_franchises series_link
     inner join published_branch branch on branch.id = series_link.franchise_id

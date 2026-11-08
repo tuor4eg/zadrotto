@@ -16,8 +16,6 @@ export function matchDemoAuthorRatingFilter(
       return rated
     case "wanted":
       return !rated && status === "wanted"
-    case "skipped":
-      return !rated && status === "skipped"
     case "unmarked":
       return !rated && status == null
     default:

@@ -33,10 +33,15 @@ export async function initializeReputation(jobGuard: SnapshotJobGuard) {
         facts.action_code || ':' || facts.author_id || ':' || facts.source_type || ':' || facts.source_key,
         xp.xp, case when trust.counts_toward_trust then trust.trust_points else 0 end, null, facts.occurred_at
       from historical_facts facts
-      inner join authors on authors.id = facts.author_id and authors.is_system = false
+      inner join authors on authors.id = facts.author_id and authors.is_system = false and authors.merged_into_author_id is null
       inner join xp_action_rules xp on xp.action_code = facts.action_code
       inner join trust_action_rules trust on trust.action_code = facts.action_code
-      where facts.outcome <> 'rejected'
+      where facts.outcome <> 'rejected' and not exists (
+        select 1 from author_action_ledger existing
+        where existing.author_id = facts.author_id and existing.action_code = facts.action_code
+          and existing.source_type = facts.source_type and existing.source_key = facts.source_key
+          and existing.entry_kind = 'reward'
+      )
       on conflict (idempotency_key) do nothing
     `);
     await tx.execute(sql`
@@ -46,10 +51,20 @@ export async function initializeReputation(jobGuard: SnapshotJobGuard) {
         xp_delta, trust_delta, outcome, occurred_at
       )
       select outcomes.author_id, outcomes.action_code, 'outcome', outcomes.source_type, outcomes.source_key,
-        'historical:outcome:' || outcomes.outcome || ':' || outcomes.action_code || ':' || outcomes.author_id || ':' || outcomes.source_type || ':' || outcomes.source_key,
+        case when outcomes.outcome <> 'rejected'
+          then 'outcome:success:' || outcomes.action_code || ':' || outcomes.author_id || ':' || outcomes.source_type || ':' || outcomes.source_key
+          else 'historical:outcome:' || outcomes.outcome || ':' || outcomes.action_code || ':' || outcomes.author_id || ':' || outcomes.source_type || ':' || outcomes.source_key end,
         0, 0, outcomes.outcome, outcomes.occurred_at
-      from outcomes inner join authors on authors.id = outcomes.author_id and authors.is_system = false
+      from outcomes inner join authors on authors.id = outcomes.author_id and authors.is_system = false and authors.merged_into_author_id is null
       inner join trust_action_rules rules on rules.action_code = outcomes.action_code and rules.counts_toward_trust
+      where not exists (
+        select 1 from author_action_ledger existing
+        where existing.author_id = outcomes.author_id and existing.action_code = outcomes.action_code
+          and existing.source_type = outcomes.source_type and existing.source_key = outcomes.source_key
+          and existing.entry_kind = 'outcome'
+          and ((outcomes.outcome = 'rejected' and existing.outcome = 'rejected')
+            or (outcomes.outcome <> 'rejected' and existing.outcome <> 'rejected'))
+      )
       on conflict (idempotency_key) do nothing
     `);
 
@@ -60,7 +75,7 @@ export async function initializeReputation(jobGuard: SnapshotJobGuard) {
         coalesce((select max(level) from level_thresholds where xp_threshold <= coalesce(sum(ledger.xp_delta), 0)), 1)::int,
         now(), now(), now()
       from authors left join author_action_ledger ledger on ledger.author_id = authors.id
-      where authors.is_system = false group by authors.id
+      where authors.is_system = false and authors.merged_into_author_id is null group by authors.id
       on conflict (author_id) do update set
         xp_total = excluded.xp_total,
         current_level = greatest(author_progress.current_level, excluded.current_level),
@@ -80,7 +95,7 @@ export async function initializeReputation(jobGuard: SnapshotJobGuard) {
       from authors
       left join author_action_ledger ledger on ledger.author_id = authors.id
       left join trust_action_rules rules on rules.action_code = ledger.action_code
-      where authors.is_system = false group by authors.id
+      where authors.is_system = false and authors.merged_into_author_id is null group by authors.id
       on conflict (author_id) do update set
         trust_points = excluded.trust_points,
         successful_outcomes = excluded.successful_outcomes,
@@ -103,7 +118,7 @@ export async function initializeReputation(jobGuard: SnapshotJobGuard) {
         inner join author_trust trust on trust.author_id = authors.id
         cross join trust_settings settings
         where trusted_profile.code = 'trusted' and settings.id = 1 and settings.auto_promotion_enabled
-          and authors.blocked_at is null and trust.auto_trust_suppressed_at is null
+          and authors.blocked_at is null and authors.merged_into_author_id is null and trust.auto_trust_suppressed_at is null
           and progress.current_level >= settings.minimum_level
           and trust.trust_points >= settings.minimum_trust_points
           and trust.successful_outcomes + trust.rejected_outcomes > 0

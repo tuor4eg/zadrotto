@@ -18,7 +18,6 @@ import {
   CalendarCheck,
   ChevronDown,
   Check,
-  EyeOff,
   History,
   Heart,
   Library,
@@ -76,7 +75,6 @@ const AUTHOR_RATING_FILTER_LABELS: Record<AuthorRatingFilter, string> = {
   all: "Все",
   rated: "Оценённые",
   wanted: "Желаемое",
-  skipped: "Пропущенное",
   unmarked: "Без оценки и статуса",
 };
 
@@ -84,7 +82,6 @@ const AUTHOR_RATING_FILTER_ICONS: Record<AuthorRatingFilter, React.ReactNode> = 
   all: <Library className="size-4" />,
   rated: <Check className="size-4" />,
   wanted: <Heart className="size-4" />,
-  skipped: <EyeOff className="size-4" />,
   unmarked: <X className="size-4" />,
 };
 
@@ -393,7 +390,7 @@ export function CatalogHeaderControls({
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-base lg:text-sm text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
+          className="archive-control-surface archive-search-input h-9 min-w-0 w-full appearance-none rounded-md border border-stone-300/80 pl-9 pr-9 text-base lg:text-xs text-stone-950 shadow-[inset_0_1px_1px_rgba(68,64,60,0.08)] outline-none placeholder:text-stone-500 focus:border-stone-700"
           placeholder="Поиск по архиву"
         />
         {search ? (

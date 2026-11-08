@@ -1,7 +1,9 @@
+import { getMergedAuthorTarget } from "@/db/queries/authors";
+import { permanentRedirect } from "next/navigation";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
-import { AchievementAwardHistory } from "@/components/achievements/achievement-award-history";
+import { AchievementHistoryLayout } from "@/components/achievements/achievement-history-layout";
 import { AchievementShowcase } from "@/components/achievements/achievement-showcase";
 import { FeaturedAchievementShowcase } from "@/components/achievements/featured-achievement-showcase";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
@@ -27,17 +29,19 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   if (!id) return {}
   const [current, admin] = await Promise.all([getCurrentAuthor(), getCurrentAdminUser()])
   const profile = await getPublicUserProfile(id, current?.id, Boolean(admin))
-  return profile ? { title: `Ачивки — ${profile.name}` } : {}
+  return profile?.canViewJournal ? { title: `Ачивки — ${profile.name}` } : {}
 }
 
 export default async function PublicUserAchievementsPage({ params }: PageProps) {
   const id = parseId((await params).id)
   if (!id) notFound()
+  const mergedTarget = await getMergedAuthorTarget(id)
+  if (mergedTarget) permanentRedirect(`/users/${mergedTarget}/achievements`)
   const headerState = await getPublicSiteHeaderState()
   const current = headerState.author
   const isAdmin = headerState.currentAdminUser
   const profile = await getPublicUserProfile(id, current?.id, isAdmin)
-  if (!profile) notFound()
+  if (!profile || !profile.canViewJournal) notFound()
   const [items, settings, level] = await Promise.all([
     getAchievementShowcase(profile.id),
     getAchievementSettings(),
@@ -54,14 +58,11 @@ export default async function PublicUserAchievementsPage({ params }: PageProps) 
           defaultShowcaseBackgroundImageUrl={settings.defaultShowcaseBackgroundImageUrl}
           items={items}
         />
-        <div className="grid min-h-0 flex-1 gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(17rem,24rem)]">
+        <AchievementHistoryLayout items={items}>
           <div className="archive-paper archive-panel flex h-full min-h-0 flex-col p-4 sm:p-5">
             <AchievementShowcase items={items} title="Ачивки" emptyText="У этого автора пока нет ачивок." />
           </div>
-          <div className="min-h-0 lg:h-0 lg:min-h-full">
-            <AchievementAwardHistory items={items} />
-          </div>
-        </div>
+        </AchievementHistoryLayout>
       </div>
     </main>
   )

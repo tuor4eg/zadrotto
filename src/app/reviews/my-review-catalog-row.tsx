@@ -15,8 +15,7 @@ import {
   type ContributionStatus,
 } from "@/lib/contributions/model"
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types"
-import { formatScore } from "@/lib/ratings/score"
-import { AUTHOR_RATING_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone"
+import { AuthorScoreBadge } from "@/components/author-score-badge"
 
 export type MyReviewCatalogRowItem = {
   id: number
@@ -96,22 +95,6 @@ function MyReviewActions({ item }: { item: MyReviewCatalogRowItem }) {
   )
 }
 
-function MyReviewScore({ score }: { score: number | null }) {
-  if (score === null) return null
-  const ratingToneClassName = AUTHOR_RATING_TONE_CLASS_NAMES[getRatingTone(score)]
-
-  return (
-    <span
-      className={`inline-flex size-9 shrink-0 items-center justify-center rounded-md border font-mono text-sm tabular-nums shadow-sm sm:size-10 sm:text-base ${ratingToneClassName}`}
-      aria-label={
-        score === null ? "Оценка автора не указана" : `Оценка автора: ${formatScore(score)}`
-      }
-    >
-      {formatScore(score)}
-    </span>
-  )
-}
-
 export function MyReviewCatalogRow({
   item,
   mediaTypes,
@@ -181,7 +164,7 @@ export function MyReviewCatalogRow({
         </div>
 
         <MyReviewActions item={item} />
-        <MyReviewScore score={item.authorScore} />
+        <AuthorScoreBadge score={item.authorScore} />
       </article>
 
       <article className="space-y-3 border-b border-stone-300/60 px-2 py-3 last:border-b-0 sm:hidden">
@@ -204,7 +187,7 @@ export function MyReviewCatalogRow({
               <Badge variant={REVIEW_STATUS_BADGE_VARIANTS[item.status]}>
                 {CONTRIBUTION_STATUS_VALUE_LABELS[item.status]}
               </Badge>
-              <MyReviewScore score={item.authorScore} />
+              <AuthorScoreBadge score={item.authorScore} />
             </div>
             <p className="mt-2 truncate text-sm font-semibold text-stone-950">
               {mediaItemTitle}{item.partLabel ? ` · ${item.partLabel}` : ""}

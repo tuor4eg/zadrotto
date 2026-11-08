@@ -4,28 +4,33 @@ import {
   DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   resolveProviderRequestTimeoutMs,
 } from "@/lib/covers/config";
-import { bindProviderRequestTimeoutResolver } from "@/lib/covers/providers/shared";
+import { bindProviderRequestTimeoutResolver, bindProviderRequestSignalResolver, bindProviderStrictHttpErrorsResolver } from "@/lib/covers/providers/shared";
 
-const providerRequestTimeoutStore = new AsyncLocalStorage<number>();
+const providerRequestTimeoutStore = new AsyncLocalStorage<{ timeoutMs: number; signal?: AbortSignal; strictHttpErrors?: boolean }>();
 
 bindProviderRequestTimeoutResolver(() =>
   resolveProviderRequestTimeoutMs(
-    providerRequestTimeoutStore.getStore() ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+    providerRequestTimeoutStore.getStore()?.timeoutMs ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   ),
 );
 
+bindProviderRequestSignalResolver(() => providerRequestTimeoutStore.getStore()?.signal);
+bindProviderStrictHttpErrorsResolver(() => providerRequestTimeoutStore.getStore()?.strictHttpErrors === true);
+
 export function getActiveProviderRequestTimeoutMs() {
   return resolveProviderRequestTimeoutMs(
-    providerRequestTimeoutStore.getStore() ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
+    providerRequestTimeoutStore.getStore()?.timeoutMs ?? DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   );
 }
 
 export function runWithProviderRequestTimeout<T>(
   timeoutMs: number,
   operation: () => T | Promise<T>,
+  signal?: AbortSignal,
+  options?: { strictHttpErrors?: boolean },
 ): T | Promise<T> {
   return providerRequestTimeoutStore.run(
-    resolveProviderRequestTimeoutMs(timeoutMs),
+    { timeoutMs: resolveProviderRequestTimeoutMs(timeoutMs), signal: signal ?? providerRequestTimeoutStore.getStore()?.signal, strictHttpErrors: options?.strictHttpErrors ?? providerRequestTimeoutStore.getStore()?.strictHttpErrors },
     operation,
   );
 }

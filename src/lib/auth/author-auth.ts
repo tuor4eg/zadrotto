@@ -33,7 +33,7 @@ export async function getCurrentAuthorSession() {
 
   const author = await getAuthorById(session.authorId);
 
-  if (!author || author.code !== session.authorCode || author.blockedAt) {
+  if (!author || author.code !== session.authorCode || author.blockedAt || author.mergedIntoAuthorId) {
     return null;
   }
 

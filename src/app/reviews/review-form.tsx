@@ -355,7 +355,7 @@ export function PublicReviewForm({
                 ) : searchLoading ? (
                   <p className="px-3 py-2 text-sm text-stone-500">Ищем…</p>
                 ) : searchItems.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-stone-600">Ничего не найдено.</p>
+                  <p className="px-3 py-2 text-sm text-stone-600">Ничего не найдено</p>
                 ) : (
                   <ul role="listbox" aria-label="Результаты поиска записей">
                     {searchItems.map((item) => (

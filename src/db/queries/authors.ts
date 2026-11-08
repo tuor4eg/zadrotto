@@ -31,6 +31,8 @@ const authorHasUsageSql = sql<boolean>`(
   or exists(select 1 from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id})
   or exists(select 1 from ${contributions} where ${contributions.authorId} = ${authors.id})
   or exists(select 1 from ${bugReports} where ${bugReports.authorId} = ${authors.id})
+  or exists(select 1 from account_merge_grants g where g.initiator_author_id = ${authors.id}
+    or g.secondary_author_id = ${authors.id} or g.result_author_id = ${authors.id})
 )`;
 
 function authorUsageCountByIdSql(authorId: number) {
@@ -38,7 +40,9 @@ function authorUsageCountByIdSql(authorId: number) {
     (select count(distinct ${ratings.mediaItemId}) from ${ratings} where ${ratings.authorId} = ${authorId}) +
     (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId}) +
     (select count(*) from ${contributions} where ${contributions.authorId} = ${authorId}) +
-    (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId})
+    (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId}) +
+    (select count(*) from account_merge_grants g where g.initiator_author_id = ${authorId}
+      or g.secondary_author_id = ${authorId} or g.result_author_id = ${authorId})
   )::int`;
 }
 
@@ -102,7 +106,7 @@ export async function getAuthors(input: {
   const accessProfileCondition = input?.accessProfileId
     ? eq(authors.accessProfileId, input.accessProfileId)
     : undefined;
-  const where = and(activityCondition, accessProfileCondition);
+  const where = and(activityCondition, accessProfileCondition, isNull(authors.mergedIntoAuthorId));
   const pageSize = input.pageSize ?? ADMIN_AUTHORS_PAGE_SIZE;
   const [{ totalCount }] = await db
     .select({ totalCount: sql<number>`count(*)::int` })
@@ -176,6 +180,7 @@ export async function getAuthorById(id: number) {
   const [author] = await db
     .select({
       id: authors.id,
+      mergedIntoAuthorId: authors.mergedIntoAuthorId,
       code: authors.code,
       name: authors.name,
       avatarObjectKey: authors.avatarObjectKey,
@@ -428,4 +433,17 @@ export async function deleteAuthorIfUnused(id: number): Promise<DeleteAuthorResu
   return author
     ? { status: "deleted", avatarObjectKey: author.avatarObjectKey }
     : { status: "not-found" };
+}
+
+/** Resolve old public URLs without treating the closed account as authenticated. */
+export async function getMergedAuthorTarget(authorId: number) {
+  let current = authorId;
+  const seen = new Set<number>();
+  while (!seen.has(current) && seen.size < 100) {
+    seen.add(current);
+    const [row] = await db.select({ target: authors.mergedIntoAuthorId }).from(authors).where(eq(authors.id, current)).limit(1);
+    if (!row?.target) return current === authorId ? null : current;
+    current = row.target;
+  }
+  return null;
 }

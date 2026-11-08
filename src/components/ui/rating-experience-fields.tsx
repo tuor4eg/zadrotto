@@ -30,7 +30,7 @@ const MONTH_OPTIONS = [
 ] as const;
 const MIN_EXPERIENCE_YEAR = 1950;
 const DATE_SELECT_CLASS_NAME =
-  "w-full [&>button]:h-11 [&>button]:w-full [&>button]:min-w-0 [&>button]:justify-between [&>button]:px-2 [&>button>span:first-child]:hidden";
+  "w-full [&>button]:h-11 [&>button]:w-full [&>button]:min-w-0 [&>button]:justify-between [&>button]:px-2";
 
 type RatingExperienceFieldsProps = {
   currentFirstExperiencedAt?: Date | string | null;

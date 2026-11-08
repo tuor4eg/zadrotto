@@ -1,0 +1,6 @@
+CREATE INDEX "author_media_statuses_author_updated_id_idx" ON "author_media_statuses" USING btree ("author_id","updated_at" desc,"id" desc);--> statement-breakpoint
+CREATE INDEX "contributions_feed_review_created_idx" ON "contributions" USING btree ("created_at" desc,"id" desc) WHERE "contributions"."type"='review' and "contributions"."status"='published';--> statement-breakpoint
+CREATE INDEX "editorial_collections_feed_created_idx" ON "editorial_collections" USING btree ("created_at" desc,"id" desc) WHERE "editorial_collections"."publication_status"='published';--> statement-breakpoint
+CREATE INDEX "franchises_feed_created_idx" ON "franchises" USING btree ("created_at" desc,"id" desc) WHERE "franchises"."publication_status"='published';--> statement-breakpoint
+CREATE INDEX "media_items_feed_created_idx" ON "media_items" USING btree ("created_at" desc,"id" desc) WHERE "media_items"."publication_status"='published';--> statement-breakpoint
+CREATE INDEX "ratings_author_updated_id_idx" ON "ratings" USING btree ("author_id","updated_at" desc,"id" desc);

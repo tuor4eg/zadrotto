@@ -74,10 +74,7 @@ export function AuthorLoginModal({ onClose, onSuccess }: AuthorLoginModalProps) 
       >
         <div className="flex items-start justify-between gap-4">
           <div>
-            <p className="font-mono text-xs font-semibold uppercase tracking-[0.18em] text-red-900">
-              Автор
-            </p>
-            <h2 id="author-login-title" className="mt-2 font-serif text-3xl leading-none">
+            <h2 id="author-login-title" className="media-carrier-font-pc-steam text-3xl leading-none">
               Вход
             </h2>
           </div>

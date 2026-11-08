@@ -26,6 +26,16 @@ const toast = readFileSync("src/components/achievements/achievement-toast-host.t
 const homePage = readFileSync("src/app/page.tsx", "utf8")
 
 describe("public achievements page", () => {
+  it("restricts profile achievements to viewers with journal access", () => {
+    const profilePage = readFileSync("src/app/users/[id]/page.tsx", "utf8")
+    assert.match(profilePage, /profile\.canViewJournal \? getRecentAwardedAchievements\(profile\.id\) : Promise\.resolve\(\[\]\)/)
+    assert.match(profilePage, /\{profile\.canViewJournal \? <RecentAchievementShowcase[^\n]+: null\}/)
+    const accessCheck = publicProfilePage.indexOf("if (!profile || !profile.canViewJournal) notFound()")
+    assert.ok(accessCheck >= 0)
+    assert.ok(accessCheck < publicProfilePage.indexOf("getAchievementShowcase(profile.id)"))
+    assert.match(publicProfilePage, /return profile\?\.canViewJournal \? \{ title:/)
+  })
+
   it("is a public-shell page for signed-in authors and demo guests", () => {
     assert.match(page, /<PublicSiteHeader \{\.\.\.headerState\.headerProps\} \/>/)
     assert.match(page, /getPublicSiteHeaderState/)
@@ -40,17 +50,17 @@ describe("public achievements page", () => {
     assert.match(publicProfilePage, /archive-page flex min-h-0 flex-1 flex-col/)
     assert.match(publicProfilePage, /max-w-\[1480px\] flex-1 flex-col gap-3/)
     assert.match(publicProfilePage, /archive-paper archive-panel flex h-full min-h-0 flex-col p-4/)
-    assert.match(publicProfilePage, /AchievementAwardHistory/)
-    assert.match(publicProfilePage, /lg:h-0 lg:min-h-full/)
+    assert.match(publicProfilePage, /AchievementHistoryLayout/)
+    assert.match(publicProfilePage, /<AchievementHistoryLayout items=\{items\}>/)
   })
 
   it("renders the hero copy and main-page-like stats", () => {
-    assert.match(page, />\s*Твои ачивки\s*</)
-    assert.match(page, />\s*Маленькие победы\. Большая история\s*</)
+    assert.match(page, /title="Твои ачивки"/)
+    assert.match(page, /description="Маленькие победы\. Большая история"/)
     assert.match(page, /<AuthorAchievementHeroStats/)
     assert.match(page, /backgroundImage: "url\('\/mascot\/deadz_achieves\.webp'\)"/)
-    assert.match(page, /archive-panel overflow-hidden px-2 py-6 sm:px-10/)
-    assert.match(demoPage, /archive-panel overflow-hidden px-2 py-6 sm:px-10/)
+    assert.match(page, /archive-panel overflow-hidden p-4 pb-3 sm:p-6 sm:pb-4/)
+    assert.match(demoPage, /archive-panel overflow-hidden p-4 pb-3 sm:p-6 sm:pb-4/)
     assert.match(page, /position: "absolute"/)
     assert.match(page, /zIndex: 0/)
     assert.doesNotMatch(page, /max-w-\[68%\]/)
@@ -297,8 +307,8 @@ describe("public achievements page", () => {
     assert.match(featured, /pb-14/)
     assert.doesNotMatch(featured, /mt-auto/)
     assert.match(featured, /resolveFeaturedShowcaseBackgroundUrl/)
-    assert.match(publicProfilePage, /AchievementAwardHistory/)
-    assert.match(publicProfilePage, /lg:h-0 lg:min-h-full/)
+    assert.match(publicProfilePage, /AchievementHistoryLayout/)
+    assert.match(publicProfilePage, /<AchievementHistoryLayout items=\{items\}>/)
     assert.match(query, /mechanic: achievements\.mechanic/)
     assert.match(query, /awardedThreshold: awarded\?\.threshold \?\? null/)
     assert.match(query, /defaultShowcaseBackgroundImageUrl: settings\.defaultShowcaseBackgroundImageUrl/)

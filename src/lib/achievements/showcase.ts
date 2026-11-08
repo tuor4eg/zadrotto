@@ -1,25 +1,29 @@
 export const ACHIEVEMENT_CARD_IMAGE_PX = 144
 
+const awardedDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "short",
+  year: "2-digit",
+  timeZone: "Europe/Moscow",
+})
+
 export function formatAchievementAwardedAt(value: Date | string) {
-  const parts = new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "2-digit",
-    timeZone: "Europe/Moscow",
-  }).formatToParts(new Date(value))
+  const parts = awardedDateFormatter.formatToParts(new Date(value))
   const day = parts.find((part) => part.type === "day")?.value
   const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
   const year = parts.find((part) => part.type === "year")?.value
   return `${day} ${month} ${year}`
 }
 
+const historyDateFormatter = new Intl.DateTimeFormat("ru-RU", {
+  day: "numeric",
+  month: "short",
+  year: "numeric",
+  timeZone: "Europe/Moscow",
+})
+
 export function formatAchievementHistoryDate(value: Date | string) {
-  const parts = new Intl.DateTimeFormat("ru-RU", {
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    timeZone: "Europe/Moscow",
-  }).formatToParts(new Date(value))
+  const parts = historyDateFormatter.formatToParts(new Date(value))
   const day = parts.find((part) => part.type === "day")?.value
   const month = parts.find((part) => part.type === "month")?.value?.replace(".", "").slice(0, 3)
   const year = parts.find((part) => part.type === "year")?.value
@@ -152,6 +156,12 @@ export function listAchievementHistoryEntries(
     levelCount: number
   }>,
 ): AchievementHistoryEntry[] {
+  const dayKeys = new Map<Date | string, string>()
+  const dayKey = (value: Date | string) => {
+    let key = dayKeys.get(value)
+    if (key === undefined) { key = achievementHistoryDayKey(value); dayKeys.set(value, key) }
+    return key
+  }
   return items
     .flatMap((item) => item.awardedLevels.map((level) => ({
       awardedAt: level.awardedAt,
@@ -164,18 +174,20 @@ export function listAchievementHistoryEntries(
       name: level.name,
     })))
     .sort((left, right) => {
-      if (left.code === right.code && achievementHistoryDayKey(left.awardedAt) === achievementHistoryDayKey(right.awardedAt)) {
+      if (left.code === right.code && dayKey(left.awardedAt) === dayKey(right.awardedAt)) {
         return right.level - left.level
       }
       return new Date(right.awardedAt).getTime() - new Date(left.awardedAt).getTime()
     })
 }
 
+const historyDayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "Europe/Moscow",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+})
+
 function achievementHistoryDayKey(value: Date | string) {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "Europe/Moscow",
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-  }).format(new Date(value))
+  return historyDayFormatter.format(new Date(value))
 }
