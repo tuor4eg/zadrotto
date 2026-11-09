@@ -320,7 +320,7 @@ export function PublicSiteHeader({
                 ) : null}
                 <Link
                   href="/author/profile"
-                  aria-label="Открыть кабинет автора"
+                  aria-label="Открыть личный кабинет"
                   className="grid size-9 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
                 >
                   <Avatar

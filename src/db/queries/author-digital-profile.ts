@@ -77,13 +77,11 @@ function mapMediaTypeSummary(input: {
   return { code: input.code, name: input.name };
 }
 
-export async function getAuthorDigitalProfile(
+export function authorDigitalProfileSql(
   authorId: number,
   enabledMediaTypeCodes: readonly string[],
-): Promise<AuthorDigitalProfile> {
-  if (enabledMediaTypeCodes.length === 0) return EMPTY_AUTHOR_DIGITAL_PROFILE;
-
-  const [row] = await db.execute<AuthorDigitalProfileRow>(sql`
+) {
+  return sql`
     with recursive
     user_rated_items as (
       select distinct ${ratings.mediaItemId} as media_item_id, ${mediaItems.mediaType} as media_type
@@ -136,7 +134,8 @@ export async function getAuthorDigitalProfile(
       where child.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
     ),
     series_items as (
-      select distinct branch.series_id, item.id as media_item_id, item.media_type
+      select distinct branch.series_id, item.id as media_item_id, item.media_type,
+        item.id in (select media_item_id from user_rated_items) as is_rated
       from candidate_branches branch
       inner join ${mediaItemFranchises} link on link.franchise_id = branch.descendant_id
       inner join ${mediaItems} item on item.id = link.media_item_id
@@ -151,11 +150,10 @@ export async function getAuthorDigitalProfile(
         candidate.title,
         depth.depth,
         count(distinct item.media_item_id)::int as total_count,
-        count(distinct rated.media_item_id)::int as rated_count
+        count(distinct item.media_item_id) filter (where item.is_rated)::int as rated_count
       from candidate_series candidate
       inner join candidate_depths depth on depth.series_id = candidate.id
       inner join series_items item on item.series_id = candidate.id
-      left join user_rated_items rated on rated.media_item_id = item.media_item_id
       group by candidate.id, candidate.code, candidate.title, depth.depth
     ),
     strongest_series as (
@@ -191,7 +189,7 @@ export async function getAuthorDigitalProfile(
       limit 1
     ),
     familiar_items as (
-      select distinct item.media_item_id, item.media_type
+      select distinct item.media_item_id, item.media_type, item.is_rated
       from series_stats stats
       inner join series_items item on item.series_id = stats.id
       where stats.rated_count >= 2
@@ -201,14 +199,13 @@ export async function getAuthorDigitalProfile(
         item.media_type as code,
         type.name,
         count(distinct item.media_item_id)::int as total_count,
-        count(distinct rated.media_item_id)::int as rated_count
+        count(distinct item.media_item_id) filter (where item.is_rated)::int as rated_count
       from familiar_items item
       inner join ${mediaTypes} type on type.code = item.media_type
-      left join user_rated_items rated on rated.media_item_id = item.media_item_id
       group by item.media_type, type.name
-      having count(distinct rated.media_item_id) < count(distinct item.media_item_id)
+      having count(distinct item.media_item_id) filter (where item.is_rated) < count(distinct item.media_item_id)
       order by
-        count(distinct rated.media_item_id)::numeric / nullif(count(distinct item.media_item_id), 0) asc,
+        (count(distinct item.media_item_id) filter (where item.is_rated))::numeric / nullif(count(distinct item.media_item_id), 0) asc,
         item.media_type asc
       limit 1
     )
@@ -231,7 +228,24 @@ export async function getAuthorDigitalProfile(
     left join best_known_type best_type on true
     left join unexplored_type unexplored on true
     left join active_series active on true
-  `);
+  `;
+}
+
+export async function getAuthorDigitalProfile(
+  authorId: number,
+  enabledMediaTypeCodes: readonly string[],
+): Promise<AuthorDigitalProfile> {
+  if (enabledMediaTypeCodes.length === 0) return EMPTY_AUTHOR_DIGITAL_PROFILE;
+
+  // Recursive CTE cardinality estimates can trigger seconds of JIT compilation
+  // for a short interactive read. Scope this setting to this transaction only.
+  const row = await db.transaction(async tx => {
+    await tx.execute(sql`set local jit = off`);
+    const [result] = await tx.execute<AuthorDigitalProfileRow>(
+      authorDigitalProfileSql(authorId, enabledMediaTypeCodes),
+    );
+    return result;
+  }, { accessMode: "read only" });
 
   if (!row) return EMPTY_AUTHOR_DIGITAL_PROFILE;
 

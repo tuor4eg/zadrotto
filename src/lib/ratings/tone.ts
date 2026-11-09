@@ -27,11 +27,14 @@ export const RATING_PILL_TONE_CLASS_NAMES: Record<RatingTone, string> = {
   good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} bg-[var(--rating-pill-background)] text-[var(--rating-main)]`,
 };
 
+const RATING_PANEL_SURFACE_CLASS_NAME =
+  "bg-[linear-gradient(180deg,rgba(0,0,0,0.76),rgba(0,0,0,0.84))]";
+
 export const RATING_PANEL_TONE_CLASS_NAMES: Record<RatingTone, string> = {
-  empty: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.empty} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
-  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
-  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
-  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} bg-black/80 ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  empty: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.empty} ${RATING_PANEL_SURFACE_CLASS_NAME} ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  bad: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.bad} ${RATING_PANEL_SURFACE_CLASS_NAME} ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  medium: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.medium} ${RATING_PANEL_SURFACE_CLASS_NAME} ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
+  good: `${RATING_TONE_CSS_VARIABLE_CLASS_NAMES.good} ${RATING_PANEL_SURFACE_CLASS_NAME} ${RATING_PILL_SHADOW_CLASS_NAME} text-[var(--rating-main)]`,
 };
 
 export const AVERAGE_RATING_TEXT_TONE_CLASS_NAMES: Record<RatingTone, string> = {

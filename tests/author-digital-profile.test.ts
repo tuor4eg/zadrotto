@@ -25,7 +25,7 @@ test("ranks strongest, active and unexplored profile dimensions deterministicall
   assert.match(querySource, /where stats\.rated_count >= 2/);
   assert.match(
     querySource,
-    /having count\(distinct rated\.media_item_id\) < count\(distinct item\.media_item_id\)/,
+    /having count\(distinct item\.media_item_id\) filter \(where item\.is_rated\) < count\(distinct item\.media_item_id\)/,
   );
   assert.match(querySource, /item\.media_type asc/);
 });

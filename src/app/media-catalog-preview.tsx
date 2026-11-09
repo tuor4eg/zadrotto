@@ -194,6 +194,19 @@ export function MediaCatalogPreview({
             {metaItems.length ? <span className="mx-1.5">•</span> : null}
             <MediaItemWriterLinks creators={item.writerCreators} />
           </> : null}
+          {item.mediaType === "film" || item.mediaType === "anime" ? (() => {
+            const directors = item.entryCreators.filter(creator => creator.roleCode === "director");
+            const fallback = getStringListFact(item.metadataFacts, "directors").join(", ");
+            if (!directors.length && !fallback) return null;
+            return <>
+              {metaItems.length ? <span className="mx-1.5" aria-hidden="true">•</span> : null}
+              <span title="Режиссёры" className="break-words">
+                <CreatorRoleIcon code="director" className="mr-1 inline-block size-3.5 align-text-bottom text-stone-500" />
+                <span className="sr-only">Режиссёры: </span>
+                {directors.length ? <MediaItemCreatorLinks creators={directors} mediaType={item.mediaType} /> : fallback}
+              </span>
+            </>;
+          })() : null}
           {item.mediaType === "boardgame" ? <BoardgameDetailsFacts facts={{ authors: item.metadataFacts?.authors, bggCreators: item.metadataFacts?.bggCreators }} creators={item.entryCreators.filter(creator => creator.roleCode === "designer")} genres={[]} hasUnifiedGenres separatorBefore={metaItems.length > 0} /> : null}
           {item.mediaType === "game" ? (() => {
             const developers = item.entryCreators.filter(creator => creator.roleCode === "developer");

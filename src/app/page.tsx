@@ -24,7 +24,6 @@ import { getAuthorPublishedMediaItemCount } from "@/db/queries/media-items";
 import { getAuthorRatingSummary } from "@/db/queries/ratings";
 import {
   getActiveQuiz,
-  getActiveQuizParticipantState,
   getAuthorQuizStatistics,
 } from "@/db/queries/quizzes";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
@@ -289,7 +288,7 @@ export default async function MainPage() {
   const headerState = await getPublicSiteHeaderState();
   const author = headerState.author;
   const [activeQuiz, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
-    getActiveQuiz(),
+    author ? Promise.resolve(headerState.activeQuiz) : getActiveQuiz(),
     getDailyDossier(author?.id),
     getEffectiveMediaTypeOptions(author?.id),
     getPublishedEditorialCollections(),
@@ -304,20 +303,12 @@ export default async function MainPage() {
     currentAuthorId: author?.id,
     enabledMediaTypeCodes,
   });
-  const latestReview = await getLatestPublishedReviewCard(
-    enabledMediaTypeCodes,
-  );
-  const archiveFeedPage = await getFeedPage({ publicOnly: true, pageSize: 5, authorId: author?.id, mediaTypeCodes: enabledMediaTypeCodes });
-  const archiveFeed = archiveFeedPage.items;
-  const archiveFeedTiles = await getFeedMediaTiles(archiveFeed, author?.id);
-  const latestReviewMediaTypeName = latestReview
-    ? mediaTypes.find((mediaType) => mediaType.code === latestReview.mediaType)?.name ?? null
-    : null;
-  const activeQuizParticipant = activeQuiz && author
-    ? await getActiveQuizParticipantState(author.id)
-    : null;
-  const authorHeroStatistics = author
-    ? await Promise.all([
+  const activeQuizParticipant = headerState.activeQuizParticipant;
+  const [latestReview, archiveFeed, authorHeroStatistics] = await Promise.all([
+    getLatestPublishedReviewCard(enabledMediaTypeCodes),
+    getFeedPage({ publicOnly: true, pageSize: 5, authorId: author?.id, mediaTypeCodes: enabledMediaTypeCodes })
+      .then(page => page.items),
+    author ? Promise.all([
         getAuthorDigitalProfile(author.id, enabledMediaTypeCodes),
         getAuthorRatingSummary(author.id, enabledMediaTypeCodes),
         getAuthorReviewSummary(author.id, enabledMediaTypeCodes),
@@ -335,9 +326,18 @@ export default async function MainPage() {
         reviewCount: reviewSummary.reviewsCount,
         quizTotalPoints: quizStatistics.totalPoints,
       }))
-    : null;
-  const latestAcquaintanceItem = author && authorHeroStatistics?.latestRating
-    ? (await getMediaItemTilesByIds([authorHeroStatistics.latestRating.mediaItemId], author.id))[0] ?? null
+      : Promise.resolve(null),
+  ]);
+  const latestRating = authorHeroStatistics?.latestRating;
+  const [archiveFeedTiles, latestAcquaintanceItems] = await Promise.all([
+    getFeedMediaTiles(archiveFeed, author?.id),
+    author && latestRating
+      ? getMediaItemTilesByIds([latestRating.mediaItemId], author.id)
+      : Promise.resolve([]),
+  ]);
+  const latestAcquaintanceItem = latestAcquaintanceItems[0] ?? null;
+  const latestReviewMediaTypeName = latestReview
+    ? mediaTypes.find((mediaType) => mediaType.code === latestReview.mediaType)?.name ?? null
     : null;
   const latestAcquaintanceTitle = latestAcquaintanceItem
     ? resolveMediaItemDisplayTitles(latestAcquaintanceItem).displayTitle

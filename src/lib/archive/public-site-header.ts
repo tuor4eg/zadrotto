@@ -14,10 +14,10 @@ export async function getPublicSiteHeaderState(
     currentAuthor === undefined ? getCurrentAuthor() : Promise.resolve(currentAuthor),
     getCurrentAdminUser(),
   ]);
-  const adminNotificationCount = adminUser
-    ? await getSubmittedModerationRequestCountForAdmin()
-    : 0;
-  const activeQuiz = author ? await getActiveQuiz() : null;
+  const [adminNotificationCount, activeQuiz] = await Promise.all([
+    adminUser ? getSubmittedModerationRequestCountForAdmin() : Promise.resolve(0),
+    author ? getActiveQuiz() : Promise.resolve(null),
+  ]);
   const [activeQuizParticipant, effectiveMediaTypes] = activeQuiz && author
     ? await Promise.all([
         getActiveQuizParticipantState(author.id),
