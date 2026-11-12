@@ -1,5 +1,7 @@
 "use server";
 
+import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
+
 import type { DbTransaction } from "@/db/transaction";
 
 import { validateBookFormMutation, isBookSnapshotValidationError } from "@/lib/providers/book-form-mutation";
@@ -493,6 +495,11 @@ export async function createAuthorInlineFranchiseAction(
 }
 
 export async function createAuthorMediaItemAction(formData: FormData) {
+  return traceMediaSave("createAuthorMediaItemAction", (timing) => createAuthorMediaItemActionMeasured(formData, timing));
+}
+
+async function createAuthorMediaItemActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
   const authorCreationRequestId = getFormString(formData, "authorCreationRequestId");
   const form = readAuthorMediaForm(formData);
@@ -503,6 +510,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "required"));
   }
 
+  timing.stage("getAuthorMediaItemByCreationRequestId");
   const existingItem = await getAuthorMediaItemByCreationRequestId({
     authorId: author.id,
     authorCreationRequestId,
@@ -516,6 +524,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, form.error));
   }
 
+  timing.stage("getArchiveSettings");
   const { maxTitleAliases } = await getArchiveSettings();
 
   if (form.value.aliases.length > maxTitleAliases) {
@@ -535,26 +544,31 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, firstExperience.error));
   }
 
+  timing.stage("getMediaItemMetadataMutation");
   const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
   }
 
+  timing.stage("canAuthorUseFranchises");
   if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(getCreateErrorRedirect(formData, "invalid-franchise"));
   }
 
+  timing.stage("canAuthorCreateMediaType");
   if (!(await canAuthorCreateMediaType(author.id, form.value.mediaType))) {
     redirect(getCreateErrorRedirect(formData, "required"));
   }
 
+  timing.stage("validateMediaCarrier");
   const mediaCarrier = await validateMediaCarrier(form.value);
 
   if (!mediaCarrier.ok) {
     redirect(getCreateErrorRedirect(formData, mediaCarrier.error));
   }
 
+  timing.stage("validateMediaItemDuplicateCheck");
   const duplicateCheck = await validateMediaItemDuplicateCheck(formData, form.value);
 
   if (!duplicateCheck.ok) {
@@ -568,7 +582,9 @@ export async function createAuthorMediaItemAction(formData: FormData) {
   });
   const coverFile = getOptionalCoverFile(formData);
   const coverCandidateToken = getOptionalCoverCandidateToken(formData);
+  timing.stage("getCoverSettings");
   const coverSettings = await getCoverSettings();
+  timing.stage("resolveCoverUpload");
   const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: code,
@@ -589,6 +605,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   let result;
 
+  timing.stage("createAuthorPrivateMediaItemWithLimitCheck");
   try {
     result = await createAuthorPrivateMediaItemWithLimitCheck({
       afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
@@ -614,6 +631,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     throw error;
   }
 
+  timing.stage("deleteUploadedCoverFilesIfNeeded({\n      coverUrl: cover.coverUrl,\n      coverThumbUrl: cover.coverThumbUrl,\n    }).catch");
   if (!result.ok) {
     await deleteUploadedCoverFilesIfNeeded({
       coverUrl: cover.coverUrl,
@@ -622,6 +640,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, result.reason));
   }
 
+  timing.stage("deleteUploadedCoverFilesIfNeeded({\n      coverUrl: cover.coverUrl,\n      coverThumbUrl: cover.coverThumbUrl,\n    }).catch");
   if (!result.created) {
     await deleteUploadedCoverFilesIfNeeded({
       coverUrl: cover.coverUrl,
@@ -630,6 +649,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getExistingCreationRedirect(result.item));
   }
 
+  timing.stage("logActivity");
   await logActivity({
     action: "media.created",
     actorType: "author",
@@ -646,8 +666,10 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     },
   });
 
+  timing.stage("saveMediaItemMetadataMutation");
   if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, result.item.id);
 
+  timing.stage("upsertAuthorRating");
   if (ratingScore.value !== null) {
     await upsertAuthorRating({
       authorId: author.id,
@@ -666,6 +688,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     revalidatePath("/author");
   }
 
+  timing.stage("logActivity");
   if (cover.coverUrl && cover.thumbnailError) {
     console.error("author media cover thumbnail failed", {
       errorCode: cover.thumbnailError,
@@ -715,6 +738,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
   const nextStatus = getPublicationStatusAfterAuthorSubmit({
     canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
   });
+  timing.stage("submitAuthorMediaItemForPublication");
   const updatedItem = await submitAuthorMediaItemForPublication({
     authorId: author.id,
     mediaItemId: result.item.id,
@@ -725,6 +749,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     redirect(getCreateErrorRedirect(formData, "publish-locked"));
   }
 
+  timing.stage("moveAuthorFranchisesForMediaSubmission");
   await moveAuthorFranchisesForMediaSubmission({
     authorId: author.id,
     mediaItemId: updatedItem.id,
@@ -733,6 +758,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
     }),
   });
 
+  timing.stage("logActivity");
   if (updatedItem.publicationStatus === "published") {
     await logActivity({
       action: "media.published",
@@ -758,6 +784,7 @@ export async function createAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
+  timing.stage("logActivity");
   await logActivity({
     action: "media.submitted",
     actorType: "author",
@@ -775,9 +802,14 @@ export async function createAuthorMediaItemAction(formData: FormData) {
       updatedItem,
     ),
   );
-}
+  }
 
 export async function updateAuthorMediaItemAction(formData: FormData) {
+  return traceMediaSave("updateAuthorMediaItemAction", (timing) => updateAuthorMediaItemActionMeasured(formData, timing));
+}
+
+async function updateAuthorMediaItemActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
   const mediaItemId = Number(getFormString(formData, "mediaItemId"));
   const removeCover = shouldRemoveCover(formData);
@@ -786,12 +818,14 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     notFound();
   }
 
+  timing.stage("getAuthorMediaItemForEdit");
   const item = await getAuthorMediaItemForEdit(author.id, mediaItemId);
 
   if (!item) {
     notFound();
   }
 
+  timing.stage("canAuthorCreateMediaType");
   if (!(await canAuthorCreateMediaType(author.id, item.mediaType))) {
     notFound();
   }
@@ -802,12 +836,14 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=${form.error}`);
   }
 
+  timing.stage("getArchiveSettings");
   const { maxTitleAliases } = await getArchiveSettings();
 
   if (form.value.aliases.length > maxTitleAliases) {
     redirect(`/author/media/${mediaItemId}/edit?error=too-many-aliases-${maxTitleAliases}`);
   }
 
+  timing.stage("validateMediaItemDuplicateCheck");
   const duplicateCheck = await validateMediaItemDuplicateCheck(formData, {
     ...form.value,
     excludeMediaItemId: mediaItemId,
@@ -817,20 +853,24 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect(`/author/media/${mediaItemId}/edit?error=${duplicateCheck.error}`);
   }
 
+  timing.stage("getMediaItemMetadataMutation");
   const metadataMutation = await getMediaItemMetadataMutation(formData, form.value.mediaType);
 
   if (metadataMutation.type === "reject") {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
   }
 
+  timing.stage("canAuthorUseFranchises");
   if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
   }
 
+  timing.stage("canAuthorCreateMediaType");
   if (!(await canAuthorCreateMediaType(author.id, form.value.mediaType))) {
     redirect(`/author/media/${mediaItemId}/edit?error=required`);
   }
 
+  timing.stage("validateMediaCarrier");
   const mediaCarrier = await validateMediaCarrier(form.value);
 
   if (!mediaCarrier.ok) {
@@ -841,7 +881,9 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=locked");
   }
 
+  timing.stage("getCoverSettings");
   const coverSettings = await getCoverSettings();
+  timing.stage("resolveCoverUpload");
   const cover = await resolveCoverUpload({
     authorId: author.id,
     mediaItemCode: `media-${mediaItemId}`,
@@ -850,6 +892,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     maxBytes: coverSettings.coverMaxBytes,
   });
 
+  timing.stage("logActivity");
   if (!cover.ok) {
     console.error("author media cover update failed", {
       errorCode: cover.error,
@@ -885,6 +928,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
   const nextCoverSource =
     removeCover || cover.coverUrl ? cover.source : getCoverSourceFromItem(item);
 
+  timing.stage("updateAuthorMediaItem");
   try {
     await updateAuthorMediaItem({
       afterWrite:metadataMutation.type === "upsert" && metadataMutation.snapshotReferences
@@ -910,6 +954,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     throw error;
   }
 
+  timing.stage("deleteUploadedCoverFilesIfNeeded({\n      coverUrl: item.coverUrl,\n      coverThumbUrl: item.coverThumbUrl,\n    }).catch");
   if ((removeCover || cover.coverUrl) && isS3ObjectKey(item.coverUrl)) {
     await deleteUploadedCoverFilesIfNeeded({
       coverUrl: item.coverUrl,
@@ -920,6 +965,7 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     }));
   }
 
+  timing.stage("logActivity");
   if (cover.coverUrl && cover.thumbnailError) {
     console.error("author media cover thumbnail update failed", {
       errorCode: cover.thumbnailError,
@@ -952,8 +998,10 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
     }));
   }
 
+  timing.stage("saveMediaItemMetadataMutation");
   if (metadataMutation.type !== "upsert" || !metadataMutation.snapshotReferences) await saveMediaItemMetadataMutation(metadataMutation, mediaItemId);
 
+  timing.stage("logActivity");
   await logActivity({
     action: "media.updated",
     actorType: "author",
@@ -971,14 +1019,20 @@ export async function updateAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/author/media");
 
+  timing.stage("publishAuthorMediaItemAction");
   if (getCreateIntent(formData) === "submit") {
     await publishAuthorMediaItemAction(formData);
   }
 
   redirect("/author/media?updated=1");
-}
+  }
 
 export async function publishAuthorMediaItemAction(formData: FormData) {
+  return traceMediaSave("publishAuthorMediaItemAction", (timing) => publishAuthorMediaItemActionMeasured(formData, timing));
+}
+
+async function publishAuthorMediaItemActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
   const mediaItemId = Number(getFormString(formData, "mediaItemId"));
 
@@ -986,12 +1040,14 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
     notFound();
   }
 
+  timing.stage("getAuthorMediaItemForView");
   const item = await getAuthorMediaItemForView(author.id, mediaItemId);
 
   if (!item) {
     notFound();
   }
 
+  timing.stage("canAuthorCreateMediaType");
   if (!(await canAuthorCreateMediaType(author.id, item.mediaType))) {
     notFound();
   }
@@ -1003,6 +1059,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
   const nextStatus = getPublicationStatusAfterAuthorSubmit({
     canPublishMediaWithoutReview: author.canPublishMediaWithoutReview,
   });
+  timing.stage("submitAuthorMediaItemForPublication");
   const updatedItem = await submitAuthorMediaItemForPublication({
     authorId: author.id,
     mediaItemId,
@@ -1013,6 +1070,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
     redirect("/author/media?error=publish-locked");
   }
 
+  timing.stage("moveAuthorFranchisesForMediaSubmission");
   await moveAuthorFranchisesForMediaSubmission({
     authorId: author.id,
     mediaItemId: updatedItem.id,
@@ -1023,6 +1081,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/author/media");
 
+  timing.stage("logActivity");
   if (updatedItem.publicationStatus === "published") {
     await logActivity({
       action: "media.published",
@@ -1041,6 +1100,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
 
   revalidatePath("/admin/media-review");
   revalidatePath("/admin", "layout");
+  timing.stage("logActivity");
   await logActivity({
     action: "media.submitted",
     actorType: "author",
@@ -1051,7 +1111,7 @@ export async function publishAuthorMediaItemAction(formData: FormData) {
     message: "Запись отправлена автором на модерацию.",
   });
   redirect("/author/media?submitted=1");
-}
+  }
 
 export async function withdrawAuthorMediaItemAction(formData: FormData) {
   const author = await requireAuthor();

@@ -23,6 +23,16 @@ export function historicalReputationFactsSql() {
       ratings.id::text source_key, 'published'::text outcome, ratings.created_at occurred_at
     from ratings
     union all
+    select lists.author_id, 'tier-list.created', 'tier-list', lists.id::text, 'published', lists.created_at
+    from tier_lists lists
+    where not exists (select 1 from domain_events events
+      where events.type = 'tier-list.created' and events.aggregate_id = lists.id::text)
+    union all
+    select (events.payload->>'authorId')::int, 'tier-list.created', 'tier-list',
+      events.aggregate_id, 'published', events.occurred_at
+    from domain_events events
+    where events.type = 'tier-list.created' and events.payload->>'authorId' ~ '^[1-9][0-9]*$'
+    union all
     select media.created_by_author_id, 'media.published', 'media-item', media.id::text,
       case when media.publication_status = 'rejected' then 'rejected' else 'published' end,
       coalesce(media.reviewed_at, media.created_at)

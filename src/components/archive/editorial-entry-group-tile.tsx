@@ -9,16 +9,17 @@ import type { EditorialCollectionGroupItem } from "@/db/queries/editorial-collec
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useUserStateMode } from "@/lib/user-state/use-demo-profile";
 
-export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuthor, ratingAuthor, horizontalScroll = true, showMetadata = true }: Omit<EditorialCollectionGroupItem, "mediaItemId"> & {
+export function EditorialEntryGroupTile({ item, currentAuthorStatus, currentAuthor, ratingAuthor, horizontalScroll = true, showMetadata = true, showDemoRating = true }: Omit<EditorialCollectionGroupItem, "mediaItemId"> & {
   currentAuthor: boolean;
   ratingAuthor: { name: string; code: string } | null;
   horizontalScroll?: boolean;
   showMetadata?: boolean;
+  showDemoRating?: boolean;
 }) {
   const [ratingRequest, setRatingRequest] = useState(0);
   const mode = useUserStateMode(currentAuthor);
   const demoOverlay = useDemoMediaOverlay(item.code, item.currentAuthorScore, currentAuthorStatus);
-  const score = mode === "demo" ? demoOverlay.score : item.currentAuthorScore;
+  const score = mode === "demo" ? (showDemoRating ? demoOverlay.score : null) : item.currentAuthorScore;
   const status = mode === "demo" ? demoOverlay.status : currentAuthorStatus;
   const tileProps = { item, href: `/media/${item.code}`, currentAuthorScore: score, onRatingClick: () => setRatingRequest((request) => request + 1) };
 

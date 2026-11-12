@@ -25,6 +25,7 @@ export type AdminMediaBrowserQuery = {
   franchiseId: number | null;
   mediaType: string | null;
   minAverageScore: number | null;
+  maxAverageScore?: number | null;
   page: number;
   pageSize: number;
   searchQuery: string;
@@ -140,6 +141,7 @@ export function parseAdminMediaBrowserQuery(
     franchiseId: parsePositiveInteger(searchParams.get("series")),
     mediaType: isMediaTypeCode(mediaType) ? mediaType : null,
     minAverageScore: parseMinAverageScore(searchParams.get("minScore")),
+    maxAverageScore: parseMinAverageScore(searchParams.get("maxScore")),
     page: parsePositiveInteger(searchParams.get("page")) ?? 1,
     pageSize: parsePageSize(searchParams.get("pageSize")),
     searchQuery: (searchParams.get("q") ?? "").trim().slice(0, 200),

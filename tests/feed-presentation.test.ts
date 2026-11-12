@@ -13,6 +13,9 @@ test("feed descriptions use user-facing scores, authors and neutral editorial fa
   assert.equal(describeFeedEvent({ ...base, kind: "rating" }), "Ваш друг Антон поставил оценку");
   assert.equal(describeFeedEvent({ ...base, kind: "achievement" }), "Ваш друг Антон получил ачивку");
   assert.equal(describeFeedEvent({ ...base, kind: "wanted" }), "Ваш друг Антон добавил запись в желаемое");
+  assert.equal(describeFeedEvent({ ...base, kind: "tier-list" }), "Антон опубликовал тир-лист");
+  assert.equal(describeFeedEvent({ ...base, kind: "tier-list", actorId: 42 }, 42), "Вы опубликовали тир-лист");
+  assert.equal(describeFeedEvent({ ...base, actorName: null, kind: "tier-list" }), "Опубликован тир-лист");
   assert.equal(describeFeedEvent({ ...base, kind: "media" }), "Антон добавил новую запись");
   assert.equal(describeFeedEvent({ ...base, actorName: null, kind: "media" }), "В архив добавлена новая запись");
   assert.equal(describeFeedEvent({ ...base, actorName: null, kind: "series" }), "В архив добавлена новая серия");

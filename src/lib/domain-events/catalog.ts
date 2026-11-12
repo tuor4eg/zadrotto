@@ -1,6 +1,7 @@
 export const DOMAIN_EVENT_TYPES = [
   "author.accounts.merged",
   "rating.created",
+  "tier-list.created",
   "review.published",
   "review.submitted",
   "review.approved",
@@ -39,6 +40,7 @@ export type DomainEventType = (typeof DOMAIN_EVENT_TYPES)[number];
 
 export type DomainEventPayloads = {
   "author.accounts.merged": { authorId: number; sourceAuthorId: number; mergeId: string };
+  "tier-list.created": { authorId: number; tierListId: number };
   "rating.created": { authorId: number; mediaItemId: number; partId?: number };
   "review.published": { authorId: number; mediaItemId: number };
   "review.submitted": { authorId: number; contributionId: number; mediaItemId: number };

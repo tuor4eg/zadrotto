@@ -11,6 +11,7 @@ import {
 } from "drizzle-orm";
 
 import { db } from "@/db";
+import type { DbTransaction } from "@/db/transaction";
 import {
   authorMediaTypeSettings,
   authorAccessProfileMediaTypes,
@@ -73,13 +74,13 @@ export async function getPubliclyAvailableMediaTypeCodes() {
   return rows.map(({ code }) => code);
 }
 
-export async function getAccessibleMediaTypeOptions(authorId?: number) {
+export async function getAccessibleMediaTypeOptions(authorId?: number, connection: typeof db | DbTransaction = db) {
   const accessCondition = authorId === undefined
     ? eq(mediaTypes.isAvailableToGuests, true)
     : or(
       eq(mediaTypes.isAvailableToGuests, true),
       exists(
-        db
+        connection
           .select({ accessProfileId: authorAccessProfileMediaTypes.accessProfileId })
           .from(authors)
           .innerJoin(
@@ -93,7 +94,7 @@ export async function getAccessibleMediaTypeOptions(authorId?: number) {
       ),
     );
 
-  return db
+  return connection
     .select({
       id: mediaTypes.id,
       code: mediaTypes.code,
@@ -108,8 +109,8 @@ export async function getAccessibleMediaTypeOptions(authorId?: number) {
     .orderBy(otherMediaTypeLastSql, asc(mediaTypes.name));
 }
 
-export async function getAccessibleMediaTypeCodes(authorId?: number) {
-  return (await getAccessibleMediaTypeOptions(authorId)).map(({ code }) => code);
+export async function getAccessibleMediaTypeCodes(authorId?: number, connection: typeof db | DbTransaction = db) {
+  return (await getAccessibleMediaTypeOptions(authorId, connection)).map(({ code }) => code);
 }
 
 export async function getEffectiveMediaTypeOptions(

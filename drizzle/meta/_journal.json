@@ -43,6 +43,20 @@
       "when": 1794140503387,
       "tag": "0005_account_merge",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794244949418,
+      "tag": "0006_tier_lists",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1794390669709,
+      "tag": "0007_tier_list_previews",
+      "breakpoints": true
     }
   ]
 }

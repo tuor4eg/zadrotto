@@ -30,6 +30,7 @@ export function getFeedEventText(item: FeedItem, currentAuthorId?: number) {
   let prefix = !isSelf && actorName && item.actorIsFriend ? "Ваш друг " : "";
   let suffix: string;
   switch (item.kind) {
+    case "tier-list": suffix = actorName ? (isSelf ? " опубликовали тир-лист" : " опубликовал тир-лист") : "Опубликован тир-лист"; break;
     case "media": suffix = actorName ? (isSelf ? " добавили новую запись" : " добавил новую запись") : "В архив добавлена новая запись"; break;
     case "series": suffix = actorName ? (isSelf ? " добавили новую серию" : " добавил новую серию") : "В архив добавлена новая серия"; break;
     case "review": suffix = `${actorName ? (isSelf ? " добавили рецензию" : " добавил рецензию") : "Добавлена рецензия"}${item.reviewTitle ? ` «${item.reviewTitle}»` : ""}`; break;

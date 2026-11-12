@@ -13,6 +13,8 @@ import {
   contributions,
   mediaItems,
   ratings,
+  tierLists,
+  tierListQuotaEvents,
 } from "@/db/schema";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 
@@ -31,6 +33,8 @@ const authorHasUsageSql = sql<boolean>`(
   or exists(select 1 from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authors.id})
   or exists(select 1 from ${contributions} where ${contributions.authorId} = ${authors.id})
   or exists(select 1 from ${bugReports} where ${bugReports.authorId} = ${authors.id})
+  or exists(select 1 from ${tierLists} where ${tierLists.authorId} = ${authors.id})
+  or exists(select 1 from ${tierListQuotaEvents} where ${tierListQuotaEvents.authorId} = ${authors.id})
   or exists(select 1 from account_merge_grants g where g.initiator_author_id = ${authors.id}
     or g.secondary_author_id = ${authors.id} or g.result_author_id = ${authors.id})
 )`;
@@ -41,6 +45,8 @@ function authorUsageCountByIdSql(authorId: number) {
     (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId}) +
     (select count(*) from ${contributions} where ${contributions.authorId} = ${authorId}) +
     (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId}) +
+    (select count(*) from ${tierLists} where ${tierLists.authorId} = ${authorId}) +
+    (select count(*) from ${tierListQuotaEvents} where ${tierListQuotaEvents.authorId} = ${authorId}) +
     (select count(*) from account_merge_grants g where g.initiator_author_id = ${authorId}
       or g.secondary_author_id = ${authorId} or g.result_author_id = ${authorId})
   )::int`;

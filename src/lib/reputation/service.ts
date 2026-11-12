@@ -36,6 +36,12 @@ type ReputationFact = {
 
 async function getFact(tx: DbTransaction, event: PersistedDomainEvent): Promise<ReputationFact | null> {
   const rejected = event.type.endsWith(".rejected");
+  if (event.type === "tier-list.created") {
+    const payload = event.payload as { authorId: number; tierListId: number };
+    const [owner] = await tx.select({ isSystem: authors.isSystem }).from(authors).where(eq(authors.id, payload.authorId)).limit(1);
+    if (!owner || owner.isSystem) return null;
+    return { actionCode: "tier-list.created", authorId: payload.authorId, outcome: "published", sourceKey: String(payload.tierListId), sourceType: "tier-list" };
+  }
   if (event.type === "rating.created") {
     const payload = event.payload as { authorId: number };
     return { actionCode: "rating.created", authorId: payload.authorId, outcome: "published", sourceKey: event.aggregateId, sourceType: "rating" };
@@ -313,7 +319,7 @@ export async function applyReputationEvent(tx: DbTransaction, event: PersistedDo
 export const reputationDomainEventConsumer: DomainEventConsumer = {
   key: "reputation.apply",
   eventTypes: [
-    "rating.created",
+    "rating.created", "tier-list.created",
     "media.published", "media.approved", "media.rejected",
     "review.published", "review.approved", "review.rejected",
     "media-franchise.published", "media-franchise.approved", "media-franchise.rejected",

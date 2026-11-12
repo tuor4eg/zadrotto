@@ -16,7 +16,7 @@ Preserve one coherent public shell without duplicating header or session-loading
 
 ## Header and navigation
 
-- Keep the brand, `Архив / Серии / Подборки / Рецензии`, search or page controls, notifications, admin action, and avatar/login in one row.
+- Keep the brand, `Архив / Лента / Подборки / Рецензии`, search or page controls, notifications, admin action, and avatar/login in one row. `Подборки` opens `От редакции` and `Тир-листы`. `Серии` stays inside `Путеводитель`.
 - Preserve the action order `уведомления → админка → аватар`. Show the admin badge only for a non-zero moderation count.
 - On `/archive`, put search, filters, and sorting in the same header row. Search updates `q` with the existing 250 ms debounce, preserves other parameters, resets `page`, and clears `q` immediately when emptied.
 - Show `Ачивки` for a logged-in author or an active demo profile.

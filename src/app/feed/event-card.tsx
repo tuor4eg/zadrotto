@@ -1,6 +1,7 @@
 import { EditorialEntryGroupTile } from "@/components/archive/editorial-entry-group-tile";
 import type { EditorialCollectionGroupItem } from "@/db/queries/editorial-collections";
 import Image from "next/image";
+import { ImageWithFallback } from "@/components/ui/image-with-fallback";
 import Link from "next/link";
 import { BookOpen, Trophy } from "lucide-react";
 import type { FeedItem } from "@/lib/feed/model";
@@ -17,8 +18,8 @@ export function FeedEventCard({ item, tile, currentAuthorId, ratingAuthor = null
   return <div className="flex min-w-0 items-stretch gap-3">
           {tile ? <div className="w-32 min-w-0 shrink-0 sm:w-36">
             <EditorialEntryGroupTile {...tile} currentAuthor={currentAuthorId !== undefined} ratingAuthor={ratingAuthor} horizontalScroll={horizontalScroll} showMetadata={false} />
-          </div> : <Link href={item.href} className={`relative block shrink-0 overflow-hidden bg-stone-800/10 ${item.kind === "achievement" ? "aspect-square w-32 self-start rounded-full sm:w-36" : item.kind === "series" ? "aspect-[2/3] w-32 rounded-md sm:w-36" : "h-24 w-16 rounded-md"}`} aria-label={item.title}>
-            {item.imageUrl ? <Image src={item.imageUrl} alt="" fill sizes={item.kind === "series" || item.kind === "achievement" ? "(min-width: 640px) 144px, 128px" : "64px"} className={item.kind === "achievement" ? "object-contain p-1" : "object-cover"} unoptimized />
+          </div> : <Link href={item.href} className={`relative block shrink-0 overflow-hidden bg-stone-800/10 ${item.kind === "achievement" ? "aspect-square w-32 self-start rounded-full sm:w-36" : item.kind === "series" || item.kind === "tier-list" ? "aspect-[2/3] w-32 self-start rounded-md sm:w-36" : "h-24 w-16 rounded-md"}`} aria-label={item.title}>
+            {item.kind === "tier-list" ? <ImageWithFallback src={item.imageUrl ?? undefined} alt="" loading="lazy" width={128} height={192} className="h-full w-full object-contain" fallback={<span className="grid h-full place-items-center text-stone-500"><BookOpen className="size-7" aria-hidden="true" /></span>} /> : item.imageUrl ? <Image src={item.imageUrl} alt="" fill sizes={item.kind === "series" || item.kind === "achievement" ? "(min-width: 640px) 144px, 128px" : "64px"} className={item.kind === "achievement" ? "object-contain p-1" : "object-cover"} unoptimized />
               : <span className="grid h-full place-items-center text-stone-500">{item.kind === "achievement" ? <Trophy className="size-7" aria-hidden="true" /> : <BookOpen className="size-7" aria-hidden="true" />}</span>}
           </Link>}
           <div className="flex min-w-0 flex-1 flex-col">

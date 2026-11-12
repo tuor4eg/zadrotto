@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, CircleHelp, Menu, Plus, Search, Shield, UserRound, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import { Fragment, type ReactNode, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
@@ -38,8 +38,12 @@ export type PublicSiteHeaderProps = {
 const BASE_MENU_ITEMS = [
   { href: "/archive", label: "Архив" },
   { href: "/feed", label: "Лента" },
-  { href: "/collections", label: "Подборки" },
   { href: "/reviews", label: "Рецензии" },
+] as const;
+
+const COLLECTIONS_MENU_ITEMS = [
+  { href: "/collections", label: "От редакции" },
+  { href: "/tier-lists", label: "Тир-листы" },
 ] as const;
 
 const GUIDE_MENU_ITEMS = [
@@ -51,7 +55,7 @@ const GUIDE_MENU_ITEMS = [
 
 const QUIZZES_MENU_ITEM = { href: "/quizzes", label: "Квизы" } as const;
 
-function GuideMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigate?: () => void }) {
+function NavMenu({ label, items, mobile = false, onNavigate }: { label: string; items: readonly { href: string; label: string }[]; mobile?: boolean; onNavigate?: () => void }) {
   return (
     <details
       className="group relative"
@@ -76,12 +80,12 @@ function GuideMenu({ mobile = false, onNavigate }: { mobile?: boolean; onNavigat
       }}
     >
       <summary className={`flex cursor-pointer list-none items-center gap-1 font-mono uppercase [&::-webkit-details-marker]:hidden ${mobile ? "rounded-md px-3 py-2 text-xs tracking-wide text-stone-100 hover:bg-white/10" : "text-[10px] tracking-[0.12em] text-stone-300 hover:text-white"}`}>
-        Путеводитель
-        <ChevronDown aria-hidden="true" className="size-3 transition-transform group-open:rotate-180" />
+        {label}
+        {mobile ? <ChevronDown aria-hidden="true" className="size-3 transition-transform group-open:rotate-180" /> : null}
       </summary>
       <div className={mobile ? "pl-3" : "absolute left-0 top-full z-50 min-w-44 pt-2"}>
         <div className={mobile ? "grid gap-1" : "grid gap-1 rounded-lg border border-stone-700 bg-stone-900 p-2 shadow-xl"}>
-          {GUIDE_MENU_ITEMS.map((item) => (
+          {items.map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -130,10 +134,13 @@ export function PublicSiteHeader({
   const isDemo = Boolean(!author && demoProfile && demoProfile.import.importedAt == null);
   const showAchievements = Boolean(author || isDemo);
   const MENU_ITEMS = [
-    ...BASE_MENU_ITEMS,
+    BASE_MENU_ITEMS[0],
+    BASE_MENU_ITEMS[1],
+    { href: null, label: "Подборки", items: COLLECTIONS_MENU_ITEMS } as const,
+    BASE_MENU_ITEMS[2],
     ...(author ? [QUIZZES_MENU_ITEM] : []),
     ...(showAchievements ? [{ href: "/achievements", label: "Ачивки" } as const] : []),
-    { href: null, label: "Путеводитель" } as const,
+    { href: null, label: "Путеводитель", items: GUIDE_MENU_ITEMS } as const,
   ];
   const currentQuizParticipant = quizParticipant?.quizId === quiz?.quiz.id
     ? quizParticipant
@@ -194,17 +201,21 @@ export function PublicSiteHeader({
           </button>
           </div>
 
-          <nav aria-label="Основная навигация" className="hidden items-center gap-3 lg:flex">
-            {MENU_ITEMS.map((item) => item.href === null ? (
-              <GuideMenu key={item.label} />
-            ) : (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-300 transition-colors hover:text-white"
-              >
-                {item.label}
-              </Link>
+          <nav aria-label="Основная навигация" className="hidden items-center gap-1.5 lg:flex">
+            {MENU_ITEMS.map((item, index) => (
+              <Fragment key={item.label}>
+                {index > 0 ? <span aria-hidden="true" className="size-0.5 shrink-0 rounded-full bg-stone-500" /> : null}
+                {item.href === null ? (
+                  <NavMenu label={item.label} items={item.items} />
+                ) : (
+                  <Link
+                    href={item.href}
+                    className="font-mono text-[10px] uppercase tracking-[0.12em] text-stone-300 transition-colors hover:text-white"
+                  >
+                    {item.label}
+                  </Link>
+                )}
+              </Fragment>
             ))}
           </nav>
 
@@ -235,7 +246,7 @@ export function PublicSiteHeader({
               className="absolute right-0 top-14 z-50 grid min-w-44 gap-1 rounded-lg border border-stone-700 bg-stone-900 p-2 shadow-xl lg:hidden"
             >
               {MENU_ITEMS.map((item) => item.href === null ? (
-                <GuideMenu key={item.label} mobile onNavigate={() => setIsMenuOpen(false)} />
+                <NavMenu key={item.label} label={item.label} items={item.items} mobile onNavigate={() => setIsMenuOpen(false)} />
               ) : (
                 <Link
                   key={item.href}

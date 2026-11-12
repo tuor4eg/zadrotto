@@ -1,3 +1,4 @@
+import "./fixtures/server-runtime";
 import assert from "node:assert/strict";
 import { randomUUID } from "node:crypto";
 import { test } from "node:test";
@@ -227,6 +228,41 @@ test("live feed visibility, updates, exact cursors, pagination and scale", { ski
       assert.ok(scan);
       assert.ok(Number(scan["Actual Rows"]) <= FEED_PAGE_SIZE + 1);
       t.diagnostic(JSON.stringify({ label: "friend-awards-10000", milliseconds: row["QUERY PLAN"][0]["Execution Time"], rows: scan["Actual Rows"], loops: scan["Actual Loops"] }));
+    });
+
+    await t.test("tier lists use first publication and public author visibility with own and friend filters", async () => {
+      // Restore the friend after earlier visibility checks.
+      await client!`update authors set blocked_at=null where id=10002`;
+      await client!`update author_friendships set status='accepted' where first_author_id=10001 and second_author_id=10002`;
+      const [list] = await client!`insert into tier_lists(author_id,title,status,first_published_at,configuration,distribution,client_creation_id)
+        values(10002,'Тир-лист друга','published','2099-03-01',${JSON.stringify({ schemaVersion: 1, levels: [{ id: 's', name: 'S', color: '#ffffff' }] })}::jsonb,${JSON.stringify({ s: [] })}::jsonb,${randomUUID()}) returning id,public_id`;
+      const key = `tier-list-${list.id}`;
+      const first = (await getFeedPage({ ...input, friendsOnly: true })).items.find(item => item.key === key);
+      assert.ok(first);
+      assert.equal(first.href, `/tier-lists/${list.public_id}`);
+      assert.equal(first.cursor.kind, 8);
+      assert.ok((await getFeedPage({ mediaTypeCodes: [], publicOnly: true })).items.some(item => item.key === key));
+      assert.ok(!(await getFeedPage({ ...input, mineOnly: true })).items.some(item => item.key === key));
+      assert.ok((await getFeedPage({ ...input, authorId: 10002, mineOnly: true })).items.some(item => item.key === key));
+      await client!`update tier_lists set title='Изменено',updated_at=now(),status='draft' where id=${list.id}`;
+      assert.ok(!(await getFeedPage(input)).items.some(item => item.key === key));
+      await client!`update tier_lists set status='published' where id=${list.id}`;
+      assert.deepEqual((await getFeedPage(input)).items.find(item => item.key === key)?.cursor, first.cursor);
+      await client!`update tier_lists set hidden_at=now() where id=${list.id}`;
+      assert.ok(!(await getFeedPage(input)).items.some(item => item.key === key));
+      await client!`update tier_lists set hidden_at=null where id=${list.id}`;
+      await client!`update authors set blocked_at=now() where id=10002`;
+      assert.ok(!(await getFeedPage({ mediaTypeCodes: [], publicOnly: true })).items.some(item => item.key === key));
+      await client!`update authors set blocked_at=null where id=10002`;
+      const compiled = new PgDialect().sqlToQuery(buildFeedQuery({ ...input, friendsOnly: true }));
+      const plan = await client!.unsafe("explain(analyze,buffers,format json) " + compiled.sql, compiled.params as never[]);
+      const nodes: Record<string, unknown>[] = [];
+      const walk = (node: Record<string, unknown>) => { nodes.push(node); for (const child of (node.Plans ?? []) as Record<string, unknown>[]) walk(child); };
+      const result = plan[0]["QUERY PLAN"][0];
+      walk(result.Plan);
+      t.diagnostic(JSON.stringify({ label: 'tier-list', milliseconds: result["Execution Time"],
+        nodes: nodes.filter(node => node["Relation Name"] === 'tier_lists').map(node => ({ type: node["Node Type"], index: node["Index Name"], rows: node["Actual Rows"], loops: node["Actual Loops"] })) }));
+      await client!`delete from tier_lists where id=${list.id}`;
     });
 
     await t.test("representative SQL plans", { skip: process.env.FEED_TEST_SCALE !== "1", timeout: 540000 }, async () => {

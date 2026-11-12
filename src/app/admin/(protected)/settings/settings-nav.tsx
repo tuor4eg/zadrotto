@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Archive, Library, Bell, CircleHelp, ShieldCheck, Trophy, Users } from "lucide-react";
+import { Archive, Library, Layers3, Bell, CircleHelp, ShieldCheck, Trophy, Users } from "lucide-react";
 
 import { cn } from "@/lib/common/utils";
 
@@ -38,6 +38,7 @@ const SETTINGS_NAV_ITEMS = [
     label: "Квизы",
     icon: CircleHelp,
   },
+  { href: "/admin/settings/tier-lists", label: "Тир-листы", icon: Layers3 },
   {
     href: "/admin/settings/notifications",
     label: "Уведомления",

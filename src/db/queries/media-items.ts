@@ -3,7 +3,7 @@ import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
 import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition, entryCreatorSearchCondition } from "@/db/queries/creators";
 import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
-import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
+import { publishedSeriesMediaItemIdsSql, publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { hasUnifiedGenresSql, missingGenreSeriesBindingSql, publicMediaItemGenresJsonSql, visibleGenreSql, mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
 import {
   and,
@@ -392,7 +392,9 @@ const currentAuthorStatusCondition = (currentAuthorId: number, status: AuthorMed
   );
 
 const catalogSeriesCondition = (seriesId: number, includeDescendants = true) =>
-  publishedSeriesMembershipSql(sql`"media_items"."id"`, sql`${seriesId}`, includeDescendants);
+  includeDescendants
+    ? inArray(mediaItems.id, sql`(${publishedSeriesMediaItemIdsSql(sql`${seriesId}`)})`)
+    : publishedSeriesMembershipSql(sql`"media_items"."id"`, sql`${seriesId}`, false);
 
 function catalogGenreCondition(genreId: number) {
   return exists(db.select({ id: mediaItemGenres.genreId }).from(mediaItemGenres)

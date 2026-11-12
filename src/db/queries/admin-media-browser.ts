@@ -105,11 +105,12 @@ function franchiseFilterCondition(input: AdminMediaBrowserQuery) {
   )`;
 }
 
-function buildFilterCondition(input: AdminMediaBrowserQuery) {
+function buildFilterCondition(input: AdminMediaBrowserQuery, accessibleTypes?: readonly string[]) {
   const conditions: SQL[] = [
     publishedMediaItemCondition,
     eq(mediaTypes.isPubliclyAvailable, true),
   ];
+  if (accessibleTypes) conditions.push(accessibleTypes.length ? inArray(mediaItems.mediaType, [...accessibleTypes]) : sql`false`);
   const searchCondition = mediaItemSearchCondition(input.searchQuery);
   const selectedFranchiseCondition = franchiseFilterCondition(input);
 
@@ -129,6 +130,10 @@ function buildFilterCondition(input: AdminMediaBrowserQuery) {
     conditions.push(
       sql`${mediaItemAverageScoreSql} >= ${input.minAverageScore * 10}`,
     );
+  }
+
+  if (input.maxAverageScore != null) {
+    conditions.push(sql`${mediaItemAverageScoreSql} <= ${input.maxAverageScore * 10}`);
   }
 
   return and(...conditions)!;
@@ -171,8 +176,8 @@ function getOrderBy(input: AdminMediaBrowserQuery) {
   ];
 }
 
-export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery) {
-  const filterCondition = buildFilterCondition(input);
+export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery, accessibleTypes?: readonly string[]) {
+  const filterCondition = buildFilterCondition(input, accessibleTypes);
   const [{ totalCount }] = await db
     .select({ totalCount: sql<number>`count(*)::int` })
     .from(mediaItems)
@@ -344,4 +349,21 @@ export async function getAdminMediaBrowserFilterOptions() {
     mediaTypes: mediaTypeRows,
     series,
   };
+}
+
+/** Bounded public series search; never preload the franchise catalogue. */
+export async function searchPublicMediaBrowserSeries(query: string, accessibleTypes: readonly string[]) {
+  const normalized = normalizeSearchText(query).slice(0, 200);
+  if (normalized.length < 2 || !accessibleTypes.length) return [];
+  return db.select({ id: franchises.id, title: franchises.title, originalTitle: franchises.originalTitle })
+    .from(franchises)
+    .where(and(
+      eq(franchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      or(containsNormalizedSearchSql(franchises.title, normalized), containsNormalizedSearchSql(franchises.originalTitle, normalized)),
+      exists(db.select({ id: mediaItemFranchises.mediaItemId }).from(mediaItemFranchises)
+        .innerJoin(mediaItems, eq(mediaItems.id, mediaItemFranchises.mediaItemId))
+        .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+        .where(and(eq(mediaItemFranchises.franchiseId, franchises.id), eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS), publishedMediaItemCondition, eq(mediaTypes.isPubliclyAvailable, true), inArray(mediaItems.mediaType, [...accessibleTypes])))),
+    ))
+    .orderBy(asc(franchises.title), asc(franchises.id)).limit(20);
 }

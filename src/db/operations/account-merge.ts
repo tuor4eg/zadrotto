@@ -18,6 +18,8 @@ type Row = Record<string, unknown>;
 type Policy = { table: string; owner: string; keys?: string[]; label: string; special?: boolean };
 // Server-owned identifiers only. New author references must be covered by the schema coverage test.
 export const ACCOUNT_MERGE_POLICIES: readonly Policy[] = [
+  { table: "tier_lists", owner: "author_id", label: "Тир-листы" },
+  { table: "tier_list_quota_events", owner: "author_id", label: "История квот тир-листов" },
   { table: "ratings", owner: "author_id", keys: ["media_item_id", "part_id"], label: "Оценки" },
   { table: "author_media_statuses", owner: "author_id", keys: ["media_item_id"], label: "Желаемое" },
   { table: "author_media_experiences", owner: "author_id", keys: ["media_item_id"], label: "Опыт знакомства" },
@@ -220,6 +222,10 @@ async function applyMerge(tx: DbTransaction, mergeId: string, primary: number, s
         if (p.table === "media_items" && row.author_creation_request_id && own.some(r => r.author_creation_request_id === row.author_creation_request_id)) {
           // This is an idempotency token, not a duplicate archive record.
           await tx.execute(sql`update media_items set author_creation_request_id = null where id = ${row.id}`);
+        }
+        if (p.table === "tier_lists" && own.some(r => r.client_creation_id === row.client_creation_id)) {
+          // A local draft may have been imported into both accounts. Keep both public links.
+          await tx.execute(sql`update tier_lists set client_creation_id = gen_random_uuid() where id = ${row.id}`);
         }
         // A reaction can have cascaded away with a discarded review.
         if (p.table === "user_achievements") await tx.execute(sql`update user_achievements set announced_at = coalesce(announced_at, now()) where id = ${row.id}`);

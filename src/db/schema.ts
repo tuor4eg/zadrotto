@@ -2671,3 +2671,47 @@ export const accountMergeArchive = pgTable("account_merge_archive", {
   index("account_merge_archive_merge_idx").on(t.mergeId),
   index("account_merge_archive_entity_idx").on(t.tableName, t.entityKey),
 ]);
+
+// Tier lists keep only archive IDs; availability is checked at every public read.
+export const tierListTemplates = pgTable('tier_list_templates', {
+  id: serial('id').primaryKey(), name: text('name').notNull(),
+  configuration: jsonb('configuration').$type<import('@/lib/tier-lists/model').TierConfiguration>().notNull(),
+  isDefault: boolean('is_default').notNull().default(false),
+  createdByAdminId: integer('created_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  updatedByAdminId: integer('updated_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }),
+  ...timestamps(),
+}, table => [uniqueIndex('tier_list_templates_default_idx').on(table.isDefault).where(sql`${table.isDefault}`)]);
+export const tierLists = pgTable('tier_lists', {
+  id: serial('id').primaryKey(), publicId: uuid('public_id').notNull().defaultRandom().unique(),
+  authorId: integer('author_id').notNull().references(() => authors.id), title: text('title').notNull(), description: text('description'),
+  templateId: integer('template_id').references(() => tierListTemplates.id, { onDelete: 'set null' }),
+  configuration: jsonb('configuration').$type<import('@/lib/tier-lists/model').TierConfiguration>().notNull(),
+  distribution: jsonb('distribution').$type<import('@/lib/tier-lists/model').TierDistribution>().notNull(),
+  status: text('status').$type<'draft' | 'published'>().notNull().default('draft'),
+  hiddenAt: timestamp('hidden_at', { withTimezone: true }), hiddenReason: text('hidden_reason'),
+  previewObjectKey: text('preview_object_key'), previewVersion: integer('preview_version'),
+  previewMediaIds: jsonb('preview_media_ids').$type<number[]>().notNull().default([]),
+  version: integer('version').notNull().default(1), clientCreationId: uuid('client_creation_id').notNull(),
+  firstPublishedAt: timestamp('first_published_at', { withTimezone: true }), ...timestamps(),
+}, table => [
+  uniqueIndex('tier_lists_author_creation_idx').on(table.authorId, table.clientCreationId),
+  index('tier_lists_author_status_idx').on(table.authorId, table.status),
+  index('tier_lists_public_feed_idx').on(table.firstPublishedAt, table.id).where(sql`${table.status}='published' and ${table.hiddenAt} is null`),
+  index('tier_lists_author_feed_idx').on(table.authorId, table.firstPublishedAt, table.id).where(sql`${table.status}='published' and ${table.hiddenAt} is null`),
+  index('tier_lists_title_search_idx').using('gin', normalizedSearchIndexSql(table.title)),
+  check('tier_lists_status_check', sql`${table.status} in ('draft','published')`),
+  check('tier_lists_title_check', sql`char_length(btrim(${table.title})) between 1 and 80`),
+  check('tier_lists_version_check', sql`${table.version} > 0`),
+  check('tier_lists_preview_check', sql`(${table.previewObjectKey} is null and ${table.previewVersion} is null) or (${table.previewObjectKey} is not null and ${table.previewVersion} is not null and ${table.previewVersion} > 0 and ${table.previewVersion} <= ${table.version})`),
+]);
+export const tierListSettings = pgTable('tier_list_settings', {
+  id: integer('id').primaryKey().default(1),
+  maxEntries: integer('max_entries').notNull().default(200), maxDrafts: integer('max_drafts').notNull().default(10),
+  maxPublished: integer('max_published').notNull().default(30), publicationsPerDay: integer('publications_per_day').notNull().default(5),
+  creationsPerDay: integer('creations_per_day').notNull().default(20), maxLevels: integer('max_levels').notNull().default(10),
+  updatedByAdminId: integer('updated_by_admin_id').references(() => adminUsers.id, { onDelete: 'set null' }), ...timestamps(),
+}, table => [check('tier_list_settings_bounds', sql`${table.id}=1 and ${table.maxEntries} between 1 and 1000 and ${table.maxLevels} between 1 and 20 and ${table.maxDrafts} between 1 and 1000 and ${table.maxPublished} between 1 and 1000 and ${table.publicationsPerDay} between 1 and 1000 and ${table.creationsPerDay} between 1 and 1000`)]);
+export const tierListQuotaEvents = pgTable('tier_list_quota_events', {
+  id: serial('id').primaryKey(), authorId: integer('author_id').notNull().references(() => authors.id),
+  kind: text('kind').$type<'created'|'published'>().notNull(), occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
+}, table => [index('tier_list_quota_events_author_time_idx').on(table.authorId, table.kind, table.occurredAt), check('tier_list_quota_events_kind_check', sql`${table.kind} in ('created','published')`)]);

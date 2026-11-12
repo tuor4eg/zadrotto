@@ -141,7 +141,7 @@ export function ReviewsCatalogControls({
             <ArchiveSelect
               ariaLabel="Тип записи"
               className="w-full"
-              triggerClassName="w-full min-w-0"
+              triggerClassName="h-10 w-full min-w-0"
               onChange={(value) => {
                 replaceParams((params) => {
                   if (value === "all") {
@@ -158,7 +158,7 @@ export function ReviewsCatalogControls({
           <ArchiveSelect
             ariaLabel="Оценка автора"
             className="w-full"
-            triggerClassName="w-full min-w-0"
+            triggerClassName="h-10 w-full min-w-0"
             onChange={(value) => {
               replaceParams((params) => {
                 if (value === "all") {
@@ -174,7 +174,7 @@ export function ReviewsCatalogControls({
           <ArchiveSelect
             ariaLabel="Автор рецензии"
             className="w-full"
-            triggerClassName="w-full min-w-0"
+            triggerClassName="h-10 w-full min-w-0"
             onChange={(value) => {
               replaceParams((params) => {
                 if (value === "all") {

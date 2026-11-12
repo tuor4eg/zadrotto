@@ -1,3 +1,4 @@
+import { tierPreviewGenerateHandler, tierPreviewCleanupHandler } from '@/lib/tier-lists/preview-job';
 import { comicVineIssuesJobHandler } from "@/lib/providers/comic-vine-issues-job";
 import { anilistCreatorApprovalHandler } from "@/lib/creators/anilist-creator-jobs";
 import { creatorAutoApprovalHandler } from "@/lib/creators/auto-approval-job";
@@ -20,6 +21,7 @@ import { applyGenreRequest } from "@/db/queries/genre-requests";
 import { logSystemActivity } from "@/lib/activity-logs/system";
 import { cleanupAuthorAuthData } from "@/db/operations/author-auth";
 import { getEmailAutomationSettings } from "@/db/queries/email-automation";
+import { cleanupTierListQuotaHistory } from "@/db/queries/tier-lists";
 import { cleanupJobRunHistory } from "@/db/queries/jobs";
 import { deliverPendingAuthorEmails } from "@/lib/auth/email-outbox-delivery";
 import { creatorImagesReconcileHandler } from "@/lib/covers/creator-images-reconcile-job";
@@ -87,6 +89,7 @@ const jobHistoryCleanupHandler: JobHandlerDefinition<Record<string, never>> = {
   parsePayload: parseEmptyPayload,
   async execute({ runId, lockToken }) {
     await cleanupJobRunHistory(new Date(), jobGuard(runId, lockToken));
+    await cleanupTierListQuotaHistory(jobGuard(runId, lockToken));
   },
 };
 
@@ -570,6 +573,8 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
   async execute({ payload, signal, runId, lockToken }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) }); },
 };
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  tierPreviewGenerateHandler,
+  tierPreviewCleanupHandler,
   creatorNameLocalizationHandler,
   providerSnapshotJobHandler,
   comicVineIssuesJobHandler,

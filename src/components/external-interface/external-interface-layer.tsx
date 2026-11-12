@@ -17,6 +17,7 @@ import { BugReportModal } from "@/components/bug-reports/bug-report-modal";
 import { OnboardingHudCard } from "@/components/onboarding/onboarding-hud-card";
 import { useArchiveOnboarding } from "@/components/onboarding/use-archive-onboarding";
 import { DemoLoginPromptCard } from "@/components/user-state/demo-login-prompt-card";
+import { TierListImportBridge } from "@/components/user-state/tier-list-import-bridge";
 import { DemoProfileImportBridge } from "@/components/user-state/demo-profile-import-bridge";
 import { usePageUnavailable } from "@/components/external-interface/page-availability";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
@@ -255,7 +256,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     <ExternalInterfaceContext.Provider value={value}>
       {children}
       {!pageUnavailable ? (
-        <DemoProfileImportBridge authenticated={authenticated && !consentRequired} authorId={authorId} />
+        <><DemoProfileImportBridge authenticated={authenticated && !consentRequired} authorId={authorId} /><TierListImportBridge authenticated={authenticated && !consentRequired} authorId={authorId} /></>
       ) : null}
       {showHudStack ? (
         <div

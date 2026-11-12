@@ -66,6 +66,60 @@ test("account merge: isolated full-schema transactional integration", { skip: !t
       for (const expected of ['account_merge_grants_initiator_idx','account_merge_grants_secondary_idx','account_merge_grants_result_idx']) assert.ok(grantIndexes.some(index=>index.indexname===expected));
     });
 
+    await t.test("zero tier-list reward survives replay, rule changes, merge and source deletion", async () => {
+      const p = await pair();
+      const { db } = await import("../src/db");
+      const { applyReputationEvent } = await import("../src/lib/reputation/service");
+      const { projectMergedAccountEvent } = await import("../src/lib/domain-events/merge-event");
+      const { historicalReputationFactsSql } = await import("../src/lib/reputation/historical-sql");
+      const [settings] = await client`select status from level_settings where id=1`;
+      const [rule] = await client`select xp from xp_action_rules where action_code='tier-list.created'`;
+      await client`update level_settings set status='enabled' where id=1`;
+      await client`update xp_action_rules set xp=0 where action_code='tier-list.created'`;
+      try {
+        const [list] = await client`insert into tier_lists(author_id,title,configuration,distribution,client_creation_id)
+          values(${p.b},'Черновик',${client.json({ schemaVersion: 1, levels: [{ id: 's', name: 'S', color: '#ffffff' }] })},${client.json({ s: [] })},${randomUUID()}) returning id,public_id`;
+        const event = { id: randomUUID(), type: "tier-list.created" as const, actorAuthorId: p.b,
+          aggregateType: "tier-list", aggregateId: String(list.id), occurredAt: new Date(), schemaVersion: 1,
+          payload: { authorId: p.b, tierListId: list.id as number } };
+        await client`insert into domain_events(id,type,actor_author_id,aggregate_type,aggregate_id,payload,occurred_at)
+          values(${event.id},${event.type},${p.b},'tier-list',${event.aggregateId},${client.json(event.payload)},${event.occurredAt})`;
+        const [incoming] = await client`select client_creation_id from tier_lists where id=${list.id}`;
+        const [original] = await client`insert into tier_lists(author_id,title,configuration,distribution,client_creation_id)
+          values(${p.a},'Другой импорт',${client.json({ schemaVersion: 1, levels: [{ id: 's', name: 'S', color: '#ffffff' }] })},${client.json({ s: [] })},${incoming.client_creation_id}) returning id,public_id`;
+        await client`insert into tier_list_quota_events(author_id,kind) values(${p.b},'created')`;
+        await db.transaction(tx => applyReputationEvent(tx, event));
+        const [fact] = await client`select * from author_action_ledger where author_id=${p.b} and source_type='tier-list'`;
+        assert.ok(fact);
+        assert.equal(fact.xp_delta, 0);
+        assert.equal(fact.trust_delta, 0);
+        await client`update xp_action_rules set xp=9 where action_code='tier-list.created'`;
+        await db.transaction(tx => applyReputationEvent(tx, event));
+        const preview = await service.getAccountMergePreview({ ...p.input, grantId: p.grantId });
+        await service.confirmAccountMerge({ ...p.input, grantId: p.grantId, primaryAuthorId: p.a, version: preview.version });
+        assert.equal((await client`select author_id,public_id from tier_lists where id=${list.id}`)[0].author_id, p.a);
+        assert.equal((await client`select public_id from tier_lists where id=${list.id}`)[0].public_id, list.public_id);
+        assert.equal((await client`select public_id from tier_lists where id=${original.id}`)[0].public_id, original.public_id);
+        assert.notEqual((await client`select client_creation_id from tier_lists where id=${list.id}`)[0].client_creation_id, incoming.client_creation_id);
+        assert.equal((await client`select author_id from tier_list_quota_events where author_id=${p.a}`)[0].author_id, p.a);
+        await client`delete from tier_lists where id=${list.id}`;
+        const projected = await db.transaction(tx => projectMergedAccountEvent(tx, event));
+        assert.ok(projected);
+        await db.transaction(tx => applyReputationEvent(tx, projected));
+        const facts = await client`select * from author_action_ledger where author_id=${p.a} and source_type='tier-list'`;
+        assert.equal(facts.length, 1);
+        assert.equal(facts[0].id, fact.id);
+        assert.equal(facts[0].xp_delta, 0);
+        assert.equal((await client`select xp_total from author_progress where author_id=${p.a}`)[0].xp_total, 0);
+        const compiled = new PgDialect().sqlToQuery(historicalReputationFactsSql());
+        const historical = await client.unsafe(compiled.sql, compiled.params as never[]);
+        assert.equal(historical.filter(row => row.source_type === "tier-list" && row.source_key === String(list.id) && row.author_id === p.a).length, 1);
+      } finally {
+        await client`update level_settings set status=${settings.status} where id=1`;
+        await client`update xp_action_rules set xp=${rule.xp} where action_code='tier-list.created'`;
+      }
+    });
+
     await t.test("grant is bound to the initiating account/session, expires and follows provider revision", async () => {
       const p = await pair();
       await rejectsCode(service.getAccountMergePreview({ ...p.input, grantId: p.grantId, authorId: p.b }));

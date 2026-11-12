@@ -681,7 +681,7 @@ export async function getPublishedFranchiseBranch(
   franchiseId: number,
   enabledMediaTypeCodes: readonly string[],
 ) {
-  const roots = await getPublishedFranchiseTree("", enabledMediaTypeCodes);
+  const roots = await getPublishedFranchiseTree("", enabledMediaTypeCodes, franchiseId);
 
   const findBranch = (nodes: FranchiseTreeNode[]): FranchiseBranchNode | null => {
     for (const node of nodes) {
@@ -758,11 +758,20 @@ async function getFranchiseSearchVisibleIds(input: {
 export async function getPublishedFranchiseTree(
   searchQuery: string,
   enabledMediaTypeCodes: readonly string[],
+  branchRootId?: number,
 ) {
-  const visibleIds = await getFranchiseSearchVisibleIds({
-    publishedOnly: true,
-    searchQuery,
-  });
+  // A selected series must not load links or aggregate counts for the entire catalog.
+  const visibleIds = branchRootId !== undefined
+    ? (await db.execute<{ id: number }>(sql`
+        with recursive published_branch as (
+          ${publishedSeriesBranchSql(sql`${branchRootId}`)}
+        )
+        select id from published_branch
+      `)).map(({ id }) => id)
+    : await getFranchiseSearchVisibleIds({
+        publishedOnly: true,
+        searchQuery,
+      });
 
   if (visibleIds?.length === 0) {
     return [];
@@ -1718,8 +1727,9 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
   canPublishFranchisesWithoutReview: boolean;
   franchiseId: number;
   mediaItemId: number;
-}) {
+}, onStage?: (name: string) => void) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    onStage?.("seriesRemoval.readLink");
     const [link] = await tx.select({
       createdByAuthorId: mediaItemFranchises.createdByAuthorId,
       franchiseId: franchises.id,
@@ -1735,6 +1745,7 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
     if (!link) return null;
     if (link.publicationStatus !== "published") {
       if (link.createdByAuthorId !== input.authorId) return null;
+      onStage?.("seriesRemoval.deleteLink");
       const [removed] = await tx.delete(mediaItemFranchises).where(and(
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
@@ -1747,11 +1758,13 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
         : null;
     }
     if (input.canPublishFranchisesWithoutReview) {
+      onStage?.("seriesRemoval.deleteLink");
       const [removed] = await tx.delete(mediaItemFranchises).where(and(
         eq(mediaItemFranchises.mediaItemId, input.mediaItemId),
         eq(mediaItemFranchises.franchiseId, input.franchiseId),
       )).returning({ mediaItemId: mediaItemFranchises.mediaItemId });
       if (removed) {
+        onStage?.("seriesRemoval.appendEvent");
         await appendEvent({
           actorAuthorId: input.authorId,
           aggregateId: `${input.mediaItemId}:${input.franchiseId}`,
@@ -1771,6 +1784,7 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
           }
         : null;
     }
+    onStage?.("seriesRemoval.insertRequest");
     const [requested] = await tx.insert(mediaItemFranchiseRemovalRequests).values({
       mediaItemId: input.mediaItemId,
       franchiseId: input.franchiseId,
@@ -1780,6 +1794,7 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
       mediaItemId: mediaItemFranchiseRemovalRequests.mediaItemId,
     });
     if (requested) {
+      onStage?.("seriesRemoval.appendEvent");
       await appendEvent({
         actorAuthorId: input.authorId,
         aggregateId: `${requested.mediaItemId}:${requested.franchiseId}`,
@@ -1796,7 +1811,7 @@ export async function requestAuthorMediaItemFranchiseRemoval(input: {
       status: "requested" as const,
       franchise: { id: link.franchiseId, title: link.franchiseTitle },
     };
-  });
+  }, onStage);
 }
 
 export async function createAuthorFranchiseWithMediaItemLink(input: {

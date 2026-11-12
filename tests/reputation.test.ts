@@ -35,6 +35,8 @@ test("reputation defaults keep progress and trust independently configurable", (
     "Повелитель спойлеров", "Архивариус мультивселенной", "Босс секретного уровня",
     "Легенда локального кооператива", "Финальный коллекционер", "Хранитель Гикотеки",
   ]);
+  assert.equal(DEFAULT_XP_BY_ACTION["tier-list.created"], 0);
+  assert.equal(DEFAULT_TRUST_ENABLED_BY_ACTION["tier-list.created"], false);
   assert.equal(DEFAULT_XP_BY_ACTION["rating.created"], 1);
   assert.equal(REPUTATION_ACTION_LABELS["rating.created"], "Новая оценка записи");
   assert.equal(DEFAULT_XP_BY_ACTION["series.created-with-link.published"], 4);

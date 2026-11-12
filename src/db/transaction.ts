@@ -25,23 +25,32 @@ export async function runInDomainEventTransaction<TResult>(
       events: DomainEventInput<TType>[],
     ) => Promise<PersistedDomainEvent<TType>[]>,
   ) => Promise<TResult>,
+  onStage?: (name: string) => void,
 ) {
   const eventIds: string[] = [];
-  const result = await db.transaction(async (tx) => callback(
-    tx,
-    async (event) => {
-      const persisted = await appendDomainEvent(tx, event);
-      eventIds.push(persisted.id);
-      return persisted;
-    },
-    async (events) => {
-      const persisted = await appendDomainEvents(tx, events);
-      eventIds.push(...persisted.map((event) => event.id));
-      return persisted;
-    },
-  ));
+  onStage?.("transaction.acquireAndBegin");
+  const result = await db.transaction(async (tx) => {
+    onStage?.("transaction.callback");
+    const value = await callback(
+      tx,
+      async (event) => {
+        const persisted = await appendDomainEvent(tx, event);
+        eventIds.push(persisted.id);
+        return persisted;
+      },
+      async (events) => {
+        const persisted = await appendDomainEvents(tx, events);
+        eventIds.push(...persisted.map((event) => event.id));
+        return persisted;
+      },
+    );
+    onStage?.("transaction.commit");
+    return value;
+  });
 
+  onStage?.("domainEventDispatch.enqueue");
   await Promise.all(eventIds.map(id => enqueueDomainEventDispatch(id)));
+  onStage?.("domainEventDispatch.finished");
   return result;
 }
 

@@ -15,6 +15,18 @@ export function publishedSeriesBranchSql(franchiseId: SQLWrapper) {
   `;
 }
 
+/** An uncorrelated set lets catalog queries plan a semi-join before sorting/counting. */
+export function publishedSeriesMediaItemIdsSql(franchiseId: SQLWrapper) {
+  return sql`
+    with recursive published_branch as (
+      ${publishedSeriesBranchSql(franchiseId)}
+    )
+    select series_link.media_item_id from media_item_franchises series_link
+    inner join published_branch branch on branch.id = series_link.franchise_id
+    where series_link.publication_status = ${PUBLISHED_PUBLICATION_STATUS}
+  `;
+}
+
 /** Uses the same published branch and link rules as the public series filter. */
 export function publishedSeriesMembershipSql(mediaItemId: SQLWrapper, franchiseId: SQLWrapper, includeDescendants = true) {
   if (!includeDescendants) {

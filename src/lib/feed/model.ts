@@ -1,5 +1,5 @@
 export const FEED_PAGE_SIZE = 50;
-export const FEED_KINDS = ["media", "series", "review", "collection", "rating", "wanted", "achievement"] as const;
+export const FEED_KINDS = ["media", "series", "review", "collection", "rating", "wanted", "achievement", "tier-list"] as const;
 export type FeedKind = typeof FEED_KINDS[number];
 export type FeedCursor = { at: string; kind: number; id: number };
 export type FeedPosition = { direction: "older" | "newer"; cursor: FeedCursor };

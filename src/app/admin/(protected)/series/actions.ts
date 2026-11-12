@@ -1,5 +1,7 @@
 "use server";
 
+import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
+
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 
@@ -298,6 +300,11 @@ export async function createFranchiseChildAction(formData: FormData) {
 }
 
 export async function deleteFranchiseAction(formData: FormData) {
+  return traceMediaSave("deleteFranchiseAction", (timing) => deleteFranchiseActionMeasured(formData, timing));
+}
+
+async function deleteFranchiseActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAdminUser");
   const adminUser = await requireAdminUser();
 
   const id = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
@@ -308,6 +315,7 @@ export async function deleteFranchiseAction(formData: FormData) {
 
   let franchise;
 
+  timing.stage("deleteFranchiseIfEmpty");
   try {
     franchise = await deleteFranchiseIfEmpty(id.value);
   } catch (error) {
@@ -320,6 +328,7 @@ export async function deleteFranchiseAction(formData: FormData) {
   }
 
   revalidateFranchiseSurfaces();
+  timing.stage("logActivity");
   await logActivity({
     action: "franchise.deleted",
     actorType: "admin",
@@ -333,13 +342,20 @@ export async function deleteFranchiseAction(formData: FormData) {
 }
 
 export async function deleteFranchiseChildAction(formData: FormData) {
+  return traceMediaSave("deleteFranchiseChildAction", (timing) => deleteFranchiseChildActionMeasured(formData, timing));
+}
+
+async function deleteFranchiseChildActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAdminUser");
   const adminUser = await requireAdminUser();
   const parentId = parseRequiredFranchiseId(getFormString(formData, "parentId"));
   const childId = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
   if (!parentId.ok || !childId.ok) redirect("/admin/series?error=invalid-franchise");
+  timing.stage("deleteFranchiseIfEmpty");
   const deleted = await deleteFranchiseIfEmpty(childId.value);
   if (!deleted) redirect(`/admin/series/${parentId.value}/edit?tab=children&error=not-empty`);
   revalidateFranchiseSurfaces();
+  timing.stage("logActivity");
   await logActivity({ action: "franchise.deleted", actorType: "admin", adminUserId: adminUser.id, entityType: "franchise", entityId: deleted.id, entityLabel: deleted.title, message: "Дочерняя серия удалена." });
   redirect(`/admin/series/${parentId.value}/edit?tab=children&childDeleted=1`);
 }
@@ -409,6 +425,11 @@ export async function addMediaItemToFranchiseAction(formData: FormData) {
 }
 
 export async function removeMediaItemFromFranchiseAction(formData: FormData) {
+  return traceMediaSave("removeMediaItemFromFranchiseAction", (timing) => removeMediaItemFromFranchiseActionMeasured(formData, timing));
+}
+
+async function removeMediaItemFromFranchiseActionMeasured(formData: FormData, timing: MediaSaveTiming) {
+  timing.stage("requireAdminUser");
   const adminUser = await requireAdminUser();
 
   const franchiseId = parseRequiredFranchiseId(getFormString(formData, "franchiseId"));
@@ -418,6 +439,7 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
     redirect("/admin/series?error=invalid-franchise");
   }
 
+  timing.stage("getAdminFranchiseById");
   const franchise = await getAdminFranchiseById(franchiseId.value);
 
   if (!franchise) {
@@ -426,6 +448,7 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
 
   let item;
 
+  timing.stage("removeMediaItemFromFranchise");
   try {
     item = await removeMediaItemFromFranchise({
       franchiseId: franchiseId.value,
@@ -447,6 +470,7 @@ export async function removeMediaItemFromFranchiseAction(formData: FormData) {
   revalidatePath("/archive");
   revalidatePath(`/media/${item.code}`);
 
+  timing.stage("logActivity");
   await logActivity({
     action: "franchise.media.detached",
     actorType: "admin",

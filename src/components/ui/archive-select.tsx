@@ -113,9 +113,10 @@ export function ArchiveSelect<TValue extends string>({
     }
 
     function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        updateOpen(false)
-      }
+      if (event.key !== "Escape") return
+      event.preventDefault()
+      event.stopPropagation()
+      updateOpen(false)
     }
 
     document.addEventListener("pointerdown", handlePointerDown)

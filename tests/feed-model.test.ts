@@ -5,9 +5,10 @@ import { encodeFeedCursor, parseFeedCursor, getFeedNavigation, type FeedItem } f
 test("feed cursors retain microseconds and reject malformed values", () => {
   const cursor = { at: "2026-11-07T06:05:04.123456Z", kind: 5, id: 42 };
   assert.deepEqual(parseFeedCursor(encodeFeedCursor(cursor)), cursor);
+  assert.deepEqual(parseFeedCursor(encodeFeedCursor({ ...cursor, kind: 8 })), { ...cursor, kind: 8 });
   for (const invalid of ["", "%%%", "x".repeat(300), ...[
     {}, [], { ...cursor, at: "0000-11-07T06:05:04.123456Z" }, { ...cursor, at: "2026-02-31T06:05:04.123456Z" }, { ...cursor, at: "2026-11-07T06:05:04.123Z" },
-    { ...cursor, kind: 8 }, { ...cursor, kind: "5" }, { ...cursor, id: -1 }, { ...cursor, id: 1.5 }, { ...cursor, table: "ratings" },
+    { ...cursor, kind: 9 }, { ...cursor, kind: "5" }, { ...cursor, id: -1 }, { ...cursor, id: 1.5 }, { ...cursor, table: "ratings" },
   ].map(value => Buffer.from(JSON.stringify(value)).toString("base64url"))]) assert.equal(parseFeedCursor(invalid), null);
 });
 

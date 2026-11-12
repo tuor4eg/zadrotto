@@ -39,7 +39,7 @@ describe("public site header", () => {
     assert.match(headerSource, /document\.addEventListener\("pointerdown", handlePointerDown\)/);
     assert.match(headerSource, /!menuButtonRef\.current\?\.contains\(target\) && !menuRef\.current\?\.contains\(target\)/);
     assert.match(headerSource, />\s*Гикотека\s*</);
-    for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "Подборки"], ["/reviews", "Рецензии"]]) {
+    for (const [href, label] of [["/archive", "Архив"], ["/series", "Серии"], ["/collections", "От редакции"], ["/tier-lists", "Тир-листы"], ["/reviews", "Рецензии"]]) {
       assert.match(headerSource, new RegExp(`href: "${href}"[^}]*label: "${label}"`));
     }
     assert.match(headerSource, /max-w-\[1480px\]/);

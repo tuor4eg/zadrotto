@@ -93,7 +93,7 @@ export function MyReviewsCatalogControls({
         <ArchiveSelect
           ariaLabel="Тип записи"
           className="w-full sm:max-w-[14rem]"
-          triggerClassName="w-full min-w-0"
+          triggerClassName="h-10 w-full min-w-0"
           onChange={(value) => {
             replaceParams((params) => {
               if (value === "all") {

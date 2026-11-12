@@ -1,3 +1,4 @@
+import { resolveTierPreviewUrl } from '@/lib/tier-lists/preview';
 import "server-only";
 
 import { and, eq, inArray, sql, type SQL } from "drizzle-orm";
@@ -77,15 +78,22 @@ export function buildFeedQuery(input: FeedInput): SQL {
   const reviewJoins = sql`join media_items on media_items.id=contributions.primary_media_item_id
     join contribution_reviews on contribution_reviews.contribution_id=contributions.id`;
   const visibleReview = sql`contributions.type='review' and contributions.status='published' and ${visibleMedia}`;
+  const tierListJoins = sql`join authors tier_author on tier_author.id=tier_lists.author_id`;
+  const visibleTierList = sql`tier_lists.status='published' and tier_lists.hidden_at is null
+    and tier_lists.first_published_at is not null and tier_author.blocked_at is null
+    and tier_author.merged_into_author_id is null
+    and not exists (select 1 from author_accounts account where account.author_id=tier_author.id and account.status <> 'active')`;
   const branches = [
     ...((!input.publicOnly && (input.mineOnly || input.friendsOnly || input.friendId !== undefined)) ? [
       actorTop("media_items", 1, sql``, visibleMedia, "created_by_author_id"),
       actorTop("franchises", 2, sql``, sql`franchises.publication_status='published'`, "created_by_author_id"),
       actorTop("contributions", 3, reviewJoins, visibleReview, "author_id"),
+      actorTop("tier_lists", 8, tierListJoins, visibleTierList, "author_id", "first_published_at"),
     ] : [
       top("media_items", 1, sql``, visibleMedia),
       top("franchises", 2, sql``, sql`franchises.publication_status='published'`),
       top("contributions", 3, reviewJoins, visibleReview),
+      top("tier_lists", 8, tierListJoins, visibleTierList, "first_published_at"),
       top("editorial_collections", 4, sql``, sql`editorial_collections.publication_status='published'`),
     ]),
     ...(!input.publicOnly ? [personal("ratings", 5), personal("author_media_statuses", 6),
@@ -128,6 +136,11 @@ export function buildFeedQuery(input: FeedInput): SQL {
       null::int,null::text,null::int,null::text,null::text,'[]'::jsonb,null::int,null::int,null::text
     from selected e join editorial_collections c on e.kind=4 and c.id=e.id
     union all
+    select e.id,e.kind,e.occurred_at,t.title,null::text,t.public_id::text,case when t.preview_version=t.version then t.preview_object_key else null end,null::text,a.name,${visibleActorId},
+      null::int,null::text,null::int,null::text,null::text,'[]'::jsonb,null::int,null::int,null::text
+    from selected e join tier_lists t on e.kind=8 and t.id=e.id
+    join authors a on a.id=t.author_id
+    union all
     select e.id,e.kind,e.occurred_at,coalesce(al.name,ac.name),null::text,ua.author_id::text,
       al.image_object_key,null::text,a.name,${visibleActorId},null::int,null::text,
       case when exists(select 1 from achievement_levels other where other.achievement_id=al.achievement_id and other.level>1) then al.level else null end,
@@ -149,9 +162,9 @@ export async function getFeedPage(input: FeedInput) {
     return {
       key: `${kind}-${row.id}`, kind, mediaItemId: row.media_id, mediaTypeName: row.media_type_name, releaseYear: row.release_year, cursor: { at: row.at, kind: row.kind, id: row.id },
       title: resolveMediaItemDisplayTitles({ title: row.title, originalTitle: row.original_title, aliases: row.aliases }).displayTitle,
-      href: kind === "series" ? `/archive?series=${encodeURIComponent(row.code)}`
+      href: kind === "tier-list" ? `/tier-lists/${row.code}` : kind === "series" ? `/archive?series=${encodeURIComponent(row.code)}`
         : kind === "achievement" ? `/users/${row.code}/achievements` : kind === "collection" ? `/collections/${row.code}` : kind === "review" ? `/reviews/${row.id}` : `/media/${row.code}`,
-      imageUrl: kind === "achievement" ? resolveAchievementImageUrl(row.cover) : kind === "collection" ? resolveCollectionImageUrl(row.cover) : resolveCoverUrl(row.thumb) ?? resolveCoverUrl(row.cover),
+      imageUrl: kind === "tier-list" ? resolveTierPreviewUrl(row.cover) : kind === "achievement" ? resolveAchievementImageUrl(row.cover) : kind === "collection" ? resolveCollectionImageUrl(row.cover) : resolveCoverUrl(row.thumb) ?? resolveCoverUrl(row.cover),
       actorName: row.actor_name, actorId: row.actor_id, actorIsFriend: row.actor_is_friend, score: row.score,
       partLabel: kind === "achievement" ? (row.part_number === null ? null : `Ур. ${row.part_number}`) : row.part_type !== null && row.part_number !== null ? getTitlePartLabel({ type: row.part_type, number: row.part_number, name: row.part_name }) : null,
       reviewTitle: row.review_title,

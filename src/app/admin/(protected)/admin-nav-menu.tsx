@@ -101,6 +101,7 @@ function getAdminNavGroups({
         { href: "/admin/materials/reviews", icon: MessageSquareText, label: "Рецензии" },
         { href: "/admin/collections", icon: LibraryBig, label: "Подборки" },
         { href: "/admin/quizzes", icon: CircleHelp, label: "Квизы" },
+        { href: "/admin/tier-lists", icon: Layers3, label: "Тир-листы" },
       ],
     },
     {

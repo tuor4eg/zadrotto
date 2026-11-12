@@ -1,5 +1,7 @@
 "use server";
 
+import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -34,7 +36,16 @@ export async function addAuthorSeriesMediaLinkAction(input: {
   franchiseCode: string;
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
+  return traceMediaSave("addAuthorSeriesMediaLinkAction", (timing) => addAuthorSeriesMediaLinkActionMeasured(input, timing));
+}
+
+async function addAuthorSeriesMediaLinkActionMeasured(input: {
+  franchiseCode: string;
+  mediaItemCode: string;
+}, timing: MediaSaveTiming): Promise<SeriesMediaLinkActionResult> {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
+  timing.stage("loadSeriesAndMediaIdentity");
   const [franchise, mediaItem] = await Promise.all([
     getPublishedFranchiseIdentityByCode(input.franchiseCode),
     getAccessibleMediaTypeCodes(author.id).then((accessibleMediaTypeCodes) =>
@@ -50,6 +61,7 @@ export async function addAuthorSeriesMediaLinkAction(input: {
     canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
   });
 
+  timing.stage("createAuthorMediaItemFranchiseLinks");
   try {
     const links = await createAuthorMediaItemFranchiseLinks({
       authorId: author.id,
@@ -67,6 +79,7 @@ export async function addAuthorSeriesMediaLinkAction(input: {
   }
 
   revalidateSeriesMediaSurfaces(mediaItem.code);
+  timing.stage("logActivity");
   await logActivity({
     action:
       publicationStatus === "published"
@@ -84,13 +97,22 @@ export async function addAuthorSeriesMediaLinkAction(input: {
   });
 
   return { error: null, linkStatus: publicationStatus, success: true };
-}
+  }
 
 export async function removeAuthorSeriesMediaLinkAction(input: {
   franchiseCode: string;
   mediaItemCode: string;
 }): Promise<SeriesMediaLinkActionResult> {
+  return traceMediaSave("removeAuthorSeriesMediaLinkAction", (timing) => removeAuthorSeriesMediaLinkActionMeasured(input, timing));
+}
+
+async function removeAuthorSeriesMediaLinkActionMeasured(input: {
+  franchiseCode: string;
+  mediaItemCode: string;
+}, timing: MediaSaveTiming): Promise<SeriesMediaLinkActionResult> {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
+  timing.stage("loadSeriesAndMediaIdentity");
   const [franchise, mediaItem] = await Promise.all([
     getPublishedFranchiseIdentityByCode(input.franchiseCode),
     getAccessibleMediaTypeCodes(author.id).then((accessibleMediaTypeCodes) =>
@@ -103,13 +125,14 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
   }
 
   let removalStatus: "removed" | "requested";
+  timing.stage("requestAuthorMediaItemFranchiseRemoval");
   try {
     const removedLink = await requestAuthorMediaItemFranchiseRemoval({
       authorId: author.id,
       canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
       franchiseId: franchise.id,
       mediaItemId: mediaItem.id,
-    });
+    }, (name) => timing.stage(name));
 
     if (!removedLink) {
       return { error: "invalid", linkStatus: null, success: false };
@@ -121,6 +144,7 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
   }
 
   revalidateSeriesMediaSurfaces(mediaItem.code);
+  timing.stage("logActivity");
   await logActivity({
     action: removalStatus === "requested"
       ? "franchise.media.removal-requested"
@@ -137,4 +161,4 @@ export async function removeAuthorSeriesMediaLinkAction(input: {
   });
 
   return { error: null, linkStatus: null, removalStatus, success: true };
-}
+  }

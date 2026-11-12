@@ -1,6 +1,7 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
-import { bugReports, contributions, franchises, mediaItemFranchises, mediaItems, quizParticipants, quizzes, ratings } from "@/db/schema";
+import { bugReports, contributions, mediaItems, quizParticipants, quizzes, ratings } from "@/db/schema";
+import { publishedSeriesMediaItemIdsSql } from "@/db/queries/series-membership";
 import type { DbTransaction } from "@/db/transaction";
 import type { DomainEventType } from "@/lib/domain-events/catalog";
 
@@ -79,20 +80,7 @@ function groupCountInstances(instances: readonly AchievementMechanicInstance<Cou
 
 function publishedSeriesFilter(mediaItemId: SQLWrapper, seriesId?: number): SQL {
   if (seriesId === undefined) return sql`true`;
-  return sql`exists (
-    with recursive series_tree as (
-      select ${franchises.id} from ${franchises}
-        where ${franchises.id} = ${seriesId} and ${franchises.publicationStatus} = 'published'
-      union all
-      select child.id from ${franchises} child
-        inner join series_tree parent on child.parent_id = parent.id
-        where child.publication_status = 'published'
-    )
-    select 1 from ${mediaItemFranchises}
-      inner join series_tree on series_tree.id = ${mediaItemFranchises.franchiseId}
-      where ${mediaItemFranchises.mediaItemId} = ${mediaItemId}
-        and ${mediaItemFranchises.publicationStatus} = 'published'
-  )`;
+  return sql`${mediaItemId} in (${publishedSeriesMediaItemIdsSql(sql`${seriesId}`)})`;
 }
 
 function mapCountProgress(rows: Iterable<Record<string, unknown>>, groupedInstances: readonly CountInstanceGroup[]) {
@@ -111,23 +99,50 @@ async function evaluateAuthoredCount(input: {
 }) {
   if (input.authorIds.length === 0 || input.instances.length === 0) return [];
   const groupedInstances = groupCountInstances(input.instances);
-  const queries = groupedInstances.map((instance, groupIndex) => {
-    const authorId = input.source === "rating" ? ratings.authorId : contributions.authorId;
-    const mediaItemId = input.source === "rating" ? ratings.mediaItemId : contributions.primaryMediaItemId;
-    const sourceTable = input.source === "rating" ? ratings : contributions;
-    const sourceFilter = input.source === "rating" ? sql`true` : sql`${contributions.type} = 'review' and ${contributions.status} = 'published'`;
-    return sql`select ${groupIndex}::int as "groupIndex", ${authorId}::int as "authorId",
+  const authorId = input.source === "rating" ? ratings.authorId : contributions.authorId;
+  const mediaItemId = input.source === "rating" ? ratings.mediaItemId : contributions.primaryMediaItemId;
+  const sourceTable = input.source === "rating" ? ratings : contributions;
+  const sourceFilter = input.source === "rating" ? sql`true` : sql`${contributions.type} = 'review' and ${contributions.status} = 'published'`;
+  const authorFilter = sql`${authorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})`;
+  if (groupedInstances.length === 1) {
+    // A single narrow series/type can use its selective index path before aggregation.
+    const { params } = groupedInstances[0];
+    const result = await input.tx.execute(sql`
+      select 0::int as "groupIndex", ${authorId}::int as "authorId",
         count(distinct ${mediaItemId})::int as "value"
-      from ${sourceTable}
-      inner join ${mediaItems} on ${mediaItems.id} = ${mediaItemId}
-      where ${authorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})
-        and ${mediaItems.publicationStatus} = 'published' and ${sourceFilter}
-        and ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
-        and ${publishedSeriesFilter(mediaItemId, instance.params.seriesId)}
-      group by ${authorId}`;
-  });
-  const result = await input.tx.execute(sql.join(queries, sql` union all `));
-  return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
+      from ${sourceTable} inner join ${mediaItems} on ${mediaItems.id} = ${mediaItemId}
+      where ${authorFilter} and ${mediaItems.publicationStatus} = 'published' and ${sourceFilter}
+        and ${params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${params.mediaType}`}
+        and ${publishedSeriesFilter(mediaItemId, params.seriesId)}
+      group by ${authorId}
+    `);
+    return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
+  }
+  // One source scan for all configurations: UNION branches multiply planner costs and JIT work.
+  // Keep DISTINCT: several published reviews may refer to the same record.
+  const counts = groupedInstances.map((instance, groupIndex) => sql`
+    count(distinct ${mediaItemId}) filter (where
+      ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
+      and ${publishedSeriesFilter(mediaItemId, instance.params.seriesId)}
+    )::int as ${sql.identifier(`count_${groupIndex}`)}
+  `);
+  const result = await input.tx.execute(sql`
+    select ${authorId}::int as "authorId", ${sql.join(counts, sql`, `)}
+    from ${sourceTable}
+    inner join ${mediaItems} on ${mediaItems.id} = ${mediaItemId}
+    where ${authorFilter}
+      and ${mediaItems.publicationStatus} = 'published' and ${sourceFilter}
+    group by ${authorId}
+  `);
+  return Array.from(result as Iterable<Record<string, unknown>>).flatMap((row) =>
+    groupedInstances.flatMap((group, groupIndex) => {
+      const value = Number(row[`count_${groupIndex}`]);
+      // The previous grouped query omitted author/configuration pairs without matches.
+      return value > 0 ? group.achievementIds.map((achievementId) => ({
+        achievementId, authorId: Number(row.authorId), value,
+      })) : [];
+    }),
+  );
 }
 
 /** Demo guest progress: count published media items by code with the same filters as rating.authored.count. */

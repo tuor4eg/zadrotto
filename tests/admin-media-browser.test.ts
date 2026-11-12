@@ -32,6 +32,7 @@ describe("admin media browser query parser", () => {
       franchiseId: 42,
       mediaType: "film",
       minAverageScore: 7.5,
+      maxAverageScore: null,
       page: 3,
       pageSize: 48,
       searchQuery: "Дюна",
@@ -57,6 +58,7 @@ describe("admin media browser query parser", () => {
       franchiseId: null,
       mediaType: null,
       minAverageScore: null,
+      maxAverageScore: null,
       page: 1,
       pageSize: DEFAULT_ADMIN_MEDIA_BROWSER_PAGE_SIZE,
       searchQuery: "",
@@ -123,9 +125,16 @@ describe("admin media browser UI", () => {
     assert.match(componentSource, /average_score/);
     assert.match(componentSource, /ratings_count/);
     assert.match(componentSource, /release_year/);
-    assert.match(componentSource, /hidden md:block/);
+    assert.match(componentSource, /hidden[^"\n]* md:block/);
     assert.match(componentSource, /md:hidden/);
     assert.match(componentSource, /mediaTypeLabel/);
     assert.match(componentSource, /formatRatingsCount/);
   });
+});
+
+
+it("parses the maximum average score", () => {
+  assert.equal(parseAdminMediaBrowserQuery(new URLSearchParams('maxScore=8.5')).maxAverageScore, 8.5);
+  assert.equal(parseAdminMediaBrowserQuery(new URLSearchParams('maxScore=invalid')).maxAverageScore, null);
+  assert.match(querySource, /mediaItemAverageScoreSql} <=/);
 });

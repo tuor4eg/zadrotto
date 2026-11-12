@@ -1,5 +1,7 @@
 "use server";
 
+import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
+
 import { revalidatePath } from "next/cache";
 
 import {
@@ -45,20 +47,31 @@ export async function removeAuthorMediaItemFranchiseAction(input: {
   franchiseCode: string;
   mediaItemCode: string;
 }): Promise<MediaItemFranchiseRemovalState> {
+  return traceMediaSave("removeAuthorMediaItemFranchiseAction", (timing) => removeAuthorMediaItemFranchiseActionMeasured(input, timing));
+}
+
+async function removeAuthorMediaItemFranchiseActionMeasured(input: {
+  franchiseCode: string;
+  mediaItemCode: string;
+}, timing: MediaSaveTiming): Promise<MediaItemFranchiseRemovalState> {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
+  timing.stage("getAccessibleMediaTypeCodes");
   const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  timing.stage("Promise.all");
   const [franchise, mediaItem] = await Promise.all([
     getFranchiseByCode(input.franchiseCode),
     getMediaItemIdentityByCode(input.mediaItemCode, accessibleMediaTypeCodes),
   ]);
   if (!franchise || !mediaItem) return { error: "invalid", status: null };
+  timing.stage("requestAuthorMediaItemFranchiseRemoval");
   try {
     const result = await requestAuthorMediaItemFranchiseRemoval({
       authorId: author.id,
       canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
       franchiseId: franchise.id,
       mediaItemId: mediaItem.id,
-    });
+    }, (name) => timing.stage(name));
     if (!result) return { error: "invalid", status: null };
     revalidatePath(`/media/${mediaItem.code}`);
     revalidatePath("/archive");
@@ -86,6 +99,11 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
   _previousState: MediaItemFranchiseSuggestionState,
   formData: FormData,
 ): Promise<MediaItemFranchiseSuggestionState> {
+  return traceMediaSave("submitAuthorMediaItemFranchiseSuggestionAction", (timing) => submitAuthorMediaItemFranchiseSuggestionActionMeasured(_previousState, formData, timing));
+}
+
+async function submitAuthorMediaItemFranchiseSuggestionActionMeasured(_previousState: MediaItemFranchiseSuggestionState, formData: FormData, timing: MediaSaveTiming): Promise<MediaItemFranchiseSuggestionState> {
+  timing.stage("requireAuthor");
   const author = await requireAuthor();
   const mediaItemId = Number(getFormString(formData, "mediaItemId"));
   const mediaItemCode = getFormString(formData, "mediaItemCode");
@@ -98,7 +116,9 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     return initialErrorState;
   }
 
+  timing.stage("getAccessibleMediaTypeCodes");
   const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(author.id);
+  timing.stage("getMediaItemIdentityByCode");
   const mediaItem = await getMediaItemIdentityByCode(mediaItemCode, accessibleMediaTypeCodes);
 
   if (!mediaItem || mediaItem.id !== mediaItemId) {
@@ -140,14 +160,16 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     status: "removed" | "requested";
   }> = [];
 
+  timing.stage("requestAuthorMediaItemFranchiseRemoval");
   try {
     for (const franchiseId of removalIds) {
+      timing.stage("removeSeriesLink");
       const result = await requestAuthorMediaItemFranchiseRemoval({
         authorId: author.id,
         canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
         franchiseId,
         mediaItemId,
-      });
+      }, (name) => timing.stage(name));
       if (!result) return initialErrorState;
       removalStatuses.push({
         franchise: result.franchise,
@@ -156,6 +178,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     }
     if (mode === "existing") {
       if (franchiseIds.length > 0) {
+        timing.stage("addSeriesLinks");
         const links = await createAuthorMediaItemFranchiseLinks({
           authorId: author.id,
           franchiseIds,
@@ -166,6 +189,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         affectedFranchises = links;
       }
     } else if (mode === "new") {
+      timing.stage("loadNewSeriesParent");
       const title = newFranchiseTitle;
       const parent = newFranchiseParentId
         ? await getPublishedFranchiseOptionById(newFranchiseParentId)
@@ -179,6 +203,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         title,
         originalTitle: normalizeOptionalFranchiseString(getFormString(formData, "originalTitle")),
       };
+      timing.stage("checkNewSeriesDuplicates");
       const matches = await findPublishedFranchiseDuplicateCandidates(franchiseInput);
       const exactMatches = matches.filter((match) => isExactFranchiseDuplicate(franchiseInput, match));
 
@@ -198,6 +223,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
         return { error: "duplicate-franchise-possible", success: false };
       }
 
+      timing.stage("createSeriesWithLink");
       const franchise = await createAuthorFranchiseWithMediaItemLink({
         authorId: author.id,
         code: generateEntityCode({ type: "series", name: title }),
@@ -226,11 +252,13 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
     return { error: "unavailable", success: false };
   }
 
+  timing.stage("revalidateSeriesSurfaces");
   revalidatePath(`/media/${mediaItemCode}`);
   revalidatePath("/", "layout");
   revalidatePath("/archive");
   revalidatePath("/admin/franchise-review");
   revalidatePath("/admin", "layout");
+  timing.stage("logActivity");
   if (affectedFranchises.length > 0) {
     await logActivity({
       action:
@@ -248,6 +276,7 @@ export async function submitAuthorMediaItemFranchiseSuggestionAction(
       },
     });
   }
+  timing.stage("logActivity");
   for (const removal of removalStatuses) {
     await logActivity({
       action: removal.status === "removed" ? "franchise.media.detached" : "franchise.media.removal-requested",

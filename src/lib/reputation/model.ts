@@ -1,5 +1,6 @@
 export const REPUTATION_ACTION_CODES = [
   "rating.created",
+  "tier-list.created",
   "media.published",
   "series.link-existing.published",
   "series.created-with-link.published",
@@ -12,6 +13,7 @@ export type ReputationActionCode = (typeof REPUTATION_ACTION_CODES)[number];
 
 export const REPUTATION_ACTION_LABELS: Record<ReputationActionCode, string> = {
   "rating.created": "Новая оценка записи",
+  "tier-list.created": "Создание тир-листа",
   "media.published": "Новая запись",
   "series.link-existing.published": "Связь с существующей серией",
   "series.created-with-link.published": "Новая серия с записью",
@@ -22,6 +24,7 @@ export const REPUTATION_ACTION_LABELS: Record<ReputationActionCode, string> = {
 
 export const DEFAULT_XP_BY_ACTION: Record<ReputationActionCode, number> = {
   "rating.created": 1,
+  "tier-list.created": 0,
   "media.published": 5,
   "series.link-existing.published": 2,
   "series.created-with-link.published": 4,
@@ -32,6 +35,7 @@ export const DEFAULT_XP_BY_ACTION: Record<ReputationActionCode, number> = {
 
 export const DEFAULT_TRUST_ENABLED_BY_ACTION: Record<ReputationActionCode, boolean> = {
   "rating.created": false,
+  "tier-list.created": false,
   "media.published": true,
   "series.link-existing.published": true,
   "series.created-with-link.published": true,
@@ -42,6 +46,7 @@ export const DEFAULT_TRUST_ENABLED_BY_ACTION: Record<ReputationActionCode, boole
 
 export const DEFAULT_TRUST_BY_ACTION: Record<ReputationActionCode, number> = {
   "rating.created": 1,
+  "tier-list.created": 1,
   "media.published": 1,
   "series.link-existing.published": 1,
   "series.created-with-link.published": 1,
