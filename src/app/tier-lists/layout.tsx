@@ -1,5 +1,9 @@
+import { NO_INDEX_METADATA } from "@/lib/seo/metadata"
+
 import { PublicSiteHeader } from "@/components/archive/public-site-header"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
+
+export const metadata = NO_INDEX_METADATA
 
 export const dynamic = "force-dynamic"
 

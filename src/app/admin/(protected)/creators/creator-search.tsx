@@ -1,12 +1,14 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { CREATOR_PROVIDER_FILTER_CODES, type CreatorLocalizationFilter, type CreatorProviderFilter } from "@/lib/creators/editor";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 
 import { useRouter } from "next/navigation";
 import { useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input, Select } from "@/components/ui/form";
+import { Select } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 type FilterOption = { code: string; name: string };
@@ -67,8 +69,8 @@ export function CreatorSearch({ searchQuery, typeCode, roleCode, localization = 
         <option value="ai">Русское имя от ИИ</option>
       </Select>
     </label>
-    <Input type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
-      placeholder="Поиск по имени" aria-label="Поиск создателей" className="max-w-md" />
+    <SearchInput containerClassName="max-w-md" type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
+      placeholder="Поиск по имени" aria-label="Поиск создателей" className="" />
     {draft ? <Button type="button" variant="ghost" onClick={() => resetDraft()}>Сбросить</Button> : null}
   </div>;
 }

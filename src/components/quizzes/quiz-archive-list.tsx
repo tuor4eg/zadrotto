@@ -11,7 +11,7 @@ type QuizArchiveItem = Awaited<ReturnType<typeof getQuizArchive>>[number];
 export function QuizArchiveList({ items, showAllLink = true, breadcrumbs, fitRows = false }: { items: QuizArchiveItem[]; showAllLink?: boolean; breadcrumbs?: ReactNode; fitRows?: boolean }) {
   return (
     <section
-      className={`archive-paper archive-panel h-full min-h-80 p-4 sm:p-5 ${fitRows ? "flex flex-col lg:min-h-0" : ""}`}
+      className={`archive-paper archive-panel media-carrier-font-pc-steam [&_*]:[font-family:inherit] h-full min-h-80 p-4 sm:p-5 ${fitRows ? "flex flex-col lg:min-h-0" : ""}`}
       aria-labelledby="quiz-archive-title"
     >
       {breadcrumbs ? <div className="mb-5">{breadcrumbs}</div> : null}
@@ -24,7 +24,7 @@ export function QuizArchiveList({ items, showAllLink = true, breadcrumbs, fitRow
           Архив квизов
         </h2>
         {showAllLink ? (
-          <Link href="/quizzes/archive" className="shrink-0 font-mono text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
+          <Link href="/quizzes/archive" className="shrink-0 text-[10px] uppercase tracking-wider text-stone-600 hover:text-red-950">
             Смотреть всё →
           </Link>
         ) : null}
@@ -53,7 +53,7 @@ export function QuizArchiveList({ items, showAllLink = true, breadcrumbs, fitRow
                   )}
 
                   <div className="min-w-0 flex-1">
-                    <p className="line-clamp-2 font-serif text-sm leading-snug text-stone-950 sm:text-base">
+                    <p className="line-clamp-2 text-sm leading-snug text-stone-950 sm:text-base">
                       {item.question?.trim() || "Квиз без текстового вопроса"}
                     </p>
                     {item.mediaTypes.length > 0 ? (
@@ -61,7 +61,7 @@ export function QuizArchiveList({ items, showAllLink = true, breadcrumbs, fitRow
                         {item.mediaTypes.map((mediaType) => (
                           <span
                             key={mediaType.code}
-                            className="rounded-sm bg-stone-300/60 px-1.5 py-0.5 font-mono text-[8px] uppercase tracking-wide text-stone-600"
+                            className="rounded-sm bg-stone-300/60 px-1.5 py-0.5 text-[8px] uppercase tracking-wide text-stone-600"
                           >
                             {mediaType.name}
                           </span>

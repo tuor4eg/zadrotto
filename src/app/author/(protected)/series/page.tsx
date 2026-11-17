@@ -1,3 +1,4 @@
+import { AuthorProposalTabs } from "../author-proposal-tabs";
 import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
@@ -115,9 +116,10 @@ export default async function AuthorFranchisesPage({ searchParams }: AuthorFranc
 
   return (
     <div className="flex flex-1 flex-col gap-6">
+      <AuthorProposalTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h2 className="font-serif text-3xl leading-none text-stone-950">Серии</h2>
+          <h2 className="font-serif text-3xl leading-none text-stone-950">Мои предложения</h2>
           <p className="mt-2 text-sm text-stone-600">
             Заявки на модерации и отклонённые предложения серий и привязок
           </p>

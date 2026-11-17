@@ -1,5 +1,7 @@
 "use client"
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useActionState, useEffect, useRef, useState } from "react"
 import { Loader2, Search } from "lucide-react"
 
@@ -307,9 +309,9 @@ export function PublicReviewForm({
           <div ref={mediaPickerRef} className="relative">
             <Search
               aria-hidden="true"
-              className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
+              className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
             />
-            <Input
+            <SearchInput
               id="media-item-search"
               value={mediaQuery}
               autoComplete="off"
@@ -344,7 +346,7 @@ export function PublicReviewForm({
             {searchLoading ? (
               <Loader2
                 aria-hidden="true"
-                className="absolute right-3 top-1/2 size-4 -translate-y-1/2 animate-spin text-stone-400"
+                className="absolute right-11 top-1/2 size-4 -translate-y-1/2 animate-spin text-stone-400"
               />
             ) : null}
 

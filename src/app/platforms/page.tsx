@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { buildListingMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
@@ -9,7 +11,6 @@ import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { PlatformSearch } from "./platforms-search";
 import { PlatformCatalog } from "./platforms-catalog";
 
-export const metadata = { title: "Все платформы" };
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,10 @@ type PlatformPageProps = {
     letter?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: PlatformPageProps) {
+  return buildListingMetadata("/platforms", "Платформы", "Игровые платформы в Гикотеке и выпущенные на них игры с оценками и рецензиями.", await searchParams);
+}
 
 export default async function PlatformPage({ searchParams }: PlatformPageProps) {
   const [params, headerState] = await Promise.all([
@@ -44,6 +49,8 @@ export default async function PlatformPage({ searchParams }: PlatformPageProps) 
     pageSize,
     searchQuery,
   });
+  const paginationRedirect = getPaginationRedirect("/platforms", params, platformsPage.page);
+  if (paginationRedirect) redirect(paginationRedirect);
   const paginationSearchParams = {
     pageSize: pageSize !== DEFAULT_PLATFORMS_PAGE_SIZE ? String(pageSize) : undefined,
     q: searchQuery || undefined,

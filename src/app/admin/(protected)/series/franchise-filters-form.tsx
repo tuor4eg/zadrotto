@@ -1,9 +1,10 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Input } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 type AdminFranchiseFiltersFormProps = {
@@ -72,7 +73,7 @@ export function AdminFranchiseFiltersForm({
 
   return (
     <div className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-[minmax(220px,1fr)_auto]">
-      <Input
+      <SearchInput
         type="search"
         value={search}
         onChange={(event) => setSearch(event.target.value)}

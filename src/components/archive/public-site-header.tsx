@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import Image from "next/image";
 import Link from "next/link";
 import { ChevronDown, CircleHelp, Menu, Plus, Search, Shield, UserRound, X } from "lucide-react";
@@ -12,7 +14,7 @@ import { useExternalInterface } from "@/components/external-interface/external-i
 import { QuizModal } from "@/components/quizzes/quiz-modal";
 import { OPEN_QUIZ_MODAL_EVENT } from "@/components/quizzes/quiz-modal-event";
 import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
-import { Avatar } from "@/components/ui/avatar";
+import { AuthorAvatarMenu } from "@/components/archive/author-avatar-menu";
 import { NotificationBadge } from "@/components/ui/notification-badge";
 import { ARCHIVE_AUTHOR_MEDIA_SUGGEST_EVENT } from "@/lib/media/suggestion-events";
 import type { ActiveQuiz, QuizParticipantState } from "@/lib/quizzes/model";
@@ -22,6 +24,8 @@ import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 export type PublicSiteHeaderProps = {
   adminNotificationCount: number;
   author: {
+    id: number;
+    incomingFriendRequestCount: number;
     avatarObjectKey: string | null;
     name: string;
   } | null;
@@ -278,9 +282,9 @@ export function PublicSiteHeader({
                 <div className="relative w-full sm:w-56 lg:w-60">
                   <Search
                     aria-hidden="true"
-                    className="pointer-events-none absolute left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-stone-500"
+                    className="pointer-events-none absolute z-10 left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-stone-500"
                   />
-                  <input
+                  <SearchInput bare
                     id="public-header-search"
                     name="q"
                     type="search"
@@ -329,17 +333,7 @@ export function PublicSiteHeader({
                     <CircleHelp className="size-5" aria-hidden="true" />
                   </button>
                 ) : null}
-                <Link
-                  href="/author/profile"
-                  aria-label="Открыть личный кабинет"
-                  className="grid size-9 shrink-0 place-items-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-700 focus-visible:ring-offset-2"
-                >
-                  <Avatar
-                    name={author.name}
-                    objectKey={author.avatarObjectKey}
-                    className="size-9 text-xs"
-                  />
-                </Link>
+                <AuthorAvatarMenu author={author} />
               </>
             ) : (
               <button

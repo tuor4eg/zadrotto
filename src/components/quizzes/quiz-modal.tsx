@@ -1,5 +1,6 @@
 "use client";
 
+import { QuizTimer } from "./quiz-timer";
 import { ArrowLeft, CircleHelp, X } from "lucide-react";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -96,7 +97,7 @@ export function QuizModal({
         aria-modal="true"
         aria-labelledby="active-quiz-title"
         tabIndex={-1}
-        className={`archive-paper archive-panel relative flex h-auto max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-y-auto p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
+        className={`archive-paper archive-panel archive-panel-overflow-visible relative flex h-auto w-full max-w-3xl flex-col p-5 shadow-2xl sm:p-8 ${dialogTop === null ? "my-auto" : "my-0"}`}
       >
         <div className="pointer-events-auto left-2 top-2 z-20 flex items-center gap-1 sm:left-3 sm:top-3" style={{ position: "absolute" }}>
           {quiz ? (
@@ -123,16 +124,18 @@ export function QuizModal({
             )
           ) : null}
         </div>
+        <div className="pointer-events-auto right-2 top-2 z-20 flex items-center gap-2 sm:right-3 sm:top-3" style={{ position: "absolute" }}>
+        {quiz && view === "quiz" ? <QuizTimer endsAt={quiz.endsAt} /> : null}
         <button
           type="button"
-          className="pointer-events-auto right-2 top-2 z-20 grid size-9 shrink-0 touch-manipulation place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700 sm:right-3 sm:top-3"
-          style={{ position: "absolute" }}
+          className="grid size-9 shrink-0 touch-manipulation place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-950/5 hover:text-stone-700"
           aria-label="Закрыть квиз"
           onClick={onClose}
         >
           <X className="size-4" />
         </button>
-        <div className="pointer-events-none mb-5 px-12 text-center sm:px-32">
+        </div>
+        <div className={`pointer-events-none mb-5 px-12 text-center sm:px-32 ${quiz && view === "quiz" ? "pt-8 sm:pt-0" : ""}`}>
           <h2 id="active-quiz-title" className="whitespace-nowrap media-carrier-font-pc-steam text-2xl sm:text-3xl">
             {view === "rules" ? "Как играть" : "Квиз"}
           </h2>
@@ -142,7 +145,7 @@ export function QuizModal({
             <QuizNoActiveState />
           </div>
         ) : view === "rules" ? (
-          <QuizRules />
+          <QuizRules type={quiz?.type} budget={quiz?.attemptLimit} />
         ) : (
           <ActiveQuizPanel
             variant="modal"

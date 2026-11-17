@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
@@ -68,8 +70,10 @@ export function CreatorSearch({ searchQuery }: CreatorSearchProps) {
       <label className="sr-only" htmlFor="creator-search">
         Поиск создателей
       </label>
-      <input
-        className="mt-6 h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 px-3 font-mono text-sm text-stone-900 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-950"
+      <SearchInput
+        containerClassName="mt-6"
+        bare
+        className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 px-3 font-mono text-sm text-stone-900 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-950"
         id="creator-search"
         name="q"
         onChange={(event) => setDraft(event.target.value)}

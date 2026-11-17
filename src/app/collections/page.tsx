@@ -1,5 +1,5 @@
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
-import type { Metadata } from "next"
 import Image from "next/image"
 import Link from "next/link"
 
@@ -7,10 +7,7 @@ import { PublicSiteHeader } from "@/components/archive/public-site-header"
 import { getPublishedEditorialCollections } from "@/db/queries/editorial-collections"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
 
-export const metadata: Metadata = {
-  title: "Подборки",
-  description: "Редакционные подборки записей архива.",
-}
+export const metadata = buildPublicPageMetadata("/collections", "Подборки", "Редакционные подборки фильмов, игр, книг, комиксов и других произведений в Гикотеке.");
 
 export const dynamic = "force-dynamic"
 

@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { buildListingMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
@@ -9,7 +11,6 @@ import { parsePage, parsePageSize } from "@/lib/common/pagination";
 import { GenreSearch } from "./genres-search";
 import { GenreCatalog } from "./genres-catalog";
 
-export const metadata = { title: "Все жанры" };
 
 export const dynamic = "force-dynamic";
 
@@ -24,6 +25,10 @@ type GenrePageProps = {
     letter?: string;
   }>;
 };
+
+export async function generateMetadata({ searchParams }: GenrePageProps) {
+  return buildListingMetadata("/genres", "Жанры", "Жанры произведений в Гикотеке: выбирай интересное и находи записи с оценками и рецензиями.", await searchParams);
+}
 
 export default async function GenrePage({ searchParams }: GenrePageProps) {
   const [params, headerState] = await Promise.all([
@@ -44,6 +49,8 @@ export default async function GenrePage({ searchParams }: GenrePageProps) {
     pageSize,
     searchQuery,
   });
+  const paginationRedirect = getPaginationRedirect("/genres", params, genresPage.page);
+  if (paginationRedirect) redirect(paginationRedirect);
   const paginationSearchParams = {
     pageSize: pageSize !== DEFAULT_GENRES_PAGE_SIZE ? String(pageSize) : undefined,
     q: searchQuery || undefined,

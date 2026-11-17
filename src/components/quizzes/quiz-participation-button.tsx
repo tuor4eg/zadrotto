@@ -12,9 +12,11 @@ import {
 export function useQuizParticipation({
   isParticipating,
   onOpenArchive,
+  stayOnQuiz = false,
 }: {
   isParticipating: boolean;
   onOpenArchive?: () => void;
+  stayOnQuiz?: boolean;
 }) {
   const router = useRouter();
   const { setQuizParticipant } = useExternalInterface();
@@ -25,6 +27,7 @@ export function useQuizParticipation({
     if (pending) return;
 
     if (isParticipating) {
+      if (stayOnQuiz) { router.refresh(); return; }
       if (onOpenArchive) onOpenArchive();
       else router.push("/archive");
       return;
@@ -40,6 +43,7 @@ export function useQuizParticipation({
         return;
       }
       setQuizParticipant((data as { participant?: QuizParticipantHudState }).participant ?? null);
+      if (stayOnQuiz) { router.refresh(); return; }
       if (onOpenArchive) onOpenArchive();
       else router.push("/archive");
       router.refresh();
@@ -48,7 +52,7 @@ export function useQuizParticipation({
     } finally {
       setPending(false);
     }
-  }, [isParticipating, onOpenArchive, pending, router, setQuizParticipant]);
+  }, [isParticipating, onOpenArchive, pending, router, setQuizParticipant, stayOnQuiz]);
 
   return { error, openArchive, pending };
 }
@@ -58,17 +62,20 @@ export function QuizParticipationButton({
   idleLabel = "Искать ответ в архиве",
   isParticipating,
   onOpenArchive,
+  stayOnQuiz = false,
   participatingLabel = "Продолжить поиск в архиве",
 }: {
   className?: string;
   idleLabel?: string;
   isParticipating: boolean;
   onOpenArchive?: () => void;
+  stayOnQuiz?: boolean;
   participatingLabel?: string;
 }) {
   const { error, openArchive, pending } = useQuizParticipation({
     isParticipating,
     onOpenArchive,
+    stayOnQuiz,
   });
 
   return (

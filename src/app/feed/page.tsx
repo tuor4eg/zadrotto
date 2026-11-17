@@ -1,3 +1,4 @@
+import { NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -13,7 +14,7 @@ import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { parseFeedCursor, type FeedPosition } from "@/lib/feed/model";
 import { FeedDayGroups } from "./day-groups";
 
-export const metadata: Metadata = { title: "Лента", description: "Новое в архиве и активность друзей." };
+export const metadata: Metadata = { ...NO_INDEX_METADATA, title: "Лента", description: "Новое в архиве и активность друзей." };
 export const dynamic = "force-dynamic";
 
 type FeedSearchParams = { end?: string | string[]; before?: string | string[]; after?: string | string[]; friends?: string | string[]; friend?: string | string[]; mine?: string | string[] };

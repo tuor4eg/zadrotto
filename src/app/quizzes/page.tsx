@@ -26,7 +26,8 @@ export default async function QuizzesPage() {
     getQuizLeaderboard(100),
     getQuizArchive(100),
   ]);
-  const { activeQuiz, activeQuizParticipant } = headerState;
+  const { activeQuizParticipant } = headerState;
+  const activeQuiz = headerState.headerProps.quiz?.quiz ?? headerState.activeQuiz;
 
   return (
     <main className="archive-page quizzes-overview-page flex min-h-screen px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
@@ -39,6 +40,7 @@ export default async function QuizzesPage() {
           <ArchiveRiddle
             authenticated
             isCompleted={activeQuizParticipant?.completed === true}
+            participant={activeQuizParticipant}
             quiz={activeQuiz}
             size="large"
           />

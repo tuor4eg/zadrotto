@@ -1,8 +1,10 @@
+import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import {
   getActiveQuiz,
   getActiveQuizParticipantState,
+  getQuizById,
 } from "@/db/queries/quizzes";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -14,9 +16,10 @@ export async function getPublicSiteHeaderState(
     currentAuthor === undefined ? getCurrentAuthor() : Promise.resolve(currentAuthor),
     getCurrentAdminUser(),
   ]);
-  const [adminNotificationCount, activeQuiz] = await Promise.all([
+  const [adminNotificationCount, activeQuiz, incomingFriendRequestCount] = await Promise.all([
     adminUser ? getSubmittedModerationRequestCountForAdmin() : Promise.resolve(0),
     author ? getActiveQuiz() : Promise.resolve(null),
+    author ? getIncomingFriendRequestCount(author.id) : Promise.resolve(0),
   ]);
   const [activeQuizParticipant, effectiveMediaTypes] = activeQuiz && author
     ? await Promise.all([
@@ -24,6 +27,9 @@ export async function getPublicSiteHeaderState(
         getEffectiveMediaTypeOptions(author.id),
       ])
     : [null, []];
+  const playableQuiz = activeQuiz?.type === "mosaic" && activeQuizParticipant && author
+    ? (await getQuizById(activeQuiz.id, author.id))?.quiz ?? activeQuiz
+    : activeQuiz;
   const unavailableQuizMediaTypeNames = activeQuiz
     ? effectiveMediaTypes
         .filter(({ code, isEnabled }) => !isEnabled && (
@@ -41,7 +47,7 @@ export async function getPublicSiteHeaderState(
     headerProps: {
       adminNotificationCount,
       author: author
-        ? { avatarObjectKey: author.avatarObjectKey, name: author.name }
+        ? { avatarObjectKey: author.avatarObjectKey, name: author.name, id: author.id, incomingFriendRequestCount }
         : null,
       currentAdminUser: Boolean(adminUser),
       quiz: activeQuiz
@@ -49,7 +55,7 @@ export async function getPublicSiteHeaderState(
             participant: activeQuizParticipant?.quizId === activeQuiz.id
               ? activeQuizParticipant
               : null,
-            quiz: activeQuiz,
+            quiz: playableQuiz!,
             unavailableMediaTypeNames: unavailableQuizMediaTypeNames,
           }
         : null,

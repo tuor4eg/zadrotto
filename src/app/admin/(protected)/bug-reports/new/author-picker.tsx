@@ -1,9 +1,10 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { Check, Search } from "lucide-react";
 import { useEffect, useId, useRef, useState, useTransition } from "react";
 
-import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
 import { searchManualBugReportAuthorsAction } from "../actions";
 
@@ -74,8 +75,8 @@ export function ManualBugReportAuthorPicker({ id, name }: { id: string; name: st
   return (
     <div ref={rootRef} className="relative">
       <input type="hidden" name={name} value={selected?.id ?? ""} />
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-      <Input
+      <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+      <SearchInput
         id={id}
         type="search"
         role="combobox"

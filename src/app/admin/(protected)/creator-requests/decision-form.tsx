@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useState } from "react";
 import Link from "next/link";
 import { useFormStatus } from "react-dom";
@@ -71,7 +73,7 @@ export function CreatorDecisionForm({ requestId, name, people, provider, externa
         </div>
         <div className="grid gap-2">
           <Label htmlFor="creator-search">Найти создателя</Label>
-          <Input id="creator-search" type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Имя создателя" />
+          <SearchInput id="creator-search" type="search" value={search} onChange={event => { setSearch(event.target.value); setPage(1); }} placeholder="Имя создателя" />
         </div>
         <p className="text-xs text-stone-500">Найдено: {matchingPeople.length}</p>
         {visiblePeople.length ? <div className="grid gap-2 sm:grid-cols-2">{visiblePeople.map(person => <div key={person.id} className="flex min-w-0 items-start gap-2 text-sm">

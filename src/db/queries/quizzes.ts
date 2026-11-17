@@ -3,6 +3,11 @@ import { db } from "@/db";
 import { runInDomainEventTransaction } from "@/db/transaction";
 import { authors, mediaItems, mediaTypes, quizMediaTypes, quizParticipants, quizzes } from "@/db/schema";
 import { containsNormalizedSearchSql } from "@/db/search";
+import { mediaItemSearchCondition } from "@/db/queries/media-item-search";
+import { mediaItemDisplayAliasesSql } from "@/db/queries/media-item-display-titles";
+import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
+import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
+import { getAuthorMediaStatus } from "@/db/queries/author-media-statuses";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveQuizImageUrl } from "@/lib/quizzes/images";
 import { resolveCoverUrl } from "@/lib/services/minio";
@@ -11,7 +16,10 @@ import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
 import { ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE, calculateUsedQuizAttempts, getAdminQuizParticipantStatus } from "@/lib/quizzes/admin-analytics";
 import { calculateQuizPoints, calculateAuthorQuizStatistics, getQuizState, isQuizMediaTypeAllowed, type ActiveQuiz, type QuizParticipantOutcome, type QuizParticipantState } from "@/lib/quizzes/model";
 
-export type QuizWriteInput = { question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
+import { transitionMosaic, type MosaicState } from "@/lib/quizzes/mosaic";
+import { QUIZ_MECHANICS, type QuizType } from "@/lib/quizzes/mechanics";
+
+export type QuizWriteInput = { type?: "classic" | "mosaic"; configVersion?: number; config?: { seed: number } | null; question: string | null; comment: string | null; imageObjectKey: string | null; answerMediaItemId: number; mediaTypes: string[]; startsAt: Date; endsAt: Date; attemptLimit: number; enabled: boolean };
 
 async function mediaTypesForQuizIds(ids: number[]) {
   if (!ids.length) return new Map<number, string[]>();
@@ -19,6 +27,11 @@ async function mediaTypesForQuizIds(ids: number[]) {
   const result = new Map<number, string[]>();
   for (const row of rows) result.set(row.quizId, [...(result.get(row.quizId) ?? []), row.mediaType]);
   return result;
+}
+async function mediaTypeOptionsForQuiz(quizId: number) {
+  return db.select({ code: mediaTypes.code, name: mediaTypes.name }).from(quizMediaTypes)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, quizMediaTypes.mediaType))
+    .where(eq(quizMediaTypes.quizId, quizId)).orderBy(asc(mediaTypes.name));
 }
 async function participantQuizIds(ids: number[]) {
   if (!ids.length) return new Set<number>();
@@ -42,13 +55,15 @@ export async function getAdminQuizzes(input: {
   searchQuery?: string;
   state?: AdminQuizStateFilter;
   hasCorrect?: AdminQuizCorrectFilter;
+  type?: QuizType;
 } = {}) {
   const now = new Date();
   const searchQuery = input.searchQuery?.trim() ?? "";
   const filters: SQL[] = [];
+  if (input.type) filters.push(eq(quizzes.type, input.type));
   if (searchQuery) filters.push(or(
     containsNormalizedSearchSql(quizzes.question, searchQuery),
-    containsNormalizedSearchSql(mediaItems.title, searchQuery),
+    mediaItemSearchCondition(searchQuery),
   )!);
   if (input.state === "disabled") filters.push(eq(quizzes.enabled, false));
   if (input.state === "scheduled") filters.push(and(eq(quizzes.enabled, true), gt(quizzes.startsAt, now))!);
@@ -87,7 +102,7 @@ export async function getAdminQuizzes(input: {
     .offset(getOffset(page, ADMIN_QUIZZES_PAGE_SIZE));
   const ids = rows.map(({ quiz }) => quiz.id); const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds(ids), participantQuizIds(ids), answeredQuizIds(ids)]);
   return {
-    items: rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasAnswers: answeredIds.has(quiz.id), hasParticipants: participantIds.has(quiz.id), imageUrl: resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz, now) })),
+    items: rows.map(({ quiz, ...rest }) => ({ ...quiz, ...rest, mediaTypes: types.get(quiz.id) ?? [], hasAnswers: answeredIds.has(quiz.id), hasParticipants: participantIds.has(quiz.id), imageUrl: quiz.type === "mosaic" ? `/api/quizzes/${quiz.id}/image` : resolveQuizImageUrl(quiz.imageObjectKey), state: getQuizState(quiz, now) })),
     page,
     pageSize: ADMIN_QUIZZES_PAGE_SIZE,
     totalCount,
@@ -98,12 +113,13 @@ export async function getAdminQuizById(id: number) {
   const [row] = await db.select({ quiz: quizzes, answerTitle: mediaItems.title, answerMediaType: mediaItems.mediaType }).from(quizzes).innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId)).where(eq(quizzes.id, id)).limit(1);
   if (!row) return null;
   const [types, participantIds, answeredIds] = await Promise.all([mediaTypesForQuizIds([id]), participantQuizIds([id]), answeredQuizIds([id])]);
-  return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasAnswers: answeredIds.has(id), hasParticipants: participantIds.has(id), imageUrl: resolveQuizImageUrl(row.quiz.imageObjectKey) };
+  return { ...row.quiz, answerTitle: row.answerTitle, answerMediaType: row.answerMediaType, mediaTypes: types.get(id) ?? [], hasAnswers: answeredIds.has(id), hasParticipants: participantIds.has(id), imageUrl: row.quiz.type === "mosaic" ? `/api/quizzes/${id}/image` : resolveQuizImageUrl(row.quiz.imageObjectKey) };
 }
 
 export async function getAdminQuizContext(quizId: number) {
   const [row] = await db
     .select({
+      type: quizzes.type,
       answerCode: mediaItems.code,
       answerTitle: mediaItems.title,
       attemptLimit: quizzes.attemptLimit,
@@ -124,7 +140,7 @@ export async function getAdminQuizContext(quizId: number) {
   const { imageObjectKey, ...context } = row;
   return {
     ...context,
-    imageUrl: resolveQuizImageUrl(imageObjectKey),
+    imageUrl: row.type === "mosaic" ? `/api/quizzes/${quizId}/image` : resolveQuizImageUrl(imageObjectKey),
     state: getQuizState(row),
   };
 }
@@ -132,7 +148,7 @@ export async function getAdminQuizContext(quizId: number) {
 export async function getAdminQuizAggregates(quizId: number) {
   const [row] = await db
     .select({
-      averagePoints: sql<number | null>`avg(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)::float`,
+      averagePoints: sql<number | null>`avg(coalesce(${quizParticipants.awardedPoints}, 0))::float`,
       averageCorrectAnswerSeconds: sql<number | null>`(
         avg(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt})))
         filter (where ${quizParticipants.outcome} = 'correct')
@@ -168,8 +184,11 @@ export async function getAdminQuizParticipantPage(input: {
       authorAvatarObjectKey: authors.avatarObjectKey,
       authorId: authors.id,
       authorName: authors.name,
+      type: quizzes.type,
+      mechanicState: quizParticipants.mechanicState,
       attemptLimit: quizzes.attemptLimit,
       attemptsRemaining: quizParticipants.attemptsRemaining,
+      awardedPoints: quizParticipants.awardedPoints,
       completedAt: quizParticipants.completedAt,
       joinedAt: quizParticipants.joinedAt,
       outcome: quizParticipants.outcome,
@@ -186,7 +205,7 @@ export async function getAdminQuizParticipantPage(input: {
         when ${quizParticipants.outcome} = 'exhausted' then 2
         else 3
       end`,
-      desc(sql`case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end`),
+      desc(sql`coalesce(${quizParticipants.awardedPoints}, 0)`),
       asc(quizParticipants.completedAt),
       asc(quizParticipants.joinedAt),
       asc(quizParticipants.authorId),
@@ -203,7 +222,8 @@ export async function getAdminQuizParticipantPage(input: {
         ...participantState,
         points: calculateQuizPoints(participantState),
         status: getAdminQuizParticipantStatus(participantState),
-        usedAttempts: calculateUsedQuizAttempts(participantState),
+        usedAttempts: row.type === "mosaic" ? row.mechanicState?.wrongAnswers ?? 0 : calculateUsedQuizAttempts(participantState),
+        openedCells: row.type === "mosaic" ? (row.mechanicState?.openedMask ?? 0).toString(2).replaceAll("0", "").length : 0,
       };
     }),
     page,
@@ -213,21 +233,30 @@ export async function getAdminQuizParticipantPage(input: {
   };
 }
 async function assertInput(executor: Pick<typeof db, "select">, input: QuizWriteInput) {
+  if (!QUIZ_MECHANICS[input.type ?? "classic"].validateConfig(input.config)) throw new Error("invalid-quiz");
+  if ((input.type ?? "classic") === "mosaic" && (!input.imageObjectKey || !input.config || !Number.isInteger(input.config.seed) || input.config.seed < 0 || input.config.seed > 4294967295)) throw new Error("invalid-quiz");
+  if ((input.type ?? "classic") === "classic" && input.config != null) throw new Error("invalid-quiz");
+  if (input.configVersion !== undefined && input.configVersion !== 1) throw new Error("invalid-quiz");
   if ((!input.question?.trim() && !input.imageObjectKey) || input.mediaTypes.length === 0 || (input.comment?.length ?? 0) > 2000 || input.startsAt >= input.endsAt || !Number.isSafeInteger(input.attemptLimit) || input.attemptLimit < 1 || input.attemptLimit > 10) throw new Error("invalid-quiz");
   const [answer] = await executor.select({ mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.id, input.answerMediaItemId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true))).limit(1);
   if (!answer || !isQuizMediaTypeAllowed(input.mediaTypes, answer.mediaType)) throw new Error("invalid-answer");
 }
 export async function createQuiz(input: QuizWriteInput) {
-  return db.transaction(async (tx) => { await assertInput(tx, input); const [row] = await tx.insert(quizzes).values({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled }).returning(); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: row!.id, mediaType }))); return row!; });
+  return db.transaction(async (tx) => { await assertInput(tx, input); const [row] = await tx.insert(quizzes).values({ type: input.type ?? "classic", configVersion: 1, config: input.config ?? null, publishedAt: input.type === "mosaic" && input.enabled ? new Date() : null, question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled }).returning(); if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: row!.id, mediaType }))); return row!; });
 }
 export async function updateQuiz(id: number, input: QuizWriteInput) {
   return db.transaction(async (tx) => {
     await assertInput(tx, input);
-    const [current] = await tx.select({ answerMediaItemId: quizzes.answerMediaItemId, attemptLimit: quizzes.attemptLimit }).from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update");
+    const [current] = await tx.select().from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update");
     if (!current) return null;
     const currentMediaTypes = await tx.select({ mediaType: quizMediaTypes.mediaType }).from(quizMediaTypes).where(eq(quizMediaTypes.quizId, id));
     const mediaTypesChanged = currentMediaTypes.length !== input.mediaTypes.length
       || currentMediaTypes.some(({ mediaType }) => !input.mediaTypes.includes(mediaType));
+    if (current.type === "mosaic" && current.publishedAt && (current.type !== (input.type ?? "classic") || current.answerMediaItemId !== input.answerMediaItemId || mediaTypesChanged || JSON.stringify(current.config) !== JSON.stringify(input.config ?? null) || current.imageObjectKey !== input.imageObjectKey)) throw new Error("answer-configuration-locked");
+    if (current.type !== (input.type ?? "classic")) {
+      const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1);
+      if (participant) throw new Error("answer-configuration-locked");
+    }
     const answerConfigurationChanged = current.answerMediaItemId !== input.answerMediaItemId || mediaTypesChanged;
     if (current.attemptLimit !== input.attemptLimit) {
       const [participant] = await tx.select({ authorId: quizParticipants.authorId }).from(quizParticipants).where(eq(quizParticipants.quizId, id)).limit(1);
@@ -240,24 +269,35 @@ export async function updateQuiz(id: number, input: QuizWriteInput) {
       )).limit(1);
       if (answer) throw new Error("answer-configuration-locked");
     }
-    const [row] = await tx.update(quizzes).set({ question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning();
+    const [row] = await tx.update(quizzes).set({ type: input.type ?? "classic", configVersion: 1, config: input.config ?? null, publishedAt: (input.type ?? "classic") === "mosaic" ? current.publishedAt ?? (input.enabled ? new Date() : null) : null, question: input.question, comment: input.comment, imageObjectKey: input.imageObjectKey, answerMediaItemId: input.answerMediaItemId, startsAt: input.startsAt, endsAt: input.endsAt, attemptLimit: input.attemptLimit, enabled: input.enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning();
     await tx.delete(quizMediaTypes).where(eq(quizMediaTypes.quizId, id));
     if (input.mediaTypes.length > 0) await tx.insert(quizMediaTypes).values(input.mediaTypes.map((mediaType) => ({ quizId: id, mediaType })));
     return row!;
   });
 }
 export async function deleteQuiz(id: number) { const [row] = await db.delete(quizzes).where(eq(quizzes.id, id)).returning(); return row ?? null; }
-export async function setQuizEnabled(id: number, enabled: boolean) { const [row] = await db.update(quizzes).set({ enabled, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning(); return row ?? null; }
+export async function setQuizEnabled(id: number, enabled: boolean) {
+  return db.transaction(async (tx) => {
+    const [current] = await tx.select().from(quizzes).where(eq(quizzes.id, id)).limit(1).for("update");
+    if (!current) return null;
+    const [row] = await tx.update(quizzes).set({ enabled, publishedAt: current.type === "mosaic" ? current.publishedAt ?? (enabled ? new Date() : null) : null, updatedAt: new Date() }).where(eq(quizzes.id, id)).returning();
+    return row ?? null;
+  });
+}
 export async function getActiveQuiz(now?: Date): Promise<ActiveQuiz | null> {
   const currentTime = now ?? sql`now()`;
   const [quiz] = await db.select().from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
   if (!quiz) return null;
-  const types = await mediaTypesForQuizIds([quiz.id]);
+  const types = await mediaTypeOptionsForQuiz(quiz.id);
   return {
     id: quiz.id,
+    type: quiz.type,
+    configVersion: quiz.configVersion,
+    config: null,
     question: quiz.question,
-    imageUrl: resolveQuizImageUrl(quiz.imageObjectKey),
-    mediaTypes: types.get(quiz.id) ?? [],
+    imageUrl: quiz.type === "mosaic" ? null : resolveQuizImageUrl(quiz.imageObjectKey),
+    mediaTypes: types.map(({ code }) => code),
+    mediaTypeOptions: types,
     startsAt: quiz.startsAt.toISOString(),
     endsAt: quiz.endsAt.toISOString(),
     attemptLimit: quiz.attemptLimit,
@@ -280,13 +320,13 @@ export async function getParticipatingActiveQuiz(authorId: number, now?: Date) {
     getActiveQuizParticipantState(authorId, now),
   ]);
   if (!active || !participant || participant.completed || participant.quizId !== active.id) return null;
-  return active;
+  return (await getQuizById(active.id, authorId))?.quiz ?? null;
 }
 export async function joinActiveQuiz(authorId: number, now?: Date) {
   const enabledMediaTypeCodes = new Set(await getEnabledMediaTypeCodes(authorId));
   const joined = await db.transaction(async (tx) => {
     const currentTime = now ?? sql`now()`;
-    const [active] = await tx.select({ id: quizzes.id, attemptLimit: quizzes.attemptLimit }).from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1).for("update");
+    const [active] = await tx.select({ id: quizzes.id, type: quizzes.type, attemptLimit: quizzes.attemptLimit }).from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1).for("update");
     if (!active) return "missing" as const;
     const allowedTypes = await tx
       .select({ mediaType: quizMediaTypes.mediaType })
@@ -295,25 +335,39 @@ export async function joinActiveQuiz(authorId: number, now?: Date) {
     if (allowedTypes.length === 0 || allowedTypes.some(({ mediaType }) => !enabledMediaTypeCodes.has(mediaType))) {
       return "ineligible" as const;
     }
-    await tx.insert(quizParticipants).values({ quizId: active.id, authorId, attemptsRemaining: active.attemptLimit }).onConflictDoNothing();
+    await tx.insert(quizParticipants).values({ quizId: active.id, authorId, attemptsRemaining: active.attemptLimit, mechanicState: QUIZ_MECHANICS[active.type].createState(active.attemptLimit) }).onConflictDoNothing();
     return "joined" as const;
   });
   if (joined !== "joined") return { kind: joined };
   return { kind: "joined" as const, participant: await getActiveQuizParticipantState(authorId, now) };
 }
 
-function mapParticipantState(row: { quizId: number; attemptLimit: number; attemptsRemaining: number; outcome: string | null }): QuizParticipantState {
-  return { quizId: row.quizId, attemptLimit: row.attemptLimit, attemptsRemaining: row.attemptsRemaining, completed: row.outcome !== null, outcome: row.outcome as QuizParticipantState["outcome"], points: calculateQuizPoints({ ...row, outcome: row.outcome as QuizParticipantOutcome | null }) };
+/** Administrative test reset; the participant row owns all attempts and mechanic state. */
+export async function resetQuizParticipant(quizId: number, authorId: number) {
+  return db.transaction(async (tx) => {
+    // Same lock order as joining/answering, including mosaic's shared quiz lock.
+    const [quiz] = await tx.select({ id: quizzes.id }).from(quizzes)
+      .where(eq(quizzes.id, quizId)).limit(1).for("update");
+    if (!quiz) return false;
+    const deleted = await tx.delete(quizParticipants)
+      .where(and(eq(quizParticipants.quizId, quizId), eq(quizParticipants.authorId, authorId)))
+      .returning({ authorId: quizParticipants.authorId });
+    return deleted.length > 0;
+  });
+}
+
+function mapParticipantState(row: { quizId: number; attemptLimit: number; attemptsRemaining: number; outcome: string | null; type?: "classic" | "mosaic"; mechanicState?: MosaicState | null; revision?: number; awardedPoints?: number | null }): QuizParticipantState {
+  return { type: row.type ?? "classic", mosaic: row.mechanicState ?? null, revision: row.revision ?? 0, awardedPoints: row.awardedPoints ?? null, quizId: row.quizId, attemptLimit: row.attemptLimit, attemptsRemaining: row.attemptsRemaining, completed: row.outcome !== null, outcome: row.outcome as QuizParticipantState["outcome"], points: calculateQuizPoints({ ...row, outcome: row.outcome as QuizParticipantOutcome | null }) };
 }
 
 export async function getActiveQuizParticipantState(authorId: number, now?: Date): Promise<QuizParticipantState | null> {
   const currentTime = now ?? sql`now()`;
-  const [row] = await db.select({ quizId: quizzes.id, attemptLimit: quizzes.attemptLimit, attemptsRemaining: quizParticipants.attemptsRemaining, outcome: quizParticipants.outcome }).from(quizzes).innerJoin(quizParticipants, and(eq(quizParticipants.quizId, quizzes.id), eq(quizParticipants.authorId, authorId))).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
+  const [row] = await db.select({ type: quizzes.type, mechanicState: quizParticipants.mechanicState, revision: quizParticipants.revision, awardedPoints: quizParticipants.awardedPoints, quizId: quizzes.id, attemptLimit: quizzes.attemptLimit, attemptsRemaining: quizParticipants.attemptsRemaining, outcome: quizParticipants.outcome }).from(quizzes).innerJoin(quizParticipants, and(eq(quizParticipants.quizId, quizzes.id), eq(quizParticipants.authorId, authorId))).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1);
   return row ? mapParticipantState(row) : null;
 }
 export async function getAuthorQuizStatistics(authorId: number) {
-  const rows = await db.select({ outcome: quizParticipants.outcome, attemptsRemaining: quizParticipants.attemptsRemaining, attemptLimit: quizzes.attemptLimit, durationSeconds: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float` }).from(quizParticipants).innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId)).where(and(eq(quizParticipants.authorId, authorId), isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome))).orderBy(asc(quizParticipants.completedAt), asc(quizParticipants.quizId));
-  return calculateAuthorQuizStatistics(rows.map((row) => ({ ...row, outcome: row.outcome as QuizParticipantOutcome })));
+  const rows = await db.select({ type: quizzes.type, mechanicState: quizParticipants.mechanicState, awardedPoints: quizParticipants.awardedPoints, outcome: quizParticipants.outcome, attemptsRemaining: quizParticipants.attemptsRemaining, attemptLimit: quizzes.attemptLimit, durationSeconds: sql<number>`extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))::float` }).from(quizParticipants).innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId)).where(and(eq(quizParticipants.authorId, authorId), isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome))).orderBy(asc(quizParticipants.completedAt), asc(quizParticipants.quizId));
+  return calculateAuthorQuizStatistics(rows.map((row) => ({ ...row, wrongAnswers: row.mechanicState?.wrongAnswers, outcome: row.outcome as QuizParticipantOutcome })));
 }
 export async function getQuizLeaderboard(limit = 5) {
   return db
@@ -321,7 +375,7 @@ export async function getQuizLeaderboard(limit = 5) {
       authorAvatarObjectKey: authors.avatarObjectKey,
       authorId: authors.id,
       authorName: authors.name,
-      totalPoints: sql<number>`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)::int`,
+      totalPoints: sql<number>`sum(coalesce(${quizParticipants.awardedPoints}, 0))::int`,
       totalTimeSeconds: sql<number>`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.outcome} = 'correct')::float`,
     })
     .from(quizParticipants)
@@ -329,9 +383,9 @@ export async function getQuizLeaderboard(limit = 5) {
     .innerJoin(quizzes, eq(quizzes.id, quizParticipants.quizId))
     .where(and(isNotNull(quizParticipants.completedAt), isNotNull(quizParticipants.outcome)))
     .groupBy(authors.id, authors.name, authors.avatarObjectKey)
-    .having(sql`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end) > 0`)
+    .having(sql`sum(coalesce(${quizParticipants.awardedPoints}, 0)) > 0`)
     .orderBy(
-      desc(sql`sum(case when ${quizParticipants.outcome} = 'correct' then ${quizParticipants.attemptsRemaining} else 0 end)`),
+      desc(sql`sum(coalesce(${quizParticipants.awardedPoints}, 0))`),
       asc(sql`sum(extract(epoch from (${quizParticipants.completedAt} - ${quizzes.startsAt}))) filter (where ${quizParticipants.outcome} = 'correct')`),
       asc(authors.name),
       asc(authors.id),
@@ -346,6 +400,8 @@ export async function getRevealedQuizAnswer(quizId: number, authorId: number) {
     code: mediaItems.code,
     title: mediaItems.title,
     coverUrl: mediaItems.coverUrl,
+    quizType: quizzes.type,
+    quizId: quizzes.id,
     comment: quizzes.comment,
   }).from(quizzes)
     .innerJoin(mediaItems, eq(mediaItems.id, quizzes.answerMediaItemId))
@@ -354,15 +410,18 @@ export async function getRevealedQuizAnswer(quizId: number, authorId: number) {
     .where(and(
       eq(quizzes.id, quizId), eq(quizzes.enabled, true), lte(quizzes.startsAt, sql`now()`),
       eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true),
-      or(lte(quizzes.endsAt, sql`now()`), eq(quizParticipants.outcome, "correct")),
+      or(lte(quizzes.endsAt, sql`now()`), eq(quizParticipants.outcome, "correct"), and(eq(quizzes.type, "mosaic"), eq(quizParticipants.outcome, "exhausted"))),
     )).limit(1);
-  return row ? { ...row, coverUrl: resolveCoverUrl(row.coverUrl) } : null;
+  return row ? { ...row, coverUrl: row.quizType === "mosaic" ? `/api/quizzes/${row.quizId}/image` : resolveCoverUrl(row.coverUrl) } : null;
 }
 
 export async function getQuizById(id: number, authorId: number) {
   const [row] = await db
     .select({
       id: quizzes.id,
+      type: quizzes.type,
+      configVersion: quizzes.configVersion,
+      config: quizzes.config,
       question: quizzes.question,
       imageObjectKey: quizzes.imageObjectKey,
       startsAt: quizzes.startsAt,
@@ -375,8 +434,11 @@ export async function getQuizById(id: number, authorId: number) {
   if (!row) return null;
 
   const [types, [participantRow]] = await Promise.all([
-    mediaTypesForQuizIds([id]),
+    mediaTypeOptionsForQuiz(id),
     db.select({
+      mechanicState: quizParticipants.mechanicState,
+      revision: quizParticipants.revision,
+      awardedPoints: quizParticipants.awardedPoints,
       quizId: quizParticipants.quizId,
       attemptsRemaining: quizParticipants.attemptsRemaining,
       outcome: quizParticipants.outcome,
@@ -386,17 +448,19 @@ export async function getQuizById(id: number, authorId: number) {
   ]);
   const quiz: ActiveQuiz = {
     id: row.id,
+    ...(row.type === "mosaic" ? { type: "mosaic" as const, configVersion: row.configVersion, config: participantRow ? row.config : null } : { type: "classic" as const, configVersion: row.configVersion, config: null }),
     question: row.question,
-    imageUrl: resolveQuizImageUrl(row.imageObjectKey),
+    imageUrl: row.type === "mosaic" ? (participantRow || row.endsAt.getTime() <= Date.now() ? `/api/quizzes/${row.id}/image` : null) : resolveQuizImageUrl(row.imageObjectKey),
     startsAt: row.startsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     attemptLimit: row.attemptLimit,
-    mediaTypes: types.get(id) ?? [],
+    mediaTypes: types.map(({ code }) => code),
+    mediaTypeOptions: types,
   };
   return {
     quiz,
     finished: row.endsAt.getTime() <= Date.now(),
-    participant: participantRow ? mapParticipantState({ ...participantRow, attemptLimit: row.attemptLimit }) : null,
+    participant: participantRow ? mapParticipantState({ ...participantRow, type: row.type, attemptLimit: row.attemptLimit }) : null,
   };
 }
 
@@ -430,6 +494,7 @@ export async function getQuizArchive(limit = 5, now?: Date, offset = 0) {
   const currentTime = now ?? sql`now()`;
   const quizRows = await db
     .select({
+      type: quizzes.type,
       endsAt: quizzes.endsAt,
       id: quizzes.id,
       imageObjectKey: quizzes.imageObjectKey,
@@ -477,17 +542,17 @@ export async function getQuizArchive(limit = 5, now?: Date, offset = 0) {
 
   return quizRows.map(({ imageObjectKey, ...quiz }) => ({
     ...quiz,
-    imageUrl: resolveQuizImageUrl(imageObjectKey),
+    imageUrl: quiz.type === "mosaic" ? null : resolveQuizImageUrl(imageObjectKey),
     mediaTypes: mediaTypesByQuizId.get(quiz.id) ?? [],
     participantCount: participantsByQuizId.get(quiz.id)?.participantCount ?? 0,
     correctCount: participantsByQuizId.get(quiz.id)?.correctCount ?? 0,
   }));
 }
-export async function checkQuizGuess(titleId: number, authorId: number, now?: Date) {
+export async function checkQuizGuess(titleId: number, authorId: number, now?: Date, expectedQuizId?: number) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
     const currentTime = now ?? sql`now()`;
     const [quiz] = await tx.select().from(quizzes).where(and(eq(quizzes.enabled, true), lte(quizzes.startsAt, currentTime), gt(quizzes.endsAt, currentTime))).orderBy(asc(quizzes.endsAt), asc(quizzes.id)).limit(1).for("update");
-    if (!quiz) return { kind: "missing" as const };
+    if (!quiz || quiz.type !== "classic" || (expectedQuizId !== undefined && quiz.id !== expectedQuizId)) return { kind: "missing" as const };
     const [participant] = await tx.select().from(quizParticipants).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.authorId, authorId))).limit(1).for("update");
     if (!participant) return { kind: "not-participant" as const };
     if (participant.outcome) return { kind: "completed" as const, participant: mapParticipantState({ ...participant, attemptLimit: quiz.attemptLimit }) };
@@ -496,7 +561,7 @@ export async function checkQuizGuess(titleId: number, authorId: number, now?: Da
     const correct = quiz.answerMediaItemId === titleId;
     const attemptsRemaining = correct ? participant.attemptsRemaining : participant.attemptsRemaining - 1;
     const outcome = correct ? "correct" as const : attemptsRemaining === 0 ? "exhausted" as const : null;
-    const [updated] = await tx.update(quizParticipants).set({ attemptsRemaining, outcome, completedAt: outcome ? new Date() : null }).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.authorId, authorId))).returning();
+    const [updated] = await tx.update(quizParticipants).set({ attemptsRemaining, awardedPoints: outcome ? (correct ? attemptsRemaining : 0) : null, outcome, completedAt: outcome ? new Date() : null }).where(and(eq(quizParticipants.quizId, quiz.id), eq(quizParticipants.authorId, authorId))).returning();
     if (outcome) {
       await appendEvent({
         actorAuthorId: authorId,
@@ -510,22 +575,19 @@ export async function checkQuizGuess(titleId: number, authorId: number, now?: Da
   });
 }
 export async function searchQuizAnswerTitles(query: string, mediaTypeFilter: readonly string[] = []) {
-  const condition = query.trim()
-    ? or(
-        containsNormalizedSearchSql(mediaItems.title, query),
-        containsNormalizedSearchSql(mediaItems.originalTitle, query),
-      )
-    : undefined
+  const condition = mediaItemSearchCondition(query);
   const typeCondition = mediaTypeFilter.length > 0
     ? inArray(mediaItems.mediaType, [...mediaTypeFilter])
     : undefined
-  return db
+  const rows = await db
     .select({
       id: mediaItems.id,
       title: mediaItems.title,
       originalTitle: mediaItems.originalTitle,
+      aliases: mediaItemDisplayAliasesSql(),
       releaseYear: mediaItems.releaseYear,
       mediaType: mediaItems.mediaType,
+      mediaTypeName: mediaTypes.name,
     })
     .from(mediaItems)
     .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
@@ -537,18 +599,74 @@ export async function searchQuizAnswerTitles(query: string, mediaTypeFilter: rea
     ))
     .orderBy(asc(mediaItems.title))
     .limit(20)
+  return rows.map(({ aliases, ...item }) => ({
+    ...item,
+    title: resolveMediaItemDisplayTitles({ ...item, aliases }).displayTitle,
+  }));
 }
-export async function isAssignedQuizImageObjectKey(key: string) { const [row] = await db.select({ id: quizzes.id }).from(quizzes).where(eq(quizzes.imageObjectKey, key)).limit(1); return Boolean(row); }
+
+export async function getQuizAnswerEntry(mediaItemId: number, mediaTypeFilter: readonly string[], authorId: number) {
+  const [visible] = await db.select({ id: mediaItems.id }).from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .where(and(eq(mediaItems.id, mediaItemId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+      eq(mediaTypes.isPubliclyAvailable, true), mediaTypeFilter.length ? inArray(mediaItems.mediaType, [...mediaTypeFilter]) : undefined)).limit(1);
+  if (!visible) return null;
+  const [items, currentAuthorStatus] = await Promise.all([
+    getMediaItemTilesByIds([visible.id], authorId),
+    getAuthorMediaStatus({ authorId, mediaItemId: visible.id }),
+  ]);
+  return items[0] ? { mediaItemId: visible.id, item: items[0], currentAuthorStatus } : null;
+}
+export async function isAssignedQuizImageObjectKey(key: string) { const [row] = await db.select({ id: quizzes.id }).from(quizzes).where(and(eq(quizzes.imageObjectKey, key), eq(quizzes.type, "classic"))).limit(1); return Boolean(row); }
 export async function isActiveQuizImageObjectKey(key: string) {
   const [row] = await db
     .select({ id: quizzes.id })
     .from(quizzes)
     .where(and(
       eq(quizzes.imageObjectKey, key),
+      eq(quizzes.type, "classic"),
       eq(quizzes.enabled, true),
       lte(quizzes.startsAt, sql`now()`),
       gt(quizzes.endsAt, sql`now()`),
     ))
     .limit(1);
   return Boolean(row);
+}
+
+export async function getQuizImageObjectKey(quizId: number, authorId: number | null, admin = false) {
+  const [quiz] = await db.select().from(quizzes).where(eq(quizzes.id, quizId)).limit(1);
+  if (!quiz || quiz.type !== "mosaic" || !quiz.imageObjectKey) return null;
+  if (admin) return quiz.imageObjectKey;
+  if (!authorId || !quiz.enabled || quiz.startsAt > new Date() || (quiz.endsAt > new Date() && !(await isQuizParticipant(quizId, authorId)))) return null;
+  return quiz.imageObjectKey;
+}
+
+export async function performMosaicQuizAction(quizId: number, authorId: number, command: import("@/lib/quizzes/mosaic").MosaicCommand) {
+  return runInDomainEventTransaction(async (tx, appendEvent) => {
+    const [quiz] = await tx.select().from(quizzes).where(and(eq(quizzes.id, quizId), eq(quizzes.type, "mosaic"), eq(quizzes.enabled, true), lte(quizzes.startsAt, sql`now()`), gt(quizzes.endsAt, sql`now()`))).limit(1).for("share");
+    if (!quiz) return { kind: "missing" as const };
+    const [participant] = await tx.select().from(quizParticipants).where(and(eq(quizParticipants.quizId, quizId), eq(quizParticipants.authorId, authorId))).limit(1).for("update");
+    if (!participant) return { kind: "not-participant" as const };
+    const publicState = () => mapParticipantState({ ...participant, type: "mosaic", attemptLimit: quiz.attemptLimit });
+    const state = participant.mechanicState;
+    if (!state) throw new Error("missing-mosaic-state");
+    if (state.processedActions.includes(command.actionId)) return { kind: "result" as const, correct: participant.outcome === "correct", participant: publicState() };
+    if (participant.revision !== command.revision) return { kind: "conflict" as const, participant: publicState() };
+    if (participant.outcome) return { kind: "completed" as const, participant: publicState() };
+    let correct = false;
+    if (command.type === "submitAnswer") {
+      const [title] = await tx.select({ mediaType: mediaItems.mediaType }).from(mediaItems).innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType)).where(and(eq(mediaItems.id, command.titleId), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS), eq(mediaTypes.isPubliclyAvailable, true))).limit(1);
+      if (!title) return { kind: "title-missing" as const };
+      const types = await tx.select({ mediaType: quizMediaTypes.mediaType }).from(quizMediaTypes).where(eq(quizMediaTypes.quizId, quizId));
+      if (!isQuizMediaTypeAllowed(types.map((item) => item.mediaType), title.mediaType)) return { kind: "invalid-type" as const };
+      correct = quiz.answerMediaItemId === command.titleId;
+    }
+    const transition = transitionMosaic(state, command.type === "openCell" ? command : { type: "submitAnswer", correct });
+    if (!transition.changed) return { kind: "result" as const, correct, participant: publicState() };
+    const mechanicState = { ...transition.state, processedActions: [...state.processedActions, command.actionId].slice(-20) };
+    const outcome = transition.outcome;
+    const [updated] = await tx.update(quizParticipants).set({ mechanicState, revision: participant.revision + 1, attemptsRemaining: mechanicState.remainingPoints, outcome, awardedPoints: outcome ? (outcome === "correct" ? mechanicState.remainingPoints : 0) : null, completedAt: outcome ? new Date() : null }).where(and(eq(quizParticipants.quizId, quizId), eq(quizParticipants.authorId, authorId))).returning();
+    if (outcome) await appendEvent({ actorAuthorId: authorId, aggregateId: `${quizId}:${authorId}`, aggregateType: "quiz-participant", payload: { authorId, outcome, quizId }, type: "quiz.completed" });
+    return { kind: "result" as const, correct, participant: mapParticipantState({ ...updated!, type: "mosaic", attemptLimit: quiz.attemptLimit }) };
+  });
 }

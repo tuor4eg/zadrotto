@@ -1,9 +1,12 @@
+import { NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 import { getPersonalDataConsentSettings } from "@/db/queries/personal-data-consent";
 import { CURRENT_CONSENT_VERSION } from "@/lib/privacy/consent";
+
+export const metadata = NO_INDEX_METADATA;
 
 export const dynamic = "force-dynamic";
 

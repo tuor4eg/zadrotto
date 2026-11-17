@@ -1,3 +1,4 @@
+import { buildPublicPageMetadata, NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 
@@ -10,8 +11,13 @@ export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const collection = await getPublishedEditorialCollectionBySlug((await params).slug);
-  if (!collection) return {};
-  return { title: collection.title, description: collection.description, openGraph: { title: collection.title, description: collection.description ?? undefined, images: collection.coverUrl ? [collection.coverUrl] : undefined } };
+  if (!collection) return NO_INDEX_METADATA;
+  return buildPublicPageMetadata(
+    `/collections/${encodeURIComponent(collection.slug)}`,
+    collection.title,
+    collection.description || `Подборка «${collection.title}» в Гикотеке. Открывай произведения, читай рецензии и пополняй свой архив.`,
+    collection.coverUrl,
+  );
 }
 
 export default async function CollectionPage({ params }: { params: Promise<{ slug: string }> }) {

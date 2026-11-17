@@ -1,5 +1,6 @@
+import { redirect } from "next/navigation";
+import { buildListingMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
-import type { Metadata } from "next"
 import Link from "next/link"
 import { Suspense } from "react"
 
@@ -40,10 +41,6 @@ import {
 } from "./reviews-catalog-logic"
 import { ReviewsViewToggle } from "./reviews-view-toggle"
 
-export const metadata: Metadata = {
-  title: "Рецензии",
-  description: "Мнения авторов о фильмах, играх, книгах и прочем",
-}
 
 export const dynamic = "force-dynamic"
 
@@ -74,6 +71,10 @@ function formatReviewsFound(count: number) {
     plural === "one" ? "рецензия" : plural === "few" ? "рецензии" : "рецензий"
 
   return `Найдено ${count} ${label}`
+}
+
+export async function generateMetadata({ searchParams }: ReviewsPageProps) {
+  return buildListingMetadata("/reviews", "Рецензии", "Рецензии авторов Гикотеки на фильмы, игры, книги, комиксы и другие произведения.", await searchParams);
 }
 
 export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
@@ -118,6 +119,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
       pageSize,
       status,
     })
+    const paginationRedirect = getPaginationRedirect("/reviews", params, catalog.page)
+    if (paginationRedirect) redirect(paginationRedirect)
     const statusCounts: Record<MyReviewStatusFilter, number> = {
       all: statusCountsRaw.all,
       published: statusCountsRaw.published,
@@ -271,6 +274,8 @@ export default async function ReviewsPage({ searchParams }: ReviewsPageProps) {
     }),
   ])
 
+  const paginationRedirect = getPaginationRedirect("/reviews", params, catalog.page)
+  if (paginationRedirect) redirect(paginationRedirect)
   const paginationSearchParams = {
     author: authorId ? String(authorId) : undefined,
     pageSize: pageSize !== DEFAULT_REVIEW_CATALOG_PAGE_SIZE ? String(pageSize) : undefined,

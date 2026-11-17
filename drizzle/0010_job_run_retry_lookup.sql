@@ -1,0 +1,1 @@
+CREATE INDEX "job_runs_retry_of_run_id_idx" ON "job_runs" USING btree ("retry_of_run_id");

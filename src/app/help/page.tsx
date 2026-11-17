@@ -1,14 +1,11 @@
-import type { Metadata } from "next";
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import Image from "next/image";
 import Link from "next/link";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
-export const metadata: Metadata = {
-  title: "Помощь — Гикотека",
-  description: "Короткие ответы о поиске, оценках и пополнении культурного архива.",
-};
+export const metadata = buildPublicPageMetadata("/help", "Помощь", "Ответы о поиске произведений, оценках, рецензиях и пополнении личного архива в Гикотеке.");
 
 const linkClassName =
   "font-medium text-red-950 underline decoration-stone-400 underline-offset-4 hover:decoration-red-950";

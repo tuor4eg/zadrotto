@@ -1,7 +1,7 @@
 import { deleteEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
 import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
-import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition, entryCreatorSearchCondition } from "@/db/queries/creators";
+import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition } from "@/db/queries/creators";
 import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
 import { publishedSeriesMediaItemIdsSql, publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { hasUnifiedGenresSql, missingGenreSeriesBindingSql, publicMediaItemGenresJsonSql, visibleGenreSql, mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
@@ -36,7 +36,8 @@ import {
   mediaItemAverageScoreSql,
   mediaItemRatingsCountSql,
 } from "@/db/queries/media-item-rating-stats";
-import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
+import { containsNormalizedSearchSql } from "@/db/search";
+import { mediaItemSearchCondition as catalogSearchCondition } from "@/db/queries/media-item-search";
 import { runInDomainEventTransaction, type DbTransaction } from "@/db/transaction";
 import {
   authorMediaExperiences,
@@ -341,33 +342,7 @@ const currentAuthorFirstExperiencedPrecisionSql = (currentAuthorId?: number) =>
       )`
     : sql<"year" | "month" | "day" | null>`null`;
 
-const catalogSearchCondition = (searchQuery: string) => {
-  const normalizedSearchQuery = normalizeSearchText(searchQuery);
 
-  if (!normalizedSearchQuery) {
-    return undefined;
-  }
-
-  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
-
-  return or(
-    containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
-    entryCreatorSearchCondition(normalizedSearchQuery),
-    containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
-    sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
-    exists(
-      db
-        .select({ id: mediaItemTitleAliases.id })
-        .from(mediaItemTitleAliases)
-        .where(
-          and(
-            eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-            containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
-          ),
-        ),
-    ),
-  );
-};
 
 const currentAuthorRatingExistsCondition = (currentAuthorId: number) =>
   exists(

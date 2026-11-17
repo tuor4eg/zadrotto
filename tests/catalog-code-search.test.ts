@@ -4,7 +4,7 @@ import { describe, it } from "node:test";
 
 import { normalizeSearchText } from "../src/lib/search/normalize";
 
-const mediaQuerySource = readFileSync("src/db/queries/media-items.ts", "utf8");
+const mediaQuerySource = readFileSync("src/db/queries/media-item-search.ts", "utf8");
 const seriesQuerySource = readFileSync("src/db/queries/franchises.ts", "utf8");
 
 function matchesCodeSegment(code: string, query: string) {

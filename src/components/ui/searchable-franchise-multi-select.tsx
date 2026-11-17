@@ -1,10 +1,12 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { Check, Search, X } from "lucide-react";
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/form";
+
 import { cn } from "@/lib/common/utils";
 import { matchesFranchiseSearch } from "@/lib/franchises/search";
 import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
@@ -135,8 +137,8 @@ export function SearchableFranchiseMultiSelect({
       ))}
 
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-        <Input
+        <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+        <SearchInput
           id={id}
           type="search"
           role="combobox"

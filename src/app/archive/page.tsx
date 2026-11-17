@@ -1,3 +1,4 @@
+import { buildArchivePageMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 import { getArchiveLinkMetadata } from "@/lib/archive/link-metadata-loader";
 import { getActivePlatformBySlug, searchArchivePlatformMatches } from "@/db/queries/platforms";
@@ -89,7 +90,8 @@ type HomeProps = {
 };
 
 export async function generateMetadata({ searchParams }: HomeProps): Promise<Metadata> {
-  return getArchiveLinkMetadata(await searchParams);
+  const params = await searchParams;
+  return buildArchivePageMetadata(params, await getArchiveLinkMetadata(params));
 }
 
 export default async function Home({ searchParams }: HomeProps) {
@@ -264,6 +266,8 @@ export default async function Home({ searchParams }: HomeProps) {
         ? searchArchivePlatformMatches(searchQuery, enabledMediaTypeCodes)
         : Promise.resolve({ items: [], totalCount: 0 }),
     ]);
+  const paginationRedirect = getPaginationRedirect("/archive", params, catalog.page);
+  if (paginationRedirect) redirect(paginationRedirect);
   const preservedCatalogParams = new URLSearchParams();
   for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"] as const) {
     const value = params[key];
@@ -375,9 +379,7 @@ export default async function Home({ searchParams }: HomeProps) {
         <PublicSiteHeader
         showMediaSuggestion={Boolean(currentAuthor && authorMediaSuggestionData)}
         adminNotificationCount={headerState.adminNotificationCount}
-        author={currentAuthor
-          ? { avatarObjectKey: currentAuthor.avatarObjectKey, name: currentAuthor.name }
-          : null}
+        author={headerState.headerProps.author}
         currentAdminUser={currentAdminUser}
         quiz={headerState.headerProps.quiz}
         controls={

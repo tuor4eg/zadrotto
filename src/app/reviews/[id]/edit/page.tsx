@@ -1,3 +1,4 @@
+import { NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import type { Metadata } from "next"
 import Link from "next/link"
 import { notFound } from "next/navigation"
@@ -20,7 +21,7 @@ import { getReviewFormErrorMessage } from "@/lib/forms/contribution-review"
 
 import { PublicReviewForm } from "../../review-form"
 
-export const metadata: Metadata = {
+export const metadata: Metadata = { ...NO_INDEX_METADATA,
   title: "Редактирование рецензии",
   description: "Измените свою рецензию.",
 }

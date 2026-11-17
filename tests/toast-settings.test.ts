@@ -31,6 +31,13 @@ test("shared toasts select duration for site and admin routes", () => {
   assert.match(toasts, /durationSeconds \* 1000/);
 });
 
+test("shared toasts do not replay unchanged messages after a parent refresh", () => {
+  assert.match(toasts, /lastShownSignature = useRef\(messageSignature\)/);
+  assert.match(toasts, /lastShownSignature\.current !== messageSignature/);
+  assert.match(toasts, /lastShownSignature\.current = messageSignature/);
+  assert.match(toasts, /\[durationSeconds, visibleMessages\]/);
+});
+
 test("inline toast links remain clickable while full-toast links keep their overlay", () => {
   assert.match(toasts, /hasFullToastLink && "pointer-events-none"/);
   assert.doesNotMatch(toasts, /<p className="pointer-events-none/);

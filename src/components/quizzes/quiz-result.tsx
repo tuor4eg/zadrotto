@@ -28,7 +28,7 @@ export function QuizResult({ participant }: { participant: QuizParticipantState 
       <div className="min-w-0">
         <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-amber-950/55">Ваш результат</p>
         <p className="mt-0.5 break-words text-lg leading-tight text-stone-950 sm:text-2xl">
-          {correct ? "Вы ответили правильно!" : "Вы исчерпали попытки"}
+          {correct ? "Вы ответили правильно!" : participant.type === "mosaic" ? "Очки закончились" : "Вы исчерпали попытки"}
         </p>
         <p className="mt-1 break-words text-sm leading-snug text-stone-800 sm:text-lg">
           {correct ? `Очков: ${participant.points}` : "Повезёт в следующий раз"}

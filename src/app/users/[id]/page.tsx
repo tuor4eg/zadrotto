@@ -13,7 +13,7 @@ import { getPublicAuthorStatistics, getPublicUserProfile } from "@/db/queries/fr
 import { getAccessibleMediaTypeCodes, getAllMediaTypeOptions, getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
 import { getMediaItemTilesByIds } from "@/db/queries/media-item-tiles";
 import { getAuthorQuizStatistics } from "@/db/queries/quizzes";
-import { getPublicAuthorLevel } from "@/db/queries/reputation";
+import { getAuthorLevelProgress, getPublicAuthorLevel } from "@/db/queries/reputation";
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
@@ -49,7 +49,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
   const isAdmin = headerState.currentAdminUser;
   const profile = await getPublicUserProfile(id, current?.id, isAdmin);
   if (!profile) notFound();
-  const [achievementItems, level, journal, quizStatistics] = await Promise.all([
+  const [achievementItems, level, journal, quizStatistics, levelProgress] = await Promise.all([
     profile.canViewJournal ? getRecentAwardedAchievements(profile.id) : Promise.resolve([]),
     getPublicAuthorLevel(profile.id),
     (async () => {
@@ -66,6 +66,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
       return { mediaTypes, statistics };
     })(),
     profile.canViewJournal ? getAuthorQuizStatistics(profile.id) : Promise.resolve(null),
+    profile.relationState === "self" ? getAuthorLevelProgress(profile.id) : Promise.resolve(null),
   ]);
   const basePath = `/users/${profile.id}`;
   const { mediaTypes, statistics } = journal;
@@ -92,6 +93,7 @@ export default async function PublicUserPage({ params, searchParams }: PageProps
         currentAdmin={isAdmin}
         currentAuthor={Boolean(current)}
         level={level}
+        levelProgress={levelProgress}
         profile={profile}
         returnTo={basePath}
         statistics={statistics && quizStatistics ? [

@@ -1,10 +1,12 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/form";
+import { Label, Select } from "@/components/ui/form";
 import {
   AUTHOR_MEDIA_STATUS_FILTERS,
   type AuthorMediaStatusFilter,
@@ -111,7 +113,7 @@ export function AuthorMediaFiltersForm({
         <Label htmlFor="author-media-search">
           Поиск
         </Label>
-        <Input
+        <SearchInput
           id="author-media-search"
           type="search"
           value={search}

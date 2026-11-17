@@ -16,7 +16,6 @@ const archiveRatedAuthor = read("src/app/archive/archive-rated-author-context.ts
 const profileHeader = read("src/app/users/[id]/public-user-header.tsx");
 const friendsPage = read("src/app/author/(protected)/friends/page.tsx");
 const settingsPage = read("src/app/author/(protected)/profile/page.tsx");
-const authorLayout = read("src/app/author/(protected)/layout.tsx");
 const publicHeader = read("src/components/archive/public-site-header.tsx");
 const mediaItemTile = read("src/app/media-item-tile.tsx");
 const authorStatistics = read("src/components/author/author-statistics.tsx");
@@ -91,14 +90,14 @@ test("friends journal exposes ratings through the shared archive", () => {
   assert.match(queries, /groupBy\(mediaItems\.releaseYear, mediaItems\.mediaType\)/);
   assert.match(profilePage, /label: "Очков за квизы"/);
   assert.match(profileHeader, /statistics\.map/);
-  assert.match(profileHeader, /grid-cols-3 lg:flex-1 lg:grid-cols-5/);
+  assert.match(profileHeader, /grid-cols-3 gap-y-3 lg:mt-0 lg:flex-1 lg:grid-cols-5/);
   assert.match(profilePage, /reviewsHref=\{`\/reviews\?author=\$\{profile\.id\}`\}/);
   assert.doesNotMatch(authorStatistics, /adminNote|draft|submitted|rejected/);
   assert.match(profilePage, /getPublicUserProfile\(id, current\?\.id, isAdmin\)/);
   assert.match(archivePage, /Boolean\(currentAdminUser\)/);
   assert.match(profileHeader, /currentAuthor \? \([\s\S]*<FriendshipControls[\s\S]*currentAdmin \? null/);
-  assert.match(profileHeader, /flex flex-col items-stretch[\s\S]*lg:flex-row lg:items-center/);
-  assert.match(profileHeader, /<Avatar[\s\S]*<h1[\s\S]*<FriendshipControls[\s\S]*<dl className="grid min-w-0 grid-cols-3 lg:flex-1 lg:grid-cols-5">/);
+  assert.match(profileHeader, /grid grid-cols-\[minmax\(0,1fr\)_auto\][\s\S]*lg:flex-row lg:items-center/);
+  assert.match(profileHeader, /<Avatar[\s\S]*<h1[\s\S]*<dl className="col-span-2 row-start-2 mt-3 grid min-w-0 grid-cols-3 gap-y-3 lg:mt-0 lg:flex-1 lg:grid-cols-5[^"]*">/);
   assert.match(profileHeader, /index % 3 !== 0/);
 });
 
@@ -117,6 +116,6 @@ test("incoming requests are badged through the profile and friends navigation", 
   assert.match(queries, /eq\(authorFriendships\.status, "pending"\)/);
   assert.match(queries, /ne\(authorFriendships\.requestedByAuthorId, authorId\)/);
   assert.doesNotMatch(publicHeader, /NotificationBell/);
-  assert.match(authorLayout, /NotificationBadge count=\{incomingFriendRequestCount\}/);
+  assert.match(read("src/components/archive/author-avatar-menu.tsx"), /NotificationBadge count=\{author.incomingFriendRequestCount\}/);
   assert.match(friendsPage, /item === "incoming"[\s\S]*NotificationBadge/);
 });

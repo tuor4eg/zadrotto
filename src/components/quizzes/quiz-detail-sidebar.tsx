@@ -41,7 +41,7 @@ export function QuizDetailSidebar({ quizId, statistics, participants }: {
         </h2>
         {participants.items.length ? (
           <>
-            <div className="min-h-0 overflow-y-auto">
+            <div className="min-w-0">
               <table className="mt-3 w-full table-fixed text-left">
                 <thead className="text-[9px] uppercase tracking-wider text-stone-500">
                   <tr><th className="w-6 pb-2 font-normal">#</th><th className="pb-2 font-normal">Пользователь</th><th className="w-12 pb-2 text-center font-normal">Очки</th><th className="w-24 pb-2 text-right font-normal">Время</th></tr>

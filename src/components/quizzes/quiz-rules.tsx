@@ -2,13 +2,54 @@ import { CircleHelp, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { AUTHOR_RATING_TONE_CLASS_NAMES } from "@/lib/ratings/tone";
 
-export function QuizRules() {
+export function QuizRules({ type = "classic", budget = 10 }: { type?: "classic" | "mosaic"; budget?: number }) {
+  if (type === "mosaic") return <div className="mx-auto max-w-xl text-sm leading-6 text-stone-700">
+    <ol className="list-decimal space-y-3 pl-5">
+      <li>
+        Чтобы принять участие, нужно нажать следующую кнопку:
+        <div className="mt-2 text-center">
+          <Button
+            className="archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 disabled:opacity-100"
+            disabled
+            variant="outline"
+          >
+            Начать игру
+          </Button>
+        </div>
+      </li>
+      <li>
+        Дальше демонстрируется постер загаданного произведения, разделенный на закрытые квадраты, которые в случайном порядке переместили и повернули. Чтобы открыть квадрат нужно на него нажать, на это тратится очко действий.
+      </li>
+      <li>
+        Как только вы узнали произведение, приходит черёд проверить свою догадку. Отыщите его в архиве и нажмите:
+        <div className="mt-2 text-center">
+          <Button
+            className={`h-9 border px-4 font-mono uppercase tracking-[0.08em] disabled:opacity-100 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
+            disabled
+            size="sm"
+            variant="positive"
+          >
+            Проверить догадку
+            <CircleHelp />
+          </Button>
+        </div>
+      </li>
+      <li>
+        На каждое задание даётся определённое число очков действий, зависящее от сложности вопроса. Кроме расхода их на открытие и перемещение квадратов они также снимаются по одному за каждую неправильную попытку отгадывания. За правильный ответ вы получаете именно столько очков, сколько их по итогу останется. Оставшиеся очки отображаются на экране в виде счетчика сердечек:
+        <div className="mt-3 flex justify-center">
+          <span aria-label={`Осталось очков: ${budget}`} className="archive-paper-surface flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-sm">
+            <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />
+            <span aria-hidden="true" className="whitespace-nowrap font-medium tabular-nums text-red-900">× {budget}</span>
+          </span>
+        </div>
+      </li>
+    </ol>
+  </div>;
   return (
           <div className="mx-auto max-w-xl text-sm leading-6 text-stone-700">
             <ol className="list-decimal space-y-3 pl-5">
-              <li>Раз в день в 12:00 (MSK) публикуются вопросы квиза.</li>
               <li>
-                Чтобы начать участие, нужно нажать следующую кнопку:
+                Чтобы принять участие, нужно нажать следующую кнопку:
                 <div className="mt-2 text-center">
                   <Button
                     className="archive-control-surface border-stone-300/80 font-mono text-xs uppercase tracking-wider text-stone-700 disabled:opacity-100"
@@ -20,7 +61,7 @@ export function QuizRules() {
                 </div>
               </li>
               <li>
-                После этого в архиве нужно отыскать запись, которая, на ваш взгляд, является ответом на вопрос, и нажать кнопку:
+                После этого в архиве нужно отыскать произведение, которое, на ваш взгляд, является ответом на вопрос, и нажать кнопку:
                 <div className="mt-2 text-center">
                   <Button
                     className={`h-9 border px-4 font-mono uppercase tracking-[0.08em] disabled:opacity-100 ${AUTHOR_RATING_TONE_CLASS_NAMES.good}`}
@@ -34,7 +75,7 @@ export function QuizRules() {
                 </div>
               </li>
               <li>
-                За правильный ответ вы получаете столько очков, сколько осталось попыток, включая успешную. Например, при трёх попытках: с первой — 3 очка, со второй — 2, с последней — 1. Если неправильно, можно попробовать ещё, пока не кончатся все попытки. Оставшиеся попытки отображаются на экране как сердечко × число.
+                На угадывание даётся определённое число попыток, зависящее от сложности вопроса. За правильный ответ вы получаете столько очков, сколько осталось попыток. Оставшиеся попытки отображаются на экране в виде счетчика сердечек:
                 <div className="mt-3 flex justify-center">
                   <span aria-label="Осталось попыток: 3" className="archive-paper-surface flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-sm">
                     <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />

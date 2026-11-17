@@ -1,3 +1,4 @@
+import { buildPublicPageMetadata, NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { getComicArtistWork } from "@/db/queries/comic-artist-work";
 import { getAnimeCreatorDisplay } from "@/db/queries/anilist-creator-display";
 import { getSeriesCreatorDisplay } from "@/db/queries/tmdb-series-display";
@@ -61,29 +62,17 @@ export async function generateMetadata({ params }: MediaItemPageProps): Promise<
   const item = await getPublicMediaItemMetadataByCode(code, accessibleMediaTypeCodes);
 
   if (!item) {
-    return {};
+    return NO_INDEX_METADATA;
   }
 
   const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const description = resolvePublicMediaDescription(item) ?? formatMediaItemSummary(item);
-  const images = item.coverUrl ? [item.coverUrl] : undefined;
-
-  return {
-    title: displayTitle,
+  return buildPublicPageMetadata(
+    `/media/${encodeURIComponent(code)}`,
+    displayTitle,
     description,
-    openGraph: {
-      type: "website",
-      title: displayTitle,
-      description,
-      images,
-    },
-    twitter: {
-      card: item.coverUrl ? "summary_large_image" : "summary",
-      title: displayTitle,
-      description,
-      images,
-    },
-  };
+    item.coverUrl,
+  );
 }
 
 export default async function MediaItemPage({ params, searchParams }: MediaItemPageProps) {
@@ -218,29 +207,23 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               />
             ) : null
           }
-          cornerActions={currentAuthor && item.currentAuthorScore === null ? (
-            <AuthorMediaStatusControls
-              className="mt-0"
-              currentAuthorScore={item.currentAuthorScore}
-              currentAuthorHasRating={item.currentAuthorRatedAt !== null}
-              isAuthorized
-              currentAuthorStatus={item.currentAuthorStatus}
-              mediaItemCode={item.code}
-            />
+          cornerActions={currentAuthor ? (
+            <div className="flex items-center gap-2">
+              {item.currentAuthorScore === null ? (
+                <AuthorMediaStatusControls
+                  className="mt-0"
+                  currentAuthorScore={item.currentAuthorScore}
+                  currentAuthorHasRating={item.currentAuthorRatedAt !== null}
+                  isAuthorized
+                  currentAuthorStatus={item.currentAuthorStatus}
+                  mediaItemCode={item.code}
+                />
+              ) : null}
+              {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
+                <QuizGuessButton titleId={item.id} />
+              ) : null}
+            </div>
           ) : null}
-          titleActions={
-            currentAuthor && item.currentAuthorScore === null ? (
-              <div className="flex flex-wrap gap-2">
-                {/* Preserve the title action row when its button moves to the corner. */}
-                <span aria-hidden="true" className="size-9 shrink-0" />
-                {activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
-                  <QuizGuessButton titleId={item.id} />
-                ) : null}
-              </div>
-            ) : currentAuthor && activeQuiz && isQuizMediaTypeAllowed(activeQuiz.mediaTypes, item.mediaType) ? (
-              <QuizGuessButton titleId={item.id} />
-            ) : null
-          }
           ratingSlot={
             <MediaItemRatingDialog
               mediaItemCode={item.code}

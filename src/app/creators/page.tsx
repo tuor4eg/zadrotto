@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { buildListingMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
@@ -9,7 +11,6 @@ import { CreatorSearch } from "./creators-search";
 import { CreatorCatalog } from "./creators-catalog";
 import { CreatorMediaTypeChips } from "./creator-media-type-chips";
 
-export const metadata = { title: "Создатели" };
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ type CreatorPageProps = {
     role?: string | string[];
   }>;
 };
+
+export async function generateMetadata({ searchParams }: CreatorPageProps) {
+  return buildListingMetadata("/creators", "Создатели", "Создатели произведений в Гикотеке: авторы, режиссёры, разработчики и их работы.", await searchParams);
+}
 
 export default async function CreatorPage({ searchParams }: CreatorPageProps) {
   const [params, headerState] = await Promise.all([
@@ -52,6 +57,8 @@ export default async function CreatorPage({ searchParams }: CreatorPageProps) {
     pageSize,
     searchQuery,
   });
+  const paginationRedirect = getPaginationRedirect("/creators", params, creatorsPage.page);
+  if (paginationRedirect) redirect(paginationRedirect);
   const paginationSearchParams = {
     pageSize: pageSize !== DEFAULT_CREATORS_PAGE_SIZE ? String(pageSize) : undefined,
     q: searchQuery || undefined,

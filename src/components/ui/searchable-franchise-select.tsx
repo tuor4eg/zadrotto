@@ -1,9 +1,10 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { Check, Search } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState } from "react";
 
-import { Input } from "@/components/ui/form";
 import { cn } from "@/lib/common/utils";
 import { matchesFranchiseSearch } from "@/lib/franchises/search";
 
@@ -102,8 +103,8 @@ export function SearchableFranchiseSelect({
   return (
     <div ref={rootRef} className="relative min-w-0 flex-1">
       <input type="hidden" name={name} value={value} />
-      <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-      <Input
+      <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+      <SearchInput
         id={id}
         type="search"
         role="combobox"

@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import Image from "next/image";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
-export const metadata: Metadata = {
-  title: "О проекте — Гикотека",
-  description: "О культурном архиве, его источниках данных, лицензии и использовании ИИ.",
-};
+export const metadata = buildPublicPageMetadata("/about", "О проекте", "О культурном архиве Гикотеки, его источниках данных, лицензии и использовании ИИ.");
 
 const DATA_PROVIDERS = [
   ["BoardGameGeek", "https://boardgamegeek.com/"],

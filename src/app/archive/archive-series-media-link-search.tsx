@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
 import { Loader2, Minus, Plus, Search, X } from "lucide-react";
@@ -249,8 +251,8 @@ export function ArchiveSeriesMediaLinkSearch({
         </button>
       </ArchiveTooltip>
       <div className={`${overlayOpen ? "block" : "hidden"} absolute right-11 top-1/2 w-[min(24rem,calc(100vw-6rem))] -translate-y-1/2`}>
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-        <input
+        <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+        <SearchInput bare
           className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50 py-2 pl-9 pr-3 font-mono text-sm text-stone-900 outline-none placeholder:text-stone-400 focus:border-stone-950"
           aria-controls="series-media-search-results"
           aria-label="Найти запись для добавления в серию"

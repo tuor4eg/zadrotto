@@ -52,20 +52,20 @@ describe("public site header", () => {
     assert.match(headerSource, /Данные хранятся только на устройстве/);
     assert.match(headerSource, /авторизуйтесь чтобы не потерять их/);
     assert.doesNotMatch(headerSource, /NotificationBell/);
-    assert.match(headerSource, /href="\/admin"[\s\S]*href="\/author\/profile"/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*<AuthorAvatarMenu/);
     assert.match(headerSource, /aria-label="Открыть текущий квиз"/);
     assert.match(headerSource, /AUTHOR_RATING_TONE_CLASS_NAMES\.good/);
     assert.match(headerSource, /<QuizModal/);
     assert.match(headerSource, /\{author \? \([\s\S]*aria-label="Открыть текущий квиз"/);
     assert.match(headerSource, /participant=\{currentQuizParticipant\}[\s\S]*quiz=\{quiz\?\.quiz \?\? null\}/);
-    assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущий квиз[\s\S]*href="\/author\/profile"/);
+    assert.match(headerSource, /href="\/admin"[\s\S]*Открыть текущий квиз[\s\S]*<AuthorAvatarMenu/);
     assert.match(
       headerSource,
       /href="\/admin"[\s\S]*className="relative grid size-9[^"]*rounded-full/,
     );
     assert.match(
-      headerSource,
-      /href="\/author\/profile"[\s\S]*className="grid size-9[^"]*rounded-full[\s\S]*className="size-9 text-xs"/,
+      read("src/components/archive/author-avatar-menu.tsx"),
+      /className="relative grid size-9[^"]*rounded-full[\s\S]*className="size-9 text-xs"/,
     );
     assert.match(headerSource, /href="\/admin"[\s\S]*NotificationBadge[\s\S]*count=\{adminNotificationCount\}/);
   });
@@ -89,7 +89,7 @@ describe("public site header", () => {
     assert.match(headerStateSource, /getActiveQuiz\(\)/);
     assert.match(headerStateSource, /getActiveQuizParticipantState\(author\.id\)/);
     assert.match(headerStateSource, /quiz: activeQuiz[\s\S]*participant: activeQuizParticipant\?\.quizId === activeQuiz\.id/);
-    assert.match(headerStateSource, /adminUser\s*\?\s*await getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*0/);
+    assert.match(headerStateSource, /adminUser\s*\?\s*getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*Promise.resolve\(0\)/);
     assert.match(headerStateSource, /headerProps:[\s\S]*avatarObjectKey: author\.avatarObjectKey, name: author\.name/);
     assert.match(archivePageSource, /<PublicSiteHeader[\s\S]*quiz=\{headerState\.headerProps\.quiz\}/);
   });

@@ -1,11 +1,10 @@
 "use client";
 
-import { CircleCheck, CircleHelp } from "lucide-react";
+import { CircleCheck } from "lucide-react";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 
 import type { getRevealedQuizAnswer } from "@/db/queries/quizzes";
-import { formatQuizTimeRemaining } from "@/lib/quizzes/model";
 
 export function QuizAnswerReveal({ quizId, endsAt, solved }: {
   quizId: number;
@@ -13,9 +12,6 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
   solved: boolean;
 }) {
   const [answer, setAnswer] = useState<Awaited<ReturnType<typeof getRevealedQuizAnswer>>>(null);
-  const [now, setNow] = useState<Date | null>(null);
-  const [error, setError] = useState(false);
-  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -27,17 +23,14 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
         const data = await response.json();
         if (!controller.signal.aborted) {
           setAnswer(data.answer);
-          setLoaded(true);
-          setError(false);
         }
       } catch {
-        if (!controller.signal.aborted) setError(true);
+        // Keep the answer hidden when it is unavailable.
       }
     }
     void load();
     const interval = window.setInterval(() => {
       const currentTime = new Date();
-      setNow(currentTime);
       if (!requestedAfterEnd && currentTime.getTime() >= new Date(endsAt).getTime()) {
         requestedAfterEnd = true;
         void load();
@@ -46,9 +39,7 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
     return () => { controller.abort(); window.clearInterval(interval); };
   }, [quizId, endsAt, solved]);
 
-  const revealed = answer !== null;
-  const Icon = revealed ? CircleCheck : CircleHelp;
-  const expired = now !== null && now.getTime() >= new Date(endsAt).getTime();
+  if (!answer) return null;
 
   return (
     <div className="media-carrier-font-pc-steam relative isolate flex min-h-[90px] min-w-0 w-full shrink-0 items-center gap-4 overflow-hidden rounded-md border border-emerald-950/20 bg-emerald-900/5 px-4 py-3 text-left sm:gap-6 sm:px-6">
@@ -58,19 +49,11 @@ export function QuizAnswerReveal({ quizId, endsAt, solved }: {
           <img src={answer.coverUrl} alt="" className="h-full w-full object-cover object-center" />
         </div>
       ) : null}
-      <Icon aria-hidden="true" className="size-10 shrink-0 text-emerald-950/80 sm:size-12" strokeWidth={1.7} />
+      <CircleCheck aria-hidden="true" className="size-10 shrink-0 text-emerald-950/80 sm:size-12" strokeWidth={1.7} />
       <div className="min-w-0">
-        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-950/70">Правильный ответ{revealed ? ":" : ""}</p>
-        {answer ? (
-          <>
-            <Link href={`/media/${answer.code}`} className="mt-0.5 block break-words text-lg leading-tight text-stone-950 hover:underline sm:text-2xl">{answer.title}</Link>
-            {answer.comment ? <p className="mt-1 break-words text-sm leading-snug text-stone-600 sm:text-base">{answer.comment}</p> : null}
-          </>
-        ) : (
-          <p className="mt-1 line-clamp-2 text-base leading-snug text-stone-800 sm:text-xl">
-            {error ? "Не удалось загрузить ответ" : solved || expired ? loaded ? "Ответ недоступен" : "Загружаем ответ…" : `Ответ появится через ${now ? formatQuizTimeRemaining(endsAt, now).replace(/^Осталось /, "") : "…"}`}
-          </p>
-        )}
+        <p className="text-[9px] font-semibold uppercase tracking-[0.16em] text-emerald-950/70">Правильный ответ:</p>
+        <Link href={`/media/${answer.code}`} className="mt-0.5 block break-words text-lg leading-tight text-stone-950 hover:underline sm:text-2xl">{answer.title}</Link>
+        {answer.comment ? <p className="mt-1 break-words text-sm leading-snug text-stone-600 sm:text-base">{answer.comment}</p> : null}
       </div>
     </div>
   );

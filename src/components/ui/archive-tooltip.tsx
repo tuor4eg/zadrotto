@@ -28,6 +28,11 @@ export function ArchiveTooltip({
 
   function showPortalTooltip(event: React.MouseEvent<HTMLSpanElement> | React.FocusEvent<HTMLSpanElement>) {
     if (!portal) return;
+    // React portal events bubble through the owner tree, including dialog focus.
+    if (!event.currentTarget.contains(event.target as Node)) {
+      setPortalPosition(null);
+      return;
+    }
 
     const rect = event.currentTarget.getBoundingClientRect();
     setPortalPosition(
@@ -102,6 +107,7 @@ export function ArchiveTooltip({
         hasTooltip ? "group/archive-tooltip" : null,
         className,
       )}
+      onClickCapture={hidePortalTooltip}
       onBlur={hidePortalTooltip}
       onFocus={showPortalTooltip}
       onMouseEnter={showPortalTooltip}

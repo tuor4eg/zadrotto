@@ -48,6 +48,9 @@ do not require architecture documentation updates.
 ## Project invariants
 
 - Keep changes focused and preserve unrelated work.
+- For UI controls, reuse existing shared components and the closest established project pattern,
+  including hover, focus, disabled states and search icons. Do not introduce one-off input or
+  button styles when an equivalent control already exists in the project.
 - This is an early MVP: prefer simple, reversible decisions and avoid speculative abstractions or
   dependencies.
 - Design wide admin data tables responsively from the start: keep the table for desktop, but render

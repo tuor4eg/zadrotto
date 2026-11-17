@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useRouter } from "next/navigation";
 import { useRef, useTransition } from "react";
 
@@ -32,7 +34,7 @@ export function TierListFilters({ searchQuery, authorId, status }: {
 
   return (
     <div ref={filtersRef} aria-busy={pending} className="grid gap-3 rounded-lg border border-stone-200 bg-white p-4 sm:grid-cols-2 xl:grid-cols-[minmax(0,280px)_minmax(0,180px)_minmax(0,220px)]">
-      <Input
+      <SearchInput
         aria-label="Название"
         type="search"
         name="q"

@@ -12,13 +12,16 @@ import { PublicSiteFooterLayer } from "@/components/archive/public-site-footer-l
 import { AnalyticsConsentLayer } from "@/components/archive/analytics-consent-layer";
 import { PersonalDataConsentGate } from "@/components/auth/personal-data-consent-gate";
 import { getSiteOrigin } from "@/lib/site-url";
+import { SITE_DESCRIPTION } from "@/lib/seo/metadata";
 
 import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: getSiteOrigin(),
-  title: "Гикотека",
-  description: "Архив культурных записей и оценок.",
+  title: { default: "Гикотека", template: "%s — Гикотека" },
+  description: SITE_DESCRIPTION,
+  openGraph: { type: "website", siteName: "Гикотека", locale: "ru_RU", title: "Гикотека", description: SITE_DESCRIPTION },
+  twitter: { card: "summary", title: "Гикотека", description: SITE_DESCRIPTION },
 };
 
 export const viewport: Viewport = {

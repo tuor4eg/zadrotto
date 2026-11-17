@@ -12,7 +12,7 @@ type QuizLeaderboardItem = Awaited<ReturnType<typeof getQuizLeaderboard>>[number
 export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderboardItem[]; fitRows?: boolean }) {
   return (
     <section
-      className={`archive-paper archive-panel h-full min-h-80 p-4 sm:p-5 ${fitRows ? "flex flex-col lg:min-h-0" : ""}`}
+      className={`archive-paper archive-panel media-carrier-font-pc-steam [&_*]:[font-family:inherit] h-full min-h-80 p-4 sm:p-5 ${fitRows ? "flex flex-col lg:min-h-0" : ""}`}
       aria-labelledby="quiz-leaderboard-title"
     >
       <h2
@@ -27,7 +27,7 @@ export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderb
         <QuizFittingRows enabled={fitRows}>
           <table className="mt-3 w-full table-fixed border-collapse text-left">
             <thead>
-              <tr className="font-mono text-[8px] uppercase tracking-[0.1em] text-stone-500 sm:text-[9px]">
+              <tr className="text-[8px] uppercase tracking-[0.1em] text-stone-500 sm:text-[9px]">
                 <th className="w-8 pb-2 font-normal">#</th>
                 <th className="pb-2 font-normal">Пользователь</th>
                 <th className="w-16 pb-2 text-center font-normal">Очки</th>
@@ -37,7 +37,7 @@ export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderb
             <tbody className="divide-y divide-dashed divide-stone-400/35">
               {items.map((item, index) => (
                 <tr key={item.authorId} data-quiz-row>
-                  <td className="py-2 font-mono text-xs tabular-nums text-stone-600">
+                  <td className="py-2 text-xs tabular-nums text-stone-600">
                     {index + 1}
                   </td>
                   <td className="min-w-0 py-2 pr-2">
@@ -50,13 +50,13 @@ export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderb
                         objectKey={item.authorAvatarObjectKey}
                         className="size-8 text-[10px]"
                       />
-                      <span className="truncate font-serif text-sm sm:text-base">{item.authorName}</span>
+                      <span className="truncate text-sm sm:text-base">{item.authorName}</span>
                     </Link>
                   </td>
-                  <td className="py-2 text-center font-serif text-lg font-semibold tabular-nums text-stone-950">
+                  <td className="py-2 text-center text-lg font-semibold tabular-nums text-stone-950">
                     {item.totalPoints}
                   </td>
-                  <td className="whitespace-nowrap py-2 text-right font-mono text-[10px] tabular-nums text-stone-600 sm:text-xs">
+                  <td className="whitespace-nowrap py-2 text-right text-[10px] tabular-nums text-stone-600 sm:text-xs">
                     {formatQuizDuration(item.totalTimeSeconds)}
                   </td>
                 </tr>

@@ -7,9 +7,11 @@ export async function POST(request: Request) {
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ error: "Требуется авторизация." }, { status: 401 });
   let titleId: unknown;
-  try { ({ titleId } = await request.json()); } catch { return Response.json({ error: "Некорректный запрос." }, { status: 400 }); }
-  if (!Number.isSafeInteger(titleId) || Number(titleId) <= 0) return Response.json({ error: "Некорректная запись." }, { status: 400 });
-  const result = await checkQuizGuess(Number(titleId), author.id);
+  let quizId: unknown;
+  try { ({ titleId, quizId } = await request.json()); } catch { return Response.json({ error: "Некорректный запрос." }, { status: 400 }); }
+  if (!Number.isSafeInteger(titleId) || Number(titleId) <= 0 || Number(titleId) > 2_147_483_647) return Response.json({ error: "Некорректная запись." }, { status: 400 });
+  if (quizId !== undefined && (!Number.isSafeInteger(quizId) || Number(quizId) < 1 || Number(quizId) > 2_147_483_647)) return Response.json({ error: "Некорректный квиз." }, { status: 400 });
+  const result = await checkQuizGuess(Number(titleId), author.id, undefined, quizId === undefined ? undefined : Number(quizId));
   if (result.kind === "missing") return Response.json({ error: "Активный квиз не найден." }, { status: 404 });
   if (result.kind === "not-participant") return Response.json({ error: "Сначала присоединитесь к квизу." }, { status: 403 });
   if (result.kind === "title-missing") return Response.json({ error: "Запись не найдена." }, { status: 404 });

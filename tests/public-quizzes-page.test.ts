@@ -31,13 +31,13 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   assert.match(currentQuiz, /max-h-\[250px\]/);
   assert.match(currentQuiz, /max-h-\[170px\]/);
   assert.match(noActiveState, /src="\/quiz_no_active_placeholder\.webp"/);
-  assert.match(noActiveState, /Новый квиз уже готовится\./);
-  assert.match(noActiveState, /Загляни чуть позже — хорошие вопросы всегда возвращаются\./);
+  assert.match(noActiveState, /Новый квиз уже готовится/);
+  assert.match(noActiveState, /Загляни чуть позже — хорошие вопросы всегда возвращаются/);
   assert.equal(existsSync("public/quiz_no_active_placeholder.webp"), true);
   assert.ok(statSync("public/quiz_no_active_placeholder.webp").size < 100_000);
   assert.match(widget, /src="\/back_quizzes\.webp"[\s\S]*style=\{\{ opacity: 0\.25 \}\}/);
   assert.match(widget, /backgroundSize: "auto 100%"/);
-  assert.match(widget, />\s*Квизы\s*<\/h1>/);
+  assert.match(widget, /<ArchivePageHeading[^>]*title="Квизы"/);
   assert.match(widget, /Проверь свои знания или узнай что-то новое\. Здесь тебя ждут интересные вопросы и хорошая компания/);
   assert.doesNotMatch(widget, /CircleHelp/);
   assert.match(widget, /maskImage: "linear-gradient\(to right, transparent/);
@@ -134,12 +134,12 @@ test("archived quiz page reuses the modal panel without offering active quiz par
   assert.match(panel, /finished \? \([\s\S]*Квиз завершён[\s\S]*<QuizParticipationButton/);
 });
 
-test("quiz answer is revealed on the server only after a correct guess or the deadline", () => {
+test("quiz answer is revealed after victory, mosaic exhaustion or the deadline", () => {
   const query = read("src/db/queries/quizzes.ts");
   const reveal = query.slice(query.indexOf("export async function getRevealedQuizAnswer"), query.indexOf("export async function getQuizById"));
   const route = read("src/app/api/quizzes/[id]/answer/route.ts");
   assert.match(reveal, /eq\(quizParticipants.authorId, authorId\)/);
-  assert.match(reveal, /or\(lte\(quizzes.endsAt, sql`now\(\)`\), eq\(quizParticipants.outcome, "correct"\)\)/);
+  assert.match(reveal, /or\(lte\(quizzes.endsAt, sql`now\(\)`\), eq\(quizParticipants.outcome, "correct"\), and\(eq\(quizzes.type, "mosaic"\), eq\(quizParticipants.outcome, "exhausted"\)\)\)/);
   assert.match(reveal, /eq\(quizzes.enabled, true\), lte\(quizzes.startsAt/);
   assert.match(reveal, /eq\(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/);
   assert.match(route, /if \(!author\).*status: 401/);
@@ -151,11 +151,11 @@ test("quiz leaderboard ranks authors by all correct answer points and elapsed ti
   const query = read("src/db/queries/quizzes.ts");
 
   assert.match(query, /getQuizLeaderboard[\s\S]*isNotNull\(quizParticipants\.completedAt\)/);
-  assert.match(query, /totalPoints: sql<number>`[\s\S]*sum\([\s\S]*quizParticipants\.attemptsRemaining/);
+  assert.match(query, /totalPoints: sql<number>`[\s\S]*sum\([\s\S]*quizParticipants\.awardedPoints/);
   assert.match(query, /totalTimeSeconds: sql<number>`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)::float`/);
   assert.match(query, /groupBy\(authors\.id, authors\.name, authors\.avatarObjectKey\)/);
-  assert.match(query, /having\(sql`[\s\S]*quizParticipants\.attemptsRemaining[\s\S]*> 0`\)/);
-  assert.match(query, /orderBy\([\s\S]*desc\(sql`[\s\S]*quizParticipants\.attemptsRemaining[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
+  assert.match(query, /having\(sql`[\s\S]*quizParticipants\.awardedPoints[\s\S]*> 0`\)/);
+  assert.match(query, /orderBy\([\s\S]*desc\(sql`[\s\S]*quizParticipants\.awardedPoints[\s\S]*asc\(sql`sum\(extract\(epoch from \(\$\{quizParticipants\.completedAt\} - \$\{quizzes\.startsAt\}\)\)\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)`\),[\s\S]*asc\(authors\.name\),[\s\S]*asc\(authors\.id\)/);
   assert.doesNotMatch(query, /isWinner|winnerCount|winnerName/);
   assert.match(query, /limit\(limit\)/);
   assert.match(leaderboard, /Таблица лидеров/);

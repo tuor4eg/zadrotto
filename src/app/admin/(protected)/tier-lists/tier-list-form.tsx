@@ -1,5 +1,7 @@
 'use client';
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useEffect, useRef, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { useRouter } from 'next/navigation';
@@ -119,7 +121,7 @@ export function TierListForm({ templates, limits, defaultAuthor, initial, items,
     <AdminToasts messages={messages} />
     <section className="grid gap-4 rounded-md border bg-white p-5">
       <label className="grid gap-2 text-sm font-medium">Название<Input required maxLength={80} value={title} disabled={pending} onChange={event => setTitle(event.target.value)} /></label>
-      <div className="grid gap-2"><span className="text-sm font-medium">Автор</span><p className="text-sm">{author.name}{author.isSystem ? ' · системный автор' : ''}</p><Input aria-label="Найти автора" placeholder="Поиск по имени автора" value={query} disabled={pending} onChange={event => { setQuery(event.target.value); setAuthorOptions([]); setSearchingAuthors(false); }} />
+      <div className="grid gap-2"><span className="text-sm font-medium">Автор</span><p className="text-sm">{author.name}{author.isSystem ? ' · системный автор' : ''}</p><SearchInput aria-label="Найти автора" placeholder="Поиск по имени автора" value={query} disabled={pending} onChange={event => { setQuery(event.target.value); setAuthorOptions([]); setSearchingAuthors(false); }} />
         {query.trim() ? <div className="grid max-h-56 gap-1 overflow-y-auto rounded-md border p-2" aria-label="Результаты поиска авторов">{searchingAuthors ? <p className="p-2 text-sm text-stone-500" role="status">Поиск…</p> : authorOptions.length ? authorOptions.map(option => <Button key={option.id} type="button" variant="ghost" disabled={pending} className="justify-start whitespace-normal text-left" onClick={() => { setAuthor(option); setQuery(''); setAuthorOptions([]); }}>{option.name}{option.isSystem ? ' · системный автор' : ''}</Button>) : <p className="p-2 text-sm text-stone-500">Авторов не найдено.</p>}</div> : null}
         {author.id !== defaultAuthor.id ? <Button type="button" variant="outline" size="sm" className="w-fit" disabled={pending} onClick={() => setAuthor(defaultAuthor)}>Выбрать {defaultAuthor.name}</Button> : null}
       </div>

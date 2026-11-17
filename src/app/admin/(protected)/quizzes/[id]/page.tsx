@@ -1,4 +1,4 @@
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, RotateCcw } from "lucide-react";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
@@ -6,6 +6,8 @@ import { PaginationNav } from "@/components/pagination-nav";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { buttonVariants } from "@/components/ui/button";
+import { ConfirmAction } from "@/components/ui/confirm-action";
+import { Tooltip } from "@/components/ui/tooltip";
 import { Table, TableWrap, TBody, TD, TH, THead, TR } from "@/components/ui/table";
 import {
   getAdminQuizAggregates,
@@ -20,6 +22,18 @@ import {
 import type { QuizState } from "@/lib/quizzes/model";
 
 import { EmptyState, PageHeader } from "../../admin-ui";
+import { resetQuizParticipantAction } from "../actions";
+
+function ResetParticipantButton({ quizId, authorId, authorName }: { quizId: number; authorId: number; authorName: string }) {
+  return <Tooltip label="Сбросить прогресс">
+    <ConfirmAction action={resetQuizParticipantAction}
+      fields={[{ name: "quizId", value: quizId }, { name: "authorId", value: authorId }]}
+      title="Сбросить прогресс участника?"
+      description={`У автора «${authorName}» будут удалены присоединение к этому квизу, все попытки, открытые клетки, результат и заработанные очки. Автор снова сможет присоединиться, если квиз ещё идёт. Действие необратимо. Уже выданные достижения сохранятся.`}
+      triggerLabel="Сбросить прогресс" triggerAriaLabel={`Сбросить прогресс: ${authorName}`}
+      triggerIcon={<RotateCcw />} triggerSize="icon" triggerVariant="outline" confirmLabel="Сбросить прогресс" />
+  </Tooltip>;
+}
 
 const QUIZ_STATE_LABELS: Record<QuizState, string> = {
   active: "Активна",
@@ -142,7 +156,7 @@ export default async function AdminQuizResultsPage({
             </dd>
           </div>
           <div>
-            <dt className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500">Лимит попыток</dt>
+            <dt className="text-xs font-medium uppercase tracking-[0.12em] text-stone-500">{quiz.type === "mosaic" ? "Бюджет очков" : "Лимит попыток"}</dt>
             <dd className="mt-1 tabular-nums text-stone-700">{quiz.attemptLimit}</dd>
           </div>
         </dl>
@@ -190,16 +204,16 @@ export default async function AdminQuizResultsPage({
                       className="shrink-0"
                       variant={PARTICIPANT_STATUS_VARIANTS[participant.status]}
                     >
-                      {PARTICIPANT_STATUS_LABELS[participant.status]}
+                      {participant.type === "mosaic" && participant.status === "exhausted" ? "Очки закончились" : PARTICIPANT_STATUS_LABELS[participant.status]}
                     </Badge>
                   </div>
 
                   <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-3 text-sm">
                     <div><dt className="text-xs text-stone-500">Очки</dt><dd className="mt-0.5 tabular-nums text-stone-800">{participant.points}</dd></div>
                     <div>
-                      <dt className="text-xs text-stone-500">Попытки</dt>
+                      <dt className="text-xs text-stone-500">{quiz.type === "mosaic" ? "Открытия / ошибки" : "Попытки"}</dt>
                       <dd className="mt-0.5 tabular-nums text-stone-800">
-                        {participant.usedAttempts} из {participant.attemptLimit}
+                        {quiz.type === "mosaic" ? `${participant.openedCells} / ${participant.usedAttempts}` : `${participant.usedAttempts} из ${participant.attemptLimit}`}
                       </dd>
                     </div>
                     <div>
@@ -227,6 +241,9 @@ export default async function AdminQuizResultsPage({
                       </dd>
                     </div>
                   </dl>
+                  <div className="mt-3 flex justify-end">
+                    <ResetParticipantButton quizId={quiz.id} authorId={participant.authorId} authorName={participant.authorName} />
+                  </div>
                 </article>
               ))}
             </div>
@@ -238,11 +255,12 @@ export default async function AdminQuizResultsPage({
                     <TH className="w-[14%]">Автор</TH>
                     <TH className="w-[14%]">Статус</TH>
                     <TH className="w-[6%]">Очки</TH>
-                    <TH className="w-[8%]">Попытки</TH>
+                    <TH className="w-[8%]">{quiz.type === "mosaic" ? "Открытия / ошибки" : "Попытки"}</TH>
                     <TH className="w-[15%]">Вошёл</TH>
                     <TH className="w-[15%]">Завершил</TH>
                     <TH className="w-[15%]">От старта</TH>
-                    <TH className="w-[13%]">После входа</TH>
+                    <TH className="w-[10%]">После входа</TH>
+                    <TH className="w-[4.5rem]"><span className="sr-only">Действия</span></TH>
                   </tr>
                 </THead>
                 <TBody>
@@ -263,12 +281,12 @@ export default async function AdminQuizResultsPage({
                       </TD>
                       <TD>
                         <Badge variant={PARTICIPANT_STATUS_VARIANTS[participant.status]}>
-                          {PARTICIPANT_STATUS_LABELS[participant.status]}
+                          {participant.type === "mosaic" && participant.status === "exhausted" ? "Очки закончились" : PARTICIPANT_STATUS_LABELS[participant.status]}
                         </Badge>
                       </TD>
                       <TD className="tabular-nums">{participant.points}</TD>
                       <TD className="tabular-nums">
-                        {participant.usedAttempts} из {participant.attemptLimit}
+                        {quiz.type === "mosaic" ? `${participant.openedCells} / ${participant.usedAttempts}` : `${participant.usedAttempts} из ${participant.attemptLimit}`}
                       </TD>
                       <TD className="text-xs tabular-nums text-stone-600">
                         {formatDateTime(participant.joinedAt)}
@@ -282,6 +300,7 @@ export default async function AdminQuizResultsPage({
                       <TD className="text-xs tabular-nums text-stone-600">
                         {formatQuizDuration(participant.secondsSinceJoined)}
                       </TD>
+                      <TD><div className="flex justify-center"><ResetParticipantButton quizId={quiz.id} authorId={participant.authorId} authorName={participant.authorName} /></div></TD>
                     </TR>
                   ))}
                 </TBody>

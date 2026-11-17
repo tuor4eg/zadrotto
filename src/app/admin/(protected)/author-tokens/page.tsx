@@ -1,7 +1,8 @@
 import { Ban, KeyRound, RotateCcw, Trash2 } from "lucide-react";
+import Link from "next/link";
 
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Table, TBody, TD, TH, THead, TR, TableWrap } from "@/components/ui/table";
@@ -136,7 +137,12 @@ export default async function AdminAuthorTokensPage({
         <PageHeader
           title="Токены авторов"
           description="Токены доступа для будущих авторских сценариев."
-          aside={<Badge variant="outline">{tokens.length} всего</Badge>}
+          aside={<div className="flex flex-wrap items-center gap-2">
+            <Badge variant="outline">{tokens.length} всего</Badge>
+            <Link href="/author/token" className={buttonVariants({ variant: "outline", size: "sm" })}>
+              Перейти к входу
+            </Link>
+          </div>}
         />
 
         {tokens.length === 0 ? (

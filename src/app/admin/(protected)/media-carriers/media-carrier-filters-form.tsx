@@ -1,10 +1,12 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useEffect, useEffectEvent, useRef, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { type MediaTypeFilter } from "@/app/media-items-catalog-logic";
-import { Input, Select } from "@/components/ui/form";
+import { Select } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import { getMediaTypeLabel, type MediaType, type MediaTypeOption } from "@/lib/media/types";
 
@@ -121,7 +123,7 @@ export function MediaCarrierFiltersForm({
   return (
     <div className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">
       <div className="grid gap-3 lg:grid-cols-[minmax(220px,1fr)_220px_auto]">
-        <Input
+        <SearchInput
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}

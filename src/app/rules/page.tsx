@@ -1,13 +1,10 @@
-import type { Metadata } from "next";
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import Image from "next/image";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
 
-export const metadata: Metadata = {
-  title: "Правила — Гикотека",
-  description: "Правила культурного архива для читателей и авторов.",
-};
+export const metadata = buildPublicPageMetadata("/rules", "Правила", "Правила Гикотеки для читателей и авторов: записи, оценки, рецензии и общение.");
 
 const sections = [
   {

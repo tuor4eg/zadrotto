@@ -1,5 +1,5 @@
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import { ArchivePageHeading } from "@/components/archive/archive-page-heading";
-import type { Metadata } from "next"
 import Image from "next/image"
 
 import { AuthorAchievementHeroStats } from "@/components/achievements/author-achievement-hero-stats"
@@ -12,10 +12,7 @@ import { getAchievementShowcase } from "@/db/queries/achievements"
 import { getAchievementShowcaseStats } from "@/lib/achievements/showcase"
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header"
 
-export const metadata: Metadata = {
-  title: "Ачивки",
-  description: "Твои ачивки в архиве.",
-}
+export const metadata = buildPublicPageMetadata("/achievements", "Ачивки", "Достижения в Гикотеке: знакомься с произведениями, пополняй архив и открывай новые ачивки.");
 
 export const dynamic = "force-dynamic"
 

@@ -1,9 +1,11 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Input, Select } from "@/components/ui/form";
+import { Select } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 type AchievementFiltersFormProps = {
@@ -51,7 +53,7 @@ export function AchievementFiltersForm({ awardStatus, searchQuery, status, visib
   }
 
   return <div className="grid gap-3 rounded-md border border-stone-200 bg-white p-4 md:grid-cols-2 md:items-center xl:grid-cols-[minmax(240px,1fr)_200px_200px_200px_auto]">
-    <Input aria-label="Поиск ачивок" type="search" value={draft} onChange={(event) => setDraft(event.currentTarget.value)} placeholder="Название, код или механика" />
+    <SearchInput aria-label="Поиск ачивок" type="search" value={draft} onChange={(event) => setDraft(event.currentTarget.value)} placeholder="Название, код или механика" />
     <Select aria-label="Фильтр по состоянию ачивок" value={status} onChange={(event) => replaceFilters({ status: event.currentTarget.value })}><option value="all">Все состояния</option><option value="enabled">Включённые</option><option value="disabled">Выключенные</option></Select>
     <Select aria-label="Фильтр по типу ачивок" value={visibility} onChange={(event) => replaceFilters({ visibility: event.currentTarget.value })}><option value="all">Все типы</option><option value="regular">Обычные</option><option value="secret">Тайные</option></Select>
     <Select aria-label="Фильтр по получению ачивок" value={awardStatus} onChange={(event) => replaceFilters({ awardStatus: event.currentTarget.value })}><option value="all">Все по получению</option><option value="awarded">Полученные</option><option value="unawarded">Не полученные</option></Select>

@@ -1,7 +1,9 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/form";
+
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 export function PlatformSearch({ searchQuery, cancelled = false }: { searchQuery: string; cancelled?: boolean }) {
@@ -16,6 +18,6 @@ export function PlatformSearch({ searchQuery, cancelled = false }: { searchQuery
       router.replace(suffix ? `/admin/platforms?${suffix}` : "/admin/platforms", { scroll: false });
     },
   });
-  return <Input type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
-    aria-label="Поиск платформ" placeholder="Название, код или вариант у провайдера" className="sm:max-w-md" />;
+  return <SearchInput containerClassName="sm:max-w-md" type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
+    aria-label="Поиск платформ" placeholder="Название, код или вариант у провайдера" className="" />;
 }

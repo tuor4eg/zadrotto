@@ -1,8 +1,11 @@
+import { buildPublicPageMetadata } from "@/lib/seo/metadata";
 import { notFound } from "next/navigation";
 import { isPersonalDataConsentRequired } from "@/db/queries/personal-data-consent";
 import Link from "next/link";
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
+
+export const metadata = buildPublicPageMetadata("/privacy", "Политика конфиденциальности", "Как Гикотека обрабатывает персональные данные, использует cookies и аналитику.");
 
 export const dynamic = "force-dynamic";
 

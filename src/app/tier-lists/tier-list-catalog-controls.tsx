@@ -1,5 +1,7 @@
 "use client"
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { Search } from "lucide-react"
 import { useCallback, useTransition } from "react"
 import { usePathname, useRouter, useSearchParams } from "next/navigation"
@@ -112,9 +114,9 @@ export function TierListCatalogControls({
         <div className="relative min-w-0 flex-1">
           <Search
             aria-hidden="true"
-            className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
+            className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400"
           />
-          <input
+          <SearchInput bare
             className="h-10 w-full rounded-md border border-stone-300/80 bg-stone-50/70 pl-10 pr-3 font-mono text-sm text-stone-900 outline-none transition-colors placeholder:text-stone-400 focus:border-stone-950"
             id="tier-lists-search"
             maxLength={200}

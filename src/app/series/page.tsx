@@ -1,3 +1,5 @@
+import { redirect } from "next/navigation";
+import { buildListingMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import Link from "next/link";
 
 import { PublicSiteHeader } from "@/components/archive/public-site-header";
@@ -23,6 +25,10 @@ type SeriesPageProps = {
   }>;
 };
 
+export async function generateMetadata({ searchParams }: SeriesPageProps) {
+  return buildListingMetadata("/series", "Серии", "Серии фильмов, игр, книг, комиксов и других произведений в Гикотеке.", await searchParams);
+}
+
 export default async function SeriesPage({ searchParams }: SeriesPageProps) {
   const [params, headerState] = await Promise.all([
     searchParams,
@@ -42,6 +48,8 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
     pageSize,
     searchQuery,
   });
+  const paginationRedirect = getPaginationRedirect("/series", params, seriesPage.page);
+  if (paginationRedirect) redirect(paginationRedirect);
   const paginationSearchParams = {
     pageSize: pageSize !== DEFAULT_SERIES_PAGE_SIZE ? String(pageSize) : undefined,
     q: searchQuery || undefined,

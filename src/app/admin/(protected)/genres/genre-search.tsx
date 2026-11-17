@@ -1,7 +1,9 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useRouter } from "next/navigation";
-import { Input } from "@/components/ui/form";
+
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 
 export function GenreSearch({ searchQuery, cancelled = false, series = false }: { searchQuery: string; cancelled?: boolean; series?: boolean }) {
@@ -17,6 +19,6 @@ export function GenreSearch({ searchQuery, cancelled = false, series = false }: 
       router.replace(suffix ? `/admin/genres?${suffix}` : "/admin/genres", { scroll: false });
     },
   });
-  return <Input type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
-    aria-label="Поиск жанров" placeholder="Название, код или вариант у провайдера" className="sm:max-w-md" />;
+  return <SearchInput containerClassName="sm:max-w-md" type="search" value={draft} onChange={(event) => setDraft(event.target.value)}
+    aria-label="Поиск жанров" placeholder="Название, код или вариант у провайдера" className="" />;
 }

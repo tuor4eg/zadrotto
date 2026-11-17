@@ -1,3 +1,4 @@
+import { buildPublicPageMetadata, NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
@@ -54,12 +55,13 @@ async function getReview(idValue: string, currentAuthor: Awaited<ReturnType<type
 export async function generateMetadata({ params }: ReviewPageProps): Promise<Metadata> {
   const currentAuthor = await getCurrentAuthor();
   const { review } = await getReview((await params).id, currentAuthor);
-  if (!review) return {};
+  if (!review) return NO_INDEX_METADATA;
   const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle });
-  return {
-    title: `${review.title} — рецензия на «${mediaItemTitle}»`,
-    description: inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim().slice(0, 180),
-  };
+  return buildPublicPageMetadata(
+    `/reviews/${review.id}`,
+    `${review.title} — рецензия на «${mediaItemTitle}»`,
+    inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim().slice(0, 180),
+  );
 }
 
 export default async function ReviewPage({ params }: ReviewPageProps) {

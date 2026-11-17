@@ -1,10 +1,12 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import { Button } from "@/components/ui/button";
-import { Input, Label, Select } from "@/components/ui/form";
+import { Label, Select } from "@/components/ui/form";
 import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft";
 import {
   AUTHOR_FRANCHISE_SUBMISSION_STATUSES,
@@ -77,12 +79,12 @@ export function AuthorFranchiseFiltersForm({
     <div className="grid gap-3 rounded-lg border border-stone-200 bg-white/80 p-3 shadow-sm md:grid-cols-[minmax(220px,1fr)_190px_auto]">
       <div className="flex flex-col gap-2">
         <Label htmlFor="author-franchise-search">Поиск</Label>
-        <Input
+        <SearchInput
           id="author-franchise-search"
           type="search"
           value={search}
           onChange={(event) => setSearch(event.target.value)}
-          placeholder="Тайтл или серия"
+          placeholder="Запись или серия"
         />
       </div>
 

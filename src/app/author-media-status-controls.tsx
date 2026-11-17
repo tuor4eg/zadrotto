@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useEffect, useRef, useState, useTransition } from "react";
 import { Heart } from "lucide-react";
 
 import {
@@ -15,6 +15,7 @@ import { hasDemoRating } from "@/lib/user-state/demo-profile";
 import { toggleDemoStatus } from "@/lib/user-state/demo-actions";
 import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
 import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
+import { USER_HUD_REFRESH_EVENT } from "@/lib/onboarding/model";
 
 const INITIAL_STATE: ToggleAuthorMediaStatusState = { error: null };
 
@@ -51,6 +52,11 @@ export function AuthorMediaStatusControls({
   const effectiveStatus = isDemo ? overlay.status : currentAuthorStatus;
 
   const [state, action, pending] = useActionState(toggleAuthorMediaStatusAction, INITIAL_STATE);
+  const wasPending = useRef(false);
+  useEffect(() => {
+    if (wasPending.current && !pending && state.error === null) window.dispatchEvent(new Event(USER_HUD_REFRESH_EVENT));
+    wasPending.current = pending;
+  }, [pending, state.error]);
   const [demoError, setDemoError] = useState<string | null>(null);
   const [demoPending, startDemoTransition] = useTransition();
   const hasRating = isDemo && demoProfile ? hasDemoRating(demoProfile, mediaItemCode) : currentAuthorHasRating;

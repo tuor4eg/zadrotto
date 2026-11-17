@@ -15,7 +15,6 @@ export function useDebouncedSearchDraft({
 }: UseDebouncedSearchDraftOptions) {
   const [draft, setDraft] = useState(searchQuery);
   const draftRef = useRef(searchQuery);
-  const hasUnconfirmedDraft = useRef(false);
   const pendingQueries = useRef(new Set<string>());
   const previousSearchQuery = useRef(searchQuery);
   const dispatchSearch = useEffectEvent(onSearch);
@@ -28,18 +27,18 @@ export function useDebouncedSearchDraft({
     previousSearchQuery.current = searchQuery;
 
     if (searchQuery === draftRef.current) {
-      pendingQueries.current.delete(searchQuery);
-      hasUnconfirmedDraft.current = false;
+      pendingQueries.current.clear();
       return;
     }
 
-    if (pendingQueries.current.delete(searchQuery) || hasUnconfirmedDraft.current) {
-      hasUnconfirmedDraft.current = true;
+    if (pendingQueries.current.delete(searchQuery)) {
       pendingQueries.current.add(draftRef.current);
       dispatchSearch(draftRef.current);
       return;
     }
 
+    // A query we did not dispatch comes from navigation, not a stale search response.
+    pendingQueries.current.clear();
     draftRef.current = searchQuery;
     setDraft(searchQuery);
   }, [searchQuery]);
@@ -50,6 +49,9 @@ export function useDebouncedSearchDraft({
     }
 
     const timeoutId = window.setTimeout(() => {
+      if (draftRef.current !== draft) {
+        return;
+      }
       pendingQueries.current.add(draft);
       dispatchSearch(draft);
     }, delay);
@@ -59,9 +61,8 @@ export function useDebouncedSearchDraft({
 
   const updateDraft = useCallback((nextDraft: string) => {
     draftRef.current = nextDraft;
-    hasUnconfirmedDraft.current = nextDraft !== searchQuery;
     setDraft(nextDraft);
-  }, [searchQuery]);
+  }, []);
 
   const resetDraft = useCallback((nextDraft = "") => {
     updateDraft(nextDraft);

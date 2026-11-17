@@ -5,6 +5,20 @@ import { calculateAuthorQuizStatistics, calculateQuizPoints, formatQuizTimeRemai
 import { formatAdminQuizDateTime, formatMoscowDateTimeLocal, getDefaultQuizPeriod, parseMoscowDateTimeLocal } from "../src/lib/quizzes/admin-time";
 
 describe("quizzes", () => {
+  it("keeps classic quiz participation on the quiz and exposes the shared answer search", () => {
+    const panel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
+    assert.match(panel, /quiz\.type !== "mosaic" && participant && !participant\.completed && !finished[\s\S]*<QuizInlineAnswer/);
+    assert.match(panel, /stayOnQuiz=\{!participant\} idleLabel="Начать игру"/);
+    assert.doesNotMatch(panel, /lg:grid-rows|lg:absolute lg:inset-0/);
+  });
+  it("anchors answer results below the input without scroll-dependent coordinates", () => {
+    const picker = readFileSync("src/components/quizzes/quiz-answer-picker.tsx", "utf8");
+    assert.match(picker, /<div className="relative">[\s\S]*<Input[\s\S]*className="absolute inset-x-0 top-full/);
+    assert.doesNotMatch(picker, /createPortal|getBoundingClientRect|dropdownPosition/);
+    for (const path of ["src/components/quizzes/quiz-modal.tsx", "src/app/quizzes/[id]/page.tsx"]) {
+      assert.match(readFileSync(path, "utf8"), /archive-panel-overflow-visible/);
+    }
+  });
   it("converts admin quiz dates between Moscow time and UTC", () => {
     assert.equal(
       parseMoscowDateTimeLocal("2026-08-24T12:00").toISOString(),
@@ -146,14 +160,18 @@ describe("quizzes", () => {
     const page = readFileSync("src/app/admin/(protected)/quizzes/page.tsx", "utf8");
     const query = readFileSync("src/db/queries/quizzes.ts", "utf8");
 
-    assert.match(page, /name="q"[\s\S]*name="state"[\s\S]*name="hasCorrect"/);
+    assert.match(page, /<QuizFilters/);
+    const filters = readFileSync("src/app/admin/(protected)/quizzes/quiz-filters.tsx", "utf8");
+    assert.match(filters, /name="q"[\s\S]*name="state"[\s\S]*name="type"[\s\S]*name="hasCorrect"/);
+    assert.doesNotMatch(filters, /Применить/);
     assert.match(page, /<TH>Ответили правильно<\/TH>/);
     assert.match(page, /Ответ уже встречался/);
     assert.match(page, /<PaginationNav[\s\S]*basePath="\/admin\/quizzes"/);
     assert.match(page, /className="grid gap-3 md:hidden"/);
     assert.match(page, /<TableWrap className="hidden md:block">/);
     assert.match(query, /containsNormalizedSearchSql\(quizzes\.question, searchQuery\)/);
-    assert.match(query, /containsNormalizedSearchSql\(mediaItems\.title, searchQuery\)/);
+    assert.match(query, /mediaItemSearchCondition\(searchQuery\)/);
+    assert.match(query, /const condition = mediaItemSearchCondition\(query\)/);
     assert.match(query, /qp\.outcome = 'correct'/);
     assert.match(query, /earlier\.answer_media_item_id/);
     assert.match(query, /orderBy\(desc\(quizzes\.startsAt\), desc\(quizzes\.id\)\)/);
@@ -232,7 +250,7 @@ describe("quizzes", () => {
 
     assert.match(query, /insert\(quizParticipants\)[\s\S]*onConflictDoNothing\(\)/);
     assert.match(participationRoute, /joinActiveQuiz\(author\.id\)/);
-    assert.match(guessRoute, /checkQuizGuess\(Number\(titleId\), author\.id\)/);
+    assert.match(guessRoute, /checkQuizGuess\(Number\(titleId\), author\.id, undefined, quizId/);
     assert.match(guessRoute, /result\.kind === "not-participant"[\s\S]*status: 403/);
     assert.equal(existsSync("src/app/quiz/page.tsx"), false);
     const mainPage = readFileSync("src/app/page.tsx", "utf8");
@@ -240,7 +258,15 @@ describe("quizzes", () => {
     assert.match(mainPage, /const \[activeQuiz[\s\S]*getActiveQuiz\(\)/);
     assert.doesNotMatch(mainPage, /author \? getActiveQuiz\(\) : Promise\.resolve\(null\)/);
     assert.match(mainPage, /authenticated=\{Boolean\(author\)\}/);
-    assert.match(mainPage, /getActiveQuizParticipantState\(author\.id\)/);
+    assert.match(readFileSync("src/lib/archive/public-site-header.ts", "utf8"), /getActiveQuizParticipantState\(author\.id\)/);
+    assert.match(guessRoute, /Некорректный квиз/);
+    const inlineAnswer = readFileSync("src/components/quizzes/quiz-inline-answer.tsx", "utf8");
+    const titleSearch = readFileSync("src/app/api/quizzes/[id]/title-search/route.ts", "utf8");
+    assert.match(inlineAnswer, /selected \? <div className="flex justify-center"><QuizGuessButton/);
+    assert.match(inlineAnswer, /participantState=\{participant\}/);
+    assert.match(titleSearch, /!detail\.participant \|\| detail\.participant\.completed/);
+    assert.match(titleSearch, /searchQuizAnswerTitles\(query, detail\.quiz\.mediaTypes\)/);
+    assert.match(titleSearch, /private, no-store/);
     assert.match(modal, /<ActiveQuizPanel/);
     assert.match(modal, /quiz: ActiveQuiz \| null/);
     assert.match(modal, /onOpenArchive=\{openArchive\}/);
@@ -249,10 +275,12 @@ describe("quizzes", () => {
     const activeQuizPanel = readFileSync("src/components/quizzes/active-quiz-panel.tsx", "utf8");
     const archiveRiddle = readFileSync("src/app/main/archive-riddle.tsx", "utf8");
     const answerReveal = readFileSync("src/components/quizzes/quiz-answer-reveal.tsx", "utf8");
-    assert.match(answerReveal, /useState<Date \| null>\(null\)/);
+    const timer = readFileSync("src/components/quizzes/quiz-timer.tsx", "utf8");
+    assert.match(answerReveal, /if \(!answer\) return null/);
+    assert.match(timer, /useState<Date \| null>\(null\)/);
     assert.match(archiveRiddle, /useState<Date \| null>\(null\)/);
     assert.match(activeQuizPanel, /whitespace-pre-wrap text-lg/);
-    assert.match(answerReveal, /formatQuizTimeRemaining\(endsAt, now\)/);
+    assert.match(timer, /formatQuizTimeRemaining\(endsAt, now\)/);
     assert.doesNotMatch(activeQuizPanel, /formatQuizTimeRemaining/);
     assert.match(activeQuizPanel, /participant\?\.completed[\s\S]*<QuizResult participant=\{participant\}/);
     const result = readFileSync("src/components/quizzes/quiz-result.tsx", "utf8");
@@ -275,11 +303,11 @@ describe("quizzes", () => {
     assert.match(modal, /dialogTop === null \? "my-auto" : "my-0"/);
     const rules = readFileSync("src/components/quizzes/quiz-rules.tsx", "utf8");
     const detail = readFileSync("src/components/quizzes/quiz-detail-content.tsx", "utf8");
-    assert.match(modal, /<QuizRules\s*\/>/);
+    assert.match(modal, /<QuizRules type=\{quiz\?\.type\} budget=\{quiz\?\.attemptLimit\} \/>/);
     assert.match(detail, /Открыть правила квиза/);
     assert.match(detail, /Назад к квизу/);
-    assert.match(detail, /showRules[\s\S]*<QuizRules\s*\/>/);
-    assert.match(rules, /Раз в день в 12:00 \(MSK\)/);
+    assert.match(detail, /showRules[\s\S]*<QuizRules type=\{quiz\?\.type\} budget=\{quiz\?\.attemptLimit\} \/>/);
+    assert.match(rules, /Чтобы принять участие, нужно нажать следующую кнопку/);
     assert.match(rules, /disabled[\s\S]*Искать ответ в архиве/);
     assert.match(rules, /disabled[\s\S]*Проверить догадку[\s\S]*<CircleHelp/);
     assert.match(rules, /<Heart aria-hidden="true"[\s\S]*<span aria-hidden="true"[^>]*>× 3<\/span>/);
@@ -356,15 +384,18 @@ describe("quizzes", () => {
     assert.match(layer, /\/api\/user-hud/);
     assert.match(layer, /isAdminRoute/);
     assert.match(layer, /quizParticipant && !quizParticipant\.completed/);
-    assert.match(layer, /showRatingCoachMark: !pageUnavailable && onboarding\.showRatingCoachMark/);
+    assert.match(layer, /showRatingCoachMark: !consentRequired && !pageUnavailable && onboarding\.showRatingCoachMark/);
     assert.match(layer, /setQuizParticipant,/);
     assert.match(layer, /requestGenerationRef\.current === requestGeneration/);
-    assert.match(layer, /Осталось попыток:/);
-    assert.match(layer, /aria-label=\{`Осталось попыток: \$\{visibleParticipant\.attemptsRemaining\} из \$\{visibleParticipant\.attemptLimit\}`\}/);
+    const livesCounter = readFileSync("src/components/quizzes/quiz-lives-counter.tsx", "utf8");
+    assert.match(livesCounter, /participant\.type === "mosaic" \? "очков" : "попыток"/);
+    assert.match(layer, /visibleParticipant && !inlineQuizCounters\[visibleParticipant\.quizId\]/);
+    assert.match(layer, /<QuizLivesCounter participant=\{visibleParticipant\}/);
+    assert.match(livesCounter, /aria-label=\{`Осталось [\s\S]*participant\.attemptsRemaining[\s\S]*participant\.attemptLimit/);
     assert.match(layer, /bottom-\[max\(1rem,env\(safe-area-inset-bottom\)\)\]/);
     assert.match(layer, /sm:bottom-\[max\(1\.75rem,env\(safe-area-inset-bottom\)\)\]/);
     assert.match(layer, /min-\[1800px\]:contents[\s\S]*min-\[1800px\]:fixed[\s\S]*min-\[1800px\]:top-\[calc\(env\(safe-area-inset-top\)\+1\.25rem\)\]/);
-    assert.match(layer, /<Heart aria-hidden="true"[\s\S]*<span aria-hidden="true"[^>]*>× \{visibleParticipant\.attemptsRemaining\}<\/span>/);
+    assert.match(livesCounter, /<Heart aria-hidden="true"[\s\S]*<span aria-hidden="true"[^>]*>× \{participant\.attemptsRemaining\}<\/span>/);
     assert.match(participationButton, /setQuizParticipant/);
     assert.match(participationButton, /export function useQuizParticipation/);
     assert.ok(archiveRiddle.includes('router.push(`/quizzes/${quiz.id}`)'));
@@ -399,7 +430,7 @@ describe("quizzes", () => {
     assert.match(guessButton, /variant === "preview" \? "w-full"/);
     assert.match(preview, /<AuthorMediaStatusControls[\s\S]*<QuizGuessButton titleId=\{item\.id\} variant="preview"/);
     assert.match(guessButton, /setTimeout\([\s\S]*3_000/);
-    assert.match(guessButton, /disabled=\{pending \|\| cooldown\}/);
+    assert.match(guessButton, /disabled=\{disabled \|\| pending \|\| cooldown\}/);
     assert.match(guessButton, /isCorrect && comment/);
     assert.match(guessButton, /whitespace-pre-wrap/);
     assert.match(guessButton, /text: response\.ok \? "Неверно"/);

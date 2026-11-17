@@ -1,11 +1,13 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useMemo, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/form";
+
 import { Tooltip } from "@/components/ui/tooltip";
 import { type getAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
@@ -64,8 +66,8 @@ export function MediaItemFranchisePicker({
   return (
     <div className="mb-5 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
       <div className="relative">
-        <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-        <Input
+        <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+        <SearchInput
           type="search"
           value={searchValue}
           onChange={(event) => setSearchValue(event.target.value)}

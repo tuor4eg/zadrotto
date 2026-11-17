@@ -7,21 +7,29 @@ import { createPortal } from "react-dom";
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { QuizNoActiveState } from "@/components/quizzes/quiz-no-active-state";
-import { formatQuizTimeRemaining, type ActiveQuiz } from "@/lib/quizzes/model";
+import { MosaicCanvas } from "@/components/quizzes/mosaic-canvas";
+import { useExternalInterface } from "@/components/external-interface/external-interface-layer";
+import { formatQuizTimeRemaining, type ActiveQuiz, type QuizParticipantState } from "@/lib/quizzes/model";
 
 type ArchiveRiddleProps = {
   authenticated: boolean;
   isCompleted: boolean;
+  participant?: QuizParticipantState | null;
   quiz: ActiveQuiz | null;
   size?: "default" | "large";
 };
 
 export function ArchiveRiddle({
   authenticated,
+  isCompleted,
+  participant,
   quiz,
   size = "default",
 }: ArchiveRiddleProps) {
   const router = useRouter();
+  const { quizParticipant } = useExternalInterface();
+  const currentParticipant = quizParticipant?.quizId === quiz?.id ? quizParticipant : participant;
+  const completed = currentParticipant?.completed ?? isCompleted;
   const [loginOpen, setLoginOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -83,10 +91,14 @@ export function ArchiveRiddle({
       {quiz ? (
           <>
             <p className="media-carrier-font-pc-steam mt-1 shrink-0 text-center whitespace-pre-wrap text-xl leading-7 text-stone-900">
-              {quiz.question?.trim() || "Ответ спрятан среди записей архива."}
+              {quiz.question?.trim() || (quiz.type === "mosaic" ? "Угадай по мозаике" : "Ответ спрятан среди записей архива.")}
             </p>
             <div className="relative mt-4 flex min-h-0 flex-1 items-center justify-center py-2">
-              {quiz.imageUrl ? (
+              {quiz.type === "mosaic" && !completed ? (
+                <div className={`pointer-events-none max-w-[90%] ${size === "large" ? "w-[150px]" : "w-[96px]"}`}>
+                  <MosaicCanvas key={quiz.id} readOnly imageUrl={quiz.imageUrl} seed={quiz.config?.seed ?? 0} openedMask={currentParticipant?.mosaic?.openedMask ?? 0} />
+                </div>
+              ) : quiz.imageUrl ? (
                 <div
                   className={`flex max-w-[90%] items-center justify-center ${imageMaxHeightClassName}`}
                 >

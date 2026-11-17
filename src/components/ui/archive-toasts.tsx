@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { AlertTriangle, CheckCircle2, X } from "lucide-react";
 import Image from "next/image";
@@ -55,10 +55,14 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
         .join("|"),
     [messages],
   );
+  const lastShownSignature = useRef(messageSignature);
 
   useEffect(() => {
-    if (messages.length > 0) {
-      const timeoutId = window.setTimeout(() => setVisibleMessages(messages), 0);
+    if (messages.length > 0 && lastShownSignature.current !== messageSignature) {
+      const timeoutId = window.setTimeout(() => {
+        lastShownSignature.current = messageSignature;
+        setVisibleMessages(messages);
+      }, 0);
 
       return () => window.clearTimeout(timeoutId);
     }
@@ -97,7 +101,7 @@ export function ArchiveToasts({ clearParams = [], messages }: ArchiveToastsProps
     }, durationSeconds * 1000);
 
     return () => window.clearTimeout(timeoutId);
-  }, [durationSeconds, visibleMessages.length]);
+  }, [durationSeconds, visibleMessages]);
 
   if (visibleMessages.length === 0 || !portalRoot) {
     return null;

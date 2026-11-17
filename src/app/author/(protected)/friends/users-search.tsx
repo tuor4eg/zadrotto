@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { Search } from "lucide-react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
@@ -29,8 +31,8 @@ export function UsersSearch({ searchQuery }: { searchQuery: string }) {
 
   return <div className="relative w-full max-w-xl">
     <label className="sr-only" htmlFor="friends-users-search">Поиск пользователей</label>
-    <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
-    <input
+    <Search aria-hidden="true" className="pointer-events-none absolute z-10 left-3 top-1/2 size-3.5 -translate-y-1/2 text-stone-500" />
+    <SearchInput bare
       id="friends-users-search"
       type="search"
       value={draft}

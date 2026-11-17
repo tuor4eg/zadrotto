@@ -1,3 +1,4 @@
+import { buildPublicPageMetadata, SITE_DESCRIPTION } from "@/lib/seo/metadata";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import Link from "next/link";
 import Image from "next/image";
@@ -284,11 +285,16 @@ function LatestReview({
 }
 
 
+export const metadata = {
+  ...buildPublicPageMetadata("/", "Гикотека — личный архив фильмов, игр и книг", SITE_DESCRIPTION),
+  title: { absolute: "Гикотека — личный архив фильмов, игр и книг" },
+};
+
 export default async function MainPage() {
   const headerState = await getPublicSiteHeaderState();
   const author = headerState.author;
   const [activeQuiz, dailyDossier, mediaTypes, editorialCollections] = await Promise.all([
-    author ? Promise.resolve(headerState.activeQuiz) : getActiveQuiz(),
+    author ? Promise.resolve(headerState.headerProps.quiz?.quiz ?? headerState.activeQuiz) : getActiveQuiz(),
     getDailyDossier(author?.id),
     getEffectiveMediaTypeOptions(author?.id),
     getPublishedEditorialCollections(),
@@ -432,10 +438,10 @@ export default async function MainPage() {
                     id="main-intro-title"
                     className="media-carrier-font-pc-steam text-2xl leading-tight tracking-tight text-stone-950 sm:text-4xl lg:text-5xl"
                   >
-                    Начни свою историю
+                    Гикотека — твой личный архив
                   </h1>
                   <p className="mt-4 max-w-xl text-sm leading-6 text-stone-700 sm:text-lg sm:leading-7">
-                    Оценивай, высказывай мнения, создавай личные серии и смотри, как из этого складывается твой культурный след.
+                    Фильмы, игры, книги, комиксы и другие произведения — в одном месте. Ставь оценки, пиши рецензии, собирай тематические подборки, следи за сериями и открывай новые миры.
                   </p>
                   <StartDemoHistoryButton
                     className="mt-6 inline-flex h-10 items-center justify-center rounded-lg bg-stone-900 px-5 font-mono text-[10px] uppercase tracking-[0.12em] text-stone-50 transition-colors hover:bg-red-950 sm:text-xs"
@@ -520,6 +526,7 @@ export default async function MainPage() {
           <ArchiveRiddle
             authenticated={Boolean(author)}
             isCompleted={activeQuizParticipant?.completed === true}
+            participant={activeQuizParticipant}
             quiz={activeQuiz}
           />
           <LatestReview mediaTypeName={latestReviewMediaTypeName} review={latestReview} />

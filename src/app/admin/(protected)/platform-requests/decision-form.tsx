@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { X } from "lucide-react";
@@ -55,7 +57,7 @@ export function PlatformRequestDecisionForm({ requestId, platforms, action }: {
         </div>
         <div className="grid gap-2">
           <Label htmlFor="platform-search">Поиск платформ</Label>
-          <Input id="platform-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Название платформы" />
+          <SearchInput id="platform-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Название платформы" />
         </div>
         <p className="text-xs text-stone-500">Найдено: {matchingPlatforms.length}</p>
         {visiblePlatforms.length ? <div className="grid gap-2 sm:grid-cols-2">{visiblePlatforms.map((platform) => <label key={platform.id} className="flex min-w-0 items-start gap-2 text-sm">

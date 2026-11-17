@@ -4,6 +4,8 @@ import { useActionState, useState, useTransition } from "react";
 import Link from "next/link";
 
 import { AchievementImagePicker } from "@/components/achievements/achievement-image-picker";
+import { QUIZ_MECHANICS } from "@/lib/quizzes/mechanics";
+import { MosaicPreview } from "@/components/quizzes/mosaic-preview";
 import { QuizAnswerPicker } from "@/components/quizzes/quiz-answer-picker";
 import { runServerActionWithImageUploadGuard } from "@/components/forms/image-upload-form";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,9 @@ import type { QuizFormState } from "./actions";
 
 type Quiz = {
   id: number;
+  type: "classic" | "mosaic";
+  config: { seed: number } | null;
+  publishedAt: Date | null;
   question: string | null;
   comment: string | null;
   imageUrl: string | null;
@@ -60,6 +65,15 @@ export function QuizForm({
     submissionId: 0,
   });
   const [transitionPending, startTransition] = useTransition();
+  const [type, setType] = useState<"classic" | "mosaic">(item?.type ?? "classic");
+  const [limit, setLimit] = useState(String(item?.attemptLimit ?? 3));
+  const previewBudget = Number.isInteger(Number(limit)) && Number(limit) >= 1 && Number(limit) <= 10 ? Number(limit) : 10;
+  const [seed, setSeed] = useState(item?.config?.seed ?? 0);
+  const [answerId, setAnswerId] = useState<number | null>(item?.answerMediaItemId ?? null);
+  const [enabled, setEnabled] = useState(item?.enabled ?? true);
+  const configurationLocked = !!(item?.type === "mosaic" && item.publishedAt);
+  const answerLocked = !!item?.hasAnswers || configurationLocked;
+  function regenerateSeed() { setSeed(crypto.getRandomValues(new Uint32Array(1))[0]); }
   const [question, setQuestion] = useState(item?.question ?? "");
   const [pendingQuestionTemplate, setPendingQuestionTemplate] = useState<
     NonNullable<QuizFormProps["questionTemplates"]>[number] | null
@@ -85,6 +99,15 @@ export function QuizForm({
       <AdminToasts messages={toastMessages} />
       {item ? <input type="hidden" name="quizId" value={item.id} /> : null}
 
+      <div className="grid gap-2">
+        <label htmlFor="quizType" className="text-sm font-medium">Тип квиза</label>
+        <select id="quizType" name="type" className={inputClass} value={type} disabled={configurationLocked || item?.hasParticipants}
+          onChange={(event) => { const next = event.target.value as "classic" | "mosaic"; setType(next); setLimit(String(next === "mosaic" ? 10 : 3)); if (next === "mosaic") { regenerateSeed(); setEnabled(false); } }}>
+          {Object.entries(QUIZ_MECHANICS).map(([code, mechanic]) => <option key={code} value={code}>{mechanic.label}</option>)}
+        </select>
+        {configurationLocked || item?.hasParticipants ? <input type="hidden" name="type" value={type} /> : null}
+        {type === "mosaic" ? <input type="hidden" name="seed" value={seed} /> : null}
+      </div>
       <div className="grid gap-2">
           <label htmlFor="questionTemplate" className="text-sm font-medium">Шаблон вопроса</label>
           <select
@@ -142,7 +165,7 @@ export function QuizForm({
       </div>
 
       <div className="grid gap-2">
-        <label htmlFor="comment" className="text-sm font-medium">Комментарий после правильного ответа</label>
+        <label htmlFor="comment" className="text-sm font-medium">{type === "mosaic" ? "Комментарий после завершения" : "Комментарий после правильного ответа"}</label>
         <textarea
           className="min-h-24 rounded-md border border-stone-300 p-3"
           id="comment"
@@ -150,21 +173,21 @@ export function QuizForm({
           maxLength={2000}
           defaultValue={item?.comment ?? ""}
         />
-        <p className="text-xs text-stone-500">Необязательно. Будет показан после правильного ответа.</p>
+        <p className="text-xs text-stone-500">{type === "mosaic" ? "Необязательно. Будет показан после завершения раунда." : "Необязательно. Будет показан после правильного ответа."}</p>
       </div>
 
-      <div className="grid gap-2">
+      {type === "classic" ? <div className="grid gap-2">
         <span className="text-sm font-medium">Изображение</span>
         <AchievementImagePicker
           inputId="quiz-image"
           initialImageUrl={item?.imageUrl ?? null}
           variant="quiz"
         />
-      </div>
+      </div> : null}
 
       <div className="grid gap-2">
         <span className="text-sm font-medium">Правильная запись</span>
-        {item?.hasAnswers ? (
+        {answerLocked ? (
           <>
             <input type="hidden" name="answerMediaItemId" value={item.answerMediaItemId} />
             <p className="rounded-md border border-stone-200 bg-stone-100 px-3 py-2 text-sm text-stone-700">
@@ -173,6 +196,7 @@ export function QuizForm({
           </>
         ) : (
           <QuizAnswerPicker
+            onSelect={(selected) => setAnswerId(selected?.id ?? null)}
             allowedMediaTypes={selectedMediaTypes}
             mediaTypes={mediaTypes}
             initial={item ? {
@@ -186,6 +210,10 @@ export function QuizForm({
         )}
       </div>
 
+      {type === "mosaic" && answerId ? <MosaicPreview key={`${answerId}:${seed}:${previewBudget}`} seed={seed} budget={previewBudget} locked={configurationLocked}
+        imageUrl={item?.type === "mosaic" && answerId === item.answerMediaItemId && item.imageUrl ? item.imageUrl : `/api/admin/quizzes/poster?id=${answerId}`}
+        onRegenerate={regenerateSeed} /> : null}
+
       <fieldset className="grid gap-2">
         <legend className="text-sm font-medium">Допустимые типы</legend>
         <p className="text-xs text-stone-500">
@@ -196,7 +224,7 @@ export function QuizForm({
             <input
               type="checkbox"
               checked={allMediaTypesSelected}
-              disabled={item?.hasAnswers ?? false}
+              disabled={answerLocked ?? false}
               onChange={(event) => {
                 setSelectedMediaTypes(event.currentTarget.checked ? mediaTypes.map((type) => type.code) : []);
               }}
@@ -210,7 +238,7 @@ export function QuizForm({
                 name="mediaTypes"
                 value={type.code}
                 checked={selectedMediaTypes.includes(type.code)}
-                disabled={item?.hasAnswers ?? false}
+                disabled={answerLocked ?? false}
                 onChange={(event) => {
                   const checked = event.currentTarget.checked
                   setSelectedMediaTypes((current) =>
@@ -224,10 +252,10 @@ export function QuizForm({
             </label>
           ))}
         </div>
-        {item?.hasAnswers ? (
+        {answerLocked ? (
           <>
             {selectedMediaTypes.map((mediaType) => <input key={mediaType} type="hidden" name="mediaTypes" value={mediaType} />)}
-            <p className="text-xs text-stone-500">Правильная запись и допустимые типы заблокированы после первого ответа участника.</p>
+            <p className="text-xs text-stone-500">{configurationLocked ? "Игровая конфигурация зафиксирована при публикации." : "Правильная запись и допустимые типы заблокированы после первого ответа участника."}</p>
           </>
         ) : null}
       </fieldset>
@@ -248,7 +276,7 @@ export function QuizForm({
       </div>
 
       <div className="grid max-w-xs gap-2">
-        <label htmlFor="attemptLimit" className="text-sm font-medium">Количество попыток</label>
+        <label htmlFor="attemptLimit" className="text-sm font-medium">{type === "mosaic" ? "Количество очков" : "Количество попыток"}</label>
         <input
           className={inputClass}
           id="attemptLimit"
@@ -257,13 +285,15 @@ export function QuizForm({
           min={1}
           max={10}
           step={1}
-          defaultValue={item?.attemptLimit ?? 3}
+          value={limit}
+          onChange={(event) => setLimit(event.target.value)}
           disabled={item?.hasParticipants ?? false}
           required
         />
         {item?.hasParticipants ? (
           <><input type="hidden" name="attemptLimit" value={item.attemptLimit} /><p className="text-xs text-stone-500">Лимит нельзя изменить после присоединения участника.</p></>
         ) : null}
+        {type === "mosaic" ? <p className="text-xs text-stone-500">Открытие клетки и неверный ответ стоят по 1 очку.</p> : null}
       </div>
 
       <label className="flex items-center gap-2 text-sm">
@@ -271,13 +301,14 @@ export function QuizForm({
           type="checkbox"
           name="enabled"
           value="1"
-          defaultChecked={item?.enabled ?? true}
+          checked={enabled}
+          onChange={(event) => setEnabled(event.target.checked)}
         />
         Включён
       </label>
 
       <p className="text-xs text-stone-500">
-        Нужно заполнить вопрос или добавить изображение.
+        {type === "mosaic" ? "Выберите запись с доступной обложкой. Первое включение навсегда фиксирует постер, ответ и раскладку." : "Нужно заполнить вопрос или добавить изображение."}
       </p>
       {pendingQuestionTemplate ? (
         <ConfirmDialog

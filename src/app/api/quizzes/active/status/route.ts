@@ -6,5 +6,5 @@ export async function GET() {
   if (consentDenial) return consentDenial;
   const author = await getCurrentAuthor();
   if (!author) return Response.json({ participant: null });
-  return Response.json({ participant: await getActiveQuizParticipantState(author.id) });
+  return Response.json({ participant: await getActiveQuizParticipantState(author.id) }, { headers: { "Cache-Control": "private, no-store" } });
 }

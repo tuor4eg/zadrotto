@@ -1,6 +1,6 @@
 "use client";
 
-import { Bug, Heart } from "lucide-react";
+import { Bug } from "lucide-react";
 import { usePathname } from "next/navigation";
 import {
   createContext,
@@ -12,6 +12,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { QuizLivesCounter } from "@/components/quizzes/quiz-lives-counter";
 import type { QuizParticipantState } from "@/lib/quizzes/model";
 import { BugReportModal } from "@/components/bug-reports/bug-report-modal";
 import { OnboardingHudCard } from "@/components/onboarding/onboarding-hud-card";
@@ -37,6 +38,7 @@ export type BugReportEntityContext = {
 };
 
 type ExternalInterfaceValue = {
+  registerInlineQuizCounter: (quizId: number) => () => void;
   quizParticipant: QuizParticipantHudState | null;
   registerBugReportEntityContext: (context: BugReportEntityContext) => () => void;
   setQuizParticipant: (participant: QuizParticipantHudState | null) => void;
@@ -55,11 +57,22 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
   const [hudReady, setHudReady] = useState(false);
   const [isBugReportOpen, setIsBugReportOpen] = useState(false);
   const [quizParticipant, setQuizParticipantState] = useState<QuizParticipantHudState | null>(null);
+  const [inlineQuizCounters, setInlineQuizCounters] = useState<Record<number, number>>({});
   const [ratingsCount, setRatingsCount] = useState(0);
   const [authorId, setAuthorId] = useState<number | null>(null);
   const bugReportContextsRef = useRef(new Map<number, BugReportEntityContext>());
   const nextBugReportContextIdRef = useRef(1);
   const requestGenerationRef = useRef(0);
+
+  const registerInlineQuizCounter = useCallback((quizId: number) => {
+    setInlineQuizCounters((counts) => ({ ...counts, [quizId]: (counts[quizId] ?? 0) + 1 }));
+    let registered = true;
+    return () => {
+      if (!registered) return;
+      registered = false;
+      setInlineQuizCounters((counts) => ({ ...counts, [quizId]: Math.max(0, (counts[quizId] ?? 0) - 1) }));
+    };
+  }, []);
 
   const registerBugReportEntityContext = useCallback((context: BugReportEntityContext) => {
     const registrationId = nextBugReportContextIdRef.current;
@@ -173,6 +186,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
     () => ({
       quizParticipant,
       registerBugReportEntityContext,
+      registerInlineQuizCounter,
       setQuizParticipant,
       showRatingCoachMark: !consentRequired && !pageUnavailable && onboarding.showRatingCoachMark,
     }),
@@ -182,6 +196,7 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
       pageUnavailable,
       quizParticipant,
       registerBugReportEntityContext,
+      registerInlineQuizCounter,
       setQuizParticipant,
     ],
   );
@@ -269,16 +284,8 @@ export function ExternalInterfaceLayer({ children }: { children: ReactNode }) {
               className="flex items-center gap-2 min-[1800px]:fixed min-[1800px]:right-[max(1rem,env(safe-area-inset-right))] min-[1800px]:top-[calc(env(safe-area-inset-top)+1.25rem)] min-[1800px]:z-[70]"
               aria-label="Пользовательские инструменты"
             >
-              {visibleParticipant ? (
-                <div
-                  className="archive-paper-surface pointer-events-auto flex items-center gap-1 rounded-full border border-red-900/25 bg-stone-50/90 px-3 py-2 shadow-[0_10px_24px_rgba(28,25,23,0.2)] backdrop-blur-sm"
-                  role="status"
-                  aria-label={`Осталось попыток: ${visibleParticipant.attemptsRemaining} из ${visibleParticipant.attemptLimit}`}
-                >
-                  <Heart aria-hidden="true" className="size-5 shrink-0 fill-red-700 text-red-800 drop-shadow-sm" />
-                  <span aria-hidden="true" className="whitespace-nowrap font-medium tabular-nums text-red-900">× {visibleParticipant.attemptsRemaining}</span>
-                </div>
-              ) : null}
+              {visibleParticipant && !inlineQuizCounters[visibleParticipant.quizId]
+                ? <QuizLivesCounter participant={visibleParticipant} /> : null}
               <ArchiveTooltip align="end" label="Сообщить об ошибке" portal side="bottom">
                 <button
                   type="button"

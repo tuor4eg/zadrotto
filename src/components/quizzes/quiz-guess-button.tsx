@@ -5,6 +5,8 @@ import Image from "next/image";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
+import { QuizAnswerReveal } from "./quiz-answer-reveal";
+import { LifeLossToast } from "./life-loss-toast";
 import { Button } from "@/components/ui/button";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import {
@@ -20,11 +22,13 @@ function QuizGuessResultModal({
   onClose,
   result,
   points,
+  mosaicQuizId,
 }: {
   comment: string | null;
   onClose: () => void;
   result: QuizGuessResult;
   points: number;
+  mosaicQuizId?: number | null;
 }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isCorrect = result !== "exhausted";
@@ -64,7 +68,7 @@ function QuizGuessResultModal({
         aria-labelledby="quiz-guess-result-title"
         aria-describedby="quiz-guess-result-description"
         tabIndex={-1}
-        className="archive-paper archive-panel relative w-full max-w-md p-6 text-center shadow-2xl sm:p-8"
+        className="archive-paper archive-panel relative max-h-[90dvh] w-full max-w-md overflow-y-auto p-6 text-center shadow-2xl sm:p-8"
       >
         <button
           type="button"
@@ -75,7 +79,10 @@ function QuizGuessResultModal({
         >
           <X className="size-4" />
         </button>
-        {isCorrect ? (
+        {mosaicQuizId ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={`/api/quizzes/${mosaicQuizId}/image`} alt="Исходный постер" className="mx-auto mb-4 max-h-[35dvh] max-w-full rounded-md object-contain" />
+        ) : isCorrect ? (
           <Image
             alt=""
             className="mx-auto mb-4 h-auto w-40"
@@ -95,13 +102,14 @@ function QuizGuessResultModal({
           />
         )}
         <h2 id="quiz-guess-result-title" className="font-serif text-3xl">
-          {isCorrect ? "Верно!" : "Попытки закончились"}
+          {isCorrect ? "Верно!" : mosaicQuizId ? "Жизни закончились" : "Попытки закончились"}
         </h2>
         <p id="quiz-guess-result-description" className="mt-3 text-sm leading-6 text-stone-600">
           {isCorrect
             ? `Правильный ответ! Очков: ${points}.`
-            : "Все попытки ушли в архив. Правильный ответ, увы, остался там же."}
+            : mosaicQuizId ? "Раунд завершён. Правильный ответ — ниже." : "Все попытки ушли в архив. Правильный ответ, увы, остался там же."}
         </p>
+        {mosaicQuizId ? <div className="mt-4"><QuizAnswerReveal quizId={mosaicQuizId} endsAt="1970-01-01T00:00:00.000Z" solved /></div> : null}
         {isCorrect && comment ? (
           <p className="mt-3 whitespace-pre-wrap text-sm leading-6 text-stone-600">{comment}</p>
         ) : null}
@@ -114,18 +122,35 @@ function QuizGuessResultModal({
 export function QuizGuessButton({
   titleId,
   variant = "detail",
+  participantState,
+  disabled = false,
+  onPendingChange,
 }: {
   titleId: number;
   variant?: "detail" | "preview";
+  participantState?: QuizParticipantHudState;
+  disabled?: boolean;
+  onPendingChange?: (pending: boolean) => void;
 }) {
   const [pending, setPending] = useState(false);
+  const [lifeLoss, setLifeLoss] = useState<number | null>(null);
   const [cooldown, setCooldown] = useState(false);
   const [feedback, setFeedback] = useState<ArchiveToast | null>(null);
   const [result, setResult] = useState<QuizGuessResult | null>(null);
   const [resultPoints, setResultPoints] = useState(0);
+  const [resultMosaicQuizId, setResultMosaicQuizId] = useState<number | null>(null);
+  const requestInFlight = useRef(false);
+  const retryRequest = useRef<{ url: string; body: string } | null>(null);
   const [resultComment, setResultComment] = useState<string | null>(null);
   const cooldownTimeoutRef = useRef<number | null>(null);
-  const { quizParticipant, setQuizParticipant } = useExternalInterface();
+  const { quizParticipant: hudParticipant, setQuizParticipant } = useExternalInterface();
+  const quizParticipant = participantState ?? hudParticipant;
+
+  useEffect(() => {
+    if (lifeLoss === null) return;
+    const timeout = window.setTimeout(() => setLifeLoss(null), 1_000);
+    return () => window.clearTimeout(timeout);
+  }, [lifeLoss]);
 
   useEffect(() => () => {
     if (cooldownTimeoutRef.current !== null) {
@@ -134,7 +159,10 @@ export function QuizGuessButton({
   }, []);
 
   async function guess() {
+    if (requestInFlight.current || disabled) return;
+    requestInFlight.current = true;
     setPending(true);
+    onPendingChange?.(true);
     setCooldown(true);
     cooldownTimeoutRef.current = window.setTimeout(() => {
       setCooldown(false);
@@ -143,16 +171,34 @@ export function QuizGuessButton({
     setFeedback(null);
     setResultComment(null);
     try {
-      const response = await fetch("/quiz/guess", {
+      let participant = quizParticipant;
+      if (!participant && !retryRequest.current) {
+        const status = await fetch("/api/quizzes/active/status", { cache: "no-store" });
+        if (!status.ok) throw new Error("quiz-state-unavailable");
+        participant = (await status.json()).participant ?? null;
+      }
+      const request = retryRequest.current ?? (participant?.type === "mosaic" ? {
+        url: `/api/quizzes/${participant.quizId}/actions`,
+        body: JSON.stringify({ mechanic: "mosaic", type: "submitAnswer", titleId, actionId: crypto.randomUUID(), revision: participant.revision ?? 0 }),
+      } : { url: "/quiz/guess", body: JSON.stringify({ titleId, quizId: participant?.quizId }) });
+      // Keep the same action ID after an uncertain network response.
+      retryRequest.current = request;
+      const response = await fetch(request.url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ titleId }),
+        body: request.body,
       });
       const data = await response.json();
+      retryRequest.current = null;
       if (data.participant !== undefined) {
         setQuizParticipant(data.participant as QuizParticipantHudState | null);
       }
+      if (response.ok && data.correct === false && data.participant
+        && participant && data.participant.attemptsRemaining < participant.attemptsRemaining) {
+        setLifeLoss(Date.now());
+      }
       if (response.ok && (data.correct || data.participant?.outcome === "exhausted")) {
+        setResultMosaicQuizId(data.participant?.type === "mosaic" ? data.participant.quizId : null);
         setResultPoints(data.participant?.points ?? 0);
         setResultComment(data.correct && typeof data.comment === "string" ? data.comment : null);
         setResult(data.correct
@@ -172,7 +218,9 @@ export function QuizGuessButton({
         text: "Не удалось проверить догадку.",
       });
     } finally {
+      requestInFlight.current = false;
       setPending(false);
+      onPendingChange?.(false);
     }
   }
 
@@ -182,7 +230,7 @@ export function QuizGuessButton({
       size="sm"
       variant="positive"
       className={`h-9 border font-mono uppercase tracking-[0.08em] ${AUTHOR_RATING_TONE_CLASS_NAMES.good} hover:border-emerald-950/40 hover:bg-emerald-800 ${variant === "preview" ? "w-full" : "px-4"}`}
-      disabled={pending || cooldown}
+      disabled={disabled || pending || cooldown}
       onClick={guess}
     >
       {pending ? "Проверяем…" : "Проверить догадку"}
@@ -198,14 +246,16 @@ export function QuizGuessButton({
       {result ? (
         <QuizGuessResultModal
           comment={resultComment}
+          mosaicQuizId={resultMosaicQuizId}
           result={result}
           points={resultPoints}
           onClose={() => setResult(null)}
         />
       ) : null}
       {isQuizCompleted ? null : (
-        <div className={variant === "preview" ? "w-full" : "flex items-center"}>
+        <div className={variant === "preview" ? "relative w-full" : "relative flex items-center"}>
           {button}
+          {lifeLoss !== null ? <LifeLossToast key={lifeLoss} /> : null}
         </div>
       )}
     </>

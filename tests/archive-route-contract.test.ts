@@ -86,7 +86,7 @@ describe("archive route split", () => {
       publicHeader,
       /<form[\s\S]*action="\/archive"[\s\S]*method="get"[\s\S]*role="search"[\s\S]*aria-label="Поиск по архиву"/,
     );
-    assert.match(publicHeader, /<input[\s\S]*name="q"[\s\S]*type="search"/);
+    assert.match(publicHeader, /<SearchInput[\s\S]*name="q"[\s\S]*type="search"/);
     assert.match(publicHeader, /placeholder="Поиск по архиву"/);
     assert.match(catalogControls, /placeholder="Поиск по архиву"/);
     assert.match(publicHeader, /id="public-header-search"[\s\S]*archive-control-surface h-9/);
@@ -97,7 +97,7 @@ describe("archive route split", () => {
     assert.doesNotMatch(publicHeader, /NotificationBell/);
     assert.match(
       publicHeader,
-      /currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*href="\/author\/profile"/,
+      /currentAdminUser \? \([\s\S]*href="\/admin"[\s\S]*<NotificationBadge[\s\S]*count=\{adminNotificationCount\}[\s\S]*<AuthorAvatarMenu/,
     );
     assert.match(publicHeader, /<UserRound[^>]*aria-hidden="true"/);
     assert.match(publicHeader, /onClick=\{\(\) => setIsLoginOpen\(true\)\}/);

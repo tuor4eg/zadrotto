@@ -1,4 +1,8 @@
 import type { MediaType } from "@/lib/media/types";
+import type { MosaicState } from "./mosaic";
+import { QUIZ_MECHANICS, type QuizType } from "./mechanics";
+
+export type { QuizType } from "./mechanics";
 
 export type QuizState = "scheduled" | "active" | "finished" | "disabled";
 export type ActiveQuiz = {
@@ -6,10 +10,11 @@ export type ActiveQuiz = {
   question: string | null;
   imageUrl: string | null;
   mediaTypes: MediaType[];
+  mediaTypeOptions?: { code: MediaType; name: string }[];
   startsAt: string;
   endsAt: string;
   attemptLimit: number;
-};
+} & ({ type?: "classic"; config?: null; configVersion?: number } | { type: "mosaic"; config: { seed: number } | null; configVersion: number });
 export type ActiveQuizContext = Pick<ActiveQuiz, "id" | "mediaTypes">;
 export type QuizParticipantOutcome = "correct" | "exhausted";
 export type QuizParticipantState = {
@@ -19,6 +24,10 @@ export type QuizParticipantState = {
   completed: boolean;
   outcome: QuizParticipantOutcome | null;
   points: number;
+  type?: QuizType;
+  revision?: number;
+  mosaic?: MosaicState | null;
+  awardedPoints?: number | null;
 };
 
 export type AuthorQuizStatistics = {
@@ -69,8 +78,9 @@ export function formatQuizDuration(totalSeconds: number | null) {
 export function calculateQuizPoints(input: {
   outcome: QuizParticipantOutcome | null;
   attemptsRemaining: number;
+  awardedPoints?: number | null;
 }) {
-  return input.outcome === "correct" ? input.attemptsRemaining : 0;
+  return input.awardedPoints ?? (input.outcome === "correct" ? input.attemptsRemaining : 0);
 }
 
 export function calculateAuthorQuizStatistics(rows: readonly {
@@ -78,6 +88,9 @@ export function calculateAuthorQuizStatistics(rows: readonly {
   attemptsRemaining: number;
   attemptLimit: number;
   durationSeconds: number;
+  type?: QuizType;
+  wrongAnswers?: number;
+  awardedPoints?: number | null;
 }[]): AuthorQuizStatistics {
   let correctCount = 0;
   let firstTryCorrectCount = 0;
@@ -92,7 +105,7 @@ export function calculateAuthorQuizStatistics(rows: readonly {
       correctCount += 1;
       currentCorrectStreak += 1;
       bestCorrectStreak = Math.max(bestCorrectStreak, currentCorrectStreak);
-      if (row.attemptsRemaining === row.attemptLimit) firstTryCorrectCount += 1;
+      if (QUIZ_MECHANICS[row.type ?? "classic"].isFirstAnswer(row)) firstTryCorrectCount += 1;
       totalPoints += calculateQuizPoints(row);
     } else {
       currentCorrectStreak = 0;

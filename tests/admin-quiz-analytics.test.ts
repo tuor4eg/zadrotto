@@ -76,7 +76,7 @@ describe("admin quiz analytics", () => {
     assert.match(aggregates, /avg\(extract\(epoch from/);
     assert.match(aggregates, /quizParticipants\.completedAt\} - \$\{quizzes\.startsAt/);
     assert.match(participants, /when \$\{quizParticipants\.outcome\} = 'correct' then 1[\s\S]*when \$\{quizParticipants\.outcome\} = 'exhausted' then 2/);
-    assert.match(participants, /desc\([\s\S]*quizParticipants\.attemptsRemaining[\s\S]*asc\(quizParticipants\.completedAt\)/);
+    assert.match(participants, /desc\([\s\S]*quizParticipants\.awardedPoints[\s\S]*asc\(quizParticipants\.completedAt\)/);
     assert.match(participants, /asc\(quizParticipants\.completedAt\)/);
     assert.match(participants, /limit\(ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE\)[\s\S]*offset\(getOffset\(page, ADMIN_QUIZ_PARTICIPANT_PAGE_SIZE\)\)/);
   });

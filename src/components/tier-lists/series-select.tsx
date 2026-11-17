@@ -1,7 +1,8 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useEffect, useId, useState } from "react";
-import { Input } from "@/components/ui/form";
 
 type Series = { id: number; title: string; originalTitle: string | null };
 export function TierSeriesSelect({ id, value, onChange, variant = "admin" }: { id: string; value: string; onChange: (value: string) => void; variant?: "admin" | "archive" }) {
@@ -41,7 +42,7 @@ export function TierSeriesSelect({ id, value, onChange, variant = "admin" }: { i
   }, [open])
   const archive = variant === "archive"
   return <div className="relative z-20" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) setOpen(false); }}>
-    <Input id={id} role="combobox" aria-autocomplete="list" aria-controls={listId} aria-expanded={open} className={archive ? "h-10 border-stone-300/80 bg-stone-50/70 font-mono text-sm placeholder:text-stone-400 focus:border-stone-950" : undefined} placeholder="Найти серию (от 2 символов)" value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setResults([]); setError(""); setLoading(false); onChange(""); setOpen(true); }} onKeyDown={(event) => { if (event.key === "Enter" && open && results[0]) { event.preventDefault(); select(results[0]); } }} />
+    <SearchInput id={id} role="combobox" aria-autocomplete="list" aria-controls={listId} aria-expanded={open} className={archive ? "h-10 border-stone-300/80 bg-stone-50/70 font-mono text-sm placeholder:text-stone-400 focus:border-stone-950" : undefined} placeholder="Найти серию (от 2 символов)" value={query} onFocus={() => setOpen(true)} onChange={(event) => { setQuery(event.target.value); setResults([]); setError(""); setLoading(false); onChange(""); setOpen(true); }} onKeyDown={(event) => { if (event.key === "Enter" && open && results[0]) { event.preventDefault(); select(results[0]); } }} />
     {open ? <div id={listId} role="listbox" className={archive ? "archive-paper-surface archive-scrollbar absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded-md border border-stone-500/70 p-1 shadow-[0_14px_26px_rgba(28,25,23,0.24)]" : "absolute z-50 mt-1 max-h-72 w-full overflow-auto rounded border bg-white p-1 shadow-lg"}>
       <button type="button" role="option" aria-selected={!value} className="w-full p-2 text-left text-sm hover:bg-stone-100" onClick={() => { onChange(""); setQuery(""); setResults([]); setOpen(false); }}>Все серии</button>
       {loading ? <p role="status" className="p-2 text-sm">Ищем серии…</p> : error ? <p role="status" className="p-2 text-sm">{error}</p> : results.map((item) => <button type="button" role="option" aria-selected={String(item.id) === value} key={item.id} className="block w-full p-2 text-left text-sm hover:bg-stone-100" onClick={() => select(item)}>{item.title}{item.originalTitle ? <span className="block text-xs text-stone-500">{item.originalTitle}</span> : null}</button>)}

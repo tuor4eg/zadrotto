@@ -978,6 +978,7 @@ export const jobRuns = pgTable(
     index("job_runs_recovery_idx").on(table.lockExpiresAt).where(sql`${table.status} = 'running'`),
     index("job_runs_job_created_idx").on(table.jobId, table.createdAt),
     index("job_runs_job_finished_idx").on(table.jobId, table.finishedAt),
+    index("job_runs_retry_of_run_id_idx").on(table.retryOfRunId),
     index("job_runs_type_created_idx").on(table.type, table.createdAt),
     uniqueIndex("job_runs_scheduled_job_occurrence_unique")
       .on(table.jobId, table.scheduledFor)
@@ -1667,6 +1668,10 @@ export const quizzes = pgTable(
   "quizzes",
   {
     id: serial("id").primaryKey(),
+    type: text("type").$type<"classic" | "mosaic">().default("classic").notNull(),
+    configVersion: integer("config_version").default(1).notNull(),
+    config: jsonb("config").$type<{ seed: number }>(),
+    publishedAt: timestamp("published_at", { withTimezone: true }),
     question: text("question"),
     comment: text("comment"),
     imageObjectKey: text("image_object_key"),
@@ -1680,6 +1685,8 @@ export const quizzes = pgTable(
     ...timestamps(),
   },
   (table) => [
+    check("quizzes_type_check", sql`${table.type} in ('classic', 'mosaic')`),
+    check("quizzes_config_check", sql`${table.configVersion} = 1 and ((${table.type} = 'classic' and ${table.config} is null) or (${table.type} = 'mosaic' and ${table.config} is not null and ${table.config} ? 'seed' and jsonb_typeof(${table.config}->'seed') = 'number' and (${table.config}->>'seed')::numeric between 0 and 4294967295 and (${table.config}->>'seed')::numeric = trunc((${table.config}->>'seed')::numeric) and ${table.imageObjectKey} is not null and ${table.attemptLimit} between 1 and 10))`),
     index("quizzes_answer_media_item_id_idx").on(table.answerMediaItemId),
     index("quizzes_active_idx").on(table.enabled, table.startsAt, table.endsAt),
     check("quizzes_period_check", sql`${table.startsAt} < ${table.endsAt}`),
@@ -1726,12 +1733,17 @@ export const quizParticipants = pgTable(
     authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "cascade" }),
     joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
     attemptsRemaining: integer("attempts_remaining").notNull(),
+    mechanicState: jsonb("mechanic_state").$type<import("@/lib/quizzes/mosaic").MosaicState>(),
+    revision: integer("revision").default(0).notNull(),
+    awardedPoints: integer("awarded_points"),
     outcome: text("outcome"),
     completedAt: timestamp("completed_at", { withTimezone: true }),
   },
   (table) => [
     primaryKey({ columns: [table.quizId, table.authorId], name: "quiz_participants_pk" }),
     index("quiz_participants_author_id_idx").on(table.authorId),
+    check("quiz_participants_revision_check", sql`${table.revision} >= 0`),
+    check("quiz_participants_awarded_points_check", sql`${table.awardedPoints} is null or ${table.awardedPoints} between 0 and 10`),
     check("quiz_participants_attempts_remaining_check", sql`${table.attemptsRemaining} >= 0`),
     check("quiz_participants_outcome_check", sql`${table.outcome} is null or ${table.outcome} in ('correct', 'exhausted')`),
     check("quiz_participants_completion_check", sql`(${table.outcome} is null and ${table.completedAt} is null) or (${table.outcome} is not null and ${table.completedAt} is not null)`),

@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useState } from "react";
 import { useFormStatus } from "react-dom";
 import { X } from "lucide-react";
@@ -61,7 +63,7 @@ export function GenreRequestDecisionForm({ requestId, genres, franchiseOptions =
         </div>
         <div className="grid gap-2">
           <Label htmlFor="genre-search">Поиск жанров</Label>
-          <Input id="genre-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Название жанра" />
+          <SearchInput id="genre-search" type="search" value={search} onChange={(event) => { setSearch(event.target.value); setPage(1); }} placeholder="Название жанра" />
         </div>
         <p className="text-xs text-stone-500">Найдено: {matchingGenres.length}</p>
         {visibleGenres.length ? <div className="grid gap-2 sm:grid-cols-2">{visibleGenres.map((genre) => <label key={genre.id} className="flex min-w-0 items-start gap-2 text-sm">

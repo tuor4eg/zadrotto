@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
@@ -313,8 +315,8 @@ export function AdminMediaBrowser({
             Поиск по названию
           </Label>
           <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
-            <Input
+            <Search className="pointer-events-none absolute z-10 left-3 top-1/2 size-4 -translate-y-1/2 text-stone-400" />
+            <SearchInput
               id="admin-media-browser-search"
               className={archive ? "h-10 border-stone-300/80 bg-stone-50/70 pl-10 font-mono text-sm placeholder:text-stone-400 focus:border-stone-950" : "pl-9"}
               onChange={(event) => updateFilters({ searchQuery: event.currentTarget.value })}

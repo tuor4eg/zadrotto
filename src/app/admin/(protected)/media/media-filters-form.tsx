@@ -1,9 +1,11 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import { useCallback, useTransition } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import { Input, Select } from "@/components/ui/form";
+import { Select } from "@/components/ui/form";
 import {
   isAuthorOnlyCatalogSort,
   type CatalogSort,
@@ -172,7 +174,7 @@ export function AdminMediaFiltersForm({
 
   return (
     <div className="grid gap-4 rounded-lg border border-stone-200 bg-white p-4">
-      <Input
+      <SearchInput
         type="search"
         value={search}
         onChange={(event) => setSearch(event.target.value)}

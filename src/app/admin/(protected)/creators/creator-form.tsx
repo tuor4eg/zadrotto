@@ -1,5 +1,7 @@
 "use client";
 
+import { SearchInput } from "@/components/ui/search-input";
+
 import Link from "next/link";
 import { useEffect, useState, useTransition } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -96,7 +98,7 @@ export function CreatorForm({ creator, types, series, creators }: {
       {relatedIds.map(relatedId => <input key={relatedId} type="hidden" name="relatedCreatorIds" value={relatedId} />)}
       <div className="flex flex-wrap gap-2">{relatedIds.map(relatedId => <Button key={relatedId} type="button" variant="outline" size="sm" aria-label={`Убрать ${knownCreators.find(option => option.id === relatedId)?.name ?? relatedId}`} onClick={() => setRelatedIds(selected => selected.filter(id => id !== relatedId))}>{knownCreators.find(option => option.id === relatedId)?.name ?? relatedId} ×</Button>)}</div>
       <Label htmlFor="related-creator-search">Найти участника псевдонима</Label>
-      <Input id="related-creator-search" type="search" disabled={typeCode === "organization"} maxLength={200} value={creatorSearch} onChange={event => { setCreatorSearch(event.target.value); setRelatedOptions([]); setSearchState(normalizeSearchText(event.target.value).length < 3 ? "Введите не менее 3 символов для поиска." : "Поиск…"); }} placeholder="Поиск по имени" />
+      <SearchInput id="related-creator-search" type="search" disabled={typeCode === "organization"} maxLength={200} value={creatorSearch} onChange={event => { setCreatorSearch(event.target.value); setRelatedOptions([]); setSearchState(normalizeSearchText(event.target.value).length < 3 ? "Введите не менее 3 символов для поиска." : "Поиск…"); }} placeholder="Поиск по имени" />
       <div className="grid max-h-56 gap-2 overflow-y-auto rounded-md border p-3">{relatedOptions.length ? relatedOptions.map(option => <label key={option.id} className="flex items-center gap-2 text-sm"><input type="checkbox" checked={relatedIds.includes(option.id)} onChange={event => setRelatedIds(selected => event.target.checked ? [...selected, option.id] : selected.filter(id => id !== option.id))} />{option.name}</label>) : null}{searchState ? <p role="status" className="text-sm text-stone-500">{searchState}</p> : null}</div>
       {creator?.incomingRelations.length ? <div className="grid gap-1 text-sm"><p className="font-medium">Псевдонимы этого создателя</p>{creator.incomingRelations.map(relation => <Link key={relation.sourceCreatorId} href={`/admin/creators/${relation.sourceCreatorId}/edit`} className="underline">{relation.name}</Link>)}</div> : null}
     </section> : null}

@@ -9,7 +9,7 @@ export default function AuthorProfileLayout({
     <div className="author-dashboard min-w-0">
       <div className="archive-paper-surface archive-panel min-w-0 p-5 sm:p-6">
         <div>
-          <h1 className="font-serif text-4xl">Профиль</h1>
+          <h1 className="font-serif text-4xl">Настройки</h1>
           <p className="mt-2 text-stone-600">
             Настройки аккаунта, интересов и активных входов.
           </p>
