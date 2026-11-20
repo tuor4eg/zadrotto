@@ -1,10 +1,15 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
-import { renderToStaticMarkup } from "react-dom/server";
+import { getMigrationDefinition, getJobManualPlacement } from "../src/lib/jobs/catalog";
 
-test("migration page stays available with no launch forms after completed transfers are removed", async () => {
-  const { default: JobMigrationsPage } = await import("../src/app/admin/(protected)/tools/jobs/migrations/page");
-  const html = renderToStaticMarkup(await JobMigrationsPage({ searchParams: Promise.resolve({}) }));
-  assert.match(html, /Сейчас нет доступных миграций/);
-  assert.doesNotMatch(html, /<form|Запустить перенос|Проверить перенос/);
+test("review length migration uses the existing parameter-free restart form", () => {
+  const type = "reviews.body-length-backfill";
+  assert.equal(getMigrationDefinition(type)?.form, "empty");
+  assert.equal(getJobManualPlacement(type), "migration");
+  assert.equal(getMigrationDefinition("media.tmdb-directors-backfill"), null);
+  const form = readFileSync("src/app/admin/(protected)/tools/jobs/migrations/migration-form.tsx", "utf8");
+  assert.match(form, /definition\.form !== "empty"/);
+  assert.match(form, /name="payload" value=\{JSON\.stringify\(payload\)\}/);
+  assert.match(form, /Параметры не требуются/);
 });

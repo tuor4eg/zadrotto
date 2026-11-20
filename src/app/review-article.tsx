@@ -10,22 +10,19 @@ import { useRouter } from "next/navigation";
 import type { MediaItemReview } from "@/app/media-item-reviews";
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { ReviewPolaroidRow } from "@/app/reviews/review-polaroid-row";
-import { InlineMentionText } from "@/components/inline-mentions/inline-mention-text";
 import { ArchiveToasts, type ArchiveToast } from "@/components/ui/archive-toasts";
 import { Avatar } from "@/components/ui/avatar";
 import type { MediaType } from "@/lib/media/types";
-import type { InlineNode, ResolvedInlineEntity } from "@/lib/inline-mentions/markup";
 import { formatScore } from "@/lib/ratings/score";
 import type { ReviewReactionSummary } from "@/lib/reviews/reactions";
 
 type ReviewArticleProps = {
   authenticated: boolean;
   canEdit: boolean;
-  inlineNodes: InlineNode[];
+  bodyContent: React.ReactNode;
   mediaItemIdentity: React.ReactNode;
   otherAuthorReviews: MediaItemReview[];
   otherMediaItemReviews: MediaItemReview[];
-  resolvedInlineEntities: ResolvedInlineEntity[];
   review: MediaItemReview & {
     mediaItemCarrierCode: string | null;
     mediaItemCode: string;
@@ -78,11 +75,10 @@ async function copyUrl(url: string) {
 export function ReviewArticle({
   authenticated,
   canEdit,
-  inlineNodes,
+  bodyContent,
   mediaItemIdentity,
   otherAuthorReviews,
   otherMediaItemReviews,
-  resolvedInlineEntities,
   review,
 }: ReviewArticleProps) {
   const { displayTitle: mediaItemTitle } = resolveMediaItemDisplayTitles({ title: review.mediaItemTitle, aliases: review.mediaItemAliases, originalTitle: review.mediaItemOriginalTitle });
@@ -196,12 +192,7 @@ export function ReviewArticle({
               {publishedAt ? <span>{publishedAt}</span> : null}
             </div>
             <div className="mt-8 w-full">
-              <p className="whitespace-pre-wrap [overflow-wrap:anywhere] text-[15px] leading-7 text-stone-800 sm:text-base sm:leading-8">
-                <InlineMentionText
-                  nodes={inlineNodes}
-                  resolvedEntities={resolvedInlineEntities}
-                />
-              </p>
+              {bodyContent}
             </div>
               <div className="absolute bottom-5 left-6 z-20 sm:bottom-6 sm:left-10">
                 {canEdit ? (

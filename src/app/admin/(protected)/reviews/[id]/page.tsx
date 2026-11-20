@@ -1,3 +1,7 @@
+import { ReviewBody, reviewTextClassName } from "@/components/reviews/review-body";
+import { reviewBodyEntities } from "@/lib/reviews/body";
+import { resolveInlineEntities } from "@/lib/inline-mentions/server";
+import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Check, X } from "lucide-react";
@@ -57,6 +61,9 @@ export default async function AdminReviewRequestPage({ params }: AdminReviewRequ
     notFound();
   }
 
+  const accessibleMediaTypeCodes = await getAccessibleMediaTypeCodes(review.authorId);
+  const resolvedEntities = await resolveInlineEntities(reviewBodyEntities(review.reviewBody, review.bodyFormat), { accessibleMediaTypeCodes });
+
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-wrap gap-2">
@@ -108,9 +115,9 @@ export default async function AdminReviewRequestPage({ params }: AdminReviewRequ
           </span>
         </div>
 
-        <p className="mt-6 whitespace-pre-wrap text-sm leading-7 text-stone-700">
-          {review.reviewBody}
-        </p>
+        <div className={`mt-6 ${reviewTextClassName}`}>
+          <ReviewBody body={review.reviewBody} format={review.bodyFormat} resolvedEntities={resolvedEntities} />
+        </div>
       </article>
     </div>
   );

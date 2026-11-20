@@ -2453,7 +2453,12 @@ export const contributionReviews = pgTable("contribution_reviews", {
     .references(() => contributions.id, { onDelete: "cascade" }),
   title: text("title").notNull(),
   body: text("body").notNull(),
-});
+  bodyFormat: text("body_format").$type<"plain" | "markdown">().default("plain").notNull(),
+  bodyTextLength: integer("body_text_length"),
+}, (table) => [
+  check("contribution_reviews_body_format_check", sql`${table.bodyFormat} in ('plain', 'markdown')`),
+  check("contribution_reviews_body_text_length_check", sql`${table.bodyTextLength} is null or ${table.bodyTextLength} >= 0`),
+]);
 
 export const reviewReactions = pgTable(
   "review_reactions",

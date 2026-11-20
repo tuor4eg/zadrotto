@@ -48,7 +48,7 @@ describe("public media reviews layout", () => {
 
   it("renders three review previews and one action card", () => {
     assert.match(reviews, /reviews\.slice\(0, 3\)\.map/);
-    assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} \/>/);
+    assert.match(reviews, /<ReviewQuotePreview body=\{review\.body\} bodyPlainText=\{review\.bodyPlainText\} \/>/);
     assert.match(reviews, /<ReviewAuthorScore score=\{review\.authorScore\} \/>/);
     assert.match(reviews, /hiddenReviewsCount=\{Math\.max\(0, reviews\.length - 3\)\}/);
     assert.match(reviews, /Ещё \{hiddenReviewsCount\} мнений/);
@@ -111,8 +111,8 @@ describe("public media reviews layout", () => {
     assert.match(mediaIdentity, /\{displayOriginalTitle\}[\s\S]*displayAliases\.join/);
     assert.match(mediaIdentity, /<MediaItemFranchiseLinks[\s\S]*franchiseActions/);
     assert.match(reviewArticle, /<h1[\s\S]*\{review\.title\}/);
-    assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*whitespace-pre-wrap/);
-    assert.match(reviewArticle, /<div className="mt-8 w-full">[\s\S]*<InlineMentionText/);
+    assert.match(reviewArticle, /archive-review-paper relative flex flex-1[\s\S]*\{bodyContent\}/);
+    assert.match(reviewArticle, /<div className="mt-8 w-full">[\s\S]*\{bodyContent\}/);
     assert.doesNotMatch(reviewArticle, /mt-8 max-w-4xl/);
     assert.doesNotMatch(reviewArticle, /border-t border-stone-400\/30/);
     assert.match(reviewArticle, /href=\{`\/users\/\$\{review\.authorId\}`\}[\s\S]*<Avatar/);

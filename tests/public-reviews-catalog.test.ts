@@ -137,10 +137,8 @@ describe("public reviews catalog page", () => {
 
   it("inherits the streaming font and keeps the review body readable", () => {
     const article = read("src/app/review-article.tsx")
-    assert.match(
-      article,
-      /<div className="media-carrier-font-streaming[^\"]*">[\s\S]*<p className="whitespace-pre-wrap \[overflow-wrap:anywhere\] text-\[15px\] leading-7 text-stone-800 sm:text-base sm:leading-8">[\s\S]*<InlineMentionText/,
-    )
+    assert.match(article, /<div className="media-carrier-font-streaming[^\"]*">[\s\S]*\{bodyContent\}/)
+    assert.match(read("src/components/reviews/review-body.tsx"), /text-\[15px\] leading-7 text-stone-800 sm:text-base sm:leading-8/)
   })
 
   it("parses catalog filters without popular or comments presets", () => {
@@ -168,8 +166,8 @@ describe("public reviews catalog page", () => {
       /getPublishedReviewsCatalog[\s\S]*body: contributionReviews\.body[\s\S]*getPublishedReviewCatalogAuthors/,
     )
     assert.match(queries, /interval '30 days'/)
-    assert.match(queries, /char_length\(\$\{contributionReviews\.body\}\) >= 2000/)
-    assert.match(queries, /char_length\(\$\{contributionReviews\.body\}\) <= 500/)
+    assert.match(queries, /coalesce\(\$\{contributionReviews\.bodyTextLength\}, char_length\(\$\{contributionReviews\.body\}\)\) >= 2000/)
+    assert.match(queries, /coalesce\(\$\{contributionReviews\.bodyTextLength\}, char_length\(\$\{contributionReviews\.body\}\)\) <= 500/)
     assert.match(queries, /gte\(reviewAuthorScoreSql\(\), 80\)/)
     assert.match(
       queries,

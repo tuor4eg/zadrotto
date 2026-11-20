@@ -14,8 +14,13 @@ const DOMAIN = new Set([
   "reputation.initialize", "media.genre-series-apply",
 ]);
 export type JobMigrationDefinition = { description: string; form: "tmdb" | "bgg" | "fantlab" | "empty" };
-/** Completed production transfers are retired; keep the section ready for future migrations. */
-export const JOB_MIGRATIONS: Readonly<Record<string, JobMigrationDefinition>> = {};
+/** Completed production transfers are retired; active transfers remain manually restartable. */
+export const JOB_MIGRATIONS: Readonly<Record<string, JobMigrationDefinition>> = {
+  "reviews.body-length-backfill": {
+    description: "Заполнение счётчика видимого текста старых рецензий. Запускается автоматически после миграции; повторный запуск безопасен.",
+    form: "empty",
+  },
+};
 
 export function getJobManualPlacement(type: string): JobManualPlacement {
   if (GENERAL.has(type)) return "general";

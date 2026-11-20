@@ -2,6 +2,7 @@
 
 import { CircleHelp, LoaderCircle, X } from "lucide-react";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 
@@ -132,6 +133,7 @@ export function QuizGuessButton({
   disabled?: boolean;
   onPendingChange?: (pending: boolean) => void;
 }) {
+  const router = useRouter();
   const [pending, setPending] = useState(false);
   const [lifeLoss, setLifeLoss] = useState<number | null>(null);
   const [cooldown, setCooldown] = useState(false);
@@ -192,6 +194,7 @@ export function QuizGuessButton({
       retryRequest.current = null;
       if (data.participant !== undefined) {
         setQuizParticipant(data.participant as QuizParticipantHudState | null);
+        router.refresh();
       }
       if (response.ok && data.correct === false && data.participant
         && participant && data.participant.attemptsRemaining < participant.attemptsRemaining) {

@@ -119,7 +119,7 @@ export default async function EditReviewPage({
                   mediaItem={{ id: review.mediaItemId, title: review.mediaItemTitle }}
                   mediaItemLocked
                   status={review.status}
-                  values={{ title: review.title, body: review.body }}
+                  values={{ title: review.title, body: review.body, bodyFormat: review.bodyFormat }}
                 />
               ) : (
                 <Alert>

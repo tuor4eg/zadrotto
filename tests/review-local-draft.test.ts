@@ -40,14 +40,16 @@ describe("review local draft", () => {
       mediaItem: { id: 12, title: "Запись" },
       title: "Заголовок",
       updatedAt: "2026-09-21T12:00:00.000Z",
-      version: 2,
+      version: 3,
+      bodyFormat: "plain",
       partId: null,
     }), {
       body: "Длинный текст рецензии",
       mediaItem: { id: 12, title: "Запись" },
       title: "Заголовок",
       updatedAt: "2026-09-21T12:00:00.000Z",
-      version: 2,
+      version: 3,
+      bodyFormat: "plain",
       partId: null,
     })
     assert.equal(parseReviewLocalDraft({ version: 2 }), null)
@@ -89,5 +91,34 @@ describe("review local draft", () => {
         value: previousWindow,
       })
     }
+  })
+})
+
+describe("versioned Markdown drafts", () => {
+  const base = { title: "Текст", body: "**Текст**", mediaItem: null, partId: null, updatedAt: "2026-11-17T00:00:00Z" }
+  it("migrates old drafts as plain and validates v3 format", () => {
+    for (const version of [1, 2]) {
+      assert.equal(parseReviewLocalDraft({ ...base, version })?.bodyFormat, "plain")
+      assert.equal(parseReviewLocalDraft({ ...base, version })?.version, 3)
+    }
+    assert.equal(parseReviewLocalDraft({ ...base, version: 3, bodyFormat: "markdown" })?.bodyFormat, "markdown")
+    assert.equal(parseReviewLocalDraft({ ...base, version: 3, bodyFormat: "html" }), null)
+    assert.equal(parseReviewLocalDraft({ ...base, version: 4, bodyFormat: "markdown" }), null)
+  })
+  it("does not overwrite a draft from a future version, including empty autosaves", () => {
+    const future = JSON.stringify({ ...base, version: 4, bodyFormat: "markdown" })
+    let stored: string | null = future
+    const previousWindow = globalThis.window
+    Object.defineProperty(globalThis, "window", { configurable: true, value: { localStorage: {
+      getItem() { return stored }, setItem(_key: string, value: string) { stored = value }, removeItem() { stored = null },
+    } } })
+    try {
+      writeReviewLocalDraft("future", { title: "changed", body: "changed", mediaItem: null, bodyFormat: "markdown" })
+      assert.equal(stored, future)
+      writeReviewLocalDraft("future", { title: "", body: "", mediaItem: null })
+      assert.equal(stored, future)
+      clearReviewLocalDraft("future")
+      assert.equal(stored, future)
+    } finally { Object.defineProperty(globalThis, "window", { configurable: true, value: previousWindow }) }
   })
 })

@@ -59,6 +59,8 @@ do not require architecture documentation updates.
 - Minimize environment variables. If a setting or operational switch can be managed through the
   admin UI, implement it there using persisted settings instead of adding an environment variable.
   Reserve environment variables for deployment configuration and bootstrap requirements.
+- Production data transfers and backfills must use database migrations or registered background
+  jobs. Do not add standalone CLI/backfill scripts: production runs in containers.
 - Respond in Russian unless asked otherwise.
 - In user-facing text call `MediaItem` «запись». Do not use «тайтл» in labels, messages,
   notifications, tooltips, or activity logs.

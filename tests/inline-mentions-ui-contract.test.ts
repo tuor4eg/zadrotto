@@ -12,16 +12,19 @@ const mentionRenderer = read("src/components/inline-mentions/inline-mention-text
 const mentionSearchRoute = read("src/app/api/mentions/search/route.ts")
 const mentionRegistry = read("src/lib/inline-mentions/registry.ts")
 const mediaReviews = read("src/app/media-item-reviews.tsx")
+const editor = read("src/components/reviews/review-editor.tsx")
+const reviewBody = read("src/components/reviews/review-body.tsx")
 const reviewQueries = read("src/db/queries/contribution-reviews.ts")
 
 describe("inline mentions UI contracts", () => {
   it("resolves mentions on the review page and renders structured nodes without HTML injection", () => {
-    assert.match(reviewPage, /parseInlineMarkup/)
+    assert.match(reviewPage, /reviewBodyEntities/)
     assert.match(reviewPage, /resolveInlineEntities/)
-    assert.match(reviewPage, /inlineMarkupToPlainText\(review\.body\)/)
-    assert.match(reviewPage, /<ReviewArticle[\s\S]*(?:inlineNodes|nodes)=\{/)
+    assert.match(reviewPage, /reviewBodyToPlainText\(review\.body, review\.bodyFormat\)/)
+    assert.match(reviewPage, /<ReviewArticle[\s\S]*bodyContent=\{/)
 
-    assert.match(reviewArticle, /<InlineMentionText/)
+    assert.match(reviewBody, /<InlineMentionText/)
+    assert.match(reviewArticle, /\{bodyContent\}/)
     assert.doesNotMatch(reviewArticle, />\{review\.body\}<\/p>/)
     assert.doesNotMatch(reviewArticle, /dangerouslySetInnerHTML/)
     assert.doesNotMatch(mentionRenderer, /dangerouslySetInnerHTML/)
@@ -29,13 +32,15 @@ describe("inline mentions UI contracts", () => {
     assert.match(mentionRenderer, /node\.label/)
   })
 
-  it("uses a controlled mention textarea while preserving the submitted body field", () => {
-    assert.match(reviewForm, /import \{ MentionTextarea \}/)
-    assert.match(reviewForm, /<MentionTextarea/)
+  it("uses a visual editor while preserving submitted body and format fields", () => {
+    assert.match(reviewForm, /dynamic\(\(\) => import\("@\/components\/reviews\/review-editor"\)/)
+    assert.match(reviewForm, /<ReviewEditor/)
     assert.match(reviewForm, /name="body"/)
     assert.match(reviewForm, /value=\{body\}/)
-    assert.match(reviewForm, /onValueChange=\{setBody\}/)
+    assert.match(reviewForm, /onValueChange=\{[\s\S]*setBody\(value\); setBodyFormat\(format\)/)
     assert.match(reviewForm, /Чтобы вставить ссылку на запись,[\s\S]*начни печатать её название/)
+    assert.match(reviewForm, /name="bodyFormat"/)
+    assert.match(editor, /ReviewMention\.configure/)
     assert.doesNotMatch(reviewForm, /<Textarea[\s\S]*name="body"/)
   })
 
@@ -83,8 +88,8 @@ describe("inline mentions UI contracts", () => {
   })
 
   it("projects markup to labels in metadata, previews, and the main-page excerpt", () => {
-    assert.match(reviewPage, /inlineMarkupToPlainText\(review\.body\)/)
+    assert.match(reviewPage, /reviewBodyToPlainText\(review\.body, review\.bodyFormat\)/)
     assert.match(mediaReviews, /inlineMarkupToPlainText\(body\)/)
-    assert.match(reviewQueries, /inlineMarkupToPlainText\(review\.body\)/)
+    assert.match(reviewQueries, /reviewBodyToPlainText\(review\.body, review\.bodyFormat\)/)
   })
 })

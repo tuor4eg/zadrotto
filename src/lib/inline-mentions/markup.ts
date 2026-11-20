@@ -150,6 +150,13 @@ export function parseInlineMarkup(value: string): InlineNode[] {
   return nodes;
 }
 
+/** A bounded marker read for editor tokenizers; avoids parsing the entire remaining document. */
+export function parseInlineEntityAtStart(value: string) {
+  if (!value.startsWith("[[")) return null;
+  const result = parseMarkerAt(value, 0);
+  return result.kind === "valid" ? { node: result.node, end: result.end } : null;
+}
+
 export function serializeInlineEntity(entity: InlineEntity) {
   const entityType = entity.entityType ?? entity.type;
   if (!ENTITY_TYPE_PATTERN.test(entityType)) {

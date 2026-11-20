@@ -6,13 +6,15 @@ import { useActionState, useEffect, useRef, useState } from "react"
 import { Loader2, Search } from "lucide-react"
 
 import { ArchiveToasts } from "@/components/ui/archive-toasts"
-import { MentionTextarea } from "@/components/inline-mentions/mention-textarea"
+import dynamic from "next/dynamic"
+import type { ReviewBodyFormat } from "@/lib/reviews/constants"
+
+const ReviewEditor = dynamic(() => import("@/components/reviews/review-editor"), { ssr: false, loading: () => <p role="status" className="min-h-64 p-3 text-sm text-stone-500">Загрузка редактора…</p> })
 import { Button } from "@/components/ui/button"
 import { Input, Label } from "@/components/ui/form"
 import {
-  REVIEW_BODY_MAX_LENGTH,
   REVIEW_TITLE_MAX_LENGTH,
-} from "@/lib/forms/contribution-review"
+} from "@/lib/reviews/constants"
 import {
   getReviewLocalDraftKey,
   readReviewLocalDraft,
@@ -53,6 +55,7 @@ type PublicReviewFormProps = {
   values?: {
     title: string
     body: string
+    bodyFormat?: ReviewBodyFormat
   }
 }
 
@@ -101,6 +104,7 @@ export function PublicReviewForm({
   const [searchError, setSearchError] = useState<string | null>(null)
   const [title, setTitle] = useState(values?.title ?? "")
   const [body, setBody] = useState(values?.body ?? "")
+  const [bodyFormat, setBodyFormat] = useState<ReviewBodyFormat>(values?.bodyFormat ?? "plain")
   const [draftReady, setDraftReady] = useState(false)
   const [restoredDraft, setRestoredDraft] = useState(false)
   const formRef = useRef<HTMLFormElement>(null)
@@ -111,6 +115,7 @@ export function PublicReviewForm({
     values: {
       title: values?.title ?? "",
       body: values?.body ?? "",
+      bodyFormat: values?.bodyFormat ?? "plain",
     },
   }
   const [state, formAction, isPending] = useActionState(savePublicReviewAction, initialState)
@@ -123,6 +128,7 @@ export function PublicReviewForm({
       if (draft) {
         setTitle(draft.title)
         setBody(draft.body)
+        setBodyFormat(draft.bodyFormat)
         const restoredMediaItem = mediaItemLocked ? mediaItem : draft.mediaItem ?? mediaItem
         setSelectedMedia(restoredMediaItem)
         setMediaQuery(restoredMediaItem?.title ?? "")
@@ -137,19 +143,19 @@ export function PublicReviewForm({
   useEffect(() => {
     if (!draftReady) return
     const timeoutId = window.setTimeout(() => {
-      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title, partId })
+      writeReviewLocalDraft(draftKey, { body, bodyFormat, mediaItem: selectedMedia, title, partId })
     }, 300)
     return () => window.clearTimeout(timeoutId)
-  }, [body, draftKey, draftReady, selectedMedia, title, partId])
+  }, [body, bodyFormat, draftKey, draftReady, selectedMedia, title, partId])
 
   useEffect(() => {
     if (!draftReady) return
     const saveBeforeLeaving = () => {
-      writeReviewLocalDraft(draftKey, { body, mediaItem: selectedMedia, title, partId })
+      writeReviewLocalDraft(draftKey, { body, bodyFormat, mediaItem: selectedMedia, title, partId })
     }
     window.addEventListener("pagehide", saveBeforeLeaving)
     return () => window.removeEventListener("pagehide", saveBeforeLeaving)
-  }, [body, draftKey, draftReady, selectedMedia, title, partId])
+  }, [body, bodyFormat, draftKey, draftReady, selectedMedia, title, partId])
 
   useEffect(() => {
     function handlePointerDown(event: PointerEvent) {
@@ -418,16 +424,15 @@ export function PublicReviewForm({
         <p className="text-xs leading-5 text-stone-500">
           Чтобы вставить ссылку на запись, введи <span className="font-mono text-stone-700">@</span>
           и начни печатать её название, затем выбери запись из списка.
+          {" "}Нажми на вставленную ссылку, чтобы изменить её текст.
         </p>
-        <MentionTextarea
-          id="body"
-          name="body"
-          required
-          maxLength={REVIEW_BODY_MAX_LENGTH}
+        <input type="hidden" name="body" value={body} />
+        <input type="hidden" name="bodyFormat" value={bodyFormat} />
+        {draftReady ? <ReviewEditor
           value={body}
-          onValueChange={setBody}
-          className="h-[calc(100dvh-30rem)] min-h-64 resize-none overflow-y-auto"
-        />
+          format={bodyFormat}
+          onValueChange={(value, format) => { setBody(value); setBodyFormat(format) }}
+        /> : <p role="status" className="min-h-64 p-3 text-sm text-stone-500">Загрузка черновика…</p>}
         <p className="text-xs text-stone-500" role="status">
           {restoredDraft
             ? "Восстановлен локальный черновик. Изменения сохраняются в этом браузере."

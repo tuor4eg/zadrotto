@@ -1,8 +1,11 @@
-export const REVIEW_TITLE_MAX_LENGTH = 160;
-export const REVIEW_BODY_MIN_LENGTH = 20;
-export const REVIEW_BODY_MAX_LENGTH = 12_000;
+import { REVIEW_BODY_MAX_BYTES, reviewBodyToPlainText, type ReviewBodyFormat } from "@/lib/reviews/body";
+
+import { REVIEW_TITLE_MAX_LENGTH, REVIEW_BODY_MIN_LENGTH, REVIEW_BODY_MAX_LENGTH } from "@/lib/reviews/constants";
+export { REVIEW_TITLE_MAX_LENGTH, REVIEW_BODY_MIN_LENGTH, REVIEW_BODY_MAX_LENGTH } from "@/lib/reviews/constants";
 
 export type ReviewFormError =
+  | "invalid-body-format"
+  | "invalid-body"
   | "invalid-media-item"
   | "not-found"
   | "required"
@@ -18,6 +21,7 @@ export type ReviewFormInput =
       value: {
         title: string;
         body: string;
+        bodyFormat: ReviewBodyFormat;
       };
     }
   | {
@@ -28,9 +32,20 @@ export type ReviewFormInput =
 export function parseReviewFormInput(input: {
   title: FormDataEntryValue | null | string;
   body: FormDataEntryValue | null | string;
+  bodyFormat?: FormDataEntryValue | null | string;
 }): ReviewFormInput {
   const title = typeof input.title === "string" ? input.title.trim() : "";
   const body = typeof input.body === "string" ? input.body.trim() : "";
+
+  const bodyFormat = input.bodyFormat ?? "plain";
+  if (bodyFormat !== "plain" && bodyFormat !== "markdown") return { ok: false, error: "invalid-body-format" };
+  if (new TextEncoder().encode(typeof input.body === "string" ? input.body : "").length > REVIEW_BODY_MAX_BYTES) return { ok: false, error: "body-too-long" };
+  let visibleBody: string;
+  try {
+    visibleBody = reviewBodyToPlainText(body, bodyFormat);
+  } catch {
+    return { ok: false, error: "invalid-body" };
+  }
 
   if (!title || !body) {
     return { ok: false, error: "required" };
@@ -40,11 +55,11 @@ export function parseReviewFormInput(input: {
     return { ok: false, error: "title-too-long" };
   }
 
-  if (body.length < REVIEW_BODY_MIN_LENGTH) {
+  if (visibleBody.length < REVIEW_BODY_MIN_LENGTH) {
     return { ok: false, error: "body-too-short" };
   }
 
-  if (body.length > REVIEW_BODY_MAX_LENGTH) {
+  if (visibleBody.length > REVIEW_BODY_MAX_LENGTH) {
     return { ok: false, error: "body-too-long" };
   }
 
@@ -53,11 +68,15 @@ export function parseReviewFormInput(input: {
     value: {
       title,
       body,
+      bodyFormat,
     },
   };
 }
 
 export function getReviewFormErrorMessage(error?: string | null) {
+  if (error === "invalid-body") return "Не удалось прочитать текст рецензии. Проверьте форматирование.";
+  if (error === "invalid-body-format") return "Неизвестный формат текста рецензии.";
+
   if (error === "invalid-media-item") {
     return "Не удалось определить запись архива.";
   }

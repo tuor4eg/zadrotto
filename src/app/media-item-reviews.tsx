@@ -23,6 +23,7 @@ export type MediaItemReview = {
   authorScore: number | null
   title: string
   body: string
+  bodyPlainText?: string
   publishedAt: Date | string | null
   updatedAt: Date | string
   mediaItemOriginalTitle?: string | null;
@@ -84,14 +85,16 @@ export function ReviewAuthorScore({
 
 function ReviewQuotePreview({
   body,
+  bodyPlainText,
   className,
 }: {
   body: string
+  bodyPlainText?: string
   className?: string
 }) {
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLParagraphElement>(null)
-  const normalizedBody = inlineMarkupToPlainText(body).trim()
+  const normalizedBody = (bodyPlainText ?? inlineMarkupToPlainText(body)).trim()
   const fullText = `«${normalizedBody}»`
   const [previewText, setPreviewText] = useState(fullText)
 
@@ -209,6 +212,7 @@ function MediaItemReviewCoverCard({
         </h3>
         <ReviewQuotePreview
           body={review.body}
+          bodyPlainText={review.bodyPlainText}
           className="mt-1.5 h-[3.6rem] shrink-0 overflow-hidden text-[10px] leading-[1.4] text-stone-50/90 drop-shadow-[0_1px_2px_rgba(0,0,0,0.55)] sm:h-[4.2rem] sm:text-[11px]"
         />
         <div className="mt-2 flex items-end justify-between gap-2 text-[10px] leading-tight text-stone-100/85 sm:text-[11px]">
@@ -274,7 +278,7 @@ export function MediaItemReviewCard({
           {mediaItemTitle}
         </div>
       ) : null}
-      <ReviewQuotePreview body={review.body} />
+      <ReviewQuotePreview body={review.body} bodyPlainText={review.bodyPlainText} />
       <div className="relative z-10 mt-1 shrink-0">
         <div
           className={`mb-1 line-clamp-2 font-semibold text-stone-950 ${

@@ -24,7 +24,8 @@ import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
 import { AI_SCENARIO_KEYS } from "@/lib/ai/scenarios/catalog";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
 import { getPublicSiteHeaderState } from "@/lib/archive/public-site-header";
-import { inlineMarkupToPlainText, parseInlineMarkup } from "@/lib/inline-mentions/markup";
+import { reviewBodyToPlainText, reviewBodyEntities } from "@/lib/reviews/body";
+import { ReviewBody, reviewTextClassName } from "@/components/reviews/review-body";
 import { resolveInlineEntities } from "@/lib/inline-mentions/server";
 import { mapFranchiseSuggestionOptions } from "@/lib/media/franchise-suggestion-options";
 
@@ -60,7 +61,7 @@ export async function generateMetadata({ params }: ReviewPageProps): Promise<Met
   return buildPublicPageMetadata(
     `/reviews/${review.id}`,
     `${review.title} — рецензия на «${mediaItemTitle}»`,
-    inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim().slice(0, 180),
+    reviewBodyToPlainText(review.body, review.bodyFormat).replace(/\s+/g, " ").trim().slice(0, 180),
   );
 }
 
@@ -85,7 +86,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
     ratingsCount: reviewSeason.archiveRating != null ? reviewSeason.ratingsCount : item.ratingsCount,
     currentAuthorScore: reviewSeason.myRating ?? item.currentAuthorScore,
   } : item;
-  const inlineNodes = parseInlineMarkup(review.body);
+  const inlineNodes = reviewBodyEntities(review.body, review.bodyFormat);
   const [
     resolvedInlineEntities,
     otherMediaItemReviews,
@@ -147,7 +148,7 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
           key={currentAuthor?.id ?? "guest"}
           authenticated={Boolean(currentAuthor)}
           canEdit={currentAuthor?.code === review.authorCode}
-          inlineNodes={inlineNodes}
+          bodyContent={<div className={reviewTextClassName}><ReviewBody body={review.body} format={review.bodyFormat} resolvedEntities={resolvedInlineEntities} /></div>}
           mediaItemIdentity={
             <ArchiveMediaItemIdentity
               franchiseActions={franchiseActions}
@@ -159,7 +160,6 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
           }
           otherAuthorReviews={otherAuthorReviews}
           otherMediaItemReviews={otherMediaItemReviews}
-          resolvedInlineEntities={resolvedInlineEntities}
           review={review}
         />
         </div>

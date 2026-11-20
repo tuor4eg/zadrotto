@@ -1,5 +1,7 @@
 "use server"
 
+import type { ReviewBodyFormat } from "@/lib/reviews/body"
+
 import { revalidatePath } from "next/cache"
 import { notFound, redirect } from "next/navigation"
 
@@ -26,6 +28,7 @@ export type SavePublicReviewState = {
   values: {
     title: string
     body: string
+    bodyFormat?: ReviewBodyFormat
   }
 }
 
@@ -45,6 +48,7 @@ function getFormValues(formData: FormData) {
   return {
     title: getFormString(formData, "title"),
     body: getFormString(formData, "body"),
+    bodyFormat: formData.get("bodyFormat") === "markdown" ? "markdown" as const : "plain" as const,
   }
 }
 
@@ -93,7 +97,8 @@ export async function savePublicReviewAction(
   const values = getFormValues(formData)
   const form = parseReviewFormInput({
     title: values.title,
-    body: values.body,
+    body: formData.get("body"),
+    bodyFormat: formData.get("bodyFormat"),
   })
 
   if (!mediaItemId || !parsedPart.ok) {

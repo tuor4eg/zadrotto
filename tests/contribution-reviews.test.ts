@@ -23,6 +23,7 @@ describe("parseReviewFormInput", () => {
       value: {
         title: "Хороший текст",
         body: "Рецензия с нормальной длиной текста.",
+        bodyFormat: "plain",
       },
     });
   });
@@ -97,5 +98,26 @@ describe("review scope input", () => {
     for (const value of ["0", "-1", "1.5", "1e2", "9007199254740992"]) {
       assert.deepEqual(parseReviewPartId(value), { ok: false });
     }
+  });
+});
+
+describe("review body format validation", () => {
+  it("counts rendered Markdown text and keeps source intact", () => {
+    const body = "**" + "т".repeat(20) + "**";
+    assert.deepEqual(parseReviewFormInput({ title: "Текст", body, bodyFormat: "markdown" }), {
+      ok: true, value: { title: "Текст", body, bodyFormat: "markdown" },
+    });
+    assert.deepEqual(parseReviewFormInput({ title: "Текст", body: "**коротко**", bodyFormat: "markdown" }), {
+      ok: false, error: "body-too-short",
+    });
+  });
+
+  it("rejects unknown formats and oversized Markdown source", () => {
+    assert.deepEqual(parseReviewFormInput({ title: "Текст", body: "т".repeat(20), bodyFormat: "html" }), {
+      ok: false, error: "invalid-body-format",
+    });
+    assert.deepEqual(parseReviewFormInput({ title: "Текст", body: `[${"т".repeat(20)}](https://example.com/${"x".repeat(131072)})`, bodyFormat: "markdown" }), {
+      ok: false, error: "body-too-long",
+    });
   });
 });

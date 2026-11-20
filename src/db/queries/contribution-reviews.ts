@@ -30,7 +30,7 @@ import {
 } from "@/lib/contributions/model";
 import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
-import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup";
+import { isLegacyReviewFormatConversion, reviewBodyToPlainText, type ReviewBodyFormat } from "@/lib/reviews/body";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import type { ReviewReactionCounts, ReviewReactionSummary } from "@/lib/reviews/reactions";
 import { runInDomainEventTransaction } from "@/db/transaction";
@@ -56,7 +56,7 @@ export async function getSubmittedContributionReviewCountForAdmin() {
 }
 
 export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
-  return db
+  const rows = await db
     .select({
       id: contributions.id,
       authorId: authors.id,
@@ -68,6 +68,7 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
       publishedAt: contributions.reviewedAt,
       updatedAt: contributions.updatedAt,
     })
@@ -91,6 +92,11 @@ export async function getPublishedReviewsForMediaItem(mediaItemId: number) {
       ),
     )
     .orderBy(desc(contributions.reviewedAt), desc(contributions.updatedAt), desc(contributions.id));
+
+  return rows.map((review) => ({
+    ...review,
+    bodyPlainText: reviewBodyToPlainText(review.body, review.bodyFormat),
+  }));
 }
 
 export async function getPublishedReviewById(
@@ -112,6 +118,7 @@ export async function getPublishedReviewById(
       partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
       publishedAt: contributions.reviewedAt,
       updatedAt: contributions.updatedAt,
       mediaItemId: mediaItems.id,
@@ -173,6 +180,7 @@ const publishedReviewCardSelection = {
       partLabel: reviewPartLabelSql(),
   title: contributionReviews.title,
   body: contributionReviews.body,
+  bodyFormat: contributionReviews.bodyFormat,
   mediaItemTitle: mediaItems.title,
   mediaItemAliases: mediaItemDisplayAliasesSql(),
   mediaItemOriginalTitle: mediaItems.originalTitle,
@@ -186,10 +194,11 @@ const publishedReviewCardSelection = {
 };
 
 function mapPublishedReviewCards<
-  T extends { coverThumbUrl: string | null; coverUrl: string | null },
+  T extends { body: string; bodyFormat: ReviewBodyFormat; coverThumbUrl: string | null; coverUrl: string | null },
 >(rows: T[]) {
   return rows.map((review) => ({
     ...review,
+    bodyPlainText: reviewBodyToPlainText(review.body, review.bodyFormat),
     coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
     coverUrl: resolveCoverUrl(review.coverUrl),
   }));
@@ -273,6 +282,7 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
       partId: contributions.partId,
       partLabel: reviewPartLabelSql(true),
       body: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
       coverThumbUrl: mediaItems.coverThumbUrl,
       coverUrl: mediaItems.coverUrl,
       id: contributions.id,
@@ -304,10 +314,12 @@ export async function getLatestPublishedReviewCard(accessibleMediaTypeCodes: rea
     return null;
   }
 
-  const normalizedBody = inlineMarkupToPlainText(review.body).replace(/\s+/g, " ").trim();
+  const bodyPlainText = reviewBodyToPlainText(review.body, review.bodyFormat);
+  const normalizedBody = bodyPlainText.replace(/\s+/g, " ").trim();
 
   return {
     ...review,
+    bodyPlainText,
     excerpt: normalizedBody,
     coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
     coverUrl: resolveCoverUrl(review.coverUrl),
@@ -359,9 +371,9 @@ function buildPublishedReviewsCatalogConditions(filters: PublishedReviewsCatalog
   } else if (filters.preset === "high") {
     conditions.push(gte(reviewAuthorScoreSql(), 80))
   } else if (filters.preset === "long") {
-    conditions.push(sql`char_length(${contributionReviews.body}) >= 2000`)
+    conditions.push(sql`coalesce(${contributionReviews.bodyTextLength}, char_length(${contributionReviews.body})) >= 2000`)
   } else if (filters.preset === "short") {
-    conditions.push(sql`char_length(${contributionReviews.body}) <= 500`)
+    conditions.push(sql`coalesce(${contributionReviews.bodyTextLength}, char_length(${contributionReviews.body})) <= 500`)
   }
 
   return and(...conditions)
@@ -519,6 +531,7 @@ export async function getLatestPublishedReviewCards(
       partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
       mediaItemTitle: mediaItems.title,
       mediaItemAliases: mediaItemDisplayAliasesSql(),
       mediaItemOriginalTitle: mediaItems.originalTitle,
@@ -552,6 +565,7 @@ export async function getLatestPublishedReviewCards(
 
   return rows.map((review) => ({
     ...review,
+    bodyPlainText: reviewBodyToPlainText(review.body, review.bodyFormat),
     coverThumbUrl: resolveCoverUrl(review.coverThumbUrl),
     coverUrl: resolveCoverUrl(review.coverUrl),
   }))
@@ -794,6 +808,7 @@ export async function getAuthorReviewForEdit(
       partLabel: reviewPartLabelSql(),
       title: contributionReviews.title,
       body: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
     })
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
@@ -874,8 +889,11 @@ export async function upsertAuthorReview(input: {
   mediaItemId: number;
   title: string;
   body: string;
+  bodyFormat?: ReviewBodyFormat;
   status: Extract<ContributionStatus, "draft" | "published" | "submitted">;
 }) {
+  const bodyFormat = input.bodyFormat ?? "plain";
+  const bodyTextLength = reviewBodyToPlainText(input.body, bodyFormat).length;
   const now = new Date();
   const submittedAt = input.status === "submitted" ? now : null;
   const reviewedAt = input.status === "published" ? now : null;
@@ -944,11 +962,15 @@ export async function upsertAuthorReview(input: {
           sql`${contributions.partId} IS NOT DISTINCT FROM ${partId}`,
           ne(contributions.id, existing.id))).limit(1);
       if (occupied) return { ok: false as const, reason: "scope-conflict" as const };
-      const [text] = await tx.select({ title: contributionReviews.title, body: contributionReviews.body })
+      const [text] = await tx.select({ title: contributionReviews.title, body: contributionReviews.body, bodyFormat: contributionReviews.bodyFormat })
         .from(contributionReviews).where(eq(contributionReviews.contributionId, existing.id)).limit(1);
-      if (text?.title === input.title && text.body === input.body) {
+      const sameBody = text && ((text.body === input.body && text.bodyFormat === bodyFormat)
+        || (text.bodyFormat === "plain" && bodyFormat === "markdown" && isLegacyReviewFormatConversion(text.body, input.body)));
+      if (text?.title === input.title && sameBody) {
         // A scope correction keeps publication/moderation state and history intact.
         await tx.update(contributions).set({ partId, updatedAt: now }).where(eq(contributions.id, existing.id));
+        await tx.update(contributionReviews).set({ body: input.body, bodyFormat, bodyTextLength })
+          .where(eq(contributionReviews.contributionId, existing.id));
         return { ok: true as const, id: existing.id };
       }
     }
@@ -971,6 +993,8 @@ export async function upsertAuthorReview(input: {
         .set({
           title: input.title,
           body: input.body,
+          bodyFormat,
+          bodyTextLength,
         })
         .where(eq(contributionReviews.contributionId, existing.id));
 
@@ -1023,6 +1047,8 @@ export async function upsertAuthorReview(input: {
       contributionId: created.id,
       title: input.title,
       body: input.body,
+      bodyFormat,
+      bodyTextLength,
     });
     await tx.insert(contributionMediaItems).values({
       contributionId: created.id,
@@ -1083,6 +1109,7 @@ export async function getAdminContributionReviews(input: {
         partId: contributions.partId,
         partLabel: reviewPartLabelSql(),
       reviewBody: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
     })
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))
@@ -1107,6 +1134,7 @@ export async function getSubmittedContributionReviewForAdminView(contributionId:
         partId: contributions.partId,
         partLabel: reviewPartLabelSql(),
       reviewBody: contributionReviews.body,
+      bodyFormat: contributionReviews.bodyFormat,
     })
     .from(contributions)
     .innerJoin(contributionReviews, eq(contributionReviews.contributionId, contributions.id))

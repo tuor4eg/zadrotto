@@ -1,3 +1,4 @@
+import { reviewBodyLengthHandler } from "@/lib/reviews/body-length-job";
 import { tierPreviewGenerateHandler, tierPreviewCleanupHandler } from '@/lib/tier-lists/preview-job';
 import { comicVineIssuesJobHandler } from "@/lib/providers/comic-vine-issues-job";
 import { anilistCreatorApprovalHandler } from "@/lib/creators/anilist-creator-jobs";
@@ -573,6 +574,7 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
   async execute({ payload, signal, runId, lockToken }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) }); },
 };
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  reviewBodyLengthHandler,
   tierPreviewGenerateHandler,
   tierPreviewCleanupHandler,
   creatorNameLocalizationHandler,

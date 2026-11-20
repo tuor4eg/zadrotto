@@ -6,7 +6,8 @@ import { getRetiredJob } from "../src/lib/jobs/retired";
 
 const completed = ["media.tmdb-companies-backfill", "media.tmdb-directors-backfill", "media.bgg-creators-backfill", "media.game-companies-backfill", "media.creator-fantlab-bindings", "media.creators-backfill", "media.genre-series-backfill"];
 test("completed production transfers no longer appear as migrations or allow new runs", () => {
-  assert.deepEqual(Object.keys(JOB_MIGRATIONS), []);
+  assert.deepEqual(Object.keys(JOB_MIGRATIONS), ["reviews.body-length-backfill"]);
+  assert.equal(getJobManualPlacement("reviews.body-length-backfill"), "migration");
   for (const type of completed) {
     assert.equal(getJobManualPlacement(type), "none");
     assert.ok(getRetiredJob(type)?.reason.includes("завершён"));
