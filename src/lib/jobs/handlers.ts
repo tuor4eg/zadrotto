@@ -1,3 +1,4 @@
+import { classificationApplyHandler, classificationRollbackHandler } from "@/lib/classification-migration/jobs";
 import { reviewBodyLengthHandler } from "@/lib/reviews/body-length-job";
 import { tierPreviewGenerateHandler, tierPreviewCleanupHandler } from '@/lib/tier-lists/preview-job';
 import { comicVineIssuesJobHandler } from "@/lib/providers/comic-vine-issues-job";
@@ -6,6 +7,7 @@ import { creatorAutoApprovalHandler } from "@/lib/creators/auto-approval-job";
 import { creatorNameLocalizationHandler } from "@/lib/creators/name-localization-job";
 import { genreSeriesApplyHandler } from "@/lib/media/genre-series-job";
 import { reputationInitializeHandler } from "@/lib/reputation/initialization-job";
+import { creatorFieldsFillHandler } from "@/lib/creators/fields-fill-job";
 import { creatorImageFillHandler, creatorImagesBackfillHandler, creatorImageRefreshHandler } from "@/lib/creators/image-jobs";
 import { tmdbDirectorApprovalHandler } from "@/lib/creators/tmdb-director-jobs";
 import { tmdbCompanyApprovalHandler } from "@/lib/creators/tmdb-company-jobs";
@@ -574,11 +576,14 @@ const creatorRequestApplyHandler: JobHandlerDefinition<{ requestId: number }> = 
   async execute({ payload, signal, runId, lockToken }) { await applyCreatorRequest(payload.requestId, { signal, jobRunId: runId, jobGuard: jobGuard(runId, lockToken) }); },
 };
 export const jobHandlerRegistry = createJobHandlerRegistry([
+  classificationApplyHandler,
+  classificationRollbackHandler,
   reviewBodyLengthHandler,
   tierPreviewGenerateHandler,
   tierPreviewCleanupHandler,
   creatorNameLocalizationHandler,
   providerSnapshotJobHandler,
+  creatorFieldsFillHandler,
   comicVineIssuesJobHandler,
   creatorImageFillHandler,
   creatorImagesBackfillHandler,

@@ -1,3 +1,4 @@
+import { canManageFranchises } from "@/lib/franchises/access";
 import { NextResponse } from "next/server";
 
 import { findPublishedFranchiseDuplicateCandidates } from "@/db/queries/franchises";
@@ -13,7 +14,7 @@ export async function POST(request: Request) {
   if (consentDenial) return consentDenial;
   const [adminUser, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
 
-  if (!adminUser && !author) return NextResponse.json({ matches: [] }, { status: 401 });
+  if (!adminUser && !canManageFranchises(author)) return NextResponse.json({ matches: [] }, { status: 401 });
 
   const body = (await request.json().catch(() => ({}))) as { title?: unknown; originalTitle?: unknown };
   const title = typeof body.title === "string" ? body.title.trim() : "";

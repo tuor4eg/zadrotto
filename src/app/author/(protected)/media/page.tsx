@@ -1,4 +1,3 @@
-import { AuthorProposalTabs } from "../author-proposal-tabs";
 import Link from "next/link";
 import { Edit3, Plus, Send, Trash2, Undo2 } from "lucide-react";
 
@@ -175,7 +174,6 @@ export default async function AuthorMediaPage({ searchParams }: AuthorMediaPageP
 
   return (
     <div className="flex flex-1 flex-col gap-6">
-      <AuthorProposalTabs />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h2 className="font-serif text-3xl leading-none text-stone-950">Мои предложения</h2>

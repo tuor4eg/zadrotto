@@ -4,6 +4,7 @@ import { getLatestJobRunsByTypes } from "@/db/queries/jobs";
 import { getMigrationDefinition } from "@/lib/jobs/catalog";
 import { getRegisteredJobHandlers } from "@/lib/jobs/queue";
 import { ActivityLogTime } from "../../activity/activity-log-time";
+import { ClassificationMigrationCard } from "./classification-migration-card";
 import { MigrationForm } from "./migration-form";
 
 const STATUS: Record<string, string> = { queued: "Ожидает", running: "Выполняется", succeeded: "Готово", failed: "Ошибка", cancelled: "Отменён" };
@@ -14,8 +15,12 @@ export default async function JobMigrationsPage({ searchParams }: { searchParams
   const byType = new Map(latestRuns.map(run => [run.type, run]));
   return <section className="space-y-6">
     <div><h3 className="font-serif text-2xl">Миграции</h3><p className="mt-1 text-sm text-stone-600">Исторические переносы данных. Успешный запуск не является подтверждением полного завершения переноса.</p></div>
+    <ClassificationMigrationCard
+      expanded={query.classification === "1" || Boolean(query.classificationId || query.classificationError || query.classificationQueued)}
+      params={{ id: query.classificationId, error: query.classificationError, queued: query.classificationQueued }}
+    />
     {query.error ? <Alert variant="destructive">Не удалось поставить миграцию в очередь. Проверьте параметры переноса.</Alert> : null}
-    {!handlers.length ? <p className="rounded-md border bg-white p-5 text-stone-600">Сейчас нет доступных миграций</p> : handlers.map(handler => {
+    {!handlers.length ? <p className="rounded-md border bg-white p-5 text-stone-600">Других доступных миграций сейчас нет</p> : handlers.map(handler => {
       const latest = byType.get(handler.type);
       return <article key={handler.type} className="space-y-4 rounded-md border bg-white p-5">
         <div><h4 className="font-semibold">{handler.label}</h4><p className="mt-1 text-sm text-stone-600">{getMigrationDefinition(handler.type)?.description}</p></div>

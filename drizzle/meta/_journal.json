@@ -85,6 +85,20 @@
       "when": 1794897163982,
       "tag": "0011_review_body_format",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1795184253968,
+      "tag": "0012_classification_tags",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1795259308172,
+      "tag": "0013_creator_fields_fill_attempts",
+      "breakpoints": true
     }
   ]
 }

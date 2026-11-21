@@ -23,14 +23,9 @@ test("cabinet keeps only the shared site header without a profile banner", () =>
   assert.doesNotMatch(layout, /AuthorMobileNavMenu|AuthorProposalsMenu|<nav/);
 });
 
-test("both proposal pages expose shared record and series tabs", () => {
-  const tabs = read("src/app/author/(protected)/author-proposal-tabs.tsx");
-  assert.match(tabs, /href: "\/author\/media", label: "Записи"/);
-  assert.match(tabs, /href: "\/author\/series", label: "Серии"/);
-  assert.match(tabs, /aria-current=/);
-  for (const route of ["media", "series"]) {
-    assert.match(read(`src/app/author/(protected)/${route}/page.tsx`), /<AuthorProposalTabs/);
-  }
+test("proposals contain records only", () => {
+  assert.doesNotMatch(read("src/app/author/(protected)/media/page.tsx"), /AuthorProposalTabs/);
+  assert.doesNotMatch(read("src/app/author/(protected)/author-proposals-menu.tsx"), /href="\/author\/series"/);
 });
 
 

@@ -1,3 +1,5 @@
+import { requireFranchiseManagerForExecutor } from "@/db/queries/franchise-access";
+import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
@@ -61,6 +63,7 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
   input: CreateAuthorPrivateMediaItemInput,
 ): Promise<CreateAuthorPrivateMediaItemResult> {
   return runInTransaction(async (tx) => {
+    await lockClassificationMutations(tx);
     await lockAuthorForTransaction(tx, input.authorId);
 
     const [existingItem] = await tx
@@ -124,6 +127,7 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
       throw new Error("Failed to create author media item");
     }
 
+    if (input.franchiseIds.length) await requireFranchiseManagerForExecutor(tx, input.authorId);
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
     await input.afterWrite?.(tx,item.id);

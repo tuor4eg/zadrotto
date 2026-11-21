@@ -17,7 +17,8 @@ const id = (value: FormDataEntryValue | null) => Number(value);
 const returnPath = (value: FormDataEntryValue | null) => {
   const path = typeof value === "string" ? value : "";
   return path.startsWith("/admin/tools/jobs/")
-    || /^\/admin\/tools\/providers\/snapshots(?:\?run=\d+)?$/.test(path)
+    || /^\/admin\/tools\/providers\/snapshots(?:\?(?:run|fillRun)=\d+)?$/.test(path)
+    || /^\/admin\/creators\/[1-9]\d*\/edit\?fillRun=\d+$/.test(path)
     || /^\/admin\/(?:media|creators)\/[1-9]\d*\/snapshots(?:\?run=\d+)?$/.test(path) ? path : PATH;
 };
 

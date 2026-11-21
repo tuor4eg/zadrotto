@@ -22,6 +22,9 @@ import {
 import { isAchievementRarity } from "@/lib/achievements/model";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getAchievementMechanic } from "@/lib/achievements/catalog";
+import { db } from "@/db";
+import { tags } from "@/db/schema";
+import { eq } from "drizzle-orm";
 import { generateEntityCode } from "@/lib/common/generated-code";
 import { createJobRun } from "@/db/queries/jobs";
 import { getAdminFranchiseOptions } from "@/db/queries/franchises";
@@ -53,7 +56,7 @@ async function parseMechanicParams(formData: FormData, mechanicCode: string) {
   for (const parameter of mechanic.params) {
     const raw = String(formData.get(parameter.code) ?? "").trim();
     if (!raw) continue;
-    rawParams[parameter.code] = parameter.type === "series" ? Number(raw) : raw;
+    rawParams[parameter.code] = parameter.type !== "mediaType" ? Number(raw) : raw;
   }
   const params = mechanic.parseParams(rawParams) as Record<string, unknown>;
   const [mediaTypes, series] = await Promise.all([
@@ -62,6 +65,10 @@ async function parseMechanicParams(formData: FormData, mechanicCode: string) {
   ]);
   if (params.mediaType !== undefined && !mediaTypes.some((item) => item.code === params.mediaType)) throw new Error("invalid");
   if (params.seriesId !== undefined && !series.some((item) => item.id === params.seriesId && item.publicationStatus === "published")) throw new Error("invalid");
+  if (params.tagId !== undefined) {
+    const [tag] = await db.select({ id: tags.id }).from(tags).where(eq(tags.id, Number(params.tagId)));
+    if (!tag) throw new Error("invalid");
+  }
   return { mechanic, params };
 }
 

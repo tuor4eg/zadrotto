@@ -1,4 +1,4 @@
-import type { CreatorLocalizationFilter, CreatorProviderFilter } from "@/lib/creators/editor";
+import type { CreatorBindingCountFilter, CreatorLocalizationFilter, CreatorProviderFilter } from "@/lib/creators/editor";
 import { getImportedCreatorNameLocalization } from "@/lib/creators/name-localization";
 import { creatorDisplayNameSql, creatorNameSearchSql } from "./creator-display";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
@@ -195,6 +195,7 @@ export async function getCreators(input: {
     publicOnly?: boolean;
     localization?: CreatorLocalizationFilter;
     provider?: CreatorProviderFilter;
+    bindingCount?: CreatorBindingCountFilter;
     typeCode?: string;
     roleCode?: string;
 } = {}) {
@@ -204,6 +205,12 @@ export async function getCreators(input: {
             select b.creator_id from provider_creator_bindings b where b.provider=${input.provider} and b.active
             union
             select m.creator_id from provider_creator_mappings m where m.provider=${input.provider}
+        )` : undefined,
+        input.bindingCount ? sql`${creators.id} in (
+            select b.creator_id from provider_creator_bindings b
+            where b.active
+            group by b.creator_id
+            having ${input.bindingCount === "one" ? sql`count(*) = 1` : sql`count(*) > 1`}
         )` : undefined,
         input.localization ? isNotNull(creators.nameRu) : undefined,
         input.localization === "ai" ? eq(creators.nameRuSource, "ai") : undefined,
@@ -322,8 +329,8 @@ export async function setManualEntryCreators(entryId: number, pairs: {
         return work(transaction);
     return db.transaction(work);
 }
-function validValues(name: string, slug: string) {
-    if (!name.trim() || !slug.trim() || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug))
+function validValues(name: string, slug?: string) {
+    if (!name.trim() || (slug !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)))
         throw new Error("Укажите имя и корректный slug.");
 }
 async function setSeries(tx: CreatorTransaction, id: number, seriesIds: number[]) {
@@ -346,7 +353,7 @@ type CreatorInput = {
     originalName?: string | null;
     birthDate?: string | null;
     deathDate?: string | null;
-    slug: string;
+    slug?: string;
     typeId: number;
     seriesIds?: number[];
     relations?: { targetCreatorId: number; relationType: "pseudonym_of" }[];
@@ -375,7 +382,7 @@ async function logCreatorChange(tx: CreatorTransaction, action: string, id: numb
         return;
     await tx.insert(adminActivityLogs).values({ action, actorType: "admin", adminUserId: adminId, entityType: "creator", entityId: id, entityLabel: name, status: "success", severity: "info", message: "Обновлены данные создателя или справочника." });
 }
-export async function createCreator(input: CreatorInput) {
+export async function createCreator(input: CreatorInput & { slug: string }) {
     validValues(input.name, input.slug);
     validateRussianName(input.nameRu);
     return db.transaction(async (tx) => {

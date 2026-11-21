@@ -21,3 +21,9 @@ export type CreatorProviderFilter = "" | typeof CREATOR_PROVIDER_FILTER_CODES[nu
 export function parseCreatorProviderFilter(value: string | undefined): CreatorProviderFilter {
   return CREATOR_PROVIDER_FILTER_CODES.find(code => code === value) ?? "";
 }
+
+export type CreatorBindingCountFilter = "" | "one" | "multiple";
+
+export function parseCreatorBindingCountFilter(value: string | undefined): CreatorBindingCountFilter {
+  return value === "one" || value === "multiple" ? value : "";
+}

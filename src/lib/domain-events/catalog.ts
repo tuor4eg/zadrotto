@@ -13,6 +13,7 @@ export const DOMAIN_EVENT_TYPES = [
   "media.approved",
   "media.rejected",
   "automoderation.approved",
+  "media-tag.changed",
   "media-franchise.published",
   "media-franchise.submitted",
   "media-franchise.approved",
@@ -66,6 +67,7 @@ export type DomainEventPayloads = {
     subjectKey: string;
     subjectType: "media-item";
   };
+  "media-tag.changed": { mediaItemId: number; tagId: number };
   "media-franchise.published": {
     authorId?: number;
     contributionKind?: "existing-series-link" | "new-series-with-link";

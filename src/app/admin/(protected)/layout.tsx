@@ -13,7 +13,6 @@ import { Card, CardContent } from "@/components/ui/card";
 import { NotificationBell } from "@/components/notifications/notification-inbox";
 import { getSubmittedContributionReviewCountForAdmin } from "@/db/queries/contribution-reviews";
 import { getSubmittedAuthorMediaItemsCountForAdmin } from "@/db/queries/media-items";
-import { getSubmittedFranchisesCountForAdmin } from "@/db/queries/franchises";
 import { getPendingCreatorRequestCount } from "@/db/queries/creator-requests";
 import { getPendingPlatformRequestCount } from "@/db/queries/platform-requests";
 import { getPendingGenreRequestCount } from "@/db/queries/genre-requests";
@@ -36,10 +35,9 @@ type AdminLayoutProps = {
 export const dynamic = "force-dynamic";
 
 export default async function AdminLayout({ children }: AdminLayoutProps) {
-  const [adminUser, submittedMediaItemsCount, submittedFranchisesCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount, pendingPlatformRequestsCount, pendingCreatorRequestsCount] = await Promise.all([
+  const [adminUser, submittedMediaItemsCount, submittedReviewsCount, openBugReportsCount, pendingGenreRequestsCount, pendingPlatformRequestsCount, pendingCreatorRequestsCount] = await Promise.all([
     requireAdminUser(),
     getSubmittedAuthorMediaItemsCountForAdmin(),
-    getSubmittedFranchisesCountForAdmin(),
     getSubmittedContributionReviewCountForAdmin(),
     getOpenBugReportCount(),
     getPendingGenreRequestCount(),
@@ -68,7 +66,6 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
 
           <AdminMobileNavMenu
             submittedMediaItemsCount={submittedMediaItemsCount}
-            submittedFranchisesCount={submittedFranchisesCount}
             submittedReviewsCount={submittedReviewsCount}
             openBugReportsCount={openBugReportsCount}
             pendingGenreRequestsCount={pendingGenreRequestsCount}
@@ -103,7 +100,6 @@ export default async function AdminLayout({ children }: AdminLayoutProps) {
             <AdminAuthorsMenu />
             <AdminRequestsMenu
               submittedMediaItemsCount={submittedMediaItemsCount}
-              submittedFranchisesCount={submittedFranchisesCount}
               submittedReviewsCount={submittedReviewsCount}
               openBugReportsCount={openBugReportsCount}
               pendingGenreRequestsCount={pendingGenreRequestsCount}

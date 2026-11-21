@@ -30,6 +30,7 @@ export type PublicSiteHeaderProps = {
     name: string;
   } | null;
   controls?: ReactNode;
+  hasTags?: boolean;
   showMediaSuggestion?: boolean;
   currentAdminUser: boolean;
   quiz?: {
@@ -126,6 +127,7 @@ export function PublicSiteHeader({
   showMediaSuggestion = Boolean(author),
   currentAdminUser,
   quiz = null,
+  hasTags = false,
 }: PublicSiteHeaderProps) {
   const router = useRouter();
   const { quizParticipant } = useExternalInterface();
@@ -144,7 +146,7 @@ export function PublicSiteHeader({
     BASE_MENU_ITEMS[2],
     ...(author ? [QUIZZES_MENU_ITEM] : []),
     ...(showAchievements ? [{ href: "/achievements", label: "Ачивки" } as const] : []),
-    { href: null, label: "Путеводитель", items: GUIDE_MENU_ITEMS } as const,
+    { href: null, label: "Путеводитель", items: [...GUIDE_MENU_ITEMS, ...(hasTags ? [{ href: "/tags", label: "Теги" }] : [])] } as const,
   ];
   const currentQuizParticipant = quizParticipant?.quizId === quiz?.quiz.id
     ? quizParticipant

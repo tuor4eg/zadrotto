@@ -26,7 +26,7 @@ type SeriesPageProps = {
 };
 
 export async function generateMetadata({ searchParams }: SeriesPageProps) {
-  return buildListingMetadata("/series", "Серии", "Серии фильмов, игр, книг, комиксов и других произведений в Гикотеке.", await searchParams);
+  return buildListingMetadata("/series", "Серии", "Серии произведений в Гикотеке.", await searchParams);
 }
 
 export default async function SeriesPage({ searchParams }: SeriesPageProps) {
@@ -73,7 +73,7 @@ export default async function SeriesPage({ searchParams }: SeriesPageProps) {
         <div className="archive-paper archive-panel flex w-full flex-col overflow-hidden media-carrier-font-pc-steam [&_*]:[font-family:inherit]">
         <header className="p-5 pb-3 sm:p-6 sm:pb-4">
           <h1 className="font-serif text-4xl leading-none text-stone-950 sm:text-5xl">
-            Все серии
+            Серии
           </h1>
           <SeriesSearch searchQuery={searchQuery} />
           {!searchQuery && seriesPage.availableLetters.length > 0 ? (

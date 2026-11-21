@@ -1,3 +1,4 @@
+import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import "server-only";
 
 import { createHash } from "node:crypto";
@@ -20,6 +21,7 @@ type Policy = { table: string; owner: string; keys?: string[]; label: string; sp
 export const ACCOUNT_MERGE_POLICIES: readonly Policy[] = [
   { table: "tier_lists", owner: "author_id", label: "Тир-листы" },
   { table: "tier_list_quota_events", owner: "author_id", label: "История квот тир-листов" },
+  { table: "media_item_tags", owner: "author_id", keys: ["media_item_id", "tag_id"], label: "Назначения тегов" },
   { table: "ratings", owner: "author_id", keys: ["media_item_id", "part_id"], label: "Оценки" },
   { table: "author_media_statuses", owner: "author_id", keys: ["media_item_id"], label: "Желаемое" },
   { table: "author_media_experiences", owner: "author_id", keys: ["media_item_id"], label: "Опыт знакомства" },
@@ -53,6 +55,7 @@ const key = (row: Row, fields: string[]) => JSON.stringify(fields.map(field => r
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function lockMerge(tx: DbTransaction) {
+  await lockClassificationMutations(tx);
   await tx.execute(sql`set local lock_timeout = '5s'`);
   await tx.execute(sql`select pg_advisory_xact_lock_shared(90420261)`);
   // Rare MVP operation: fence all writers before taking row locks, including background jobs.
@@ -312,6 +315,11 @@ export async function confirmAccountMerge(input: MergeInput & { primaryAuthorId:
         const [identity] = await tx.select().from(authorAuthIdentities).where(eq(authorAuthIdentities.authorId, primary)).limit(1);
         const [session] = await tx.insert(authorSessions).values({ authorId: primary, authMethod: identity ? "external" : initiatingSession.authMethod, identityId: identity?.id ?? null, provider: identity?.provider ?? null, tokenHash: hashAuthorSessionToken(token), expiresAt: new Date(Date.now() + AUTHOR_SESSION_MAX_AGE_SECONDS * 1000) }).returning();
         await tx.update(accountMergeGrants).set({ consumedAt: new Date(), resultAuthorId: primary, resultSessionId: session.id }).where(eq(accountMergeGrants.id, grant.id));
+        for (const assignment of data.media_item_tags ?? []) {
+          await appendEvent({ type: "media-tag.changed", actorAuthorId: input.authorId,
+            aggregateType: "media-item", aggregateId: String(assignment.media_item_id),
+            payload: { mediaItemId: Number(assignment.media_item_id), tagId: Number(assignment.tag_id) } });
+        }
         mergeStage = "append-event";
         await appendEvent({ type: "author.accounts.merged", actorAuthorId: input.authorId, aggregateType: "author", aggregateId: String(primary), payload: { authorId: primary, sourceAuthorId: secondary, mergeId: grant.id } });
         return { authorId: primary, token };

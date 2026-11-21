@@ -39,9 +39,12 @@ export async function updateGenreNameAction(formData: FormData) {
     redirect(`/admin/genres/${id}/edit?error=invalid-series`);
   }
 
+  const rawTagId = String(formData.get("replacementTagId") ?? "");
+  const replacementTagId = rawTagId ? parseGenreId(rawTagId) : null;
+  if (rawTagId && replacementTagId === null) redirect(`/admin/genres/${id}/edit?error=invalid-series`);
   let genre;
   try {
-    genre = await updateGenre(id, name, replacementFranchiseId);
+    genre = await updateGenre(id, name, replacementFranchiseId, replacementTagId);
   } catch (error) {
     if (error instanceof Error && error.message === "invalid-series") redirect(`/admin/genres/${id}/edit?error=invalid-series`);
     console.error("Не удалось сохранить жанр", error);

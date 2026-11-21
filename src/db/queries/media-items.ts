@@ -1,3 +1,7 @@
+import { getVisibleMediaItemTagsForItems } from "@/db/queries/tags";
+import { authorCanManageFranchisesForExecutor, requireFranchiseManagerForExecutor } from "@/db/queries/franchise-access";
+import { publicTagMediaItemIdsSql } from "@/db/queries/tag-membership";
+import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import { deleteEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
 import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
@@ -376,7 +380,7 @@ function catalogGenreCondition(genreId: number) {
     .where(and(eq(mediaItemGenres.mediaItemId, mediaItems.id), eq(mediaItemGenres.genreId, genreId),
       sql`exists (select 1 from genres filter_genre where filter_genre.id = ${mediaItemGenres.genreId}
         and filter_genre.is_active = true
-        and ${visibleGenreSql(sql`"media_items"."id"`, sql`filter_genre.replacement_franchise_id`)})`)));
+        and ${visibleGenreSql(sql`"media_items"."id"`, sql`filter_genre.replacement_franchise_id`, sql`filter_genre.replacement_tag_id`)})`)));
 }
 
 function catalogPlatformCondition(platformId: number) {
@@ -392,6 +396,7 @@ function catalogFilterConditions(input: {
   enabledMediaTypeCodes: readonly string[];
   mediaTypeFilter: MediaTypeFilter;
   seriesId?: number;
+  tagId?: number;
   includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
@@ -419,6 +424,7 @@ function catalogFilterConditions(input: {
   if (input.genreId) conditions.push(catalogGenreCondition(input.genreId));
   if (input.creatorId) conditions.push(creatorCondition(input.creatorId,undefined,input.creatorRole));
 
+  if (input.tagId) conditions.push(inArray(mediaItems.id, sql`(${publicTagMediaItemIdsSql(sql`${input.tagId}`)})`));
   if (input.seriesId) {
     conditions.push(catalogSeriesCondition(input.seriesId, input.includeSeriesDescendants));
   }
@@ -652,6 +658,7 @@ export async function getCatalogMediaItems(input: {
   pageSize: number;
   searchQuery: string;
   seriesId?: number;
+  tagId?: number;
   includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
@@ -670,10 +677,12 @@ export async function getCatalogMediaItems(input: {
   const totalPages = getTotalPages(totalCount, input.pageSize);
   const page = clampPage(input.page, totalPages);
   const items = await catalogMediaItemsQuery({ ...input, filterCondition, page });
+  const tagsByItem = await getVisibleMediaItemTagsForItems(items.map(item => item.id), input.currentAuthorId);
 
   return {
     items: items.map((item) => ({
       ...withResolvedFranchises(item),
+      tags: tagsByItem.get(item.id) ?? [],
       coverUrl: resolveCoverUrl(item.coverUrl),
       coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
     })),
@@ -691,6 +700,7 @@ export async function getCatalogMediaTypeCounts(input: {
   enabledMediaTypeCodes: readonly string[];
   searchQuery: string;
   seriesId?: number;
+  tagId?: number;
   includeSeriesDescendants?: boolean;
   genreId?: number;
   platformId?: number;
@@ -1045,6 +1055,7 @@ export type AuthorMediaItemInput = {
 
 export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
   await db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx
       .insert(mediaItems)
       .values({
@@ -1065,6 +1076,7 @@ export async function createAuthorMediaItem(input: AuthorMediaItemInput) {
       })
       .returning({ id: mediaItems.id });
 
+    if (input.franchiseIds.length) await requireFranchiseManagerForExecutor(tx, input.authorId);
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
     await input.afterWrite?.(tx,item.id);
@@ -1075,6 +1087,7 @@ export async function createAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
   authorId: number;
 }) {
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx
       .insert(mediaItems)
       .values({
@@ -1231,6 +1244,9 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
   mediaItemId: number;
 }) {
   await db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
+    const mayManageFranchises = await authorCanManageFranchisesForExecutor(tx, input.authorId);
+    if (!mayManageFranchises && input.franchiseIds.length) throw new Error("franchise-forbidden");
     const [updatedItem] = await tx
       .update(mediaItems)
       .set({
@@ -1260,7 +1276,7 @@ export async function updateAuthorMediaItem(input: Omit<AuthorMediaItemInput, "c
       throw new Error("Media item is not editable");
     }
 
-    await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
+    if (mayManageFranchises) await setMediaItemFranchisesForExecutor(tx, input.mediaItemId, input.franchiseIds);
     if (input.aliases) {
       await setMediaItemTitleAliasesForExecutor(tx, input.mediaItemId, input.aliases);
     }
@@ -1273,6 +1289,7 @@ export async function updateAdminMediaItem(input: Omit<AuthorMediaItemInput, "au
   authorId: number | null;
 }) {
   return db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx
       .update(mediaItems)
       .set({
@@ -1317,6 +1334,7 @@ export async function submitAuthorMediaItemForPublication(input: {
 }) {
   const now = new Date();
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.nextStatus,
@@ -1406,6 +1424,7 @@ export async function deleteAuthorDraftMediaItem(input: {
   mediaItemId: number;
 }) {
   return db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx
       .select({
         id: mediaItems.id,
@@ -1525,6 +1544,7 @@ export async function reviewSubmittedAuthorMediaItem(input: {
 }) {
   const now = new Date();
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx.update(mediaItems)
     .set({
       publicationStatus: input.decision,
@@ -1612,6 +1632,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
 }) {
   const now = new Date();
   return runInDomainEventTransaction(async (tx, appendEvent) => {
+    await lockClassificationMutations(tx);
     const [previous] = await tx
       .select({ publicationStatus: mediaItems.publicationStatus })
       .from(mediaItems)
@@ -1662,6 +1683,7 @@ export async function updateAdminMediaItemPublicationStatus(input: {
 
 export async function deleteAdminUnpublishedMediaItemWithRelatedData(mediaItemId: number) {
   return db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
     const [item] = await tx
       .select({
         id: mediaItems.id,
@@ -2033,4 +2055,41 @@ export async function getRelatedFranchiseSections(input: {
   }
 
   return relatedSections;
+}
+
+export async function getRelatedTagSections(input: {
+  tags: readonly { id: number; code: string; title: string }[];
+  currentMediaItemId: number;
+  enabledMediaTypeCodes: readonly string[];
+  currentAuthorId?: number;
+}) {
+  if (!input.tags.length || !input.enabledMediaTypeCodes.length) return [];
+  type RelatedRow = Awaited<ReturnType<typeof getOtherMediaItemsFromFranchises>>[number] & { tagId: number };
+  const rows = await db.execute<RelatedRow>(sql`
+    select requested.tag_id::int as "tagId", related.*
+    from unnest(array[${sql.join(input.tags.map(tag => sql`${tag.id}`), sql`, `)}]::integer[]) requested(tag_id)
+    cross join lateral (
+      select ${mediaItems.id} as id, ${mediaItems.code} as code, ${mediaItems.title} as title,
+        ${mediaItems.originalTitle} as "originalTitle", ${mediaItemTitleAliasesSql()} as aliases,
+        ${mediaItems.mediaType} as "mediaType", ${mediaCarriers.code} as "mediaCarrierCode",
+        ${mediaCarriers.name} as "mediaCarrierName", ${mediaItems.releaseYear} as "releaseYear",
+        ${mediaItems.coverUrl} as "coverUrl", ${mediaItems.coverThumbUrl} as "coverThumbUrl",
+        ${mediaItemAverageScoreSql} as "averageScore", ${mediaItemRatingsCountSql} as "ratingsCount",
+        ${currentAuthorScoreSql(input.currentAuthorId)} as "currentAuthorScore"
+      from ${mediaItems}
+      left join ${mediaCarriers} on ${mediaCarriers.id}=${mediaItems.mediaCarrierId}
+      left join ${mediaItemRatingStats} on ${mediaItemRatingStats.mediaItemId}=${mediaItems.id}
+      where ${mediaItems.id} in (${publicTagMediaItemIdsSql(sql`requested.tag_id::int`)})
+        and ${mediaItems.id}<>${input.currentMediaItemId}
+        and ${publishedMediaItemCondition}
+        and ${getMediaTypeCodeFilterSql(mediaItems.mediaType, input.enabledMediaTypeCodes)}
+      order by random() limit ${RELATED_SERIES_ROW_LIMIT}
+    ) related`);
+  const grouped = new Map<number, RelatedRow[]>();
+  for (const row of rows) {
+    const items = grouped.get(row.tagId) ?? [];
+    items.push({ ...row, coverUrl: resolveCoverUrl(row.coverUrl), coverThumbUrl: resolveCoverUrl(row.coverThumbUrl) });
+    grouped.set(row.tagId, items);
+  }
+  return input.tags.map(tag => ({ tag, items: grouped.get(tag.id) ?? [] }));
 }

@@ -18,7 +18,6 @@ const catalogRevalidationFiles = [
   "src/app/media-status/actions.ts",
   "src/app/archive/archive-series-actions.ts",
   "src/app/admin/(protected)/media-review/actions.ts",
-  "src/app/admin/(protected)/franchise-review/actions.ts",
   "src/app/admin/(protected)/media/actions.ts",
   "src/app/author/(protected)/settings/media-types/actions.ts",
   "src/app/author/(protected)/media/actions.ts",

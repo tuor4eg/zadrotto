@@ -59,6 +59,9 @@ export function ArchiveSeriesMatches({
   genreTotalCount = 0,
   genreMoreHref = "/genres",
   genreSelectionHrefs = {},
+  tags = [],
+  tagSelectionHrefs = {},
+  tagMoreHref = "/tags",
   platforms = [],
   platformTotalCount = 0,
   platformMoreHref = "/platforms",
@@ -72,6 +75,9 @@ export function ArchiveSeriesMatches({
   moreHref: string;
   selectionHrefs: Record<number, string>;
   totalCount: number;
+  tags?: readonly { id: number; code: string; title: string }[];
+  tagSelectionHrefs?: Record<number, string>;
+  tagMoreHref?: string;
   genres?: readonly MediaItemGenre[];
   genreTotalCount?: number;
   genreMoreHref?: string;
@@ -85,7 +91,7 @@ export function ArchiveSeriesMatches({
   creatorMoreHref?: string;
   creatorSelectionHrefs?: Record<number, string>;
 }) {
-  if (items.length === 0 && genres.length === 0 && creators.length === 0 && platforms.length === 0) return null;
+  if (items.length === 0 && genres.length === 0 && creators.length === 0 && platforms.length === 0 && tags.length === 0) return null;
 
   return (
     <section className="archive-paper archive-panel grid gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-3 text-sm shadow-md" aria-label="Совпадения по поиску">
@@ -150,6 +156,19 @@ export function ArchiveSeriesMatches({
           Посмотреть в создателях <ArrowRight className="size-4" />
         </Link> : null}
       </div> : null}
+      {tags.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length || platforms.length || creators.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+        <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
+          <Tag className="size-5" aria-hidden="true" /><span>Совпадения в тегах: {tags.length}</span>
+        </div>
+        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+          {tags.map(tag => <li key={tag.id} className="min-w-0">
+            <Link href={tagSelectionHrefs[tag.id] ?? `/archive?tag=${encodeURIComponent(tag.code)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{tag.title}</Link>
+          </li>)}
+        </ul>
+        <Link href={tagMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
+          Посмотреть в тегах <ArrowRight className="size-4" />
+        </Link>
+      </div> : null}
     </section>
   );
 }
@@ -157,6 +176,7 @@ export function ArchiveSeriesMatches({
 export function ArchiveSelectedSeries({
   adminCanEdit,
   authorCanAddMedia,
+  authorCanEdit = false,
   childSeries,
   clearHref,
   includeDescendants,
@@ -167,6 +187,7 @@ export function ArchiveSelectedSeries({
 }: {
   adminCanEdit: boolean;
   authorCanAddMedia: boolean;
+  authorCanEdit?: boolean;
   childSeries: Array<{ id: number; href: string; title: string }>;
   clearHref: string;
   includeDescendants: boolean;
@@ -200,6 +221,7 @@ export function ArchiveSelectedSeries({
           mediaTypes={mediaTypes}
         />
       ) : null}
+      {authorCanEdit && !adminCanEdit ? <Link className="text-xs underline" href={`/author/series/${item.id}/edit`}>Редактировать</Link> : null}
       {adminCanEdit ? (
         <AdminEntityEditLink
           ariaLabel={`Редактировать серию ${item.title}`}

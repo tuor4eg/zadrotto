@@ -78,13 +78,6 @@ export function AuthorProposalsMenu() {
           >
             Записи
           </Link>
-          <Link
-            href="/author/series"
-            onClick={() => setIsOpen(false)}
-            className="block rounded-sm px-3 py-2 text-sm text-stone-700 transition-colors hover:bg-stone-200/60 hover:text-stone-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-stone-950"
-          >
-            Серии
-          </Link>
         </div>
       ) : null}
     </div>

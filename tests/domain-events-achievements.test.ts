@@ -95,19 +95,19 @@ describe("achievement consumer", () => {
     const quizCorrect = getAchievementMechanic("quiz.correct.count");
     const quizWin = getAchievementMechanic("quiz.win.count");
     const confirmedBugReports = getAchievementMechanic("bug-report.confirmed.count");
-    assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
-    assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
-    assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId"]);
+    assert.deepEqual(rating?.params.map(({ code }) => code), ["mediaType", "seriesId", "tagId"]);
+    assert.deepEqual(review?.params.map(({ code }) => code), ["mediaType", "seriesId", "tagId"]);
+    assert.deepEqual(media?.params.map(({ code }) => code), ["mediaType", "seriesId", "tagId"]);
     assert.deepEqual(quizCorrect?.params.map(({ code }) => code), ["mediaType"]);
     assert.deepEqual(quizWin?.params, []);
     assert.deepEqual(confirmedBugReports?.params, []);
     assert.notEqual(rating?.params, review?.params);
     assert.notEqual(review?.params, media?.params);
     assert.deepEqual(review?.eventTypes, [
-      "review.published", "media.published", "media-franchise.published", "franchise.parent.changed",
+      "review.published", "media.published", "media-franchise.published", "franchise.parent.changed", "media-tag.changed",
     ]);
     assert.deepEqual(media?.eventTypes, [
-      "media.published", "media-franchise.published", "franchise.parent.changed",
+      "media.published", "media-franchise.published", "franchise.parent.changed", "media-tag.changed",
     ]);
     assert.deepEqual(rating?.parseParams({ mediaType: "film", seriesId: 42 }), {
       mediaType: "film",

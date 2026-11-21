@@ -1,3 +1,4 @@
+import { canManageFranchises } from "@/lib/franchises/access";
 import { Card, CardContent } from "@/components/ui/card";
 import { getFranchiseOptions } from "@/db/queries/franchises";
 import { isAiScenarioEnabled } from "@/db/queries/ai-scenarios";
@@ -68,14 +69,15 @@ export default async function NewAuthorMediaPage({ searchParams }: NewAuthorMedi
           <MediaItemForm
             action={createAuthorMediaItemAction}
             submitLabel="Сохранить черновик"
-            franchises={franchises}
+            canManageFranchises={canManageFranchises(author)}
+            franchises={canManageFranchises(author) ? franchises : []}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             maxTitleAliases={archiveSettings.maxTitleAliases}
-            canSuggestFranchises={canSuggestFranchises}
+            canSuggestFranchises={canManageFranchises(author) && canSuggestFranchises}
             values={initialMediaType === "all" ? undefined : { mediaType: initialMediaType }}
             createAndSubmitLabel={createAndSubmitLabel}
-            canCreateFranchise={canAuthorCreateFranchise({
+            canCreateFranchise={canManageFranchises(author) && canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}
           />

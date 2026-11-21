@@ -1,3 +1,5 @@
+import { hasPublicTags } from "@/db/queries/tags";
+import { getEnabledMediaTypeCodes } from "@/db/queries/media-types";
 import { getIncomingFriendRequestCount } from "@/db/queries/friends";
 import { getSubmittedModerationRequestCountForAdmin } from "@/db/queries/admin-moderation-queue";
 import { getEffectiveMediaTypeOptions } from "@/db/queries/media-types";
@@ -16,10 +18,11 @@ export async function getPublicSiteHeaderState(
     currentAuthor === undefined ? getCurrentAuthor() : Promise.resolve(currentAuthor),
     getCurrentAdminUser(),
   ]);
-  const [adminNotificationCount, activeQuiz, incomingFriendRequestCount] = await Promise.all([
+  const [adminNotificationCount, activeQuiz, incomingFriendRequestCount, hasTags] = await Promise.all([
     adminUser ? getSubmittedModerationRequestCountForAdmin() : Promise.resolve(0),
     author ? getActiveQuiz() : Promise.resolve(null),
     author ? getIncomingFriendRequestCount(author.id) : Promise.resolve(0),
+    getEnabledMediaTypeCodes(author?.id).then(hasPublicTags),
   ]);
   const [activeQuizParticipant, effectiveMediaTypes] = activeQuiz && author
     ? await Promise.all([
@@ -45,6 +48,7 @@ export async function getPublicSiteHeaderState(
     author,
     currentAdminUser: Boolean(adminUser),
     headerProps: {
+      hasTags,
       adminNotificationCount,
       author: author
         ? { avatarObjectKey: author.avatarObjectKey, name: author.name, id: author.id, incomingFriendRequestCount }

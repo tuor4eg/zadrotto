@@ -91,6 +91,9 @@ type RelatedFranchiseSection = {
   items: RelatedMediaItem[];
 };
 
+type RelatedTagSection = { tag: { id: number; code: string; title: string }; items: RelatedMediaItem[] };
+type RelatedMediaSection = { key: string; title: React.ReactNode; items: RelatedMediaItem[] };
+
 type MediaItemDetailsProps = {
   item: MediaItemDetailsItem;
   backLink?: {
@@ -111,11 +114,13 @@ type MediaItemDetailsProps = {
   titleActions?: React.ReactNode;
   noteSlot?: React.ReactNode;
   franchiseActions?: React.ReactNode;
+  tagsSlot?: React.ReactNode;
   headerActions?: React.ReactNode;
   cornerActions?: React.ReactNode;
   showFranchiseSection?: boolean;
   relatedItems?: RelatedMediaItem[];
   relatedFranchiseSections?: RelatedFranchiseSection[];
+  relatedTagSections?: RelatedTagSection[];
 };
 
 function FranchiseRelatedTitle({
@@ -155,11 +160,13 @@ export function MediaItemDetails({
   titleActions,
   noteSlot,
   franchiseActions,
+  tagsSlot,
   headerActions,
   cornerActions,
   showFranchiseSection = false,
   relatedItems = [],
   relatedFranchiseSections,
+  relatedTagSections = [],
 }: MediaItemDetailsProps) {
   const { displayTitle, displayOriginalTitle, displayAliases } = resolveMediaItemDisplayTitles(item);
   const [detailsYearLabel, ...detailsMetaLabels] = getArchiveMediaItemInfoLabels({
@@ -182,6 +189,17 @@ export function MediaItemDetails({
         : [])
     ).filter((section) => section.items.length > 0);
 
+  const relatedSections: RelatedMediaSection[] = [
+    ...resolvedRelatedFranchiseSections.map(section => ({
+      key: `series:${section.franchise.id}`, items: section.items,
+      title: <FranchiseRelatedTitle franchise={section.franchise} linkClassName="underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950 hover:decoration-stone-950" />,
+    })),
+    ...relatedTagSections.filter(section => section.items.length > 0).map(section => ({
+      key: `tag:${section.tag.id}`, items: section.items,
+      title: <>Ещё под тегом <Link href={`/archive?tag=${encodeURIComponent(section.tag.code)}`} className="underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950 hover:decoration-stone-950">{section.tag.title}</Link></>,
+    })),
+  ];
+
   if (variant === "archive") {
     return (
       <ArchiveMediaItemDetails
@@ -197,11 +215,12 @@ export function MediaItemDetails({
         ratingSlot={ratingSlot}
         titleActions={titleActions}
         noteSlot={noteSlot}
+        tagsSlot={tagsSlot}
         franchiseActions={franchiseActions}
         headerActions={headerActions}
         cornerActions={cornerActions}
         showFranchiseSection={showFranchiseSection}
-        relatedFranchiseSections={resolvedRelatedFranchiseSections}
+        relatedSections={relatedSections}
       />
     );
   }
@@ -290,6 +309,7 @@ export function MediaItemDetails({
                   />
                 </div>
               ) : null}
+              {tagsSlot}
 
               <div className="flex flex-col gap-2">
                 <h1 className="text-4xl font-semibold leading-tight text-zinc-950 sm:text-5xl">
@@ -343,15 +363,12 @@ export function MediaItemDetails({
                 )}
               </div>
 
-              {resolvedRelatedFranchiseSections.length > 0 ? (
+              {relatedSections.length > 0 ? (
                 <div className="flex flex-col gap-2 normal-case tracking-normal">
-                  {resolvedRelatedFranchiseSections.map((section) => (
-                    <div key={section.franchise.id} className="flex flex-col gap-2">
+                  {relatedSections.map((section) => (
+                    <div key={section.key} className="flex flex-col gap-2">
                       <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
-                        <FranchiseRelatedTitle
-                          franchise={section.franchise}
-                          linkClassName="underline decoration-zinc-300 underline-offset-4 transition-colors hover:text-zinc-950 hover:decoration-zinc-950"
-                        />
+                        {section.title}
                       </div>
                       {section.items.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
@@ -397,12 +414,13 @@ function ArchiveMediaItemDetails({
   titleActions,
   noteSlot,
   franchiseActions,
+  tagsSlot,
   headerActions,
   cornerActions,
   showFranchiseSection,
-  relatedFranchiseSections,
+  relatedSections,
 }: Omit<MediaItemDetailsProps, "backLink" | "relatedItems" | "variant"> & {
-  relatedFranchiseSections: RelatedFranchiseSection[];
+  relatedSections: RelatedMediaSection[];
 }) {
   const { displayTitle, displayOriginalTitle, displayAliases } = resolveMediaItemDisplayTitles(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
@@ -628,6 +646,7 @@ function ArchiveMediaItemDetails({
                   </div>
                 </dl>
               ) : null}
+              {tagsSlot}
 
               <div className="mt-6 grid min-w-0 grid-cols-2 items-stretch gap-2 sm:hidden">
                 <div className="h-full min-w-0">
@@ -713,17 +732,14 @@ function ArchiveMediaItemDetails({
             </div>
           ) : null}
 
-          {relatedFranchiseSections.length > 0 ? (
+          {relatedSections.length > 0 ? (
             <TileRatingScope>
             <div className={`order-6 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 ${partsSlot ? "lg:row-start-3" : "lg:row-start-2"}`}>
               <div className="flex flex-col gap-6">
-                {relatedFranchiseSections.map((section) => (
-                  <section key={section.franchise.id}>
+                {relatedSections.map((section) => (
+                  <section key={section.key}>
                     <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
-                      <FranchiseRelatedTitle
-                        franchise={section.franchise}
-                        linkClassName="underline decoration-stone-300 underline-offset-4 transition-colors hover:text-stone-950 hover:decoration-stone-950"
-                      />
+                      {section.title}
                     </div>
                     {section.items.length > 0 ? (
                       <div className="mt-4 grid grid-cols-3 content-start gap-2.5 [&>*:nth-child(n+4)]:hidden md:grid-cols-4 md:[&>*:nth-child(n+4)]:block md:[&>*:nth-child(n+5)]:hidden xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] xl:[&>*:nth-child(n+5)]:block">

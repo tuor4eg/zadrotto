@@ -1,6 +1,7 @@
 import { and, eq, getTableName, inArray, isNotNull, notInArray, or, sql, type SQLWrapper } from "drizzle-orm";
 import type { AnyPgColumn } from "drizzle-orm/pg-core";
 
+import { publicTagMembershipSql } from "@/db/queries/tag-membership";
 import { db } from "@/db";
 import { normalizeSearchSql } from "@/db/search";
 import { publishedSeriesMembershipSql } from "@/db/queries/series-membership";
@@ -22,8 +23,9 @@ function qualifiedColumn(column: AnyPgColumn) {
   return sql`${sql.identifier(getTableName(column.table))}.${sql.identifier(column.name)}`;
 }
 
-export function visibleGenreSql(mediaItemId: SQLWrapper, replacementFranchiseId: SQLWrapper) {
-  return sql<boolean>`(${replacementFranchiseId} is null or not ${publishedSeriesMembershipSql(mediaItemId, replacementFranchiseId)})`;
+export function visibleGenreSql(mediaItemId: SQLWrapper, replacementFranchiseId: SQLWrapper, replacementTagId?: SQLWrapper) {
+  return sql<boolean>`(${replacementFranchiseId} is null or not ${publishedSeriesMembershipSql(mediaItemId, replacementFranchiseId)})
+    ${replacementTagId ? sql`and (${replacementTagId} is null or not (${publicTagMembershipSql(mediaItemId, replacementTagId)}))` : sql``}`;
 }
 
 export function missingGenreSeriesBindingSql(mediaItemId: AnyPgColumn = mediaItems.id) {
@@ -57,7 +59,7 @@ export function mediaItemGenresJsonSql(mediaItemId: AnyPgColumn = mediaItems.id,
     from ${mediaItemGenres} genre_link
     inner join ${genres} genre on genre.id = genre_link.genre_id
     where genre_link.media_item_id = ${qualifiedId} and genre.is_active = true
-      ${visibleOnly ? sql`and ${visibleGenreSql(qualifiedId, sql`genre.replacement_franchise_id`)}` : sql``}
+      ${visibleOnly ? sql`and ${visibleGenreSql(qualifiedId, sql`genre.replacement_franchise_id`, sql`genre.replacement_tag_id`)}` : sql``}
   ), '[]'::jsonb)`;
 }
 

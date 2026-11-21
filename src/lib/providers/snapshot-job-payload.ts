@@ -94,9 +94,11 @@ export function parseSnapshotJobPayload(value: unknown): SnapshotJobPayload {
   return input as SnapshotJobPayload;
 }
 
-export function getSnapshotBatchSettings(payload: SnapshotJobPayload) {
+export function getSnapshotBatchSettings(
+  payload: Pick<SnapshotJobPayload, "batchSize" | "batchPauseHours" | "checkpoint">,
+  completed = (payload.checkpoint?.processed ?? 0) + (payload.checkpoint?.failed ?? 0),
+) {
   const batchSize = payload.batchSize ?? SNAPSHOT_DEFAULT_BATCH_SIZE;
   const batchPauseHours = payload.batchPauseHours ?? 0;
-  const completed = (payload.checkpoint?.processed ?? 0) + (payload.checkpoint?.failed ?? 0);
   return { batchSize, batchPauseHours, pauseSeconds: Math.max(1, Math.ceil(batchPauseHours * 3600)), remaining: batchSize - completed % batchSize };
 }

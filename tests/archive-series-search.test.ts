@@ -44,24 +44,17 @@ describe("archive series search", () => {
     assert.match(archivePage, /getFranchiseByCode\(requestedSeriesCode\)/);
     assert.match(
       archivePage,
-      /\["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"\]/,
+      /\["tag", "mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"\]/,
     );
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
     assert.match(archivePage, /const catalogSearchQuery = !selectedCreator && \(selectedGenre \|\| selectedSeries\) \? "" : searchQuery/);
 
     assert.match(seriesContext, /aria-label="Сбросить выбранную серию"/);
-    assert.match(seriesContext, /className="grid size-9 shrink-0 place-items-center[^"\n]*" href=\{clearHref\}/);
-    assert.match(seriesContext, /relative z-\[60\][^"\n]*overflow-visible/);
-    assert.match(seriesContext, /flex min-w-0 flex-wrap items-start gap-3/);
-    assert.match(seriesContext, /<Tag className="mt-2 size-5 shrink-0/);
-    assert.match(seriesContext, /sm:flex-none sm:max-w-\[40%\]/);
-    assert.match(seriesContext, /childSeries\.length > 0 \? "pt-1" : "pt-2"/);
-    assert.match(childSeries, /relative min-w-0 flex-1 self-baseline/);
-    assert.match(seriesContext, /style=\{\{ overflow: "visible" \}\}/);
+    assert.match(childSeries, /href=\{child.href\}/);
     assert.match(seriesContext, /adminCanEdit \? \([\s\S]*<AdminEntityEditLink/);
     assert.match(seriesContext, /href=\{`\/admin\/series\/\$\{item\.id\}\/edit`\}/);
     assert.match(archivePage, /adminCanEdit=\{Boolean\(currentAdminUser\)\}/);
-    assert.match(archivePage, /authorCanAddMedia=\{Boolean\(currentAuthor\)\}/);
+    assert.match(archivePage, /authorCanAddMedia=\{mayManageFranchises\}/);
     assert.match(seriesContext, /authorCanAddMedia \? \([\s\S]*<ArchiveSeriesMediaLinkSearch/);
     assert.doesNotMatch(seriesContext, /ArchiveSelectedSeries\([\s\S]*formatRecordsCount\(totalCount\)/);
     assert.match(seriesContext, /parentHrefs\?\.\[parent\.id\][\s\S]*href=\{parentHrefs\[parent\.id\]\}/);
@@ -69,7 +62,6 @@ describe("archive series search", () => {
     assert.match(archivePage, /key=\{selectedSeries\?\.code \?\? "archive-search"\}/);
     assert.match(archivePage, /getPublishedFranchiseBranch\(selectedSeries\.id, enabledMediaTypeCodes\)/);
     assert.match(seriesContext, /<ArchiveChildSeries items=\{childSeries\}/);
-    assert.match(seriesContext, /Серии внутри[\s\S]*<ArchiveChildSeries/);
     assert.match(
       seriesContext,
       /flex min-w-0 flex-1[^"]*max-sm:order-last max-sm:w-full max-sm:basis-full/,
@@ -91,7 +83,7 @@ describe("archive series search", () => {
     assert.match(mediaQueries, /const catalogSeriesCondition/);
     assert.match(mediaQueries, /with recursive published_descendants/);
     assert.match(mediaQueries, /eq\(mediaItemFranchises\.publicationStatus, PUBLISHED_PUBLICATION_STATUS\)/);
-    assert.match(mediaQueries, /conditions\.push\(catalogSeriesCondition\(input\.seriesId\)\)/);
+    assert.match(mediaQueries, /conditions\.push\(catalogSeriesCondition\(input\.seriesId, input\.includeSeriesDescendants\)\)/);
     assert.match(archivePage, /getCatalogMediaItems\(\{[\s\S]*seriesId: selectedSeries\?\.id/);
     assert.match(archivePage, /getCatalogMediaTypeCounts\(\{[\s\S]*seriesId: selectedSeries\?\.id/);
     assert.match(catalog, /series: seriesCode \?\? undefined/);

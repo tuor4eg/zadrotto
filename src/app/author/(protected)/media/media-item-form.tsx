@@ -82,6 +82,7 @@ type MediaItemFormProps = {
   mediaTypes: Awaited<ReturnType<typeof getMediaTypeOptions>>;
   cancelHref?: string;
   canCreateFranchise?: boolean;
+  canManageFranchises?: boolean;
   createAndSubmitLabel?: string;
   errorParamName?: string;
   errorRedirectTo?: string;
@@ -205,6 +206,7 @@ export function MediaItemForm({
   mediaCarriers,
   mediaTypes,
   canCreateFranchise = false,
+  canManageFranchises = false,
   createAndSubmitLabel,
   errorParamName,
   errorRedirectTo,
@@ -913,7 +915,7 @@ export function MediaItemForm({
             </div>
           ) : null}
 
-          <div className="flex min-w-0 flex-col gap-2">
+          {canManageFranchises ? <div className="flex min-w-0 flex-col gap-2">
           <Label htmlFor="author-media-franchise">
             Серия
           </Label>
@@ -972,7 +974,7 @@ export function MediaItemForm({
             ) : null}
           </div>
           <FranchiseSuggestionStatus visible={isSuggestingFranchises} />
-          </div>
+          </div> : null}
 
           <div className="flex flex-col gap-2">
           <Label htmlFor="author-media-release-year">

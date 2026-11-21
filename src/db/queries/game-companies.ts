@@ -1,3 +1,4 @@
+import { enqueueCreatorFieldsFillForBinding } from "./creator-fields-fill-jobs";
 import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { creatorDisplayNameSql } from "./creator-display";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
@@ -97,6 +98,7 @@ export async function resolveGameCompanyRequest(tx: CreatorTransaction, request:
   if (!creator || creator.type !== "organization") throw new Error("Выберите организацию.");
   await removeGameCompanyBinding(tx, request.provider, request.externalCreatorId);
   await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: request.externalCreatorId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+  await enqueueCreatorFieldsFillForBinding(tx, creator.id);
   if (request.provider !== "comic-vine" || input.decision === "create") await enqueueCreatorImageFill(tx, creator.id);
 }
 

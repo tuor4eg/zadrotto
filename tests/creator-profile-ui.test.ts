@@ -18,7 +18,10 @@ function mock(path: string, exports: unknown) {
 before(async () => {
   const state = () => ({ id: 7, name: "Studio", typeCode: selectedType, bindings: [], birthDate: null, deathDate: null });
   mock("../src/lib/auth/admin-auth", { requireAdminUser: async () => ({ id: 1 }) });
-  mock("../src/db/queries/creator-provider-snapshots", { getCreatorSnapshotComparison: async (_id: number, provider = "fantlab") => ({ state: state(), snapshot: null, projection: peopleSources ? { birthDate: provider === "tmdb" ? "1980-01-01" : "1970-01-01", deathDate: null } : null, changes: peopleSources ? { birthDate: provider === "tmdb" ? "1980-01-01" : "1970-01-01" } : {}, diagnostics: [] }) });
+  mock("../src/lib/creators/fields-fill-preview", { getCreatorFieldsPreview: async () => new Map(peopleSources ? [
+    [21, { birthDate: "1970-01-01", diagnostics: [], snapshot: { id: 31, payload: {} } }],
+    [22, { birthDate: "1980-01-01", diagnostics: [], snapshot: { id: 32, payload: {} } }],
+  ] : [[15, { foundedDate: "2004-08-13", diagnostics: [], snapshot: { id: 34, payload: {} } }]]) });
   mock("../src/db/queries/creator-profile-snapshots", { getCreatorProfileSources: async () => ({ creator: state(), sources: peopleSources ? [
     { binding: { id: 21, provider: "fantlab", externalCreatorId: "17" }, target: { provider: "fantlab", resourceType: "author", externalId: "17" }, snapshot: { id: 31, fetchedAt: new Date("2026-10-21T00:00:00Z"), payloadHash: "a".repeat(64), payload: { id: 17, name: "Author" } }, linked: false, canApply: true },
     { binding: { id: 22, provider: "tmdb", externalCreatorId: "person:19" }, target: { provider: "tmdb", resourceType: "person", externalId: "19" }, snapshot: { id: 32, fetchedAt: new Date("2026-10-21T00:00:00Z"), payloadHash: "b".repeat(64), payload: { id: 19, name: "Director" } }, linked: true, canApply: true },
@@ -27,6 +30,7 @@ before(async () => {
     { binding: { id: 12, provider: "tmdb", externalCreatorId: "company:19" }, target: { provider: "tmdb", resourceType: "company", externalId: "19" }, snapshot: { id: 23, fetchedAt: new Date("2026-10-21T00:00:00Z"), payloadHash: "a".repeat(64), payload: { id: 19, name: "Studio", unknown: true } }, linked: true, canApply: false },
     { binding: { id: 13, provider: "bgg", externalCreatorId: "17" }, target: null, snapshot: null, linked: false, canApply: false },
     { binding: { id: 14, provider: "anilist", externalCreatorId: "studio:19" }, target: null, snapshot: null, linked: false, canApply: false },
+    { binding: { id: 15, provider: "igdb", externalCreatorId: "company:2" }, target: { provider: "igdb", resourceType: "company", externalId: "2" }, snapshot: { id: 33, fetchedAt: new Date("2026-10-21T00:00:00Z"), payloadHash: "c".repeat(64), payload: { id: 2, name: "Company" } }, linked: true, canApply: false },
   ] }) });
   mock("../src/db/queries/provider-snapshot-run", { getCreatorSnapshotRun: async () => null });
   mock("../src/app/admin/(protected)/tools/providers/snapshots/actions", { enqueueProviderSnapshotAction: () => assert.fail("render must not enqueue"), attachCreatorProfileSnapshotAction: () => assert.fail("render must not mutate") });
@@ -39,7 +43,9 @@ after(() => { for (const [key, old] of saved) { if (old) require.cache[key] = ol
 test("organizations view their full source profile without FantLab date tools", async () => {
   selectedType = "organization";
   const html = renderToStaticMarkup(await page({ params: Promise.resolve({ id: "7" }), searchParams: Promise.resolve({}) }));
-  assert.match(html, /Данные источников/);
+  assert.match(html, /aria-current="page"[^>]*href="\/admin\/creators\/7\/snapshots"[^>]*>Данные<|href="\/admin\/creators\/7\/snapshots"[^>]*aria-current="page"[^>]*>Данные</);
+  assert.match(html, /Информация/);
+  assert.match(html, /Привязки/);
   assert.match(html, /TMDB.*company:19/);
   assert.match(html, /Посмотреть полный ответ/);
   assert.match(html, /Обновить raw/);
@@ -47,23 +53,24 @@ test("organizations view their full source profile without FantLab date tools", 
   assert.match(html, /Получение профиля этого источника пока не поддерживается/);
   assert.match(html, /Найти логотип в TMDB/);
   assert.match(html, /спорные совпадения появятся в заявках/);
-  assert.doesNotMatch(html, /Применение данных FantLab|Сравнение дат жизни|Связать с Creator/);
+  assert.match(html, /Дата основания/);
+  assert.match(html, /2004-08-13/);
+  assert.match(html, /Посмотреть снимок с датами/);
+  assert.doesNotMatch(html, /Применение данных FantLab|>Даты жизни<|Связать с Creator/);
 });
 
 
-test("person source cards share separate raw, link, comparison, apply and fresh image controls", async () => {
+test("person source cards share separate raw, link, comparison and fresh image controls", async () => {
   selectedType = "person";
   peopleSources = true;
   const html = renderToStaticMarkup(await page({ params: Promise.resolve({ id: "7" }), searchParams: Promise.resolve({}) }));
-  assert.equal((html.match(/Сравнить даты жизни/g) ?? []).length, 2);
-  assert.equal((html.match(/Применить даты из raw/g) ?? []).length, 2);
+  assert.equal((html.match(/>Даты жизни</g) ?? []).length, 2);
+  assert.doesNotMatch(html, /Заполнить из снимка|name="operation" value="process"/);
   assert.equal((html.match(/Посмотреть полный ответ/g) ?? []).length, 2);
-  assert.equal((html.match(/Краткие данные сравнения/g) ?? []).length, 2);
+  assert.doesNotMatch(html, /name="operation" value="refresh-process"/);
   assert.equal((html.match(/Обновить изображение из источника/g) ?? []).length, 3);
   assert.match(html, /AniList.*person:19/);
   assert.match(html, /Связать с Creator/);
-  assert.match(html, /name="provider" value="fantlab"/);
-  assert.match(html, /name="provider" value="tmdb"/);
   assert.match(html, /1970-01-01/);
   assert.match(html, /1980-01-01/);
   assert.match(html, /запрашивает свежий профиль/);

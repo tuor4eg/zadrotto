@@ -1,5 +1,7 @@
 "use client";
 
+import { MediaItemTags } from "@/components/archive/media-item-tags";
+
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import { Fragment } from "react";
 import Link from "next/link";
@@ -34,6 +36,7 @@ import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 type MediaCatalogPreviewProps = {
   canPublishFranchisesWithoutReview: boolean;
   canSuggestFranchises: boolean;
+  canManageFranchises?: boolean;
   currentAdmin: boolean;
   currentAuthor: {
     name: string;
@@ -48,8 +51,8 @@ type MediaCatalogPreviewProps = {
 
 export function MediaCatalogPreview({
   activeQuiz,
-  canPublishFranchisesWithoutReview,
   canSuggestFranchises,
+  canManageFranchises = false,
   currentAdmin,
   currentAuthor,
   franchises,
@@ -86,10 +89,9 @@ export function MediaCatalogPreview({
     yearLabel,
     item.mediaType === "book" || item.mediaType === "boardgame" ? null : formatAuthorsFact(item.metadataFacts),
   ].filter((value): value is string => Boolean(value));
-  const franchiseAction = currentAuthor ? (
+  const franchiseAction = currentAuthor && canManageFranchises ? (
     <MediaItemFranchiseSuggestionDialog
       assignedFranchises={item.franchises}
-      canPublishWithoutReview={canPublishFranchisesWithoutReview}
       canSuggestFranchises={canSuggestFranchises}
       franchises={mapFranchiseSuggestionOptions(franchises, item.franchiseLinkStatuses)}
       mediaItemCode={item.code}
@@ -299,6 +301,8 @@ export function MediaCatalogPreview({
             <div className="mt-1 text-stone-500">Не указаны</div>
           ) : null}
         </div>
+
+        <MediaItemTags key={item.code} tags={item.tags} mediaItemCode={item.code} canAssign={Boolean(currentAuthor)} />
 
         {currentAdmin ? (
           <div className="mt-auto flex justify-end pt-4">

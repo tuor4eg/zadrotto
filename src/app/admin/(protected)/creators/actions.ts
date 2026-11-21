@@ -42,8 +42,8 @@ export async function saveCreatorAction(formData: FormData) {
     const relationType = formData.get("relationType");
     if (relationType !== "pseudonym_of") throw new Error("invalid-relation-type");
     const relations = formData.getAll("relatedCreatorIds").map(value => ({ targetCreatorId: id(value), relationType: "pseudonym_of" as const }));
-    const values = { ...(formData.has("nameRu") ? { nameRu: formData.get("nameRu") === "" ? null : text(formData.get("nameRu")) } : {}), ...(formData.has("birthDate") ? { birthDate: parseCreatorDate(formData.get("birthDate")) } : {}), ...(formData.has("deathDate") ? { deathDate: parseCreatorDate(formData.get("deathDate")) } : {}), relations, adminId: admin.id, name: text(formData.get("name")), slug: text(formData.get("slug")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
-    const creator = creatorId ? await creators.updateCreator(creatorId, values) : await creators.createCreator(values);
+    const values = { ...(formData.has("nameRu") ? { nameRu: formData.get("nameRu") === "" ? null : text(formData.get("nameRu")) } : {}), ...(formData.has("birthDate") ? { birthDate: parseCreatorDate(formData.get("birthDate")) } : {}), ...(formData.has("deathDate") ? { deathDate: parseCreatorDate(formData.get("deathDate")) } : {}), relations, adminId: admin.id, name: text(formData.get("name")), originalName: formData.get("originalName") ? text(formData.get("originalName")) : null, typeId: id(formData.get("typeId")), seriesIds: formData.getAll("seriesIds").map(id) };
+    const creator = creatorId ? await creators.updateCreator(creatorId, values) : await creators.createCreator({ ...values, slug: text(formData.get("slug")) });
     if (!creator) throw new Error("not-found");
     creatorId = creator.id;
   } catch (error) {

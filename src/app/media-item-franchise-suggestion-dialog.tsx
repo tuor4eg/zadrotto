@@ -29,7 +29,6 @@ const initialState: MediaItemFranchiseSuggestionState = { error: null, success: 
 
 export function MediaItemFranchiseSuggestionDialog({
   assignedFranchises,
-  canPublishWithoutReview,
   canSuggestFranchises,
   franchises,
   franchiseSuggestionInput,
@@ -45,7 +44,6 @@ export function MediaItemFranchiseSuggestionDialog({
     removalRequested?: boolean;
     title: string;
   }>;
-  canPublishWithoutReview: boolean;
   canSuggestFranchises: boolean;
   franchises: SearchableFranchiseOption[];
   franchiseSuggestionInput: Omit<SuggestFranchisesMediaInput, "selectedFranchiseIds">;
@@ -101,7 +99,7 @@ export function MediaItemFranchiseSuggestionDialog({
   }
 
   const [state, formAction, isPending] = useActionState(submitSuggestion, initialState);
-  const label = canPublishWithoutReview ? "Изменить серии" : "Предложить изменения";
+  const label = "Изменить серии";
 
   function closeDialog() {
     resetAndCloseDialog();
@@ -186,7 +184,7 @@ export function MediaItemFranchiseSuggestionDialog({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h2 id="media-franchise-dialog-title" className="media-carrier-font-pc-steam text-3xl leading-none text-stone-950">{label}</h2>
-                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">{canPublishWithoutReview ? "Серии в карточке будут изменены" : "Серии в карточке будут изменены после одобрения"}</p>
+                <p className="mt-2 font-mono text-sm uppercase tracking-[0.14em] text-stone-600">Серии в карточке будут изменены</p>
               </div>
               <div className="flex shrink-0 items-center gap-2">
                 <ArchiveTooltip label={label} side="bottom">

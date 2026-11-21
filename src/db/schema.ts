@@ -178,6 +178,7 @@ export const archiveSettings = pgTable(
     id: integer("id").primaryKey().default(1),
     maxTitleAliases: integer("max_title_aliases").default(3).notNull(),
     maxFranchiseDepth: integer("max_franchise_depth").default(3).notNull(),
+    tagPublicationThreshold: integer("tag_publication_threshold").default(3).notNull(),
     dailyDossierMinAverageScore: integer("daily_dossier_min_average_score")
       .default(6)
       .notNull(),
@@ -199,6 +200,7 @@ export const archiveSettings = pgTable(
       "archive_settings_max_title_aliases_check",
       sql`${table.maxTitleAliases} between 1 and 10`,
     ),
+    check("archive_settings_tag_publication_threshold_check", sql`${table.tagPublicationThreshold} >= 1`),
     check("archive_settings_max_franchise_depth_check", sql`${table.maxFranchiseDepth} between 2 and 5`),
     check(
       "archive_settings_daily_dossier_min_average_score_check",
@@ -1773,15 +1775,38 @@ export const mediaItemTitleAliases = pgTable(
   ],
 );
 
+export const tags = pgTable("tags", {
+  id: serial("id").primaryKey(),
+  code: text("code").notNull().unique(),
+  title: text("title").notNull(),
+}, (table) => [
+  uniqueIndex("tags_normalized_title_unique").on(normalizeSearchSql(table.title)),
+  index("tags_title_search_idx").using("gin", normalizedSearchIndexSql(table.title)),
+  check("tags_title_check", sql`char_length(btrim(${table.title})) between 1 and 80`),
+]);
+
+export const mediaItemTags = pgTable("media_item_tags", {
+  mediaItemId: integer("media_item_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  tagId: integer("tag_id").notNull().references(() => tags.id, { onDelete: "restrict" }),
+  authorId: integer("author_id").notNull().references(() => authors.id, { onDelete: "restrict" }),
+}, (table) => [
+  primaryKey({ columns: [table.mediaItemId, table.tagId, table.authorId] }),
+  index("media_item_tags_tag_media_author_idx").on(table.tagId, table.mediaItemId, table.authorId),
+  index("media_item_tags_author_idx").on(table.authorId),
+]);
+
 export const genres = pgTable("genres", {
   id: serial("id").primaryKey(),
   slug: text("slug").notNull().unique(),
   name: text("name").notNull(),
   isActive: boolean("is_active").notNull().default(true),
   replacementFranchiseId: integer("replacement_franchise_id").references(() => franchises.id, { onDelete: "set null" }),
+  replacementTagId: integer("replacement_tag_id").references(() => tags.id, { onDelete: "restrict" }),
   ...timestamps(),
 }, (table) => [
   index("genres_replacement_franchise_id_idx").on(table.replacementFranchiseId),
+  index("genres_replacement_tag_id_idx").on(table.replacementTagId),
+  check("genres_single_replacement_check", sql`${table.replacementFranchiseId} is null or ${table.replacementTagId} is null`),
   check("genres_slug_check", sql`btrim(${table.slug}) <> ''`),
   check("genres_name_check", sql`btrim(${table.name}) <> ''`),
 ]);
@@ -2059,6 +2084,15 @@ export const creators = pgTable("creators", {
           and ${t.avatarSourceUrl} is not null and ${t.avatarOriginalUrl} is not null and ${t.avatarFetchedAt} is not null)))
   ) and ${t.avatarVersion} >= 0`),
   uniqueIndex("creators_avatar_object_key_unique").on(t.avatarObjectKey).where(sql`${t.avatarObjectKey} is not null`),
+]);
+export const creatorFieldsFillAttempts = pgTable("creator_fields_fill_attempts", {
+  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "cascade" }),
+  field: text("field").$type<import("@/lib/creators/fields-fill-payload").CreatorFillField>().notNull(),
+  fingerprint: text("fingerprint").notNull(),
+}, (t) => [
+  primaryKey({ columns: [t.creatorId, t.field] }),
+  check("creator_fields_fill_attempts_field_check", sql`${t.field} in ('birthDate', 'deathDate', 'foundedDate')`),
+  check("creator_fields_fill_attempts_fingerprint_check", sql`${t.fingerprint} ~ '^[0-9a-f]{64}$'`),
 ]);
 export const entryCreators = pgTable("entry_creators", {
   entryId: integer("entry_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
@@ -2732,3 +2766,5 @@ export const tierListQuotaEvents = pgTable('tier_list_quota_events', {
   id: serial('id').primaryKey(), authorId: integer('author_id').notNull().references(() => authors.id),
   kind: text('kind').$type<'created'|'published'>().notNull(), occurredAt: timestamp('occurred_at', { withTimezone: true }).notNull().defaultNow(),
 }, table => [index('tier_list_quota_events_author_time_idx').on(table.authorId, table.kind, table.occurredAt), check('tier_list_quota_events_kind_check', sql`${table.kind} in ('created','published')`)]);
+
+export { classificationMigrationRuns } from "./classification-migration-schema";

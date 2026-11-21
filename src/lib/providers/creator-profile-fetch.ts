@@ -6,20 +6,26 @@ import { fetchGameProvider } from "@/lib/covers/game-provider-budget";
 import { getActiveProviderRequestTimeoutMs, withProviderTimeout } from "@/lib/covers/providers/shared";
 import type { ProviderSearchOptions } from "@/lib/covers/types";
 import { boundedJson, SnapshotProviderHttpError } from "./book-fetch";
-import { parseCreatorProfileTarget, IGDB_COMPANY_PROFILE_FIELDS, type CreatorProfileTarget } from "./creator-profile-targets";
+import { validateAniListDatesProfile } from "./creator-fill-dates";
+import { creatorFillDatesDescriptor, creatorProfileDescriptor, parseCreatorProfileTarget, type CreatorProfileTarget } from "./creator-profile-targets";
 import type { JSONValue } from "./types";
 
-export function validateCreatorProfilePayload(target: CreatorProfileTarget, payload: JSONValue) {
+export function validateCreatorProfilePayload(target: CreatorProfileTarget, payload: JSONValue, includeDates = false) {
   if (target.provider === "comic-vine") {
     if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.status_code !== 1 || !payload.results || typeof payload.results !== "object" || Array.isArray(payload.results) || String(payload.results.id) !== target.externalId || typeof payload.results.name !== "string" || !payload.results.name.trim()) throw new Error("INVALID_CREATOR_PROFILE_RESPONSE");
     return;
   }
-  if (target.provider === "anilist") { parseAniListPersonImage(payload, target.externalId); return; }
+  if (target.provider === "anilist") {
+    if (!includeDates) { parseAniListPersonImage(payload, target.externalId); return; }
+    validateAniListDatesProfile(payload, target.externalId);
+    return;
+  }
   if (target.provider === "fantlab") { parseFantlabAuthorSnapshot(payload, target.externalId); return; }
   if (!payload || typeof payload !== "object" || Array.isArray(payload) || String(payload.id) !== target.externalId || typeof payload.name !== "string" || !payload.name.trim()) throw new Error("INVALID_CREATOR_PROFILE_RESPONSE");
 }
 
 export type CreatorProfileRawOptions = {
+  includeDates?: boolean;
   signal: AbortSignal;
   credentials: ProviderSearchOptions["providerCredentials"];
   requestStartedAt: () => Promise<Date>;
@@ -80,7 +86,10 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
     if (target.provider === "anilist") {
       headers["content-type"] = "application/json";
       url = new URL("https://graphql.anilist.co");
-      body = JSON.stringify({ query: "query StaffImage($id:Int!) { Staff(id:$id) { id name { full } image { large medium } siteUrl } }", variables: { id: Number(target.externalId) } });
+      const query = options.includeDates
+        ? "query StaffDates($id:Int!) { Staff(id:$id) { id name { full } dateOfBirth { year month day } dateOfDeath { year month day } } }"
+        : "query StaffImage($id:Int!) { Staff(id:$id) { id name { full } image { large medium } siteUrl } }";
+      body = JSON.stringify({ query, variables: { id: Number(target.externalId) } });
     } else if (target.provider === "igdb") {
       const auth = credentials?.igdb;
       if (!auth?.clientId || !auth.clientSecret) throw new Error("Не настроены учётные данные IGDB.");
@@ -89,7 +98,8 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
       headers["Client-ID"] = auth.clientId;
       headers.Authorization = `Bearer ${token}`;
       url = new URL("https://api.igdb.com/v4/companies");
-      body = `fields ${IGDB_COMPANY_PROFILE_FIELDS}; where id = ${target.externalId}; limit 1;`;
+      const descriptor = options.includeDates ? creatorFillDatesDescriptor(target) : creatorProfileDescriptor(target);
+      body = `fields ${descriptor.requestParams.fields}; where id = ${target.externalId}; limit 1;`;
     } else if (target.provider === "comic-vine") {
       const key = credentials?.["comic-vine"]?.apiKey?.trim();
       if (!key) throw new Error("Не настроены учётные данные Comic Vine.");
@@ -135,6 +145,6 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
     }
   }
   options.signal.throwIfAborted();
-  validateCreatorProfilePayload(target, payload);
+  validateCreatorProfilePayload(target, payload, options.includeDates);
   return { payload, requestStartedAt: requestStartedAt! };
 }

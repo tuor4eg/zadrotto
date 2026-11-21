@@ -1,3 +1,5 @@
+import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
+import { canManageFranchises } from "@/lib/franchises/access";
 import { NextResponse } from "next/server";
 
 import {
@@ -12,11 +14,12 @@ type RouteContext = {
 };
 
 export async function GET(request: Request, { params }: RouteContext) {
-  const consentDenial = await getPersonalDataConsentDenial();
+  const admin = await getCurrentAdminUser();
+  const consentDenial = admin ? null : await getPersonalDataConsentDenial();
   if (consentDenial) return consentDenial;
   const [author, { code }] = await Promise.all([getCurrentAuthor(), params]);
 
-  if (!author) {
+  if (!admin && !canManageFranchises(author)) {
     return NextResponse.json({ items: [] }, { status: 401 });
   }
 
@@ -27,7 +30,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   }
 
   const [enabledMediaTypeCodes, franchise] = await Promise.all([
-    getEnabledMediaTypeCodes(author.id),
+    getEnabledMediaTypeCodes(admin ? undefined : author?.id),
     getPublishedFranchiseIdentityByCode(code),
   ]);
 
@@ -36,7 +39,7 @@ export async function GET(request: Request, { params }: RouteContext) {
   }
 
   const items = await searchPublishedMediaItemsForFranchise({
-    authorId: author.id,
+    authorId: author?.id ?? 0,
     enabledMediaTypeCodes,
     franchiseId: franchise.id,
     searchQuery,

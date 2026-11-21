@@ -1,3 +1,4 @@
+import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { containsNormalizedSearchSql } from "@/db/search";
 import { normalizeSearchText } from "@/lib/search/normalize";
@@ -6,7 +7,7 @@ import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { and, asc, eq, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { franchises, genres, genreRequests, jobRuns, mediaItemGenres, mediaItems, mediaTypes, providerGenreMappings } from "@/db/schema";
+import { franchises, tags, genres, genreRequests, jobRuns, mediaItemGenres, mediaItems, mediaTypes, providerGenreMappings } from "@/db/schema";
 import { visibleGenreSql } from "@/db/queries/media-item-genres";
 import { groupGenreProviderVariants, parseGenreName } from "@/lib/media/admin-genres";
 
@@ -16,10 +17,12 @@ async function getGenresWithVariants(id?: number | number[]) {
     db.select({
       id: genres.id, slug: genres.slug, name: genres.name, isActive: genres.isActive,
       replacementFranchiseId: genres.replacementFranchiseId,
+      replacementTagId: genres.replacementTagId,
+      replacementTag: { id: tags.id, title: tags.title, code: tags.code },
       replacementFranchise: { id: franchises.id, title: franchises.title, code: franchises.code, publicationStatus: franchises.publicationStatus },
       mediaItemsCount: sql<number>`(select count(*)::int from ${mediaItemGenres} genre_link
         where genre_link.genre_id = "genres"."id")`,
-    }).from(genres).leftJoin(franchises, eq(franchises.id, genres.replacementFranchiseId))
+    }).from(genres).leftJoin(franchises, eq(franchises.id, genres.replacementFranchiseId)).leftJoin(tags, eq(tags.id, genres.replacementTagId))
       .where(id === undefined ? undefined : Array.isArray(id) ? inArray(genres.id, id) : eq(genres.id, id))
       .orderBy(asc(genres.name), asc(genres.id)),
     db.select({
@@ -55,7 +58,7 @@ export async function getAdminGenres() {
 
 export async function getAdminGenresPage(input: { searchQuery: string; page: number; tab?: "ordinary" | "series" }) {
   const search = normalizeSearchText(input.searchQuery);
-  const filter = and(eq(genres.isActive, true), input.tab === "series" ? isNotNull(genres.replacementFranchiseId) : isNull(genres.replacementFranchiseId), search ? or(
+  const filter = and(eq(genres.isActive, true), input.tab === "series" ? or(isNotNull(genres.replacementFranchiseId), isNotNull(genres.replacementTagId)) : and(isNull(genres.replacementFranchiseId), isNull(genres.replacementTagId)), search ? or(
     containsNormalizedSearchSql(genres.name, search),
     containsNormalizedSearchSql(genres.slug, search),
     sql`exists (select 1 from ${providerGenreMappings} where ${providerGenreMappings.genreId} = ${genres.id}
@@ -94,11 +97,18 @@ export async function updateGenreName(id: number, name: string) {
   return genre ?? null;
 }
 
-export async function updateGenre(id: number, name: string, replacementFranchiseId: number | null) {
+export async function updateGenre(id: number, name: string, replacementFranchiseId: number | null, replacementTagId: number | null = null) {
   const normalizedName = parseGenreName(name);
   if (!Number.isSafeInteger(id) || id <= 0 || id > 2_147_483_647 || !normalizedName) throw new Error("Invalid genre name or ID");
   if (replacementFranchiseId !== null && (!Number.isSafeInteger(replacementFranchiseId) || replacementFranchiseId <= 0 || replacementFranchiseId > 2_147_483_647)) throw new Error("invalid-series");
   return db.transaction(async (tx) => {
+    await lockClassificationMutations(tx);
+    if (replacementTagId !== null) {
+      if (replacementFranchiseId !== null || !Number.isSafeInteger(replacementTagId) || replacementTagId < 1) throw new Error("invalid-series");
+      const [tag] = await tx.select({ id: tags.id }).from(tags).where(eq(tags.id, replacementTagId)).for("share");
+      if (!tag) throw new Error("invalid-series");
+    }
+
     const [current] = await tx.select({ replacementFranchiseId: genres.replacementFranchiseId })
       .from(genres).where(eq(genres.id, id)).for("update");
     if (!current) return null;
@@ -107,7 +117,7 @@ export async function updateGenre(id: number, name: string, replacementFranchise
         .where(eq(franchises.id, replacementFranchiseId)).for("share");
       if (!series || (current.replacementFranchiseId !== replacementFranchiseId && series.publicationStatus !== PUBLISHED_PUBLICATION_STATUS)) throw new Error("invalid-series");
     }
-    const [genre] = await tx.update(genres).set({ name: normalizedName, replacementFranchiseId, updatedAt: new Date() })
+    const [genre] = await tx.update(genres).set({ name: normalizedName, replacementFranchiseId, replacementTagId, updatedAt: new Date() })
       .where(eq(genres.id, id)).returning({ id: genres.id });
     return genre;
   });
@@ -125,7 +135,7 @@ export async function getPublicGenresPage(input: {
   }).from(genres).innerJoin(mediaItemGenres, eq(mediaItemGenres.genreId, genres.id))
     .innerJoin(mediaItems, eq(mediaItems.id, mediaItemGenres.mediaItemId))
     .where(and(eq(genres.isActive, true), eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
-      visibleGenreSql(sql`"media_items"."id"`, sql`"genres"."replacement_franchise_id"`),
+      visibleGenreSql(sql`"media_items"."id"`, sql`"genres"."replacement_franchise_id"`, sql`"genres"."replacement_tag_id"`),
       inArray(mediaItems.mediaType, [...input.enabledMediaTypeCodes])))
     .groupBy(genres.id);
   return paginatePublicGenres(rows, input);

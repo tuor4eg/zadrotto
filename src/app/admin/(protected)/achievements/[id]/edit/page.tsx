@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { tags as tagsTable } from "@/db/schema";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
@@ -31,10 +33,11 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
   const tab = query.tab === "levels" ? "levels" : "general";
-  const [item, mediaTypes, series] = await Promise.all([
+  const [item, mediaTypes, series, tagOptions] = await Promise.all([
     getAdminAchievementById(id),
     tab === "general" ? getAdminMediaTypeAccessOptions() : Promise.resolve([]),
     tab === "general" ? getAdminFranchiseOptions() : Promise.resolve([]),
+    tab === "general" ? db.select().from(tagsTable) : Promise.resolve([]),
   ]);
   if (!item) notFound();
 
@@ -80,7 +83,8 @@ export default async function EditAchievementPage({ params, searchParams }: Prop
             <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" defaultValue={item.description ?? ""} /></div>
             <AchievementConfigurationFields
               conditionLocked={item.hasAwards}
-              initialMechanic={item.mechanic}
+              tags={tagOptions.map(tag => ({ ...tag, originalTitle: null }))}
+            initialMechanic={item.mechanic}
               initialParams={item.params}
               mechanics={achievementMechanicRegistry.map((mechanic) => ({
                 code: mechanic.code,

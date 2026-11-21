@@ -18,6 +18,7 @@ import type { MediaTypeFilter } from "./media-items-catalog-logic";
 
 type ArchiveAuthorMediaSuggestionProps = {
   action: MediaItemFormAction;
+  canManageFranchises?: boolean;
   canCreateFranchise: boolean;
   canPublishMediaWithoutReview: boolean;
   canSuggestFranchises: boolean;
@@ -63,6 +64,7 @@ function appendParam(path: string, key: string, value: string) {
 
 export function ArchiveAuthorMediaSuggestion({
   action,
+  canManageFranchises = false,
   canCreateFranchise,
   canPublishMediaWithoutReview,
   canSuggestFranchises,
@@ -199,6 +201,7 @@ export function ArchiveAuthorMediaSuggestion({
                     action={action}
                     cancelHref={currentArchivePath}
                     canCreateFranchise={canCreateFranchise}
+                    canManageFranchises={canManageFranchises}
                     canSuggestFranchises={canSuggestFranchises}
                     createAndSubmitLabel={createAndSubmitLabel}
                     errorParamName="suggestionError"

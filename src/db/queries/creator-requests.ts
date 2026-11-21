@@ -1,3 +1,4 @@
+import { enqueueCreatorFieldsFillForBinding } from "./creator-fields-fill-jobs";
 import { syncMangaUpdatesCreators } from "./mangaupdates-creators";
 import { prepareMangaUpdatesSnapshotReferences } from "@/lib/providers/mangaupdates-service";
 import { syncComicVineCreators } from "./comic-vine-creators";
@@ -377,7 +378,10 @@ export async function resolveCreatorRequest(input: {
                 const [conflict] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, request.provider), eq(providerCreatorBindings.creatorId, creator.id), eq(providerCreatorBindings.active, true), sql`${providerCreatorBindings.externalCreatorId} like ${personPrefix}`, sql`${providerCreatorBindings.externalCreatorId} <> ${externalId}`)).limit(1);
                 if (conflict) throw new CreatorRequestError(decisionInput.autoApprove ? "auto-skip" : "tmdb-person-conflict", "У Creator уже есть другой person ID провайдера.");
                 await tx.delete(providerCreatorExclusions).where(and(eq(providerCreatorExclusions.provider, request.provider), eq(providerCreatorExclusions.externalCreatorId, externalId)));
-                if (!binding) await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+                if (!binding) {
+                    await tx.insert(providerCreatorBindings).values({ provider: request.provider, externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+                    await enqueueCreatorFieldsFillForBinding(tx, creator.id);
+                }
                 if (request.provider !== "comic-vine" || resolvedInput.decision === "create") await enqueueCreatorImageFill(tx, creator.id);
             }
             await tx.update(creatorRequests).set({ decision: resolvedInput.decision, resolvedByAdminId: decisionInput.adminId, resolvedAt: new Date(), updatedAt: new Date() }).where(eq(creatorRequests.id, request.id));

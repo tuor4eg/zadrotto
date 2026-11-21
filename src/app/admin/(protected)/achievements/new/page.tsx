@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { tags as tagsTable } from "@/db/schema";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
@@ -17,9 +19,10 @@ type Props = { searchParams: Promise<{ error?: string }> };
 
 export default async function NewAchievementPage({ searchParams }: Props) {
   const query = await searchParams
-  const [mediaTypes, series] = await Promise.all([
+  const [mediaTypes, series, tagOptions] = await Promise.all([
     getAdminMediaTypeAccessOptions(),
     getAdminFranchiseOptions(),
+    db.select().from(tagsTable),
   ])
   const initialMechanic = achievementMechanicRegistry[0]!
   const errorMessage = query.error === "save"
@@ -41,6 +44,7 @@ export default async function NewAchievementPage({ searchParams }: Props) {
           <div className="grid gap-2"><Label htmlFor="achievement-name">Название</Label><Input id="achievement-name" name="name" required /></div>
           <div className="grid gap-2"><Label htmlFor="achievement-description">Описание</Label><Textarea id="achievement-description" name="description" /></div>
           <AchievementConfigurationFields
+            tags={tagOptions.map(tag => ({ ...tag, originalTitle: null }))}
             initialMechanic={initialMechanic.code}
             initialParams={{}}
             mechanics={achievementMechanicRegistry.map((mechanic) => ({

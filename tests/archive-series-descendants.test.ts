@@ -36,7 +36,7 @@ test("catalog list and tab counts share the requested descendants filter", () =>
 
 test("only series with visible descendants show an accessible switch", () => {
   const source = readFileSync("src/app/archive/archive-series-context.tsx", "utf8");
-  assert.match(source, /childSeries.length > 0 \? \(\s*<ArchiveSeriesDescendantsToggle/);
+  assert.match(source, /childSeries.length > 0 \? \([\s\S]*<ArchiveSeriesDescendantsToggle/);
   const toggle = readFileSync("src/components/ui/route-switch.tsx", "utf8");
   assert.match(toggle, /role="switch"/);
   assert.match(toggle, /aria-checked=\{checked\}/);

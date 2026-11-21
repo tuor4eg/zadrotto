@@ -20,6 +20,7 @@ export function ArchiveSettingsForm({
   dailyDossierMinRatingsCount,
   mediaItemTitleAliasLimit,
   maxFranchiseDepth,
+  tagPublicationThreshold,
   recentlyViewedHistoryLimit,
   recentlyViewedTtlDays,
   topArchiveMinAverageScore,
@@ -31,6 +32,7 @@ export function ArchiveSettingsForm({
   dailyDossierMinRatingsCount: number;
   mediaItemTitleAliasLimit: number;
   maxFranchiseDepth: number;
+  tagPublicationThreshold: number;
   recentlyViewedHistoryLimit: number;
   recentlyViewedTtlDays: number;
   topArchiveMinAverageScore: number;
@@ -121,6 +123,11 @@ export function ArchiveSettingsForm({
             <Label className="flex min-h-10 items-end" htmlFor="max-franchise-depth">Максимальная глубина серий</Label>
             <Input id="max-franchise-depth" name="maxFranchiseDepth" type="number" min={2} max={5} defaultValue={maxFranchiseDepth} required />
             <p className="text-xs leading-4 text-stone-500">От 2 до 5. Marvel → Avengers → Spider-Man — глубина 3.</p>
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor="tag-publication-threshold">Назначений для публичного тега</Label>
+            <Input id="tag-publication-threshold" name="tagPublicationThreshold" type="number" min={1} max={2147483647} defaultValue={tagPublicationThreshold} required />
+            <p className="text-xs text-stone-500">Число разных пользователей. Редакционные назначения публичны независимо от порога.</p>
           </div>
         </div>
       </fieldset>

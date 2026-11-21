@@ -13,7 +13,7 @@ describe("archive series media search access", () => {
   it("hides author controls from guests and rejects unauthenticated search", () => {
     assert.match(seriesContextSource, /authorCanAddMedia \? \([\s\S]*<ArchiveSeriesMediaLinkSearch[\s\S]*\) : null/);
     assert.match(routeSource, /const \[author,[\s\S]*getCurrentAuthor\(\)/);
-    assert.match(routeSource, /if \(!author\) \{[\s\S]*status: 401/);
+    assert.match(routeSource, /if \(!admin && !canManageFranchises\(author\)\) \{[\s\S]*status: 401/);
     assert.match(actionsSource, /const author = await requireAuthor\(\)/);
   });
 

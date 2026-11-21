@@ -1,3 +1,6 @@
+import { canManageFranchises } from "@/lib/franchises/access";
+import { getVisibleMediaItemTags } from "@/db/queries/tags";
+import { MediaItemTags } from "@/components/archive/media-item-tags";
 import { buildPublicPageMetadata, NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { getComicArtistWork } from "@/db/queries/comic-artist-work";
 import { getAnimeCreatorDisplay } from "@/db/queries/anilist-creator-display";
@@ -25,6 +28,7 @@ import {
   getMediaItemByCode,
   getPublicMediaItemMetadataByCode,
   getRelatedFranchiseSections,
+  getRelatedTagSections,
 } from "@/db/queries/media-items";
 import {
   getAccessibleMediaTypeCodes,
@@ -90,6 +94,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     notFound();
   }
 
+  const mayManageFranchises = canManageFranchises(currentAuthor);
+  const visibleTags = await getVisibleMediaItemTags(item.id, currentAuthor?.id);
   const { displayTitle } = resolveMediaItemDisplayTitles(item);
   const mediaCarrierFrame = getMediaCarrierFrame(item);
   const publicDescription = resolvePublicMediaDescription(item);
@@ -98,7 +104,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork] = await Promise.all([
+  const [relatedTagSections, relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork] = await Promise.all([
+    getRelatedTagSections({ tags: visibleTags, currentMediaItemId: item.id, enabledMediaTypeCodes, currentAuthorId: currentAuthor?.id }),
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
       currentMediaItemId: item.id,
@@ -107,8 +114,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     }),
     getPublishedReviewsForMediaItem(item.id),
     getAllMediaTypeOptions(),
-    currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
-    currentAuthor
+    mayManageFranchises ? getPublishedFranchiseOptions() : Promise.resolve([]),
+    mayManageFranchises
       ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
       : Promise.resolve(false),
     currentAuthor ? getParticipatingActiveQuiz(currentAuthor.id) : Promise.resolve(null),
@@ -128,6 +135,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
+          tagsSlot={<MediaItemTags tags={visibleTags} mediaItemCode={item.code} canAssign={Boolean(currentAuthor)} />}
           item={{ ...item, description: publicDescription, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork }}
           variant="archive"
           headerActions={
@@ -167,12 +175,12 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
           }
           mediaTypes={mediaTypes}
           relatedFranchiseSections={relatedFranchiseSections}
-          showFranchiseSection={Boolean(currentAuthor)}
+          relatedTagSections={relatedTagSections}
+          showFranchiseSection={mayManageFranchises}
           franchiseActions={
-            currentAuthor ? (
+            currentAuthor && mayManageFranchises ? (
               <MediaItemFranchiseSuggestionDialog
                 assignedFranchises={item.franchises}
-                canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
                 canSuggestFranchises={canSuggestFranchises}
                 franchises={mapFranchiseSuggestionOptions(
                   publishedFranchises,

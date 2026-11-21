@@ -10,11 +10,13 @@ const GENERAL = new Set([
   "notifications.transport-delivery",
 ]);
 const DOMAIN = new Set([
-  "provider.snapshots", "media.creator-image-refresh", "media.platform-logos-sync", "achievements.backfill",
+  "provider.snapshots", "media.creator-fields-fill", "media.creator-image-refresh", "media.platform-logos-sync", "achievements.backfill",
   "reputation.initialize", "media.genre-series-apply",
 ]);
 export type JobMigrationDefinition = { description: string; form: "tmdb" | "bgg" | "fantlab" | "empty" };
 /** Completed production transfers are retired; active transfers remain manually restartable. */
+// classification.apply/rollback intentionally have no generic manual placement:
+// only the preview/confirmation card in tools/jobs/migrations may approve their journal.
 export const JOB_MIGRATIONS: Readonly<Record<string, JobMigrationDefinition>> = {
   "reviews.body-length-backfill": {
     description: "Заполнение счётчика видимого текста старых рецензий. Запускается автоматически после миграции; повторный запуск безопасен.",

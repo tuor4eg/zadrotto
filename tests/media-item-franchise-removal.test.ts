@@ -9,8 +9,6 @@ const mediaItemQueriesSource = readFileSync("src/db/queries/media-items.ts", "ut
 const mediaActionsSource = readFileSync("src/app/media/franchise-actions.ts", "utf8");
 const seriesActionsSource = readFileSync("src/app/archive/archive-series-actions.ts", "utf8");
 const seriesSearchSource = readFileSync("src/app/archive/archive-series-media-link-search.tsx", "utf8");
-const reviewActionsSource = readFileSync("src/app/admin/(protected)/franchise-review/actions.ts", "utf8");
-const reviewPageSource = readFileSync("src/app/admin/(protected)/franchise-review/page.tsx", "utf8");
 const suggestionDialogSource = readFileSync("src/app/media-item-franchise-suggestion-dialog.tsx", "utf8");
 
 function getFunctionSource(source: string, name: string, nextName: string) {
@@ -42,12 +40,9 @@ describe("media item franchise removal requests", () => {
 
     assert.match(removalQuery, /link\.createdByAuthorId !== input\.authorId/);
     assert.match(removalQuery, /if \(link\.publicationStatus !== "published"\) \{[\s\S]*delete\(mediaItemFranchises\)/);
-    assert.match(removalQuery, /if \(input\.canPublishFranchisesWithoutReview\) \{[\s\S]*delete\(mediaItemFranchises\)/);
-    assert.match(removalQuery, /insert\(mediaItemFranchiseRemovalRequests\)[\s\S]*onConflictDoNothing\(\)/);
-    assert.match(
-      removalQuery,
-      /status: "requested" as const,[\s\S]*franchise: \{ id: link\.franchiseId, title: link\.franchiseTitle \}/,
-    );
+    assert.match(removalQuery, /requireFranchiseManagerForExecutor/);
+    assert.match(removalQuery, /type: "media-franchise.removed"/);
+    assert.doesNotMatch(removalQuery, /insert\(mediaItemFranchiseRemovalRequests\)|status: "requested"/);
   });
 
   it("exposes one global pending removal for a linked series in the media-item DTO", () => {
@@ -57,25 +52,6 @@ describe("media item franchise removal requests", () => {
     assert.match(mediaItemQueriesSource, /mediaItemFranchiseRemovalRequests\.franchiseId\} = \$\{mediaItemFranchises\.franchiseId\}/);
     assert.doesNotMatch(mediaItemQueriesSource, /mediaItemFranchiseRemovalRequests\.requestedByAuthorId\} = \$\{currentAuthorId\}/);
     assert.match(mediaItemQueriesSource, /: sql`false`/);
-  });
-
-  it("routes review approval to deletion and rejection to request cancellation", () => {
-    const reviewQuery = getFunctionSource(
-      franchiseQueriesSource,
-      "reviewMediaItemFranchiseRemovalRequest",
-      "createAuthorMediaItemFranchiseLinks",
-    );
-
-    assert.match(reviewQuery, /delete\(mediaItemFranchiseRemovalRequests\)/);
-    assert.match(reviewQuery, /if \(input\.decision === "published"\) \{[\s\S]*delete\(mediaItemFranchises\)/);
-    assert.doesNotMatch(reviewQuery.slice(reviewQuery.indexOf('if (input.decision === "published")')), /else[\s\S]*delete\(mediaItemFranchises\)/);
-    assert.match(reviewActionsSource, /kind === "removal"[\s\S]*reviewMediaItemFranchiseRemovalRequest\(\{ decision, franchiseId, mediaItemId \}\)/);
-    assert.match(reviewPageSource, /name="kind" value="removal"/);
-    assert.match(reviewPageSource, /Запрос на отвязку существующей серии/);
-    assert.match(reviewPageSource, /Link2, Unlink/);
-    assert.match(reviewPageSource, /franchise\.kind === "removal" \? <Unlink className="size-5" \/> : <Link2 className="size-5" \/>/);
-    assert.match(reviewPageSource, /bg-red-50 text-red-700/);
-    assert.match(reviewPageSource, /bg-emerald-50 text-emerald-700/);
   });
 
   it("stages direct-tag removal in the public dialog and submits it through the single suggestion form", () => {
@@ -116,7 +92,7 @@ describe("media item franchise removal requests", () => {
   });
 
   it("returns removal status to the series search", () => {
-    assert.match(seriesActionsSource, /requestAuthorMediaItemFranchiseRemoval\([\s\S]*canPublishFranchisesWithoutReview: author\.canPublishFranchisesWithoutReview/);
+    assert.match(seriesActionsSource, /requestAuthorMediaItemFranchiseRemoval\([\s\S]*canPublishFranchisesWithoutReview: true/);
     assert.match(seriesActionsSource, /removalStatus = removedLink\.status/);
     assert.match(seriesActionsSource, /return \{ error: null, linkStatus: null, removalStatus, success: true \}/);
     assert.match(seriesSearchSource, /result\.removalStatus === "requested"[\s\S]*отправлен на проверку/);

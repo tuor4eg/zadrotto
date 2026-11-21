@@ -8,7 +8,7 @@ import { Label, Select } from "@/components/ui/form"
 type MechanicOption = {
   code: string
   label: string
-  params: { code: string; label: string; type: "mediaType" | "series" }[]
+  params: { code: string; label: string; type: "mediaType" | "series" | "tag" }[]
 }
 
 type SeriesOption = {
@@ -56,7 +56,9 @@ export function AchievementConfigurationFields({
   mechanics,
   mediaTypes,
   series,
+  tags = [],
 }: {
+  tags?: SeriesOption[]
   conditionLocked?: boolean
   initialMechanic: string
   initialParams: Record<string, unknown>
@@ -87,13 +89,13 @@ export function AchievementConfigurationFields({
     </div>
     {mechanic?.params.map((parameter) => <div className="grid gap-2" key={parameter.code}>
       <Label htmlFor={`achievement-param-${parameter.code}`}>{parameter.label}</Label>
-      {parameter.type === "series" ? (
+      {parameter.type !== "mediaType" ? (
         <SeriesFilterField
           id={`achievement-param-${parameter.code}`}
           initialValue={String(initialParams[parameter.code] ?? "")}
           locked={conditionLocked}
           name={parameter.code}
-          series={series}
+          series={parameter.type === "tag" ? tags : series}
         />
       ) : (
         <Select

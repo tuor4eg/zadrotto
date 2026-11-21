@@ -63,8 +63,8 @@ export async function assignCreatorFantlabBindingAction(form: FormData) {
     authorName = author.name;
     if (form.get("allVariants") === "1") await replaceCreatorFantlabBinding({ creatorId, externalCreatorId });
     else await assignFantlabCreatorBinding({ creatorId, externalCreatorId, ...(form.get("mappingId") ? { mappingId: id(form.get("mappingId")) } : {}) });
-  } catch { finish(creatorId, "avatarError=binding"); }
-  finish(creatorId, `avatarUpdated=1&fantlabAuthor=${encodeURIComponent(authorName)}`);
+  } catch { finish(creatorId, "tab=bindings&avatarError=binding"); }
+  finish(creatorId, `tab=bindings&avatarUpdated=1&fantlabAuthor=${encodeURIComponent(authorName)}`);
 }
 
 export async function refreshCreatorImageAction(form: FormData) {

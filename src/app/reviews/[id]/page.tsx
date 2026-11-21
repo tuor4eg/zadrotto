@@ -1,3 +1,4 @@
+import { canManageFranchises } from "@/lib/franchises/access";
 import { buildPublicPageMetadata, NO_INDEX_METADATA } from "@/lib/seo/metadata";
 import { resolveMediaItemDisplayTitles } from "@/lib/media/display-titles";
 import type { Metadata } from "next";
@@ -106,16 +107,15 @@ export default async function ReviewPage({ params }: ReviewPageProps) {
       excludeReviewId: review.id,
       limit: 5,
     }),
-    currentAuthor ? getPublishedFranchiseOptions() : Promise.resolve([]),
+    canManageFranchises(currentAuthor) ? getPublishedFranchiseOptions() : Promise.resolve([]),
     currentAuthor
       ? isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES)
       : Promise.resolve(false),
   ]);
 
-  const franchiseActions = currentAuthor ? (
+  const franchiseActions = currentAuthor && canManageFranchises(currentAuthor) ? (
     <MediaItemFranchiseSuggestionDialog
       assignedFranchises={item.franchises}
-      canPublishWithoutReview={currentAuthor.canPublishFranchisesWithoutReview}
       canSuggestFranchises={canSuggestFranchises}
       franchises={mapFranchiseSuggestionOptions(
         publishedFranchises,

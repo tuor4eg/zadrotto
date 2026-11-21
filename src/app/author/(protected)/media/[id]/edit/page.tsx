@@ -1,3 +1,4 @@
+import { canManageFranchises } from "@/lib/franchises/access";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
@@ -119,12 +120,13 @@ export default async function EditAuthorMediaPage({
                 ? "Сохранить и опубликовать"
                 : "Сохранить и отправить на проверку"
             }
-            franchises={franchises}
+            canManageFranchises={canManageFranchises(author)}
+            franchises={canManageFranchises(author) ? franchises : []}
             mediaCarriers={mediaCarriers}
             mediaTypes={mediaTypes}
             maxTitleAliases={archiveSettings.maxTitleAliases}
-            canSuggestFranchises={canSuggestFranchises}
-            canCreateFranchise={canAuthorCreateFranchise({
+            canSuggestFranchises={canManageFranchises(author) && canSuggestFranchises}
+            canCreateFranchise={canManageFranchises(author) && canAuthorCreateFranchise({
               canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
             })}
             values={item}

@@ -149,7 +149,7 @@ export function getNotificationHref(input: {
     case "franchise.submitted":
     case "media-franchise.submitted":
     case "media-franchise.removal.requested":
-      return "/admin/franchise-review"
+      return "/admin/series"
     case "franchise.approved":
       return input.franchiseCode
         ? `/archive?series=${encodeURIComponent(input.franchiseCode)}`

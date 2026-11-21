@@ -16,6 +16,9 @@ export async function enqueueProviderSnapshotAction(form: FormData) {
     const creatorIds = rawCreatorIds ? rawCreatorIds.split(/[\s,]+/).map(value => /^\d+$/.test(value) ? Number(value) : NaN) : undefined;
     const mediaType = String(form.get("mediaType") ?? form.get("processingType"));
     const operation = String(form.get("operation") ?? "verify");
+    if (creator && !standalone && (operation === "process" || operation === "refresh-process")) {
+      throw new Error("Use the creator field fill action.");
+    }
     const payload=parseSnapshotJobPayload({
       ...(!creator && !standalone && ["book", "film", "series", "anime", "game", "boardgame", "comic", "manga", "roblox"].includes(String(form.get("mediaType") ?? form.get("processingType"))) ? {mediaType:String(form.get("mediaType") ?? form.get("processingType"))} : {}),
       operation,

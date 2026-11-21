@@ -26,6 +26,7 @@ type FranchiseFormProps = {
   errorMessage?: string | null;
   publicHref?: string | null;
   successMessage?: string | null;
+  parentEditBase?: string;
   parentOptions?: Array<{ id: number; title: string; originalTitle: string | null; path: string }>;
 };
 
@@ -37,6 +38,7 @@ export function FranchiseForm({
   publicHref,
   successMessage,
   parentOptions = [],
+  parentEditBase = "/admin/series",
 }: FranchiseFormProps) {
   const isEditing = Boolean(values?.id);
   const [title, setTitle] = useState(values?.title ?? "");
@@ -91,7 +93,7 @@ export function FranchiseForm({
         </p>
         {isEditing ? (
           <p className="text-xs leading-5 text-stone-500">
-            Текущий путь: {selectedParent ? <><Link href={`/admin/series/${selectedParent.id}/edit?tab=edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">{selectedParent.path}</Link> / {values?.title}</> : values?.title}
+            Текущий путь: {selectedParent ? <><Link href={`${parentEditBase}/${selectedParent.id}/edit`} className="underline decoration-stone-300 underline-offset-2 hover:decoration-stone-950">{selectedParent.path}</Link> / {values?.title}</> : values?.title}
           </p>
         ) : null}
       </div>

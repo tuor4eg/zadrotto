@@ -1,5 +1,6 @@
 "use server";
 
+import { canManageFranchises } from "@/lib/franchises/access";
 import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
 
 import { revalidatePath } from "next/cache";
@@ -27,8 +28,6 @@ function revalidateSeriesMediaSurfaces(mediaItemCode: string) {
   revalidatePath("/archive");
   revalidatePath("/series");
   revalidatePath(`/media/${mediaItemCode}`);
-  revalidatePath("/author/series");
-  revalidatePath("/admin/franchise-review");
   revalidatePath("/admin", "layout");
 }
 
@@ -45,6 +44,7 @@ async function addAuthorSeriesMediaLinkActionMeasured(input: {
 }, timing: MediaSaveTiming): Promise<SeriesMediaLinkActionResult> {
   timing.stage("requireAuthor");
   const author = await requireAuthor();
+  if (!canManageFranchises(author)) throw new Error("franchise-forbidden");
   timing.stage("loadSeriesAndMediaIdentity");
   const [franchise, mediaItem] = await Promise.all([
     getPublishedFranchiseIdentityByCode(input.franchiseCode),
@@ -58,7 +58,7 @@ async function addAuthorSeriesMediaLinkActionMeasured(input: {
   }
 
   const publicationStatus = getFranchisePublicationStatusAfterAuthorSubmit({
-    canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+    canPublishFranchisesWithoutReview: true,
   });
 
   timing.stage("createAuthorMediaItemFranchiseLinks");
@@ -112,6 +112,7 @@ async function removeAuthorSeriesMediaLinkActionMeasured(input: {
 }, timing: MediaSaveTiming): Promise<SeriesMediaLinkActionResult> {
   timing.stage("requireAuthor");
   const author = await requireAuthor();
+  if (!canManageFranchises(author)) throw new Error("franchise-forbidden");
   timing.stage("loadSeriesAndMediaIdentity");
   const [franchise, mediaItem] = await Promise.all([
     getPublishedFranchiseIdentityByCode(input.franchiseCode),
@@ -129,7 +130,7 @@ async function removeAuthorSeriesMediaLinkActionMeasured(input: {
   try {
     const removedLink = await requestAuthorMediaItemFranchiseRemoval({
       authorId: author.id,
-      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+      canPublishFranchisesWithoutReview: true,
       franchiseId: franchise.id,
       mediaItemId: mediaItem.id,
     }, (name) => timing.stage(name));
@@ -146,9 +147,7 @@ async function removeAuthorSeriesMediaLinkActionMeasured(input: {
   revalidateSeriesMediaSurfaces(mediaItem.code);
   timing.stage("logActivity");
   await logActivity({
-    action: removalStatus === "requested"
-      ? "franchise.media.removal-requested"
-      : "franchise.media.detached",
+    action: "franchise.media.detached",
     actorType: "author",
     authorId: author.id,
     entityType: "franchise",

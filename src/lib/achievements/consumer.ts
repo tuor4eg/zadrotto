@@ -13,6 +13,7 @@ export const achievementDomainEventConsumer: DomainEventConsumer = {
     "rating.created",
     "review.published",
     "media.published",
+    "media-tag.changed",
     "media-franchise.published",
     "franchise.parent.changed",
     "quiz.completed",

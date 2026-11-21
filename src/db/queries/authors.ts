@@ -45,6 +45,7 @@ function authorUsageCountByIdSql(authorId: number) {
     (select count(*) from ${mediaItems} where ${mediaItems.createdByAuthorId} = ${authorId}) +
     (select count(*) from ${contributions} where ${contributions.authorId} = ${authorId}) +
     (select count(*) from ${bugReports} where ${bugReports.authorId} = ${authorId}) +
+    (select count(*) from media_item_tags where author_id = ${authorId}) +
     (select count(*) from ${tierLists} where ${tierLists.authorId} = ${authorId}) +
     (select count(*) from ${tierListQuotaEvents} where ${tierListQuotaEvents.authorId} = ${authorId}) +
     (select count(*) from account_merge_grants g where g.initiator_author_id = ${authorId}

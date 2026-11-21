@@ -19,7 +19,16 @@ export const CREATOR_PROFILE_KINDS = [
   { provider: "rawg", resourceType: "developer", bindingPrefix: "developer:" },
   { provider: "rawg", resourceType: "publisher", bindingPrefix: "publisher:" },
 ] as const;
+export const CREATOR_FIELDS_FILL_RESOURCES = {
+  anilist: "person",
+  "comic-vine": "person",
+  fantlab: "author",
+  igdb: "company",
+  tmdb: "person",
+} as const satisfies Partial<Record<CreatorProfileTarget["provider"], CreatorProfileTarget["resourceType"]>>;
+
 export const IGDB_COMPANY_PROFILE_FIELDS = "*,logo.*,websites.*";
+const IGDB_COMPANY_DATES_FIELDS = `${IGDB_COMPANY_PROFILE_FIELDS},start_date_format.format`;
 export function parseCreatorProfileTarget(value: unknown): CreatorProfileTarget {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("INVALID_CREATOR_PROFILE_TARGET");
   const row = value as Record<string, unknown>;
@@ -45,4 +54,11 @@ export function creatorProfileDescriptor(input: CreatorProfileTarget): SnapshotD
   return { providerCode: target.provider, resourceType: target.resourceType, externalId: target.externalId,
     apiMethod: target.provider === "igdb" ? "companies" : target.resourceType === "company" ? "companies.get" : `${target.resourceType}s.get`,
     requestParams: target.provider === "igdb" ? { fields: IGDB_COMPANY_PROFILE_FIELDS } : {} };
+}
+
+export function creatorFillDatesDescriptor(target: CreatorProfileTarget): SnapshotDescriptor {
+  const descriptor = creatorProfileDescriptor(target);
+  if (target.provider === "anilist") return { ...descriptor, apiMethod: "staff.dates" };
+  if (target.provider === "igdb") return { ...descriptor, requestParams: { fields: IGDB_COMPANY_DATES_FIELDS } };
+  return descriptor;
 }

@@ -1,6 +1,7 @@
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 import { bugReports, contributions, mediaItems, quizParticipants, quizzes, ratings } from "@/db/schema";
+import { publicTagMediaItemIdsSql } from "@/db/queries/tag-membership";
 import { publishedSeriesMediaItemIdsSql } from "@/db/queries/series-membership";
 import type { DbTransaction } from "@/db/transaction";
 import type { DomainEventType } from "@/lib/domain-events/catalog";
@@ -14,7 +15,7 @@ export const ACHIEVEMENT_MECHANIC_CODES = [
   "bug-report.confirmed.count",
 ] as const;
 export type AchievementMechanicCode = (typeof ACHIEVEMENT_MECHANIC_CODES)[number];
-export type CountMechanicParams = { mediaType?: string; seriesId?: number };
+export type CountMechanicParams = { mediaType?: string; seriesId?: number; tagId?: number };
 export type QuizCountMechanicParams = { mediaType?: string };
 export type EmptyMechanicParams = Record<string, never>;
 
@@ -22,7 +23,7 @@ export type MechanicParameterDefinition = {
   code: string;
   label: string;
   required: boolean;
-  type: "mediaType" | "series";
+  type: "mediaType" | "series" | "tag";
 };
 export type AchievementMechanicInstance<TParams = unknown> = { achievementId: number; params: TParams };
 export type AchievementProgress = { achievementId: number; authorId: number; value: number };
@@ -44,10 +45,13 @@ type CountInstanceGroup = { achievementIds: number[]; params: CountMechanicParam
 function parseCountParams(value: unknown): CountMechanicParams {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Параметры механики должны быть объектом.");
   const source = value as Record<string, unknown>;
-  if (Object.keys(source).some((key) => key !== "mediaType" && key !== "seriesId")) throw new Error("Механика получила неподдерживаемый параметр.");
+  if (Object.keys(source).some((key) => key !== "mediaType" && key !== "seriesId" && key !== "tagId")) throw new Error("Механика получила неподдерживаемый параметр.");
   if (source.mediaType !== undefined && (typeof source.mediaType !== "string" || source.mediaType.trim() === "")) throw new Error("mediaType должен быть непустой строкой.");
   if (source.seriesId !== undefined && (!Number.isSafeInteger(source.seriesId) || Number(source.seriesId) < 1)) throw new Error("seriesId должен быть положительным целым числом.");
+  if (source.tagId !== undefined && (!Number.isSafeInteger(source.tagId) || Number(source.tagId) < 1)) throw new Error("tagId должен быть положительным целым числом.");
+  if (source.tagId !== undefined && source.seriesId !== undefined) throw new Error("Выберите франшизу либо тег.");
   return {
+    ...(source.tagId === undefined ? {} : { tagId: Number(source.tagId) }),
     ...(source.mediaType === undefined ? {} : { mediaType: String(source.mediaType).trim() }),
     ...(source.seriesId === undefined ? {} : { seriesId: Number(source.seriesId) }),
   };
@@ -71,14 +75,15 @@ function parseQuizCountParams(value: unknown): QuizCountMechanicParams {
 function groupCountInstances(instances: readonly AchievementMechanicInstance<CountMechanicParams>[]) {
   const groups = new Map<string, CountInstanceGroup>();
   for (const instance of instances) {
-    const key = JSON.stringify({ mediaType: instance.params.mediaType ?? null, seriesId: instance.params.seriesId ?? null });
+    const key = JSON.stringify({ mediaType: instance.params.mediaType ?? null, seriesId: instance.params.seriesId ?? null, tagId: instance.params.tagId ?? null });
     const group = groups.get(key) ?? { achievementIds: [], params: instance.params };
     groups.set(key, { ...group, achievementIds: [...group.achievementIds, instance.achievementId] });
   }
   return [...groups.values()];
 }
 
-function publishedSeriesFilter(mediaItemId: SQLWrapper, seriesId?: number): SQL {
+function publishedSeriesFilter(mediaItemId: SQLWrapper, seriesId?: number, tagId?: number): SQL {
+  if (tagId !== undefined) return sql`${mediaItemId} in (${publicTagMediaItemIdsSql(sql`${tagId}`)})`;
   if (seriesId === undefined) return sql`true`;
   return sql`${mediaItemId} in (${publishedSeriesMediaItemIdsSql(sql`${seriesId}`)})`;
 }
@@ -113,7 +118,7 @@ async function evaluateAuthoredCount(input: {
       from ${sourceTable} inner join ${mediaItems} on ${mediaItems.id} = ${mediaItemId}
       where ${authorFilter} and ${mediaItems.publicationStatus} = 'published' and ${sourceFilter}
         and ${params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${params.mediaType}`}
-        and ${publishedSeriesFilter(mediaItemId, params.seriesId)}
+        and ${publishedSeriesFilter(mediaItemId, params.seriesId, params.tagId)}
       group by ${authorId}
     `);
     return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
@@ -123,7 +128,7 @@ async function evaluateAuthoredCount(input: {
   const counts = groupedInstances.map((instance, groupIndex) => sql`
     count(distinct ${mediaItemId}) filter (where
       ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
-      and ${publishedSeriesFilter(mediaItemId, instance.params.seriesId)}
+      and ${publishedSeriesFilter(mediaItemId, instance.params.seriesId, instance.params.tagId)}
     )::int as ${sql.identifier(`count_${groupIndex}`)}
   `);
   const result = await input.tx.execute(sql`
@@ -160,7 +165,7 @@ export async function countRatingAuthoredForMediaCodes(input: {
     where ${mediaItems.code} in (${codeList})
       and ${mediaItems.publicationStatus} = 'published'
       and ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
-      and ${publishedSeriesFilter(mediaItems.id, instance.params.seriesId)}`);
+      and ${publishedSeriesFilter(mediaItems.id, instance.params.seriesId, instance.params.tagId)}`);
   const result = await input.tx.execute(sql.join(queries, sql` union all `));
   return Array.from(result as Iterable<Record<string, unknown>>).flatMap((row) =>
     groupedInstances[Number(row.groupIndex)]!.achievementIds.map((achievementId) => ({
@@ -184,7 +189,7 @@ async function evaluateCreatedMediaCount(input: {
     where ${mediaItems.createdByAuthorId} in (${sql.join(input.authorIds.map((id) => sql`${id}`), sql`, `)})
       and ${mediaItems.publicationStatus} = 'published'
       and ${instance.params.mediaType === undefined ? sql`true` : sql`${mediaItems.mediaType} = ${instance.params.mediaType}`}
-      and ${publishedSeriesFilter(mediaItems.id, instance.params.seriesId)}
+      and ${publishedSeriesFilter(mediaItems.id, instance.params.seriesId, instance.params.tagId)}
     group by ${mediaItems.createdByAuthorId}`);
   const result = await input.tx.execute(sql.join(queries, sql` union all `));
   return mapCountProgress(result as Iterable<Record<string, unknown>>, groupedInstances);
@@ -243,10 +248,11 @@ async function evaluateConfirmedBugReportCount(input: {
 export const achievementMechanicRegistry: readonly AchievementMechanicDefinition[] = [
   {
     code: "rating.authored.count", label: "Количество поставленных оценок",
-    eventTypes: ["rating.created", "media.published", "media-franchise.published", "franchise.parent.changed"],
+    eventTypes: ["rating.created", "media.published", "media-franchise.published", "franchise.parent.changed", "media-tag.changed"],
     params: [
       { code: "mediaType", label: "Тип медиа", required: false, type: "mediaType" },
-      { code: "seriesId", label: "Серия", required: false, type: "series" },
+      { code: "seriesId", label: "Франшиза или цикл", required: false, type: "series" },
+      { code: "tagId", label: "Тег (вместо франшизы)", required: false, type: "tag" },
     ],
     parseParams: parseCountParams,
     evaluateBatch: (input) => evaluateAuthoredCount({
@@ -257,10 +263,11 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
   },
   {
     code: "review.authored.count", label: "Количество опубликованных рецензий",
-    eventTypes: ["review.published", "media.published", "media-franchise.published", "franchise.parent.changed"],
+    eventTypes: ["review.published", "media.published", "media-franchise.published", "franchise.parent.changed", "media-tag.changed"],
     params: [
       { code: "mediaType", label: "Тип медиа", required: false, type: "mediaType" },
-      { code: "seriesId", label: "Серия", required: false, type: "series" },
+      { code: "seriesId", label: "Франшиза или цикл", required: false, type: "series" },
+      { code: "tagId", label: "Тег (вместо франшизы)", required: false, type: "tag" },
     ],
     parseParams: parseCountParams,
     evaluateBatch: (input) => evaluateAuthoredCount({
@@ -271,10 +278,11 @@ export const achievementMechanicRegistry: readonly AchievementMechanicDefinition
   },
   {
     code: "media.authored.count", label: "Количество добавленных записей",
-    eventTypes: ["media.published", "media-franchise.published", "franchise.parent.changed"],
+    eventTypes: ["media.published", "media-franchise.published", "franchise.parent.changed", "media-tag.changed"],
     params: [
       { code: "mediaType", label: "Тип медиа", required: false, type: "mediaType" },
-      { code: "seriesId", label: "Серия", required: false, type: "series" },
+      { code: "seriesId", label: "Франшиза или цикл", required: false, type: "series" },
+      { code: "tagId", label: "Тег (вместо франшизы)", required: false, type: "tag" },
     ],
     parseParams: parseCountParams,
     evaluateBatch: (input) => evaluateCreatedMediaCount({

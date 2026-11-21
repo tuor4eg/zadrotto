@@ -1,3 +1,4 @@
+import { enqueueCreatorFieldsFillForBinding } from "./creator-fields-fill-jobs";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { withSnapshotJobGuard, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { and, asc, eq, exists, gt, inArray, isNull, or, sql } from "drizzle-orm";
@@ -55,11 +56,12 @@ export async function assignFantlabCreatorBinding(input: {
     if (mappings.length !== new Set(mappingIds).size) throw new Error("Привязка изменилась.");
     // Never overwrite an already confirmed mapping during automatic migration.
     if (input.expectedVersion !== undefined && mappings.some(mapping => mapping.bindingId !== null)) throw new Error("Привязка уже подтверждена.");
-    await tx.insert(providerCreatorBindings).values({ provider: "fantlab", externalCreatorId: input.externalCreatorId, creatorId: input.creatorId }).onConflictDoNothing();
+    const [confirmed] = await tx.insert(providerCreatorBindings).values({ provider: "fantlab", externalCreatorId: input.externalCreatorId, creatorId: input.creatorId }).onConflictDoNothing().returning();
     const [binding] = await tx.select().from(providerCreatorBindings).where(and(
       eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.externalCreatorId, input.externalCreatorId),
     ));
     if (!binding || binding.creatorId !== input.creatorId) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
+    if (confirmed) await enqueueCreatorFieldsFillForBinding(tx, creator.id);
     if (mappingIds.length) await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(inArray(providerCreatorMappings.id, mappingIds));
     await tx.update(creators).set({ avatarVersion: sql`${creators.avatarVersion} + 1`, updatedAt: new Date() }).where(eq(creators.id, input.creatorId));
     await enqueueCreatorImageFill(tx, creator.id);
@@ -136,6 +138,7 @@ export async function replaceCreatorFantlabBinding(input: { creatorId: number; e
     if (!binding || binding.creatorId !== input.creatorId) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
     await tx.update(providerCreatorMappings).set({ bindingId: binding.id, updatedAt: new Date() }).where(and(eq(providerCreatorMappings.provider, "fantlab"), eq(providerCreatorMappings.creatorId, input.creatorId)));
     await tx.delete(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider, "fantlab"), eq(providerCreatorBindings.active, true), eq(providerCreatorBindings.creatorId, input.creatorId), sql`${providerCreatorBindings.id} <> ${binding.id}`));
+    await enqueueCreatorFieldsFillForBinding(tx, creator.id);
     await tx.update(creators).set({ avatarVersion: creator.avatarVersion + 1, updatedAt: new Date() }).where(eq(creators.id, creator.id));
     await enqueueCreatorImageFill(tx, creator.id);
     return binding;

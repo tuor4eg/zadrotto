@@ -1,7 +1,9 @@
-import { eq } from "drizzle-orm";
+import { createJobRun } from "@/db/queries/jobs";
+import { lockClassificationMutations } from "@/db/queries/classification-lock";
+import { eq, sql } from "drizzle-orm";
 
 import { db } from "@/db";
-import { archiveSettings, franchises } from "@/db/schema";
+import { archiveSettings, franchises, achievements } from "@/db/schema";
 import { isAutomoderationMode, type AutomoderationMode } from "@/lib/automoderation/model";
 import {
   DEFAULT_MEDIA_ITEM_TITLE_ALIAS_LIMIT,
@@ -35,6 +37,7 @@ export type ArchiveSettingsValue = {
   dailyDossierMinRatingsCount: number;
   maxTitleAliases: number;
   maxFranchiseDepth: number;
+  tagPublicationThreshold: number;
   recentlyViewedHistoryLimit: number;
   recentlyViewedTtlDays: number;
   topArchiveMinAverageScore: number;
@@ -46,6 +49,7 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
     .select({
       maxTitleAliases: archiveSettings.maxTitleAliases,
       maxFranchiseDepth: archiveSettings.maxFranchiseDepth,
+      tagPublicationThreshold: archiveSettings.tagPublicationThreshold,
       dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
       dailyDossierMinRatingsCount: archiveSettings.dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
@@ -73,6 +77,7 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
     maxTitleAliases:
       parseMediaItemTitleAliasLimit(settings?.maxTitleAliases) ??
       DEFAULT_MEDIA_ITEM_TITLE_ALIAS_LIMIT,
+    tagPublicationThreshold: settings?.tagPublicationThreshold >= 1 ? settings.tagPublicationThreshold : 3,
     maxFranchiseDepth: settings?.maxFranchiseDepth >= 2 && settings.maxFranchiseDepth <= 5 ? settings.maxFranchiseDepth : 3,
     recentlyViewedHistoryLimit:
       parseRecentlyViewedHistoryLimit(settings?.recentlyViewedHistoryLimit) ??
@@ -90,52 +95,43 @@ export async function getArchiveSettings(): Promise<ArchiveSettingsValue> {
 }
 
 export async function updateArchiveSettings(
-  input: Omit<ArchiveSettingsValue, "exportRetentionDays"> & { exportRetentionDays?: number; updatedByAdminId: number },
+  input: Omit<ArchiveSettingsValue, "exportRetentionDays" | "tagPublicationThreshold"> & { tagPublicationThreshold?: number; exportRetentionDays?: number; updatedByAdminId: number },
 ) {
-  const maxTitleAliases = parseMediaItemTitleAliasLimit(input.maxTitleAliases);
-  const maxFranchiseDepth = input.maxFranchiseDepth;
-  const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
-    input.dailyDossierMinAverageScore,
-  );
-  const dailyDossierMinRatingsCount = parseDailyDossierMinRatingsCount(
-    input.dailyDossierMinRatingsCount,
-  );
-  const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(input.recentlyViewedHistoryLimit);
-  const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(input.recentlyViewedTtlDays);
-  const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(input.topArchiveMinAverageScore);
-  const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(input.topArchiveMinRatingsCount);
-  const exportRetentionDays = Number(input.exportRetentionDays ?? 7);
-  const mediaAutoModerationMode = input.mediaAutoModerationMode;
+  const tagPublicationThreshold = input.tagPublicationThreshold ?? 3;
+  if (!Number.isSafeInteger(tagPublicationThreshold) || tagPublicationThreshold < 1 || tagPublicationThreshold > 2147483647) throw new Error("Invalid tag threshold");
+  return db.transaction(async tx => {
+    await lockClassificationMutations(tx);
+    const [previous] = await tx.select({ threshold: archiveSettings.tagPublicationThreshold }).from(archiveSettings).where(eq(archiveSettings.id, ARCHIVE_SETTINGS_ID));
+    const maxTitleAliases = parseMediaItemTitleAliasLimit(input.maxTitleAliases);
+    const maxFranchiseDepth = input.maxFranchiseDepth;
+    const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
+      input.dailyDossierMinAverageScore,
+    );
+    const dailyDossierMinRatingsCount = parseDailyDossierMinRatingsCount(
+      input.dailyDossierMinRatingsCount,
+    );
+    const recentlyViewedHistoryLimit = parseRecentlyViewedHistoryLimit(input.recentlyViewedHistoryLimit);
+    const recentlyViewedTtlDays = parseRecentlyViewedTtlDays(input.recentlyViewedTtlDays);
+    const topArchiveMinAverageScore = parseTopArchiveMinAverageScore(input.topArchiveMinAverageScore);
+    const topArchiveMinRatingsCount = parseTopArchiveMinRatingsCount(input.topArchiveMinRatingsCount);
+    const exportRetentionDays = Number(input.exportRetentionDays ?? 7);
+    const mediaAutoModerationMode = input.mediaAutoModerationMode;
 
-  if (!isAutomoderationMode(mediaAutoModerationMode) || maxTitleAliases === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
-    throw new Error("Invalid archive settings");
-  }
-  const rows = await db.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
-  const parents = new Map(rows.map((row) => [row.id, row.parentId]));
-  const currentMaxDepth = Math.max(1, ...rows.map((row) => { let depth = 1; let parentId = row.parentId; while (parentId) { depth += 1; parentId = parents.get(parentId) ?? null; } return depth; }));
-  if (maxFranchiseDepth < currentMaxDepth) throw new Error("Franchise depth is below existing tree");
+    if (!isAutomoderationMode(mediaAutoModerationMode) || maxTitleAliases === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+      throw new Error("Invalid archive settings");
+    }
+    const rows = await tx.select({ id: franchises.id, parentId: franchises.parentId }).from(franchises);
+    const parents = new Map(rows.map((row) => [row.id, row.parentId]));
+    const currentMaxDepth = Math.max(1, ...rows.map((row) => { let depth = 1; let parentId = row.parentId; while (parentId) { depth += 1; parentId = parents.get(parentId) ?? null; } return depth; }));
+    if (maxFranchiseDepth < currentMaxDepth) throw new Error("Franchise depth is below existing tree");
 
-  const [settings] = await db
-    .insert(archiveSettings)
-    .values({
-      id: ARCHIVE_SETTINGS_ID,
-      maxTitleAliases,
-      maxFranchiseDepth,
-      dailyDossierMinAverageScore,
-      dailyDossierMinRatingsCount,
-      recentlyViewedHistoryLimit,
-      recentlyViewedTtlDays,
-      topArchiveMinAverageScore,
-      topArchiveMinRatingsCount,
-      exportRetentionDays,
-      mediaAutoModerationMode,
-      updatedByAdminId: input.updatedByAdminId,
-    })
-    .onConflictDoUpdate({
-      target: archiveSettings.id,
-      set: {
+    const [settings] = await tx
+      .insert(archiveSettings)
+      .values({
+        id: ARCHIVE_SETTINGS_ID,
         maxTitleAliases,
         maxFranchiseDepth,
+        tagPublicationThreshold,
         dailyDossierMinAverageScore,
         dailyDossierMinRatingsCount,
         recentlyViewedHistoryLimit,
@@ -145,21 +141,47 @@ export async function updateArchiveSettings(
         exportRetentionDays,
         mediaAutoModerationMode,
         updatedByAdminId: input.updatedByAdminId,
-        updatedAt: new Date(),
-      },
-    })
-    .returning({
-      maxTitleAliases: archiveSettings.maxTitleAliases,
-      maxFranchiseDepth: archiveSettings.maxFranchiseDepth,
-      dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
-      dailyDossierMinRatingsCount: archiveSettings.dailyDossierMinRatingsCount,
-      recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
-      recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
-      topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
-      topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
-      exportRetentionDays: archiveSettings.exportRetentionDays,
-      mediaAutoModerationMode: archiveSettings.mediaAutoModerationMode,
-    });
+      })
+      .onConflictDoUpdate({
+        target: archiveSettings.id,
+        set: {
+          maxTitleAliases,
+          maxFranchiseDepth,
+          tagPublicationThreshold,
+          dailyDossierMinAverageScore,
+          dailyDossierMinRatingsCount,
+          recentlyViewedHistoryLimit,
+          recentlyViewedTtlDays,
+          topArchiveMinAverageScore,
+          topArchiveMinRatingsCount,
+          exportRetentionDays,
+          mediaAutoModerationMode,
+          updatedByAdminId: input.updatedByAdminId,
+          updatedAt: new Date(),
+        },
+      })
+      .returning({
+        maxTitleAliases: archiveSettings.maxTitleAliases,
+        maxFranchiseDepth: archiveSettings.maxFranchiseDepth,
+        tagPublicationThreshold: archiveSettings.tagPublicationThreshold,
+        dailyDossierMinAverageScore: archiveSettings.dailyDossierMinAverageScore,
+        dailyDossierMinRatingsCount: archiveSettings.dailyDossierMinRatingsCount,
+        recentlyViewedHistoryLimit: archiveSettings.recentlyViewedHistoryLimit,
+        recentlyViewedTtlDays: archiveSettings.recentlyViewedTtlDays,
+        topArchiveMinAverageScore: archiveSettings.topArchiveMinAverageScore,
+        topArchiveMinRatingsCount: archiveSettings.topArchiveMinRatingsCount,
+        exportRetentionDays: archiveSettings.exportRetentionDays,
+        mediaAutoModerationMode: archiveSettings.mediaAutoModerationMode,
+      });
 
-  return settings;
+    if ((previous?.threshold ?? 3) !== tagPublicationThreshold) {
+      const affected = await tx.select({ id: achievements.id }).from(achievements).where(sql`${achievements.params} ? 'tagId'`);
+      if (affected.length) await createJobRun({
+        type: "achievements.backfill", source: "manual", createdByAdminId: input.updatedByAdminId,
+        payload: { achievementIds: affected.map(row => row.id), batchSize: 100 },
+        maxAttempts: 3, retryBaseSeconds: 5, retryMaxSeconds: 300, timeoutSeconds: 300,
+      }, new Date(), tx);
+    }
+    return settings;
+  });
 }

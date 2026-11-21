@@ -3,7 +3,7 @@ import { and, asc, eq, gt, inArray, lte, notExists, or, sql } from "drizzle-orm"
 import { db } from "@/db";
 import { creators, creatorTypes, jobRuns, providerCreatorBindings, providerSnapshots, providerSnapshotLinks } from "@/db/schema";
 import type { DbTransaction } from "@/db/transaction";
-import { CREATOR_PROFILE_KINDS, creatorProfileDescriptor, creatorProfileTargetFromBinding, type CreatorProfileTarget } from "@/lib/providers/creator-profile-targets";
+import { CREATOR_PROFILE_KINDS, creatorFillDatesDescriptor, creatorProfileDescriptor, creatorProfileTargetFromBinding, type CreatorProfileTarget } from "@/lib/providers/creator-profile-targets";
 import { snapshotHash, type SnapshotReference } from "@/lib/providers/snapshot-values";
 import { attachProviderSnapshots, getProviderSnapshot, lockProviderSnapshotReferences, withSnapshotJobGuard, type SnapshotJobGuard } from "./provider-snapshots";
 
@@ -35,12 +35,66 @@ export function creatorProfileBindingBatchQuery(input: { provider?: string; crea
     )).orderBy(asc(providerCreatorBindings.id)).limit(input.batchSize + 1);
 }
 
+export function creatorProfileCoverageQuery() {
+  const profiles = CREATOR_PROFILE_KINDS.flatMap(kind => {
+    const target = { ...kind, externalId: "1" };
+    const standard = creatorProfileDescriptor(target);
+    const dates = creatorFillDatesDescriptor(target);
+    const descriptors = standard.apiMethod === dates.apiMethod && snapshotHash(standard.requestParams) === snapshotHash(dates.requestParams)
+      ? [standard] : [standard, dates];
+    return descriptors.map(descriptor => sql`(${descriptor.providerCode}::text, ${descriptor.resourceType}::text,
+      ${descriptor.apiMethod}::text, ${snapshotHash(descriptor.requestParams)}::text, ${kind.bindingPrefix}::text)`);
+  });
+  return sql`
+    with profiles(provider, resource, method, request_key, prefix) as (values ${sql.join(profiles, sql`, `)}),
+    bindings_with_profiles as (
+      select distinct b.id, b.creator_id, b.provider
+      from profiles p
+      join ${providerSnapshots} s on s.provider_code = p.provider and s.resource_type = p.resource
+        and s.api_method = p.method and s.request_key = p.request_key
+      join ${providerCreatorBindings} b on b.active and b.provider = p.provider
+        and b.external_creator_id = p.prefix || s.external_id
+    ),
+    coverage as (
+      select count(*)::int as total, count(*) filter (where p.creator_id is null)::int as "withoutSnapshots"
+      from ${creators} c left join (select distinct creator_id from bindings_with_profiles) p on p.creator_id = c.id
+    ),
+    bindings_by_provider as (
+      select k.provider, count(b.id)::int as total
+      from (select distinct provider, prefix from profiles) k
+      left join ${providerCreatorBindings} b on b.active and b.provider = k.provider
+        and starts_with(b.external_creator_id, k.prefix)
+      group by k.provider
+    ),
+    provider_coverage as (
+      select b.provider, b.total - coalesce(p.total, 0) as "missingSnapshots"
+      from bindings_by_provider b
+      left join (select provider, count(*)::int as total from bindings_with_profiles group by provider) p
+        on p.provider = b.provider
+    )
+    select coverage.*, (
+      select jsonb_agg(p order by p."missingSnapshots" desc, p.provider)
+      from provider_coverage p
+    ) as "byProvider"
+    from coverage
+  `;
+}
+
+export async function getCreatorProfileCoverage() {
+  const [coverage] = await db.execute<{
+    total: number;
+    withoutSnapshots: number;
+    byProvider: { provider: CreatorProfileTarget["provider"]; missingSnapshots: number }[];
+  }>(creatorProfileCoverageQuery());
+  return coverage;
+}
+
 export async function getCreatorProfileSnapshot(target: CreatorProfileTarget, executor: DbTransaction | typeof db = db) {
   return getProviderSnapshot(creatorProfileDescriptor(target), executor);
 }
 
 export async function getCreatorProfileSources(creatorId: number) {
-  const [creator] = await db.select({ id: creators.id, name: creators.name, typeCode: creatorTypes.code }).from(creators)
+  const [creator] = await db.select({ id: creators.id, name: creators.name, typeCode: creatorTypes.code, birthDate: creators.birthDate, deathDate: creators.deathDate }).from(creators)
     .innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, creatorId));
   if (!creator) return null;
   const bindings = await db.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.creatorId, creatorId), eq(providerCreatorBindings.active, true)))

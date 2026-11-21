@@ -1,3 +1,4 @@
+import { enqueueCreatorFieldsFillForBinding } from "./creator-fields-fill-jobs";
 import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { applyProviderCreatorName, getImportedCreatorNameLocalization } from "./creator-name-import";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
@@ -106,7 +107,8 @@ export async function resolveFantlabBookRequest(tx: CreatorTransaction, request:
   }
   const [creator]=creatorId ? await tx.select({id:creators.id,type:creatorTypes.code}).from(creators).innerJoin(creatorTypes,eq(creatorTypes.id,creators.typeId)).where(eq(creators.id,creatorId)).for("update",{of:creators}) : [];
   if (!creator || creator.type !== "person") throw new Error("Выберите автора типа person.");
-  await tx.insert(providerCreatorBindings).values({provider:"fantlab",externalCreatorId:externalId,creatorId:creator.id,externalCreatorName:request.externalCreatorName}).onConflictDoNothing();
+  const [confirmed] = await tx.insert(providerCreatorBindings).values({provider:"fantlab",externalCreatorId:externalId,creatorId:creator.id,externalCreatorName:request.externalCreatorName}).onConflictDoNothing().returning();
+  if (confirmed) await enqueueCreatorFieldsFillForBinding(tx, creator.id);
   const [binding]=await tx.select().from(providerCreatorBindings).where(and(eq(providerCreatorBindings.provider,"fantlab"),eq(providerCreatorBindings.externalCreatorId,externalId),eq(providerCreatorBindings.active,true)));
   if (!binding || binding.creatorId !== creator.id) throw new Error("Этот FantLab ID уже принадлежит другому создателю.");
   await enqueueCreatorImageFill(tx, creator.id);

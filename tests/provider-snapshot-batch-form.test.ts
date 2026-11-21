@@ -8,6 +8,9 @@ let SnapshotBatchForm: typeof import("../src/app/admin/(protected)/tools/provide
 const require = createRequire(import.meta.url);
 const actionsPath = require.resolve("../src/app/admin/(protected)/tools/providers/snapshots/actions");
 const previousActions = require.cache[actionsPath];
+const fillActionsPath = require.resolve("../src/app/admin/(protected)/tools/providers/snapshots/creator-fields-fill-actions");
+const previousFillActions = require.cache[fillActionsPath];
+let CreatorFieldsFillForm: typeof import("../src/app/admin/(protected)/tools/providers/snapshots/creator-fields-fill-form").CreatorFieldsFillForm;
 
 before(async () => {
   // Reproduce Next's server action reference boundary without running auth/DB code.
@@ -16,9 +19,43 @@ before(async () => {
   actions.loaded = true;
   actions.exports = { enqueueProviderSnapshotAction: () => assert.fail("Rendering must not enqueue jobs") };
   require.cache[actionsPath] = actions;
+  const fillActions = new Module(fillActionsPath);
+  fillActions.filename = fillActionsPath;
+  fillActions.loaded = true;
+  fillActions.exports = { enqueueCreatorFieldsFillAction: () => assert.fail("Rendering must not enqueue creator-field jobs") };
+  require.cache[fillActionsPath] = fillActions;
+  ({ CreatorFieldsFillForm } = await import("../src/app/admin/(protected)/tools/providers/snapshots/creator-fields-fill-form"));
   ({ SnapshotBatchForm } = await import("../src/app/admin/(protected)/tools/providers/snapshots/snapshot-batch-form"));
 });
-after(() => { if (previousActions) require.cache[actionsPath] = previousActions; else delete require.cache[actionsPath]; });
+after(() => {
+  if (previousActions) require.cache[actionsPath] = previousActions;
+  else delete require.cache[actionsPath];
+  if (previousFillActions) require.cache[fillActionsPath] = previousFillActions;
+  else delete require.cache[fillActionsPath];
+});
+
+test("creator-field filling keeps the batch choices separate from the single-creator launch", () => {
+  const batch = renderToStaticMarkup(createElement(CreatorFieldsFillForm, {
+    providerCoverage: [{ provider: "fantlab", missingSnapshots: 3 }, { provider: "rawg", missingSnapshots: 5 }],
+  }));
+  assert.match(batch, /<input(?=[^>]*name="providers")(?=[^>]*value="fantlab")(?=[^>]*checked="")[^>]*>/);
+  assert.doesNotMatch(batch, /<input(?=[^>]*name="providers")(?=[^>]*value="rawg")[^>]*>/);
+  for (const field of ["birthOrFoundedDate", "deathDate"]) {
+    assert.match(batch, new RegExp(`<input(?=[^>]*name="fields")(?=[^>]*value="${field}")(?=[^>]*checked="")[^>]*>`));
+  }
+  assert.match(batch, /Дата рождения \/ основания/);
+  assert.doesNotMatch(batch, /value="(?:birthDate|foundedDate)"/);
+  assert.match(batch, /name="creatorIds"/);
+  assert.match(batch, /name="fetchMissing"/);
+  assert.match(batch, /<input(?=[^>]*name="batchSize")(?=[^>]*value="25")[^>]*>/);
+  assert.match(batch, /<input(?=[^>]*name="batchPauseHours")(?=[^>]*value="0")[^>]*>/);
+  assert.doesNotMatch(batch, /<input(?=[^>]*name="fetchMissing")(?=[^>]*checked="")/);
+  assert.match(batch, /Заполнить пропуски/);
+
+  const single = renderToStaticMarkup(createElement(CreatorFieldsFillForm, { creatorId: 9, busy: true }));
+  assert.match(single, /<button[^>]*disabled=""[^>]*>Заполнить из источников/);
+  assert.doesNotMatch(single, /name="creatorIds"|name="fetchMissing"|name="fields"|name="batchSize"|name="batchPauseHours"/);
+});
 
 test("creator network batches expose the missing-snapshot option and restore it from a saved run", () => {
   const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: {
@@ -40,7 +77,6 @@ test("offline processing and verification cannot submit the missing-snapshot fil
   for (const values of [
     { provider: "fantlab", operation: "process" },
     { provider: "tmdb", operation: "verify" },
-    { entityType: "creator", provider: "fantlab", operation: "process" },
   ] as const) {
     const html = renderToStaticMarkup(createElement(SnapshotBatchForm, { values }));
     assert.doesNotMatch(html, /name="onlyMissingSnapshots"/);
@@ -72,6 +108,10 @@ test("TMDB batches restore the provider and explicitly limit processing to films
   } }));
   assert.match(creators, /value="tmdb"/);
   assert.match(creators, /Все поддерживаемые источники/);
+  const creatorOperations = creators.match(/<select[^>]*name="operation"[^>]*>(.*?)<\/select>/)?.[1];
+  assert.ok(creatorOperations);
+  assert.match(creatorOperations, /value="refresh" selected=""/);
+  assert.doesNotMatch(creatorOperations, /value="verify"|value="process"|value="refresh-process"/);
 });
 
 

@@ -493,6 +493,7 @@ export async function cleanupAuthorAuthData(
         and not exists (select 1 from author_media_experiences e where e.author_id = a.id)
         and not exists (select 1 from contributions c where c.author_id = a.id)
         and not exists (select 1 from media_items m where m.created_by_author_id = a.id)
+        and not exists (select 1 from media_item_tags mit where mit.author_id = a.id)
         and not exists (select 1 from franchises f where f.created_by_author_id = a.id)
         and not exists (select 1 from media_item_franchises mif where mif.created_by_author_id = a.id)
     `);

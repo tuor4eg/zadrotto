@@ -7,7 +7,7 @@ const sourceRoot = "src";
 const nextConfigSource = readFileSync("next.config.ts", "utf8");
 const routeFiles = [
   "src/app/series/page.tsx",
-  "src/app/author/(protected)/series/page.tsx",
+  "src/app/author/(protected)/series/[id]/edit/page.tsx",
   "src/app/admin/(protected)/series/page.tsx",
 ];
 

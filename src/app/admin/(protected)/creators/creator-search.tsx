@@ -2,7 +2,7 @@
 
 import { SearchInput } from "@/components/ui/search-input";
 
-import { CREATOR_PROVIDER_FILTER_CODES, type CreatorLocalizationFilter, type CreatorProviderFilter } from "@/lib/creators/editor";
+import { CREATOR_PROVIDER_FILTER_CODES, type CreatorBindingCountFilter, type CreatorLocalizationFilter, type CreatorProviderFilter } from "@/lib/creators/editor";
 import { COVER_PROVIDER_LABELS } from "@/lib/covers/provider-settings";
 
 import { useRouter } from "next/navigation";
@@ -13,12 +13,13 @@ import { useDebouncedSearchDraft } from "@/lib/common/use-debounced-search-draft
 
 type FilterOption = { code: string; name: string };
 
-export function CreatorSearch({ searchQuery, typeCode, roleCode, localization = "", provider = "", types, roles }: {
+export function CreatorSearch({ searchQuery, typeCode, roleCode, localization = "", provider = "", bindingCount = "", types, roles }: {
   searchQuery: string;
   typeCode: string;
   roleCode: string;
   localization?: CreatorLocalizationFilter;
   provider?: CreatorProviderFilter;
+  bindingCount?: CreatorBindingCountFilter;
   types: FilterOption[];
   roles: FilterOption[];
 }) {
@@ -35,6 +36,8 @@ export function CreatorSearch({ searchQuery, typeCode, roleCode, localization = 
     if (selectedLocalization) params.set("localization", selectedLocalization);
     const selectedProvider = filtersRef.current?.querySelector<HTMLSelectElement>('[name="provider"]')?.value ?? provider;
     if (selectedProvider) params.set("provider", selectedProvider);
+    const selectedBindingCount = filtersRef.current?.querySelector<HTMLSelectElement>('[name="bindingCount"]')?.value ?? bindingCount;
+    if (selectedBindingCount) params.set("bindingCount", selectedBindingCount);
     const suffix = params.toString();
     router.replace(suffix ? `/admin/creators?${suffix}` : "/admin/creators", { scroll: false });
   }
@@ -60,6 +63,13 @@ export function CreatorSearch({ searchQuery, typeCode, roleCode, localization = 
       <Select key={provider} name="provider" defaultValue={provider} onChange={() => applyFilters(draft)}>
         <option value="">Все провайдеры</option>
         {CREATOR_PROVIDER_FILTER_CODES.map(code => <option key={code} value={code}>{COVER_PROVIDER_LABELS[code]}</option>)}
+      </Select>
+    </label>
+    <label className="grid gap-1 text-sm">Привязки
+      <Select key={bindingCount} name="bindingCount" defaultValue={bindingCount} onChange={() => applyFilters(draft)}>
+        <option value="">Все</option>
+        <option value="one">С одной привязкой</option>
+        <option value="multiple">С несколькими привязками</option>
       </Select>
     </label>
     <label className="grid gap-1 text-sm">Локализация

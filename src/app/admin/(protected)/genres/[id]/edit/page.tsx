@@ -1,3 +1,5 @@
+import { db } from "@/db";
+import { tags } from "@/db/schema";
 import { reopenGenreMappingAction } from "../../actions";
 import Link from "next/link";
 import { notFound } from "next/navigation";
@@ -23,7 +25,7 @@ export default async function EditGenrePage({ params, searchParams }: {
   const [{ id: rawId }, query] = await Promise.all([params, searchParams]);
   const id = parseGenreId(rawId);
   if (id === null) notFound();
-  const [genre, publishedOptions] = await Promise.all([getAdminGenreById(id), getPublishedFranchiseOptions()]);
+  const [genre, publishedOptions, tagOptions] = await Promise.all([getAdminGenreById(id), getPublishedFranchiseOptions(), db.select().from(tags)]);
   if (!genre) notFound();
   const franchiseOptions = genre.replacementFranchise && !publishedOptions.some((option) => option.id === genre.replacementFranchiseId)
     ? [...publishedOptions, { ...genre.replacementFranchise, originalTitle: null }]
@@ -31,11 +33,11 @@ export default async function EditGenrePage({ params, searchParams }: {
   return (
     <div className="mx-auto grid w-full max-w-2xl gap-5">
       <PageHeader title="Редактирование жанра" description={genre.name} aside={
-        <Link href={genre.replacementFranchiseId ? "/admin/genres?tab=series" : "/admin/genres"} className={buttonVariants({ variant: "outline" })}><ArrowLeft />Назад</Link>
+        <Link href={(genre.replacementFranchiseId || genre.replacementTagId) ? "/admin/genres?tab=series" : "/admin/genres"} className={buttonVariants({ variant: "outline" })}><ArrowLeft />Назад</Link>
       } />
       {!genre.isActive ? <div><Badge variant="warning">Неактивен</Badge></div> : null}
       <Card><CardContent className="pt-5">
-        <GenreForm key={`${genre.id}:${genre.replacementFranchiseId}`} genre={genre} franchiseOptions={franchiseOptions} action={updateGenreNameAction} errorMessage={getGenreErrorMessage(query.error)} updated={query.updated === "1"} />
+        <GenreForm key={`${genre.id}:${genre.replacementFranchiseId}`} genre={genre} tagOptions={tagOptions.map(tag => ({ ...tag, originalTitle: null }))} franchiseOptions={franchiseOptions} action={updateGenreNameAction} errorMessage={getGenreErrorMessage(query.error)} updated={query.updated === "1"} />
       </CardContent></Card>
       {genre.isActive && genre.replacementFranchise?.publicationStatus === "published" ? <Card><CardContent className="grid gap-3 pt-5">
         <p className="text-sm text-stone-600">Добавить заменяющую серию опубликованным записям этого жанра. Существующие связи сохраняются.</p>

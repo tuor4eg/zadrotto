@@ -1,3 +1,4 @@
+import { canManageFranchises } from "@/lib/franchises/access";
 import { NextResponse } from "next/server";
 
 import { getCurrentAdminUser } from "@/lib/auth/admin-auth";
@@ -64,7 +65,7 @@ export async function POST(request: Request) {
   const consentDenial = (await getCurrentAdminUser()) ? null : await getPersonalDataConsentDenial();
   if (consentDenial) return consentDenial;
   const [admin, author] = await Promise.all([getCurrentAdminUser(), getCurrentAuthor()]);
-  if (!admin && !author) {
+  if (!admin && !canManageFranchises(author)) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
   const input = parseInput(await request.json().catch(() => null));

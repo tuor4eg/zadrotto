@@ -7,7 +7,7 @@ import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-butt
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
-import { getCreatorSnapshotComparison } from "@/db/queries/creator-provider-snapshots";
+import { getCreatorFieldsPreview } from "@/lib/creators/fields-fill-preview";
 import { getCreatorSnapshotRun } from "@/db/queries/provider-snapshot-run";
 import { refreshCreatorImageAction, findAnimeCompanyLogoAction } from "../../avatar-actions";
 import { SnapshotJobProgress } from "@/components/admin/snapshot-job-progress";
@@ -15,7 +15,7 @@ import { SnapshotJsonViewer } from "@/components/admin/snapshot-json-viewer";
 import { snapshotItemErrorMessage } from "@/lib/providers/snapshot-item-errors";
 import { creatorSnapshotDiagnosticMessage } from "@/components/admin/creator-snapshot-diagnostics";
 import { Alert } from "@/components/ui/alert";
-import { creatorAdminLabel } from "@/lib/creators/admin-label";
+import { CreatorEditorHeader } from "../../creator-editor-header";
 import { SNAPSHOT_OPERATIONS_UI } from "../../../tools/providers/snapshots/snapshot-operations";
 
 export default async function CreatorSnapshotsPage({ params, searchParams }: {
@@ -26,20 +26,18 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
   const [{ id: rawId }, query] = await Promise.all([params, searchParams]);
   const id = Number(rawId);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
-  const [comparison, sourcesState, run, tmdbComparison] = await Promise.all([
-    getCreatorSnapshotComparison(id),
+  const [sourcesState, run, previews] = await Promise.all([
     getCreatorProfileSources(id),
     query.run ? getCreatorSnapshotRun(id, Number(query.run)) : null,
-    getCreatorSnapshotComparison(id, "tmdb"),
+    getCreatorFieldsPreview(id),
   ]);
-  if (!comparison || !sourcesState) notFound();
-  const { state } = comparison;
+  if (!sourcesState) notFound();
+  const { creator: state } = sourcesState;
   const active = run?.status === "queued" || run?.status === "running";
   const success = run?.status === "succeeded" && (run.payload.profileCheckpoint?.failed ?? run.payload.checkpoint?.failed ?? 0) === 0;
   const labels: Record<string, string> = { queued: "В очереди", running: "Выполняется", succeeded: "Завершена", failed: "Завершена с ошибкой", cancelled: "Отменена" };
-  return <main className="space-y-5">
-    <Link href={`/admin/creators/${id}/edit`} className="text-sm underline">Редактировать: {state.name}</Link>
-    <h1 className="text-2xl font-semibold">Данные источников: {creatorAdminLabel(id, state.name)}</h1>
+  return <div className="grid gap-5">
+    <CreatorEditorHeader id={id} name={state.name} active="data" />
     {query.error === "enqueue" && <Alert variant="destructive">Не удалось запустить задачу. Проверьте привязку и повторите попытку.</Alert>}
     {query.run && !run && <Alert variant="warning">Запуск не найден для этого создателя.</Alert>}
     {run && <section className="space-y-3 rounded-md border p-4" aria-live="polite">
@@ -57,9 +55,13 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
     {query.error === "attach" && <Alert variant="destructive">Не удалось связать снимок: проверьте актуальность привязки и сохранённых данных.</Alert>}
     {!sourcesState.sources.length && <Alert>Подтверждённых источников нет. Добавьте внешнюю привязку в редакторе.</Alert>}
     {sourcesState.sources.map(source => {
-      const dateComparison = source.target?.provider === "fantlab" ? comparison
-        : source.target?.provider === "tmdb" && source.target.resourceType === "person" ? tmdbComparison : null;
-      const canApplyDates = source.canApply && dateComparison?.state.typeCode === "person";
+      const preview = previews.get(source.binding.id);
+      const dateRows = state.typeCode === "organization"
+        ? [{ label: "Дата основания", current: state.birthDate, source: preview?.foundedDate }]
+        : [
+          { label: "Дата рождения", current: state.birthDate, source: preview?.birthDate },
+          { label: "Дата смерти", current: state.deathDate, source: preview?.deathDate },
+        ];
       const canRefreshImage = (state.typeCode === "person" && (source.target?.provider === "fantlab" || source.target?.resourceType === "person"))
         || (state.typeCode === "organization" && (source.target?.resourceType === "company" || source.target?.resourceType === "network"));
       return <section key={source.binding.id} className="space-y-3 rounded-md border p-4">
@@ -72,17 +74,6 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
           </form>
           {source.snapshot && <>
             {!source.linked && <form action={attachCreatorProfileSnapshotAction}><input type="hidden" name="creatorId" value={id} /><input type="hidden" name="bindingId" value={source.binding.id} /><input type="hidden" name="snapshotId" value={source.snapshot.id} /><input type="hidden" name="payloadHash" value={source.snapshot.payloadHash} /><Button disabled={active} variant="outline">Связать с Creator</Button></form>}
-            {canApplyDates && dateComparison && <>
-              <details className="space-y-3 rounded-md border p-3" id={`comparison-${source.binding.id}`}>
-                <summary className="cursor-pointer font-medium">Сравнить даты жизни</summary>
-                <p className="text-sm text-stone-600">Применяются только полные корректные даты для людей без исходящей связи псевдонима. Заполненные даты, имена и другие данные сохраняются.</p>
-                <div className="grid gap-3 sm:grid-cols-2">{([{ key: "birthDate", label: "Дата рождения" }, { key: "deathDate", label: "Дата смерти" }] as const).map(({ key, label }) => <article key={key} className="rounded-md border p-3 text-sm"><h3 className="font-semibold">{label}</h3><p>Сейчас: {dateComparison.state[key] ?? "не указана"}</p><p>В снимке: {dateComparison.projection?.[key] ?? "нет корректной полной даты"}</p><p>{dateComparison.changes[key] ? `Будет заполнена: ${dateComparison.changes[key]}` : "Изменений не будет"}</p></article>)}</div>
-                {dateComparison.diagnostics.length > 0 && <Alert variant="warning"><ul>{dateComparison.diagnostics.map((code, index) => <li key={index}>{creatorSnapshotDiagnosticMessage(code)}</li>)}</ul></Alert>}
-                <details className="rounded-md border p-3"><summary className="cursor-pointer font-medium">Краткие данные сравнения (JSON)</summary><SnapshotJsonViewer value={{ projection: dateComparison.projection, changes: dateComparison.changes, diagnostics: dateComparison.diagnostics }} /></details>
-              </details>
-              <form action={enqueueProviderSnapshotAction}><input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={id} /><input type="hidden" name="provider" value={source.target.provider} /><input type="hidden" name="operation" value="process" /><Button disabled={active || !dateComparison.projection} variant="positive">Применить даты из raw</Button></form>
-              <details className="text-sm"><summary className="cursor-pointer">Дополнительные действия с датами</summary><form action={enqueueProviderSnapshotAction} className="pt-3"><input type="hidden" name="entityType" value="creator" /><input type="hidden" name="creatorId" value={id} /><input type="hidden" name="provider" value={source.target.provider} /><input type="hidden" name="operation" value="refresh-process" /><Button disabled={active} variant="outline">Получить и сразу применить даты</Button></form></details>
-            </>}
             <details className="rounded-md border p-3"><summary className="cursor-pointer font-medium">Посмотреть полный ответ</summary><SnapshotJsonViewer value={source.snapshot.payload} /></details>
           </>}
           {canRefreshImage && <div className="space-y-2">
@@ -90,7 +81,23 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
             <form action={refreshCreatorImageAction}><input type="hidden" name="creatorId" value={id} /><input type="hidden" name="bindingId" value={source.binding.id} /><Button disabled={active} variant="outline">Обновить изображение из источника</Button></form>
           </div>}
         </>}
+        {preview?.snapshot && <details className="rounded-md border p-3" id={`comparison-${source.binding.id}`}>
+          <summary className="cursor-pointer font-medium">{state.typeCode === "organization" ? "Дата основания" : "Даты жизни"}</summary>
+          <div className="mt-3 grid gap-3 text-sm">
+            <dl className="grid gap-2">
+              {dateRows.map(row => <div key={row.label} className="flex flex-wrap gap-x-2">
+                <dt className="font-medium">{row.label}</dt>
+                <dd>Сейчас — {row.current ?? "не указана"}, в снимке — {row.source ?? "нет полной даты"}</dd>
+              </div>)}
+            </dl>
+            {preview.diagnostics.length ? <Alert variant="warning"><ul>{preview.diagnostics.map((message, index) => <li key={index}>{message}</li>)}</ul></Alert> : null}
+            {preview.snapshot.id !== source.snapshot?.id && <details className="rounded-md border p-3">
+              <summary className="cursor-pointer font-medium">Посмотреть снимок с датами</summary>
+              <SnapshotJsonViewer value={preview.snapshot.payload} />
+            </details>}
+          </div>
+        </details>}
       </section>;
     })}
-  </main>;
+  </div>;
 }

@@ -7,6 +7,7 @@ import { History } from "lucide-react";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getSnapshotBatchSettings } from "@/lib/providers/snapshot-job-payload";
 import { bggSnapshotDiagnosticMessage, gameSnapshotDiagnosticMessage, snapshotItemErrorMessage } from "@/lib/providers/snapshot-item-errors";
+import { getCreatorProfileCoverage } from "@/db/queries/creator-profile-snapshots";
 import { getProviderSnapshotRun } from "@/db/queries/provider-snapshot-run";
 import { getCreatorNamesByIds } from "@/db/queries/creator-names";
 import { creatorAdminLabel } from "@/lib/creators/admin-label";
@@ -17,11 +18,17 @@ import { Alert } from "@/components/ui/alert";
 import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { SnapshotBatchForm } from "./snapshot-batch-form";
+import { CreatorFieldsFillForm } from "./creator-fields-fill-form";
+import { CreatorFieldsFillRun, getCreatorFieldsFillRun } from "./creator-fields-fill-run";
 
-export default async function ProviderSnapshotsPage({ searchParams }: { searchParams: Promise<{ error?: string; run?: string }> }) {
+export default async function ProviderSnapshotsPage({ searchParams }: { searchParams: Promise<{ error?: string; run?: string; fillError?: string; fillRun?: string }> }) {
   await requireAdminUser();
   const query = await searchParams;
-  const run = query.run ? await getProviderSnapshotRun(Number(query.run)) : null;
+  const [run, fillRun, creatorCoverage] = await Promise.all([
+    query.run ? getProviderSnapshotRun(Number(query.run)) : null,
+    getCreatorFieldsFillRun(query.fillRun),
+    getCreatorProfileCoverage(),
+  ]);
   const creatorNames = run?.payload.entityType === "creator" ? await getCreatorNamesByIds([
     ...(run.payload.checkpoint?.errors.map(item => item.id) ?? []),
     ...(run.payload.checkpoint?.diagnostics?.map(item => item.id) ?? []),
@@ -40,6 +47,27 @@ export default async function ProviderSnapshotsPage({ searchParams }: { searchPa
       </div>
       <Link href="/admin/tools/jobs/journal?job=adhoc" className={buttonVariants({ variant: "outline", size: "sm" })}><History />Журнал запусков</Link>
     </div>
+    <Card>
+      <CardHeader>
+        <CardTitle>Заполнить пропуски у создателей</CardTitle>
+        <CardDescription>Используются сохранённые профили из подтверждённых источников. Запрос новых профилей включается отдельно.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3">
+        <dl className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+          <div><dt className="text-stone-600">Всего создателей</dt><dd className="text-lg font-semibold">{creatorCoverage.total.toLocaleString("ru-RU")}</dd></div>
+          <div><dt className="text-stone-600">Без сохранённых снимков</dt><dd className="text-lg font-semibold">{creatorCoverage.withoutSnapshots.toLocaleString("ru-RU")}</dd></div>
+        </dl>
+        <p className="text-xs text-stone-500">Учитываются снимки профилей по действующим привязкам. Создатели без привязок входят в число создателей без снимков.</p>
+        {query.fillError === "invalid" && <Alert variant="destructive">Не удалось запустить заполнение. Выберите поля и провайдеров, проверьте ID создателей.</Alert>}
+        {query.fillRun && !fillRun && <Alert variant="warning">Запуск заполнения не найден.</Alert>}
+        <CreatorFieldsFillForm
+          busy={fillRun?.status === "queued" || fillRun?.status === "running"}
+          providerCoverage={creatorCoverage.byProvider}
+          initialProviders={fillRun?.payload.providers}
+        />
+      </CardContent>
+    </Card>
+    {fillRun && <CreatorFieldsFillRun run={fillRun} />}
     {query.error === "invalid" && <Alert variant="destructive" role="alert">Не удалось запустить обработку. Проверьте параметры и повторите попытку.</Alert>}
     <div className="space-y-3">
       <p className="text-sm leading-6 text-stone-600">Обработка запускается вручную и проходит партиями с выбранным размером и паузой, с учётом лимитов провайдера. Для обработки одного объекта откройте «Данные источника» в его редакторе.</p>

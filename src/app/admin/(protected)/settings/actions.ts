@@ -185,6 +185,7 @@ export async function updateArchiveSettingsAction(
     getFormString(formData, "mediaItemTitleAliasLimit"),
   );
   const maxFranchiseDepth = Number(getFormString(formData, "maxFranchiseDepth"));
+  const tagPublicationThreshold = Number(getFormString(formData, "tagPublicationThreshold"));
   const dailyDossierMinAverageScore = parseDailyDossierMinAverageScore(
     getFormString(formData, "dailyDossierMinAverageScore"),
   );
@@ -206,7 +207,7 @@ export async function updateArchiveSettingsAction(
   const exportRetentionDays = Number(getFormString(formData, "exportRetentionDays"));
   const mediaAutoModerationMode = getFormString(formData, "mediaAutoModerationMode");
 
-  if (!isAutomoderationMode(mediaAutoModerationMode) || mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
+  if (!Number.isSafeInteger(tagPublicationThreshold) || tagPublicationThreshold < 1 || tagPublicationThreshold > 2147483647 || !isAutomoderationMode(mediaAutoModerationMode) || mediaItemTitleAliasLimit === null || dailyDossierMinAverageScore === null || dailyDossierMinRatingsCount === null || recentlyViewedHistoryLimit === null || recentlyViewedTtlDays === null || topArchiveMinAverageScore === null || topArchiveMinRatingsCount === null || !Number.isInteger(exportRetentionDays) || exportRetentionDays < 1 || exportRetentionDays > 90 || !Number.isInteger(maxFranchiseDepth) || maxFranchiseDepth < 2 || maxFranchiseDepth > 5) {
     return { error: "Проверьте ограничения общих настроек.", success: null };
   }
 
@@ -216,6 +217,7 @@ export async function updateArchiveSettingsAction(
       mediaAutoModerationMode,
       maxTitleAliases: mediaItemTitleAliasLimit,
       maxFranchiseDepth,
+      tagPublicationThreshold,
       dailyDossierMinAverageScore,
       dailyDossierMinRatingsCount,
       recentlyViewedHistoryLimit,
@@ -242,6 +244,7 @@ export async function updateArchiveSettingsAction(
         topArchiveMinRatingsCount,
         mediaItemTitleAliasLimit,
         maxFranchiseDepth,
+      tagPublicationThreshold,
       },
     });
   } catch (error) {

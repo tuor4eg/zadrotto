@@ -39,6 +39,7 @@ type MediaItemsCatalogProps = {
   authorRatingFilter: AuthorRatingFilter;
   canPublishFranchisesWithoutReview: boolean;
   canSuggestFranchises: boolean;
+  canManageFranchises?: boolean;
   currentAdmin: boolean;
   defaultPageSize: number;
   items: CatalogMediaItem[];
@@ -92,6 +93,7 @@ export function MediaItemsCatalog({
   authorRatingFilter,
   canPublishFranchisesWithoutReview,
   canSuggestFranchises,
+  canManageFranchises = false,
   currentAdmin,
   currentAuthor,
   defaultPageSize,
@@ -152,6 +154,7 @@ export function MediaItemsCatalog({
     [mediaTypeCountRows],
   );
   const hasActiveFilters =
+    Boolean(searchParams.get("tag")) ||
     authorRatingFilter !== "all" ||
     mediaTypeFilter !== "all" ||
     searchQuery !== "" ||
@@ -161,6 +164,7 @@ export function MediaItemsCatalog({
     creatorSlug !== null ||
     yearFilter !== null;
   const paginationSearchParams = {
+    tag: searchParams.get("tag") ?? undefined,
     mine: (currentAuthor || isDemo) && authorRatingFilter !== "all" ? authorRatingFilter : undefined,
     ratedBy: ratedByAuthorId ? String(ratedByAuthorId) : undefined,
     compare: ratedByAuthorId && ratedAuthorComparison !== "mine" ? ratedAuthorComparison : undefined,
@@ -246,6 +250,7 @@ export function MediaItemsCatalog({
       }
       preview={
         <MediaCatalogPreview
+          canManageFranchises={canManageFranchises}
           canPublishFranchisesWithoutReview={canPublishFranchisesWithoutReview}
           canSuggestFranchises={canSuggestFranchises}
           currentAdmin={currentAdmin}

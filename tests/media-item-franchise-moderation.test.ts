@@ -88,7 +88,7 @@ describe("public franchise links", () => {
     assert.match(franchiseLinks, /franchise\.path\?\.length \? franchise\.path : \[franchise\]/);
     assert.match(
       preview,
-      /currentAuthor \? \([\s\S]*<MediaItemFranchiseSuggestionDialog[\s\S]*mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/,
+      /currentAuthor && canManageFranchises \? \([\s\S]*<MediaItemFranchiseSuggestionDialog[\s\S]*mapFranchiseSuggestionOptions\([\s\S]*item\.franchiseLinkStatuses/,
     );
   });
 
@@ -116,12 +116,9 @@ describe("author franchise submission history", () => {
   });
 });
 
-describe("new franchise review", () => {
-  it("shows the media items that will receive the new series with the same approval", () => {
-    const franchiseQueries = readFileSync("src/db/queries/franchises.ts", "utf8");
-    const reviewPage = readFileSync("src/app/admin/(protected)/franchise-review/page.tsx", "utf8");
-
-    assert.match(franchiseQueries, /submittedFranchiseMediaItemsSql/);
-    assert.match(reviewPage, /Новая серия будет добавлена к записи при одобрении/);
+describe("franchise review is retired", () => {
+  it("keeps series out of admin and author proposal navigation", () => {
+    assert.doesNotMatch(readFileSync("src/app/admin/(protected)/admin-nav-menu.tsx", "utf8"), /franchise-review|submittedFranchisesCount/);
+    assert.doesNotMatch(readFileSync("src/app/author/(protected)/author-proposals-menu.tsx", "utf8"), /href="\/author\/series"/);
   });
 });

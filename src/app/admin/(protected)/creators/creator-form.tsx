@@ -21,10 +21,12 @@ export function CreatorForm({ creator, types, series, creators }: {
 }) {
   const [nameRu, setNameRu] = useState(creator?.nameRu ?? "");
   const [nameRuEdited, setNameRuEdited] = useState(false);
-  const [initialBirthDate] = useState(creator?.birthDate ?? "");
-  const [initialDeathDate] = useState(creator?.deathDate ?? "");
-  const [birthDate, setBirthDate] = useState(initialBirthDate);
-  const [deathDate, setDeathDate] = useState(initialDeathDate);
+  const savedBirthDate = creator?.birthDate ?? "";
+  const savedDeathDate = creator?.deathDate ?? "";
+  const [birthDateDraft, setBirthDateDraft] = useState<string>();
+  const [deathDateDraft, setDeathDateDraft] = useState<string>();
+  const birthDate = birthDateDraft ?? savedBirthDate;
+  const deathDate = deathDateDraft ?? savedDeathDate;
   const [relatedIds, setRelatedIds] = useState(() => creator?.relations.map(relation => relation.targetCreatorId) ?? []);
   const [creatorSearch, setCreatorSearch] = useState("");
   const [typeId, setTypeId] = useState(creator?.typeId ?? types.find(type => type.code === "person")?.id);
@@ -69,21 +71,21 @@ export function CreatorForm({ creator, types, series, creators }: {
       }
     });
   }
-  return <form action={saveCreatorAction} className="grid max-w-3xl gap-5 rounded-lg border border-stone-200 bg-white p-5 sm:p-6">
+  return <form action={saveCreatorAction} className={`grid gap-5 rounded-lg border border-stone-200 bg-white p-5 sm:p-6${creator ? "" : " max-w-3xl"}`}>
     {toast ? <AdminToasts messages={[toast]} /> : null}
     {creator ? <input type="hidden" name="id" value={creator.id} /> : null}
     <input type="hidden" name="relationType" value="pseudonym_of" />
     <div className="grid gap-4 sm:grid-cols-2">
       <div className="grid gap-2"><Label htmlFor="creator-name">{typeCode === "organization" ? "Название" : "Имя"}</Label><Input id="creator-name" name="name" defaultValue={creator?.name} required maxLength={200} /></div>
       <div className="grid gap-2"><Label htmlFor="creator-original-name">{typeCode === "organization" ? "Оригинальное название" : "Оригинальное имя"}</Label><Input id="creator-original-name" name="originalName" defaultValue={creator?.originalName ?? ""} maxLength={200} /></div>
-      <div className="grid gap-2"><Label htmlFor="creator-slug">Slug</Label><Input id="creator-slug" name="slug" defaultValue={creator?.slug} required maxLength={200} /><p className="text-xs text-stone-500">Латинские буквы, цифры и дефисы. Используется в ссылке архива.</p></div>
+      {!creator ? <div className="grid gap-2"><Label htmlFor="creator-slug">Slug</Label><Input id="creator-slug" name="slug" required maxLength={200} /><p className="text-xs text-stone-500">Латинские буквы, цифры и дефисы. Используется в ссылке архива.</p></div> : null}
       <div className="grid content-start gap-2"><Label htmlFor="creator-type">Тип</Label><Select id="creator-type" name="typeId" required value={typeId} onChange={event => { setTypeId(Number(event.target.value)); setCreatorSearch(""); setRelatedOptions([]); setSearchState("Введите не менее 3 символов для поиска."); }}>{types.map(type => <option key={type.id} value={type.id}>{type.name}</option>)}</Select></div>
     </div>
     {typeCode === "person" ? <div className="grid gap-2"><Label htmlFor="creator-name-ru">Русское имя</Label><Input id="creator-name-ru" name={nameRuEdited ? "nameRu" : undefined} value={nameRu} onChange={event => { setNameRu(event.target.value); setNameRuEdited(true); }} maxLength={200} /><p className="text-xs text-stone-500">Источник: {creator?.nameRuSource === "manual" ? "вручную" : creator?.nameRuSource === "provider" ? "провайдер" : creator?.nameRuSource === "ai" ? "ИИ" : "не задан"}. Локализация: {creator?.nameRuProcessed ? "обработано" : "ожидает обработки"}. Изменение или очищение поля сохраняется как ручное решение.</p></div> : null}
     <div className="grid gap-4 sm:grid-cols-2">
-      <div className="grid gap-2"><Label htmlFor="creator-birth-date">{dateLabels.start}</Label><Input id="creator-birth-date" name={!creator || birthDate !== initialBirthDate ? "birthDate" : undefined} type="date" disabled={!datesEnabled} value={birthDate} onChange={event => setBirthDate(event.target.value)} /></div>
-      <div className="grid gap-2"><Label htmlFor="creator-death-date">{dateLabels.end}</Label><Input id="creator-death-date" name={!creator || deathDate !== initialDeathDate ? "deathDate" : undefined} type="date" disabled={!datesEnabled} value={deathDate} onChange={event => setDeathDate(event.target.value)} /></div>
-      <p className="text-xs text-stone-500 sm:col-span-2">{typeCode === "organization" ? "Полные календарные даты создания и закрытия организации. Автоматически из профилей не заполняются." : datesEnabled ? "Полные даты жизни. Заполненные даты сохраняются при обработке снимков; очищенная дата может заполниться снова." : "Даты жизни недоступны для этого типа или при исходящей связи псевдонима. Для удаления существующих дат сначала уберите связь псевдонима."}</p>
+      <div className="grid gap-2"><Label htmlFor="creator-birth-date">{dateLabels.start}</Label><Input id="creator-birth-date" name={!creator || birthDate !== savedBirthDate ? "birthDate" : undefined} type="date" disabled={!datesEnabled} value={birthDate} onChange={event => setBirthDateDraft(event.target.value === savedBirthDate ? undefined : event.target.value)} /></div>
+      <div className="grid gap-2"><Label htmlFor="creator-death-date">{dateLabels.end}</Label><Input id="creator-death-date" name={!creator || deathDate !== savedDeathDate ? "deathDate" : undefined} type="date" disabled={!datesEnabled} value={deathDate} onChange={event => setDeathDateDraft(event.target.value === savedDeathDate ? undefined : event.target.value)} /></div>
+      <p className="text-xs text-stone-500 sm:col-span-2">{typeCode === "organization" ? "Полные даты создания и закрытия организации. Дату создания можно заполнить из подтверждённых источников." : datesEnabled ? "Полные даты жизни. Заполненные даты сохраняются при обработке снимков; очищенная дата может заполниться снова." : "Даты жизни недоступны для этого типа или при исходящей связи псевдонима. Для удаления существующих дат сначала уберите связь псевдонима."}</p>
     </div>
     <div className="grid gap-2"><Label htmlFor="creator-series">Прямые связи с сериями</Label>
       <div className="flex flex-col items-start gap-2 sm:flex-row">

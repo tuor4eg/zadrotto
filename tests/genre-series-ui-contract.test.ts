@@ -22,7 +22,7 @@ test("genre form allows clearing replacement and rejects invalid series on the s
   assert.match(form, /emptyLabel="Без замены"/);
   assert.match(action, /rawReplacementFranchiseId === "" \? null : parseGenreId\(rawReplacementFranchiseId\)/);
   assert.match(action, /rawReplacementFranchiseId !== "" && replacementFranchiseId === null/);
-  assert.match(action, /await updateGenre\(id, name, replacementFranchiseId\)/);
+  assert.match(action, /await updateGenre\(id, name, replacementFranchiseId, replacementTagId\)/);
   assert.match(action, /error\.message === "invalid-series"\) redirect\([^\n]*error=invalid-series/);
 });
 

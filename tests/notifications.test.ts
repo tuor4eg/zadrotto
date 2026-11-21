@@ -111,22 +111,13 @@ describe("notification domain events", () => {
     assert.doesNotMatch(moveSource, /franchise\.submitted/)
   })
 
-  it("emits standalone series, link, and removal request events", () => {
-    assert.match(
-      franchiseSource,
-      /publicationStatus === "submitted"[\s\S]*type: "franchise\.submitted"/,
-    )
-    assert.match(
-      franchiseSource,
-      /publicationStatus === "submitted"[\s\S]*type: "media-franchise\.submitted"/,
-    )
-    assert.match(
-      franchiseSource,
-      /onConflictDoNothing\(\)\.returning\([\s\S]*type: "media-franchise\.removal\.requested"/,
-    )
-    assert.match(franchiseSource, /type: "franchise\.approved"/)
-    assert.match(franchiseSource, /type: "media-franchise\.approved"/)
-    assert.match(franchiseSource, /type: "media-franchise\.removal\.approved"/)
+  it("publishes trusted franchise changes without producing removal requests", () => {
+    const start = franchiseSource.indexOf("export async function requestAuthorMediaItemFranchiseRemoval");
+    const end = franchiseSource.indexOf("export async function getAuthorFranchiseSubmissions", start);
+    const authorWrites = franchiseSource.slice(start, end);
+    assert.doesNotMatch(authorWrites, /type: "franchise\.submitted"|type: "media-franchise\.submitted"|type: "media-franchise\.removal\.requested"/);
+    assert.match(authorWrites, /type: "media-franchise\.published"/);
+    assert.match(authorWrites, /type: "media-franchise\.removed"/);
   })
 
   it("emits review.submitted on the status transition and review.approved only from submitted", () => {
@@ -251,7 +242,7 @@ describe("notification catalog", () => {
         mediaItemCode: null,
         type: "franchise.submitted",
       }),
-      "/admin/franchise-review",
+      "/admin/series",
     )
     assert.equal(
       getNotificationHref({

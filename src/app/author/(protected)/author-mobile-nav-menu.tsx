@@ -89,7 +89,6 @@ export function AuthorMobileNavMenu({
             {isProposalsOpen ? (
               <div id="author-mobile-proposals-panel" className="ml-3 grid gap-1 border-l border-stone-200 pl-2">
                 <Link href="/author/media" onClick={closeMenu} className={linkClassName}>Записи</Link>
-                <Link href="/author/series" onClick={closeMenu} className={linkClassName}>Серии</Link>
               </div>
             ) : null}
           </div>

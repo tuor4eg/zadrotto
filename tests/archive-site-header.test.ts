@@ -91,7 +91,7 @@ describe("public site header", () => {
     assert.match(headerStateSource, /quiz: activeQuiz[\s\S]*participant: activeQuizParticipant\?\.quizId === activeQuiz\.id/);
     assert.match(headerStateSource, /adminUser\s*\?\s*getSubmittedModerationRequestCountForAdmin\(\)\s*:\s*Promise.resolve\(0\)/);
     assert.match(headerStateSource, /headerProps:[\s\S]*avatarObjectKey: author\.avatarObjectKey, name: author\.name/);
-    assert.match(archivePageSource, /<PublicSiteHeader[\s\S]*quiz=\{headerState\.headerProps\.quiz\}/);
+    assert.match(archivePageSource, /<PublicSiteHeader\s+\{\.\.\.headerState\.headerProps\}/);
   });
 
   it("is mounted on every public page and excluded from private and auth shells", () => {

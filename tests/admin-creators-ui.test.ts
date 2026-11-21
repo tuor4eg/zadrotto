@@ -44,6 +44,7 @@ test("creator edit form preserves original name and submits selected series as t
   assert.match(html, /name="relationType"/);
   assert.match(html, /type="hidden" name="relatedCreatorIds" value="2"/);
   assert.match(html, /href="\/admin\/creators\/3\/edit"[^>]*>Коллектив/);
+  assert.doesNotMatch(html, /name="slug"/);
   assert.match(html, /name="originalName"[^>]*value="Stephen King"/);
   assert.match(html, /type="hidden" name="seriesIds" value="2"/);
   assert.doesNotMatch(html, /type="hidden" name="seriesIds" value="3"/);
@@ -54,6 +55,7 @@ test("creator edit form preserves original name and submits selected series as t
 
 test("new creator form does not offer finding series before the creator exists", () => {
   const html = renderToStaticMarkup(createElement(CreatorForm, { types, series: [], creators: [] }));
+  assert.match(html, /name="slug"/);
   assert.doesNotMatch(html, /Найти связанные серии/);
 });
 

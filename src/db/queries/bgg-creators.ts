@@ -1,5 +1,6 @@
 import { enqueueCreatorAutoApproval } from "./creator-auto-approval-jobs";
 import { getImportedCreatorNameLocalization } from "./creator-name-import";
+import { enqueueCreatorFieldsFillForBinding } from "./creator-fields-fill-jobs";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { creators, creatorTypes, creatorRoles, creatorRequests, creatorRequestMediaItems, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources } from "@/db/schema";
@@ -90,5 +91,6 @@ export async function resolveBggCreatorRequest(tx: CreatorTransaction, request: 
   const [creator] = creatorId ? await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, creatorId)).for("update") : [];
   if (!creator) throw new Error("Выберите существующего создателя.");
   await tx.insert(providerCreatorBindings).values({ provider: "bgg", externalCreatorId: externalId, externalCreatorName: request.externalCreatorName, creatorId: creator.id });
+  await enqueueCreatorFieldsFillForBinding(tx, creator.id);
   await enqueueCreatorImageFill(tx, creator.id);
 }

@@ -1,3 +1,6 @@
+import { canManageFranchises } from "@/lib/franchises/access";
+import { getTagByCode, searchTags } from "@/db/queries/tags";
+import { getMigratedSeriesTagCode } from "@/db/queries/classification-migration";
 import { buildArchivePageMetadata, getPaginationRedirect } from "@/lib/seo/metadata";
 import type { Metadata } from "next";
 import { getArchiveLinkMetadata } from "@/lib/archive/link-metadata-loader";
@@ -8,6 +11,7 @@ import { buildCreatorArchiveHref } from "@/lib/media/creator-role-filter";
 import { getCreatorBySlug, getCreatorMediaTypeCodes, searchArchiveCreatorMatches } from "@/db/queries/creators";
 import { ArchiveSelectedCreator } from "./archive-creator-context";
 import { getActiveGenreBySlug, searchArchiveGenreMatches } from "@/db/queries/genres";
+import { ArchiveSelectedTag } from "./archive-tag-context";
 import { ArchiveSelectedGenre } from "./archive-genre-context";
 import { connection } from "next/server";
 
@@ -72,6 +76,7 @@ type HomeProps = {
     ratedBy?: string;
     compare?: string;
     series?: string;
+    tag?: string;
     seriesChildren?: string;
     genre?: string;
     platform?: string;
@@ -104,7 +109,19 @@ export default async function Home({ searchParams }: HomeProps) {
   ]);
   const currentAuthor = headerState.author;
   const currentAdminUser = headerState.currentAdminUser;
+  const mayManageFranchises = canManageFranchises(currentAuthor);
+  const selectedTag = params.tag ? await getTagByCode(params.tag.trim()) : null;
+  if (params.tag && !selectedTag) notFound();
   const requestedSeriesCode = params.series?.trim() ?? "";
+  if (requestedSeriesCode) {
+    const convertedTag = await getMigratedSeriesTagCode(requestedSeriesCode);
+    if (convertedTag) {
+      const next = new URLSearchParams();
+      for (const [key, value] of Object.entries(params)) if (typeof value === "string" && !["series", "seriesChildren", "page", "tag"].includes(key)) next.set(key, value);
+      next.set("tag", convertedTag);
+      redirect(`/archive?${next.toString()}`);
+    }
+  }
   const requestedRatedByAuthorId = parseRatedByAuthorId(params.ratedBy);
   const selectedCreator = params.creator ? await getCreatorBySlug(params.creator.trim()) : null;
   if (params.creator && !selectedCreator) notFound();
@@ -124,6 +141,7 @@ export default async function Home({ searchParams }: HomeProps) {
         )
       : Promise.resolve(null),
   ]);
+  const tagMatches = params.q && !selectedTag ? await searchTags(params.q) : [];
   const ratedProfile = requestedRatedProfile?.canViewJournal ? requestedRatedProfile : null;
   const ratedByAuthorId = ratedProfile?.id;
   const ratingComparison = parseArchiveRatingComparison(params.compare);
@@ -199,6 +217,7 @@ export default async function Home({ searchParams }: HomeProps) {
         pageSize,
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
+        tagId: selectedTag?.id,
         includeSeriesDescendants: params.seriesChildren !== "0",
         genreId: selectedGenre?.id,
         platformId: selectedPlatform?.id,
@@ -216,6 +235,7 @@ export default async function Home({ searchParams }: HomeProps) {
         enabledMediaTypeCodes,
         searchQuery: catalogSearchQuery,
         seriesId: selectedSeries?.id,
+        tagId: selectedTag?.id,
         includeSeriesDescendants: params.seriesChildren !== "0",
         genreId: selectedGenre?.id,
         platformId: selectedPlatform?.id,
@@ -233,14 +253,14 @@ export default async function Home({ searchParams }: HomeProps) {
             getPublishedMediaTypeCounts(),
           ]).then(
             ([franchises, mediaCarriers, canSuggestFranchises, mediaTypeCounts]) => ({
-              canCreateFranchise: canAuthorCreateFranchise({
+              canCreateFranchise: mayManageFranchises && canAuthorCreateFranchise({
                 canPublishFranchisesWithoutReview:
-                  currentAuthor.canPublishFranchisesWithoutReview,
+                  true,
               }),
               canPublishFranchisesWithoutReview:
-                currentAuthor.canPublishFranchisesWithoutReview,
+                true,
               canPublishMediaWithoutReview: currentAuthor.canPublishMediaWithoutReview,
-              canSuggestFranchises,
+              canSuggestFranchises: mayManageFranchises && canSuggestFranchises,
               franchises,
               publishedFranchises: franchises.filter(
                 (franchise) => franchise.publicationStatus === "published",
@@ -269,12 +289,12 @@ export default async function Home({ searchParams }: HomeProps) {
   const paginationRedirect = getPaginationRedirect("/archive", params, catalog.page);
   if (paginationRedirect) redirect(paginationRedirect);
   const preservedCatalogParams = new URLSearchParams();
-  for (const key of ["mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"] as const) {
+  for (const key of ["tag", "mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"] as const) {
     const value = params[key];
     if (value) preservedCatalogParams.set(key, value);
   }
   const creatorRoleParams=new URLSearchParams();
-  for(const key of ["mine","pageSize","q","series","seriesChildren","genre","platform","dir","sort","type","year","yearMode","ratedBy","compare"] as const) {
+  for(const key of ["tag", "mine","pageSize","q","series","seriesChildren","genre","platform","dir","sort","type","year","yearMode","ratedBy","compare"] as const) {
     const value=params[key];if(value)creatorRoleParams.set(key,value);
   }
   const creatorRoleHrefs=selectedCreator?Object.fromEntries(selectedCreator.roles.map(role=>[role.code,buildCreatorArchiveHref({
@@ -305,7 +325,7 @@ export default async function Home({ searchParams }: HomeProps) {
   );
   const getRatedContextHref = (comparison: ArchiveRatingComparison | null) => {
     const nextParams = new URLSearchParams();
-    for (const key of ["mine", "pageSize", "q", "series", "seriesChildren", "genre", "platform", "creator", "creatorRole", "dir", "sort", "type", "year", "yearMode"] as const) {
+    for (const key of ["tag", "mine", "pageSize", "q", "series", "seriesChildren", "genre", "platform", "creator", "creatorRole", "dir", "sort", "type", "year", "yearMode"] as const) {
       if (!selectedCreator && selectedGenre && (key === "q" || key === "series" || key === "seriesChildren")) continue;
       const value = params[key];
       if (value) nextParams.set(key, value);
@@ -377,11 +397,8 @@ export default async function Home({ searchParams }: HomeProps) {
       />
       <div className="mx-auto flex min-h-0 w-full max-w-[1480px] flex-1 flex-col gap-3">
         <PublicSiteHeader
+        {...headerState.headerProps}
         showMediaSuggestion={Boolean(currentAuthor && authorMediaSuggestionData)}
-        adminNotificationCount={headerState.adminNotificationCount}
-        author={headerState.headerProps.author}
-        currentAdminUser={currentAdminUser}
-        quiz={headerState.headerProps.quiz}
         controls={
           <CatalogHeaderControlsWithDemo
             key={selectedSeries?.code ?? "archive-search"}
@@ -409,7 +426,7 @@ export default async function Home({ searchParams }: HomeProps) {
           {selectedCreator ? <ArchiveSelectedCreator adminCanEdit={Boolean(currentAdminUser)} creator={selectedCreator} roleHrefs={creatorRoleHrefs} allRolesHref={creatorAllRolesHref} selectedRole={selectedCreatorRole}
             clearHref={(() => {
             const next = new URLSearchParams();
-            for (const key of ["mine", "pageSize", "q", "series", "seriesChildren", "genre", "platform", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
+            for (const key of ["tag", "mine", "pageSize", "q", "series", "seriesChildren", "genre", "platform", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare"] as const) {
               const value = params[key];
               if (value) next.set(key, value);
             }
@@ -420,10 +437,18 @@ export default async function Home({ searchParams }: HomeProps) {
             next.delete("genre");
             return next.size ? `/archive?${next.toString()}` : "/archive";
           })()} /> : null}
+          {selectedTag ? <ArchiveSelectedTag tag={selectedTag} clearHref={(() => {
+            const next = new URLSearchParams();
+            for (const [key, value] of Object.entries(params)) {
+              if (typeof value === "string" && key !== "tag" && key !== "page") next.set(key, value);
+            }
+            return next.size ? `/archive?${next.toString()}` : "/archive";
+          })()} /> : null}
           {selectedSeries ? (
             <ArchiveSelectedSeries
               adminCanEdit={Boolean(currentAdminUser)}
-              authorCanAddMedia={Boolean(currentAuthor)}
+              authorCanEdit={mayManageFranchises}
+              authorCanAddMedia={mayManageFranchises}
               clearHref={getArchiveSeriesHref()}
               includeDescendants={params.seriesChildren !== "0"}
               toggleDescendantsHref={(() => {
@@ -457,6 +482,13 @@ export default async function Home({ searchParams }: HomeProps) {
             />
           ) : (
             <ArchiveSeriesMatches
+              tags={tagMatches}
+              tagMoreHref={`/tags?q=${encodeURIComponent(searchQuery)}`}
+              tagSelectionHrefs={Object.fromEntries(tagMatches.map(tag => {
+                const next = new URLSearchParams(preservedCatalogParams);
+                next.set("tag", tag.code);
+                return [tag.id, `/archive?${next.toString()}`];
+              }))}
               items={seriesMatches.items}
               moreHref={`/series?q=${encodeURIComponent(searchQuery)}`}
               selectionHrefs={seriesSelectionHrefs}
@@ -497,6 +529,8 @@ export default async function Home({ searchParams }: HomeProps) {
               profile={ratedProfile}
             />
           ) : null}
+
+
           <MediaItemsCatalog
           activeQuiz={activeQuiz && canGuessActiveQuiz ? { id: activeQuiz.id, mediaTypes: activeQuiz.mediaTypes } : null}
           authorRatingFilter={currentAuthor ? authorRatingFilter : urlAuthorRatingFilter}
@@ -508,6 +542,7 @@ export default async function Home({ searchParams }: HomeProps) {
           canPublishFranchisesWithoutReview={
             authorMediaSuggestionData?.canPublishFranchisesWithoutReview ?? false
           }
+          canManageFranchises={mayManageFranchises}
           canSuggestFranchises={authorMediaSuggestionData?.canSuggestFranchises ?? false}
           items={catalog.items}
           mediaTypeCounts={mediaTypeCounts}
@@ -538,11 +573,12 @@ export default async function Home({ searchParams }: HomeProps) {
         <ArchiveAuthorMediaSuggestion
           maxTitleAliases={archiveSettings.maxTitleAliases}
           action={createAuthorMediaItemAction}
+          canManageFranchises={mayManageFranchises}
           canCreateFranchise={authorMediaSuggestionData.canCreateFranchise}
           canPublishMediaWithoutReview={authorMediaSuggestionData.canPublishMediaWithoutReview}
           canSuggestFranchises={authorMediaSuggestionData.canSuggestFranchises}
-          defaultFranchiseIds={selectedSeries ? [selectedSeries.id] : []}
-          franchises={authorMediaSuggestionData.franchises}
+          defaultFranchiseIds={mayManageFranchises && selectedSeries ? [selectedSeries.id] : []}
+          franchises={mayManageFranchises ? authorMediaSuggestionData.franchises : []}
           mediaCarriers={authorMediaSuggestionData.mediaCarriers}
           mediaTypeFilter={mediaTypeFilter}
           mediaTypes={mediaTypesByCount}

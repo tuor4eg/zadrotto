@@ -16,6 +16,7 @@ import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status"
 
 function GenreReplacement({ genre }: { genre: AdminGenre }) {
   const series = genre.replacementFranchise;
+  if (genre.replacementTag) return <Link className="text-sm underline" href={`/archive?tag=${encodeURIComponent(genre.replacementTag.code)}`}>Тег: {genre.replacementTag.title}</Link>;
   return series ? <div className="min-w-0">
     <Link href={`/admin/series/${series.id}/edit`} className="break-words text-sm font-medium text-stone-950 underline underline-offset-4">{series.title}</Link>
     <div className="mt-1"><Badge variant={series.publicationStatus === "published" ? "positive" : "warning"}>{PUBLICATION_STATUS_VALUE_LABELS[series.publicationStatus]}</Badge></div>
@@ -66,7 +67,7 @@ export default async function GenresPage({ searchParams }: { searchParams: Promi
         <div className="grid gap-3 md:hidden">
           {genres.map((genre) => <article key={genre.id} className="min-w-0 rounded-lg border border-stone-200 bg-white p-4">
             <GenreIdentity genre={genre} />
-            {series ? <div className="mt-4"><p className="mb-2 text-xs font-medium text-stone-500">Заменяющая серия</p><GenreReplacement genre={genre} /></div> : null}
+            {series ? <div className="mt-4"><p className="mb-2 text-xs font-medium text-stone-500">Заменяющая классификация</p><GenreReplacement genre={genre} /></div> : null}
             <div className="mt-4"><p className="mb-2 text-xs font-medium text-stone-500">Варианты у провайдеров</p>
               <GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} /></div>
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
@@ -76,7 +77,7 @@ export default async function GenresPage({ searchParams }: { searchParams: Promi
         </div>
         <TableWrap className="hidden md:block">
           <Table className="table-fixed">
-            <THead><tr><TH className="w-1/4">Наш жанр</TH>{series ? <TH className="w-1/4">Заменяющая серия</TH> : null}<TH>Варианты у провайдеров</TH>
+            <THead><tr><TH className="w-1/4">Наш жанр</TH>{series ? <TH className="w-1/4">Заменяющая классификация</TH> : null}<TH>Варианты у провайдеров</TH>
               <TH className="w-24">Записей</TH><TH className="w-44 text-right">Действия</TH></tr></THead>
             <TBody>{genres.map((genre) => <TR key={genre.id}>
               <TD><GenreIdentity genre={genre} /></TD>{series ? <TD><GenreReplacement genre={genre} /></TD> : null}<TD><GenreProviderVariants groups={genre.providerVariants} reopenAction={reopenGenreMappingAction} /></TD>

@@ -1,4 +1,5 @@
 "use server";
+import { canManageFranchises } from "@/lib/franchises/access";
 
 import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
 
@@ -421,6 +422,7 @@ export async function createAuthorInlineFranchiseAction(
 ): Promise<CreateAuthorInlineFranchiseState> {
   const author = await requireAuthor();
 
+  if (!canManageFranchises(author)) throw new Error("franchise-forbidden");
   const input = readFranchiseForm(formData);
 
   if (!input.ok) {
@@ -448,7 +450,7 @@ export async function createAuthorInlineFranchiseAction(
       code: generateEntityCode({ type: "series", name: input.value.title }),
       createdByAuthorId: author.id,
       publicationStatus: getFranchisePublicationStatusAfterAuthorCreate({
-        canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+        canPublishFranchisesWithoutReview: true,
       }),
     });
   } catch (error) {
@@ -551,6 +553,7 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
     redirect(getCreateErrorRedirect(formData, "invalid-metadata"));
   }
 
+  if (!canManageFranchises(author) && formData.getAll("franchiseIds").some(value => String(value).trim())) throw new Error("franchise-forbidden");
   timing.stage("canAuthorUseFranchises");
   if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(getCreateErrorRedirect(formData, "invalid-franchise"));
@@ -750,11 +753,11 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
   }
 
   timing.stage("moveAuthorFranchisesForMediaSubmission");
-  await moveAuthorFranchisesForMediaSubmission({
+  if (canManageFranchises(author)) await moveAuthorFranchisesForMediaSubmission({
     authorId: author.id,
     mediaItemId: updatedItem.id,
     nextStatus: getFranchisePublicationStatusAfterAuthorSubmit({
-      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+      canPublishFranchisesWithoutReview: true,
     }),
   });
 
@@ -860,6 +863,7 @@ async function updateAuthorMediaItemActionMeasured(formData: FormData, timing: M
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-metadata`);
   }
 
+  if (!canManageFranchises(author) && formData.getAll("franchiseIds").some(value => String(value).trim())) throw new Error("franchise-forbidden");
   timing.stage("canAuthorUseFranchises");
   if (!(await canAuthorUseFranchises(author.id, form.value.franchiseIds))) {
     redirect(`/author/media/${mediaItemId}/edit?error=invalid-franchise`);
@@ -1071,11 +1075,11 @@ async function publishAuthorMediaItemActionMeasured(formData: FormData, timing: 
   }
 
   timing.stage("moveAuthorFranchisesForMediaSubmission");
-  await moveAuthorFranchisesForMediaSubmission({
+  if (canManageFranchises(author)) await moveAuthorFranchisesForMediaSubmission({
     authorId: author.id,
     mediaItemId: updatedItem.id,
     nextStatus: getFranchisePublicationStatusAfterAuthorSubmit({
-      canPublishFranchisesWithoutReview: author.canPublishFranchisesWithoutReview,
+      canPublishFranchisesWithoutReview: true,
     }),
   });
 
