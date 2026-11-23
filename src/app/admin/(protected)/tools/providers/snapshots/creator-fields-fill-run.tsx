@@ -59,9 +59,7 @@ export function CreatorFieldsFillRun({ run, single = false }: { run: CreatorFiel
           <dd className="mt-1 text-lg font-semibold">{value}</dd>
         </div>)}
       </dl>}
-      {!single && progress?.details.length === 100 && <p className="text-stone-500">Показаны последние 100 результатов по создателям.</p>}
-      {progress?.details.map(detail => <div key={detail.creatorId}>
-        {single ? null : <Link href={`/admin/creators/${detail.creatorId}/edit`} className="font-medium underline">Создатель №{detail.creatorId}</Link>}
+      {single && progress?.details.map(detail => <div key={detail.creatorId}>
         <ul className="list-disc pl-5">
           {detail.messages.map((message, index) => <li key={index}>{message}</li>)}
         </ul>
@@ -72,6 +70,26 @@ export function CreatorFieldsFillRun({ run, single = false }: { run: CreatorFiel
         ? `/admin/creators/${run.payload.creatorIds?.[0]}/edit?fillRun=${run.id}`
         : `/admin/tools/providers/snapshots?fillRun=${run.id}`} />}
       <Link className="w-fit underline" href={`/admin/tools/jobs/journal?job=adhoc#run-${run.id}`}>Подробности в журнале</Link>
+      {!single && !active && progress && progress.review + progress.failed > 0 && (
+        <section aria-label="Создатели с замечаниями и ошибками" className="grid gap-3 border-t pt-3">
+          <h3 className="font-semibold">Создатели с замечаниями и ошибками</h3>
+          {progress.problems?.length ? (
+            <ul className="space-y-3">
+              {progress.problems.map(({ creatorId, messages }) => (
+                <li key={creatorId}>
+                  <Link className="font-medium underline" href={`/admin/creators/${creatorId}/snapshots`}>Создатель №{creatorId}</Link>
+                  <ul className="list-disc break-words pl-5">
+                    {messages.map((message, index) => <li key={index}>{message}</li>)}
+                  </ul>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+          {(progress.problems?.length ?? 0) < progress.review + progress.failed && (
+            <p className="text-stone-600">Для части карточек причины не были сохранены. Повторное заполнение покажет актуальные замечания.</p>
+          )}
+        </section>
+      )}
     </CardContent>
   </Card>;
 }

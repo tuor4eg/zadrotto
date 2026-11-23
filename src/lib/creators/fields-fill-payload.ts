@@ -18,6 +18,8 @@ export const CREATOR_FILL_FIELD_LABELS: Record<CreatorFillField, string> = {
   foundedDate: "Дата основания",
 };
 
+type CreatorFillDetail = { creatorId: number; messages: string[] };
+
 export type CreatorFieldsFillProgress = {
   afterId: number;
   throughId: number;
@@ -28,7 +30,8 @@ export type CreatorFieldsFillProgress = {
   missing: number;
   review: number;
   failed: number;
-  details: { creatorId: number; messages: string[] }[];
+  details: CreatorFillDetail[];
+  problems?: CreatorFillDetail[];
 };
 
 export type CreatorFieldsFillPayload = {
@@ -44,6 +47,11 @@ export type CreatorFieldsFillPayload = {
 
 const isCount = (value: unknown): value is number =>
   typeof value === "number" && Number.isSafeInteger(value) && value >= 0 && value <= 2147483647;
+
+function validDetail(row: CreatorFillDetail) {
+  return row && isCount(row.creatorId) && row.creatorId > 0 && Array.isArray(row.messages)
+    && row.messages.length <= 20 && row.messages.every(message => typeof message === "string" && message.length <= 1000);
+}
 
 export function parseCreatorFieldsFillPayload(value: unknown): CreatorFieldsFillPayload {
   const invalid = () => new JobError("invalid-payload", "Некорректные параметры заполнения данных создателей.", { retryable: false });
@@ -67,8 +75,9 @@ export function parseCreatorFieldsFillPayload(value: unknown): CreatorFieldsFill
     || ![progress.afterId, progress.throughId, progress.processed, progress.updated, progress.filled, progress.missing, progress.review, progress.failed].every(isCount)
     || (progress.scanned !== undefined && !isCount(progress.scanned))
     || progress.afterId > progress.throughId || !Array.isArray(progress.details) || progress.details.length > 100
-    || !progress.details.every(row => row && isCount(row.creatorId) && row.creatorId > 0 && Array.isArray(row.messages)
-      && row.messages.length <= 20 && row.messages.every(message => typeof message === "string" && message.length <= 1000)))) throw invalid();
+    || !progress.details.every(validDetail)
+    || (progress.problems !== undefined && (!Array.isArray(progress.problems)
+      || progress.problems.length > progress.review + progress.failed || !progress.problems.every(validDetail))))) throw invalid();
 
   return {
     ...(payload.creatorIds ? { creatorIds: [...new Set(payload.creatorIds)] } : {}),

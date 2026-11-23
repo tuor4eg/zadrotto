@@ -83,6 +83,8 @@ export function snapshotItemError(id: number, error: unknown): SnapshotItemError
     "INVALID_PROVIDER_SNAPSHOT_REFERENCES": "invalid-provider-response", "INVALID_PROVIDER_SNAPSHOT_TARGET": "invalid-provider-response",
     "Incomplete Open Library work response.": "incomplete-snapshots", "Incomplete Open Library author response.": "incomplete-snapshots",
     "Incomplete book contributor response.": "incomplete-snapshots",
+    "Слишком большой или пустой ответ источника.": "snapshot-body-size",
+    "Слишком большой ответ источника.": "snapshot-body-size",
   };
   return { id, code: known[message] ?? "snapshot-operation-failed" };
 }
@@ -100,6 +102,7 @@ export function snapshotItemErrorMessage(error: SnapshotItemError): string {
     "ambiguous-binding": "У создателя несколько активных привязок FantLab. Выберите одну.",
     "creator-missing": "Создатель больше не существует.",
     "invalid-provider-response": "Провайдер вернул данные другого ресурса или некорректный ответ.",
+    "snapshot-body-size": "Ответ источника пуст или превышает допустимый размер.",
     "invalid-provider-json": "Ответ провайдера не удалось прочитать как JSON.",
     "source-changed": "Источник записи изменился во время обработки.",
     "provider-disabled": "Провайдер выключен в настройках.",

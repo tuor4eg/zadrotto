@@ -1,7 +1,8 @@
 import "server-only";
 import { parseTagTitle } from "@/lib/tags/model";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db } from "@/db";
+import { entrySources } from "@/db/schema";
 import { classificationMigrationRuns } from "@/db/classification-migration-schema";
 import type { DbTransaction } from "@/db/transaction";
 import { lockClassificationMutations } from "@/db/queries/classification-lock";
@@ -9,9 +10,9 @@ import { publicTagMediaItemIdsSql } from "@/db/queries/tag-membership";
 import { guardSnapshotJob, type SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import { createJobRun } from "@/db/queries/jobs";
 import { getAchievementMechanic } from "@/lib/achievements/catalog";
-import { classificationBlockers, classificationHash, draftClassificationManifest, parseClassificationManifest, publishedMembership, type ClassificationManifest, type ClassificationSnapshot, type RawRow } from "@/lib/classification-migration/model";
+import { classificationBlockers, classificationHash, classificationRollbackHash, draftClassificationManifest, parseClassificationManifest, publishedMembership, type ClassificationManifest, type ClassificationSnapshot, type RawRow } from "@/lib/classification-migration/model";
 
-const TABLES = ["franchises", "media_item_franchises", "creator_series", "media_item_franchise_removal_requests", "genres", "achievements", "tags", "media_item_tags"] as const;
+const TABLES = ["franchises", "media_item_franchises", "media_item_franchise_removal_requests", "genres", "achievements", "tags", "media_item_tags"] as const;
 type MigrationRun = typeof classificationMigrationRuns.$inferSelect;
 
 async function snapshot(tx: DbTransaction): Promise<ClassificationSnapshot> {
@@ -41,9 +42,22 @@ async function snapshot(tx: DbTransaction): Promise<ClassificationSnapshot> {
 /** Freeze both classification and progress sources for a coherent comparison, including direct SQL writers. */
 async function lockMigrationTables(tx: DbTransaction) {
   await lockClassificationMutations(tx);
-  await tx.execute(sql`lock table achievement_levels,achievements,archive_settings,authors,contributions,creator_series,franchises,genres,
+  await tx.execute(sql`lock table achievement_levels,achievements,archive_settings,authors,contributions,franchises,genres,
     media_item_franchise_removal_requests,media_item_franchises,media_item_tags,media_items,
-    provider_snapshot_links,ratings,tags,user_achievements in share row exclusive mode`);
+    provider_snapshot_links,ratings,tags,user_achievements,entry_sources in share row exclusive mode`);
+}
+
+async function migrationBlockers(tx: DbTransaction, state: ClassificationSnapshot, manifest: ClassificationManifest) {
+  const blockers = classificationBlockers(state, manifest);
+  const themeIds = manifest.series.filter((row) => row.group === "tag").map((row) => row.id);
+  if (themeIds.length) {
+    const usedSeries = await tx.selectDistinct({ id: entrySources.sourceSeriesId }).from(entrySources)
+      .where(inArray(entrySources.sourceSeriesId, themeIds)).orderBy(entrySources.sourceSeriesId);
+    for (const series of usedSeries) {
+      blockers.push(`Серия #${series.id} указана как первоисточник записи. Измените эту связь перед переносом серии в тег.`);
+    }
+  }
+  return blockers;
 }
 
 async function evidence(tx: DbTransaction, state: ClassificationSnapshot) {
@@ -97,7 +111,7 @@ export async function createClassificationPreview(value: unknown, adminId: numbe
     await lockMigrationTables(tx);
     const current = await inventory(tx);
     if (expectedHash !== undefined && expectedHash !== current.hash) throw new Error("Данные изменились. Откройте дерево заново и проверьте выбор.");
-    const blockers = classificationBlockers(current.state, manifest);
+    const blockers = await migrationBlockers(tx, current.state, manifest);
     const themes = manifest.series.filter(row => row.group === "tag");
     const decisions = new Map(manifest.series.map(row => [row.id, row]));
     const plannedState: ClassificationSnapshot = { ...current.state,
@@ -140,7 +154,6 @@ export async function createClassificationPreview(value: unknown, adminId: numbe
       assignments: themes.map(row => ({ seriesId: row.id, mediaItemIds: publishedMembership(current.state, row.id) })),
       tagMappings: themes.map(row => ({ seriesId: row.id, existingTagId: row.tagId ?? null, code: row.tagId === undefined ? current.state.franchises.find(series => series.id === row.id)?.code : current.state.tags.find(tag => tag.id === row.tagId)?.code, title: row.tagId === undefined ? current.state.franchises.find(series => series.id === row.id)?.title : current.state.tags.find(tag => tag.id === row.tagId)?.title })),
       dependencies: {
-        creatorLinks: current.state.creator_series,
         pendingLinks: current.state.media_item_franchises.filter(row => row.publication_status !== "published"),
         removalRequests: current.state.media_item_franchise_removal_requests,
         genreReplacements: current.state.genres.filter(row => row.replacement_franchise_id != null),
@@ -191,7 +204,7 @@ export async function approveClassificationMigration(id: string, previewHash: st
     if (!run || run.status !== "preview" || run.previewHash !== previewHash) throw new Error("Предпросмотр не найден или уже подтверждён.");
     const current = await inventory(tx);
     if (classificationHash({ manifest: run.manifest, currentHash: current.hash }) !== previewHash) throw new Error("Данные изменились. Создайте новый предпросмотр.");
-    const blockers = [...classificationBlockers(current.state, run.manifest), ...((run.preview.blockers ?? []) as string[])];
+    const blockers = [...await migrationBlockers(tx, current.state, run.manifest), ...((run.preview.blockers ?? []) as string[])];
     if (blockers.length) throw new Error(blockers.join(" "));
     await tx.update(classificationMigrationRuns).set({ status: "approved", approvedAt: new Date(), approvedByAdminId: adminId }).where(eq(classificationMigrationRuns.id, id));
     return enqueue(tx, run, "classification.apply", adminId);
@@ -204,7 +217,7 @@ export async function requestClassificationRollback(id: string, previewHash: str
     const [run] = await tx.select().from(classificationMigrationRuns).where(eq(classificationMigrationRuns.id, id)).for("update");
     if (!run || run.status !== "applied" || run.previewHash !== previewHash) throw new Error("Этот перенос нельзя откатить.");
     const current = await inventory(tx);
-    if (current.hash !== run.afterHash) throw new Error("После переноса изменились данные. Автоматический откат запрещён.");
+    if (!run.afterSnapshot || classificationRollbackHash(current, run.afterSnapshot) !== run.afterHash) throw new Error("После переноса изменились данные. Автоматический откат запрещён.");
     await tx.update(classificationMigrationRuns).set({ rollbackApprovedByAdminId: adminId, rollbackApprovedAt: new Date() }).where(eq(classificationMigrationRuns.id, id));
     return enqueue(tx, run, "classification.rollback", adminId);
   });
@@ -226,10 +239,6 @@ async function apply(tx: DbTransaction, state: ClassificationSnapshot, manifest:
     await tx.execute(sql`update achievements set params=(params-'seriesId') || jsonb_build_object('tagId',${tag.id}::int) where params->'seriesId'=${JSON.stringify(decision.id)}::jsonb`);
   }
   for (const decision of manifest.series.filter(row => row.group === "keep")) await tx.execute(sql`update franchises set parent_id=${decision.parentId} where id=${decision.id}`);
-  for (const link of manifest.creatorLinks) {
-    if (link.targetSeriesId !== null) await tx.execute(sql`insert into creator_series(creator_id,series_id) values (${link.creatorId},${link.targetSeriesId}) on conflict do nothing`);
-    await tx.execute(sql`delete from creator_series where creator_id=${link.creatorId} and series_id=${link.seriesId}`);
-  }
   const themes = manifest.series.filter(row => row.group === "tag").map(row => row.id);
   const ids = sql`select value::integer from jsonb_array_elements_text(${JSON.stringify(themes)}::jsonb)`;
   // Clear internal theme parent edges together; retained children already have explicit parents.
@@ -258,7 +267,6 @@ async function restore(tx: DbTransaction, before: ClassificationSnapshot, after:
   }
   const restoreTables = [
     ["media_item_franchises", ["media_item_id", "franchise_id"]],
-    ["creator_series", ["creator_id", "series_id"]],
     ["media_item_franchise_removal_requests", ["media_item_id", "franchise_id"]],
     ["media_item_tags", ["media_item_id", "tag_id", "author_id"]],
   ] as const;
@@ -286,7 +294,7 @@ export async function executeClassificationMigration(input: { migrationId: strin
     if (direction === "apply") {
       if (run.status !== "approved" || !run.approvedAt || !run.approvedByAdminId) throw new Error("Требуется подтверждение администратора.");
       if (classificationHash({ manifest: run.manifest, currentHash: current.hash }) !== run.previewHash) throw new Error("Предпросмотр устарел; перенос отменён.");
-      const blockers = classificationBlockers(current.state, run.manifest);
+      const blockers = await migrationBlockers(tx, current.state, run.manifest);
       if (blockers.length) throw new Error(blockers.join(" "));
       await apply(tx, current.state, run.manifest);
       const next = await inventory(tx);
@@ -300,10 +308,10 @@ export async function executeClassificationMigration(input: { migrationId: strin
       }).map(row => Number(row.id));
       if (achievementIds.length) await createJobRun({ type: "achievements.backfill", payload: { achievementIds, batchSize: 100 }, createdByAdminId: run.approvedByAdminId, source: "manual", maxAttempts: 3, retryBaseSeconds: 60, retryMaxSeconds: 300, timeoutSeconds: 300 }, new Date(), tx);
     } else {
-      if (run.status !== "applied" || !run.afterSnapshot || !run.rollbackApprovedAt || !run.rollbackApprovedByAdminId || current.hash !== run.afterHash) throw new Error("Откат не подтверждён или данные после переноса изменились; откат запрещён.");
+      if (run.status !== "applied" || !run.afterSnapshot || !run.rollbackApprovedAt || !run.rollbackApprovedByAdminId || classificationRollbackHash(current, run.afterSnapshot) !== run.afterHash) throw new Error("Откат не подтверждён или данные после переноса изменились; откат запрещён.");
       await restore(tx, run.beforeSnapshot, run.afterSnapshot);
       const restored = await inventory(tx);
-      const expected = classificationHash({ manifest: run.manifest, currentHash: restored.hash });
+      const expected = classificationHash({ manifest: run.manifest, currentHash: classificationRollbackHash(restored, run.beforeSnapshot) });
       if (expected !== run.previewHash) throw new Error("Сверка восстановленного состояния не пройдена; откат отменён.");
       await tx.update(classificationMigrationRuns).set({ status: "rolled_back", rolledBackAt: new Date() }).where(eq(classificationMigrationRuns.id, run.id));
     }
@@ -315,14 +323,12 @@ export async function executeClassificationMigration(input: { migrationId: strin
 
 /** Bounded PK reads only for labels shown in the editor, never full media records. */
 export async function getClassificationSelectionLabels(state: ClassificationSnapshot) {
-  const creatorIds = [...new Set(state.creator_series.map(row => Number(row.creator_id)))];
   const mediaIds = [...new Set([
     ...state.media_item_franchises.filter(row => row.publication_status !== "published"),
     ...state.media_item_franchise_removal_requests,
   ].map(row => Number(row.media_item_id)))];
-  const [creators, media] = await Promise.all([
-    creatorIds.length ? db.execute<{ id: number; name: string }>(sql`select id,name from creators where id in (${sql.join(creatorIds.map(id => sql`${id}`), sql`,`)})`) : [],
-    mediaIds.length ? db.execute<{ id: number; title: string }>(sql`select id,title from media_items where id in (${sql.join(mediaIds.map(id => sql`${id}`), sql`,`)})`) : [],
-  ]);
-  return { creators: Array.from(creators), media: Array.from(media) };
+  const media = mediaIds.length
+    ? await db.execute<{ id: number; title: string }>(sql`select id,title from media_items where id in (${sql.join(mediaIds.map(id => sql`${id}`), sql`,`)})`)
+    : [];
+  return Array.from(media);
 }

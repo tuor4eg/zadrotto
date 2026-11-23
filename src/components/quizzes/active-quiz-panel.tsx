@@ -66,9 +66,7 @@ export function ActiveQuizPanel({
         {quiz.type !== "mosaic" || !participant ? <QuizAnswerReveal key={`answer-reveal-${quiz.id}`} quizId={quiz.id} endsAt={quiz.endsAt} solved={participant?.outcome === "correct"} /> : null}
         {quiz.type === "mosaic" && participant ? null : participant?.completed ? (
           <QuizResult participant={participant} />
-        ) : finished ? (
-          <p className="font-serif text-base text-stone-700 sm:text-lg">Квиз завершён</p>
-        ) : unavailableMediaTypeNames.length > 0 ? (
+        ) : finished ? null : unavailableMediaTypeNames.length > 0 ? (
           <div className="grid max-w-xl gap-4 rounded-md border border-amber-800/25 bg-amber-50/70 p-4 text-sm leading-6 text-stone-700">
             <p>
               Этот квиз касается разделов, которые ты отключил: {unavailableMediaTypeNames.join(", ")}.

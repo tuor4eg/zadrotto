@@ -105,6 +105,7 @@ type MediaItemDetailsProps = {
   actions?: React.ReactNode;
   adjacentShelfSlot?: React.ReactNode;
   partsSlot?: React.ReactNode;
+  posterPartsSlot?: React.ReactNode;
   reviewsSlot?: React.ReactNode;
   breadcrumbSlot?: React.ReactNode;
   meta?: React.ReactNode;
@@ -113,6 +114,7 @@ type MediaItemDetailsProps = {
   ratingSlot?: React.ReactNode;
   titleActions?: React.ReactNode;
   noteSlot?: React.ReactNode;
+  entrySourcesSlot?: React.ReactNode;
   franchiseActions?: React.ReactNode;
   tagsSlot?: React.ReactNode;
   headerActions?: React.ReactNode;
@@ -151,6 +153,7 @@ export function MediaItemDetails({
   actions,
   adjacentShelfSlot,
   partsSlot,
+  posterPartsSlot,
   reviewsSlot,
   breadcrumbSlot,
   meta,
@@ -159,6 +162,7 @@ export function MediaItemDetails({
   ratingSlot,
   titleActions,
   noteSlot,
+  entrySourcesSlot,
   franchiseActions,
   tagsSlot,
   headerActions,
@@ -207,6 +211,7 @@ export function MediaItemDetails({
         actions={actions}
         adjacentShelfSlot={adjacentShelfSlot}
         partsSlot={partsSlot}
+        posterPartsSlot={posterPartsSlot}
         reviewsSlot={reviewsSlot}
         breadcrumbSlot={breadcrumbSlot}
         meta={meta}
@@ -215,6 +220,7 @@ export function MediaItemDetails({
         ratingSlot={ratingSlot}
         titleActions={titleActions}
         noteSlot={noteSlot}
+        entrySourcesSlot={entrySourcesSlot}
         tagsSlot={tagsSlot}
         franchiseActions={franchiseActions}
         headerActions={headerActions}
@@ -329,6 +335,7 @@ export function MediaItemDetails({
                     {item.description}
                   </p>
                 ) : null}
+                {entrySourcesSlot}
               </div>
 
               <div
@@ -367,9 +374,9 @@ export function MediaItemDetails({
                 <div className="flex flex-col gap-2 normal-case tracking-normal">
                   {relatedSections.map((section) => (
                     <div key={section.key} className="flex flex-col gap-2">
-                      <div className="text-[10px] font-semibold uppercase tracking-[0.16em]">
+                      <h2 className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>
                         {section.title}
-                      </div>
+                      </h2>
                       {section.items.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {section.items.map((relatedItem) => (
@@ -405,6 +412,7 @@ function ArchiveMediaItemDetails({
   actions,
   adjacentShelfSlot,
   partsSlot,
+  posterPartsSlot,
   reviewsSlot,
   breadcrumbSlot,
   meta,
@@ -413,6 +421,7 @@ function ArchiveMediaItemDetails({
   ratingSlot,
   titleActions,
   noteSlot,
+  entrySourcesSlot,
   franchiseActions,
   tagsSlot,
   headerActions,
@@ -447,7 +456,9 @@ function ArchiveMediaItemDetails({
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
 
       <article className="archive-paper archive-panel archive-panel-overflow-visible relative z-10 flex min-h-0 min-w-0 flex-1 flex-col">
-        <div className="relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-cols-[max-content_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+        <div className={`relative z-10 grid flex-1 grid-cols-[minmax(0,1fr)] pt-8 lg:grid-rows-[minmax(0,1fr)] ${
+          posterPartsSlot ? "lg:grid-cols-[calc(444px_+_2rem)_minmax(0,1fr)]" : "lg:grid-cols-[max-content_minmax(0,1fr)]"
+        }`}>
           {cornerActions ? <div className="absolute left-6 top-3 z-40 sm:left-10 lg:left-8">{cornerActions}</div> : null}
           {mediaCarrierFrame?.detailBackgroundPath ? (
             <div
@@ -475,12 +486,12 @@ function ArchiveMediaItemDetails({
               </div>
             </div>
 
-          <div className="contents lg:relative lg:block lg:min-w-0 lg:px-6 lg:pb-6">
+          <div className={`contents lg:relative lg:block lg:min-w-0 lg:pb-6 lg:pl-6 ${posterPartsSlot ? "" : "lg:pr-6"}`}>
             <div className="relative order-2 min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
               <div
                 className={
                   hasCarrierFrame
-                    ? "mt-6 w-full max-w-full sm:ml-2 sm:max-w-[420px]"
+                    ? `mt-6 w-full max-w-full sm:ml-2 ${posterPartsSlot ? "sm:max-w-[444px]" : "sm:max-w-[420px]"}`
                     : "mt-6 max-w-[360px] sm:ml-2 lg:w-max"
                 }
               >
@@ -548,9 +559,16 @@ function ArchiveMediaItemDetails({
                 />
               </div>
             </div>
+            {posterPartsSlot ? (
+              <div className="order-5 w-full min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
+                <div className="w-full sm:ml-2 sm:max-w-[444px] lg:mt-5 lg:w-[444px]">
+                  {posterPartsSlot}
+                </div>
+              </div>
+            ) : null}
             {!partsSlot && reviewsSlot ? (
               <div className="order-5 w-full min-w-0 px-6 pb-6 sm:px-8 lg:px-0 lg:pb-0">
-                <div className="mt-2 w-full max-w-[420px] sm:ml-2">
+                <div className="mt-5 w-full max-w-[420px] sm:ml-2">
                   {reviewsSlot}
                 </div>
               </div>
@@ -713,20 +731,31 @@ function ArchiveMediaItemDetails({
                 </div>
               ) : null}
 
-              <div className="mt-6 flex flex-col gap-3">
-                {noteSlot}
-              </div>
+              {!partsSlot && entrySourcesSlot ? (
+                <div className="mt-5 w-full min-w-0">{entrySourcesSlot}</div>
+              ) : null}
+
+              {noteSlot ? <div className="mt-6 flex flex-col gap-3">{noteSlot}</div> : null}
             </div>
           </div>
 
           </div>
 
           {partsSlot ? (
-            <div className="order-5 flex w-full min-w-0 flex-col gap-8 px-6 py-6 sm:px-8 lg:col-span-2 lg:row-start-2">
-              {partsSlot}
-              {reviewsSlot ? (
-                <div className="w-full min-w-0 max-w-[420px]">
-                  {reviewsSlot}
+            <div className="order-5 flex w-full min-w-0 flex-col gap-8 px-6 py-6 sm:px-8 lg:col-span-2 lg:row-start-2 lg:grid lg:grid-cols-subgrid lg:gap-x-0 lg:px-0">
+              <div className="min-w-0 lg:col-span-2 lg:px-8">{partsSlot}</div>
+              {entrySourcesSlot || reviewsSlot ? (
+                <div className="grid min-w-0 items-start gap-y-8 lg:col-span-2 lg:grid-cols-subgrid">
+                  {entrySourcesSlot ? (
+                    <div className="min-w-0 lg:col-start-2 lg:row-start-1 lg:px-8">
+                      {entrySourcesSlot}
+                    </div>
+                  ) : null}
+                  {reviewsSlot ? (
+                    <div className="min-w-0 lg:col-start-1 lg:row-start-1 lg:px-8">
+                      <div className="w-full min-w-0 max-w-[420px]">{reviewsSlot}</div>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
@@ -734,13 +763,13 @@ function ArchiveMediaItemDetails({
 
           {relatedSections.length > 0 ? (
             <TileRatingScope>
-            <div className={`order-6 flex flex-col gap-6 px-6 pb-6 pt-6 sm:px-8 sm:pb-8 sm:pt-8 lg:col-span-2 ${partsSlot ? "lg:row-start-3" : "lg:row-start-2"}`}>
+            <div className={`order-6 flex flex-col gap-6 px-6 pb-6 sm:px-8 sm:pb-8 lg:col-span-2 ${partsSlot ? "pt-6 sm:pt-8 lg:row-start-3" : "lg:row-start-2"}`}>
               <div className="flex flex-col gap-6">
                 {relatedSections.map((section) => (
                   <section key={section.key}>
-                    <div className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    <h2 className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>
                       {section.title}
-                    </div>
+                    </h2>
                     {section.items.length > 0 ? (
                       <div className="mt-4 grid grid-cols-3 content-start gap-2.5 [&>*:nth-child(n+4)]:hidden md:grid-cols-4 md:[&>*:nth-child(n+4)]:block md:[&>*:nth-child(n+5)]:hidden xl:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] xl:[&>*:nth-child(n+5)]:block">
                         {section.items.map((relatedItem) => (

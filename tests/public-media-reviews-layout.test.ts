@@ -24,7 +24,7 @@ describe("public media reviews layout", () => {
     assert.match(details, /w-full min-w-0 flex-col gap-8[^\"]*lg:col-span-2/);
     assert.match(details, /contents lg:order-1 lg:block lg:min-w-0 lg:col-start-1 lg:row-start-1 lg:self-baseline/);
     assert.match(details, /relative order-1 min-w-0 px-6 pt-3/);
-    assert.match(details, /contents lg:relative lg:block lg:min-w-0 lg:px-6 lg:pb-6/);
+    assert.match(details, /contents lg:relative lg:block lg:min-w-0 lg:pb-6 lg:pl-6 \$\{posterPartsSlot \? "" : "lg:pr-6"\}/);
     assert.match(details, /contents lg:col-start-2 lg:row-start-1 lg:flex lg:min-w-0 lg:flex-col lg:self-baseline/);
     assert.doesNotMatch(details, /lg:row-span-2|lg:grid-rows-\[max-content_minmax\(0,1fr\)\]/);
     assert.match(details, /adjacentShelfSlot \? \(\s*<div className="order-5/);
@@ -33,16 +33,26 @@ describe("public media reviews layout", () => {
     assert.match(details, /className="mt-7 w-full max-w-full sm:ml-2 sm:max-w-\[420px\]"/);
     assert.match(details, /sm:max-w-\[420px\]/);
     assert.match(details, /carrierFrameSize=\{hasCarrierFrame \? "detail" : "default"\}/);
-    assert.match(reviews, /grid min-w-0 grid-cols-2 gap-3 py-3/);
+    assert.match(reviews, /aria-labelledby="reviews-heading" className="grid min-w-0 gap-1"/);
+    assert.match(reviews, /grid min-w-0 grid-cols-2 gap-3 pb-3/);
     assert.doesNotMatch(reviews, /grid-cols-2 gap-3 px-1/);
   });
 
-  it("places reviews in the poster column when no visible parts exist", () => {
-    assert.match(mediaPage, /partsSlot=\{parts\.some\(part => part\.type !== "season" \|\| part\.number !== 0\)/);
+  it("puts up to three visible seasons under the poster, before inline reviews", () => {
+    assert.match(mediaPage, /visibleParts = parts\.filter\(\(part\) => part\.type !== "season" \|\| part\.number !== 0\)/);
+    assert.match(mediaPage, /partsUnderPoster = visibleParts\.length > 0 && visibleParts\.length <= 3 &&\s*visibleParts\.every\(\(part\) => part\.type === "season"\)/);
+    assert.match(mediaPage, /partsSlot=\{partsUnderPoster \? null : partsSection\}/);
+    assert.match(mediaPage, /posterPartsSlot=\{partsUnderPoster \? partsSection : null\}/);
+    assert.match(details, /sm:max-w-\[444px\] lg:mt-5 lg:w-\[444px\]/);
+    assert.match(details, /posterPartsSlot \? "lg:grid-cols-\[calc\(444px_\+_2rem\)_minmax\(0,1fr\)\]"/);
+    const cover = details.indexOf("<CoverSourceAttribution");
+    const inlineParts = details.indexOf("{posterPartsSlot}", cover);
     const inlineReviews = details.indexOf("{!partsSlot && reviewsSlot ? (");
     const rightColumn = details.indexOf("contents lg:col-start-2 lg:row-start-1 lg:flex", inlineReviews);
-    assert.ok(inlineReviews > 0 && rightColumn > inlineReviews);
+    assert.ok(cover >= 0 && inlineParts > cover && inlineReviews > inlineParts && rightColumn > inlineReviews);
     assert.match(details, /\{partsSlot \? \([\s\S]*lg:col-span-2 lg:row-start-2/);
+    assert.match(details, /lg:row-start-2 lg:grid lg:grid-cols-subgrid/);
+    assert.match(details, /lg:col-start-2 lg:row-start-1 lg:px-8"[\s\S]*?\{entrySourcesSlot\}/);
     assert.doesNotMatch(details, /\{partsSlot \|\| reviewsSlot \?/);
   });
 
@@ -121,7 +131,7 @@ describe("public media reviews layout", () => {
     assert.match(reviewArticle, /review\.authorScore !== null[\s\S]*Оценка автора[\s\S]*formatScore\(review\.authorScore\)/);
     assert.match(globals, /\.archive-review-paper \{[\s\S]*background-color: #f7efdc;/);
     const reviewPaperStyles = globals.match(/\.archive-review-paper \{([\s\S]*?)\n\}/)?.[1] ?? "";
-    assert.match(reviewPaperStyles, /radial-gradient\(circle at 17px 14px/);
+    assert.doesNotMatch(reviewPaperStyles, /radial-gradient|repeat-y/);
     assert.doesNotMatch(reviewPaperStyles, /rgb\(147 197 253|linear-gradient\(180deg/);
     assert.doesNotMatch(globals, /\.archive-review-paper::before/);
     assert.match(reviewArticle, /navigator\.share\(shareData\)/);

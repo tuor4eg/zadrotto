@@ -3,6 +3,10 @@
 import { createContext, useContext, useState, type ComponentProps, type ReactNode } from "react";
 import dynamic from "next/dynamic";
 import { MediaItemTile } from "@/app/media-item-tile";
+import { MediaItemStatusTile } from "@/app/media-item-status-tile";
+import { hasDemoRating } from "@/lib/user-state/demo-profile";
+import { useDemoMediaOverlay } from "@/lib/user-state/use-demo-media-overlay";
+import { useDemoProfile } from "@/lib/user-state/use-demo-profile";
 
 const LazyTileRatingDialog = dynamic(() => import("./tile-rating-dialog"), {
   ssr: false,
@@ -23,4 +27,33 @@ export function TileRatingScope({ children }: { children: ReactNode }) {
 export function RateableMediaItemTile({ partId, ...props }: ComponentProps<typeof MediaItemTile> & { partId?: number | null }) {
   const openRating = useContext(TileRatingContext);
   return <MediaItemTile {...props} onRatingClick={openRating ? () => openRating(props.item.code, partId) : props.onRatingClick} />;
+}
+
+export function RateableMediaItemStatusTile({
+  currentAuthorScore,
+  currentAuthorStatus,
+  currentAuthorHasRating,
+  isAuthorized,
+  horizontalScroll,
+  ...tileProps
+}: ComponentProps<typeof MediaItemStatusTile>) {
+  const openRating = useContext(TileRatingContext);
+  const demoProfile = useDemoProfile();
+  const overlay = useDemoMediaOverlay(tileProps.item.code, currentAuthorScore, currentAuthorStatus);
+  const demo = !isAuthorized && overlay.isDemo ? demoProfile : null;
+  const onRatingClick = openRating ? () => openRating(tileProps.item.code) : tileProps.onRatingClick;
+
+  if (!isAuthorized && !demo) {
+    return <MediaItemTile {...tileProps} onRatingClick={onRatingClick} />;
+  }
+
+  return <MediaItemStatusTile
+    {...tileProps}
+    currentAuthorScore={demo ? overlay.score : currentAuthorScore}
+    currentAuthorStatus={demo ? overlay.status : currentAuthorStatus}
+    currentAuthorHasRating={demo ? hasDemoRating(demo, tileProps.item.code) : currentAuthorHasRating}
+    horizontalScroll={horizontalScroll}
+    isAuthorized={isAuthorized}
+    onRatingClick={onRatingClick}
+  />;
 }

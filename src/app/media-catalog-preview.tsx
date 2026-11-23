@@ -285,9 +285,9 @@ export function MediaCatalogPreview({
         </div>
         <div className="mt-4 border-t border-dashed border-stone-300 pt-3 text-sm leading-6 text-stone-800">
           <div className="flex items-center gap-2">
-            <div className={`${MEDIA_IDENTITY_FONT_CLASS_NAME} text-[10px] font-semibold uppercase leading-5 text-stone-500`}>
+            <h3 className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>
               Серии
-            </div>
+            </h3>
             {item.franchises.length === 0 ? franchiseAction : null}
           </div>
           {item.franchises.length > 0 ? (

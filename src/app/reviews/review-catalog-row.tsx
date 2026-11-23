@@ -44,10 +44,10 @@ export function ReviewCatalogRow({
   return (
     <Link
       href={`/reviews/${item.id}`}
-      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(5.5rem,auto)] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_minmax(5.75rem,auto)] sm:gap-x-4 sm:px-3"
+      className="group grid grid-cols-[2.75rem_minmax(0,1fr)_minmax(5.5rem,auto)] items-center gap-x-2 border-b border-stone-300/60 px-2 py-2 transition-colors last:border-b-0 hover:bg-stone-50/50 sm:grid-cols-[3rem_minmax(0,1fr)_minmax(0,1.5fr)_minmax(7.5rem,9.5rem)_minmax(5.75rem,auto)] sm:min-h-[5.5rem] sm:grid-rows-[1.25rem_1.25rem] sm:content-center sm:gap-x-4 sm:px-3"
       aria-label={`Рецензия «${item.title}» на «${mediaItemTitle}», автор ${item.authorName}`}
     >
-      <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:w-12">
+      <span className="relative block aspect-[2/3] w-11 overflow-hidden rounded border border-stone-300/80 bg-stone-100 shadow-sm sm:row-span-2 sm:w-12">
         <ArchiveCover
           carrierFrame={false}
           item={{
@@ -74,38 +74,36 @@ export function ReviewCatalogRow({
         </span>
       </span>
 
-      <span className="hidden min-w-0 sm:block">
-        <span className="block truncate text-sm font-semibold leading-tight text-stone-950 group-hover:underline group-hover:underline-offset-4">
-          {mediaItemTitle}
-        </span>
-        <span className="mt-0.5 block truncate font-mono text-[10px] uppercase tracking-[0.12em] text-stone-500">
-          {mediaTypeLabel}{item.partLabel ? ` · ${item.partLabel}` : ""}
-        </span>
+      <span className="hidden min-w-0 truncate text-sm font-semibold leading-tight text-stone-950 group-hover:underline group-hover:underline-offset-4 sm:col-start-2 sm:row-start-1 sm:block">
+        {mediaItemTitle}
       </span>
 
-      <span className="hidden min-w-0 truncate text-sm font-semibold leading-snug text-stone-900 sm:block">
+      <span className="hidden min-w-0 truncate text-sm font-semibold leading-tight text-stone-900 sm:col-start-3 sm:row-start-1 sm:block">
         {item.title}
       </span>
 
-      <span className="hidden min-w-0 items-center gap-2 sm:flex">
+      <span className="hidden min-w-0 items-center gap-2 sm:col-start-4 sm:row-start-1 sm:flex">
         <Avatar
           name={item.authorName}
           objectKey={item.authorAvatarObjectKey}
-          className="hidden size-7 shrink-0 text-[9px] sm:inline-grid"
+          className="size-7 shrink-0 text-[9px]"
         />
-        <span className="min-w-0">
-          <span className="block truncate text-xs leading-tight text-stone-800 sm:text-sm">
-            {item.authorName}
-          </span>
-          {publishedLabel ? (
-            <span className="mt-0.5 block truncate text-[10px] leading-tight text-stone-500 sm:text-xs">
-              {publishedLabel}
-            </span>
-          ) : null}
+        <span className="min-w-0 truncate text-sm leading-tight text-stone-800">
+          {item.authorName}
         </span>
       </span>
 
-      <span className="col-start-3 row-start-1 inline-flex items-center justify-self-end gap-1.5 sm:col-auto sm:row-auto">
+      <span className="hidden min-w-0 truncate font-mono text-[10px] uppercase leading-tight tracking-[0.12em] text-stone-500 sm:col-start-2 sm:row-start-2 sm:block">
+        {mediaTypeLabel}{item.partLabel ? ` · ${item.partLabel}` : ""}
+      </span>
+
+      {publishedLabel ? (
+        <span className="hidden min-w-0 truncate pl-9 text-xs leading-tight text-stone-500 sm:col-start-4 sm:row-start-2 sm:block">
+          {publishedLabel}
+        </span>
+      ) : null}
+
+      <span className="col-start-3 row-start-1 inline-flex items-center justify-self-end gap-1.5 sm:col-start-5 sm:row-start-2">
         <span
           className="inline-flex h-9 min-w-9 items-center justify-center gap-1 rounded-md px-1.5 font-mono text-xs tabular-nums text-red-950 sm:h-10"
           aria-label={`Лайков: ${item.reactionCounts.like}`}

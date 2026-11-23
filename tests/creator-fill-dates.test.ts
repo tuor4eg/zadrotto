@@ -19,7 +19,7 @@ function project(target: CreatorProfileTarget, payload: JSONValue) {
 
 test("AniList projects complete fuzzy dates and rejects old image descriptors", () => {
   assert.deepEqual(project(aniList, aniListProfile), {
-    birthDate: "1940-02-29", deathDate: null, diagnostics: ["partial-dateOfDeath"],
+    birthDate: "1940-02-29", deathDate: "2000", diagnostics: [],
   });
   assert.deepEqual(project(aniList, { ...aniListProfile, dateOfBirth: { year: 1941, month: 2, day: 29 }, dateOfDeath: null }), {
     birthDate: null, deathDate: null, diagnostics: ["invalid-dateOfBirth"],
@@ -52,12 +52,17 @@ test("Comic Vine takes the calendar day without applying the timestamp offset", 
     birthDate: "1900-12-31", deathDate: "1995-02-28", diagnostics: [],
   });
   assert.deepEqual(project(target, { status_code: 1, results: { ...results, birth: "1901-01-01", death: { date: "1995-02-29" } } }), {
-    birthDate: null, deathDate: null, diagnostics: ["ambiguous-birth", "invalid-death"], reviewDates: { birthDate: "1901-01-01" },
+    birthDate: "1901", deathDate: null, diagnostics: ["invalid-death"],
+  });
+  assert.deepEqual(project(target, { status_code: 1, results: {
+    ...results, birth: "1971-01-01", death: { date: "2020-01-01" },
+  } }), {
+    birthDate: "1971", deathDate: "2020", diagnostics: [],
   });
   assert.throws(() => project(target, { status_code: 1, results: { ...results, id: 18 } }), /INVALID_CREATOR_SNAPSHOT/);
 });
 
-test("IGDB needs full precision and projects founding only", () => {
+test("IGDB keeps full dates or years and projects founding only", () => {
   const target = { provider: "igdb", resourceType: "company", externalId: "17" } as const;
   const payload = { id: 17, name: "Example", start_date: Date.UTC(1982, 0, 1) / 1000, change_date: Date.UTC(2001, 0, 1) / 1000 };
   const expected = { birthDate: "1982-01-01", deathDate: null, diagnostics: [] };
@@ -72,11 +77,56 @@ test("IGDB needs full precision and projects founding only", () => {
     start_date_category: 0, start_date_format: { format: "YYYY" },
   }]) {
     assert.deepEqual(project(target, { ...payload, ...precision } as JSONValue), {
-      birthDate: null, deathDate: null, diagnostics: ["partial-start_date"],
+      birthDate: "1982", deathDate: null, diagnostics: [],
     });
   }
   assert.deepEqual(project(target, { ...payload, start_date_format: 9 }), {
     birthDate: null, deathDate: null, diagnostics: ["unverified-start_date-precision"],
   });
   assert.equal(supportsCreatorFillDates({ ...target, provider: "tmdb" }), false);
+});
+
+test("Comic Vine publisher uses explicit founding years and ignores unrelated dates", () => {
+  const target = { provider: "comic-vine", resourceType: "publisher", externalId: "17" } as const;
+  const results = {
+    id: 17, name: "Example Press (US)", date_added: "2009-01-01",
+    deck: "<p>Example Press (US) is an independent publisher founded in 1982.</p>",
+    description: "Another Publisher was founded in 1995.",
+  };
+  assert.deepEqual(project(target, { status_code: 1, results }), {
+    birthDate: "1982", deathDate: null, diagnostics: [],
+  });
+  assert.deepEqual(project(target, { status_code: 1, results: { ...results, deck: "" } }), {
+    birthDate: null, deathDate: null, diagnostics: [],
+  });
+  assert.deepEqual(project(target, { status_code: 1, results: {
+    ...results, description: "Example Press (US) was formed in 1983.",
+  } }), {
+    birthDate: null, deathDate: null, diagnostics: ["ambiguous-founding-year"],
+  });
+});
+
+test("Comic Vine date requests use separate compact snapshots and accept saved full profiles", async () => {
+  for (const [resourceType, expectedFields] of [
+    ["publisher", "id,name,deck,description"],
+    ["person", "id,name,birth,death"],
+  ] as const) {
+    const target = { provider: "comic-vine", resourceType, externalId: "17" } as const;
+    const payload = { status_code: 1, results: { id: 17, name: "Example" } };
+    const credentials = { "comic-vine": { apiKey: "test-key" } };
+    for (const includeDates of [false, true]) {
+      const result = await fetchCreatorProfileRaw(target, {
+        includeDates, credentials, signal: new AbortController().signal,
+        requestStartedAt: async () => new Date(1),
+        fetchImpl: async (input) => {
+          const descriptor = includeDates ? creatorFillDatesDescriptor(target) : creatorProfileDescriptor(target);
+          assert.equal(new URL(String(input)).searchParams.get("field_list"), includeDates ? expectedFields : null);
+          assert.equal(descriptor.requestParams.field_list, includeDates ? expectedFields : undefined);
+          return Response.json(payload);
+        },
+      });
+      assert.deepEqual(result.payload, payload);
+    }
+    assert.deepEqual(projectCreatorFillDates(target, { ...creatorProfileDescriptor(target), payload }), project(target, payload));
+  }
 });

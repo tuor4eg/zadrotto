@@ -9,6 +9,7 @@ import { createPortal } from "react-dom"
 
 import { AuthorLoginModal } from "@/app/author/login/author-login-modal"
 import { ArchiveCover } from "@/app/media-item-tile"
+import { MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame"
 import { inlineMarkupToPlainText } from "@/lib/inline-mentions/markup"
 import { formatScore } from "@/lib/ratings/score"
 import { LIGHT_SURFACE_RATING_TEXT_TONE_CLASS_NAMES, RATING_TEXT_TONE_CLASS_NAMES, getRatingTone } from "@/lib/ratings/tone"
@@ -382,12 +383,12 @@ export function MediaItemReviews({
   }
 
   return (
-    <section aria-labelledby="reviews-heading">
-      <h2 id="reviews-heading" className="font-mono text-xs font-semibold uppercase tracking-[0.16em] text-stone-500">
+    <section aria-labelledby="reviews-heading" className="grid min-w-0 gap-1">
+      <h2 id="reviews-heading" className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>
         Рецензии
       </h2>
 
-      <div className="mt-4 grid min-w-0 grid-cols-2 gap-3 py-3">
+      <div className="grid min-w-0 grid-cols-2 gap-3 pb-3">
         {reviews.slice(0, 3).map((review, index) => (
           <MediaItemReviewCard key={review.id} index={index} review={review} />
         ))}

@@ -2,7 +2,7 @@
 
 import { cn } from "@/lib/common/utils";
 import { createPortal } from "react-dom";
-import { useState, type CSSProperties } from "react";
+import { useRef, useState, type CSSProperties } from "react";
 
 type ArchiveTooltipProps = {
   align?: "start" | "center" | "end";
@@ -25,9 +25,16 @@ export function ArchiveTooltip({
 }: ArchiveTooltipProps) {
   const hasTooltip = Boolean(label);
   const [portalPosition, setPortalPosition] = useState<CSSProperties | null>(null);
+  const [suppressed, setSuppressed] = useState(false);
+  const suppressedRef = useRef(false);
+
+  function setTooltipSuppressed(value: boolean) {
+    suppressedRef.current = value;
+    setSuppressed(value);
+  }
 
   function showPortalTooltip(event: React.MouseEvent<HTMLSpanElement> | React.FocusEvent<HTMLSpanElement>) {
-    if (!portal) return;
+    if (!portal || suppressedRef.current) return;
     // React portal events bubble through the owner tree, including dialog focus.
     if (!event.currentTarget.contains(event.target as Node)) {
       setPortalPosition(null);
@@ -55,7 +62,8 @@ export function ArchiveTooltip({
       role="tooltip"
       style={portal ? portalPosition ?? undefined : undefined}
       className={cn(
-        "archive-paper-surface pointer-events-none z-[90] hidden whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 font-mono text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 before:absolute before:size-2 before:rotate-45 before:border-stone-500 before:content-[''] group-hover/archive-tooltip:opacity-100 group-focus-within/archive-tooltip:opacity-100 lg:block",
+        "archive-paper-surface pointer-events-none z-[90] hidden whitespace-nowrap rounded-sm border border-stone-500 px-3 py-2 font-mono text-[11px] font-semibold normal-case tracking-[0.04em] text-stone-950 opacity-0 shadow-[0_9px_18px_rgba(28,25,23,0.22)] transition-opacity duration-75 before:absolute before:size-2 before:rotate-45 before:border-stone-500 before:content-[''] lg:block",
+        suppressed ? "group-hover/archive-tooltip:opacity-0 group-focus-within/archive-tooltip:opacity-0" : "group-hover/archive-tooltip:opacity-100 group-focus-within/archive-tooltip:opacity-100",
         portal ? "fixed block opacity-100" : "absolute",
         !portal && side === "top"
           ? "left-1/2 top-0 -translate-x-1/2 -translate-y-[calc(100%+0.45rem)]"
@@ -107,11 +115,12 @@ export function ArchiveTooltip({
         hasTooltip ? "group/archive-tooltip" : null,
         className,
       )}
+      onPointerDownCapture={() => { setTooltipSuppressed(true); hidePortalTooltip(); }}
       onClickCapture={hidePortalTooltip}
-      onBlur={hidePortalTooltip}
+      onBlur={(event) => { hidePortalTooltip(); if (!event.currentTarget.contains(event.relatedTarget)) setTooltipSuppressed(false); }}
       onFocus={showPortalTooltip}
-      onMouseEnter={showPortalTooltip}
-      onMouseLeave={hidePortalTooltip}
+      onMouseEnter={(event) => { setTooltipSuppressed(false); showPortalTooltip(event); }}
+      onMouseLeave={(event) => { hidePortalTooltip(); if (!event.currentTarget.contains(document.activeElement)) setTooltipSuppressed(false); }}
     >
       {children}
       {portal ? (portalPosition && typeof document !== "undefined" ? createPortal(tooltip, document.body) : null) : tooltip}

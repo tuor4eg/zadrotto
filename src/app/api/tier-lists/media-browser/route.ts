@@ -1,4 +1,4 @@
-import { searchAdminMediaBrowser } from "@/db/queries/admin-media-browser";
+import { searchAdminMediaBrowser, searchMediaBrowserCreators } from "@/db/queries/admin-media-browser";
 import { getAccessibleMediaTypeCodes } from "@/db/queries/media-types";
 import { parseAdminMediaBrowserQuery } from "@/lib/admin/media-browser";
 import { getCurrentAuthor } from "@/lib/auth/author-auth";
@@ -13,6 +13,9 @@ export async function GET(request: Request) {
   const author = await getCurrentAuthor();
   const types = await getAccessibleMediaTypeCodes(author?.id);
   const params = new URL(request.url).searchParams;
+  if (params.get("suggest") === "creators") {
+    return Response.json(await searchMediaBrowserCreators(params.get("q") ?? "", types), { headers: { "Cache-Control": "private, no-store" } });
+  }
   if (!params.has("pageSize")) params.set("pageSize", "48");
   const query = parseAdminMediaBrowserQuery(params);
   const result = await searchAdminMediaBrowser(query, types);

@@ -7,6 +7,7 @@ import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-butt
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { isCreatorYear } from "@/lib/creators/life-dates";
 import { getCreatorFieldsPreview } from "@/lib/creators/fields-fill-preview";
 import { getCreatorSnapshotRun } from "@/db/queries/provider-snapshot-run";
 import { refreshCreatorImageAction, findAnimeCompanyLogoAction } from "../../avatar-actions";
@@ -17,6 +18,10 @@ import { creatorSnapshotDiagnosticMessage } from "@/components/admin/creator-sna
 import { Alert } from "@/components/ui/alert";
 import { CreatorEditorHeader } from "../../creator-editor-header";
 import { SNAPSHOT_OPERATIONS_UI } from "../../../tools/providers/snapshots/snapshot-operations";
+
+function formatSnapshotDate(value: string | null | undefined) {
+  return isCreatorYear(value) ? `01.01.${value} (известен только год)` : value ?? "не указана";
+}
 
 export default async function CreatorSnapshotsPage({ params, searchParams }: {
   params: Promise<{ id: string }>;
@@ -87,7 +92,7 @@ export default async function CreatorSnapshotsPage({ params, searchParams }: {
             <dl className="grid gap-2">
               {dateRows.map(row => <div key={row.label} className="flex flex-wrap gap-x-2">
                 <dt className="font-medium">{row.label}</dt>
-                <dd>Сейчас — {row.current ?? "не указана"}, в снимке — {row.source ?? "нет полной даты"}</dd>
+                <dd>Сейчас — {formatSnapshotDate(row.current)}, в снимке — {formatSnapshotDate(row.source)}</dd>
               </div>)}
             </dl>
             {preview.diagnostics.length ? <Alert variant="warning"><ul>{preview.diagnostics.map((message, index) => <li key={index}>{message}</li>)}</ul></Alert> : null}

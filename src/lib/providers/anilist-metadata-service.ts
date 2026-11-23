@@ -61,7 +61,7 @@ export async function fetchAniListMetadata(input: TitleMetadataInput, options: T
       await response.body?.cancel();
       throw new SnapshotProviderHttpError(response.status, aniListRetryAfterSeconds(response.headers));
     }
-    const payload = await boundedJson(response);
+    const payload = await boundedJson(response, options.providerResponseMaxMib);
     normalizeAniListMetadata({ ...descriptor, payload });
     options.signal?.throwIfAborted();
     primary = await saveProviderSnapshot({ ...descriptor, payload, payloadHash: snapshotHash(payload), contentType: "application/json", requestStartedAt, fetchedAt: new Date() }, options.snapshotJobGuard);

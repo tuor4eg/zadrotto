@@ -73,6 +73,14 @@ export function getAuthorMediaFormErrorMessage(error?: string) {
     return "Не удалось удалить обложку из хранилища. Проверь S3-настройки.";
   }
 
+  if (error === "invalid-entry-relationship") {
+    return "Выберите доступную запись или выключите «Установить связь».";
+  }
+
+  if (error === "invalid-tags") {
+    return "Не удалось сохранить выбранные теги. Проверьте список тегов и повторите попытку.";
+  }
+
   if (error === "invalid-metadata") {
     return "Не удалось сохранить данные источника. Выбери запись у провайдера ещё раз.";
   }

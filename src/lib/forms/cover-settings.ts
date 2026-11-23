@@ -1,8 +1,10 @@
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
   DEFAULT_COVER_MAX_BYTES,
+  DEFAULT_PROVIDER_RESPONSE_MAX_MIB,
   DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
+  MAX_PROVIDER_RESPONSE_MIB,
   MAX_PROVIDER_REQUEST_TIMEOUT_MS,
   MIN_PROVIDER_REQUEST_TIMEOUT_MS,
 } from "@/lib/covers/config";
@@ -34,6 +36,7 @@ export type CoverSettingsFormInput = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   coverMaxBytes: number;
+  providerResponseMaxMib: number;
   providerRequestTimeoutMs: number;
 };
 
@@ -52,7 +55,7 @@ export type CoverProviderRateLimitFormInput = {
 };
 
 export const COVER_SETTINGS_ERROR_MESSAGES = {
-  "invalid-limit": "Проверь числовые лимиты обложек.",
+  "invalid-limit": "Проверь числовые настройки внешних запросов и обложек.",
   "invalid-provider": "Проверь настройки провайдеров обложек.",
 } as const;
 
@@ -88,6 +91,7 @@ export function parseCoverSettingsFormInput(input: {
   candidateLimit: string;
   tmdbResultScanLimit: string;
   coverMaxMegabytes: string;
+  providerResponseMaxMib: string;
   providerRequestTimeoutSeconds: string;
 }) {
   const candidateLimit = parseBoundedInteger({
@@ -105,6 +109,11 @@ export function parseCoverSettingsFormInput(input: {
     min: COVER_MAX_MEGABYTES_MIN,
     max: COVER_MAX_MEGABYTES_MAX,
   });
+  const providerResponseMaxMib = parseBoundedInteger({
+    value: input.providerResponseMaxMib,
+    min: 1,
+    max: MAX_PROVIDER_RESPONSE_MIB,
+  });
   const providerRequestTimeoutSeconds = parseBoundedInteger({
     value: input.providerRequestTimeoutSeconds,
     min: PROVIDER_REQUEST_TIMEOUT_SECONDS_MIN,
@@ -115,6 +124,7 @@ export function parseCoverSettingsFormInput(input: {
     !candidateLimit.ok ||
     !tmdbResultScanLimit.ok ||
     !coverMaxMegabytes.ok ||
+    !providerResponseMaxMib.ok ||
     !providerRequestTimeoutSeconds.ok
   ) {
     return { ok: false as const, error: "invalid-limit" as const };
@@ -133,6 +143,7 @@ export function parseCoverSettingsFormInput(input: {
       candidateLimit: candidateLimit.value,
       tmdbResultScanLimit: tmdbResultScanLimit.value,
       coverMaxBytes,
+      providerResponseMaxMib: providerResponseMaxMib.value,
       providerRequestTimeoutMs,
     } satisfies CoverSettingsFormInput,
   };
@@ -239,6 +250,7 @@ export const COVER_SETTINGS_FORM_LIMITS = {
     max: COVER_MAX_MEGABYTES_MAX,
     defaultValue: DEFAULT_COVER_MAX_BYTES / BYTES_IN_MEGABYTE,
   },
+  providerResponseMaxMib: { min: 1, max: MAX_PROVIDER_RESPONSE_MIB, defaultValue: DEFAULT_PROVIDER_RESPONSE_MAX_MIB },
   providerRequestTimeoutSeconds: {
     min: PROVIDER_REQUEST_TIMEOUT_SECONDS_MIN,
     max: PROVIDER_REQUEST_TIMEOUT_SECONDS_MAX,

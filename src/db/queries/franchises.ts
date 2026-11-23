@@ -6,13 +6,14 @@ import { and, asc, desc, eq, exists, inArray, isNull, ne, notExists, or, sql } f
 
 import { db } from "@/db";
 import { publishedSeriesBranchSql, publishedSeriesMembershipSql } from "@/db/queries/series-membership";
+import { mediaItemTitleSearchCondition } from "@/db/queries/media-item-search";
 import { getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
 import { mediaItemAverageScoreSql, mediaItemRatingsCountSql } from "@/db/queries/media-item-rating-stats";
 import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
-import { authors, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemRatingStats, mediaItemTitleAliases, mediaItems, ratings } from "@/db/schema";
+import { authors, entrySources, franchises, mediaCarriers, mediaItemFranchiseRemovalRequests, mediaItemFranchises, mediaItemMetadata, mediaItemRatingStats, mediaItemTitleAliases, mediaItems, mediaTypes, ratings } from "@/db/schema";
 import type { MainPageMediaItem } from "@/db/queries/main-page";
 import { clampPage, getOffset, getTotalPages } from "@/lib/common/pagination";
-import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
+import { PUBLICATION_STATUS_VALUE_LABELS, PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { getArchiveSettings } from "@/db/queries/archive-settings";
 import { AUTHOR_FRANCHISE_SUBMISSION_STATUSES } from "@/lib/authors/franchise-submission-filters";
@@ -2046,29 +2047,35 @@ export async function updateFranchise(input: {
 }
 
 export async function deleteFranchiseIfEmpty(id: number) {
-  const [franchise] = await db
-    .delete(franchises)
-    .where(
-      and(
-        eq(franchises.id, id),
-        notExists(
-          db
-            .select({ id: mediaItemFranchises.mediaItemId })
-            .from(mediaItemFranchises)
-            .where(eq(mediaItemFranchises.franchiseId, franchises.id)),
+  return db.transaction(async (tx) => {
+    await tx.select({ id: franchises.id }).from(franchises).where(eq(franchises.id, id)).for("update");
+    const [franchise] = await tx
+      .delete(franchises)
+      .where(
+        and(
+          eq(franchises.id, id),
+          notExists(
+            tx
+              .select({ id: mediaItemFranchises.mediaItemId })
+              .from(mediaItemFranchises)
+              .where(eq(mediaItemFranchises.franchiseId, franchises.id)),
+          ),
+          notExists(
+            tx.select({ id: franchises.id }).from(franchises).where(eq(franchises.parentId, id)),
+          ),
+          notExists(
+            tx.select({ id: entrySources.id }).from(entrySources).where(eq(entrySources.sourceSeriesId, id)),
+          ),
         ),
-        notExists(
-          db.select({ id: franchises.id }).from(franchises).where(eq(franchises.parentId, id)),
-        ),
-      ),
-    )
-    .returning({
-      id: franchises.id,
-      code: franchises.code,
-      title: franchises.title,
-    });
+      )
+      .returning({
+        id: franchises.id,
+        code: franchises.code,
+        title: franchises.title,
+      });
 
-  return franchise ?? null;
+    return franchise ?? null;
+  });
 }
 
 export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
@@ -2098,33 +2105,50 @@ export async function getAdminMediaItemsByFranchiseId(franchiseId: number) {
   }));
 }
 
-export async function getAdminMediaItemsAvailableForFranchise(franchiseId: number) {
-  return db
-    .select({
-      id: mediaItems.id,
-      code: mediaItems.code,
-      title: mediaItems.title,
-      originalTitle: mediaItems.originalTitle,
-      aliases: mediaItemTitleAliasesSql(),
-      mediaType: mediaItems.mediaType,
-      releaseYear: mediaItems.releaseYear,
-      publicationStatus: mediaItems.publicationStatus,
-      franchises: franchisesJsonSql(),
-    })
-    .from(mediaItems)
-    .where(
-      notExists(
-        db
-          .select({ mediaItemId: mediaItemFranchises.mediaItemId })
-          .from(mediaItemFranchises)
-          .where(
-            and(
-              eq(mediaItemFranchises.mediaItemId, mediaItems.id),
-              eq(mediaItemFranchises.franchiseId, franchiseId),
-            ),
-          ),
+export async function searchAdminMediaItemsAvailableForFranchise(franchiseId: number, query: string) {
+  const search = normalizeSearchText(query);
+  if (!search) return [];
+
+  const matchingStatuses = (Object.keys(PUBLICATION_STATUS_VALUE_LABELS) as (keyof typeof PUBLICATION_STATUS_VALUE_LABELS)[])
+    .filter((status) => matchesNormalizedSearch([PUBLICATION_STATUS_VALUE_LABELS[status]], search));
+
+  const candidates = db.select({ id: mediaItems.id }).from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .where(and(
+      or(
+        mediaItemTitleSearchCondition(search),
+        containsNormalizedSearchSql(mediaItems.code, search),
+        containsNormalizedSearchSql(sql`${mediaItems.releaseYear}::text`, search),
+        containsNormalizedSearchSql(mediaTypes.name, search),
+        matchingStatuses.length ? inArray(mediaItems.publicationStatus, matchingStatuses) : undefined,
+        exists(db.select({ id: franchises.id }).from(mediaItemFranchises)
+          .innerJoin(franchises, eq(franchises.id, mediaItemFranchises.franchiseId))
+          .where(and(
+            eq(mediaItemFranchises.mediaItemId, mediaItems.id),
+            eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+            publishedFranchiseCondition,
+            containsNormalizedSearchSql(franchises.title, search),
+          ))),
       ),
-    )
+      notExists(db.select({ id: mediaItemFranchises.mediaItemId }).from(mediaItemFranchises)
+        .where(and(
+          eq(mediaItemFranchises.mediaItemId, mediaItems.id),
+          eq(mediaItemFranchises.franchiseId, franchiseId),
+        ))),
+    ))
+    .orderBy(asc(mediaItems.title), asc(mediaItems.code))
+    .limit(8)
+    .as("candidates");
+
+  return db.select({
+    id: mediaItems.id,
+    title: mediaItems.title,
+    originalTitle: mediaItems.originalTitle,
+    mediaType: mediaItems.mediaType,
+    releaseYear: mediaItems.releaseYear,
+    franchises: franchisesJsonSql(),
+  }).from(mediaItems)
+    .innerJoin(candidates, eq(candidates.id, mediaItems.id))
     .orderBy(asc(mediaItems.title), asc(mediaItems.code));
 }
 

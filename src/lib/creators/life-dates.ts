@@ -7,9 +7,18 @@ export function isCreatorDate(value: unknown): value is string {
   return year > 0 && month >= 1 && month <= 12 && day >= 1 && day <= days[month - 1];
 }
 
+export function isCreatorYear(value: unknown): value is string {
+  return typeof value === "string" && /^[0-9]{4}$/.test(value) && value !== "0000";
+}
+
+export function creatorDatesOutOfOrder(start: string | null | undefined, end: string | null | undefined) {
+  if (!start || !end) return false;
+  return start.length === 4 || end.length === 4 ? start.slice(0, 4) > end.slice(0, 4) : start > end;
+}
+
 export function parseCreatorDate(value: unknown): string | null {
   if (value === "" || value === null || value === undefined) return null;
-  if (!isCreatorDate(value)) throw new Error("Укажите полную корректную дату.");
+  if (!isCreatorYear(value) && !isCreatorDate(value)) throw new Error("Укажите год или полную дату в формате ГГГГ-ММ-ДД.");
   return value;
 }
 
@@ -26,7 +35,7 @@ export function planCreatorLifeDates(current: CreatorLifeDates & { typeCode: str
   if (current.deathDate === null && candidate.deathDate !== null) changes.deathDate = candidate.deathDate;
   const birth = current.birthDate ?? changes.birthDate;
   const death = current.deathDate ?? changes.deathDate;
-  if (birth && death && birth > death) {
+  if (creatorDatesOutOfOrder(birth, death)) {
     delete changes.birthDate;
     delete changes.deathDate;
     diagnostics.push("life-dates-conflict");

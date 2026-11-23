@@ -131,6 +131,7 @@ export type ProviderSearchOptions = {
 export type CoverSearchOptions = ProviderSearchOptions;
 export type TitleSearchOptions = ProviderSearchOptions;
 export type TitleMetadataOptions = ProviderSearchOptions & {
+  providerResponseMaxMib?: number;
   snapshotJobGuard?: {runId:number;lockToken:string};
   snapshotReuseAfter?: Date;
   signal?: AbortSignal;

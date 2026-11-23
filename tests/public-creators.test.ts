@@ -44,12 +44,12 @@ test("creator images survive pagination and use the local route in catalog and s
   const page = paginatePublicCreators([creator], { page: 1, pageSize: 24, searchQuery: "" });
   assert.equal(page.items[0].avatarObjectKey, avatarObjectKey);
   const catalog = renderToStaticMarkup(createElement(CreatorCatalog, { items: page.items }));
-  const banner = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator, series: [] }, clearHref: "/archive" }));
+  const banner = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator }, clearHref: "/archive" }));
   for (const html of [catalog, banner]) {
     assert.match(html, /src="\/creator-avatars\/1\/00000000-0000-4000-8000-000000000001.webp"/);
     assert.doesNotMatch(html, /fantlab\.ru/);
   }
-  const fallback = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator, avatarObjectKey: null, series: [] }, clearHref: "/archive" }));
+  const fallback = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { ...creator, avatarObjectKey: null }, clearHref: "/archive" }));
   assert.match(fallback, />СК<\/span>/);
   assert.doesNotMatch(fallback, /<img/);
 });
@@ -69,7 +69,7 @@ test("system roles survive pagination and filter creators before alphabet and pa
 
 test("selected creator shows every supplied system role with its shared icon", () => {
   const html = renderToStaticMarkup(createElement(ArchiveSelectedCreator, {
-    creator: { id: 1, name: "Создатель", series: [], roles: [{ code: "designer", name: "Дизайнер" }, { code: "artist", name: "Художник" }, { code: "custom", name: "Новая роль" }] },
+    creator: { id: 1, name: "Создатель", roles: [{ code: "designer", name: "Дизайнер" }, { code: "artist", name: "Художник" }, { code: "custom", name: "Новая роль" }] },
     clearHref: "/archive",
   }));
   assert.match(html, /aria-label="Роли создателя"/);
@@ -105,7 +105,7 @@ test("role switching preserves archive filters, resets pagination, and all roles
 });
 
 test("selected creator roles highlight the active role and provide an all-roles link",()=>{
-  const creator={id:1,name:"IC Company",series:[],roles:[{code:"publisher",name:"Издатель"},{code:"developer",name:"Разработчик"}]};
+  const creator={id:1,name:"IC Company",roles:[{code:"publisher",name:"Издатель"},{code:"developer",name:"Разработчик"}]};
   const html=renderToStaticMarkup(createElement(ArchiveSelectedCreator,{creator,clearHref:"/archive",selectedRole:"developer",
     allRolesHref:"/archive?creator=ic-company",roleHrefs:{developer:"/archive?creator=ic-company&creatorRole=developer",publisher:"/archive?creator=ic-company&creatorRole=publisher"}}));
   const selected=html.match(/<a\b[^>]*href="\/archive\?creator=ic-company&amp;creatorRole=developer"[^>]*>/)?.[0];

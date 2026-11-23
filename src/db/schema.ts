@@ -157,6 +157,7 @@ export const coverSettings = pgTable(
     candidateLimit: integer("candidate_limit").default(8).notNull(),
     tmdbResultScanLimit: integer("tmdb_result_scan_limit").default(3).notNull(),
     coverMaxBytes: integer("cover_max_bytes").default(5242880).notNull(),
+    providerResponseMaxMib: integer("provider_response_max_mib").default(5).notNull(),
     providerRequestTimeoutMs: integer("provider_request_timeout_ms").default(15000).notNull(),
     ...timestamps(),
   },
@@ -165,6 +166,7 @@ export const coverSettings = pgTable(
     check("cover_settings_candidate_limit_check", sql`${table.candidateLimit} >= 1`),
     check("cover_settings_tmdb_scan_limit_check", sql`${table.tmdbResultScanLimit} >= 1`),
     check("cover_settings_cover_max_bytes_check", sql`${table.coverMaxBytes} >= 1`),
+    check("cover_settings_provider_response_max_mib_check", sql`${table.providerResponseMaxMib} between 1 and 16`),
     check(
       "cover_settings_provider_request_timeout_ms_check",
       sql`${table.providerRequestTimeoutMs} between 1000 and 120000`,
@@ -2052,8 +2054,8 @@ export const creators = pgTable("creators", {
   nameRu: text("name_ru"),
   nameRuSource: text("name_ru_source").$type<"ai" | "manual" | "provider">(),
   nameRuProcessed: boolean("name_ru_processed").notNull().default(false),
-  birthDate: date("birth_date", { mode: "string" }),
-  deathDate: date("death_date", { mode: "string" }),
+  birthDate: text("birth_date"),
+  deathDate: text("death_date"),
   avatarObjectKey: text("avatar_object_key"),
   avatarSource: text("avatar_source").$type<"manual" | "fantlab" | "igdb" | "rawg" | "tmdb" | "anilist" | "comic-vine" | "roblox">(),
   avatarSourceExternalId: text("avatar_source_external_id"),
@@ -2064,6 +2066,8 @@ export const creators = pgTable("creators", {
   avatarVersion: integer("avatar_version").notNull().default(0),
   typeId: integer("type_id").notNull().references(() => creatorTypes.id, { onDelete: "restrict" }), ...timestamps(),
 }, (t) => [
+  check("creators_birth_date_check", sql`${t.birthDate} ~ '^[0-9]{4}(-[0-9]{2}-[0-9]{2})?$' and left(${t.birthDate}, 4) <> '0000' and (length(${t.birthDate}) = 4 or pg_input_is_valid(${t.birthDate}, 'date'))`),
+  check("creators_death_date_check", sql`${t.deathDate} ~ '^[0-9]{4}(-[0-9]{2}-[0-9]{2})?$' and left(${t.deathDate}, 4) <> '0000' and (length(${t.deathDate}) = 4 or pg_input_is_valid(${t.deathDate}, 'date'))`),
   check("creators_name_ru_check", sql`(${t.nameRu} is null or (btrim(${t.nameRu}) <> '' and char_length(${t.nameRu}) <= 200)) and (${t.nameRuSource} is null or ${t.nameRuSource} in ('ai','manual','provider')) and (${t.nameRu} is null or ${t.nameRuSource} is not null)`),
   index("creators_display_name_order_idx").on(sql`coalesce(${t.nameRu}, ${t.name})`, t.id),
   index("creators_name_ru_search_idx").using("gin", normalizedSearchIndexSql(t.nameRu)),
@@ -2100,6 +2104,21 @@ export const entryCreators = pgTable("entry_creators", {
   roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
   isManual: boolean("is_manual").notNull().default(false), ...timestamps(),
 }, (t) => [primaryKey({ columns: [t.entryId, t.creatorId, t.roleId] }), index("entry_creators_creator_role_idx").on(t.creatorId, t.roleId, t.entryId), index("entry_creators_role_idx").on(t.roleId)]);
+export const entrySources = pgTable("entry_sources", {
+  id: serial("id").primaryKey(),
+  entryId: integer("entry_id").notNull().references(() => mediaItems.id, { onDelete: "cascade" }),
+  creatorId: integer("creator_id").references(() => creators.id, { onDelete: "cascade" }),
+  sourceEntryId: integer("source_entry_id").references(() => mediaItems.id, { onDelete: "cascade" }),
+  sourceSeriesId: integer("source_series_id").references(() => franchises.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+}, (t) => [
+  check("entry_sources_one_target_check", sql`num_nonnulls(${t.creatorId}, ${t.sourceEntryId}, ${t.sourceSeriesId}) = 1`),
+  check("entry_sources_no_self_link_check", sql`${t.entryId} <> ${t.sourceEntryId}`),
+  index("entry_sources_entry_idx").on(t.entryId),
+  uniqueIndex("entry_sources_creator_entry_idx").on(t.creatorId, t.entryId).where(sql`${t.creatorId} is not null`),
+  uniqueIndex("entry_sources_source_entry_idx").on(t.sourceEntryId, t.entryId).where(sql`${t.sourceEntryId} is not null`),
+  uniqueIndex("entry_sources_series_entry_idx").on(t.sourceSeriesId, t.entryId).where(sql`${t.sourceSeriesId} is not null`),
+]);
 export const creatorRelations = pgTable("creator_relations", {
   sourceCreatorId: integer("source_creator_id").notNull().references(() => creators.id, { onDelete: "cascade" }),
   targetCreatorId: integer("target_creator_id").notNull().references(() => creators.id, { onDelete: "cascade" }),
@@ -2113,10 +2132,6 @@ export const entryCreatorPseudonyms = pgTable("entry_creator_pseudonyms", {
   creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
   roleId: integer("role_id").notNull().references(() => creatorRoles.id, { onDelete: "restrict" }),
 }, (t) => [index("entry_creator_pseudonyms_creator_idx").on(t.creatorId), index("entry_creator_pseudonyms_role_idx").on(t.roleId)]);
-export const creatorSeries = pgTable("creator_series", {
-  creatorId: integer("creator_id").notNull().references(() => creators.id, { onDelete: "restrict" }),
-  seriesId: integer("series_id").notNull().references(() => franchises.id, { onDelete: "cascade" }),
-}, (t) => [primaryKey({ columns: [t.creatorId, t.seriesId] }), index("creator_series_series_idx").on(t.seriesId)]);
 export const providerCreatorBindings = pgTable("provider_creator_bindings", {
   active: boolean("active").notNull().default(true),
   externalCreatorName: text("external_creator_name"),

@@ -4,7 +4,6 @@ import { createContext, useContext, useMemo, useState, type ReactNode } from "re
 import { useFormStatus } from "react-dom";
 import { Button } from "@/components/ui/button";
 import { SearchInput } from "@/components/ui/search-input";
-import { Select } from "@/components/ui/form";
 import { classificationSearchVisibility, classificationTree, retainedParentId, type ClassificationSeriesOption, type ClassificationTreeNode } from "@/lib/classification-migration/selection";
 import type { ClassificationManifest } from "@/lib/classification-migration/model";
 
@@ -29,7 +28,6 @@ export type ClassificationTreeProps = {
   series: ClassificationSeriesOption[];
   initialKeptIds: number[];
   initialManifest?: ClassificationManifest;
-  creatorLinks: { creatorId: number; seriesId: number; name: string }[];
   pendingLinks: { mediaItemId: number; seriesId: number; title: string }[];
   removalRequests: { mediaItemId: number; seriesId: number; title: string }[];
 };
@@ -39,7 +37,7 @@ function PreviewButton({ disabled }: { disabled: boolean }) {
   return <Button type="submit" className="w-fit" disabled={disabled || pending}>{pending ? "Проверяем изменения…" : "Посмотреть результат"}</Button>;
 }
 
-export function ClassificationSeriesTree({ series, initialKeptIds, initialManifest, creatorLinks, pendingLinks, removalRequests }: ClassificationTreeProps) {
+export function ClassificationSeriesTree({ series, initialKeptIds, initialManifest, pendingLinks, removalRequests }: ClassificationTreeProps) {
   const { markDirty } = useContext(SelectionContext);
   const [search, setSearch] = useState("");
   const [kept, setKept] = useState(() => new Set(initialKeptIds));
@@ -47,8 +45,6 @@ export function ClassificationSeriesTree({ series, initialKeptIds, initialManife
   const visibleIds = useMemo(() => classificationSearchVisibility(tree, search), [tree, search]);
   const parents = useMemo(() => new Map(series.map(row => [row.id, row.parentId])), [series]);
   const byId = useMemo(() => new Map(series.map(row => [row.id, row])), [series]);
-  const keptOptions = series.filter(row => kept.has(row.id));
-  const affectedCreators = creatorLinks.filter(row => !kept.has(row.seriesId));
   const pending = pendingLinks.filter(row => !kept.has(row.seriesId));
   const removals = removalRequests.filter(row => !kept.has(row.seriesId));
   function renderNode(node: ClassificationTreeNode) {
@@ -82,14 +78,8 @@ export function ClassificationSeriesTree({ series, initialKeptIds, initialManife
       onKeyDown={event => { if (event.key === "Enter") event.preventDefault(); }} />
     {tree.length > 0 && visibleIds.size === 0 ? <p className="text-sm text-stone-500">Серии не найдены.</p> : null}
     {tree.length ? <ul className="max-h-[36rem] overflow-auto rounded-md border border-stone-200 p-2" aria-label="Оставить серией">{tree.map(renderNode)}</ul> : <p className="text-sm text-stone-500">Серий для переноса нет.</p>}
-    {affectedCreators.length || pending.length || removals.length ? <section className="grid gap-3 rounded-md border border-amber-200 bg-amber-50 p-3">
+    {pending.length || removals.length ? <section className="grid gap-3 rounded-md border border-amber-200 bg-amber-50 p-3">
       <h5 className="font-medium">Связи, для которых нужно решение</h5>
-      {affectedCreators.map(row => <label className="grid gap-1 text-sm" key={`${row.creatorId}:${row.seriesId}`}>Создатель «{row.name}» связан с «{byId.get(row.seriesId)?.title}»
-        <Select required name={`creatorTarget:${row.creatorId}:${row.seriesId}`} defaultValue={(() => { const old = initialManifest?.creatorLinks.find(link => link.creatorId === row.creatorId && link.seriesId === row.seriesId); return old ? old.targetSeriesId ?? "remove" : ""; })()}>
-          <option value="" disabled>Выберите действие</option><option value="remove">Убрать связь с этой тематикой</option>
-          {keptOptions.map(option => <option key={option.id} value={option.id}>Связать с «{option.title}»</option>)}
-        </Select>
-      </label>)}
       {pending.map(row => <label className="flex items-start gap-2 text-sm" key={`pending:${row.mediaItemId}:${row.seriesId}`}><input type="checkbox" className="mt-1 size-4 shrink-0 accent-stone-900" required name={`pending:${row.mediaItemId}:${row.seriesId}`} value="discard" defaultChecked={initialManifest?.pendingLinks.some(link => link.mediaItemId === row.mediaItemId && link.franchiseId === row.seriesId)} />Убрать неопубликованную связь: «{row.title}» → «{byId.get(row.seriesId)?.title}»</label>)}
       {removals.map(row => <label className="flex items-start gap-2 text-sm" key={`removal:${row.mediaItemId}:${row.seriesId}`}><input type="checkbox" className="mt-1 size-4 shrink-0 accent-stone-900" required name={`removal:${row.mediaItemId}:${row.seriesId}`} value="discard" defaultChecked={initialManifest?.removalRequests.some(link => link.mediaItemId === row.mediaItemId && link.franchiseId === row.seriesId)} />Закрыть запрос на удаление связи: «{row.title}» → «{byId.get(row.seriesId)?.title}»</label>)}
     </section> : null}

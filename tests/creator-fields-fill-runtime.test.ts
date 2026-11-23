@@ -6,7 +6,7 @@ import { test } from "node:test";
 
 import { CREATOR_FILL_FIELDS, type CreatorFieldsFillPayload } from "../src/lib/creators/fields-fill-payload";
 import { JobError } from "../src/lib/jobs/types";
-import { creatorFillDatesDescriptor, type CreatorProfileTarget } from "../src/lib/providers/creator-profile-targets";
+import { creatorFillDatesDescriptor, creatorProfileDescriptor, type CreatorProfileTarget } from "../src/lib/providers/creator-profile-targets";
 import { snapshotHash } from "../src/lib/providers/snapshot-values";
 import type { JSONValue } from "../src/lib/providers/types";
 
@@ -48,7 +48,7 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
       await new Promise(resolve => setTimeout(resolve, 100));
     }
   }
-  for (const migration of ["0000_baseline", "0013_creator_fields_fill_attempts"]) {
+  for (const migration of ["0000_baseline", "0013_creator_fields_fill_attempts", "0017_creator_date_precision"]) {
     const sql = await readFile(`drizzle/${migration}.sql`, "utf8");
     await client.begin(async tx => {
       await tx`set local client_min_messages = warning`;
@@ -67,17 +67,17 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
   const batchInput = { fields: [...CREATOR_FILL_FIELDS], fetchMissing: false, force: false };
   let timestamp = Date.now();
 
-  function save(target: CreatorProfileTarget, payload: JSONValue) {
+  function save(target: CreatorProfileTarget, payload: JSONValue, fullProfile = false) {
     const time = new Date(timestamp++);
     return saveProviderSnapshot({
-      ...creatorFillDatesDescriptor(target), payload, payloadHash: snapshotHash(payload),
+      ...(fullProfile ? creatorProfileDescriptor(target) : creatorFillDatesDescriptor(target)), payload, payloadHash: snapshotHash(payload),
       contentType: "application/json", requestStartedAt: time, fetchedAt: time,
     });
   }
-  function comic(id: number, dates: Record<string, JSONValue> = {}) {
+  function comic(id: number, dates: Record<string, JSONValue> = {}, fullProfile = false) {
     return save({ provider: "comic-vine", resourceType: "person", externalId: String(id) }, {
       status_code: 1, results: { id, name: "Provider name", ...dates },
-    });
+    }, fullProfile);
   }
   function enqueue(payload: CreatorFieldsFillPayload) {
     return createJobRun({
@@ -112,13 +112,15 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
         (2,1,'Conflict','conflict',null,null,null),
         (3,1,'Empty','empty',null,null,null),
         (4,3,'Company','company',null,null,null),
-        (5,1,'Alias','alias',null,null,null);
+        (5,1,'Alias','alias',null,null,null),
+        (6,3,'Publisher','publisher',null,null,null);
       insert into creator_relations(source_creator_id,target_creator_id,relation_type) values(5,1,'pseudonym_of');
       insert into provider_creator_bindings(creator_id,provider,external_creator_id) values
         (1,'comic-vine','person:101'),(2,'comic-vine','person:102'),(2,'anilist','person:202'),
-        (3,'comic-vine','person:103'),(4,'igdb','company:104'),(5,'comic-vine','person:105');
+        (3,'comic-vine','person:103'),(4,'igdb','company:104'),(5,'comic-vine','person:105'),
+        (6,'comic-vine','publisher:106');
     `);
-    await comic(101, { birth: "1902-07-12", death: { date: "1990-07-15 23:00:00-05:00" } });
+    await comic(101, { birth: "1902-07-12", death: { date: "1990-07-15 23:00:00-05:00" } }, true);
     await comic(102, { birth: "1902-07-12" });
     await comic(103);
     await comic(105, { birth: "1902-07-12" });
@@ -130,15 +132,20 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
       start_date_format: { format: "YYYYMMDD" },
     });
 
-    const payload = { ...batchInput, creatorIds: [1, 2, 3, 4, 5] };
+    await save({ provider: "comic-vine", resourceType: "publisher", externalId: "106" }, {
+      status_code: 1, results: { id: 106, name: "Publisher", deck: "Publisher was founded in 1983." },
+    });
+
+    const payload = { ...batchInput, creatorIds: [1, 2, 3, 4, 5, 6] };
     const first = await execute(await claim((await enqueue(payload)).id));
-    assert.equal(first.processed, 4);
-    assert.equal(first.updated, 2);
-    assert.equal(first.filled, 2);
+    assert.equal(first.processed, 5);
+    assert.equal(first.updated, 3);
+    assert.equal(first.filled, 3);
     assert.equal(first.missing, 0);
     assert.equal(first.review, 1);
     const conflict = first.details.find(row => row.creatorId === 2);
     assert.match(conflict?.messages.join(" ") ?? "", /ComicVine — 1902-07-12, AniList — 1902-07-13/);
+    assert.deepEqual(first.problems, [conflict]);
     assert.deepEqual(await dates(1), {
       birth_date: "1898-05-03", death_date: "1990-07-15", name_ru: "Ручное имя", name_ru_source: "manual",
     });
@@ -147,14 +154,16 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
     assert.equal((await dates(4)).birth_date, "1982-01-01");
     assert.equal((await dates(4)).death_date, null);
     assert.equal((await dates(5)).birth_date, null);
+    assert.equal((await dates(6)).birth_date, "1983");
 
     const repeat = await execute(await claim((await enqueue(payload)).id));
-    assert.equal(repeat.processed, 0);
-    assert.deepEqual(repeat.details, []);
+    assert.equal(repeat.processed, 1);
+    assert.equal(repeat.filled, 0);
+    assert.deepEqual(repeat.problems, [conflict]);
 
     await comic(103, { birth: "1903-07-12" });
     const changed = await execute(await claim((await enqueue(payload)).id));
-    assert.equal(changed.processed, 1);
+    assert.equal(changed.processed, 2);
     assert.equal(changed.filled, 1);
     assert.equal((await dates(3)).birth_date, "1903-07-12");
   });
@@ -182,6 +191,7 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
     assert.ok(checkpoint.afterId >= 10 && checkpoint.afterId < 35);
     assert.equal(checkpoint.throughId, 35);
     assert.equal(checkpoint.scanned, 20);
+    assert.deepEqual(checkpoint.problems?.map(row => row.creatorId), [2]);
 
     await client.unsafe(`
       insert into creators(id,type_id,name,slug) values(36,1,'Late','late');
@@ -190,6 +200,7 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
     const complete = await execute(await claim(id, new Date(deferred.availableAt.getTime() + 1)));
     assert.equal(complete.afterId, 35);
     assert.equal(complete.throughId, 35);
+    assert.deepEqual(complete.problems, checkpoint.problems);
     const batchDetails = complete.details.filter(row => row.creatorId >= 10).map(row => row.creatorId);
     assert.deepEqual(batchDetails, Array.from({ length: 26 }, (_, index) => 10 + index));
   });
@@ -259,7 +270,9 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
     const { assignFantlabCreatorBinding } = await import("../src/db/queries/creator-avatars");
     await client`insert into creators(id,type_id,name,slug) values(38,1,'Dan Simmons','dan-simmons')`;
     const profile = JSON.parse(await readFile("tests/fixtures/fantlab-authors/1.json", "utf8"));
-    await save({ provider: "fantlab", resourceType: "author", externalId: "1" }, profile);
+    await save({ provider: "fantlab", resourceType: "author", externalId: "1" }, {
+      ...profile, is_opened: 0, birthday: "1954-00-00", deathday: null,
+    });
 
     const binding = await assignFantlabCreatorBinding({ creatorId: 38, externalCreatorId: "1" });
     const repeated = await assignFantlabCreatorBinding({ creatorId: 38, externalCreatorId: "1" });
@@ -272,9 +285,37 @@ test("creator fields job applies saved snapshots and resumes a fenced scan", {
     assert.equal(run.source, "event");
     assert.deepEqual(handler.parsePayload(run.payload), { ...batchInput, creatorIds: [38], fetchMissing: true });
     const progress = await execute(run);
-    assert.equal(progress.filled, 2);
-    assert.equal((await dates(38)).birth_date, "1948-04-04");
-    assert.equal((await dates(38)).death_date, "2026-02-21");
+    assert.equal(progress.filled, 1);
+    assert.equal(progress.review, 0);
+    assert.deepEqual(progress.problems ?? [], []);
+    assert.equal((await dates(38)).birth_date, "1954");
+    assert.equal((await dates(38)).death_date, null);
+  });
+  await t.test("creating a Comic Vine publisher enqueues automatic founding year fill", async () => {
+    const { db } = await import("../src/db");
+    const { creatorRequests } = await import("../src/db/schema");
+    const { resolveGameCompanyRequest } = await import("../src/db/queries/game-companies");
+    await client`select setval(pg_get_serial_sequence('creators', 'id'), (select max(id) from creators))`;
+    await save({ provider: "comic-vine", resourceType: "publisher", externalId: "141" }, {
+      status_code: 1, results: { id: 141, name: "New Publisher", deck: "New Publisher was founded in 1984." },
+    });
+    await db.transaction(async tx => {
+      const [request] = await tx.insert(creatorRequests).values({
+        provider: "comic-vine", mediaType: "comic", externalCreatorId: "publisher:141",
+        externalCreatorName: "New Publisher", normalizedExternalCreatorName: "new publisher",
+      }).returning();
+      await resolveGameCompanyRequest(tx, request, { decision: "create", name: "New Publisher" });
+    });
+    // This harness runs only the date worker; leave image jobs out of its shared queue.
+    await client`update job_runs set status='cancelled' where status='queued' and type<>${handler.type}`;
+    const [binding] = await client`select creator_id from provider_creator_bindings where provider='comic-vine' and external_creator_id='publisher:141'`;
+    const [queued] = await client`select id from job_runs where type=${handler.type} and status='queued'
+      and payload->'creatorIds'=${JSON.stringify([binding.creator_id])}::jsonb`;
+    assert.ok(queued);
+    const run = await claim(queued.id);
+    assert.equal(run.source, "event");
+    assert.equal((await execute(run)).filled, 1);
+    assert.equal((await dates(binding.creator_id)).birth_date, "1984");
   });
   assert.equal(networkCalls, 0);
 });

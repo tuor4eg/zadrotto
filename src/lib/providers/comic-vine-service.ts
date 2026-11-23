@@ -41,7 +41,7 @@ export async function fetchComicVineSnapshot(descriptor: SnapshotDescriptor, opt
   const requestStartedAt = await providerRequestStartedAt();
   const response = await fetch(url, { headers: { "User-Agent": "geekoteka/1.0 comic archive", accept: "application/json" }, redirect: "error", signal: withProviderTimeout(options.requestTimeoutMs ?? getActiveProviderRequestTimeoutMs(), options.signal) });
   if (!response.ok) { await response.body?.cancel(); throw new SnapshotProviderHttpError(response.status, 60); }
-  const payload = await boundedJson(response);
+  const payload = await boundedJson(response, options.providerResponseMaxMib);
   if (!payload || typeof payload !== "object" || Array.isArray(payload) || payload.status_code !== 1 || !payload.results) throw new Error("INCOMPLETE_PROVIDER_SNAPSHOTS");
   if (descriptor.resourceType === "volume") normalizeComicVineVolume({ ...descriptor, payload });
   else if (volumeId) normalizeComicVineIssue({ ...descriptor, payload }, volumeId);

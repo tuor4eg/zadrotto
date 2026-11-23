@@ -5,20 +5,10 @@ import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
 import { entryCreatorSearchCondition } from "@/db/queries/creators";
 import { normalizeSearchText } from "@/lib/search/normalize";
 
-export const mediaItemSearchCondition = (searchQuery: string) => {
-  const normalizedSearchQuery = normalizeSearchText(searchQuery);
-
-  if (!normalizedSearchQuery) {
-    return undefined;
-  }
-
-  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
-
+export function mediaItemTitleSearchCondition(normalizedSearchQuery: string) {
   return or(
     containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
-    entryCreatorSearchCondition(normalizedSearchQuery),
     containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
-    sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
     exists(
       db
         .select({ id: mediaItemTitleAliases.id })
@@ -30,5 +20,21 @@ export const mediaItemSearchCondition = (searchQuery: string) => {
           ),
         ),
     ),
+  );
+}
+
+export const mediaItemSearchCondition = (searchQuery: string, includeCreators = true) => {
+  const normalizedSearchQuery = normalizeSearchText(searchQuery);
+
+  if (!normalizedSearchQuery) {
+    return undefined;
+  }
+
+  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
+
+  return or(
+    mediaItemTitleSearchCondition(normalizedSearchQuery),
+    includeCreators ? entryCreatorSearchCondition(normalizedSearchQuery) : undefined,
+    sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
   );
 };

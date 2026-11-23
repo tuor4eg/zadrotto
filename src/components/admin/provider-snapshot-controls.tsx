@@ -22,9 +22,9 @@ function SnapshotButtons({ canProcess, busy, creator, game, boardgame }: { canPr
       <p className="text-xs leading-5 text-stone-500">Без отметки перенос выполняется только при совпадении данных BGG. При расхождениях сохраняется отчёт; существующие связи и заявки не меняются. С отметкой изменения применяются с учётом ручных назначений и решений модерации.</p>
     </div> : null}
     <div className="flex flex-wrap gap-2">
-      <Button type="submit" name="operation" value="refresh" variant={canProcess ? "outline" : "default"} disabled={disabled}>{canProcess ? "Получить заново" : "1. Получить данные"}</Button>
-      <Link className="inline-flex items-center rounded-md border px-4 py-2 text-sm underline" href="#comparison">{creator ? "2. Сравнить даты" : "2. Сравнить с записью"}</Link>
-      <Button type="submit" name="operation" value="process" variant="positive" disabled={disabled || !canProcess}>{creator ? "3. Применить даты" : safeTransfer ? "3. Перенести совпадающие данные" : "3. Применить к записи"}</Button>
+      <Button type="submit" name="operation" value="refresh" variant={canProcess ? "outline" : "default"} disabled={disabled}>{canProcess ? "Получить заново" : creator ? "1. Получить данные" : "Получить данные"}</Button>
+      {creator && <Link className="inline-flex items-center rounded-md border px-4 py-2 text-sm underline" href="#comparison">2. Сравнить даты</Link>}
+      <Button type="submit" name="operation" value="process" variant="positive" disabled={disabled || !canProcess}>{creator ? "3. Применить даты" : safeTransfer ? "Перенести совпадающие данные" : "Применить к записи"}</Button>
     </div>
     {pending && <p role="status" className="text-sm">Создаём задачу…</p>}
     <details className="text-sm">

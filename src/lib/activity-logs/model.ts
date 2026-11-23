@@ -26,6 +26,7 @@ export const ACTIVITY_ENTITY_TYPES = [
   "quiz-question-template",
   "franchise",
   "media-item",
+  "tag",
   "review",
   "collection",
   "job",
@@ -81,6 +82,8 @@ export const ACTIVITY_ACTIONS = [
   "author-token.deleted",
   "media.created",
   "media.updated",
+  "media.tags.updated",
+  "tag.renamed",
   "media.deleted",
   "media.submitted",
   "media.withdrawn",
@@ -277,6 +280,7 @@ export const ACTIVITY_ENTITY_TYPE_LABELS = {
   "creator-request": "Заявка на создателя",
   "data-export": "Экспорт данных",
   "reputation-settings": "Уровни и доверие",
+  "tag": "Тег",
 } satisfies Record<ActivityEntityType, string>;
 
 export const ACTIVITY_ACTION_LABELS = {
@@ -318,6 +322,8 @@ export const ACTIVITY_ACTION_LABELS = {
   "author-token.deleted": "Токен автора удален",
   "media.created": "Запись создана",
   "media.updated": "Запись изменена",
+  "media.tags.updated": "Теги записи изменены",
+  "tag.renamed": "Тег переименован",
   "media.deleted": "Запись удалена",
   "media.submitted": "Запись отправлена на модерацию",
   "media.withdrawn": "Заявка записи отозвана",

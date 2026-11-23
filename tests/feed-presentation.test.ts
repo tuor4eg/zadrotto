@@ -1,3 +1,4 @@
+import "./fixtures/server-runtime";
 import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { FeedEventDescription } from "../src/app/feed/event-description";
@@ -33,8 +34,8 @@ test("feed page is dynamic, uses current access settings and exposes its navigat
   assert.match(page, /parseFeedCursor/);
   assert.match(page, /query.before !== undefined && query.after !== undefined/);
   assert.match(page, /prefetch=\{false\}/);
-  assert.match(page, /В начало ленты/);
-  assert.match(page, /В конец ленты/);
+  assert.match(page, /К последним событиям/);
+  assert.match(page, /К первым событиям/);
   assert.match(page, /ChevronFirst/);
   assert.match(page, /ChevronLast/);
   assert.match(page, /type="button" disabled/);
@@ -75,8 +76,12 @@ test("feed groups the current page by Moscow date, preserves event order and dis
 test("activity selector resets the cursor and pagination preserves its server filter", () => {
   const page = readFileSync("src/app/feed/page.tsx", "utf8");
   assert.match(page, /header.author \? <FeedActivityFilter/);
+  assert.match(page, /flex items-baseline justify-between/);
+  assert.match(page, /min-w-0 shrink-0 sm:flex-1/);
+  assert.match(page, /<ArchivePageHeading id="feed-title" title="Лента" \/>[\s\S]*<FeedActivityFilter[\s\S]*<p className="mt-2 text-sm text-stone-600">Хроника событий архива<\/p>/);
   const filter = readFileSync("src/app/feed/activity-filter.tsx", "utf8");
   assert.match(filter, /<ArchiveSelect/);
+  assert.match(filter, /className="min-w-0 max-sm:flex-1 sm:w-48"/);
   assert.match(filter, /indent: true/);
   assert.match(filter, /value: "friends", label: "Друзья"/);
   assert.match(filter, /Вся активность/);

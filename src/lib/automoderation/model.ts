@@ -10,6 +10,7 @@ export const MEDIA_AUTOMODERATION_JOB_TYPE = "moderation.auto-check";
 
 export const AUTOMODERATION_REASON_LABELS: Record<string, string> = {
   check_execution_failed: "ошибка автоматической проверки",
+  entry_relationships_present: "Проверить связи",
   description_changed: "описание отличается от данных провайдера",
   media_type_mismatch: "тип медиа отличается от данных провайдера",
   new_or_unpublished_franchise: "добавлена новая или неопубликованная серия",

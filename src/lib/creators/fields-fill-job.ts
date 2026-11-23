@@ -1,3 +1,4 @@
+import { creatorDatesOutOfOrder } from "./life-dates";
 import { eq, sql } from "drizzle-orm";
 import { db } from "@/db";
 import type { DbTransaction } from "@/db/transaction";
@@ -38,7 +39,10 @@ function selectBindings(state: CreatorFieldsState, providers: CreatorFieldsFillP
 }
 
 function fingerprint(state: CreatorFieldsState, snapshots: SnapshotMap) {
-  return snapshotHash([state.typeCode, state.isPseudonym, ...state.bindings.map(binding => [
+  const hasComicVine = state.bindings.some(binding => binding.provider === "comic-vine");
+  const hasFantlab = state.bindings.some(binding => binding.provider === "fantlab");
+  const version = hasComicVine ? 4 : hasFantlab ? 3 : 2;
+  return snapshotHash([version, state.typeCode, state.isPseudonym, ...state.bindings.map(binding => [
     binding.id, binding.provider, binding.externalCreatorId,
     snapshots.get(binding.id)?.payloadHash ?? null, snapshots.get(-binding.id)?.payloadHash ?? null,
   ])]);
@@ -51,6 +55,7 @@ type CreatorFieldsResult = {
   review?: boolean;
   failed?: boolean;
   messages?: string[];
+  reviewMessages?: string[];
 };
 
 function resolveFields(state: CreatorFieldsState | null, snapshots: SnapshotMap, payload: CreatorFieldsFillPayload) {
@@ -61,43 +66,47 @@ function resolveFields(state: CreatorFieldsState | null, snapshots: SnapshotMap,
   const missing = inspected.some(row => row.needsSnapshot);
   const version = fingerprint(state, snapshots);
   const fields = requested.filter(field => payload.force || missing || state.attempts[field] !== version);
-  if (!fields.length) return { result: {} };
 
-  const messages = inspected.flatMap(source => {
+  const reviewMessages = inspected.flatMap(source => {
+    const label = providerName(source.provider);
+    if (source.invalid) return [`${label}: не удалось разобрать сохранённый профиль.`];
+    return (source.projection?.diagnostics ?? []).map(code => `${label}: ${diagnosticMessage(code)}`);
+  });
+  const sourceMessages = inspected.flatMap(source => {
     const label = providerName(source.provider);
     if (!source.target) return [`${label}: для этого профиля заполнение не поддерживается.`];
-    if (source.invalid) return [`${label}: не удалось разобрать сохранённый профиль.`];
-    return [
-      ...(source.needsSnapshot ? [`${label}: нужен снимок с датами.`] : []),
-      ...(source.projection?.diagnostics ?? []).map(code => `${label}: ${diagnosticMessage(code, source.projection?.reviewDates)}`),
-    ];
+    return source.needsSnapshot ? [`${label}: нужен снимок с датами.`] : [];
   });
-  if (!inspected.length) messages.push("Нет подтверждённых привязок.");
+  if (!inspected.length) sourceMessages.push("Нет подтверждённых привязок.");
 
   const changes: { birthDate?: string; deathDate?: string } = {};
-  let review = inspected.some(row => row.invalid || Boolean(row.projection?.diagnostics.length));
-  for (const field of fields) {
+  for (const field of requested) {
     const column = field === "foundedDate" ? "birthDate" : field;
     const values = inspected.flatMap(source => {
       const value = source.projection?.[column];
       return value ? [{ value, provider: providerName(source.provider) }] : [];
     });
     const distinct = new Set(values.map(row => row.value));
-    if (distinct.size > 1) {
-      review = true;
-      messages.push(`${CREATOR_FILL_FIELD_LABELS[field]}: ${values.map(({ provider, value }) => `${provider} — ${value}`).join(", ")}.`);
+    const exact = [...distinct].filter(value => value.length > 4);
+    const compatible = new Set(values.map(({ value }) => value.slice(0, 4))).size <= 1 && exact.length <= 1;
+    if (!compatible) {
+      reviewMessages.push(`${CREATOR_FILL_FIELD_LABELS[field]}: ${values.map(({ provider, value }) => `${provider} — ${value}`).join(", ")}.`);
     } else if (values[0]) {
-      changes[column] = values[0].value;
+      changes[column] = exact[0] ?? values[0].value;
     }
   }
   const start = state.birthDate ?? changes.birthDate;
   const end = state.deathDate ?? changes.deathDate;
-  if (start && end && start > end) {
-    review = true;
+  if (creatorDatesOutOfOrder(start, end)) {
     delete changes.birthDate;
     delete changes.deathDate;
-    messages.push("Начальная дата позже конечной. Требуется ручная проверка.");
+    reviewMessages.push("Начальная дата позже конечной. Требуется ручная проверка.");
   }
+  const review = reviewMessages.length > 0;
+  if (!fields.length) return { result: review ? { checked: true, review, reviewMessages, messages: reviewMessages } : {} };
+  if (!fields.includes(state.typeCode === "organization" ? "foundedDate" : "birthDate")) delete changes.birthDate;
+  if (!fields.includes("deathDate")) delete changes.deathDate;
+  const messages = [...reviewMessages, ...sourceMessages];
   const filled = Object.keys(changes).length;
   if (filled) {
     for (const field of fields) {
@@ -110,10 +119,12 @@ function resolveFields(state: CreatorFieldsState | null, snapshots: SnapshotMap,
   const attempts = Object.fromEntries(fields.map(field => [field, version]));
   const snapshotRefs = inspected.flatMap(({ snapshot, invalid }) =>
     snapshot && !invalid ? [{ id: snapshot.id, payloadHash: snapshot.payloadHash }] : []);
-  return { changes, attempts, snapshotRefs, result: { checked: true, filled, missing, review, messages } };
+  return { changes, attempts, snapshotRefs, result: { checked: true, filled, missing, review, reviewMessages, messages } };
 }
 
 function nextProgress(progress: CreatorFieldsFillProgress, creatorId: number, result: CreatorFieldsResult) {
+  const messages = result.messages?.slice(0, 20).map(message => message.slice(0, 1000));
+  const problemMessages = result.failed ? messages : result.reviewMessages?.slice(0, 20).map(message => message.slice(0, 1000));
   return {
     ...progress,
     afterId: creatorId,
@@ -124,10 +135,8 @@ function nextProgress(progress: CreatorFieldsFillProgress, creatorId: number, re
     missing: progress.missing + Number(Boolean(result.missing)),
     review: progress.review + Number(Boolean(result.review)),
     failed: progress.failed + Number(Boolean(result.failed)),
-    details: result.messages?.length ? [...progress.details, {
-      creatorId,
-      messages: result.messages.slice(0, 20).map(message => message.slice(0, 1000)),
-    }].slice(-100) : progress.details,
+    details: messages?.length ? [...progress.details, { creatorId, messages }].slice(-100) : progress.details,
+    ...(problemMessages?.length ? { problems: [...(progress.problems ?? []), { creatorId, messages: problemMessages }] } : {}),
   };
 }
 

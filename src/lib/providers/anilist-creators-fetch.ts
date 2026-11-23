@@ -39,7 +39,7 @@ export async function fetchAniListCreatorPayload(input: { externalId: string; by
       await response.body?.cancel();
       throw new SnapshotProviderHttpError(response.status, retry);
     }
-    raw = await boundedJson(response);
+    raw = await boundedJson(response, options.providerResponseMaxMib);
     }
     options.signal?.throwIfAborted();
     const result = raw as unknown as { errors?: unknown[]; data?: { Media?: {

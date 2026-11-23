@@ -6,7 +6,6 @@ import { creatorEditErrorMessage } from "@/lib/creators/editor";
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { getAdminCreatorById, getCreatorTypes, getCreatorProviderBindings } from "@/db/queries/creators";
-import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { CreatorEditorHeader } from "../../creator-editor-header";
 import { AdminToasts } from "../../../admin-toasts";
 import { refreshCreatorImageAction } from "../../avatar-actions";
@@ -27,23 +26,26 @@ export default async function EditCreatorPage({params,searchParams}: {params:Pro
   const bindingsTab = query.tab === "bindings";
   // Once a run is complete, read the creator after its saved changes.
   const fillRun = bindingsTab ? null : await getCreatorFieldsFillRun(query.fillRun, creatorId);
-  const [creator, avatar, providerBindings, types, series] = await Promise.all([
+  const [creator, avatar, providerBindings, types] = await Promise.all([
     getAdminCreatorById(creatorId),
     bindingsTab ? null : getCreatorAvatarState(creatorId),
     getCreatorProviderBindings(creatorId, true),
     bindingsTab ? [] : getCreatorTypes(),
-    bindingsTab ? [] : getAdminFranchiseOptions(),
   ]);
   if (!creator) notFound();
   const activeBindings = providerBindings.filter(binding => binding.active);
   const imageBindings = creatorImageCandidates(creator.typeCode, activeBindings).flatMap(candidate => candidate.bindings);
   const deleteReasons = [
-    ...(providerBindings.length ? ["Сохранены действующие или исторические привязки провайдеров."] : []),
+    ...(activeBindings.length ? ["Есть действующие привязки провайдеров."] : []),
+    ...(creator.hasSourceEntries ? ["Создатель указан источником в записях."] : []),
     ...(creator.providerVariants.length ? ["Есть соответствия имён провайдеров."] : []),
     ...(creator.roles.length ? ["Есть участия в записях."] : []),
     ...(creator.hasPseudonymAssignments ? ["Создатель выбран отображаемым псевдонимом в записях."] : []),
-    ...(creator.seriesIds.length ? ["Есть прямые связи с сериями."] : []),
   ];
+  const deleteDescription = [
+    ...(providerBindings.some(binding => !binding.active) ? ["Исторические привязки провайдеров будут удалены вместе с карточкой."] : []),
+    ...(creator.relations.length || creator.incomingRelations.length ? ["Связи псевдонима с другими создателями будут удалены."] : []),
+  ].join(" ") || "Карточка создателя будет удалена.";
   return <div className="grid gap-5">
     <CreatorEditorHeader id={creatorId} name={creator.name} active={bindingsTab ? "bindings" : "info"} />
     <AdminToasts clearParams={["error","updated"]} messages={query.error ? [{id:"error",tone:"error",text:creatorEditErrorMessage(query.error)}] : query.updated ? [{id:"updated",tone:"success",text:"Создатель сохранён."}] : []}/>
@@ -53,20 +55,14 @@ export default async function EditCreatorPage({params,searchParams}: {params:Pro
         <h2 className="font-semibold">Привязки к провайдерам</h2>
         <p className="text-sm text-stone-500">Привязка по ID подтверждает внешнюю идентичность. Соответствие имени хранится отдельно. Исторические привязки не используются для импорта и изображений.</p>
         <CreatorProviderVariants variants={creator.providerVariants} bindings={providerBindings}/>
-        <Link href="/admin/creator-requests" className="text-sm underline">Подтвердить или исправить сопоставление через заявки</Link>
-        <details className="rounded-md border p-3"><summary className="cursor-pointer text-sm font-medium">Добавить привязку</summary>
-          <div className="mt-3 grid gap-3">
-            {creator.typeCode === "person" ? <details className="rounded-md border p-3"><summary className="cursor-pointer text-sm font-medium">FantLab · подтвердить ID автора</summary>
-              <CreatorFantlabBindings creatorId={creatorId} creatorName={creator.name} bindings={activeBindings.filter(binding => binding.provider === "fantlab")} variants={creator.providerVariants}/>
-            </details> : null}
-            <p className="text-sm text-stone-500">Для остальных провайдеров выберите соответствующую заявку и сопоставьте её с этим создателем.</p>
-            <Link href="/admin/creator-requests" className="text-sm underline">Выбрать заявку провайдера</Link>
-          </div>
-        </details>
+        {creator.typeCode === "person" ? (
+          <CreatorFantlabBindings creatorId={creatorId} hasActiveBinding={activeBindings.some(binding => binding.provider === "fantlab")} variants={creator.providerVariants}/>
+        ) : null}
+        <Link href="/admin/creator-requests" className="text-sm underline">Выбрать заявку провайдера</Link>
       </section>
     ) : <>
       <div><CreatorAvatarEditor creatorType={creator.typeCode} creatorId={creatorId} authorName={creator.name} avatarObjectKey={avatar?.avatarObjectKey ?? null}/><p className="mt-2 text-sm text-stone-500">Источник: {avatar?.avatarSource === "manual" ? "ручная аватарка" : avatar?.avatarSource ? COVER_PROVIDER_LABELS[avatar.avatarSource] : "нет изображения"}{avatar?.avatarSourceExternalId ? ` · ID провайдера ${avatar.avatarSourceExternalId}` : ""}{avatar?.avatarFetchedAt ? ` · Импорт: ${avatar.avatarFetchedAt.toLocaleString("ru-RU", { timeZone: "Europe/Moscow" })}` : ""}</p>{avatar?.avatarSourceUrl ? <a href={avatar.avatarSourceUrl} target="_blank" rel="noreferrer" className="text-sm underline">Страница источника</a> : null}</div>
-      <CreatorForm creator={creator} types={types} series={series} creators={creator.relations.map(relation => ({ id: relation.targetCreatorId, name: relation.name }))}/>
+      <CreatorForm creator={creator} types={types} creators={creator.relations.map(relation => ({ id: relation.targetCreatorId, name: relation.name }))}/>
       <section className="grid gap-3 rounded-lg border bg-white p-5">
         <h2 className="font-semibold">Заполнение из источников</h2>
         {query.fillError === "invalid" && <Alert variant="destructive">Не удалось запустить заполнение из источников. Повторите попытку.</Alert>}
@@ -86,15 +82,7 @@ export default async function EditCreatorPage({params,searchParams}: {params:Pro
         {avatar?.avatarObjectKey ? <p className="text-xs text-stone-500">Обновление доступно только из источника текущего изображения. Для смены источника сначала явно удалите изображение.</p> : null}
       </section>
       {creator.roles.length ? <p className="text-sm text-stone-600">Роли в записях: {creator.roles.map(role => role.name).join(", ")}. Роли назначаются у соответствующих записей.</p> : <p className="text-sm text-stone-500">Участий в записях пока нет. Роль назначается при добавлении создателя к записи.</p>}
-      {creator.inheritedSeries.length ? <section className="grid gap-3 rounded-lg border bg-white p-5">
-        <h2 className="font-semibold">Серии через псевдонимы</h2>
-        <p className="text-sm text-stone-500">Показываются автоматически. Изменить эти связи можно у соответствующего псевдонима.</p>
-        {creator.inheritedSeries.map(series => <div key={`${series.sourceCreatorId}:${series.id}`} className="flex flex-wrap gap-x-2 gap-y-1 text-sm">
-          <Link href={`/admin/series/${series.id}/edit`} className="underline underline-offset-4">{series.title}</Link>
-          <span className="text-stone-500">через псевдоним <Link href={`/admin/creators/${series.sourceCreatorId}/edit`} className="underline underline-offset-4">{series.sourceCreatorName}</Link></span>
-        </div>)}
-      </section> : null}
-      {deleteReasons.length ? <section className="grid gap-2 rounded-md border p-4"><h2 className="font-semibold">Удаление недоступно</h2><ul className="list-disc pl-5 text-sm text-stone-600">{deleteReasons.map(reason => <li key={reason}>{reason}</li>)}</ul></section> : <div><ConfirmAction action={deleteCreatorAction} fields={[{name:"id",value:creator.id}]} title="Удалить создателя?" description={creator.relations.length || creator.incomingRelations.length ? "Связи псевдонима с другими создателями будут удалены. Продолжить?" : "Удаление доступно только если у создателя нет связей с записями, сериями и провайдерами."} confirmLabel="Удалить" triggerLabel="Удалить создателя" triggerVariant="destructive" /></div>}
+      {deleteReasons.length ? <section className="grid gap-2 rounded-md border p-4"><h2 className="font-semibold">Удаление недоступно</h2><ul className="list-disc pl-5 text-sm text-stone-600">{deleteReasons.map(reason => <li key={reason}>{reason}</li>)}</ul></section> : <div><ConfirmAction action={deleteCreatorAction} fields={[{name:"id",value:creator.id}]} title="Удалить создателя?" description={deleteDescription} confirmLabel="Удалить" triggerLabel="Удалить создателя" triggerVariant="destructive" /></div>}
     </>}
   </div>;
 }

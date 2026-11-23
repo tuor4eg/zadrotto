@@ -18,6 +18,8 @@ import { getCurrentBookPrimarySnapshot, getRawEntitySnapshot, getSavedBookBundle
 import { getSavedTmdbFilmBundle, getTmdbFilmMigrationComparison, isTmdbFilmSnapshotSupported } from "@/lib/providers/tmdb-film-service";
 import { getBookMigrationComparison } from "@/lib/providers/snapshot-report";
 import { bookSnapshotRunStatus } from "@/lib/providers/snapshot-run-status";
+import { MediaEditorHeader } from "../../media-editor-header";
+import { getAdminMediaItemIdentityById } from "@/db/queries/media-items";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { ProviderSnapshotControls } from "@/components/admin/provider-snapshot-controls";
 import { SnapshotJsonViewer } from "@/components/admin/snapshot-json-viewer";
@@ -36,11 +38,13 @@ export default async function SnapshotPage({ params, searchParams }: {
   const [route, query] = await Promise.all([params, searchParams]);
   const id = Number(route.id);
   if (!Number.isSafeInteger(id) || id <= 0) notFound();
-  const [headers, metadata, run] = await Promise.all([
+  const [item, headers, metadata, run] = await Promise.all([
+    getAdminMediaItemIdentityById(id),
     getEntitySnapshotHeaders({ entityType: "media-item", entityId: String(id) }),
     getMediaItemMetadata(id),
     query.run ? getBookSnapshotRun(id, Number(query.run)) : null,
   ]);
+  if (!item) notFound();
   const outcome = run ? bookSnapshotRunStatus(run) : null;
   const [savedPrimary, tmdbFilm, tmdbSeries, anime, game, boardgame, comic, roblox] = await Promise.all([getCurrentBookPrimarySnapshot(id), isTmdbFilmSnapshotSupported(id), isTmdbSeriesSnapshotSupported(id), isAniListCreatorSnapshotSupported(id), isGameSnapshotSupported(id), isBggSnapshotSupported(id), isComicVineSnapshotSupported(id), isRobloxSnapshotSupported(id)]);
   const animeMetadataSource = anime && metadata?.sourceProvider === "anilist";
@@ -114,13 +118,20 @@ export default async function SnapshotPage({ params, searchParams }: {
   if (bggBundle && !outcome?.active) bggComparison = await getBggMigrationComparison(id, bggBundle.projection);
   const aniMetadataComparison = animeMetadataBundle && !outcome?.active ? await getAniListMetadataComparison(id, animeMetadataBundle.projection) : null;
   const metadataComparison = aniMetadataComparison ?? bggComparison ?? gameComparison ?? filmComparison;
+  const contributorComparison = !animeMetadataSource ? animeComparison : null;
+  const canProcess = Boolean(animeMetadataSource ? aniMetadataComparison
+    : mangaBundle || robloxBundle || comicBundle || comparison || filmComparison || animeComparison || gameComparison || bggComparison);
+  const comparisonWarning = contributorComparison
+    ? contributorComparison.blockers.length > 0 && "Состав участников отличается. Проверьте данные перед применением."
+    : metadataComparison
+      ? metadataComparison.blockers.length > 0 && "Обнаружены расхождения. Проверьте данные перед применением."
+      : comparison && comparison.blockers.length > 0 &&
+        "В ответе провайдера отсутствуют некоторые авторы из прежних данных. Проверьте состав перед применением. Ручные назначения сохранятся.";
+
   const summaryHref = `?view=summary${run ? `&run=${run.id}` : ""}#provider-json`;
   const fullHref = (snapshotId: number) => `?snapshot=${snapshotId}${run ? `&run=${run.id}` : ""}#provider-json`;
   return <main className="space-y-5">
-    <div className="space-y-2">
-      <Link className="underline text-sm" href={`/admin/media/${id}/edit`}>Вернуться к редактированию записи</Link>
-      <h1 className="text-2xl font-semibold">Данные источника записи №{id}</h1>
-    </div>
+    <MediaEditorHeader id={id} title={item.title} active="data" />
     {query.error === "enqueue" && <Alert variant="destructive" role="alert">Не удалось запустить задачу. Данные записи не изменены. Повторите попытку.</Alert>}
     {query.run && !run && <Alert variant="warning">Запуск не найден для этой записи. Состояние сохранённых данных показано ниже.</Alert>}
     {run && outcome?.active && <section className="rounded-md border p-4 space-y-3" aria-live="polite">
@@ -147,48 +158,51 @@ export default async function SnapshotPage({ params, searchParams }: {
     </Alert>
     {!supported && <Alert variant="warning">У записи не выбран поддерживаемый источник. Сначала выберите FantLab, Google Books, Open Library, TMDB для фильма или сериала, AniList/Jikan для аниме либо IGDB/RAWG для видеоигры или BGG для настольной игры в редакторе.</Alert>}
     {comicBundle && !comicBundle.issue && <Alert variant="warning">Данные первого выпуска отсутствуют. Существующие создатели выпуска сохранятся; повторите получение данных.</Alert>}
-    <ProviderSnapshotControls mediaItemId={id} provider={manga ? "mangaupdates" : roblox ? "roblox" : comic ? "comic-vine" : boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={manga ? "manga" : roblox ? "roblox" : comic ? "comic" : boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} animeSnapshot={animeMetadataSource ? "metadata" : "creators"} showActions canProcess={Boolean(animeMetadataSource ? aniMetadataComparison : mangaBundle || robloxBundle || comicBundle || comparison || filmComparison || animeComparison || gameComparison || bggComparison)} busy={Boolean(outcome?.active) || !supported} />
-    <section id="comparison" className="space-y-3 scroll-mt-4">
-      <h2 className="text-xl font-semibold">Сравнение с текущей записью</h2>
-      {animeComparison && !animeMetadataSource ? <>
-        <p className="text-sm text-stone-600">Сравнение режиссёров, производственных компаний и продюсеров AniList. Ручные назначения сохраняются; остальные характеристики записи не меняются.</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={animeComparison.current} /></article>
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных AniList</h3><SnapshotJsonViewer value={animeComparison.proposed} /></article>
-        </div>
-        {animeComparison.blockers.length > 0 && <Alert variant="warning">Состав участников отличается. Проверьте данные перед применением.</Alert>}
-        <SnapshotDifferences current={animeComparison.current} proposed={animeComparison.proposed} />
-      </> : metadataComparison ? <>
-        <p className="text-sm text-stone-600">Сравнение характеристик записи. Ручные данные и решения модерации сохраняются.{bggComparison ? " Исходные названия BGG могут отличаться от наших. Применение использует соответствия жанров; неизвестные значения попадают в заявки." : ""}</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={metadataComparison.current} /></article>
-          <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных провайдера</h3><SnapshotJsonViewer value={metadataComparison.proposed} /></article>
-        </div>
-        {metadataComparison.blockers.length > 0 && <Alert variant="warning">Обнаружены расхождения. Проверьте данные перед применением.</Alert>}
-        <SnapshotDifferences current={bggComparison?.preview.current ?? gameComparison?.preview.current ?? metadataComparison.current} proposed={bggComparison?.preview.proposed ?? gameComparison?.preview.proposed ?? metadataComparison.proposed}
-          proposedLabel={bggComparison || gameComparison ? "С учётом наших соответствий" : undefined}
-          description={bggComparison ? "Сопоставленные жанры, состав BGG и характеристики. Служебные поля скрыты; уже существующие заявки не считаются новыми. Неизвестные жанры требуют отдельного решения в заявках." : gameComparison ? "Сопоставленные жанры, платформы и компании. Служебные поля скрыты; существующие заявки не считаются новыми. Значения без соответствий требуют отдельного решения в заявках." : undefined} />
-      </> : comparison ? <>
-        <p className="text-sm text-stone-600">Справа — участники из ответа провайдера. При применении учитываются существующие сопоставления и решения модерации. Ручные назначения и псевдонимы сохраняются; для неизвестных участников создаются заявки.</p>
-        <div className="grid gap-4 md:grid-cols-2">
-          <article className="rounded-md border p-4 space-y-2">
-            <h3 className="font-semibold">Сейчас в записи</h3>
-            {comparison.contributors.length ? <ol className="space-y-2">{comparison.contributors.map(part => <li key={`${part.role}:${part.id}`}>
-              <span className="text-sm text-stone-500">{roleLabel(part.role)}: </span>{part.name}{part.isManual ? <span className="text-xs text-stone-500"> · назначен вручную</span> : null}
-            </li>)}</ol> : <p className="text-sm text-stone-500">Участники пока не назначены.</p>}
-            {comparison.pseudonymCreatorId && <p className="text-sm">У записи назначен псевдоним — он сохранится.</p>}
-          </article>
-          <article className="rounded-md border p-4 space-y-2">
-            <h3 className="font-semibold">В сохранённых данных провайдера</h3>
-            {comparison.proposed.length ? <ol className="space-y-2">{comparison.proposed.map((part, index) => <li key={`${part.role}:${index}`}>
-              <span className="text-sm text-stone-500">{roleLabel(part.role)}: </span>{part.name}
-            </li>)}</ol> : <p className="text-sm text-stone-500">Участники не указаны.</p>}
-          </article>
-        </div>
-        {comparison.blockers.length > 0 && <Alert variant="warning">В ответе провайдера отсутствуют некоторые авторы из прежних данных. Проверьте состав перед применением. Ручные назначения сохранятся.</Alert>}
-        <SnapshotDifferences current={comparison.contributors.map(part => ({role:part.role,name:part.name}))} proposed={comparison.proposed.map(part => ({role:part.role,name:part.name}))} />
-      </> : <p className="text-sm text-stone-600">{outcome?.active ? "Дождитесь завершения задачи — сравнение появится автоматически." : primary ? "Основной ответ сохранён, но полный комплект не удалось подготовить. Получите данные повторно; применение пока недоступно." : "Сравнение появится после получения данных."}</p>}
-    </section>
+    <ProviderSnapshotControls mediaItemId={id} provider={manga ? "mangaupdates" : roblox ? "roblox" : comic ? "comic-vine" : boardgame ? "bgg" : game ? metadata?.sourceProvider as "igdb" | "rawg" : anime ? "anilist" : tmdbFilm || tmdbSeries ? "tmdb" : undefined} mediaType={manga ? "manga" : roblox ? "roblox" : comic ? "comic" : boardgame ? "boardgame" : game ? "game" : anime ? "anime" : tmdbSeries ? "series" : tmdbFilm ? "film" : "book"} animeSnapshot={animeMetadataSource ? "metadata" : "creators"} showActions canProcess={canProcess} busy={Boolean(outcome?.active) || !supported} />
+    {comparisonWarning && <Alert variant="warning">{comparisonWarning}</Alert>}
+    {supported && primary && !canProcess && !outcome?.active && <Alert variant="warning">
+      Основной ответ сохранён, но полный комплект не удалось подготовить. Получите данные повторно.
+    </Alert>}
+    {(contributorComparison || metadataComparison || comparison) && <details id="comparison" className="rounded-md border p-4 scroll-mt-4">
+      <summary className="cursor-pointer font-semibold">Что изменится при применении</summary>
+      <div className="mt-3 space-y-3">
+        {contributorComparison ? <>
+          <p className="text-sm text-stone-600">Сравнение режиссёров, производственных компаний и продюсеров AniList. Ручные назначения сохраняются; остальные характеристики записи не меняются.</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={contributorComparison.current} /></article>
+            <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных AniList</h3><SnapshotJsonViewer value={contributorComparison.proposed} /></article>
+          </div>
+          <SnapshotDifferences current={contributorComparison.current} proposed={contributorComparison.proposed} />
+        </> : metadataComparison ? <>
+          <p className="text-sm text-stone-600">Сравнение характеристик записи. Ручные данные и решения модерации сохраняются.{bggComparison ? " Исходные названия BGG могут отличаться от наших. Применение использует соответствия жанров; неизвестные значения попадают в заявки." : ""}</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">Сейчас в записи</h3><SnapshotJsonViewer value={metadataComparison.current} /></article>
+            <article className="rounded-md border p-4 space-y-2"><h3 className="font-semibold">В сохранённых данных провайдера</h3><SnapshotJsonViewer value={metadataComparison.proposed} /></article>
+          </div>
+          <SnapshotDifferences current={bggComparison?.preview.current ?? gameComparison?.preview.current ?? metadataComparison.current} proposed={bggComparison?.preview.proposed ?? gameComparison?.preview.proposed ?? metadataComparison.proposed}
+            proposedLabel={bggComparison || gameComparison ? "С учётом наших соответствий" : undefined}
+            description={bggComparison ? "Сопоставленные жанры, состав BGG и характеристики. Служебные поля скрыты; уже существующие заявки не считаются новыми. Неизвестные жанры требуют отдельного решения в заявках." : gameComparison ? "Сопоставленные жанры, платформы и компании. Служебные поля скрыты; существующие заявки не считаются новыми. Значения без соответствий требуют отдельного решения в заявках." : undefined} />
+        </> : comparison && <>
+          <p className="text-sm text-stone-600">Справа — участники из ответа провайдера. При применении учитываются существующие сопоставления и решения модерации. Ручные назначения и псевдонимы сохраняются; для неизвестных участников создаются заявки.</p>
+          <div className="grid gap-4 md:grid-cols-2">
+            <article className="rounded-md border p-4 space-y-2">
+              <h3 className="font-semibold">Сейчас в записи</h3>
+              {comparison.contributors.length ? <ol className="space-y-2">{comparison.contributors.map(part => <li key={`${part.role}:${part.id}`}>
+                <span className="text-sm text-stone-500">{roleLabel(part.role)}: </span>{part.name}{part.isManual ? <span className="text-xs text-stone-500"> · назначен вручную</span> : null}
+              </li>)}</ol> : <p className="text-sm text-stone-500">Участники пока не назначены.</p>}
+              {comparison.pseudonymCreatorId && <p className="text-sm">У записи назначен псевдоним — он сохранится.</p>}
+            </article>
+            <article className="rounded-md border p-4 space-y-2">
+              <h3 className="font-semibold">В сохранённых данных провайдера</h3>
+              {comparison.proposed.length ? <ol className="space-y-2">{comparison.proposed.map((part, index) => <li key={`${part.role}:${index}`}>
+                <span className="text-sm text-stone-500">{roleLabel(part.role)}: </span>{part.name}
+              </li>)}</ol> : <p className="text-sm text-stone-500">Участники не указаны.</p>}
+            </article>
+          </div>
+          <SnapshotDifferences current={comparison.contributors.map(part => ({role:part.role,name:part.name}))} proposed={comparison.proposed.map(part => ({role:part.role,name:part.name}))} />
+        </>}
+      </div>
+    </details>}
     <details id="provider-json" open={Boolean(selected) || query.view === "summary"} className="rounded-md border p-4 space-y-3 scroll-mt-4">
       <summary className="cursor-pointer font-semibold">Данные провайдера ({boardgame ? "XML" : "JSON"})</summary>
       {run && outcome && !outcome.active && <div className="space-y-1 pt-3 text-sm">

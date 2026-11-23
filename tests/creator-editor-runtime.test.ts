@@ -28,11 +28,11 @@ test("Creator editor validates type changes and organization dates, loads target
       CREATE INDEX ON provider_creator_mappings(creator_id);
       CREATE TABLE creator_relations(source_creator_id int,target_creator_id int,relation_type text,PRIMARY KEY(source_creator_id,target_creator_id,relation_type));
       CREATE INDEX ON creator_relations(target_creator_id);
-      CREATE TABLE creator_series(creator_id int,series_id int,PRIMARY KEY(creator_id,series_id));
       CREATE TABLE creator_roles(id int PRIMARY KEY,code text,name text);
       INSERT INTO creator_roles VALUES(1,'director','Режиссёр');
       CREATE TABLE entry_creators(entry_id int,creator_id int,role_id int,is_manual boolean DEFAULT false);
       CREATE INDEX ON entry_creators(creator_id,role_id,entry_id);
+      CREATE TABLE entry_sources(creator_id int);
       CREATE TABLE entry_creator_pseudonyms(entry_id int,creator_id int,role_id int);
       CREATE INDEX ON entry_creator_pseudonyms(creator_id);
       CREATE TABLE franchises(id int PRIMARY KEY,code text,title text);
@@ -91,7 +91,7 @@ test("Creator editor validates type changes and organization dates, loads target
           SELECT 'tmdb','person:'||n,1+n%200000 FROM generate_series(100,200099)n;
         INSERT INTO entry_creators SELECT n,1+n%200000,1,false FROM generate_series(1,1000000)n;
         ANALYZE creators; ANALYZE creator_types; ANALYZE provider_creator_mappings;
-        ANALYZE provider_creator_bindings; ANALYZE entry_creators; ANALYZE creator_relations; ANALYZE creator_series;`);
+        ANALYZE provider_creator_bindings; ANALYZE entry_creators; ANALYZE creator_relations;`);
       const plans: unknown[] = [];
       for (const stage of ["before", "after"]) {
         if (stage === "after") {
@@ -115,7 +115,6 @@ test("Creator editor validates type changes and organization dates, loads target
         ["bindings-history", "SELECT * FROM provider_creator_bindings WHERE creator_id=99999 ORDER BY provider,external_creator_id"],
         ["mappings", "SELECT * FROM provider_creator_mappings WHERE creator_id=99999 ORDER BY provider,external_creator_name"],
         ["roles", "SELECT DISTINCT r.code,r.name FROM entry_creators e JOIN creator_roles r ON r.id=e.role_id WHERE e.creator_id=99999"],
-        ["direct-series", "SELECT series_id FROM creator_series WHERE creator_id=99999"],
         ["relations", "SELECT r.target_creator_id,c.name FROM creator_relations r JOIN creators c ON c.id=r.target_creator_id WHERE r.source_creator_id=99999"],
         ["incoming", "SELECT r.source_creator_id,c.name FROM creator_relations r JOIN creators c ON c.id=r.source_creator_id WHERE r.target_creator_id=99999"],
         ["type-guard", `SELECT (EXISTS(SELECT 1 FROM provider_creator_bindings WHERE creator_id=99999 AND active)

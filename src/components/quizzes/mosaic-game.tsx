@@ -78,7 +78,7 @@ export function MosaicGame({ quiz, participant: initial, finished, onOpenArchive
       <QuizInlineAnswer key={quiz.id} quiz={quiz} participant={participant} disabled={disabled} />
     </>}
     <QuizAnswerReveal quizId={quiz.id} endsAt={quiz.endsAt} solved={completed} />
-    {completed ? <QuizResult participant={participant} /> : expired ? <p>Квиз завершён</p> : <QuizParticipationButton isParticipating onOpenArchive={onOpenArchive} />}
+    {completed ? <QuizResult participant={participant} /> : expired ? null : <QuizParticipationButton isParticipating onOpenArchive={onOpenArchive} />}
     {error ? <p role="alert" className="text-sm text-red-800">{error}</p> : null}
     {retry ? <Button type="button" disabled={pending} variant="outline" onClick={() => void send(retry)}>Повторить запрос</Button> : null}
   </div>;

@@ -34,7 +34,7 @@ import { createJobRun } from "@/db/queries/jobs";
 import { PROVIDER_SNAPSHOT_JOB_TYPE } from "@/lib/providers/snapshot-job-payload";
 import { and, asc, eq, gt, inArray, isNull, or, sql, type SQL } from "drizzle-orm";
 import { db } from "@/db";
-import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorSeries, creatorRequests, creatorRequestMediaItems, creatorLogoCandidates, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns, providerSnapshots, providerSnapshotLinks } from "@/db/schema";
+import { adminActivityLogs, creators, creatorTypes, creatorRoles, creatorRequests, creatorRequestMediaItems, creatorLogoCandidates, providerCreatorMappings, providerCreatorBindings, providerCreatorExclusions, entryCreators, entrySources, entryCreatorSources, mediaItems, mediaItemMetadata, gameCompanyRosters, jobRuns, providerSnapshots, providerSnapshotLinks } from "@/db/schema";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { extractExternalCreators, extractFantlabCreatorReferences } from "@/lib/media/creators";
 import { pruneEntryCreators, type CreatorTransaction } from "./creators";
@@ -682,7 +682,7 @@ export async function deleteUnlinkedCreator(tx: CreatorTransaction, creatorId: n
         sql`not exists (select 1 from ${providerCreatorMappings} m where m.creator_id = ${creators.id})`,
         sql`not exists (select 1 from provider_creator_bindings b where b.creator_id = ${creators.id})`,
         sql`not exists (select 1 from ${entryCreators} ec where ec.creator_id = ${creators.id})`,
-        sql`not exists (select 1 from ${creatorSeries} cs where cs.creator_id = ${creators.id})`,
+        sql`not exists (select 1 from ${entrySources} es where es.creator_id = ${creators.id})`,
         sql`not exists (select 1 from creator_relations cr where cr.source_creator_id=${creators.id} or cr.target_creator_id=${creators.id})`,
         sql`not exists (select 1 from entry_creator_pseudonyms p where p.creator_id=${creators.id})`,
     )).returning({ id: creators.id, name: creators.name });

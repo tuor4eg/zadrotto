@@ -140,7 +140,7 @@ describe("author dashboard layout", () => {
     );
     assert.match(
       activitySection[2],
-      /Последние рецензии[\s\S]*href=\{reviewsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestReviewTiles\}/,
+      /Рецензии[\s\S]*href=\{reviewsHref\}[\s\S]*ResponsiveTileGrid[\s\S]*initialColumnCount=\{tileGridInitialColumnCount\}[\s\S]*items=\{latestReviewTiles\}/,
     );
     assert.equal(activitySection[2].match(/Смотреть всё →/g)?.length, 2);
   });

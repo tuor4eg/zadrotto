@@ -25,19 +25,19 @@ export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderb
 
       {items.length > 0 ? (
         <QuizFittingRows enabled={fitRows}>
-          <table className="mt-3 w-full table-fixed border-collapse text-left">
+          <table className="mt-3 w-full table-auto border-collapse text-left">
             <thead>
               <tr className="text-[8px] uppercase tracking-[0.1em] text-stone-500 sm:text-[9px]">
-                <th className="w-8 pb-2 font-normal">#</th>
-                <th className="pb-2 font-normal">Пользователь</th>
-                <th className="w-16 pb-2 text-center font-normal">Очки</th>
-                <th className="w-36 pb-2 text-right font-normal">Время</th>
+                <th className="w-px whitespace-nowrap pb-2 pr-3 font-normal">#</th>
+                <th className="w-full pb-2 font-normal">Пользователь</th>
+                <th className="w-px whitespace-nowrap px-2 pb-2 text-center font-normal">Очки</th>
+                <th className="w-px whitespace-nowrap pb-2 pl-3 text-right font-normal">Время</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-dashed divide-stone-400/35">
               {items.map((item, index) => (
                 <tr key={item.authorId} data-quiz-row>
-                  <td className="py-2 text-xs tabular-nums text-stone-600">
+                  <td className="whitespace-nowrap py-2 pr-3 text-xs tabular-nums text-stone-600">
                     {index + 1}
                   </td>
                   <td className="min-w-0 py-2 pr-2">
@@ -50,13 +50,13 @@ export function QuizLeaderboard({ items, fitRows = false }: { items: QuizLeaderb
                         objectKey={item.authorAvatarObjectKey}
                         className="size-8 text-[10px]"
                       />
-                      <span className="truncate text-sm sm:text-base">{item.authorName}</span>
+                      <span className="w-0 min-w-0 flex-1 truncate text-sm sm:text-base">{item.authorName}</span>
                     </Link>
                   </td>
-                  <td className="py-2 text-center text-lg font-semibold tabular-nums text-stone-950">
+                  <td className="whitespace-nowrap px-2 py-2 text-center text-lg font-semibold tabular-nums text-stone-950">
                     {item.totalPoints}
                   </td>
-                  <td className="whitespace-nowrap py-2 text-right text-[10px] tabular-nums text-stone-600 sm:text-xs">
+                  <td className="whitespace-nowrap py-2 pl-3 text-right text-[10px] tabular-nums text-stone-600 sm:text-xs">
                     {formatQuizDuration(item.totalTimeSeconds)}
                   </td>
                 </tr>

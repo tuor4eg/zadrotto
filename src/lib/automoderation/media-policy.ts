@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, ne, not, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import {
@@ -10,6 +10,7 @@ import {
   mediaItems,
 } from "@/db/schema";
 import { runInDomainEventTransaction } from "@/db/transaction";
+import { entryHasRelationshipsSql } from "@/db/queries/entry-sources";
 import { guardAutomoderationJob } from "@/db/queries/automoderation-recovery";
 import type { SnapshotJobGuard } from "@/db/queries/provider-snapshots";
 import {
@@ -51,6 +52,7 @@ export async function evaluateMediaAutomoderationCheck(checkId: number, signal?:
     coverSourceProvider: mediaItems.coverSourceProvider,
     coverUrl: mediaItems.coverUrl,
     description: mediaItems.description,
+    hasRelationships: entryHasRelationshipsSql(),
     mediaCarrierId: mediaItems.mediaCarrierId,
     mediaType: mediaItems.mediaType,
     moderationRevision: mediaItems.moderationRevision,
@@ -80,6 +82,7 @@ export async function evaluateMediaAutomoderationCheck(checkId: number, signal?:
   ]);
   const snapshot = snapshotRows[0];
   const reasons = new Set<string>();
+  if (item.hasRelationships) reasons.add("entry_relationships_present");
   if (!snapshot) reasons.add("provider_snapshot_missing");
   if (aliasRows.length > 0) reasons.add("user_aliases_present");
   if (franchiseRows.some((row) => row.status !== "published")) {
@@ -117,6 +120,7 @@ export async function evaluateMediaAutomoderationCheck(checkId: number, signal?:
         candidateLimit: coverSettings.candidateLimit,
         tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
         requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
+        providerResponseMaxMib: coverSettings.providerResponseMaxMib,
         signal,
         snapshotJobGuard: jobGuard,
         providerCredentials,
@@ -180,6 +184,9 @@ export async function autoApproveMediaItem(input: {
       eq(automoderationChecks.policyVersion, MEDIA_AUTOMODERATION_POLICY_VERSION),
     )).limit(1).for("update");
     if (!check) return null;
+    // Lock before the final relationship check so a concurrent link write is visible.
+    await tx.select({ id: mediaItems.id }).from(mediaItems)
+      .where(eq(mediaItems.id, input.mediaItemId)).for("update");
     const [item] = await tx.update(mediaItems).set({
       publicationStatus: "published",
       reviewedByAdminId: null,
@@ -190,6 +197,7 @@ export async function autoApproveMediaItem(input: {
       eq(mediaItems.publicationStatus, "submitted"),
       eq(mediaItems.moderationRevision, input.expectedRevision),
       eq(mediaItems.updatedAt, input.expectedUpdatedAt),
+      not(entryHasRelationshipsSql()),
       sql`not exists (
         select 1 from ${mediaItemFranchises}
         inner join ${franchises} on ${franchises.id} = ${mediaItemFranchises.franchiseId}

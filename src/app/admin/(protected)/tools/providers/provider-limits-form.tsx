@@ -74,6 +74,16 @@ export function ProviderLimitsForm({
               disabled={isPending}
               description="Максимальное время ожидания ответа от внешнего каталога. При превышении запрос прерывается и провайдер считается временно недоступным."
             />
+            <NumberField
+              id="provider-response-max-mib"
+              label="Максимальный размер JSON-ответа, МиБ"
+              name="providerResponseMaxMib"
+              min={COVER_SETTINGS_FORM_LIMITS.providerResponseMaxMib.min}
+              max={COVER_SETTINGS_FORM_LIMITS.providerResponseMaxMib.max}
+              defaultValue={settings.providerResponseMaxMib.toString()}
+              disabled={isPending}
+              description="Лимит на один JSON-ответ при загрузке снимков метаданных внешних каталогов, в том числе TMDB."
+            />
           </div>
           <div className="grid gap-4 sm:grid-cols-3">
             {providerRateLimits.map((providerLimit) => (

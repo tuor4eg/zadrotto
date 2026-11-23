@@ -1,7 +1,7 @@
 import { hasPredominantlyCyrillicName } from "@/lib/creators/name-localization";
 import { parseFantlabAuthorSnapshot, parseFantlabId } from "@/lib/creators/fantlab-api";
 import { creatorProfileDescriptor } from "./creator-profile-targets";
-import { isCreatorDate } from "@/lib/creators/life-dates";
+import { isCreatorDate, isCreatorYear } from "@/lib/creators/life-dates";
 import { snapshotHash } from "./snapshot-values";
 import type { JSONValue, SnapshotDescriptor } from "./types";
 
@@ -18,7 +18,9 @@ export function mapFantlabAuthorDates(snapshot: SnapshotDescriptor & { payload: 
   function date(key: string) {
     const value = row[key];
     if (value === null || value === undefined || value === "") return null;
-    if (isCreatorDate(value)) return value;
+    if (isCreatorDate(value) || isCreatorYear(value)) return value;
+    const year = typeof value === "string" ? /^([0-9]{4})-(?:00|0[1-9]|1[0-2])-00$/.exec(value)?.[1] : undefined;
+    if (isCreatorYear(year)) return year;
     diagnostics.push(`invalid-${key}`);
     return null;
   }
@@ -35,7 +37,7 @@ export function mapTmdbPersonDates(snapshot: SnapshotDescriptor & { payload: JSO
   function date(key: string) {
     const value = row as Record<string, JSONValue>;
     if (value[key] === null || value[key] === undefined || value[key] === "") return null;
-    if (isCreatorDate(value[key])) return value[key];
+    if (isCreatorDate(value[key]) || isCreatorYear(value[key])) return value[key];
     diagnostics.push(`invalid-${key}`);
     return null;
   }

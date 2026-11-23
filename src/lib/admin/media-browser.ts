@@ -22,6 +22,7 @@ export type AdminMediaBrowserSeriesScope =
 
 export type AdminMediaBrowserQuery = {
   direction: AdminMediaBrowserSortDirection;
+  creatorId: number | null;
   franchiseId: number | null;
   mediaType: string | null;
   minAverageScore: number | null;
@@ -135,9 +136,11 @@ export function parseAdminMediaBrowserQuery(
 ): AdminMediaBrowserQuery {
   const sort = parseSort(searchParams.get("sort"));
   const mediaType = searchParams.get("type")?.trim() ?? "";
+  const creatorId = parsePositiveInteger(searchParams.get("creator"));
 
   return {
     direction: parseDirection(searchParams.get("direction"), sort),
+    creatorId: creatorId !== null && creatorId <= 2147483647 ? creatorId : null,
     franchiseId: parsePositiveInteger(searchParams.get("series")),
     mediaType: isMediaTypeCode(mediaType) ? mediaType : null,
     minAverageScore: parseMinAverageScore(searchParams.get("minScore")),

@@ -3,16 +3,16 @@ import { getImportedCreatorNameLocalization } from "@/lib/creators/name-localiza
 import { creatorDisplayNameSql, creatorNameSearchSql } from "./creator-display";
 import { enqueueCreatorImageFill } from "./creator-image-jobs";
 import { deleteEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
-import { and, asc, eq, inArray, isNotNull, or, sql, type SQL, type SQLWrapper } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { db } from "@/db";
-import { adminActivityLogs, creatorRelations, entryCreatorPseudonyms, creators, creatorTypes, creatorRoles, creatorSeries, franchises, entryCreators, entryCreatorSources, providerCreatorMappings, providerCreatorBindings, mediaItems, mediaItemFranchises } from "@/db/schema";
+import { adminActivityLogs, creatorRelations, entryCreatorPseudonyms, creators, creatorTypes, creatorRoles, entryCreators, entryCreatorSources, entrySources, providerCreatorMappings, providerCreatorBindings, mediaItems } from "@/db/schema";
 import { normalizeSearchSql } from "@/db/search";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import type { EntryCreator } from "@/lib/media/creators";
 import { paginatePublicCreators } from "@/lib/media/public-creators";
 import { ARCHIVE_SEARCH_MATCH_LIMIT } from "@/lib/archive/search-matches";
 import { bookSnapshotProviderSql } from "@/db/queries/book-metadata";
-import { parseCreatorDate, type CreatorLifeDates } from "@/lib/creators/life-dates";
+import { creatorDatesOutOfOrder, parseCreatorDate, type CreatorLifeDates } from "@/lib/creators/life-dates";
 
 export async function searchArchiveCreatorMatches(searchQuery: string, enabledMediaTypeCodes: readonly string[]) {
     const search = normalizeSearchText(searchQuery);
@@ -115,27 +115,18 @@ export async function getPublicCreatorsPage(input: {
 }
 export type CreatorTransaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
 
-export async function getCreatorRelatedSeriesIds(creatorId: number) {
-    const rows = await db.selectDistinct({ id: mediaItemFranchises.franchiseId })
-        .from(entryCreators)
-        .innerJoin(creatorRoles, eq(creatorRoles.id, entryCreators.roleId))
-        .innerJoin(mediaItemFranchises, eq(mediaItemFranchises.mediaItemId, entryCreators.entryId))
-        .where(and(
-            eq(entryCreators.creatorId, creatorId),
-            eq(mediaItemFranchises.publicationStatus, "published"),
-        )).orderBy(asc(mediaItemFranchises.franchiseId));
-    return rows.map(row => row.id);
-}
-
 export type EntryRoleCreatorLink = { id: number; name: string; slug: string; roleCode: string; roleName: string };
 
 /** Generic roles are direct assignments; book pseudonym display stays in the writer API. */
-export function entryCreatorsJsonSql(column: SQLWrapper = sql`"media_items"."id"`) {
+export function entryCreatorsJsonSql(column: SQLWrapper = sql`"media_items"."id"`, peopleOnly = false) {
+    const personFilter = peopleOnly
+        ? sql`and c.type_id in (select id from creator_types where code = 'person')`
+        : sql``;
     return sql<EntryRoleCreatorLink[]>`coalesce((select jsonb_agg(jsonb_build_object(
       'id', c.id, 'name', coalesce(c.name_ru, c.name), 'slug', c.slug, 'roleCode', r.code, 'roleName', r.name
     ) order by r.name, coalesce(c.name_ru, c.name), c.id)
     from entry_creators ec join creators c on c.id=ec.creator_id join creator_roles r on r.id=ec.role_id
-    where ec.entry_id=${column}), '[]'::jsonb)`;
+    where ec.entry_id=${column} ${personFilter}), '[]'::jsonb)`;
 }
 
 export async function getCreatorProviderBindings(creatorId: number | readonly number[], includeInactive = false) {
@@ -145,19 +136,21 @@ export async function getCreatorProviderBindings(creatorId: number | readonly nu
       .orderBy(asc(providerCreatorBindings.provider), asc(providerCreatorBindings.externalCreatorId));
 }
 
-export function entryWriterCreatorsJsonSql(column: SQLWrapper = sql `"media_items"."id"`) {
-    return sql<{
-        id: number;
-        name: string;
-        slug: string;
-    }[]> `coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', coalesce(c.name_ru, c.name), 'slug', c.slug) order by coalesce(c.name_ru, c.name), c.id)
+export type EntryWriterCreatorLink = Pick<EntryRoleCreatorLink, "id" | "name" | "slug">;
+
+export function entryWriterCreatorsJsonSql(column: SQLWrapper = sql `"media_items"."id"`, peopleOnly = false) {
+    const personOrSelectedPseudonym = peopleOnly ? sql`
+      and (c.type_id in (select id from creator_types where code='person')
+        or exists (select 1 from entry_creator_pseudonyms p where p.entry_id=${column} and p.creator_id=c.id))
+    ` : sql``;
+    return sql<EntryWriterCreatorLink[]>`coalesce((select jsonb_agg(jsonb_build_object('id', c.id, 'name', coalesce(c.name_ru, c.name), 'slug', c.slug) order by coalesce(c.name_ru, c.name), c.id)
     from creators c where c.id in (
       select ec.creator_id from entry_creators ec join creator_roles r on r.id=ec.role_id
       where ec.entry_id=${column} and r.code='writer' and not exists (
         select 1 from entry_creator_pseudonyms p join creator_relations cr on cr.source_creator_id=p.creator_id
         where p.entry_id=ec.entry_id and cr.target_creator_id=ec.creator_id and cr.relation_type='pseudonym_of')
       union select p.creator_id from entry_creator_pseudonyms p where p.entry_id=${column}
-    )), '[]'::jsonb)`;
+    ) ${personOrSelectedPseudonym}), '[]'::jsonb)`;
 }
 /** Metadata facts expose accepted provider authors, independently of the display pseudonym. */
 export function entryProviderWriterCreatorsJsonSql(column: SQLWrapper = sql`"media_items"."id"`) {
@@ -248,11 +241,7 @@ export async function getCreatorBySlug(slug: string) {
     const [creator] = await db.select({ id: creators.id, name: creatorDisplayNameSql(), avatarObjectKey: creators.avatarObjectKey, originalName: creators.originalName, slug: creators.slug, typeId: creators.typeId, typeCode: creatorTypes.code }).from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.slug, slug));
     if (!creator)
         return null;
-    const [series, pseudonymAuthors, pseudonyms, roles] = await Promise.all([
-        db.selectDistinct({ id: franchises.id, code: franchises.code, title: franchises.title }).from(creatorSeries).innerJoin(franchises, eq(franchises.id, creatorSeries.seriesId)).where(and(
-            or(eq(creatorSeries.creatorId, creator.id), sql`exists (select 1 from creator_relations cr where cr.source_creator_id=${creatorSeries.creatorId} and cr.target_creator_id=${creator.id} and cr.relation_type='pseudonym_of')`),
-            eq(franchises.publicationStatus, "published"),
-        )).orderBy(asc(franchises.title), asc(franchises.id)),
+    const [pseudonymAuthors, pseudonyms, roles] = await Promise.all([
         db.select({ id: creators.id, name: creatorDisplayNameSql(), slug: creators.slug })
             .from(creatorRelations).innerJoin(creators, eq(creators.id, creatorRelations.targetCreatorId))
             .where(and(eq(creatorRelations.sourceCreatorId, creator.id), eq(creatorRelations.relationType, "pseudonym_of")))
@@ -265,12 +254,7 @@ export async function getCreatorBySlug(slug: string) {
             select distinct r.code, r.name from membership m join creator_roles r on r.id=m.role_id
             where m.creator_id=${creator.id} order by r.name, r.code`),
     ]);
-    return { ...creator, series, pseudonymAuthors, pseudonyms, roles };
-}
-export async function getAdminCreators() {
-    const rows = await getCreatorOptions();
-    const [variants, series] = await Promise.all([db.select().from(providerCreatorMappings), db.select().from(creatorSeries)]);
-    return rows.map(c => ({ ...c, providerVariants: variants.filter(v => v.creatorId === c.id).map(v => ({ ...v, mappingId: v.id })), seriesIds: series.filter(s => s.creatorId === c.id).map(s => s.seriesId) }));
+    return { ...creator, pseudonymAuthors, pseudonyms, roles };
 }
 export async function getCreatorProviderVariants(creatorIds: readonly number[]) {
     if (!creatorIds.length) return [];
@@ -281,27 +265,21 @@ export async function getCreatorProviderVariants(creatorIds: readonly number[]) 
 export async function getAdminCreatorById(id: number) {
     const [creator] = await db.select({ id: creators.id, name: creators.name, nameRu: creators.nameRu, nameRuSource: creators.nameRuSource, nameRuProcessed: creators.nameRuProcessed, originalName: creators.originalName,
       birthDate: creators.birthDate, deathDate: creators.deathDate, slug: creators.slug, typeId: creators.typeId, typeCode: creatorTypes.code,
+      hasSourceEntries: sql<boolean>`exists(select 1 from ${entrySources} s where s.creator_id=${creators.id})`,
       hasPseudonymAssignments: sql<boolean>`exists(select 1 from entry_creator_pseudonyms p where p.creator_id=${creators.id})` })
       .from(creators).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).where(eq(creators.id, id));
     if (!creator) return null;
-    const [relations, incomingRelations, inheritedSeries, providerVariants, directSeries, roles] = await Promise.all([
+    const [relations, incomingRelations, providerVariants, roles] = await Promise.all([
         db.select({ targetCreatorId: creatorRelations.targetCreatorId, relationType: creatorRelations.relationType, name: creatorDisplayNameSql() })
           .from(creatorRelations).innerJoin(creators, eq(creators.id, creatorRelations.targetCreatorId))
           .where(eq(creatorRelations.sourceCreatorId, id)),
         db.select({ sourceCreatorId: creatorRelations.sourceCreatorId, name: creatorDisplayNameSql(), relationType: creatorRelations.relationType })
             .from(creatorRelations).innerJoin(creators, eq(creators.id, creatorRelations.sourceCreatorId)).where(eq(creatorRelations.targetCreatorId, id)),
-        db.select({ id: franchises.id, code: franchises.code, title: franchises.title, sourceCreatorId: creators.id, sourceCreatorName: creatorDisplayNameSql() })
-            .from(creatorRelations).innerJoin(creatorSeries, eq(creatorSeries.creatorId, creatorRelations.sourceCreatorId))
-            .innerJoin(franchises, eq(franchises.id, creatorSeries.seriesId))
-            .innerJoin(creators, eq(creators.id, creatorRelations.sourceCreatorId))
-            .where(and(eq(creatorRelations.targetCreatorId, id), eq(creatorRelations.relationType, "pseudonym_of")))
-            .orderBy(asc(creatorDisplayNameSql()), asc(franchises.title), asc(franchises.id)),
         getCreatorProviderVariants([id]),
-        db.select({ seriesId: creatorSeries.seriesId }).from(creatorSeries).where(eq(creatorSeries.creatorId, id)),
         db.selectDistinct({ code: creatorRoles.code, name: creatorRoles.name }).from(entryCreators)
           .innerJoin(creatorRoles, eq(creatorRoles.id, entryCreators.roleId)).where(eq(entryCreators.creatorId, id)),
     ]);
-    return { ...creator, relations, incomingRelations, inheritedSeries, providerVariants: providerVariants.map(v => ({ ...v, mappingId: v.id })), seriesIds: directSeries.map(s => s.seriesId), roles };
+    return { ...creator, relations, incomingRelations, providerVariants: providerVariants.map(v => ({ ...v, mappingId: v.id })), roles };
 }
 export async function getEntryCreators(entryId: number): Promise<EntryCreator[]> {
     return db.select({ id: creators.id, name: creatorDisplayNameSql(), slug: creators.slug, typeCode: creatorTypes.code, roleId: creatorRoles.id, roleCode: creatorRoles.code, roleName: creatorRoles.name, isManual: entryCreators.isManual, hasProviderSource: sql<boolean>`exists (select 1 from entry_creator_sources s where s.entry_id=${entryCreators.entryId} and s.creator_id=${entryCreators.creatorId} and s.role_id=${entryCreators.roleId})` }).from(entryCreators).innerJoin(creators, eq(creators.id, entryCreators.creatorId)).innerJoin(creatorTypes, eq(creatorTypes.id, creators.typeId)).innerJoin(creatorRoles, eq(creatorRoles.id, entryCreators.roleId)).where(eq(entryCreators.entryId, entryId)).orderBy(asc(creatorDisplayNameSql()), asc(creatorRoles.name));
@@ -333,17 +311,6 @@ function validValues(name: string, slug?: string) {
     if (!name.trim() || (slug !== undefined && !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(slug)))
         throw new Error("Укажите имя и корректный slug.");
 }
-async function setSeries(tx: CreatorTransaction, id: number, seriesIds: number[]) {
-    const ids = [...new Set(seriesIds)];
-    if (ids.length) {
-        const found = await tx.select({ id: franchises.id }).from(franchises).where(inArray(franchises.id, ids));
-        if (found.length !== ids.length)
-            throw new Error("Серия не найдена.");
-    }
-    await tx.delete(creatorSeries).where(eq(creatorSeries.creatorId, id));
-    if (ids.length)
-        await tx.insert(creatorSeries).values(ids.map(seriesId => ({ creatorId: id, seriesId })));
-}
 function validateRussianName(value: string | null | undefined) {
     if (value !== undefined && value !== null && (typeof value !== "string" || value.trim().length > 200 || /[\p{Cc}\p{Cf}]/u.test(value))) throw new Error("invalid-name");
 }
@@ -355,7 +322,6 @@ type CreatorInput = {
     deathDate?: string | null;
     slug?: string;
     typeId: number;
-    seriesIds?: number[];
     relations?: { targetCreatorId: number; relationType: "pseudonym_of" }[];
     adminId?: number;
 };
@@ -364,7 +330,7 @@ async function validateLifeDates(tx: CreatorTransaction, input: CreatorInput, cu
         birthDate: input.birthDate === undefined ? current.birthDate : parseCreatorDate(input.birthDate),
         deathDate: input.deathDate === undefined ? current.deathDate : parseCreatorDate(input.deathDate),
     };
-    if (dates.birthDate && dates.deathDate && dates.birthDate > dates.deathDate) throw new Error("Дата смерти не может предшествовать дате рождения.");
+    if (creatorDatesOutOfOrder(dates.birthDate, dates.deathDate)) throw new Error("Дата смерти не может предшествовать дате рождения.");
     if (dates.birthDate || dates.deathDate) {
         const [type] = await tx.select({ code: creatorTypes.code }).from(creatorTypes).where(eq(creatorTypes.id, input.typeId));
         const relations = input.relations ?? (creatorId ? await tx.select().from(creatorRelations).where(eq(creatorRelations.sourceCreatorId, creatorId)) : []);
@@ -391,7 +357,6 @@ export async function createCreator(input: CreatorInput & { slug: string }) {
         const localization = input.nameRu !== undefined ? { nameRu: input.nameRu?.trim() || null, nameRuSource: "manual" as const, nameRuProcessed: true } : type?.code === "person" ? getImportedCreatorNameLocalization({ name: input.name }) : {};
         const [row] = await tx.insert(creators).values({ name: input.name.trim(), originalName: input.originalName?.trim() || null, ...localization, ...dates, slug: input.slug, typeId: input.typeId }).returning();
         await enqueueCreatorImageFill(tx, row.id);
-        await setSeries(tx, row.id, input.seriesIds ?? []);
         await setCreatorRelations(tx, row.id, input.relations);
         await logCreatorChange(tx, "creator.created", row.id, row.name, input.adminId);
         return row;
@@ -420,7 +385,6 @@ export async function updateCreator(id: number, input: CreatorInput) {
         const [type] = await tx.select({ code: creatorTypes.code }).from(creatorTypes).where(eq(creatorTypes.id, input.typeId));
         const localization = input.nameRu !== undefined ? { nameRu: input.nameRu?.trim() || null, nameRuSource: "manual" as const, nameRuProcessed: true } : type?.code === "person" ? getImportedCreatorNameLocalization({ ...current, name: input.name, nameRuProcessed: current.name !== input.name.trim() && !current.nameRu && current.nameRuSource !== "manual" && current.nameRuSource !== "provider" ? false : current.nameRuProcessed }) : {};
         const [row] = await tx.update(creators).set({ name: input.name.trim(), originalName: input.originalName === undefined ? undefined : input.originalName?.trim() || null, ...localization, ...dates, slug: input.slug, typeId: input.typeId, updatedAt: new Date() }).where(eq(creators.id, id)).returning();
-        await setSeries(tx, id, input.seriesIds ?? []);
         await setCreatorRelations(tx, id, input.relations);
         await logCreatorChange(tx, "creator.updated", id, row.name, input.adminId);
         return row;
@@ -428,9 +392,17 @@ export async function updateCreator(id: number, input: CreatorInput) {
 }
 export async function deleteCreator(id: number, adminId?: number) {
     return db.transaction(async (tx) => {
-        const [binding] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(eq(providerCreatorBindings.creatorId, id)).limit(1);
-        if (binding) throw new Error("Сначала удалите подтверждённую привязку провайдера.");
-        await deleteEntitySnapshotLinks(tx,{entityType:"creator",entityId:String(id)});
+        const [creator] = await tx.select({ id: creators.id }).from(creators).where(eq(creators.id, id)).for("update");
+        if (!creator) return null;
+
+        const [source] = await tx.select({ id: entrySources.id }).from(entrySources).where(eq(entrySources.creatorId, id)).limit(1);
+        if (source) throw new Error("Создатель указан источником в записях.");
+
+        const [binding] = await tx.select({ id: providerCreatorBindings.id }).from(providerCreatorBindings).where(and(eq(providerCreatorBindings.creatorId, id), eq(providerCreatorBindings.active, true))).limit(1);
+        if (binding) throw new Error("Сначала удалите действующую привязку провайдера.");
+
+        await tx.delete(providerCreatorBindings).where(and(eq(providerCreatorBindings.creatorId, id), eq(providerCreatorBindings.active, false)));
+        await deleteEntitySnapshotLinks(tx, { entityType: "creator", entityId: String(id) });
         const [row] = await tx.delete(creators).where(eq(creators.id, id)).returning();
         if (row)
             await logCreatorChange(tx, "creator.deleted", id, row.name, adminId);
@@ -525,12 +497,12 @@ export function creatorCondition(creatorId: number | SQLWrapper, entryId: SQLWra
 }
 
 /** Stable Creator tabs: independent of search, roles and the current archive filters. */
-export async function getCreatorMediaTypeCodes(creatorId: number, accessibleCodes: readonly string[]) {
+export async function getCreatorMediaTypeCodes(creatorId: number, accessibleCodes: readonly string[], filter = creatorCondition(creatorId)) {
     if (!accessibleCodes.length) return [];
     const rows = await db.selectDistinct({ code: mediaItems.mediaType }).from(mediaItems).where(and(
         eq(mediaItems.publicationStatus, "published"),
         inArray(mediaItems.mediaType, [...accessibleCodes]),
-        creatorCondition(creatorId),
+        filter,
     ));
     return rows.map(row => row.code);
 }

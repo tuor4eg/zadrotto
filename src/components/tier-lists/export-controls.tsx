@@ -1,7 +1,9 @@
 'use client';
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight } from 'lucide-react';
+import Link from 'next/link';
+import { ChevronLeft, ChevronRight, Edit3 } from 'lucide-react';
+import { CopyTierLink } from '@/app/tier-lists/copy-link';
 import { Button, buttonVariants } from '@/components/ui/button';
 import { cn } from '@/lib/common/utils';
 import { ToggleSwitch } from '@/components/ui/route-switch';
@@ -10,7 +12,13 @@ import { resolveMediaItemDisplayTitles } from '@/lib/media/display-titles';
 import { ArchiveCover } from '@/app/media-item-tile';
 import type { TierCardItem } from '@/components/tier-lists/tier-board';
 import { tierBackground, tierForeground, tierEntryIds, tierRangeError, type TierConfiguration, type TierDistribution } from '@/lib/tier-lists/model';
-export function TierExportControls({ title, configuration, distribution, items, trailingContent }: { trailingContent?: ReactNode; title: string; configuration: TierConfiguration; distribution: TierDistribution; items: TierCardItem[] }) {
+export function TierExportControls({ title, configuration, distribution, items, published }: {
+  title: string;
+  configuration: TierConfiguration;
+  distribution: TierDistribution;
+  items: TierCardItem[];
+  published?: { publicId: string; canEdit: boolean };
+}) {
   const [failedCovers, setFailedCovers] = useState<Set<number>>(() => new Set());
   const [open, setOpen] = useState(false);
   const [names, setNames] = useState(true), [header, setHeader] = useState(true);
@@ -39,12 +47,23 @@ export function TierExportControls({ title, configuration, distribution, items, 
     } finally { if (controller.current === abort) { controller.current = null; setProgress(null); } }
   }
   const invalid = !title.trim() ? 'Введите название тир-листа.' : tierRangeError(configuration, distribution), ids = new Set(tierEntryIds(distribution));
-  return <section className="flex w-full flex-col items-start gap-3" aria-label="Экспорт PNG">
+  return <section className="flex w-full min-w-0 flex-col items-start gap-3" aria-label="Действия с тир-листом">
     <ArchiveToasts messages={messages} />
-    <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 lg:flex lg:flex-wrap">
-      <Button type="button" variant="outline" className="h-9" aria-expanded={open} onClick={() => setOpen(current => !current)}>Экспорт{open ? <ChevronLeft /> : <ChevronRight />}</Button>
-      {trailingContent ? <div className="min-w-0 justify-self-end lg:order-last lg:ml-auto">{trailingContent}</div> : null}
-      {open ? <div className="order-last col-span-2 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-3 lg:order-none">
+    <div className="flex w-full min-w-0 flex-col gap-3 lg:flex-row lg:flex-wrap lg:items-center">
+      <div className="flex flex-nowrap items-center gap-2">
+        {published ? <CopyTierLink publicId={published.publicId} title={title} /> : null}
+        {published?.canEdit ? (
+          <Link href={`/tier-lists/${published.publicId}/edit`} aria-label="Редактировать" title="Редактировать"
+            className={buttonVariants({ variant: 'outline', size: 'icon', className: 'shrink-0' })}>
+            <Edit3 className="size-4" />
+          </Link>
+        ) : null}
+        <Button type="button" variant="outline" className="h-9 shrink-0" aria-expanded={open}
+          onClick={() => setOpen(current => !current)}>
+          Экспорт{open ? <ChevronLeft /> : <ChevronRight />}
+        </Button>
+      </div>
+      {open ? <div className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-3 lg:w-auto">
         <div className="flex w-full min-w-0 flex-wrap items-center gap-x-4 gap-y-3 sm:w-auto">
           <div className="flex h-9 w-28 shrink-0 items-center [&>button]:h-9 [&>button]:items-center"><ToggleSwitch checked={names} label="Названия" size="sm" pending={progress !== null} onCheckedChange={setNames} /></div>
           <div className="flex h-9 w-28 shrink-0 items-center [&>button]:h-9 [&>button]:items-center"><ToggleSwitch checked={header} label="Заголовок" size="sm" pending={progress !== null} onCheckedChange={setHeader} /></div>
@@ -53,7 +72,7 @@ export function TierExportControls({ title, configuration, distribution, items, 
           <progress aria-label="Подготовка PNG" value={progress} max={1} className="h-2 w-32 accent-stone-800" />
           <span className="text-xs tabular-nums text-stone-600">{Math.round(progress * 100)}%</span>
           <Button type="button" variant="outline" size="sm" onClick={() => { controller.current?.abort(); setProgress(null); }}>Отменить</Button>
-        </div> : readyUrl ? <a href={readyUrl} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: 'outline' }), 'h-9 w-48 shrink-0')}>Открыть изображение</a> : <Button type="button" variant="outline" className="h-9 w-48 shrink-0" disabled={!!invalid} title={invalid ?? undefined} onClick={() => void exportPng()}>Старт</Button>}
+        </div> : readyUrl ? <a href={readyUrl} target="_blank" rel="noopener noreferrer" className={cn(buttonVariants({ variant: 'outline' }), 'h-9 w-48 max-w-full shrink-0')}>Открыть изображение</a> : <Button type="button" variant="outline" className="h-9 w-48 max-w-full shrink-0" disabled={!!invalid} title={invalid ?? undefined} onClick={() => void exportPng()}>Старт</Button>}
       </div> : null}
     </div>
     {failedCovers.size ? <p role="status" className="text-sm">Некоторые обложки недоступны и заменены заглушками.</p> : null}

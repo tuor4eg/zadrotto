@@ -1,3 +1,4 @@
+import { creatorWorksCondition, entryHasRelationshipsSql } from "@/db/queries/entry-sources";
 import { getVisibleMediaItemTagsForItems } from "@/db/queries/tags";
 import { authorCanManageFranchisesForExecutor, requireFranchiseManagerForExecutor } from "@/db/queries/franchise-access";
 import { publicTagMediaItemIdsSql } from "@/db/queries/tag-membership";
@@ -5,7 +6,7 @@ import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import { deleteEntitySnapshotLinks } from "@/db/queries/provider-snapshots";
 import { mediaMetadataFactsSql } from "@/db/queries/book-metadata";
 import { mediaItemPlatformsJsonSql, publicMediaItemPlatformsJsonSql } from "@/db/queries/media-item-platforms";
-import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition } from "@/db/queries/creators";
+import { entryWriterCreatorsJsonSql, entryCreatorsJsonSql, creatorCondition, type EntryWriterCreatorLink } from "@/db/queries/creators";
 import { mediaItemHasEditorialReferenceSql } from "@/db/queries/editorial-document-references";
 import { publishedSeriesMediaItemIdsSql, publishedSeriesMembershipSql } from "@/db/queries/series-membership";
 import { hasUnifiedGenresSql, missingGenreSeriesBindingSql, publicMediaItemGenresJsonSql, visibleGenreSql, mediaItemGenresJsonSql } from "@/db/queries/media-item-genres";
@@ -40,7 +41,7 @@ import {
   mediaItemAverageScoreSql,
   mediaItemRatingsCountSql,
 } from "@/db/queries/media-item-rating-stats";
-import { containsNormalizedSearchSql } from "@/db/search";
+import { containsNormalizedSearchWordsSql } from "@/db/search";
 import { mediaItemSearchCondition as catalogSearchCondition } from "@/db/queries/media-item-search";
 import { runInDomainEventTransaction, type DbTransaction } from "@/db/transaction";
 import {
@@ -402,6 +403,7 @@ function catalogFilterConditions(input: {
   platformId?: number;
   creatorId?: number;
   creatorRole?: string;
+  creatorSourceMediaTypeCodes?: readonly string[];
   searchQuery: string;
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
@@ -422,7 +424,9 @@ function catalogFilterConditions(input: {
 
   if (input.platformId) conditions.push(catalogPlatformCondition(input.platformId)!);
   if (input.genreId) conditions.push(catalogGenreCondition(input.genreId));
-  if (input.creatorId) conditions.push(creatorCondition(input.creatorId,undefined,input.creatorRole));
+  if (input.creatorId) conditions.push(input.creatorSourceMediaTypeCodes
+    ? creatorWorksCondition(input.creatorId, input.creatorSourceMediaTypeCodes)
+    : creatorCondition(input.creatorId, undefined, input.creatorRole));
 
   if (input.tagId) conditions.push(inArray(mediaItems.id, sql`(${publicTagMediaItemIdsSql(sql`${input.tagId}`)})`));
   if (input.seriesId) {
@@ -664,6 +668,7 @@ export async function getCatalogMediaItems(input: {
   platformId?: number;
   creatorId?: number;
   creatorRole?: string;
+  creatorSourceMediaTypeCodes?: readonly string[];
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   yearFilter: CatalogYearFilter;
@@ -706,6 +711,7 @@ export async function getCatalogMediaTypeCounts(input: {
   platformId?: number;
   creatorId?: number;
   creatorRole?: string;
+  creatorSourceMediaTypeCodes?: readonly string[];
   yearFilter: CatalogYearFilter;
   yearMode: CatalogYearMode;
 }) {
@@ -735,7 +741,7 @@ export async function getPublishedMediaTypeCounts() {
     .groupBy(mediaItems.mediaType);
 }
 
-export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number, creatorId?: number, platformId?: number, creatorRole?: string) {
+export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonly string[], genreId?: number, creatorId?: number, platformId?: number, creatorRole?: string, creatorSourceMediaTypeCodes?: readonly string[]) {
   const [bounds] = await db
     .select({
       minReleaseYear: sql<number | null>`min(${mediaItems.releaseYear})::int`,
@@ -746,7 +752,9 @@ export async function getCatalogReleaseYearBounds(enabledMediaTypeCodes: readonl
       getMediaTypeCodeFilterSql(mediaItems.mediaType, enabledMediaTypeCodes),
       genreId ? catalogGenreCondition(genreId) : undefined,
       platformId ? catalogPlatformCondition(platformId) : undefined,
-      creatorId ? creatorCondition(creatorId,undefined,creatorRole) : undefined,
+      creatorId ? (creatorSourceMediaTypeCodes
+        ? creatorWorksCondition(creatorId, creatorSourceMediaTypeCodes)
+        : creatorCondition(creatorId, undefined, creatorRole)) : undefined,
     ));
 
   return {
@@ -985,9 +993,9 @@ function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) 
   return or(
     ...searchTerms.flatMap((searchTerm) => {
       return [
-        containsNormalizedSearchSql(mediaItems.title, searchTerm),
-        containsNormalizedSearchSql(mediaItems.originalTitle, searchTerm),
-        containsNormalizedSearchSql(mediaItems.code, searchTerm),
+        containsNormalizedSearchWordsSql(mediaItems.title, searchTerm),
+        containsNormalizedSearchWordsSql(mediaItems.originalTitle, searchTerm),
+        containsNormalizedSearchWordsSql(mediaItems.code, searchTerm),
         exists(
           db
             .select({ id: mediaItemTitleAliases.id })
@@ -995,7 +1003,7 @@ function mediaItemDuplicateSearchCondition(input: MediaItemDuplicateCheckInput) 
             .where(
               and(
                 eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-                containsNormalizedSearchSql(mediaItemTitleAliases.value, searchTerm),
+                containsNormalizedSearchWordsSql(mediaItemTitleAliases.value, searchTerm),
               ),
             ),
         ),
@@ -1480,6 +1488,7 @@ export async function getSubmittedAuthorMediaItemsForAdmin() {
       authorId: authors.id,
       authorName: authors.name,
       authorCode: authors.code,
+      hasRelationships: entryHasRelationshipsSql(),
       automoderationStatus: automoderationChecks.status,
       automoderationDecision: automoderationChecks.decision,
       automoderationReasonCodes: automoderationChecks.reasonCodes,
@@ -1944,6 +1953,56 @@ export async function getMediaItemByCode(
         coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
       }
     : null;
+}
+
+export async function getSourceMediaCards(
+  ids: number[],
+  accessibleMediaTypeCodes: readonly string[],
+  currentAuthorId?: number,
+) {
+  if (!ids.length) return [];
+  const items = await db.select({
+    id: mediaItems.id,
+    code: mediaItems.code,
+    title: mediaItems.title,
+    originalTitle: mediaItems.originalTitle,
+    aliases: mediaItemTitleAliasesSql(),
+    mediaType: mediaItems.mediaType,
+    releaseYear: mediaItems.releaseYear,
+    coverUrl: mediaItems.coverUrl,
+    coverThumbUrl: mediaItems.coverThumbUrl,
+    mediaCarrierCode: mediaCarriers.code,
+    averageScore: mediaItemAverageScoreSql,
+    ratingsCount: mediaItemRatingsCountSql,
+    currentAuthorScore: currentAuthorScoreSql(currentAuthorId),
+    currentAuthorStatus: currentAuthorStatusSql(currentAuthorId),
+    hasRating: sql<boolean>`${currentAuthorRatedAtSql(currentAuthorId)} is not null`,
+    people: entryCreatorsJsonSql(mediaItems.id, true),
+    writers: sql<EntryWriterCreatorLink[] | null>`
+      case when ${mediaItems.mediaType} = 'book' then ${entryWriterCreatorsJsonSql(mediaItems.id, true)} end
+    `,
+    writerRoleName: sql<string | null>`(select name from creator_roles where code = 'writer')`,
+  })
+    .from(mediaItems)
+    .innerJoin(mediaTypes, eq(mediaTypes.code, mediaItems.mediaType))
+    .leftJoin(mediaCarriers, eq(mediaCarriers.id, mediaItems.mediaCarrierId))
+    .leftJoin(mediaItemRatingStats, eq(mediaItemRatingStats.mediaItemId, mediaItems.id))
+    .where(and(
+      inArray(mediaItems.id, ids),
+      publishedMediaItemCondition,
+      eq(mediaTypes.isPubliclyAvailable, true),
+      getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleMediaTypeCodes),
+    ));
+
+  return items.map(({ writers, writerRoleName, ...item }) => ({
+    ...item,
+    people: writers && writerRoleName ? [
+      ...writers.map((writer) => ({ ...writer, roleCode: "writer", roleName: writerRoleName })),
+      ...item.people.filter((person) => person.roleCode !== "writer"),
+    ] : item.people,
+    coverUrl: resolveCoverUrl(item.coverUrl),
+    coverThumbUrl: resolveCoverUrl(item.coverThumbUrl),
+  }));
 }
 
 export async function getOtherMediaItemsFromFranchises(

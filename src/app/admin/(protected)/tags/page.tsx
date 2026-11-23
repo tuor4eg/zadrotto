@@ -1,6 +1,8 @@
 import { parseAdminTagStatus } from "@/lib/tags/model";
 import { Badge } from "@/components/ui/badge";
-import { Trash2 } from "lucide-react";
+import Link from "next/link";
+import { buttonVariants } from "@/components/ui/button";
+import { Pencil, Trash2 } from "lucide-react";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { AdminToasts } from "../admin-toasts";
 import { deleteTagAction } from "./actions";
@@ -22,10 +24,27 @@ export default async function TagsPage({ searchParams }: {
   const result = await getAdminTagsPage({ searchQuery, page: parsePage(query.page), status });
   const deleteButton = (tag: typeof result.items[number]) => <ConfirmAction action={deleteTagAction}
     title={`Удалить тег «${tag.title}»?`} description="Тег и все его назначения на записях будут удалены. Это действие нельзя отменить."
-    confirmLabel="Удалить тег" triggerLabel="Удалить тег" triggerAriaLabel={tag.isSystem ? "Системный тег нельзя удалить" : `Удалить тег ${tag.title}`}
+    confirmLabel="Удалить тег" triggerLabel="Удалить тег" triggerAriaLabel={tag.isSystem ? "Редакционный тег нельзя удалить" : `Удалить тег ${tag.title}`}
     triggerIcon={<Trash2 />} triggerSize="icon" disabled={tag.isSystem}
     fields={[{ name: "tagId", value: tag.id }, { name: "q", value: searchQuery }, { name: "page", value: result.page }, { name: "status", value: status }]} />;
-  const error = query.error === "system" ? "Системный тег нельзя удалить." : query.error === "dependencies"
+  const tagStatus = (tag: typeof result.items[number]) => (
+    <Badge variant="outline">{tag.isSystem ? "Редакционный" : "Обычный"}</Badge>
+  );
+  const actions = (tag: typeof result.items[number]) => (
+    <div className="flex justify-end gap-2">
+      <Link
+        href={`/admin/tags/${tag.id}/edit`}
+        aria-label={`Редактировать тег «${tag.title}»`}
+        title="Редактировать"
+        prefetch={false}
+        className={buttonVariants({ variant: "outline", size: "icon" })}
+      >
+        <Pencil aria-hidden />
+      </Link>
+      {deleteButton(tag)}
+    </div>
+  );
+  const error = query.error === "system" ? "Редакционный тег нельзя удалить." : query.error === "dependencies"
     ? "Тег связан с достижениями, заменами жанров или миграцией. Удаление недоступно." : query.error ? "Не удалось удалить тег." : null;
   return <div className="grid gap-5">
     <PageHeader title="Теги" description="Плоские теги для классификации записей." />
@@ -35,16 +54,18 @@ export default async function TagsPage({ searchParams }: {
     {result.items.length === 0 ? <EmptyState>{searchQuery || status !== "all" ? "Теги не найдены." : "Теги пока не добавлены."}</EmptyState> : <>
       <div className="grid gap-3 md:hidden">
         {result.items.map(tag => <article key={tag.id} className="flex min-w-0 items-center justify-between gap-3 rounded-lg border border-stone-200 bg-white p-4">
-          <div className="min-w-0"><div className="break-words font-medium text-stone-950">{tag.title}</div>{tag.isSystem ? <Badge variant="outline" className="mt-1">Системный</Badge> : null}</div>
-          {deleteButton(tag)}
+          <div className="min-w-0"><div className="break-words font-medium text-stone-950">{tag.title}</div><div className="mt-1">{tagStatus(tag)}</div><div className="mt-1 text-xs text-stone-500">Записей: {tag.mediaItemsCount}</div></div>
+          {actions(tag)}
         </article>)}
       </div>
       <TableWrap className="hidden md:block">
         <Table className="table-fixed">
-          <THead><tr><TH>Название</TH><TH className="w-20 text-right">Действия</TH></tr></THead>
+          <THead><tr><TH>Название</TH><TH className="w-40">Статус</TH><TH className="w-28 text-right">Записи</TH><TH className="w-32 text-right">Действия</TH></tr></THead>
           <TBody>{result.items.map(tag => <TR key={tag.id}>
-            <TD><div className="break-words font-medium text-stone-950">{tag.title}</div>{tag.isSystem ? <Badge variant="outline" className="mt-1">Системный</Badge> : null}</TD>
-            <TD className="text-right">{deleteButton(tag)}</TD>
+            <TD><div className="break-words font-medium text-stone-950">{tag.title}</div></TD>
+            <TD>{tagStatus(tag)}</TD>
+            <TD className="text-right tabular-nums">{tag.mediaItemsCount}</TD>
+            <TD>{actions(tag)}</TD>
           </TR>)}</TBody>
         </Table>
       </TableWrap>

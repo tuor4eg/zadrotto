@@ -106,6 +106,10 @@ export async function fetchCreatorProfileRaw(input: CreatorProfileTarget, option
       url = new URL(`https://comicvine.gamespot.com/api/${target.resourceType}/${target.resourceType === "person" ? "4040" : "4010"}-${target.externalId}/`);
       url.searchParams.set("api_key", key);
       url.searchParams.set("format", "json");
+      if (options.includeDates) {
+        const { field_list } = creatorFillDatesDescriptor(target).requestParams;
+        if (typeof field_list === "string") url.searchParams.set("field_list", field_list);
+      }
       headers["User-Agent"] = "geekoteka/1.0 comic archive";
     } else if (target.provider === "rawg") {
       const key = credentials?.rawg?.apiKey;

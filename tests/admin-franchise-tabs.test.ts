@@ -97,3 +97,19 @@ test("media mutations retain the media tab and report their result there", () =>
   assert.match(childrenTab, /<AdminToasts clearParams=\{\["childCreated", "childDeleted", "childMoved", "error"\]\}/);
   assert.match(page, /query\.childDeleted === "1" \? "Дочерняя серия удалена\."/);
 });
+
+test("media candidates are loaded on demand and capped before enriching results", () => {
+  const picker = readFileSync("src/app/admin/(protected)/series/media-item-franchise-picker.tsx", "utf8");
+  const route = readFileSync("src/app/api/admin/series/media-search/route.ts", "utf8");
+  const search = sourceBetween(
+    queries,
+    "export async function searchAdminMediaItemsAvailableForFranchise",
+    "export async function getAdminMediaItemFranchiseIdentityById",
+  );
+
+  assert.doesNotMatch(page, /getAdminMediaItemsAvailableForFranchise|searchAdminMediaItemsAvailableForFranchise/);
+  assert.match(picker, /if \(!normalizedSearchValue\) return;[\s\S]*fetch\(`\/api\/admin\/series\/media-search/);
+  assert.match(route, /await getCurrentAdminUser\(\)[\s\S]*status: 401/);
+  assert.match(search, /notExists[\s\S]*eq\(mediaItemFranchises\.franchiseId, franchiseId\)/);
+  assert.match(search, /\.limit\(8\)[\s\S]*franchises: franchisesJsonSql\(\)/);
+});

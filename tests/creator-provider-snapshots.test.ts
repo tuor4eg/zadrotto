@@ -10,14 +10,15 @@ import type { JSONValue } from "../src/lib/providers/types";
 const empty = { typeCode: "person", isPseudonym: false, birthDate: null, deathDate: null };
 const dates = { birthDate: "1900-01-01", deathDate: "1980-01-01" };
 
-test("creator dates require full calendar dates and preserve precision without timezone conversion", () => {
+test("creator dates preserve year and full calendar date precision without timezone conversion", () => {
   for (const value of ["0001-01-01", "2000-02-29", "2024-02-29", "1900-02-28", "9999-12-31"]) {
     assert.equal(isCreatorDate(value), true, value);
     assert.equal(parseCreatorDate(value), value);
   }
-  for (const value of ["1900-02-29", "2023-02-29", "2020-04-31", "0000-01-01", "2000-00-01", "2000-01-00", "2000-13-01", "2000-1-01", "2000", "2000-01", "2000-01-01T00:00:00Z", " 2000-01-01", 20000101, {}, true]) {
+  assert.equal(parseCreatorDate("2000"), "2000");
+  for (const value of ["0000", "1900-02-29", "2023-02-29", "2020-04-31", "0000-01-01", "2000-00-01", "2000-01-00", "2000-13-01", "2000-1-01", "2000-01", "2000-01-01T00:00:00Z", " 2000-01-01", 20000101, {}, true]) {
     assert.equal(isCreatorDate(value), false, String(value));
-    assert.throws(() => parseCreatorDate(value), /полную корректную дату/);
+    assert.throws(() => parseCreatorDate(value), /год или полную дату/);
   }
   for (const value of [null, undefined, ""]) assert.equal(parseCreatorDate(value), null);
 });
@@ -37,7 +38,7 @@ test("date application fills NULL only, respects pseudonyms and detects chronolo
   ] as const) {
     assert.deepEqual(planCreatorLifeDates(current, candidate), { changes: {}, diagnostics: ["life-dates-conflict"] });
   }
-  assert.deepEqual(planCreatorLifeDates(empty, { birthDate: "2000-01-01", deathDate: "2000-01-01" }).diagnostics, []);
+  assert.deepEqual(planCreatorLifeDates(empty, { birthDate: "2000-12-31", deathDate: "2000" }).diagnostics, []);
 });
 
 test("FantLab real author responses map only dates and retain their full JSON", async () => {
@@ -53,8 +54,8 @@ test("FantLab real author responses map only dates and retain their full JSON", 
     assert.equal(typeof payload.awards, "object");
     assert.deepEqual(payload, original);
     assert.deepEqual(Object.keys(projection).sort(), ["birthDate", "deathDate", "diagnostics"]);
-    const invalid = mapFantlabAuthorDates({ ...descriptor, payload: { ...payload, birthday: "1900-02-29", deathday: "1980-00-00" } });
-    assert.deepEqual(invalid, { birthDate: null, deathDate: null, diagnostics: ["invalid-birthday", "invalid-deathday"] });
+    const partial = mapFantlabAuthorDates({ ...descriptor, payload: { ...payload, birthday: "1900-02-29", deathday: "1980-00-00" } });
+    assert.deepEqual(partial, { birthDate: null, deathDate: "1980", diagnostics: ["invalid-birthday"] });
     for (const override of [{ providerCode: "other" }, { resourceType: "work" }, { apiMethod: "detail" }, { requestParams: {} }]) {
       assert.throws(() => mapFantlabAuthorDates({ ...descriptor, ...override, payload }), /INVALID_CREATOR_SNAPSHOT/);
     }

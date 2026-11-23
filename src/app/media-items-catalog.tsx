@@ -61,6 +61,7 @@ type MediaItemsCatalogProps = {
   platformSlug?: string | null;
   creatorSlug?: string | null;
   creatorRole?: string | null;
+  creatorScope?: "works";
   sort: CatalogSort;
   sortDirection: CatalogSortDirection;
   totalCount: number;
@@ -113,6 +114,7 @@ export function MediaItemsCatalog({
   platformSlug = null,
   creatorSlug = null,
   creatorRole = null,
+  creatorScope,
   sort,
   sortDirection,
   totalCount,
@@ -176,6 +178,7 @@ export function MediaItemsCatalog({
     platform: platformSlug ?? undefined,
     creator: creatorSlug ?? undefined,
     creatorRole: creatorSlug ? creatorRole ?? undefined : undefined,
+    creatorScope: creatorSlug ? creatorScope : undefined,
     dir:
       sortDirection !== DEFAULT_CATALOG_SORT_DIRECTIONS[sort]
         ? sortDirection

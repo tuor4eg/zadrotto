@@ -19,7 +19,6 @@ before(async () => {
   const unexpectedAction = () => assert.fail("Static rendering must not execute a server action");
   actions.exports = {
     saveCreatorAction: unexpectedAction,
-    findCreatorRelatedSeriesAction: unexpectedAction,
     resolveCreatorAction: unexpectedAction,
     reopenCreatorAction: unexpectedAction,
   };
@@ -35,10 +34,10 @@ after(() => {
 
 const types = [{ id: 1, name: "Человек", code: "person" }];
 
-test("creator edit form preserves original name and submits selected series as tags", () => {
+test("creator edit form preserves original name and pseudonym relations", () => {
   const html = renderToStaticMarkup(createElement(CreatorForm, {
-    creator: { id: 1, name: "Кинг", originalName: "Stephen King", slug: "king", typeId: 1, seriesIds: [2], relations: [{ targetCreatorId: 2, relationType: "pseudonym_of" }], incomingRelations: [{ sourceCreatorId: 3, name: "Коллектив", relationType: "pseudonym_of" }] },
-    creators: [{ id: 1, name: "Кинг" }, { id: 2, name: "Связанный автор" }], types, series: [{ id: 2, title: "Тёмная башня", originalTitle: null }, { id: 3, title: "Оно", originalTitle: null }],
+    creator: { id: 1, name: "Кинг", originalName: "Stephen King", slug: "king", typeId: 1, relations: [{ targetCreatorId: 2, relationType: "pseudonym_of" }], incomingRelations: [{ sourceCreatorId: 3, name: "Коллектив", relationType: "pseudonym_of" }] },
+    creators: [{ id: 1, name: "Кинг" }, { id: 2, name: "Связанный автор" }], types,
   }));
   assert.match(html, /<h2 id="creator-relations-heading"[^>]*>Псевдоним<\/h2>/);
   assert.match(html, /name="relationType"/);
@@ -46,15 +45,13 @@ test("creator edit form preserves original name and submits selected series as t
   assert.match(html, /href="\/admin\/creators\/3\/edit"[^>]*>Коллектив/);
   assert.doesNotMatch(html, /name="slug"/);
   assert.match(html, /name="originalName"[^>]*value="Stephen King"/);
-  assert.match(html, /type="hidden" name="seriesIds" value="2"/);
-  assert.doesNotMatch(html, /type="hidden" name="seriesIds" value="3"/);
-  assert.match(html, /aria-label="Убрать серию Тёмная башня"|aria-label="Удалить серию Тёмная башня"/);
+  assert.doesNotMatch(html, /name="seriesIds"/);
   assert.match(html, /type="submit"[^>]*>Сохранить изменения/);
-  assert.match(html, /type="button"[^>]*>Найти связанные серии/);
+  assert.doesNotMatch(html, /Найти связанные серии/);
 });
 
-test("new creator form does not offer finding series before the creator exists", () => {
-  const html = renderToStaticMarkup(createElement(CreatorForm, { types, series: [], creators: [] }));
+test("new creator form does not offer direct series links", () => {
+  const html = renderToStaticMarkup(createElement(CreatorForm, { types, creators: [] }));
   assert.match(html, /name="slug"/);
   assert.doesNotMatch(html, /Найти связанные серии/);
 });
@@ -140,8 +137,8 @@ test("game company bindings expose reopening for the exact namespaced identity",
 
 test("Russian name editor shows provenance and preserves untouched automatic names", () => {
   const html = renderToStaticMarkup(createElement(CreatorForm, {
-    creator: { id: 1, name: "Stephen King", nameRu: "Стивен Кинг", nameRuSource: "ai", nameRuProcessed: true, slug: "king", typeId: 1, seriesIds: [], relations: [], incomingRelations: [] },
-    creators: [], types, series: [],
+    creator: { id: 1, name: "Stephen King", nameRu: "Стивен Кинг", nameRuSource: "ai", nameRuProcessed: true, slug: "king", typeId: 1, relations: [], incomingRelations: [] },
+    creators: [], types,
   }));
   assert.match(html, /id="creator-name"[^>]*name="name"[^>]*value="Stephen King"/);
   assert.match(html, /id="creator-name-ru"[^>]*value="Стивен Кинг"/);

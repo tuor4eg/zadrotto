@@ -149,7 +149,8 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         if (animeMetadata) {
           if (payload.operation !== "verify") await repairAniListCreatorSnapshotLinks(row.id, row.externalId, guard);
           const metadata = network ? await runWithProviderRequestTimeout(settings!.providerRequestTimeoutMs, () => fetchAniListMetadata({ provider: "anilist", externalId: row.externalId!, mediaType: "anime" }, {
-            candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: settings!.providerRequestTimeoutMs, beforeProviderSearch: before,
+            candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: settings!.providerRequestTimeoutMs,
+            providerResponseMaxMib: settings!.providerResponseMaxMib, beforeProviderSearch: before,
             snapshotJobGuard: guard, snapshotReuseAfter: payload.onlyMissingSnapshots ? new Date(0) : run.createdAt, signal,
           })) : null;
           const saved = metadata ? null : await getSavedAniListMetadataBundle(row.externalId);
@@ -157,7 +158,7 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
         } else if (anime) {
           if (network) {
             const evidence=await runWithProviderRequestTimeout(settings!.providerRequestTimeoutMs, () => fetchAniListCreatorSnapshot({provider:row.provider as "anilist"|"jikan",externalId:row.externalId!,mediaType:"anime"}, {
-              candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,beforeProviderSearch:before,snapshotJobGuard:guard,
+              candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,providerResponseMaxMib:settings!.providerResponseMaxMib,beforeProviderSearch:before,snapshotJobGuard:guard,
               snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal,
             }));
             if (!evidence) throw new Error("ANILIST_MEDIA_MISSING");
@@ -168,7 +169,7 @@ export const providerSnapshotJobHandler: JobHandlerDefinition<SnapshotJobPayload
             refs=[{id:snapshot.id,payloadHash:snapshot.payloadHash}];
           }
         } else if (network) {
-          const metadata=await (manga ? fetchMangaUpdatesMetadata : roblox ? fetchRobloxMetadata : comic ? fetchComicVineMetadata : boardgame ? fetchBggMetadata : game ? fetchGameMetadata : row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb" | "igdb" | "rawg" | "bgg" | "comic-vine" | "mangaupdates" | "roblox",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,
+          const metadata=await (manga ? fetchMangaUpdatesMetadata : roblox ? fetchRobloxMetadata : comic ? fetchComicVineMetadata : boardgame ? fetchBggMetadata : game ? fetchGameMetadata : row.provider === "tmdb" ? row.mediaType === "series" ? fetchTmdbSeriesMetadata : fetchTmdbFilmMetadata : fetchBookMetadata)({provider:row.provider as import("./types").BookProviderCode | "tmdb" | "igdb" | "rawg" | "bgg" | "comic-vine" | "mangaupdates" | "roblox",externalId:row.externalId,mediaType:row.mediaType},{candidateLimit:1,tmdbResultScanLimit:1,requestTimeoutMs:settings!.providerRequestTimeoutMs,providerResponseMaxMib:settings!.providerResponseMaxMib,
             providerCredentials:credentials,beforeProviderSearch:before,snapshotJobGuard:guard,snapshotReuseAfter:payload.onlyMissingSnapshots ? new Date(0) : run.createdAt,signal});
           refs=metadata.snapshotReferences!;
         } else {

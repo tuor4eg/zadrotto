@@ -1,30 +1,26 @@
 "use client"
 
 import { X } from "lucide-react"
-import { useEffect, useRef } from "react"
+import { useEffect, useId, useRef, type ComponentProps } from "react"
 import { createPortal } from "react-dom"
 
 import { AdminMediaBrowser } from "@/components/admin/admin-media-browser"
-import type { AdminMediaBrowserItem, AdminMediaBrowserSeriesOption } from "@/lib/admin/media-browser"
-import type { MediaTypeOption } from "@/lib/media/types"
-
-type TierListMediaBrowserDialogProps = {
-  excludedIds: readonly number[]
-  maxSelection: number
-  mediaTypes: readonly MediaTypeOption[]
+import { Button } from "@/components/ui/button"
+import { cn } from "@/lib/common/utils"
+type MediaBrowserDialogProps = ComponentProps<typeof AdminMediaBrowser> & {
   onClose: () => void
-  onConfirm: (items: AdminMediaBrowserItem[]) => void
-  series: readonly AdminMediaBrowserSeriesOption[]
+  title?: string
 }
 
-export function TierListMediaBrowserDialog({
-  excludedIds,
-  maxSelection,
-  mediaTypes,
+export function MediaBrowserDialog({
   onClose,
-  onConfirm,
-  series,
-}: TierListMediaBrowserDialogProps) {
+  title = "Добавить записи",
+  pageSize = 48,
+  variant = "admin",
+  ...browserProps
+}: MediaBrowserDialogProps) {
+  const titleId = useId()
+  const archive = variant === "archive"
   const dialogRef = useRef<HTMLDivElement>(null)
   const onCloseRef = useRef(onClose)
 
@@ -64,18 +60,24 @@ export function TierListMediaBrowserDialog({
         ref={dialogRef}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="tier-media-browser-title"
+        aria-labelledby={titleId}
         tabIndex={-1}
-        className="archive-paper archive-paper-surface archive-panel my-auto flex h-full max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-6xl flex-col shadow-2xl outline-none sm:max-h-[calc(100dvh-2.5rem)]"
+        className={cn(
+          "my-auto flex h-full max-h-[calc(100dvh-1.5rem)] w-full min-w-0 max-w-6xl flex-col shadow-2xl outline-none sm:max-h-[calc(100dvh-2.5rem)]",
+          archive ? "archive-paper archive-paper-surface archive-panel" : "overflow-hidden rounded-lg border border-stone-200 bg-white",
+        )}
       >
-        <div className="shrink-0 p-4 pb-3 sm:p-5 sm:pb-3">
-          <div className="flex items-start justify-between gap-4">
-            <div
-              id="tier-media-browser-title"
-              className="media-carrier-font-pc-steam text-2xl leading-none text-stone-950"
-            >
-              Добавить записи
-            </div>
+        <header className={cn(
+          "flex shrink-0 items-start justify-between gap-4 px-4 py-3 sm:px-5",
+          archive ? "pt-4 sm:pt-5" : "border-b border-stone-200",
+        )}>
+          <h2 id={titleId} className={archive
+            ? "media-carrier-font-pc-steam text-2xl leading-none text-stone-950"
+            : "text-lg font-semibold"}
+          >
+            {title}
+          </h2>
+          {archive ? (
             <button
               type="button"
               className="grid size-9 shrink-0 place-items-center rounded-md border border-stone-300/80 bg-stone-50/60 text-stone-700 transition-colors hover:border-stone-950 hover:text-stone-950"
@@ -84,19 +86,21 @@ export function TierListMediaBrowserDialog({
             >
               <X className="size-4" />
             </button>
-          </div>
-        </div>
-        <div className="archive-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-5">
+          ) : (
+            <Button type="button" variant="ghost" size="icon" aria-label="Закрыть" onClick={onClose}>
+              <X />
+            </Button>
+          )}
+        </header>
+        <div className={cn(
+          "min-h-0 flex-1 overflow-y-auto overscroll-contain",
+          archive ? "archive-scrollbar px-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:px-5 sm:pb-5" : "p-3 sm:p-5",
+        )}>
           <AdminMediaBrowser
-            className="border-0 bg-transparent p-0"
-            endpoint="/api/tier-lists/media-browser"
-            excludedIds={excludedIds}
-            maxSelection={maxSelection}
-            mediaTypes={mediaTypes}
-            pageSize={48}
-            series={series}
-            variant="archive"
-            onConfirm={onConfirm}
+            className={archive ? "border-0 bg-transparent p-0" : undefined}
+            variant={variant}
+            pageSize={pageSize}
+            {...browserProps}
           />
         </div>
       </div>

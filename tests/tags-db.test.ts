@@ -180,6 +180,23 @@ describe("tag publication SQL", { skip: !enabled }, () => {
     assert.deepEqual((await queries.getVisibleMediaItemTags(40,1)).map((tag) => [tag.id,tag.isPublic]), [[40,false],[41,false]]);
   });
 
+  it("saves selected tags with the draft author and rejects a deleted tag atomically", async () => {
+    await client`insert into tags(id, code, title) values (9501, 'draft-test-tag', 'Тег черновика')`;
+    const input = { mediaItemId: 62, authorId: 1, tagIds: [9501, 9501] };
+    await assert.rejects(appDb!.db.transaction(async (tx) => {
+      await queries.assignExistingTagsToNewDraft(tx, input);
+      await queries.assignExistingTagsToNewDraft(tx, { ...input, tagIds: [9502] });
+    }), /invalid-tags/);
+    assert.equal((await client`select count(*)::int as n from media_item_tags where tag_id=9501`)[0].n, 0);
+
+    await appDb!.db.transaction((tx) => queries.assignExistingTagsToNewDraft(tx, input));
+    const saved = await client`select media_item_id, tag_id, author_id from media_item_tags where tag_id=9501`;
+    assert.deepEqual(Array.from(saved), [{ media_item_id: 62, tag_id: 9501, author_id: 1 }]);
+    assert.deepEqual(await publicIds(9501), []);
+    await client`delete from media_item_tags where tag_id=9501`;
+    await client`delete from tags where id=9501`;
+  });
+
   it("searches human titles with shared case and ё normalization", async () => {
     await client`insert into tags(id,code,title) values(50,'hedgehog','Лесной Ёж'),(51,'cat','Лесной кот')`;
     assert.deepEqual((await queries.searchTags("  ЕЖ  ")).map((tag) => tag.id), [50]);
@@ -453,6 +470,9 @@ describe("tag publication SQL", { skip: !enabled }, () => {
 
 
   it("admin deletion rejects system tags and dependencies and deletes ordinary assignments atomically", async () => {
+    // Earlier SQL fixtures deliberately insert assignments for IDs absent from the dictionary.
+    await client`select setval(pg_get_serial_sequence('tags','id'),
+      greatest((select max(id) from tags), (select max(tag_id) from media_item_tags)))`;
     const ordinary = await queries.mutateMediaItemTag({ mediaItemId: 60, authorId: 1, title: 'Админ удаление обычного' });
     await queries.mutateMediaItemTag({ mediaItemId: 60, authorId: 2, tagId: ordinary.tagId });
     await queries.mutateMediaItemTag({ mediaItemId: 61, authorId: 2, tagId: ordinary.tagId });
@@ -559,4 +579,61 @@ describe("tag publication SQL", { skip: !enabled }, () => {
     assert.deepEqual((await getRelatedTagSections(input)).map(section => section.items.map(item => item.id)), [[],[9701]]);
   });
 
+
+  it("edits grouped assignments only on the selected record", async () => {
+    const { changeAdminMediaItemTag: change, getAdminMediaItemTagGroups: groups } = queries;
+    await client`update authors set name='Редакция' where id=100`;
+    const first = await queries.mutateMediaItemTag({ mediaItemId: 9701, authorId: 1, title: "Группа редактора" });
+    await queries.mutateMediaItemTag({ mediaItemId: 9701, authorId: 2, tagId: first.tagId });
+    await queries.mutateMediaItemTag({ mediaItemId: 9700, authorId: 1, tagId: first.tagId });
+    const group = async () => (await groups(9701)).find(({ id }) => id === first.tagId);
+    assert.deepEqual(await group(), { id: first.tagId, title: "Группа редактора", count: 2, editorial: false });
+    const list = await queries.getAdminTagsPage({ searchQuery: "Группа редактора", page: 1 });
+    assert.equal(list.items[0].mediaItemsCount, 2, "counts records rather than assignments");
+    const entries = await queries.getAdminTagEntriesPage(first.tagId, 1);
+    assert.equal(entries.total, 2);
+    assert.deepEqual(entries.items.map(({ id, count, editorial }) => ({ id, count, editorial })), [
+      { id: 9700, count: 1, editorial: false },
+      { id: 9701, count: 2, editorial: false },
+    ]);
+
+    await change(9701, { operation: "pin", tagId: first.tagId });
+    assert.equal((await group())?.count, 3);
+    assert.equal((await group())?.editorial, true);
+    assert.equal((await client`select author_id from media_item_tags where media_item_id=9701 and tag_id=${first.tagId} and author_id=100`).length, 1);
+    assert.equal((await change(9701, { operation: "pin", tagId: first.tagId })).changed, false);
+    await assert.rejects(change(9701, { operation: "delete", tagId: first.tagId }), /tag-group-changed/);
+    await assert.rejects(change(9701, { operation: "rename", tagId: first.tagId, title: "Нельзя переименовать" }), /tag-group-changed/);
+
+    await change(9701, { operation: "unpin", tagId: first.tagId });
+    assert.equal((await group())?.count, 2);
+    assert.equal((await group())?.editorial, false);
+    await change(9701, { operation: "delete", tagId: first.tagId });
+    assert.equal(await group(), undefined);
+    assert.ok((await groups(9700)).some(({ id }) => id === first.tagId));
+
+    const added = await change(9701, { operation: "add", title: "Редакционный одиночный" });
+    const repeated = await change(9701, { operation: "add", title: "  РЕДАКЦИОННЫЙ   ОДИНОЧНЫЙ " });
+    assert.equal(repeated.tagId, added.tagId);
+    assert.equal(repeated.changed, false);
+    await change(9701, { operation: "rename", tagId: added.tagId, title: "Новый редакционный" });
+    const renamed = (await groups(9701)).find(({ title }) => title === "Новый редакционный");
+    assert.ok(renamed?.editorial && renamed.count === 1);
+    assert.ok(!(await groups(9701)).some(({ id }) => id === added.tagId));
+    await change(9701, { operation: "unpin", tagId: renamed.id });
+    assert.ok(!(await groups(9701)).some(({ id }) => id === renamed.id));
+
+    const originalIdentity = await queries.getAdminTagById(first.tagId);
+    await assert.rejects(queries.renameAdminTag(first.tagId, " Полка   Б "), /tag-title-taken/);
+    await queries.renameAdminTag(first.tagId, "Общее новое название");
+    const newIdentity = await queries.getAdminTagById(first.tagId);
+    assert.equal(newIdentity?.code, originalIdentity?.code);
+    assert.equal(newIdentity?.title, "Общее новое название");
+    assert.equal((await queries.getAdminTagEntriesPage(first.tagId, 1)).items[0].id, 9700);
+
+    assert.equal((await change(9701, { operation: "attach", tagId: first.tagId })).changed, true);
+    assert.equal((await change(9701, { operation: "attach", tagId: first.tagId })).changed, false);
+    assert.deepEqual(await group(), { id: first.tagId, title: newIdentity?.title, count: 1, editorial: true });
+    await assert.rejects(change(9701, { operation: "attach", tagId: 2147483647 }), /invalid-tag/);
+  });
 });

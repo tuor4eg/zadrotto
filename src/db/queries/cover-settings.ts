@@ -11,6 +11,7 @@ import {
 import {
   DEFAULT_COVER_CANDIDATE_LIMIT,
   DEFAULT_COVER_MAX_BYTES,
+  DEFAULT_PROVIDER_RESPONSE_MAX_MIB,
   DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
   DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
   resolveProviderRequestTimeoutMs,
@@ -36,6 +37,7 @@ export type CoverSettingsValue = {
   candidateLimit: number;
   tmdbResultScanLimit: number;
   coverMaxBytes: number;
+  providerResponseMaxMib: number;
   providerRequestTimeoutMs: number;
 };
 
@@ -69,6 +71,7 @@ export const DEFAULT_COVER_SETTINGS = {
   candidateLimit: DEFAULT_COVER_CANDIDATE_LIMIT,
   tmdbResultScanLimit: DEFAULT_TMDB_COVER_RESULT_SCAN_LIMIT,
   coverMaxBytes: DEFAULT_COVER_MAX_BYTES,
+  providerResponseMaxMib: DEFAULT_PROVIDER_RESPONSE_MAX_MIB,
   providerRequestTimeoutMs: DEFAULT_PROVIDER_REQUEST_TIMEOUT_MS,
 } satisfies CoverSettingsValue;
 
@@ -136,6 +139,7 @@ function normalizeCoverSettings(row: CoverSettingsValue | null): CoverSettingsVa
     tmdbResultScanLimit:
       row?.tmdbResultScanLimit ?? DEFAULT_COVER_SETTINGS.tmdbResultScanLimit,
     coverMaxBytes: row?.coverMaxBytes ?? DEFAULT_COVER_SETTINGS.coverMaxBytes,
+    providerResponseMaxMib: row?.providerResponseMaxMib ?? DEFAULT_COVER_SETTINGS.providerResponseMaxMib,
     providerRequestTimeoutMs: resolveProviderRequestTimeoutMs(
       row?.providerRequestTimeoutMs ?? DEFAULT_COVER_SETTINGS.providerRequestTimeoutMs,
     ),
@@ -157,6 +161,7 @@ export async function getCoverSettings(): Promise<CoverSettingsValue> {
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
       coverMaxBytes: coverSettings.coverMaxBytes,
+      providerResponseMaxMib: coverSettings.providerResponseMaxMib,
       providerRequestTimeoutMs: coverSettings.providerRequestTimeoutMs,
     })
     .from(coverSettings)
@@ -179,6 +184,7 @@ export async function updateCoverSettings(
       candidateLimit: input.candidateLimit,
       tmdbResultScanLimit: input.tmdbResultScanLimit,
       coverMaxBytes: input.coverMaxBytes,
+      providerResponseMaxMib: input.providerResponseMaxMib,
       providerRequestTimeoutMs,
       updatedAt: new Date(),
     })
@@ -188,6 +194,7 @@ export async function updateCoverSettings(
         candidateLimit: input.candidateLimit,
         tmdbResultScanLimit: input.tmdbResultScanLimit,
         coverMaxBytes: input.coverMaxBytes,
+        providerResponseMaxMib: input.providerResponseMaxMib,
         providerRequestTimeoutMs,
         updatedAt: new Date(),
       },
@@ -196,6 +203,7 @@ export async function updateCoverSettings(
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
       coverMaxBytes: coverSettings.coverMaxBytes,
+      providerResponseMaxMib: coverSettings.providerResponseMaxMib,
       providerRequestTimeoutMs: coverSettings.providerRequestTimeoutMs,
     });
 

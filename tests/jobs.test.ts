@@ -251,6 +251,7 @@ test("job journal href omits the default all-runs filter", () => {
   assert.equal(buildJobJournalHref({ job: "adhoc", page: 2, pageSize: 50 }), "/admin/tools/jobs/journal?job=adhoc&page=2&pageSize=50");
   assert.equal(buildJobJournalHref({ job: "12", page: 1, pageSize: 25 }), "/admin/tools/jobs/journal?job=12");
   assert.equal(buildJobJournalHref({ type: "media.tmdb-directors-backfill", page: 2 }), "/admin/tools/jobs/journal?type=media.tmdb-directors-backfill&page=2");
+  assert.equal(buildJobJournalHref({ job: "adhoc", status: "failed", page: 2 }), "/admin/tools/jobs/journal?job=adhoc&status=failed&page=2");
 });
 
 test("metadata jobs seed two enabled schedules with split cron and payloads", async () => {

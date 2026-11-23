@@ -2,7 +2,7 @@ import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { requireAdminUser } from "@/lib/auth/admin-auth";
 import { getClassificationInventory, getClassificationMigration, getClassificationSelectionLabels, listClassificationMigrations } from "@/db/queries/classification-migration";
-import { classificationHash, publishedMembership, type RawRow } from "@/lib/classification-migration/model";
+import { classificationHash, currentClassificationSnapshot, publishedMembership, type RawRow } from "@/lib/classification-migration/model";
 import { initialKeptSeriesIds } from "@/lib/classification-migration/selection";
 import { ClassificationSeriesTree, ClassificationSelectionState, ClassificationApplyControls } from "./classification-series-tree";
 import { approveMigrationAction, createPreviewAction, rollbackMigrationAction } from "./classification-migration-actions";
@@ -26,10 +26,9 @@ export async function ClassificationMigrationCard({ expanded, params }: {
     validId ? Promise.resolve(null) : getClassificationInventory(),
   ]);
   if (validId && !selected) return <article id="classification" className="rounded-md border bg-white p-5"><p>Сохранённый перенос не найден.</p><Link className="underline" href={`${PATH}?classification=1#classification`}>Открыть дерево серий</Link></article>;
-  const state = selected?.beforeSnapshot ?? inventory!.state;
+  const state = selected ? currentClassificationSnapshot(selected.beforeSnapshot) : inventory!.state;
   const labels = await getClassificationSelectionLabels(state);
-  const creatorNames = new Map(labels.creators.map(row => [row.id, row.name]));
-  const mediaTitles = new Map(labels.media.map(row => [row.id, row.title]));
+  const mediaTitles = new Map(labels.map(row => [row.id, row.title]));
   const series = state.franchises.map(row => ({ id: Number(row.id), title: String(row.title), parentId: row.parent_id == null ? null : Number(row.parent_id) }));
   const seriesById = new Map(series.map(row => [row.id, row]));
   const tags = state.tags.map(row => ({ id: Number(row.id), title: String(row.title) }));
@@ -50,7 +49,6 @@ export async function ClassificationMigrationCard({ expanded, params }: {
       <form action={createPreviewAction}>
         <input type="hidden" name="selectionHash" value={selectionHash} />
         <ClassificationSeriesTree key={selected?.id ?? "new"} series={series} initialKeptIds={initialKeptSeriesIds(series, selected?.manifest)} initialManifest={selected?.manifest}
-          creatorLinks={state.creator_series.map(row => ({ creatorId: Number(row.creator_id), seriesId: Number(row.series_id), name: creatorNames.get(Number(row.creator_id)) ?? "Удалённый создатель" }))}
           pendingLinks={state.media_item_franchises.filter(row => row.publication_status !== "published").map(row => ({ mediaItemId: Number(row.media_item_id), seriesId: Number(row.franchise_id), title: mediaTitles.get(Number(row.media_item_id)) ?? "Удалённая запись" }))}
           removalRequests={state.media_item_franchise_removal_requests.map(row => ({ mediaItemId: Number(row.media_item_id), seriesId: Number(row.franchise_id), title: mediaTitles.get(Number(row.media_item_id)) ?? "Удалённая запись" }))} />
       </form>
@@ -68,7 +66,6 @@ export async function ClassificationMigrationCard({ expanded, params }: {
           const tagTitle = row.tagId === undefined ? seriesTitle : tagTitles.get(row.tagId);
           const achievements = state.achievements.filter(achievement => Number((achievement.params as RawRow).seriesId) === row.id);
           const genres = state.genres.filter(genre => Number(genre.replacement_franchise_id) === row.id);
-          const creators = selected.manifest.creatorLinks.filter(link => link.seriesId === row.id);
           const pending = selected.manifest.pendingLinks.filter(link => link.franchiseId === row.id);
           const removals = selected.manifest.removalRequests.filter(link => link.franchiseId === row.id);
           return <li key={row.id} className="grid gap-1">
@@ -77,7 +74,6 @@ export async function ClassificationMigrationCard({ expanded, params }: {
               <p>Записей в теме: {publishedMembership(state, row.id).length}. Назначения от редакции.</p>
               {achievements.length ? <p>Достижения перейдут на этот тег: {achievements.map(achievement => String(achievement.name)).join(", ")}. Выданные уровни сохранятся.</p> : null}
               {genres.length ? <p>У записей с публичным тегом «{tagTitle}» {genres.length === 1 ? "будет скрыт жанр" : "будут скрыты жанры"} {genres.map(genre => `«${genre.name}»`).join(", ")}.</p> : null}
-              {creators.map(link => <p key={link.creatorId}>Создатель «{creatorNames.get(link.creatorId)}»: {link.targetSeriesId === null ? "убрать связь с этой серией" : `перенести связь в «${seriesById.get(link.targetSeriesId)?.title}»`}</p>)}
               {pending.length ? <p>Неопубликованных связей к удалению: {pending.length}.</p> : null}
               {removals.length ? <p>Запросов на удаление связей к закрытию: {removals.length}.</p> : null}
             </div>

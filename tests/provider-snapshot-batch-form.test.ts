@@ -186,7 +186,7 @@ test("game changes default off and explicit processing consent is restored", asy
   const single = renderToStaticMarkup(createElement(ProviderSnapshotControls, { mediaItemId: 10, mediaType: "game", provider: "igdb", showActions: true, canProcess: true }));
   assert.match(single, /name="applyGameChanges"/);
   assert.doesNotMatch(single, /name="applyGameChanges"[^>]*checked=/);
-  assert.match(single, /3\. Перенести совпадающие данные/);
+  assert.match(single, />Перенести совпадающие данные</);
   const book = renderToStaticMarkup(createElement(SnapshotBatchForm, { values: { mediaType: "book", provider: "fantlab", operation: "process" } }));
   assert.doesNotMatch(book, /name="applyGameChanges"/);
 });

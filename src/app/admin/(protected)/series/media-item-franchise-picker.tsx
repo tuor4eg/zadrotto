@@ -2,66 +2,62 @@
 
 import { SearchInput } from "@/components/ui/search-input";
 
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { Plus, Search } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
 import { Tooltip } from "@/components/ui/tooltip";
-import { type getAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
+import { type searchAdminMediaItemsAvailableForFranchise } from "@/db/queries/franchises";
 import { getMediaTypeLabel, type MediaTypeOption } from "@/lib/media/types";
-import { PUBLICATION_STATUS_VALUE_LABELS } from "@/lib/media/publication-status";
 import { normalizeSearchText } from "@/lib/search/normalize";
 import { addMediaItemToFranchiseAction } from "./actions";
 
 type AvailableMediaItem = Awaited<
-  ReturnType<typeof getAdminMediaItemsAvailableForFranchise>
+  ReturnType<typeof searchAdminMediaItemsAvailableForFranchise>
 >[number];
 
 type MediaItemFranchisePickerProps = {
   franchiseId: number;
-  items: AvailableMediaItem[];
+  membershipKey: string;
   mediaTypes: MediaTypeOption[];
 };
 
-function itemMatchesSearch(
-  item: AvailableMediaItem,
-  searchValue: string,
-  mediaTypes: MediaTypeOption[],
-) {
-  const searchableText = [
-    item.title,
-    item.originalTitle,
-    ...item.aliases,
-    item.code,
-    ...item.franchises.map((franchise) => franchise.title),
-    item.releaseYear?.toString(),
-    getMediaTypeLabel(item.mediaType, mediaTypes),
-    PUBLICATION_STATUS_VALUE_LABELS[item.publicationStatus],
-  ]
-    .filter(Boolean)
-    .join(" ");
-
-  return normalizeSearchText(searchableText).includes(searchValue);
-}
-
 export function MediaItemFranchisePicker({
   franchiseId,
-  items,
+  membershipKey,
   mediaTypes,
 }: MediaItemFranchisePickerProps) {
   const [searchValue, setSearchValue] = useState("");
   const normalizedSearchValue = normalizeSearchText(searchValue);
-  const visibleItems = useMemo(() => {
-    if (!normalizedSearchValue) {
-      return [];
-    }
+  const searchKey = JSON.stringify([franchiseId, normalizedSearchValue, membershipKey]);
+  const [result, setResult] = useState<{ key: string; items: AvailableMediaItem[]; error?: boolean }>();
+  const currentResult = result?.key === searchKey ? result : undefined;
+  const visibleItems = currentResult?.items ?? [];
 
-    return items
-      .filter((item) => itemMatchesSearch(item, normalizedSearchValue, mediaTypes))
-      .slice(0, 8);
-  }, [items, mediaTypes, normalizedSearchValue]);
+  useEffect(() => {
+    if (!normalizedSearchValue) return;
+    const controller = new AbortController();
+    const timer = setTimeout(async () => {
+      const params = new URLSearchParams({ franchiseId: String(franchiseId), q: normalizedSearchValue });
+      try {
+        const response = await fetch(`/api/admin/series/media-search?${params}`, {
+          signal: controller.signal,
+          cache: "no-store",
+        });
+        if (!response.ok) throw new Error("Search failed");
+        const items: AvailableMediaItem[] = await response.json();
+        if (!controller.signal.aborted) setResult({ key: searchKey, items });
+      } catch {
+        if (!controller.signal.aborted) setResult({ key: searchKey, items: [], error: true });
+      }
+    }, 250);
+    return () => {
+      clearTimeout(timer);
+      controller.abort();
+    };
+  }, [franchiseId, normalizedSearchValue, searchKey]);
 
   return (
     <div className="mb-5 rounded-lg border border-stone-200 bg-stone-50/70 p-3">
@@ -73,13 +69,16 @@ export function MediaItemFranchisePicker({
           onChange={(event) => setSearchValue(event.target.value)}
           placeholder="Найти запись для добавления"
           className="pl-9"
+          maxLength={200}
         />
       </div>
 
-      {items.length === 0 ? (
-        <p className="mt-3 text-sm text-stone-500">Все записи уже в этой серии.</p>
-      ) : !normalizedSearchValue ? (
+      {!normalizedSearchValue ? (
         <p className="mt-3 text-sm text-stone-500">Начни вводить название или оригинал.</p>
+      ) : !currentResult ? (
+        <p role="status" className="mt-3 text-sm text-stone-500">Поиск…</p>
+      ) : currentResult.error ? (
+        <p role="alert" className="mt-3 text-sm text-red-700">Не удалось найти записи. Измените запрос и попробуйте снова.</p>
       ) : visibleItems.length === 0 ? (
         <p className="mt-3 text-sm text-stone-500">По этому поиску записей нет.</p>
       ) : (

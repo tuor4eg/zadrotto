@@ -12,23 +12,26 @@ const franchiseQueries = read("src/db/queries/franchises.ts");
 const mediaQueries = read("src/db/queries/media-items.ts");
 
 describe("archive series search", () => {
-  it("shows at most three direct series matches and links excess results to series", () => {
+  it("fits direct series matches into one row with a link to the series catalog", () => {
     assert.match(archivePage, /searchArchiveSeriesMatches\(searchQuery, enabledMediaTypeCodes\)/);
     assert.match(franchiseQueries, /export async function searchArchiveSeriesMatches/);
     assert.match(franchiseQueries, /limit = ARCHIVE_SEARCH_MATCH_LIMIT/);
     assert.match(franchiseQueries, /matchesNormalizedSearch\(\[series\.title, series\.originalTitle, series\.code\]/);
     assert.match(franchiseQueries, /items: matches\.slice\(0, Math\.max\(0, limit\)\)/);
-    assert.match(seriesContext, /totalCount > items\.length/);
+    assert.doesNotMatch(seriesContext, /totalCount > items\.length/);
     assert.match(seriesContext, /Посмотреть в сериях/);
     assert.doesNotMatch(seriesContext, /formatRecordsCount/);
     assert.doesNotMatch(seriesContext, /item\.mediaItemsCount/);
     assert.match(seriesContext, /itemHref=\{selectionHrefs\[item\.id\]\}/);
     assert.match(seriesContext, /parentHrefs=\{selectionHrefs\}/);
     assert.match(seriesContext, /itemHref \? \([\s\S]*href=\{itemHref\}/);
-    assert.match(
-      seriesContext,
-      /<ul className="[^"]*flex-1 flex-row flex-wrap[^"]*max-sm:w-full max-sm:basis-full/,
-    );
+    assert.match(seriesContext, /<ArchiveMatchList>/);
+    assert.match(seriesContext, /archive-panel grid min-w-0 grid-cols-\[minmax\(0,1fr\)\]/);
+    assert.match(seriesContext, /sm:grid-cols-\[auto_minmax\(0,1fr\)_auto\]/);
+    const matchList = read("src/app/archive/archive-match-list.tsx");
+    assert.match(matchList, /overflow-hidden whitespace-nowrap/);
+    assert.match(matchList, /ResizeObserver\(fitItems\)/);
+    assert.match(matchList, /toggleAttribute\("inert", item\.getBoundingClientRect\(\)\.right > right\)/);
     assert.doesNotMatch(seriesContext, /href=\{selectionHrefs\[item\.id\]\}>[\s\S]*<SeriesPath item=\{item\}/);
     assert.match(archivePage, /seriesMatches\.items\.flatMap\(\(series\) => \[[\s\S]*series\.parents\.map\(\(parent\)/);
     assert.match(archivePage, /moreHref=\{`\/series\?q=\$\{encodeURIComponent\(searchQuery\)\}`\}/);
@@ -44,8 +47,9 @@ describe("archive series search", () => {
     assert.match(archivePage, /getFranchiseByCode\(requestedSeriesCode\)/);
     assert.match(
       archivePage,
-      /\["tag", "mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "platform"\]/,
+      /\["tag", "mine", "pageSize", "dir", "sort", "type", "year", "yearMode", "ratedBy", "compare", "creator", "creatorRole", "creatorScope", "platform"\]/,
     );
+    assert.match(archivePage, /if \(seriesCode\) nextParams\.delete\("tag"\)/);
     assert.match(archivePage, /nextParams\.set\("series", seriesCode\)/);
     assert.match(archivePage, /const catalogSearchQuery = !selectedCreator && \(selectedGenre \|\| selectedSeries\) \? "" : searchQuery/);
 
@@ -76,7 +80,7 @@ describe("archive series search", () => {
     assert.match(childSeries, /Свернуть/);
     assert.doesNotMatch(childSeries, /basis-full/);
     assert.match(childSeries, /rounded-full bg-\[var\(--archive-bg-end\)\][^"\n]*lowercase/);
-    assert.match(catalogControls, /nextSearchParams\.delete\("series"\)[\s\S]*updateFilterParam\(nextSearchParams, "q"/);
+    assert.match(catalogControls, /nextSearchParams\.delete\("series"\)[\s\S]*nextSearchParams\.delete\("tag"\)[\s\S]*updateFilterParam\(nextSearchParams, "q"/);
   });
 
   it("applies the published series subtree to items, counts, and pagination", () => {

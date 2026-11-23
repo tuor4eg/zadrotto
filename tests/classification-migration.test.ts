@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { classificationBlockers, classificationHash, draftClassificationManifest, parseClassificationManifest, publishedMembership, type ClassificationSnapshot } from "../src/lib/classification-migration/model";
+import { classificationBlockers, classificationHash, classificationRollbackHash, currentClassificationSnapshot, draftClassificationManifest, parseClassificationManifest, publishedMembership, type ClassificationSnapshot } from "../src/lib/classification-migration/model";
 
 function state(): ClassificationSnapshot {
   return {
@@ -17,7 +17,7 @@ function state(): ClassificationSnapshot {
       { media_item_id: 12, franchise_id: 4, publication_status: "published" },
       { media_item_id: 13, franchise_id: 1, publication_status: "pending" },
     ],
-    creator_series: [], media_item_franchise_removal_requests: [], genres: [], achievements: [], tags: [], media_item_tags: [], systemAuthors: [{ id: 99 }], providerLinks: [], foreignKeys: [], archiveSettings: [],
+    media_item_franchise_removal_requests: [], genres: [], achievements: [], tags: [], media_item_tags: [], systemAuthors: [{ id: 99 }], providerLinks: [], foreignKeys: [], archiveSettings: [],
   };
 }
 function manifest() {
@@ -48,14 +48,17 @@ test("cycles, dangling parents and duplicated inventory decisions are blocked", 
   input.series.push(input.series[0]);
   assert.ok(classificationBlockers(state(), input).some(value => value.includes("ровно одно")));
 });
-test("creator dependency requires an exact manual destination and rejects surplus decisions", () => {
-  const snapshot = state(); snapshot.creator_series = [{ creator_id: 7, series_id: 1 }];
-  const input = manifest();
-  assert.ok(classificationBlockers(snapshot, input).some(value => value.includes("создатели")));
-  input.creatorLinks = [{ creatorId: 7, seriesId: 1, targetSeriesId: 2 }];
-  assert.deepEqual(classificationBlockers(snapshot, input), []);
-  input.creatorLinks.push({ creatorId: 8, seriesId: 1, targetSeriesId: null });
-  assert.ok(classificationBlockers(snapshot, input).some(value => value.includes("создатели")));
+test("old migration journals retain rollback checks without restoring creator-series links", () => {
+  const oldState = state();
+  oldState.creator_series = [{ creator_id: 7, series_id: 1 }];
+  oldState.foreignKeys = [{ table_name: "creator_series" }, { table_name: "franchises" }];
+  const current = currentClassificationSnapshot(oldState);
+  const proof = { membership: {}, progress: [] };
+  assert.equal(Object.hasOwn(current, "creator_series"), false);
+  assert.deepEqual(current.foreignKeys, [{ table_name: "franchises" }]);
+  assert.equal(classificationRollbackHash({ state: current, proof }, oldState), classificationHash({ state: oldState, proof }));
+  current.tags = [{ id: 999 }];
+  assert.notEqual(classificationRollbackHash({ state: current, proof }, oldState), classificationHash({ state: oldState, proof }));
 });
 test("normalized title conflicts, snapshot references and unknown FK dependencies block conversion", () => {
   const snapshot = state(); snapshot.tags.push({ id: 9, code: "other", title: " ТЕМА " });

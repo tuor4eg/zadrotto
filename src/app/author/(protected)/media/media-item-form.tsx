@@ -51,6 +51,7 @@ import {
 import { resolveCoverUrl } from "@/lib/services/minio";
 import { AuthorToasts, type AuthorToast } from "../author-toasts";
 import { InlineFranchiseDialog } from "./inline-franchise-dialog";
+import { MediaItemTagPicker } from "./media-item-tag-picker";
 import { getAuthorMediaFormErrorMessage } from "./messages";
 
 type MediaItemFormValues = {
@@ -74,6 +75,8 @@ export type MediaItemFormAction = (formData: FormData) =>
   | { error: string | null }
   | Promise<void | { error: string | null }>;
 
+import { NewEntryRelationshipFields } from "./new-entry-relationship-fields";
+
 type MediaItemFormProps = {
   action: MediaItemFormAction;
   submitLabel: string;
@@ -83,6 +86,7 @@ type MediaItemFormProps = {
   cancelHref?: string;
   canCreateFranchise?: boolean;
   canManageFranchises?: boolean;
+  canSetEntryRelationship?: boolean;
   createAndSubmitLabel?: string;
   errorParamName?: string;
   errorRedirectTo?: string;
@@ -207,6 +211,7 @@ export function MediaItemForm({
   mediaTypes,
   canCreateFranchise = false,
   canManageFranchises = false,
+  canSetEntryRelationship = false,
   createAndSubmitLabel,
   errorParamName,
   errorRedirectTo,
@@ -1002,6 +1007,12 @@ export function MediaItemForm({
           </div>
         </div>
 
+        {!isEditing ? (
+          <div className="min-w-0 sm:col-span-2 lg:col-span-3">
+            <MediaItemTagPicker disabled={isSubmitting} />
+          </div>
+        ) : null}
+
         {canSearchLocalDuplicates ? (
           <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
             {isDuplicateSearchLoading ? (
@@ -1157,32 +1168,6 @@ export function MediaItemForm({
           />
         </div>
 
-        {!isEditing ? (
-          <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
-            <div className="rounded-md border border-stone-300/80 bg-stone-50/50 p-3">
-              <div className="flex flex-col gap-5">
-                <div>
-                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
-                    Моя оценка
-                  </span>
-                </div>
-                {initialRatingScore !== null ? (
-                  <input type="hidden" name="ratingScore" value={initialRatingScore / 10} />
-                ) : null}
-                <div className="flex flex-wrap items-center gap-2">
-                  <RatingScoreButtons
-                    progressive
-                    selectedScore={initialRatingScore}
-                    variant="archive"
-                    onScoreClick={setInitialRatingScore}
-                  />
-                </div>
-                <RatingExperienceFields releaseYear={selectedReleaseYear} variant="archive" />
-              </div>
-            </div>
-          </div>
-        ) : null}
-
         <div className="sm:col-span-2 lg:col-span-3">
           <input type="hidden" name="metadataCandidateToken" value={metadataCandidateToken} />
           <input
@@ -1216,6 +1201,33 @@ export function MediaItemForm({
           ) : null}
           <MediaMetadataFacts metadata={selectedMetadata} genres={selectedMetadata?.genres ?? []} />
         </div>
+        {!isEditing && canSetEntryRelationship && <NewEntryRelationshipFields />}
+
+        {!isEditing ? (
+          <div className="flex flex-col gap-2 sm:col-span-2 lg:col-span-3">
+            <div className="rounded-md border border-stone-300/80 bg-stone-50/50 p-3">
+              <div className="flex flex-col gap-5">
+                <div>
+                  <span className="block text-[10px] font-semibold uppercase tracking-[0.16em] text-stone-500">
+                    Моя оценка
+                  </span>
+                </div>
+                {initialRatingScore !== null ? (
+                  <input type="hidden" name="ratingScore" value={initialRatingScore / 10} />
+                ) : null}
+                <div className="flex flex-wrap items-center gap-2">
+                  <RatingScoreButtons
+                    progressive
+                    selectedScore={initialRatingScore}
+                    variant="archive"
+                    onScoreClick={setInitialRatingScore}
+                  />
+                </div>
+                <RatingExperienceFields releaseYear={selectedReleaseYear} variant="archive" />
+              </div>
+            </div>
+          </div>
+        ) : null}
       </fieldset>
 
       {isSubmitting ? (

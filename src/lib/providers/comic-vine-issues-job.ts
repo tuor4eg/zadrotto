@@ -65,7 +65,7 @@ export async function runComicVineIssueItem(
         if (linked.has(ids[processed])) { processed++; continue; }
         // Charge attempts before requesting, including failed requests and crash recovery.
         await budget?.consume();
-        const issue = await fetchComicVineSnapshot(describeComicVineIssue(ids[processed]), { candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: settings.providerRequestTimeoutMs, providerCredentials: credentials, beforeProviderSearch: before, snapshotJobGuard: guard, snapshotReuseAfter: new Date(0), signal }, item.externalId);
+        const issue = await fetchComicVineSnapshot(describeComicVineIssue(ids[processed]), { candidateLimit: 1, tmdbResultScanLimit: 1, requestTimeoutMs: settings.providerRequestTimeoutMs, providerResponseMaxMib: settings.providerResponseMaxMib, providerCredentials: credentials, beforeProviderSearch: before, snapshotJobGuard: guard, snapshotReuseAfter: new Date(0), signal }, item.externalId);
         processed++;
         await save({ id: issue.id, payloadHash: issue.payloadHash });
       }

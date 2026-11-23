@@ -27,11 +27,6 @@ export function classificationManifestFromSelection(state: ClassificationSnapsho
     if (kept.has(id)) return { id, group: "keep" as const, parentId: retainedParentId(parents, id, kept) };
     return { id, group: "tag" as const, parentId: null };
   });
-  const creatorLinks = state.creator_series.filter(row => !kept.has(Number(row.series_id))).map(row => {
-    const value = String(form.get(`creatorTarget:${row.creator_id}:${row.series_id}`) ?? "");
-    if (!value || value !== "remove" && (!Number.isSafeInteger(Number(value)) || !kept.has(Number(value)))) throw new Error("Выберите действие для каждой связи создателя с переносимой серией.");
-    return { creatorId: Number(row.creator_id), seriesId: Number(row.series_id), targetSeriesId: value === "remove" ? null : Number(value) };
-  });
   function discarded(rows: ClassificationSnapshot["media_item_franchises"], field: string) {
     return rows.filter(row => !kept.has(Number(row.franchise_id))).map(row => {
       if (form.get(`${field}:${row.media_item_id}:${row.franchise_id}`) !== "discard") throw new Error("Подтвердите обработку неопубликованных связей и открытых запросов переноса.");
@@ -39,7 +34,7 @@ export function classificationManifestFromSelection(state: ClassificationSnapsho
     });
   }
   return {
-    version: 1, series, creatorLinks,
+    version: 1, series,
     pendingLinks: discarded(state.media_item_franchises.filter(row => row.publication_status !== "published"), "pending"),
     removalRequests: discarded(state.media_item_franchise_removal_requests, "removal"),
   };

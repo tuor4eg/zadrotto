@@ -1,9 +1,13 @@
 import { requireFranchiseManagerForExecutor } from "@/db/queries/franchise-access";
+import { assignExistingTagsToNewDraft } from "@/db/queries/tags";
+import { getAccessibleMediaTypeCodes, getMediaTypeCodeFilterSql } from "@/db/queries/media-types";
+import type { NewEntryRelationship } from "@/lib/media/entry-sources";
+import { PUBLISHED_PUBLICATION_STATUS } from "@/lib/media/publication-status";
 import { lockClassificationMutations } from "@/db/queries/classification-lock";
 import { and, eq } from "drizzle-orm";
 
 import { db } from "@/db";
-import { mediaItems } from "@/db/schema";
+import { entrySources, mediaItems } from "@/db/schema";
 import { lockAuthorForTransaction, runInTransaction } from "@/db/transaction";
 import type { AuthorMediaItemInput } from "@/db/queries/media-items";
 import {
@@ -19,6 +23,8 @@ import {
 
 type CreateAuthorPrivateMediaItemInput = AuthorMediaItemInput & {
   authorCreationRequestId: string;
+  tagIds?: readonly number[];
+  entryRelationship?: NewEntryRelationship | null;
   limits: {
     maxDraftMediaItems: number | null;
     maxDraftMediaItemsPerDay: number | null;
@@ -130,6 +136,24 @@ export async function createAuthorPrivateMediaItemWithLimitCheck(
     if (input.franchiseIds.length) await requireFranchiseManagerForExecutor(tx, input.authorId);
     await setMediaItemFranchisesForExecutor(tx, item.id, input.franchiseIds);
     await setMediaItemTitleAliasesForExecutor(tx, item.id, input.aliases ?? []);
+    if (input.tagIds?.length) {
+      await assignExistingTagsToNewDraft(tx, { mediaItemId: item.id, authorId: input.authorId, tagIds: input.tagIds });
+    }
+    if (input.entryRelationship) {
+      const { direction, targetId } = input.entryRelationship;
+      const accessibleTypes = await getAccessibleMediaTypeCodes(input.authorId, tx);
+      const [target] = await tx.select({ id: mediaItems.id }).from(mediaItems)
+        .where(and(
+          eq(mediaItems.id, targetId),
+          eq(mediaItems.publicationStatus, PUBLISHED_PUBLICATION_STATUS),
+          getMediaTypeCodeFilterSql(mediaItems.mediaType, accessibleTypes),
+        )).for("share");
+      if (!target) throw new Error("invalid-entry-relationship");
+
+      await tx.insert(entrySources).values(direction === "source"
+        ? { entryId: item.id, sourceEntryId: target.id }
+        : { entryId: target.id, sourceEntryId: item.id });
+    }
     await input.afterWrite?.(tx,item.id);
 
     return { ok: true, created: true, item };

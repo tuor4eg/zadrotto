@@ -6,8 +6,9 @@ import { creatorFillDatesDescriptor, creatorProfileDescriptor, creatorProfileTar
 function sourcesFor(state: CreatorFieldsState) {
   return state.bindings.map(binding => {
     const target = creatorProfileTargetFromBinding(binding);
+    const isOrganization = target?.resourceType === "company" || target?.resourceType === "publisher";
     const supported = target && supportsCreatorFillDates(target)
-      && (state.typeCode === "organization" ? target.provider === "igdb" : target.provider !== "igdb");
+      && (state.typeCode === "organization") === isOrganization;
     return { ...binding, target: supported ? target : null };
   });
 }
@@ -16,7 +17,7 @@ export function snapshotSources(state: CreatorFieldsState) {
   return sourcesFor(state).flatMap(({ id, target }) => {
     if (!target) return [];
     const primary = { bindingId: id, descriptor: creatorFillDatesDescriptor(target) };
-    return target.provider === "igdb"
+    return target.provider === "igdb" || target.provider === "comic-vine"
       ? [primary, { bindingId: -id, descriptor: creatorProfileDescriptor(target) }]
       : [primary];
   });
@@ -43,15 +44,10 @@ export function inspectSources(state: CreatorFieldsState, snapshots: SnapshotMap
   });
 }
 
-export function diagnosticMessage(code: string, reviewDates?: ReturnType<typeof projectCreatorFillDates>["reviewDates"]) {
-  if (code === "ambiguous-birth" || code === "ambiguous-death") {
-    const field = code === "ambiguous-birth" ? "Дата рождения" : "Дата смерти";
-    const date = code === "ambiguous-birth" ? reviewDates?.birthDate : reviewDates?.deathDate;
-    return `${field} ${date ?? "на 1 января"} требует ручной проверки точности.`;
-  }
+export function diagnosticMessage(code: string) {
+  if (code === "ambiguous-founding-year") return "В описании указаны разные годы основания. Нужна ручная проверка.";
   if (code === "partial-start_date") return "Дата основания указана без точности до дня.";
   if (code === "unverified-start_date-precision") return "Точность даты основания требует проверки.";
-  if (code === "fantlab-profile-not-opened") return "В профиле открыт ограниченный набор данных.";
   return "Дата неполная или некорректная.";
 }
 
@@ -72,6 +68,6 @@ export async function getCreatorFieldsPreview(creatorId: number): Promise<Map<nu
     ...(state.typeCode === "organization"
       ? { foundedDate: source.projection?.birthDate ?? null }
       : { birthDate: source.projection?.birthDate ?? null, deathDate: source.projection?.deathDate ?? null }),
-    diagnostics: source.invalid ? ["Не удалось разобрать профиль."] : (source.projection?.diagnostics ?? []).map(code => diagnosticMessage(code, source.projection?.reviewDates)),
+    diagnostics: source.invalid ? ["Не удалось разобрать профиль."] : (source.projection?.diagnostics ?? []).map(diagnosticMessage),
   }]));
 }

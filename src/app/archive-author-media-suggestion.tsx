@@ -202,6 +202,7 @@ export function ArchiveAuthorMediaSuggestion({
                     cancelHref={currentArchivePath}
                     canCreateFranchise={canCreateFranchise}
                     canManageFranchises={canManageFranchises}
+                    canSetEntryRelationship
                     canSuggestFranchises={canSuggestFranchises}
                     createAndSubmitLabel={createAndSubmitLabel}
                     errorParamName="suggestionError"

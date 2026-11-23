@@ -1,4 +1,6 @@
 "use server";
+
+import { parseNewEntryRelationship } from "@/lib/media/entry-sources";
 import { canManageFranchises } from "@/lib/franchises/access";
 
 import { traceMediaSave, type MediaSaveTiming } from "@/lib/media/save-timing";
@@ -223,7 +225,7 @@ function readCreateFirstExperience(
   const firstExperiencedValue = getFormString(formData, "firstExperiencedValue");
   const firstExperiencedPrecision = getFormString(formData, "firstExperiencedPrecision");
 
-  if (!firstExperiencedValue && !firstExperiencedPrecision) {
+  if (!firstExperiencedValue) {
     return { ok: true as const, value: null };
   }
 
@@ -506,6 +508,7 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
   const authorCreationRequestId = getFormString(formData, "authorCreationRequestId");
   const form = readAuthorMediaForm(formData);
   const ratingScore = readCreateRatingScore(formData);
+  const tagIds = parsePositiveIntegerList(formData.getAll("tagIds"));
   const createIntent = getCreateIntent(formData);
 
   if (!isUuid(authorCreationRequestId)) {
@@ -526,6 +529,16 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
     redirect(getCreateErrorRedirect(formData, form.error));
   }
 
+  if (!tagIds.ok || tagIds.value.some((id) => id > 2147483647)) return { error: "invalid-tags" };
+  const entryRelationship = parseNewEntryRelationship(
+    formData.get("entryRelationshipDirection"),
+    formData.get("entryRelationshipTarget"),
+  );
+  if (entryRelationship === false) {
+    return { error: "invalid-entry-relationship" };
+  }
+
+
   timing.stage("getArchiveSettings");
   const { maxTitleAliases } = await getArchiveSettings();
 
@@ -543,7 +556,7 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
   });
 
   if (!firstExperience.ok) {
-    redirect(getCreateErrorRedirect(formData, firstExperience.error));
+    return { error: firstExperience.error };
   }
 
   timing.stage("getMediaItemMetadataMutation");
@@ -615,6 +628,8 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
         ? (tx,id)=>saveMediaItemMetadataMutation(metadataMutation,id,tx) : undefined,
       authorId: author.id,
       authorCreationRequestId,
+      tagIds: tagIds.value,
+      entryRelationship,
       code,
       coverUrl: cover.coverUrl,
       coverThumbUrl: cover.coverThumbUrl,
@@ -630,6 +645,8 @@ async function createAuthorMediaItemActionMeasured(formData: FormData, timing: M
       coverUrl: cover.coverUrl,
       coverThumbUrl: cover.coverThumbUrl,
     }).catch((cleanupError) => console.error("cover cleanup after create failure", cleanupError));
+    if (error instanceof Error && error.message === "invalid-tags") return { error: "invalid-tags" };
+    if (error instanceof Error && error.message === "invalid-entry-relationship") return { error: "invalid-entry-relationship" };
     if (isBookSnapshotValidationError(error)) redirect(getCreateErrorRedirect(formData,"invalid-metadata"));
     throw error;
   }

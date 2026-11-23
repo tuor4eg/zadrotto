@@ -8,6 +8,7 @@ import { AuthorLoginModal } from "@/app/author/login/author-login-modal";
 import { TitlePartCard } from "@/components/archive/title-part-card";
 import { TitlePartDescriptionDialog } from "@/components/archive/title-part-description-dialog";
 import type { TitlePartView } from "@/db/queries/title-parts";
+import { MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
 import type { MediaType } from "@/lib/media/types";
 import { getTitlePartLabel, getTitlePartsHeading, isTitlePartRateable } from "@/lib/media/title-parts";
 import { getDemoPartRating, deleteDemoPartRating } from "@/lib/user-state/demo-actions";
@@ -63,7 +64,7 @@ export function TitlePartsSection({ parts, mediaItemCode, mediaType, title, curr
   if (visibleParts.length === 0) return null;
   return <section aria-labelledby={`${id}-heading`} className="w-full min-w-0">
     <div className="flex items-center justify-between gap-3">
-      <h2 id={`${id}-heading`} className="min-w-0 font-mono text-lg uppercase tracking-wider">{getTitlePartsHeading(visibleParts)}</h2>
+      <h2 id={`${id}-heading`} className={`min-w-0 text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>{getTitlePartsHeading(visibleParts)}</h2>
       {visibleParts.length > columns ? (
         <button type="button" aria-expanded={expanded} aria-controls={`${id}-parts`}
           className="shrink-0 text-sm underline underline-offset-4" onClick={() => setExpanded((value) => !value)}>
@@ -71,7 +72,7 @@ export function TitlePartsSection({ parts, mediaItemCode, mediaType, title, curr
         </button>
       ) : null}
     </div>
-    <div ref={container} id={`${id}-parts`} className="mt-4 grid gap-2.5 sm:gap-3"
+    <div ref={container} id={`${id}-parts`} className="mt-1 grid gap-2.5 sm:gap-3"
       style={{ gridTemplateColumns: `repeat(${columns}, minmax(0, 1fr))` }}>
       {(expanded ? visibleParts : visibleParts.slice(0, columns)).map((part) => <TitlePartCard key={part.id} part={part} mediaType={mediaType} myRating={myRating(part)}
         onDescribe={() => setDescriptionPartId(part.id)}

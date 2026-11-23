@@ -43,7 +43,7 @@ export async function fetchTmdbFilmMetadata(input: TitleMetadataInput, options: 
       await response.body?.cancel();
       throw new SnapshotProviderHttpError(response.status, Number.isFinite(retrySeconds) ? Math.max(1, retrySeconds) : 60);
     }
-    const payload = await boundedJson(response);
+    const payload = await boundedJson(response, options.providerResponseMaxMib);
     normalizeTmdbFilmSnapshot({ ...descriptor, payload });
     primary = await saveProviderSnapshot({ ...descriptor, payload, payloadHash: snapshotHash(payload), contentType: response.headers.get("content-type") ?? "application/json", requestStartedAt, fetchedAt: new Date() }, options.snapshotJobGuard);
   }

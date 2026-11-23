@@ -29,25 +29,19 @@ test("linked creators retain distinct identities and encode archive filters", ()
   assert.equal(renderToStaticMarkup(createElement(MediaItemCreatorLinks, { creators: [] })), "");
 });
 
-test("creator banner links related series independently and preserves the supplied clear URL", () => {
-  const html = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: {
-    id: 1, name: "Стивен Кинг", series: [{ id: 1, code: "dark-tower", title: "Тёмная башня" }],
-  }, clearHref: "/archive?type=book&q=king" }));
-  assert.match(html, /Создатель: Стивен Кинг/);
-  assert.match(html, /href="\/archive\?series=dark-tower"/);
-  assert.doesNotMatch(html, /series=dark-tower[^"<]*creator=/);
-  assert.match(html, /href="\/archive\?type=book&amp;q=king"/);
-  const empty = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { id: 1, name: "Кинг", series: [] }, clearHref: "/archive" }));
+test("creator banner preserves the clear URL and admin access", () => {
+  const empty = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { id: 1, name: "Кинг" }, clearHref: "/archive?type=book" }));
   assert.doesNotMatch(empty, /Связанные серии/);
+  assert.match(empty, /href="\/archive\?type=book"/);
   assert.doesNotMatch(empty, /href="\/admin\/creators\//);
-  const adminBanner = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { id: 8, name: "Кинг", series: [] }, clearHref: "/archive", adminCanEdit: true }));
+  const adminBanner = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: { id: 8, name: "Кинг" }, clearHref: "/archive", adminCanEdit: true }));
   assert.match(adminBanner, /href="\/admin\/creators\/8\/edit"/);
   assert.match(adminBanner, /aria-label="Редактировать создателя Кинг"/);
 
   assert.doesNotMatch(empty, /псевдоним для/);
   assert.doesNotMatch(empty, /псевдонимы:/);
   const realAuthor = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: {
-    id: 1, name: "Даниель Абрахам", series: [], pseudonyms: [
+    id: 1, name: "Даниель Абрахам", pseudonyms: [
       { id: 3, name: "Джеймс Кори", slug: "james-corey" },
       { id: 4, name: "Другой псевдоним", slug: "other pen-name" },
     ],
@@ -57,7 +51,7 @@ test("creator banner links related series independently and preserves the suppli
   assert.match(realAuthor, /href="\/archive\?creator=james-corey"[^>]*>Джеймс Кори<\/a>, <a/);
   assert.match(realAuthor, /href="\/archive\?creator=other%20pen-name"/);
   const pseudonym = renderToStaticMarkup(createElement(ArchiveSelectedCreator, { creator: {
-    id: 1, name: "Джеймс Кори", series: [], pseudonymAuthors: [
+    id: 1, name: "Джеймс Кори", pseudonymAuthors: [
       { id: 1, name: "Даниель Абрахам", slug: "daniel-abraham" },
       { id: 2, name: "Тай Френк", slug: "ty-franck" },
     ],

@@ -1,9 +1,19 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import { buildBookSnapshotUrl, describeBookSource, getBookDependencyDescriptors, normalizeBookSnapshots } from "@/lib/providers/book-adapters";
-import { fetchBookSnapshot, fetchBookSnapshotBundle, SnapshotProviderHttpError } from "@/lib/providers/book-fetch";
+import { boundedJson, fetchBookSnapshot, fetchBookSnapshotBundle, SnapshotProviderHttpError } from "@/lib/providers/book-fetch";
 import type { RawSnapshot } from "@/lib/providers/types";
 import { getMediaTitleMetadataFormFields } from "@/lib/media/title-candidate-form";
+
+test("snapshot JSON reader enforces the configured limit while streaming", async () => {
+  const payload = JSON.stringify({ credits: "x".repeat(3 * 1024 * 1024) });
+  await assert.rejects(boundedJson(new Response(payload)), /Слишком большой ответ/);
+  assert.deepEqual(await boundedJson(new Response(payload), 5), JSON.parse(payload));
+  await assert.rejects(
+    boundedJson(new Response("{}", { headers: { "content-length": String(6 * 1024 * 1024) } }), 5),
+    /Слишком большой или пустой ответ/,
+  );
+});
 
 test("FantLab full snapshot projects year and description into the form after search selection", () => {
   const work = { id: 42, name: "Дилвиш Проклятый", name_orig: "Dilvish, the Damned", year: 1982,

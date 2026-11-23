@@ -1,6 +1,12 @@
-import { ProviderSnapshotControls } from "@/components/admin/provider-snapshot-controls";
+import { getAdminMediaItemTagGroups } from "@/db/queries/tags";
+import { requireAdminUser } from "@/lib/auth/admin-auth";
+import { MediaTagsTab } from "./media-tags-tab";
+import { getEntrySources, getWorksBasedOn } from "@/db/queries/entry-sources";
+import { getAdminMediaBrowserFilterOptions } from "@/db/queries/admin-media-browser";
+import { EntrySourcesForm } from "./entry-sources-form";
+import { MediaEditorHeader } from "../../media-editor-header";
 import Link from "next/link";
-import { ArrowLeft, Check, Eye, EyeOff, FileText, RotateCcw, Trash2, X } from "lucide-react";
+import { Check, Eye, EyeOff, FileText, RotateCcw, Trash2, X } from "lucide-react";
 import { notFound } from "next/navigation";
 
 import { Alert } from "@/components/ui/alert";
@@ -10,7 +16,7 @@ import { buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Tooltip } from "@/components/ui/tooltip";
-import { EmptyState, PageHeader } from "@/app/admin/(protected)/admin-ui";
+import { EmptyState } from "@/app/admin/(protected)/admin-ui";
 import {
   deleteAdminMediaItemAction,
   setAdminMediaMetadataSearchAction,
@@ -27,7 +33,7 @@ import { getAdminFranchiseOptions } from "@/db/queries/franchises";
 import { getMediaCarrierOptions } from "@/db/queries/media-carriers";
 import { getMediaItemMetadata } from "@/db/queries/media-item-metadata";
 import { getMediaTypeOptions } from "@/db/queries/media-types";
-import { getAdminMediaItemForEdit } from "@/db/queries/media-items";
+import { getAdminMediaItemForEdit, getAdminMediaItemIdentityById } from "@/db/queries/media-items";
 import { getEditorialSummary, getEditorialSummaryJob, getEditorialSummarySource } from "@/db/queries/editorial-summaries";
 import { getEditorialSummarySourceHash, hasRussianEditorialDescription, parseEditorialSummaryOptions } from "@/lib/media/editorial-summary";
 import { generateEditorialSummaryAction, saveEditorialSummaryAction, setEditorialSummaryLockAction } from "./editorial-summary-actions";
@@ -47,6 +53,9 @@ type EditAdminMediaPageProps = {
     id: string;
   }>;
   searchParams: Promise<{
+    tab?: string;
+    tagSaved?: string;
+    tagError?: string;
     created?: string;
     error?: string;
     updated?: string;
@@ -151,32 +160,75 @@ export default async function EditAdminMediaPage({
   params,
   searchParams,
 }: EditAdminMediaPageProps) {
-  const [
-    { id },
-    query,
-    authors,
-    franchises,
-    mediaCarriers,
-    mediaTypes,
-    archiveSettings,
-    canSuggestFranchises,
-  ] = await Promise.all([
-    params,
-    searchParams,
-    getAuthorOptions(),
-    getAdminFranchiseOptions(),
-    getMediaCarrierOptions(),
-    getMediaTypeOptions(),
-    getArchiveSettings(),
-    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
-  ]);
+  const [{ id }, query] = await Promise.all([params, searchParams]);
   const mediaItemId = Number(id);
 
   if (!Number.isInteger(mediaItemId) || mediaItemId <= 0) {
     notFound();
   }
 
-  const [item, metadata, collectionReferences, editorialSummary, editorialSource, editorialJob, canGenerateSummary] = await Promise.all([
+  if (query.tab === "tags") {
+    await requireAdminUser();
+    const [item, tags] = await Promise.all([
+      getAdminMediaItemIdentityById(mediaItemId),
+      getAdminMediaItemTagGroups(mediaItemId),
+    ]);
+    if (!item) notFound();
+
+    return (
+      <div className="grid gap-5">
+        <MediaEditorHeader id={item.id} title={item.title} active="tags" />
+        <AdminToasts clearParams={["tagSaved", "tagError"]} messages={query.tagError
+          ? [{ id: "tag-error", tone: "error", text: "Не удалось изменить тег. Обновите список и повторите попытку." }]
+          : query.tagSaved ? [{ id: "tag-saved", tone: "success", text: "Теги записи обновлены." }] : []} />
+        <Card>
+          <CardContent className="pt-5">
+            <MediaTagsTab mediaItemId={item.id} tags={tags} />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (query.tab === "sources") {
+    const [item, entrySources, worksBasedOn, browserOptions, mediaTypes, entryCreators] = await Promise.all([
+      getAdminMediaItemIdentityById(mediaItemId),
+      getEntrySources(mediaItemId),
+      getWorksBasedOn("entry", mediaItemId, "admin"),
+      getAdminMediaBrowserFilterOptions(),
+      getMediaTypeOptions(),
+      getEntryCreators(mediaItemId),
+    ]);
+    if (!item) notFound();
+    const creatorRoles: Record<number, string[]> = {};
+    for (const { id, roleName } of entryCreators) {
+      (creatorRoles[id] ??= []).push(roleName);
+    }
+
+    return (
+      <div className="grid gap-5">
+        <MediaEditorHeader id={item.id} title={item.title} active="sources" />
+        <Card>
+          <CardContent className="pt-5">
+            <EntrySourcesForm
+              key={item.id}
+              entryId={item.id}
+              initialSources={entrySources}
+              creatorRoles={creatorRoles}
+              initialWorks={worksBasedOn.map((work) => ({ ...work, type: "entry" }))}
+              mediaTypes={mediaTypes}
+              series={browserOptions.series}
+            />
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  const [
+    item, metadata, collectionReferences, editorialSummary, editorialSource, editorialJob,
+    canGenerateSummary, authors, franchises, mediaCarriers, mediaTypes, archiveSettings, canSuggestFranchises,
+  ] = await Promise.all([
     getAdminMediaItemForEdit(mediaItemId),
     getMediaItemMetadata(mediaItemId),
     getMediaItemCollectionReferences(mediaItemId),
@@ -184,6 +236,12 @@ export default async function EditAdminMediaPage({
     getEditorialSummarySource(mediaItemId),
     getEditorialSummaryJob(),
     isAiScenarioEnabled(AI_SCENARIO_KEYS.EDITORIAL_SUMMARY),
+    getAuthorOptions(),
+    getAdminFranchiseOptions(),
+    getMediaCarrierOptions(),
+    getMediaTypeOptions(),
+    getArchiveSettings(),
+    isAiScenarioEnabled(AI_SCENARIO_KEYS.SUGGEST_SERIES),
   ]);
 
   if (!item) {
@@ -209,28 +267,17 @@ export default async function EditAdminMediaPage({
 
   return (
     <div className="grid gap-7 xl:grid-cols-[minmax(0,1fr)_320px]">
-      <section className="min-w-0">
-        <PageHeader
-          title="Редактирование записи"
-          description={item.title}
-          aside={
-            <Link
-              href="/admin/media"
-              className={`${buttonVariants({ variant: "outline" })} max-sm:hidden`}
-            >
-              <ArrowLeft />
-              Назад
-            </Link>
-          }
-        />
-
+      <div className="xl:col-span-2">
+        <MediaEditorHeader id={item.id} title={item.title} active="info" />
+      </div>
+      <section className="min-w-0 space-y-5">
         {item.adminNote ? (
-          <Alert variant="warning" className="mt-5">
+          <Alert variant="warning">
             {item.adminNote}
           </Alert>
         ) : null}
 
-        <Card className="mt-5">
+        <Card>
           <CardContent className="pt-5">
             <AdminMediaForm
               action={updateAdminMediaItemAction}
@@ -250,7 +297,7 @@ export default async function EditAdminMediaPage({
           </CardContent>
         </Card>
 
-        <Card className="mt-5"><CardContent className="grid gap-3 pt-5">
+        <Card><CardContent className="grid gap-3 pt-5">
           <AdminToasts clearParams={["pseudonymError", "pseudonymSaved", "creatorError", "creatorsSaved", "summaryError", "summaryQueued", "summarySaved", "summarySkipped"]} messages={[
             ...(query.pseudonymError ? [{ id: "pseudonymError", tone: "error" as const, text: "Не удалось изменить псевдоним. Проверьте состав авторов и повторите попытку." }] : []),
             ...(query.pseudonymSaved ? [{ id: "pseudonymSaved", tone: "success" as const, text: "Выбор псевдонима сохранён." }] : []),
@@ -264,7 +311,7 @@ export default async function EditAdminMediaPage({
           <CreatorsEditor entryId={item.id}/>
         </CardContent></Card>
 
-        <Card className="mt-5">
+        <Card>
           <CardContent className="grid gap-4 pt-5">
             <div>
               <h2 className="text-lg font-semibold">Редакционная справка</h2>
@@ -399,11 +446,6 @@ export default async function EditAdminMediaPage({
           </div>
         </CardContent>
       </Card>
-      {item.mediaType === "book" || item.mediaType === "film" || item.mediaType === "series" || item.mediaType === "anime" || item.mediaType === "game" || item.mediaType === "boardgame" || item.mediaType === "comic" || item.mediaType === "manga" || item.mediaType === "roblox" ? (
-        <div className="xl:col-span-2">
-          <ProviderSnapshotControls mediaItemId={mediaItemId} mediaType={item.mediaType} />
-        </div>
-      ) : null}
     </div>
   );
 }

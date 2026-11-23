@@ -27,7 +27,7 @@ export function TagSearch({ searchQuery, status }: { searchQuery: string; status
       router.replace(params.size ? `/admin/tags?${params}` : "/admin/tags", { scroll: false });
     }}>
       <option value="all">Все</option>
-      <option value="system">Системные</option>
+      <option value="system">Редакционные</option>
       <option value="ordinary">Обычные</option>
     </Select>
   </div>;

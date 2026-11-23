@@ -50,6 +50,7 @@ export async function prepareBookSnapshotReferences(provider: string, externalId
 export async function fetchBookMetadata(input: TitleMetadataInput, options: TitleMetadataOptions, guard?: SnapshotJobGuard): Promise<MediaTitleMetadata> {
   if (!isBookSnapshotProvider(input.provider)) throw new Error("UNSUPPORTED_SNAPSHOT_PROVIDER");
   const bundle = await fetchBookSnapshotBundle(describeBookSource(input.provider,input.externalId),{
+    providerResponseMaxMib: options.providerResponseMaxMib,
     requestStartedAt:providerRequestStartedAt,
     async beforeRequest() {
       const allowed = await options.beforeProviderSearch?.(input.provider);

@@ -49,7 +49,7 @@ export async function requestMangaUpdates(path: string, options: TitleMetadataOp
     if (response.status === 429) await redis.eval(COOLDOWN, { keys: ["mangaupdates:request-slot:v1"], arguments: [String(retry * 1000)] });
     throw new SnapshotProviderHttpError(response.status, retry);
   }
-  const payload = await boundedJson(response);
+  const payload = await boundedJson(response, options.providerResponseMaxMib);
   if (body && (!payload || typeof payload !== "object" || Array.isArray(payload) || !Array.isArray(payload.results))) throw new Error("INCOMPLETE_PROVIDER_SNAPSHOTS");
   if (cacheKey && !options.bypassCache) await redis.set(cacheKey, JSON.stringify(payload), { EX: 3600 });
   return payload;

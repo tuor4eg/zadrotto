@@ -1,0 +1,2 @@
+ALTER TABLE "cover_settings" ADD COLUMN "provider_response_max_mib" integer DEFAULT 5 NOT NULL;--> statement-breakpoint
+ALTER TABLE "cover_settings" ADD CONSTRAINT "cover_settings_provider_response_max_mib_check" CHECK ("cover_settings"."provider_response_max_mib" between 1 and 16);

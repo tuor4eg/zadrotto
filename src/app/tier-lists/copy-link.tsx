@@ -31,7 +31,7 @@ export function CopyTierLink({ publicId, title }: { publicId: string; title: str
   }
 
   return <>
-    <Button type="button" variant="outline" size="icon" disabled={pending} onClick={() => void share()} aria-label="Копировать ссылку или поделиться" className="shrink-0">
+    <Button type="button" variant="outline" size="icon" disabled={pending} onClick={() => void share()} aria-label="Копировать ссылку или поделиться" title="Поделиться" className="shrink-0">
       <Share2 className="size-4" />
     </Button>
     <ArchiveToasts messages={messages} />

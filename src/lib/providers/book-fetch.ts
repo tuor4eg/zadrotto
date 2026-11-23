@@ -5,6 +5,7 @@ import { buildBookSnapshotUrl, getBookDependencyDescriptors, normalizeBookSnapsh
 import type { JSONValue, RawSnapshot, SnapshotDescriptor } from "./types";
 
 export type SnapshotFetchOptions = {
+  providerResponseMaxMib?: number;
   beforeRequest: (descriptor: SnapshotDescriptor) => Promise<void>;
   requestStartedAt: () => Promise<Date>;
   saveSnapshot: (snapshot: RawSnapshot) => Promise<RawSnapshot>;
@@ -15,14 +16,13 @@ export type SnapshotFetchOptions = {
   acquireFantlabSlot?: (signal: AbortSignal) => Promise<(cooldownMs: number) => Promise<void>>;
 };
 
-const MAX_JSON_BYTES = 2 * 1024 * 1024;
-
 export class SnapshotProviderHttpError extends ProviderHttpError {
   constructor(status: number, readonly retryAfterSeconds: number) { super(status, null); }
 }
 
-export async function boundedJson(response: Response): Promise<JSONValue> {
-  if (!response.body || Number(response.headers.get("content-length")) > MAX_JSON_BYTES) {
+export async function boundedJson(response: Response, maxMib = 2): Promise<JSONValue> {
+  const maxBytes = maxMib * 1024 * 1024;
+  if (!response.body || Number(response.headers.get("content-length")) > maxBytes) {
     await response.body?.cancel();
     throw new Error("Слишком большой или пустой ответ источника.");
   }
@@ -34,7 +34,7 @@ export async function boundedJson(response: Response): Promise<JSONValue> {
       const chunk = await reader.read();
       if (chunk.done) break;
       bytes += chunk.value.byteLength;
-      if (bytes > MAX_JSON_BYTES) { await reader.cancel(); throw new Error("Слишком большой ответ источника."); }
+      if (bytes > maxBytes) { await reader.cancel(); throw new Error("Слишком большой ответ источника."); }
       chunks.push(chunk.value);
     }
   } finally { reader.releaseLock(); }
@@ -61,7 +61,7 @@ export async function fetchBookSnapshot(descriptor: SnapshotDescriptor, options:
       if (response.status === 429 || response.status >= 500) throw new SnapshotProviderHttpError(response.status, Math.ceil(cooldownMs / 1000));
       throw new ProviderHttpError(response.status, null);
     }
-    payload = await boundedJson(response);
+    payload = await boundedJson(response, options.providerResponseMaxMib);
     contentType = response.headers.get("content-type") ?? "application/json";
   } finally { await release?.(cooldownMs); }
   // Validate the requested resource before replacing a usable snapshot.

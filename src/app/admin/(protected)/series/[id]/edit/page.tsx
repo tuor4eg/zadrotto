@@ -9,7 +9,6 @@ import { ConfirmAction } from "@/components/ui/confirm-action";
 import { Tooltip } from "@/components/ui/tooltip";
 import {
   getAdminFranchiseById,
-  getAdminMediaItemsAvailableForFranchise,
   getAdminMediaItemsByFranchiseId,
   getAdminFranchiseParentOptions,
   getAdminFranchiseChildCandidates,
@@ -95,10 +94,9 @@ export default async function EditFranchisePage({
   }
 
   const tab = query.tab === "media" || query.tab === "children" ? query.tab : "edit";
-  const [franchise, mediaItems, availableMediaItems, mediaTypes, parentOptions, childCandidates, descendants, hasChildren] = await Promise.all([
+  const [franchise, mediaItems, mediaTypes, parentOptions, childCandidates, descendants, hasChildren] = await Promise.all([
     getAdminFranchiseById(franchiseId),
     tab === "edit" || tab === "media" ? getAdminMediaItemsByFranchiseId(franchiseId) : Promise.resolve([]),
-    tab === "media" ? getAdminMediaItemsAvailableForFranchise(franchiseId) : Promise.resolve([]),
     tab === "media" ? getMediaTypeOptions() : Promise.resolve([]),
     tab === "edit" ? getAdminFranchiseParentOptions(franchiseId) : Promise.resolve([]),
     tab === "children" ? getAdminFranchiseChildCandidates(franchiseId) : Promise.resolve([]),
@@ -190,7 +188,7 @@ export default async function EditFranchisePage({
           ]} />
           <MediaItemFranchisePicker
             franchiseId={franchise.id}
-            items={availableMediaItems}
+            membershipKey={mediaItems.map(({ id }) => id).join(",")}
             mediaTypes={mediaTypes}
           />
 

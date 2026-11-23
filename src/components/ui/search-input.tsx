@@ -9,6 +9,8 @@ type SearchInputProps = InputHTMLAttributes<HTMLInputElement> & {
   bare?: boolean;
   containerClassName?: string;
   clearLabel?: string;
+  onClose?: () => void;
+  closeLabel?: string;
 };
 
 export function SearchInput({
@@ -16,6 +18,8 @@ export function SearchInput({
   className,
   containerClassName,
   clearLabel = "Очистить поиск",
+  onClose,
+  closeLabel = "Закрыть поиск",
   onChange,
   value,
   defaultValue,
@@ -59,12 +63,12 @@ export function SearchInput({
           "pr-10 [&::-webkit-search-cancel-button]:appearance-none",
         )}
       />
-      {hasValue && !readOnly ? (
+      {(onClose || (hasValue && !readOnly)) ? (
         <button
           type="button"
-          aria-label={clearLabel}
+          aria-label={onClose ? closeLabel : clearLabel}
           disabled={disabled}
-          onClick={clear}
+          onClick={onClose ?? clear}
           className="absolute right-1 top-1/2 grid size-8 -translate-y-1/2 place-items-center rounded-md text-stone-500 transition-colors hover:bg-stone-200/70 hover:text-stone-950 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-stone-400 disabled:cursor-not-allowed disabled:opacity-50"
         >
           <X aria-hidden="true" className="size-4" />

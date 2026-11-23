@@ -52,7 +52,7 @@ export async function fetchRobloxMetadata(input: TitleMetadataInput, options: Ti
         await response.body?.cancel();
         throw new SnapshotProviderHttpError(response.status, Number.isFinite(retry) && retry > 0 ? Math.ceil(retry) : 60);
       }
-      return boundedJson(response);
+      return boundedJson(response, options.providerResponseMaxMib);
     }
     const gameUrl = new URL("https://games.roblox.com/v1/games");
     gameUrl.searchParams.set("universeIds", input.externalId);

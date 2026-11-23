@@ -284,14 +284,14 @@ export function PublicSiteHeader({
                 <div className="relative w-full sm:w-56 lg:w-60">
                   <Search
                     aria-hidden="true"
-                    className="pointer-events-none absolute z-10 left-2.5 top-1/2 size-3.5 -translate-y-1/2 text-stone-500"
+                    className="pointer-events-none absolute z-10 left-2 top-1/2 size-3.5 lg:left-2.5 -translate-y-1/2 text-stone-500"
                   />
                   <SearchInput bare
                     id="public-header-search"
                     name="q"
                     type="search"
                     autoComplete="off"
-                    className="archive-control-surface h-9 w-full appearance-none rounded-lg border-0 pl-8 pr-3 text-base lg:text-xs text-stone-950 shadow-none outline-none placeholder:text-stone-500 focus:ring-2 focus:ring-stone-400/40"
+                    className="archive-control-surface h-9 w-full appearance-none rounded-lg border-0 pl-8 pr-3 text-base placeholder-shown:pr-1 lg:text-xs text-stone-950 shadow-none outline-none placeholder:text-stone-500 focus:ring-2 focus:ring-stone-400/40"
                     placeholder="Поиск по архиву"
                   />
                 </div>

@@ -85,6 +85,6 @@ describe("review reaction UI", () => {
   });
 
   it("shows a static count next to the catalog score", () => {
-    assert.match(catalogRow, /Heart[\s\S]*item\.reactionCounts\.like[\s\S]*formatScore\(item\.authorScore\)/);
+    assert.match(catalogRow, /Heart[\s\S]*item\.reactionCounts\.like[\s\S]*<AuthorScoreBadge score=\{item\.authorScore\}/);
   });
 });

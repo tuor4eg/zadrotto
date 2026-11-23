@@ -35,18 +35,27 @@ function formatDate(value: Date | null) {
   }).format(value);
 }
 
-function AutomoderationStatus({ item }: { item: SubmittedMediaItem }) {
-  if (!item.automoderationStatus) return null;
+function ModerationReasons({ item }: { item: SubmittedMediaItem }) {
+  if (!item.automoderationStatus && !item.hasRelationships) return null;
   const pending = item.automoderationStatus === "pending" || item.automoderationStatus === "running";
   const label = pending
     ? "Автопроверка…"
-    : item.automoderationDecision === "AUTO_APPROVE" && item.automoderationMode === "shadow"
+    : !item.hasRelationships && item.automoderationDecision === "AUTO_APPROVE" && item.automoderationMode === "shadow"
       ? "Тень: можно одобрить"
       : "Нужна проверка";
+  const reasons = (item.automoderationReasonCodes ?? [])
+    .filter((code) => !item.hasRelationships || code !== "entry_relationships_present");
   return (
     <div className="mt-2 flex flex-wrap gap-1.5">
-      <Badge variant={pending ? "outline" : item.automoderationDecision === "AUTO_APPROVE" ? "positive" : "warning"}>{label}</Badge>
-      {!pending ? (item.automoderationReasonCodes ?? []).map((code) => (
+      <Badge variant={pending ? "outline" : !item.hasRelationships && item.automoderationDecision === "AUTO_APPROVE" ? "positive" : "warning"}>{label}</Badge>
+      {item.hasRelationships ? (
+        <Badge variant="outline">
+          <Link href={`/admin/media/${item.id}/edit?tab=sources`} className="underline underline-offset-2">
+            Проверить связи
+          </Link>
+        </Badge>
+      ) : null}
+      {!pending ? reasons.map((code) => (
         <Badge key={code} variant="outline">{getAutomoderationReasonLabel(code)}</Badge>
       )) : null}
     </div>
@@ -192,7 +201,7 @@ export default async function AdminMediaReviewPage({
                         {item.originalTitle}
                       </p>
                     ) : null}
-                    <AutomoderationStatus item={item} />
+                    <ModerationReasons item={item} />
                   </div>
                 </div>
 
@@ -267,7 +276,7 @@ export default async function AdminMediaReviewPage({
                           {item.description}
                         </p>
                       ) : null}
-                      <AutomoderationStatus item={item} />
+                      <ModerationReasons item={item} />
                     </TD>
                     <TD className="min-w-0 overflow-hidden">
                       <Link

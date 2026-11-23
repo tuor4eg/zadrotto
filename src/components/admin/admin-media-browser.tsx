@@ -5,6 +5,7 @@ import { SearchInput } from "@/components/ui/search-input";
 import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
+import { MediaBrowserCreatorSelect } from "@/components/admin/media-browser-creator-select";
 import { ArchiveSelect } from "@/components/ui/archive-select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -32,6 +33,7 @@ type AdminMediaBrowserProps = {
   className?: string;
   excludedIds?: readonly number[];
   endpoint?: string;
+  initialSearchQuery?: string;
   maxSelection?: number;
   pageSize?: number;
   mediaTypes: readonly MediaTypeOption[];
@@ -53,6 +55,7 @@ function archiveChipClass(selected: boolean) {
 }
 
 type BrowserFilters = {
+  creatorId: string;
   direction: AdminMediaBrowserSortDirection;
   mediaType: string;
   minAverageScore: string;
@@ -66,6 +69,7 @@ type BrowserFilters = {
 };
 
 const INITIAL_FILTERS: BrowserFilters = {
+  creatorId: "",
   direction: "asc",
   mediaType: "",
   minAverageScore: "",
@@ -96,8 +100,10 @@ const SORT_LABELS: Record<AdminMediaBrowserSort, string> = {
 };
 
 function buildBrowserRequestUrl(filters: BrowserFilters, endpoint: string) {
-  const params = new URLSearchParams();
+  const [path, query] = endpoint.split("?", 2);
+  const params = new URLSearchParams(query);
 
+  if (filters.creatorId) params.set("creator", filters.creatorId);
   if (filters.searchQuery.trim()) params.set("q", filters.searchQuery.trim());
   if (filters.mediaType) params.set("type", filters.mediaType);
   if (filters.seriesId) params.set("series", filters.seriesId);
@@ -113,7 +119,7 @@ function buildBrowserRequestUrl(filters: BrowserFilters, endpoint: string) {
   params.set("page", String(filters.page));
   params.set("pageSize", String(filters.pageSize));
 
-  return `${endpoint}?${params.toString()}`;
+  return `${path}?${params.toString()}`;
 }
 
 function getCompactMetadata(item: AdminMediaBrowserItem) {
@@ -179,6 +185,7 @@ export function AdminMediaBrowser({
   className,
   excludedIds = [],
   endpoint = "/api/admin/media-browser",
+  initialSearchQuery = "",
   maxSelection = Number.MAX_SAFE_INTEGER,
   pageSize = DEFAULT_ADMIN_MEDIA_BROWSER_PAGE_SIZE,
   mediaTypes,
@@ -186,7 +193,7 @@ export function AdminMediaBrowser({
   series,
   variant = "admin",
 }: AdminMediaBrowserProps) {
-  const [filters, setFilters] = useState<BrowserFilters>(() => ({ ...INITIAL_FILTERS, pageSize }));
+  const [filters, setFilters] = useState<BrowserFilters>(() => ({ ...INITIAL_FILTERS, pageSize, searchQuery: initialSearchQuery }));
   const [result, setResult] = useState<AdminMediaBrowserResult | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -327,72 +334,88 @@ export function AdminMediaBrowser({
           </div>
         </div>
 
-        <div className={archive ? "grid content-start gap-2 lg:col-span-6" : "grid content-start gap-2"}>
-          <Label id="admin-media-browser-type-label" htmlFor={archive ? undefined : "admin-media-browser-type"}>Тип записи</Label>
-          {archive ? (
-            <div aria-labelledby="admin-media-browser-type-label" className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                aria-pressed={filters.mediaType === ""}
-                className={archiveChipClass(filters.mediaType === "")}
-                onClick={() => updateFilters({ mediaType: "" })}
-              >
-                Все типы
-              </button>
-              {mediaTypes.map((mediaType) => (
+        <div className={cn(
+          "grid items-start gap-3",
+          archive ? "sm:grid-cols-2 lg:col-span-6" : "sm:grid-cols-3 lg:col-span-2",
+        )}>
+          <div className={archive ? "grid content-start gap-2 sm:col-span-2" : "grid content-start gap-2"}>
+            <Label id="admin-media-browser-type-label" htmlFor={archive ? undefined : "admin-media-browser-type"}>Тип записи</Label>
+            {archive ? (
+              <div aria-labelledby="admin-media-browser-type-label" className="flex flex-wrap gap-2">
                 <button
-                  key={mediaType.code}
                   type="button"
-                  aria-pressed={filters.mediaType === mediaType.code}
-                  className={archiveChipClass(filters.mediaType === mediaType.code)}
-                  onClick={() => updateFilters({ mediaType: mediaType.code })}
+                  aria-pressed={filters.mediaType === ""}
+                  className={archiveChipClass(filters.mediaType === "")}
+                  onClick={() => updateFilters({ mediaType: "" })}
                 >
-                  {mediaType.name}
+                  Все типы
                 </button>
-              ))}
-            </div>
-          ) : (
-            <Select
-              id="admin-media-browser-type"
-              onChange={(event) => updateFilters({ mediaType: event.currentTarget.value })}
-              value={filters.mediaType}
-            >
-              <option value="">Все типы</option>
-              {mediaTypes.map((mediaType) => (
-                <option key={mediaType.code} value={mediaType.code}>
-                  {mediaType.name}
-                </option>
-              ))}
-            </Select>
-          )}
-        </div>
+                {mediaTypes.map((mediaType) => (
+                  <button
+                    key={mediaType.code}
+                    type="button"
+                    aria-pressed={filters.mediaType === mediaType.code}
+                    className={archiveChipClass(filters.mediaType === mediaType.code)}
+                    onClick={() => updateFilters({ mediaType: mediaType.code })}
+                  >
+                    {mediaType.name}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <Select
+                id="admin-media-browser-type"
+                onChange={(event) => updateFilters({ mediaType: event.currentTarget.value })}
+                value={filters.mediaType}
+              >
+                <option value="">Все типы</option>
+                {mediaTypes.map((mediaType) => (
+                  <option key={mediaType.code} value={mediaType.code}>
+                    {mediaType.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+          </div>
 
-        <div className={cn("grid content-start gap-2", archive && "lg:col-span-2")}>
-          <Label htmlFor="admin-media-browser-series">Серия</Label>
-          {endpoint === "/api/tier-lists/media-browser" ? <TierSeriesSelect id="admin-media-browser-series" variant={variant} value={filters.seriesId} onChange={(seriesId) => updateFilters({ seriesId })} /> : <SearchableFranchiseSelect
-            emptyLabel="Все серии"
-            id="admin-media-browser-series"
-            name="mediaBrowserSeriesId"
-            onChange={(seriesId) => updateFilters({ seriesId })}
-            options={series}
-            searchByTitleOnly
-            value={filters.seriesId}
-          />}
-          {archive ? null : (
-            <label className="flex items-center gap-2 text-sm text-stone-600">
-              <input
-                checked={filters.seriesScope === "descendants"}
-                disabled={!filters.seriesId}
-                onChange={(event) =>
-                  updateFilters({
-                    seriesScope: event.currentTarget.checked ? "descendants" : "direct",
-                  })
-                }
-                type="checkbox"
-              />
-              Учитывать дочерние серии
-            </label>
-          )}
+          <div className="grid min-w-0 content-start gap-2">
+            <Label htmlFor="admin-media-browser-series">Серия</Label>
+            {endpoint === "/api/tier-lists/media-browser" ? <TierSeriesSelect id="admin-media-browser-series" variant={variant} value={filters.seriesId} onChange={(seriesId) => updateFilters({ seriesId })} /> : <SearchableFranchiseSelect
+              emptyLabel="Все серии"
+              id="admin-media-browser-series"
+              name="mediaBrowserSeriesId"
+              onChange={(seriesId) => updateFilters({ seriesId })}
+              options={series}
+              searchByTitleOnly
+              value={filters.seriesId}
+            />}
+            {archive ? null : (
+              <label className="flex items-center gap-2 text-sm text-stone-600">
+                <input
+                  checked={filters.seriesScope === "descendants"}
+                  disabled={!filters.seriesId}
+                  onChange={(event) =>
+                    updateFilters({
+                      seriesScope: event.currentTarget.checked ? "descendants" : "direct",
+                    })
+                  }
+                  type="checkbox"
+                />
+                Учитывать дочерние серии
+              </label>
+            )}
+          </div>
+
+          <div className="grid min-w-0 content-start gap-2">
+            <Label htmlFor="admin-media-browser-creator">Создатель</Label>
+            <MediaBrowserCreatorSelect
+              endpoint={endpoint}
+              id="admin-media-browser-creator"
+              variant={variant}
+              onChange={(creatorId) => updateFilters({ creatorId })}
+              value={filters.creatorId}
+            />
+          </div>
         </div>
 
         <div className={cn("grid items-end gap-2 sm:grid-cols-2", archive && "lg:col-span-4")}>
@@ -538,7 +561,7 @@ export function AdminMediaBrowser({
           )}
         </div>
         {archive ? (
-          <button type="button" className={ARCHIVE_CONTROL_CLASS} onClick={() => setFilters({ ...INITIAL_FILTERS, pageSize })}>
+          <button type="button" className={ARCHIVE_CONTROL_CLASS} onClick={() => setFilters({ ...INITIAL_FILTERS, pageSize, searchQuery: initialSearchQuery })}>
             <X className="size-3.5" />
             Сбросить фильтры
           </button>

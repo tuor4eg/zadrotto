@@ -349,6 +349,7 @@ export async function updateCoverSettingsAction(
     candidateLimit: getFormString(formData, "candidateLimit"),
     tmdbResultScanLimit: getFormString(formData, "tmdbResultScanLimit"),
     coverMaxMegabytes: getFormString(formData, "coverMaxMegabytes"),
+    providerResponseMaxMib: getFormString(formData, "providerResponseMaxMib"),
     providerRequestTimeoutSeconds: getFormString(formData, "providerRequestTimeoutSeconds"),
   });
 
@@ -393,6 +394,7 @@ export async function updateCoverSettingsAction(
       candidateLimit: settings.value.candidateLimit,
       tmdbResultScanLimit: settings.value.tmdbResultScanLimit,
       coverMaxBytes: settings.value.coverMaxBytes,
+      providerResponseMaxMib: settings.value.providerResponseMaxMib,
       providerRequestTimeoutMs: settings.value.providerRequestTimeoutMs,
       providerRateLimitsCount: providerRateLimits.value.length,
     },

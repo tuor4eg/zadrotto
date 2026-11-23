@@ -35,6 +35,7 @@ export async function createMetadataProviderJobContext(
     candidateLimit: coverSettings.candidateLimit,
     tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
     requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
+    providerResponseMaxMib: coverSettings.providerResponseMaxMib,
     providerCredentials,
     beforeProviderSearch: wrapProviderSearchWithReserve(
       limiter.canSearchProvider,

@@ -43,7 +43,7 @@ export default async function QuizPage({ params, searchParams }: {
         <PublicSiteHeader {...headerState.headerProps} />
         <BugReportEntityContextRegistration context={{ entityId: String(quizId), entityType: "quiz" }} />
         <div className="grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3">
-          <section className="archive-paper archive-panel archive-panel-overflow-visible grid min-h-0 min-w-0 w-full grid-rows-[auto_minmax(0,1fr)] gap-3 p-4 sm:p-8 lg:col-span-2 lg:min-h-0" aria-labelledby="quiz-title">
+          <section className="archive-paper archive-panel archive-panel-overflow-visible grid min-h-0 min-w-0 w-full grid-rows-[auto_minmax(0,1fr)] gap-3 p-4 sm:p-8 max-lg:z-10 lg:col-span-2 lg:min-h-0" aria-labelledby="quiz-title">
             <div className="mb-2 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-2">
             <nav aria-label="Хлебные крошки" className="media-carrier-font-pc-steam text-xs lowercase text-stone-600">
               <Link href="/quizzes" className="hover:text-red-950">Квизы</Link>

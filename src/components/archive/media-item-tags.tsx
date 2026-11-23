@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
+import { useState, useTransition } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Plus, X } from "lucide-react";
@@ -10,57 +10,78 @@ import { MEDIA_IDENTITY_FONT_CLASS_NAME } from "@/lib/media/carrier-frame";
 import { SearchInput } from "@/components/ui/search-input";
 import { changeMediaItemTagAction } from "@/app/media/tag-actions";
 import { normalizeSearchText } from "@/lib/search/normalize";
+import { useTagSearch } from "@/lib/tags/use-tag-search";
 import type { VisibleMediaItemTag } from "@/lib/tags/model";
 
+
+const tagChipClassName = "rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white";
 
 export function MediaItemTagList({ tags, canAssign, isPending, onRemove }: {
   tags: VisibleMediaItemTag[]; canAssign: boolean; isPending: boolean; onRemove: (tagId: number) => void;
 }) {
-  return <>{[...tags].sort((a, b) => Number(b.isPublic) - Number(a.isPublic)).map(tag => <span key={tag.id} className={`inline-flex min-w-0 items-center gap-1 rounded-full bg-[var(--archive-bg-end)] px-2.5 py-1 text-xs font-medium lowercase leading-5 text-stone-100 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white ${tag.isPublic ? "" : "border border-dashed border-stone-400/60"}`}>
-        <Link className="break-words hover:underline focus-visible:underline" href={`/archive?tag=${encodeURIComponent(tag.code)}`}>{tag.title}</Link>
-        {canAssign && tag.isMine && !tag.isEditorial ? <Button type="button" size="icon" variant="ghost" className="size-5 rounded-full text-stone-300 hover:bg-white/15 hover:text-white [&_svg]:size-3" disabled={isPending} aria-label={`Удалить своё назначение: ${tag.title}`} onClick={() => onRemove(tag.id)}><X aria-hidden="true" /></Button> : null}
-      </span>)}</>;
+  return <>{[...tags].sort((a, b) => Number(b.isPublic) - Number(a.isPublic)).map(tag => {
+    const href = `/archive?tag=${encodeURIComponent(tag.code)}`;
+    const privateClassName = tag.isPublic ? "" : "border border-dashed border-stone-400/60";
+    const removable = canAssign && tag.isMine && !tag.isEditorial;
+    if (!removable) return <Link key={tag.id} href={href} className={`${tagChipClassName} ${privateClassName}`}>{tag.title}</Link>;
+    return <span key={tag.id} className={`inline-flex h-7 min-w-0 items-stretch rounded-full bg-[var(--archive-bg-end)] text-xs font-medium lowercase leading-5 text-stone-100 ${privateClassName}`}>
+      <Link className="flex min-w-0 items-center break-words rounded-l-full px-2.5 transition-colors hover:bg-[var(--archive-bg-start)] hover:text-white" href={href}>{tag.title}</Link>
+      <button type="button" className="aspect-square h-full w-auto shrink-0 rounded-full text-stone-300 transition-colors hover:bg-white/15 hover:text-white focus-visible:bg-white/15 focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50" disabled={isPending} aria-label={`Удалить своё назначение: ${tag.title}`} onClick={() => onRemove(tag.id)}><X aria-hidden="true" className="mx-auto size-3" /></button>
+    </span>;
+  })}</>;
 }
 
-type Option = { id: number; title: string };
 export function MediaItemTags({ tags, mediaItemCode, canAssign }: {
   tags: VisibleMediaItemTag[]; mediaItemCode: string; canAssign: boolean;
 }) {
   const router = useRouter();
   const [isAdding, setIsAdding] = useState(false);
   const [query, setQuery] = useState("");
-  const [options, setOptions] = useState<Option[]>([]);
+  const search = useTagSearch(isAdding ? query : "");
+  const options = search?.items ?? [];
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
-  useEffect(() => {
-    if (!query.trim()) return;
-    const controller = new AbortController();
-    const timer = setTimeout(() => {
-      fetch(`/api/tags?q=${encodeURIComponent(query)}`, { signal: controller.signal })
-        .then(response => response.ok ? response.json() : Promise.reject())
-        .then(data => { setOptions(data.items); setError(null); })
-        .catch(() => { if (!controller.signal.aborted) setError("Не удалось найти теги."); });
-    }, 250);
-    return () => { clearTimeout(timer); controller.abort(); };
-  }, [query]);
   function change(input: { tagId?: number; title?: string; remove?: boolean }) {
     startTransition(async () => {
       const result = await changeMediaItemTagAction({ ...input, mediaItemCode });
       setError(result.error);
-      if (!result.error) { setQuery(""); setOptions([]); setIsAdding(false); router.refresh(); }
+      if (!result.error) { setQuery(""); setIsAdding(false); router.refresh(); }
     });
   }
+  function closeTagSearch() {
+    setIsAdding(false);
+    setQuery("");
+    setError(null);
+  }
+
   const assignedIds = new Set(tags.map(tag => tag.id));
+  const addTagButton = canAssign ? (
+    <ArchiveTooltip label="Добавить тег" side={tags.length === 0 ? "right" : "bottom"}>
+      <Button type="button" size="icon" className="size-7 rounded-full bg-[var(--archive-bg-end)] hover:bg-[var(--archive-bg-start)]" disabled={isPending} aria-label="Добавить тег" aria-expanded={isAdding} onClick={isAdding ? closeTagSearch : () => setIsAdding(true)}><Plus aria-hidden="true" /></Button>
+    </ArchiveTooltip>
+  ) : null;
   return <section className="mt-5 grid w-full gap-1 text-sm leading-6 text-stone-800 lg:max-w-[584px]" aria-label="Теги">
-    <h3 className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>Теги</h3>
-    <div className="flex flex-wrap items-center gap-1.5">
-      <MediaItemTagList tags={tags} canAssign={canAssign} isPending={isPending} onRemove={tagId => change({ tagId, remove: true })} />
-      {canAssign ? <ArchiveTooltip label="Добавить тег" side="bottom">
-        <Button type="button" size="icon" className="size-7 rounded-full bg-[var(--archive-bg-end)] hover:bg-[var(--archive-bg-start)]" disabled={isPending} aria-label="Добавить тег" aria-expanded={isAdding} onClick={() => setIsAdding(value => !value)}><Plus aria-hidden="true" /></Button>
-      </ArchiveTooltip> : null}
+    <div className="flex items-center gap-2">
+      <h3 className={`text-xs font-semibold uppercase leading-6 text-stone-600 ${MEDIA_IDENTITY_FONT_CLASS_NAME}`}>Теги</h3>
+      {tags.length === 0 ? addTagButton : null}
     </div>
-    {canAssign && isAdding ? <div className="grid w-full max-w-md gap-2 rounded-md border border-stone-400/40 bg-stone-50/50 p-3">
-      <SearchInput aria-label="Найти тег" placeholder="Название тега" maxLength={80} value={query} onChange={event => { setQuery(event.target.value); setOptions([]); }} disabled={isPending} />
+    {tags.length > 0 ? (
+      <div className="flex flex-wrap items-center gap-1.5">
+        <MediaItemTagList tags={tags} canAssign={canAssign} isPending={isPending} onRemove={tagId => change({ tagId, remove: true })} />
+        {addTagButton}
+      </div>
+    ) : null}
+    {canAssign && isAdding ? <div className="grid w-full gap-2 py-3">
+      <SearchInput
+        aria-label="Найти тег"
+        placeholder="Название тега"
+        maxLength={80}
+        value={query}
+        onChange={event => { setQuery(event.target.value); setError(null); }}
+        disabled={isPending}
+        onClose={closeTagSearch}
+        closeLabel="Закрыть добавление тега"
+      />
       {query.trim() ? <ul className="flex flex-wrap gap-1.5" aria-label="Найденные теги">
         {options.map(option => <li key={option.id}><Button variant="ghost" size="sm" type="button" className="h-auto min-w-0 rounded-full bg-stone-500/15 px-2.5 py-1 text-left text-xs font-medium lowercase leading-5 whitespace-normal text-stone-600 hover:bg-stone-500/25 hover:text-stone-900" disabled={isPending || assignedIds.has(option.id)} onClick={() => change({ tagId: option.id })}>{option.title}{assignedIds.has(option.id) ? " · уже добавлен" : ""}</Button></li>)}
         {!options.some(option => normalizeSearchText(option.title) === normalizeSearchText(query)) ? <li className="min-w-0">
@@ -83,6 +104,6 @@ export function MediaItemTags({ tags, mediaItemCode, canAssign }: {
         </li> : null}
       </ul> : null}
     </div> : null}
-    {error ? <p role="alert" className="text-xs text-red-700">{error}</p> : null}
+    {error || search?.error ? <p role="alert" className="text-xs text-red-700">{error ?? search?.error}</p> : null}
   </section>;
 }

@@ -10,6 +10,11 @@ export function containsNormalizedSearchSql(value: SQLWrapper, query: string): S
   return sql`${normalizeSearchSql(value)} like ${`%${normalizeSearchText(query)}%`}`;
 }
 
+export function containsNormalizedSearchWordsSql(value: SQLWrapper, query: string): SQL {
+  const literal = normalizeSearchText(query).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return sql`${normalizeSearchSql(value)} ~ ${`(^|[^[:alnum:]])${literal}($|[^[:alnum:]])`}`;
+}
+
 export function normalizedSearchIndexSql(value: SQLWrapper): SQL {
   return sql`${normalizeSearchSql(value)} gin_trgm_ops`;
 }

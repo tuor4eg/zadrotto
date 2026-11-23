@@ -18,15 +18,18 @@ import {
   mediaItemAverageScoreSql,
   mediaItemRatingsCountSql,
 } from "@/db/queries/media-item-rating-stats";
-import { containsNormalizedSearchSql, normalizeSearchSql } from "@/db/search";
+import { creatorCondition, searchArchiveCreatorMatches } from "@/db/queries/creators";
+import { creatorDisplayNameSql, creatorNameSearchSql } from "@/db/queries/creator-display";
+import { mediaItemSearchCondition } from "@/db/queries/media-item-search";
+import { containsNormalizedSearchSql } from "@/db/search";
 import {
+  creators,
   franchises,
   mediaCarriers,
   mediaItemFranchises,
   mediaItemMetadata,
   mediaItemRatingStats,
   mediaItems,
-  mediaItemTitleAliases,
   mediaTypes,
 } from "@/db/schema";
 import {
@@ -43,32 +46,10 @@ const publishedMediaItemCondition = eq(
   PUBLISHED_PUBLICATION_STATUS,
 );
 
-function mediaItemSearchCondition(searchQuery: string) {
-  const normalizedSearchQuery = normalizeSearchText(searchQuery);
-
-  if (!normalizedSearchQuery) {
-    return null;
-  }
-
-  const codePattern = `%-${normalizedSearchQuery.replace(/\s+/g, "-")}-%`;
-
-  return or(
-    containsNormalizedSearchSql(mediaItems.title, normalizedSearchQuery),
-    containsNormalizedSearchSql(mediaItems.originalTitle, normalizedSearchQuery),
-    sql`('-' || ${normalizeSearchSql(mediaItems.code)} || '-') like ${codePattern}`,
-    exists(
-      db
-        .select({ id: mediaItemTitleAliases.id })
-        .from(mediaItemTitleAliases)
-        .where(
-          and(
-            eq(mediaItemTitleAliases.mediaItemId, mediaItems.id),
-            containsNormalizedSearchSql(mediaItemTitleAliases.value, normalizedSearchQuery),
-          ),
-        ),
-    ),
-  );
-}
+const publicMediaConditions = [
+  publishedMediaItemCondition,
+  eq(mediaTypes.isPubliclyAvailable, true),
+];
 
 function franchiseFilterCondition(input: AdminMediaBrowserQuery) {
   if (!input.franchiseId) {
@@ -105,18 +86,17 @@ function franchiseFilterCondition(input: AdminMediaBrowserQuery) {
   )`;
 }
 
-function buildFilterCondition(input: AdminMediaBrowserQuery, accessibleTypes?: readonly string[]) {
-  const conditions: SQL[] = [
-    publishedMediaItemCondition,
-    eq(mediaTypes.isPubliclyAvailable, true),
-  ];
+function buildFilterCondition(input: AdminMediaBrowserQuery, accessibleTypes?: readonly string[], includeUnpublished = false) {
+  const conditions: SQL[] = includeUnpublished ? [] : [...publicMediaConditions];
   if (accessibleTypes) conditions.push(accessibleTypes.length ? inArray(mediaItems.mediaType, [...accessibleTypes]) : sql`false`);
-  const searchCondition = mediaItemSearchCondition(input.searchQuery);
+  const searchCondition = mediaItemSearchCondition(input.searchQuery, false);
   const selectedFranchiseCondition = franchiseFilterCondition(input);
 
   if (searchCondition) {
     conditions.push(searchCondition);
   }
+
+  if (input.creatorId) conditions.push(creatorCondition(input.creatorId));
 
   if (input.mediaType) {
     conditions.push(eq(mediaItems.mediaType, input.mediaType));
@@ -136,7 +116,7 @@ function buildFilterCondition(input: AdminMediaBrowserQuery, accessibleTypes?: r
     conditions.push(sql`${mediaItemAverageScoreSql} <= ${input.maxAverageScore * 10}`);
   }
 
-  return and(...conditions)!;
+  return and(...conditions);
 }
 
 function getOrderBy(input: AdminMediaBrowserQuery) {
@@ -176,8 +156,13 @@ function getOrderBy(input: AdminMediaBrowserQuery) {
   ];
 }
 
-export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery, accessibleTypes?: readonly string[]) {
-  const filterCondition = buildFilterCondition(input, accessibleTypes);
+export async function searchAdminMediaBrowser(
+  input: AdminMediaBrowserQuery,
+  accessibleTypes?: readonly string[],
+  options?: { includeUnpublished: boolean },
+) {
+  const includeUnpublished = !accessibleTypes && options?.includeUnpublished;
+  const filterCondition = buildFilterCondition(input, accessibleTypes, includeUnpublished);
   const [{ totalCount }] = await db
     .select({ totalCount: sql<number>`count(*)::int` })
     .from(mediaItems)
@@ -234,8 +219,7 @@ export async function searchAdminMediaBrowser(input: AdminMediaBrowserQuery, acc
       .where(
         and(
           inArray(mediaItems.id, orderedIds),
-          publishedMediaItemCondition,
-          eq(mediaTypes.isPubliclyAvailable, true),
+          ...(includeUnpublished ? [] : publicMediaConditions),
         ),
       ),
     db
@@ -366,4 +350,20 @@ export async function searchPublicMediaBrowserSeries(query: string, accessibleTy
         .where(and(eq(mediaItemFranchises.franchiseId, franchises.id), eq(mediaItemFranchises.publicationStatus, PUBLISHED_PUBLICATION_STATUS), publishedMediaItemCondition, eq(mediaTypes.isPubliclyAvailable, true), inArray(mediaItems.mediaType, [...accessibleTypes])))),
     ))
     .orderBy(asc(franchises.title), asc(franchises.id)).limit(20);
+}
+
+export async function searchMediaBrowserCreators(query: string, accessibleTypes?: readonly string[]) {
+  const normalized = normalizeSearchText(query.slice(0, 200));
+  if (normalized.length < 2) return [];
+  if (accessibleTypes) return (await searchArchiveCreatorMatches(normalized, accessibleTypes)).items;
+
+  return db.select({
+    id: creators.id,
+    name: creatorDisplayNameSql(),
+    slug: creators.slug,
+    originalName: creators.originalName,
+  }).from(creators)
+    .where(creatorNameSearchSql(normalized))
+    .orderBy(asc(creatorDisplayNameSql()), asc(creators.id))
+    .limit(20);
 }

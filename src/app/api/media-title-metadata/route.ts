@@ -97,6 +97,7 @@ export async function POST(request: Request) {
       candidateLimit: coverSettings.candidateLimit,
       tmdbResultScanLimit: coverSettings.tmdbResultScanLimit,
       requestTimeoutMs: coverSettings.providerRequestTimeoutMs,
+      providerResponseMaxMib: coverSettings.providerResponseMaxMib,
       providerCredentials,
       beforeProviderSearch: providerRateLimiter.canSearchProvider,
       enrichTitleFields: body.enrichTitleFields === true,

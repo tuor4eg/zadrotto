@@ -13,7 +13,7 @@ function snapshot(): ClassificationSnapshot {
     { id: 3, title: "Подтематика", parent_id: 2 },
     { id: 4, title: "Цикл", parent_id: 3 },
     { id: 5, title: "Подцикл", parent_id: 4 },
-  ], tags: [{ id: 10, title: "Тематика" }], creator_series: [], media_item_franchises: [], media_item_franchise_removal_requests: [], genres: [], achievements: [], systemAuthors: [], providerLinks: [], foreignKeys: [], archiveSettings: [], media_item_tags: [] };
+  ], tags: [{ id: 10, title: "Тематика" }], media_item_franchises: [], media_item_franchise_removal_requests: [], genres: [], achievements: [], systemAuthors: [], providerLinks: [], foreignKeys: [], archiveSettings: [], media_item_tags: [] };
 }
 function form(...ids: number[]) { const data = new FormData(); for (const id of ids) data.append("keepSeriesId", String(id)); return data; }
 
@@ -45,21 +45,17 @@ test("selection rejects invalid series and always creates one tag per converted 
 
 test("dependencies require explicit controls and preserve decisions for kept series", () => {
   const state = snapshot();
-  state.creator_series = [{ creator_id: 8, series_id: 2 }, { creator_id: 9, series_id: 4 }];
   state.media_item_franchises = [{ media_item_id: 20, franchise_id: 2, publication_status: "submitted" }, { media_item_id: 21, franchise_id: 4, publication_status: "private" }];
   state.media_item_franchise_removal_requests = [{ media_item_id: 22, franchise_id: 2 }];
   const data = form(1, 4, 5);
   assert.throws(() => classificationManifestFromSelection(state, data));
-  data.set("creatorTarget:8:2", "3"); assert.throws(() => classificationManifestFromSelection(state, data));
-  data.set("creatorTarget:8:2", "4"); data.set("pending:20:2", "discard");
+  assert.throws(() => classificationManifestFromSelection(state, data));
+  data.set("pending:20:2", "discard");
   assert.throws(() => classificationManifestFromSelection(state, data));
   data.set("removal:22:2", "discard");
   const result = classificationManifestFromSelection(state, data);
-  assert.deepEqual(result.creatorLinks, [{ creatorId: 8, seriesId: 2, targetSeriesId: 4 }]);
   assert.deepEqual(result.pendingLinks, [{ mediaItemId: 20, franchiseId: 2, decision: "discard" }]);
   assert.deepEqual(result.removalRequests, [{ mediaItemId: 22, franchiseId: 2, decision: "discard" }]);
-  data.set("creatorTarget:8:2", "remove");
-  assert.equal(classificationManifestFromSelection(state, data).creatorLinks[0].targetSeriesId, null);
 });
 
 test("tree shows original nesting and handles orphaned or cyclic branches without hiding nodes", () => {
@@ -76,7 +72,7 @@ test("editor renders checked retained nodes, unchecked topics and ordinary confi
     createElement("form", null,
       createElement(ClassificationSeriesTree, {
         series: [{ id: 1, title: "Тематика", parentId: null }, { id: 2, title: "Франшиза", parentId: 1 }],
-        initialKeptIds: [2], creatorLinks: [], pendingLinks: [], removalRequests: [],
+        initialKeptIds: [2], pendingLinks: [], removalRequests: [],
       }),
       createElement(ClassificationApplyControls, { disabled: true }),
     )));

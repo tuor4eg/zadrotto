@@ -32,7 +32,7 @@ function manifest(): ClassificationManifest {
       { id: 4, group: "keep", parentId: null },
       { id: 5, group: "keep", parentId: 4 },
       { id: 7, group: "tag", parentId: null },
-    ], creatorLinks: [{ creatorId: 40, seriesId: 1, targetSeriesId: 2 }],
+    ],
     pendingLinks: [{ mediaItemId: 15, franchiseId: 1, decision: "discard" }],
     removalRequests: [{ mediaItemId: 10, franchiseId: 1, decision: "discard" }],
   };
@@ -74,11 +74,11 @@ describe("confirmed classification migration on disposable PostgreSQL", { skip: 
       create table archive_settings(id int primary key,tag_publication_threshold int,max_franchise_depth int);
       create table franchises(id serial primary key,parent_id int references franchises(id) on delete restrict,code text unique,title text,publication_status text);
       create table media_items(id int primary key,media_type text,publication_status text,created_by_author_id int references authors(id));
+      create table entry_sources(source_series_id int references franchises(id) on delete cascade);
       create table tags(id serial primary key,code text unique,title text);
       create table media_item_tags(media_item_id int references media_items(id),tag_id int references tags(id) on delete restrict,author_id int references authors(id),primary key(media_item_id,tag_id,author_id));
       create table media_item_franchises(media_item_id int references media_items(id),franchise_id int references franchises(id) on delete cascade,publication_status text,primary key(media_item_id,franchise_id));
       create table media_item_franchise_removal_requests(media_item_id int,franchise_id int,requested_by_author_id int,primary key(media_item_id,franchise_id),foreign key(media_item_id,franchise_id) references media_item_franchises on delete cascade);
-      create table creator_series(creator_id int,series_id int references franchises(id) on delete cascade,primary key(creator_id,series_id));
       create table genres(id int primary key,replacement_franchise_id int references franchises(id) on delete set null,replacement_tag_id int references tags(id));
       create table achievements(id int primary key,code text,mechanic text,params jsonb);
       create table achievement_levels(id int primary key,achievement_id int references achievements(id),threshold int);
@@ -98,14 +98,13 @@ describe("confirmed classification migration on disposable PostgreSQL", { skip: 
   });
   beforeEach(async () => {
     await client.unsafe(`
-      truncate classification_migration_runs,job_runs,archive_settings,authors,franchises,media_items,tags,media_item_tags,media_item_franchises,media_item_franchise_removal_requests,creator_series,genres,achievements,achievement_levels,user_achievements,ratings,contributions,provider_snapshot_links restart identity cascade;
+      truncate classification_migration_runs,job_runs,archive_settings,authors,franchises,media_items,tags,media_item_tags,media_item_franchises,media_item_franchise_removal_requests,genres,achievements,achievement_levels,user_achievements,ratings,contributions,provider_snapshot_links restart identity cascade;
       insert into authors(id,is_system) values(1,false),(2,false),(99,true);
       insert into archive_settings values(1,3,5);
       insert into franchises values(1,null,'theme','Тема','published'),(2,1,'real','Настоящая франшиза','published'),(3,2,'child','Потомок','published'),(4,1,'pending','Скрытая ветка','pending'),(5,4,'blocked','Скрытый потомок','published'),(7,2,'nested','Вложенная тема','published');
       insert into media_items values(10,'game','published',1),(11,'game','published',1),(12,'book','published',2),(13,'game','published',1),(14,'game','published',1),(15,'game','published',2);
       insert into media_item_franchises values(10,1,'published'),(10,2,'published'),(11,2,'published'),(12,3,'published'),(13,5,'published'),(14,7,'published'),(15,1,'pending');
       insert into media_item_franchise_removal_requests values(10,1,2);
-      insert into creator_series values(40,1),(40,2);
       insert into genres values(30,1,null);
       insert into tags(id,code,title) values(50,'existing','Существующий тег');
       select setval(pg_get_serial_sequence('tags','id'),50);
@@ -116,6 +115,18 @@ describe("confirmed classification migration on disposable PostgreSQL", { skip: 
       insert into ratings values(1,10),(1,11),(1,12),(1,14),(2,12);
       insert into contributions values(1,1,10,'review','published'),(2,1,10,'review','published'),(3,1,11,'review','published'),(4,2,12,'review','published'),(5,2,14,'review','draft');
     `);
+  });
+
+  it("blocks conversion while a series is used as a source", async () => {
+    const input = manifest();
+    const series = input.series.find((row) => row.group === "tag")!;
+    await client`insert into entry_sources values (${series.id})`;
+    try {
+      const run = await queries.createClassificationPreview(input, 500);
+      assert.ok((run.preview.blockers as string[]).some((row) => row.includes("первоисточник")));
+    } finally {
+      await client`delete from entry_sources where source_series_id = ${series.id}`;
+    }
   });
 
   it("applies nested published membership exactly, preserves identities/grants/user assignments and rolls back", async () => {
@@ -145,6 +156,35 @@ describe("confirmed classification migration on disposable PostgreSQL", { skip: 
     assert.equal((await queries.getClassificationMigration(run.id))?.status, "rolled_back");
     await client`delete from job_runs`;
     assert.ok(await queries.getClassificationMigration(run.id));
+  });
+
+  it("rolls back a journal written before creator-series links were removed", async () => {
+    const original = await queries.getClassificationInventory();
+    const { run, guard } = await previewAndApprove();
+    await queries.executeClassificationMigration({ migrationId: run.id, previewHash: run.previewHash }, "apply", guard, signal);
+    const applied = await queries.getClassificationInventory();
+    const oldSnapshot = (state: typeof original.state, seriesId: number) => ({
+      ...state,
+      creator_series: [{ creator_id: 40, series_id: seriesId }],
+      foreignKeys: [{ table_name: "creator_series" }, ...state.foreignKeys],
+    });
+    const before = oldSnapshot(original.state, 1);
+    const after = oldSnapshot(applied.state, 2);
+    const oldManifest = { ...run.manifest, creatorLinks: [{ creatorId: 40, seriesId: 1, targetSeriesId: 2 }] };
+    const previewHash = classificationHash({
+      manifest: oldManifest,
+      currentHash: classificationHash({ state: before, proof: original.proof }),
+    });
+    const afterHash = classificationHash({ state: after, proof: applied.proof });
+    await client`update classification_migration_runs set
+      manifest=${JSON.stringify(oldManifest)}::jsonb,
+      before_snapshot=${JSON.stringify(before)}::jsonb, after_snapshot=${JSON.stringify(after)}::jsonb,
+      preview_hash=${previewHash}, after_hash=${afterHash}
+      where id=${run.id}`;
+    const rollbackJob = await queries.requestClassificationRollback(run.id, previewHash, 500);
+    await queries.executeClassificationMigration({ migrationId: run.id, previewHash }, "rollback", await fence(rollbackJob), signal);
+    assert.equal((await queries.getClassificationInventory()).hash, original.hash);
+    assert.equal((await client`select to_regclass('creator_series') as legacy`)[0].legacy, null);
   });
 
   it("converts successive batches from the current tree without showing or duplicating retired series", async () => {
@@ -253,9 +293,8 @@ describe("confirmed classification migration on disposable PostgreSQL", { skip: 
   });
 
   it("blocks missing manual decisions, provider links and unknown FK dependencies", async () => {
-    const missing = manifest(); missing.creatorLinks = []; missing.pendingLinks = []; missing.removalRequests = [];
+    const missing = manifest(); missing.pendingLinks = []; missing.removalRequests = [];
     let run = await queries.createClassificationPreview(missing, 500);
-    assert.ok((run.preview.blockers as string[]).some(row => row.includes("создатели")));
     assert.ok((run.preview.blockers as string[]).some(row => row.includes("неопубликованные")));
     assert.ok((run.preview.blockers as string[]).some(row => row.includes("заявки")));
     await client`insert into provider_snapshot_links values(1,'series','1','primary')`;

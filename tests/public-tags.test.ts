@@ -37,6 +37,6 @@ test("tag search matches appear inside the shared archive matches panel", async 
   assert.match(html, /aria-label="Совпадения по поиску"/);
   assert.match(html, /Совпадения в тегах/);
   assert.match(html, /href="\/archive\?type=film&amp;tag=drama"/);
-  assert.match(html, /Посмотреть в тегах/);
+  assert.match(html, /aria-label="Посмотреть в тегах"/);
   assert.doesNotMatch(html, /Найденные теги|rounded-full/);
 });

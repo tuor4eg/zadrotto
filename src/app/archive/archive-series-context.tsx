@@ -1,12 +1,14 @@
 import type { MediaItemPlatform } from "@/lib/media/platforms";
 import type { MediaItemGenre } from "@/lib/media/genres";
 import Link from "next/link";
-import { ArrowRight, FolderOpen, Shapes, Tag, Users, X } from "lucide-react";
+import { ArrowRight, FolderOpen, Shapes, Tag, Users, X, type LucideIcon } from "lucide-react";
 
 import type { ArchiveSeriesMatch } from "@/db/queries/franchises";
 import { ArchiveChildSeries } from "@/app/archive/archive-child-series";
 import { AdminEntityEditLink } from "@/components/archive/admin-entity-edit-link";
+import { ArchiveTooltip } from "@/components/ui/archive-tooltip";
 import { ArchiveSeriesMediaLinkSearch } from "@/app/archive/archive-series-media-link-search";
+import { ArchiveMatchList } from "./archive-match-list";
 import { ArchiveSeriesDescendantsToggle } from "./archive-series-descendants-toggle";
 import type { MediaTypeOption } from "@/lib/media/types";
 
@@ -47,6 +49,21 @@ function SeriesPath({
         <span className="font-semibold text-stone-900">{item.title}</span>
       )}
     </span>
+  );
+}
+
+function ArchiveMatchCategoryLink({ href, label, icon: Icon }: { href: string; label: string; icon: LucideIcon }) {
+  return (
+    <ArchiveTooltip className="ml-auto shrink-0" label={label} side="bottom" align="end" portal>
+      <Link
+        href={href}
+        aria-label={label}
+        className="inline-flex h-9 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 text-stone-700 hover:border-stone-700 hover:text-stone-950"
+      >
+        <Icon className="size-5" aria-hidden="true" />
+        <ArrowRight className="size-4" aria-hidden="true" />
+      </Link>
+    </ArchiveTooltip>
   );
 }
 
@@ -94,13 +111,13 @@ export function ArchiveSeriesMatches({
   if (items.length === 0 && genres.length === 0 && creators.length === 0 && platforms.length === 0 && tags.length === 0) return null;
 
   return (
-    <section className="archive-paper archive-panel grid gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-3 text-sm shadow-md" aria-label="Совпадения по поиску">
-      {items.length ? <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+    <section className="archive-paper archive-panel grid min-w-0 grid-cols-[minmax(0,1fr)] gap-3 border-amber-300/70 bg-amber-100/75 px-4 py-3 text-sm shadow-md" aria-label="Совпадения по поиску">
+      {items.length ? <div className="flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto]">
       <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
         <FolderOpen className="size-5" />
         <span>Совпадения в сериях: {totalCount}</span>
       </div>
-      <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+      <ArchiveMatchList>
         {items.map((item) => (
           <li className="min-w-0" key={item.id}>
             <SeriesPath
@@ -110,64 +127,56 @@ export function ArchiveSeriesMatches({
             />
           </li>
         ))}
-      </ul>
-      {totalCount > items.length ? (
-        <Link className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950" href={moreHref}>
-          Посмотреть в сериях <ArrowRight className="size-4" />
-        </Link>
-      ) : null}
+      </ArchiveMatchList>
+        <ArchiveMatchCategoryLink href={moreHref} label="Посмотреть в сериях" icon={FolderOpen} />
       </div> : null}
-      {genres.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+      {genres.length ? <div className={`flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] ${items.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
         <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
           <Shapes className="size-5" aria-hidden="true" /><span>Совпадения в жанрах: {genreTotalCount}</span>
         </div>
-        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+        <ArchiveMatchList>
           {genres.map((genre) => <li key={genre.id} className="min-w-0">
             <Link href={genreSelectionHrefs[genre.id] ?? `/archive?genre=${encodeURIComponent(genre.slug)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{genre.name}</Link>
           </li>)}
-        </ul>
-        {genreTotalCount > genres.length ? <Link href={genreMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
+        </ArchiveMatchList>
+        <Link href={genreMoreHref} className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
           Посмотреть в жанрах <ArrowRight className="size-4" />
-        </Link> : null}
+        </Link>
       </div> : null}
-      {platforms.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+      {platforms.length ? <div className={`flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
         <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
           <Shapes className="size-5" aria-hidden="true" /><span>Совпадения в платформах: {platformTotalCount}</span>
         </div>
-        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+        <ArchiveMatchList>
           {platforms.map((platform) => <li key={platform.id} className="min-w-0">
             <Link href={platformSelectionHrefs[platform.id] ?? `/archive?platform=${encodeURIComponent(platform.slug)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{platform.name}</Link>
           </li>)}
-        </ul>
-        {platformTotalCount > platforms.length ? <Link href={platformMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
+        </ArchiveMatchList>
+        <Link href={platformMoreHref} className="ml-auto inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
           Посмотреть в платформах <ArrowRight className="size-4" />
-        </Link> : null}
+        </Link>
       </div> : null}
-      {creators.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+      {creators.length ? <div className={`flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] ${items.length || genres.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
         <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
           <Users className="size-5" aria-hidden="true" /><span>Совпадения в создателях: {creatorTotalCount}</span>
         </div>
-        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+        <ArchiveMatchList>
           {creators.map((creator) => <li key={creator.id} className="min-w-0">
             <Link href={creatorSelectionHrefs[creator.id] ?? `/archive?creator=${encodeURIComponent(creator.slug)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{creator.name}</Link>
           </li>)}
-        </ul>
-        {creatorTotalCount > creators.length ? <Link href={creatorMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
-          Посмотреть в создателях <ArrowRight className="size-4" />
-        </Link> : null}
+        </ArchiveMatchList>
+        <ArchiveMatchCategoryLink href={creatorMoreHref} label="Посмотреть в создателях" icon={Users} />
       </div> : null}
-      {tags.length ? <div className={`flex flex-wrap items-center gap-x-5 gap-y-2 ${items.length || genres.length || platforms.length || creators.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
+      {tags.length ? <div className={`flex min-w-0 flex-wrap items-center gap-x-5 gap-y-2 sm:grid sm:grid-cols-[auto_minmax(0,1fr)_auto] ${items.length || genres.length || platforms.length || creators.length ? "border-t border-stone-300/50 pt-3" : ""}`}>
         <div className="flex shrink-0 items-center gap-2 font-semibold text-stone-700">
           <Tag className="size-5" aria-hidden="true" /><span>Совпадения в тегах: {tags.length}</span>
         </div>
-        <ul className="flex min-w-0 flex-1 flex-row flex-wrap gap-x-5 gap-y-1.5 max-sm:w-full max-sm:basis-full">
+        <ArchiveMatchList>
           {tags.map(tag => <li key={tag.id} className="min-w-0">
             <Link href={tagSelectionHrefs[tag.id] ?? `/archive?tag=${encodeURIComponent(tag.code)}`} className="break-words font-semibold text-stone-900 underline decoration-stone-400 underline-offset-4 hover:text-stone-950">{tag.title}</Link>
           </li>)}
-        </ul>
-        <Link href={tagMoreHref} className="inline-flex h-9 shrink-0 items-center gap-2 rounded-md border border-stone-300/80 bg-white/85 px-3 font-mono text-xs font-semibold text-stone-700 hover:border-stone-700 hover:text-stone-950">
-          Посмотреть в тегах <ArrowRight className="size-4" />
-        </Link>
+        </ArchiveMatchList>
+        <ArchiveMatchCategoryLink href={tagMoreHref} label="Посмотреть в тегах" icon={Tag} />
       </div> : null}
     </section>
   );

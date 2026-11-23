@@ -99,6 +99,41 @@
       "when": 1795259308172,
       "tag": "0013_creator_fields_fill_attempts",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1795273290884,
+      "tag": "0014_entry_sources",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1795279471187,
+      "tag": "0015_remove_creator_series",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1795283041122,
+      "tag": "0016_backfill_entry_sources_a_b",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1795297049520,
+      "tag": "0017_creator_date_precision",
+      "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795334470029,
+      "tag": "0018_provider_response_limit",
+      "breakpoints": true
     }
   ]
 }

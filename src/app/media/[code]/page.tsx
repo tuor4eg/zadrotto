@@ -1,3 +1,5 @@
+import { EntrySources } from "@/components/archive/entry-source-links";
+import { getEntrySources, getWorksBasedOn } from "@/db/queries/entry-sources";
 import { canManageFranchises } from "@/lib/franchises/access";
 import { getVisibleMediaItemTags } from "@/db/queries/tags";
 import { MediaItemTags } from "@/components/archive/media-item-tags";
@@ -29,6 +31,7 @@ import {
   getPublicMediaItemMetadataByCode,
   getRelatedFranchiseSections,
   getRelatedTagSections,
+  getSourceMediaCards,
 } from "@/db/queries/media-items";
 import {
   getAccessibleMediaTypeCodes,
@@ -104,7 +107,7 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
   );
   const enabledMediaTypeCodes = await getEnabledMediaTypeCodes(currentAuthor?.id);
   const firstFranchiseCode = publishedFranchiseLinks[0]?.code ?? null;
-  const [relatedTagSections, relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork] = await Promise.all([
+  const [relatedTagSections, relatedFranchiseSections, reviews, mediaTypes, publishedFranchises, canSuggestFranchises, activeQuiz, parts, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork, [entrySources, adaptations, sourceCards]] = await Promise.all([
     getRelatedTagSections({ tags: visibleTags, currentMediaItemId: item.id, enabledMediaTypeCodes, currentAuthorId: currentAuthor?.id }),
     getRelatedFranchiseSections({
       franchises: publishedFranchiseLinks,
@@ -126,7 +129,32 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
     item.mediaType === "series" ? getSeriesCreatorDisplay(item.id) : Promise.resolve(undefined),
     item.mediaType === "anime" ? getAnimeCreatorDisplay(item.id) : Promise.resolve(undefined),
     item.mediaType === "comic" ? getComicArtistWork(item.id) : Promise.resolve(undefined),
+    Promise.all([
+      getEntrySources(item.id, accessibleMediaTypeCodes),
+      getWorksBasedOn("entry", item.id, accessibleMediaTypeCodes),
+    ]).then(async ([sources, works]) => {
+      const ids = new Set([
+        ...sources.filter((source) => source.type === "entry").map((source) => source.id),
+        ...works.map((work) => work.id),
+      ]);
+      const cards = await getSourceMediaCards([...ids], accessibleMediaTypeCodes, currentAuthor?.id);
+      const adaptations = works.map((work) => ({ ...work, type: "entry" as const }));
+      return [sources, adaptations, cards] as const;
+    }),
   ]);
+  const visibleParts = parts.filter((part) => part.type !== "season" || part.number !== 0);
+  const partsUnderPoster = visibleParts.length > 0 && visibleParts.length <= 3 &&
+    visibleParts.every((part) => part.type === "season");
+  const partsSection = visibleParts.length > 0 ? (
+    <TitlePartsSection
+      parts={parts}
+      mediaItemCode={item.code}
+      mediaType={item.mediaType}
+      title={displayTitle}
+      currentAuthor={currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null}
+    />
+  ) : null;
+
   return (
     <main className="archive-page flex min-h-0 flex-1 flex-col px-3 pb-3 pt-3 text-stone-950 sm:px-5 sm:pb-5 lg:px-7 lg:pb-7">
       <BugReportEntityContextRegistration context={{ entityId: String(item.id), entityType: "media-item" }} />
@@ -135,6 +163,23 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
         <PublicSiteHeader {...headerState.headerProps} />
         <div className="flex min-h-0 w-full flex-1 flex-col">
         <MediaItemDetails
+          entrySourcesSlot={entrySources.length || adaptations.length ? (
+            <div className="grid min-w-0 gap-5">
+              <EntrySources
+                sources={entrySources}
+                cards={sourceCards}
+                mediaTypes={mediaTypes}
+                isAuthorized={Boolean(currentAuthor)}
+              />
+              <EntrySources
+                heading="Адаптации"
+                sources={adaptations}
+                cards={sourceCards}
+                mediaTypes={mediaTypes}
+                isAuthorized={Boolean(currentAuthor)}
+              />
+            </div>
+          ) : null}
           tagsSlot={<MediaItemTags tags={visibleTags} mediaItemCode={item.code} canAssign={Boolean(currentAuthor)} />}
           item={{ ...item, description: publicDescription, gameCompanies, filmCompanies, filmDirectors, seriesCreators, animeCreators, comicArtistWork }}
           variant="archive"
@@ -202,8 +247,8 @@ export default async function MediaItemPage({ params, searchParams }: MediaItemP
               />
             ) : null
           }
-          partsSlot={parts.some(part => part.type !== "season" || part.number !== 0) ? <TitlePartsSection parts={parts} mediaItemCode={item.code} mediaType={item.mediaType} title={displayTitle}
-            currentAuthor={currentAuthor ? { name: currentAuthor.name, code: currentAuthor.code } : null} /> : null}
+          partsSlot={partsUnderPoster ? null : partsSection}
+          posterPartsSlot={partsUnderPoster ? partsSection : null}
           reviewsSlot={
             currentAuthor || reviews.length > 0 ? (
               <MediaItemReviews

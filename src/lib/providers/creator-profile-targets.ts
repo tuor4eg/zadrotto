@@ -21,11 +21,11 @@ export const CREATOR_PROFILE_KINDS = [
 ] as const;
 export const CREATOR_FIELDS_FILL_RESOURCES = {
   anilist: "person",
-  "comic-vine": "person",
+  "comic-vine": ["person", "publisher"],
   fantlab: "author",
   igdb: "company",
   tmdb: "person",
-} as const satisfies Partial<Record<CreatorProfileTarget["provider"], CreatorProfileTarget["resourceType"]>>;
+} as const satisfies Partial<Record<CreatorProfileTarget["provider"], CreatorProfileTarget["resourceType"] | readonly CreatorProfileTarget["resourceType"][]>>;
 
 export const IGDB_COMPANY_PROFILE_FIELDS = "*,logo.*,websites.*";
 const IGDB_COMPANY_DATES_FIELDS = `${IGDB_COMPANY_PROFILE_FIELDS},start_date_format.format`;
@@ -60,5 +60,9 @@ export function creatorFillDatesDescriptor(target: CreatorProfileTarget): Snapsh
   const descriptor = creatorProfileDescriptor(target);
   if (target.provider === "anilist") return { ...descriptor, apiMethod: "staff.dates" };
   if (target.provider === "igdb") return { ...descriptor, requestParams: { fields: IGDB_COMPANY_DATES_FIELDS } };
+  if (target.provider === "comic-vine") {
+    const fields = target.resourceType === "publisher" ? "id,name,deck,description" : "id,name,birth,death";
+    return { ...descriptor, requestParams: { ...descriptor.requestParams, field_list: fields } };
+  }
   return descriptor;
 }

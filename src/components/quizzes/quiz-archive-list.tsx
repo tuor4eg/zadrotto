@@ -70,11 +70,11 @@ export function QuizArchiveList({ items, showAllLink = true, breadcrumbs, fitRow
                     ) : null}
                   </div>
 
-                  <dl className="w-28 shrink-0 space-y-1 text-[10px] leading-tight text-stone-600">
+                  <dl className="shrink-0 space-y-1 text-[10px] leading-tight text-stone-600">
                     <div className="flex items-center gap-1.5">
                       <Users className="size-3.5 shrink-0" aria-hidden="true" />
                       <dt className="sr-only">Участников</dt>
-                      <dd>Участников: {item.participantCount.toLocaleString("ru-RU")}</dd>
+                      <dd>{item.participantCount.toLocaleString("ru-RU")}</dd>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Trophy className="size-3.5 shrink-0" aria-hidden="true" />

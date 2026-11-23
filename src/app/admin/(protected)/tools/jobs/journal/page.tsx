@@ -1,4 +1,5 @@
 import { getRegisteredJobHandlers } from "@/lib/jobs/queue";
+import { JOB_RUN_STATUSES, type JobRunStatus } from "@/lib/jobs/model";
 import { getRetiredJob } from "@/lib/jobs/retired";
 import { StopSnapshotRunButton } from "@/components/admin/stop-snapshot-run-button";
 import { ResumeSnapshotRunButton } from "@/components/admin/resume-snapshot-run-button";
@@ -14,7 +15,7 @@ import { getAdminJobRuns, getAdminJobs } from "@/db/queries/jobs";
 import { buildJobJournalHref } from "./href";
 import { JobJournalFilters } from "./job-journal-filters";
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABELS: Record<JobRunStatus, string> & Partial<Record<string, string>> = {
   cancelled: "Отменён",
   failed: "Ошибка",
   queued: "Ожидает",
@@ -46,8 +47,9 @@ export default async function JobJournalPage({
   const jobFilter = jobId === undefined ? "all" : String(jobId);
   const pageSize = [25, 50, 100].includes(Number(query.pageSize)) ? Number(query.pageSize) : 25;
   const page = parsePositiveInteger(query.page, 1);
-  const result = await getAdminJobRuns({ jobId, page, pageSize, type });
-  const href = (targetPage: number) => buildJobJournalHref({ job: jobFilter, page: targetPage, pageSize, type });
+  const status = JOB_RUN_STATUSES.find((value) => value === query.status);
+  const result = await getAdminJobRuns({ jobId, page, pageSize, status, type });
+  const href = (targetPage: number) => buildJobJournalHref({ job: jobFilter, page: targetPage, pageSize, status, type });
   const currentHref = href(result.page);
 
   const actions = (run: typeof result.items[number]) => (
@@ -68,7 +70,7 @@ export default async function JobJournalPage({
       <div>
         <h2 className="font-serif text-2xl">Журнал запусков</h2>
         <p className="text-sm text-stone-600">
-          Активные запуски показаны первыми. Можно сузить список до выбранного расписания или запусков без расписания.
+          Активные запуски показаны первыми. Список можно отфильтровать по расписанию и статусу.
         </p>
       </div>
       {query.error === "job-type-retired" ? <p role="alert" className="text-sm text-red-700">Этот тип задачи снят с эксплуатации. Используйте актуальную операцию.</p> : null}
@@ -77,7 +79,7 @@ export default async function JobJournalPage({
           Проверка автомодерации уже завершена. Повтор задания не переоткрывает её решение; запись можно проверить вручную.
         </p>
       ) : null}
-      <JobJournalFilters type={type} jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} />
+      <JobJournalFilters type={type} jobFilter={jobFilter} jobs={jobs} pageSize={pageSize} status={status} statusLabels={STATUS_LABELS} />
       {type ? <p className="text-sm text-stone-500">Тип задачи: {type}</p> : null}
       <p className="text-sm text-stone-500">Всего запусков: {result.totalCount}</p>
       <div className="grid min-w-0 gap-3 xl:hidden">

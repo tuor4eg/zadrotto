@@ -71,7 +71,7 @@ export async function fetchGameMetadata(input: TitleMetadataInput, options: Titl
         await response.body?.cancel();
         throw new SnapshotProviderHttpError(response.status, Number.isFinite(seconds) ? Math.max(1, seconds) : 60);
       }
-      payload = await boundedJson(response);
+      payload = await boundedJson(response, options.providerResponseMaxMib);
       contentType = response.headers.get("content-type") ?? contentType;
     }
     options.signal?.throwIfAborted();

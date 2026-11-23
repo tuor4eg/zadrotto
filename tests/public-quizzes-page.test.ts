@@ -23,7 +23,7 @@ test("public quizzes section separates the intro and current quiz widgets", () =
   assert.match(page, /grid shrink-0 gap-3 lg:grid-cols-3[\s\S]*lg:col-span-2[\s\S]*<QuizzesHero statistics=\{statistics\} \/>[\s\S]*<ArchiveRiddle/);
   assert.match(page, /<ArchiveRiddle[\s\S]*quiz=\{activeQuiz\}/);
   assert.match(page, /<ArchiveRiddle[\s\S]*size="large"/);
-  assert.match(widget, /min-h-\[320px\][^"\n]*lg:h-\[360px\]/);
+  assert.match(widget, /sm:min-h-\[320px\][^"\n]*lg:h-\[360px\]/);
   assert.match(currentQuiz, /className=\{`max-w-full rounded-md object-contain \$\{imageMaxHeightClassName\}`\}/);
   assert.match(currentQuiz, /setInterval\(\(\) => setNow\(new Date\(\)\), 1_000\)/);
   assert.match(currentQuiz, /<QuizNoActiveState compact=\{size === "default"\} \/>/);
@@ -104,7 +104,10 @@ test("quiz archive links each row to its quiz page", () => {
   assert.match(query, /correctCount: sql<number>`count\(\*\) filter \(where \$\{quizParticipants\.outcome\} = 'correct'\)::int`/);
   assert.match(query, /mediaTypesByQuizId/);
   assert.match(archive, /Архив квизов/);
-  assert.match(archive, /Участников: \{item\.participantCount\.toLocaleString\("ru-RU"\)\}/);
+  assert.match(archive, /<dt className="sr-only">Участников<\/dt>/);
+  assert.match(archive, /<dd>\{item\.participantCount\.toLocaleString\("ru-RU"\)\}<\/dd>/);
+  assert.doesNotMatch(archive, /Участников:/);
+  assert.doesNotMatch(archive, /w-28/);
   assert.match(archive, /item\.correctCount/);
   assert.doesNotMatch(archive, /winnerName|Победитель|Нет победителя/);
   assert.match(archive, /href="\/quizzes\/archive"/);
@@ -120,6 +123,7 @@ test("quiz archive links each row to its quiz page", () => {
 test("archived quiz page reuses the modal panel without offering active quiz participation", () => {
   const page = read("src/app/quizzes/[id]/page.tsx");
   const panel = read("src/components/quizzes/active-quiz-panel.tsx");
+  const mosaic = read("src/components/quizzes/mosaic-game.tsx");
   const query = read("src/db/queries/quizzes.ts");
   const detailQuery = query.slice(query.indexOf("export async function getQuizById"), query.indexOf("export async function getQuizArchivePage"));
 
@@ -131,7 +135,10 @@ test("archived quiz page reuses the modal panel without offering active quiz par
   assert.match(detailQuery, /eq\(quizParticipants.quizId, id\), eq\(quizParticipants.authorId, authorId\)/);
   assert.doesNotMatch(detailQuery, /answerMediaItemId/);
   assert.doesNotMatch(panel, /formatQuizTimeRemaining/);
-  assert.match(panel, /finished \? \([\s\S]*Квиз завершён[\s\S]*<QuizParticipationButton/);
+  assert.match(panel, /finished \? null :[\s\S]*<QuizParticipationButton/);
+  assert.doesNotMatch(panel, /Квиз завершён/);
+  assert.match(mosaic, /expired \? null : <QuizParticipationButton/);
+  assert.doesNotMatch(mosaic, /Квиз завершён/);
 });
 
 test("quiz answer is revealed after victory, mosaic exhaustion or the deadline", () => {
@@ -163,8 +170,10 @@ test("quiz leaderboard ranks authors by all correct answer points and elapsed ti
   assert.match(leaderboard, /href=\{`\/users\/\$\{item\.authorId\}`\}/);
   assert.match(leaderboard, /\{item\.totalPoints\}/);
   assert.match(leaderboard, /formatQuizDuration\(item\.totalTimeSeconds\)/);
-  assert.match(leaderboard, /w-36 pb-2 text-right font-normal/);
-  assert.match(leaderboard, /whitespace-nowrap py-2 text-right/);
+  assert.match(leaderboard, /table-auto/);
+  assert.match(leaderboard, /w-full pb-2 font-normal">Пользователь/);
+  assert.match(leaderboard, /w-px whitespace-nowrap pb-2 pl-3 text-right font-normal/);
+  assert.match(leaderboard, /whitespace-nowrap py-2 pl-3 text-right/);
   assert.match(leaderboard, /imageSrc="\/quiz_win_placeholder\.webp"/);
   assert.match(leaderboard, /Пьедестал пока пустует/);
   assert.match(leaderboard, /Стань одним из первых, кто пройдёт квиз,[\s\S]*и попади в таблицу лучших![\s\S]*Всё только начинается/);

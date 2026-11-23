@@ -18,6 +18,12 @@ test("public tags precede personal tags; only own non-editorial assignments are 
   assert.match(html, /Удалить своё назначение: Личный/);
   assert.match(html, /Удалить своё назначение: Свой публичный/);
   assert.doesNotMatch(html, /Удалить своё назначение: Публичный|Удалить своё назначение: От редакции/);
+  assert.doesNotMatch(html, /underline/);
+  assert.match(html, /<a [^>]*href="\/archive\?tag=public"[^>]*>Публичный<\/a>/);
+  assert.match(html, /<a [^>]*class="[^"]*rounded-l-full[^"]*"[^>]*>Личный<\/a><button[^>]*class="[^"]*aspect-square h-full[^"]*rounded-full/);
+  assert.match(html, /inline-flex h-7[^"]*rounded-full/);
+  assert.doesNotMatch(html, /overflow-hidden rounded-full/);
+  assert.match(html, /hover:bg-white\/15/);
   assert.equal((html.match(/<button/g) ?? []).length, 2);
 });
 test("guests and demo without an account cannot remove tags", () => {

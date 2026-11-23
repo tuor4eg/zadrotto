@@ -35,6 +35,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
         source_external_id text,source_url text,fetched_at timestamptz,created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());
       CREATE TABLE admin_activity_logs(id serial PRIMARY KEY,created_at timestamptz DEFAULT now(),actor_type text,admin_user_id integer,
         author_id integer,action text,entity_type text,entity_id integer,entity_label text,status text,severity text,message text,ip_address text,user_agent text,metadata jsonb);
+      CREATE TABLE provider_snapshot_links(entity_type text,entity_id text);
       CREATE TABLE job_runs(id serial PRIMARY KEY,job_id integer,retry_of_run_id integer,created_by_admin_id integer,type text,payload jsonb DEFAULT '{}',
         source text,status text DEFAULT 'queued',scheduled_for timestamptz,available_at timestamptz,attempts integer DEFAULT 0,max_attempts integer,
         timeout_seconds integer,retry_base_seconds integer,retry_max_seconds integer,locked_at timestamptz,locked_by text,lock_token text,
@@ -42,6 +43,11 @@ test("creator approval, provenance, backfill and stable codes persist through re
         created_at timestamptz DEFAULT now(),updated_at timestamptz DEFAULT now());`);
     for (const migration of ["drizzle-archive/pre-baseline/0117_creators.sql", "drizzle-archive/pre-baseline/0118_creator_original_name.sql", "drizzle-archive/pre-baseline/0119_creator_relations.sql", "drizzle-archive/pre-baseline/0123_creator_avatars.sql", "drizzle-archive/pre-baseline/0124_bgg_creators.sql", "drizzle-archive/pre-baseline/0125_game_company_creators.sql"]) {
       for (const statement of readFileSync(migration, "utf8").split("--> statement-breakpoint")) await client.unsafe(statement);
+    }
+    for (const migration of ["drizzle/0014_entry_sources.sql", "drizzle/0015_remove_creator_series.sql"]) {
+      for (const statement of readFileSync(migration, "utf8").replaceAll('"public".', "").split("--> statement-breakpoint")) {
+        await client.unsafe(statement);
+      }
     }
     for (const statement of readFileSync("drizzle-archive/pre-baseline/0147_creator_logo_candidates.sql", "utf8").split("--> statement-breakpoint").slice(0, 3)) await client.unsafe(statement);
     await client.unsafe(`ALTER TABLE creators ADD COLUMN birth_date date, ADD COLUMN death_date date, ADD COLUMN name_ru text, ADD COLUMN name_ru_source text,
@@ -134,8 +140,6 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await assert.rejects(creators.deleteCreatorType(person.id));
     await assert.rejects(creators.deleteCreatorRole(writer.id));
     await assert.rejects(creators.deleteCreator(creator.id));
-    await creators.updateCreator(creator.id, { name: "Ёж Иван", slug: creator.slug, typeId: person.id, seriesIds: [1, 2] });
-    assert.deepEqual((await creators.getCreatorBySlug(creator.slug))!.series.map(row => row.code), ["related"]);
     assert.equal((await creators.getCreators({ publicOnly: true, q: "ЕЖ" })).totalCount, 1);
     await client`UPDATE media_items SET publication_status='draft' WHERE id=5`;
     assert.equal((await creators.getCreators({ publicOnly: true })).totalCount, 0, "draft-only writer is not listed");
@@ -157,7 +161,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
     assert.equal((await creators.getCreators({ publicOnly: true })).totalCount, 0);
     await client`UPDATE media_types SET is_publicly_available=true WHERE code='book'`;
     assert.equal(await creators.getCreatorBySlug("missing"), null);
-    for (const preservation of ["none", "avatar", "manual", "series"] as const) {
+    for (const preservation of ["none", "avatar", "manual", "source"] as const) {
       const name = `Orphan ${preservation}`;
       await sync(3, [name]);
       const pending = (await requests.getCreatorRequests()).find(row => row.externalCreatorName === name)!;
@@ -167,7 +171,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
       const target = (await creators.getEntryCreators(3)).find(row => row.name === name)!;
       if (preservation === "avatar") await client`UPDATE creators SET avatar_object_key=${`avatars/creators/${target.id}/00000000-0000-4000-8000-000000000001.webp`}, avatar_source='manual', avatar_content_hash=${"a".repeat(64)} WHERE id=${target.id}`;
       if (preservation === "manual") await creators.setManualEntryCreators(3, [{ creatorId: target.id, roleId: writer.id }]);
-      if (preservation === "series") await creators.updateCreator(target.id, { name, slug: target.slug, typeId: person.id, seriesIds: [1] });
+      if (preservation === "source") await client`insert into entry_sources(entry_id, creator_id) values (1, ${target.id})`;
       const [mapping] = await client`SELECT id FROM provider_creator_mappings WHERE creator_id=${target.id}`;
       const returned = await requests.reopenCreatorMapping({ mappingId: mapping.id, adminId: 1 });
       await client`UPDATE job_runs SET status='failed' WHERE id=${returned.jobRunId}`;
@@ -175,7 +179,7 @@ test("creator approval, provenance, backfill and stable codes persist through re
       assert.equal((await client`SELECT payload FROM job_runs WHERE id=${retried.jobRunId}`)[0].payload.orphanCreatorId, target.id);
       await requests.applyCreatorRequest(pending.id, { jobRunId: retried.jobRunId });
       await client`UPDATE job_runs SET status='succeeded' WHERE id=${retried.jobRunId}`;
-      assert.equal(Boolean(await creators.getCreatorBySlug(target.slug)), preservation === "manual" || preservation === "series");
+      assert.equal(Boolean(await creators.getCreatorBySlug(target.slug)), preservation === "manual" || preservation === "source");
       assert.equal((await requests.getCreatorRequests({ requestId: pending.id }))[0].status, "pending");
       if (preservation === "manual") await creators.setManualEntryCreators(3, []);
     }
@@ -269,28 +273,22 @@ test("creator approval, provenance, backfill and stable codes persist through re
     await creators.updateCreator(corey.id, { name: corey.name, slug: corey.slug, typeId: person.id, relations: [{ targetCreatorId: extra.id, relationType: "pseudonym_of" }] });
     assert.deepEqual(await displayedIds(1), [daniel.id, corey.id].sort((a, b) => a - b), "display uses the current relation membership");
     const removable = await creators.createCreator({ name: "Temporary Collective", slug: "temporary-collective", typeId: person.id, relations });
-    await creators.deleteCreator(removable.id);
+    const externalId = "41925";
+    await client`INSERT INTO provider_creator_bindings(provider,external_creator_id,creator_id,active)
+      VALUES('fantlab',${externalId},${removable.id},false),('fantlab',${externalId},${daniel.id},true)`;
+    await assert.rejects(creators.deleteCreator(daniel.id), /действующую привязку/);
+    await client`INSERT INTO entry_sources(entry_id,creator_id) VALUES(4,${removable.id})`;
+    await assert.rejects(creators.deleteCreator(removable.id), /указан источником/);
+    await client`DELETE FROM entry_sources WHERE creator_id=${removable.id}`;
+    await client`INSERT INTO entry_creators(entry_id,creator_id,role_id) VALUES(4,${removable.id},${writer.id})`;
+    await assert.rejects(creators.deleteCreator(removable.id));
+    assert.equal((await client`SELECT count(*)::int n FROM provider_creator_bindings WHERE creator_id=${removable.id}`)[0].n, 1);
+    await client`DELETE FROM entry_creators WHERE creator_id=${removable.id}`;
+    assert.equal((await creators.deleteCreator(removable.id))?.id, removable.id);
+    assert.deepEqual([...(await client`SELECT creator_id,active FROM provider_creator_bindings WHERE provider='fantlab' AND external_creator_id=${externalId}`)],
+      [{ creator_id: daniel.id, active: true }]);
     assert.equal((await client`SELECT count(*)::int n FROM creator_relations WHERE source_creator_id=${removable.id}`)[0].n, 0);
     assert.ok((await client`SELECT count(*)::int n FROM admin_activity_logs WHERE admin_user_id=1 AND entity_id=1`)[0].n > 0);
-
-
-    const seriesPseudonym = await creators.createCreator({ name: "Series Collective", slug: "series-collective", typeId: person.id, relations, seriesIds: [1, 2] });
-    const inheritedBefore = await client`SELECT * FROM creator_series WHERE creator_id IN (${daniel.id},${ty.id})`;
-    for (const member of [daniel, ty]) {
-      assert.deepEqual((await creators.getCreatorBySlug(member.slug))!.series.map(row => row.id), [1], "only published series are inherited publicly");
-      const adminMember = (await creators.getAdminCreatorById(member.id))!;
-      assert.deepEqual(adminMember.seriesIds, [], "inherited links are never saved as direct links");
-      assert.deepEqual(adminMember.inheritedSeries.map(row => [row.id, row.sourceCreatorId]), [[1, seriesPseudonym.id], [2, seriesPseudonym.id]], "admin includes draft series with their source pseudonym");
-    }
-    assert.deepEqual(await client`SELECT * FROM creator_series WHERE creator_id IN (${daniel.id},${ty.id})`, inheritedBefore);
-    await creators.updateCreator(daniel.id, { name: daniel.name, slug: daniel.slug, typeId: person.id, seriesIds: [1] });
-    assert.deepEqual((await creators.getCreatorBySlug(daniel.slug))!.series.map(row => row.id), [1], "direct and inherited duplicates collapse");
-    await creators.updateCreator(seriesPseudonym.id, { name: seriesPseudonym.name, slug: seriesPseudonym.slug, typeId: person.id, relations, seriesIds: [] });
-    assert.deepEqual((await creators.getCreatorBySlug(ty.slug))!.series, [], "removing pseudonym series immediately removes inheritance");
-    assert.deepEqual((await creators.getCreatorBySlug(seriesPseudonym.slug))!.series, [], "personal series do not flow back to a pseudonym");
-    await creators.updateCreator(seriesPseudonym.id, { name: seriesPseudonym.name, slug: seriesPseudonym.slug, typeId: person.id, relations: [], seriesIds: [1] });
-    assert.deepEqual((await creators.getCreatorBySlug(ty.slug))!.series, [], "removing membership immediately removes inheritance");
-    assert.deepEqual((await creators.getCreatorBySlug(daniel.slug))!.series.map(row => row.id), [1], "direct series survive changes to pseudonym membership");
 
 
     // Confirmed FantLab identities do not depend on display names or legacy aliases.

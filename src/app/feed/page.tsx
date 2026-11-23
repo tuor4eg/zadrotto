@@ -49,10 +49,15 @@ export default async function FeedPage({ searchParams }: { searchParams: Promise
     <div className="mx-auto flex w-full max-w-[1480px] flex-1 flex-col gap-3">
       <PublicSiteHeader {...header.headerProps} />
       <section className="archive-paper archive-panel media-carrier-font-pc-steam px-4 pb-6 pt-4 sm:px-6 sm:pb-6 sm:pt-6 [&_*]:[font-family:inherit]" aria-labelledby="feed-title">
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-3 pb-4">
-          <ArchivePageHeading id="feed-title" title="Лента" description="Хроника событий архива" />
-          {header.author ? <FeedActivityFilter friends={friends} value={mineOnly ? "mine" : friendId !== undefined ? String(friendId) : friendsOnly ? "friends" : "all"} /> : null}
-        </div>
+        <header className="mb-6 pb-4">
+          <div className="flex items-baseline justify-between gap-2 sm:gap-3">
+            <div className="min-w-0 shrink-0 sm:flex-1">
+              <ArchivePageHeading id="feed-title" title="Лента" />
+            </div>
+            {header.author ? <FeedActivityFilter friends={friends} value={mineOnly ? "mine" : friendId !== undefined ? String(friendId) : friendsOnly ? "friends" : "all"} /> : null}
+          </div>
+          <p className="mt-2 text-sm text-stone-600">Хроника событий архива</p>
+        </header>
         {page.items.length === 0 ? <p className="py-6 text-sm text-stone-600">{position ? "На этой странице больше нет событий. Вернись к началу ленты." : "В ленте пока нет событий."}</p> :
           <FeedDayGroups items={page.items} currentAuthorId={header.author?.id} tiles={tiles} ratingAuthor={header.author ? { name: header.author.name, code: header.author.code } : null} />}
         <nav aria-label="Страницы ленты" className="mt-6 flex flex-wrap items-center gap-3 border-t border-stone-400/25 pt-5">

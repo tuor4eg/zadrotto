@@ -9,6 +9,7 @@ import {
 
 const querySource = readFileSync("src/db/queries/admin-media-browser.ts", "utf8");
 const routeSource = readFileSync("src/app/api/admin/media-browser/route.ts", "utf8");
+const creatorSelectSource = readFileSync("src/components/admin/media-browser-creator-select.tsx", "utf8");
 const componentSource = readFileSync(
   "src/components/admin/admin-media-browser.tsx",
   "utf8",
@@ -18,6 +19,7 @@ describe("admin media browser query parser", () => {
   it("parses every supported filter and uses the sort-specific default direction", () => {
     const query = parseAdminMediaBrowserQuery(new URLSearchParams({
       minScore: "7,5",
+      creator: "920",
       page: "3",
       pageSize: "48",
       q: "  Дюна  ",
@@ -29,6 +31,7 @@ describe("admin media browser query parser", () => {
 
     assert.deepEqual(query, {
       direction: "desc",
+      creatorId: 920,
       franchiseId: 42,
       mediaType: "film",
       minAverageScore: 7.5,
@@ -44,6 +47,7 @@ describe("admin media browser query parser", () => {
   it("falls back safely for invalid values", () => {
     const query = parseAdminMediaBrowserQuery(new URLSearchParams({
       direction: "sideways",
+      creator: "name",
       minScore: "11",
       page: "-2",
       pageSize: "5000",
@@ -55,6 +59,7 @@ describe("admin media browser query parser", () => {
 
     assert.deepEqual(query, {
       direction: "asc",
+      creatorId: null,
       franchiseId: null,
       mediaType: null,
       minAverageScore: null,
@@ -70,9 +75,7 @@ describe("admin media browser query parser", () => {
 
 describe("admin media browser backend", () => {
   it("uses normalized archive search, public records, rating aggregates and series branches", () => {
-    assert.match(querySource, /normalizeSearchText\(searchQuery\)/);
-    assert.match(querySource, /containsNormalizedSearchSql\(mediaItems\.title/);
-    assert.match(querySource, /mediaItemTitleAliases/);
+    assert.match(querySource, /mediaItemSearchCondition\(input\.searchQuery, false\)/);
     assert.match(querySource, /eq\(mediaTypes\.isPubliclyAvailable, true\)/);
     assert.match(querySource, /publishedMediaItemCondition/);
     assert.match(querySource, /mediaItemAverageScoreSql/);
@@ -117,6 +120,9 @@ describe("admin media browser UI", () => {
 
   it("supports all required filters, sorting and responsive result layouts", () => {
     assert.match(componentSource, /Поиск по названию/);
+    assert.match(componentSource, /MediaBrowserCreatorSelect/);
+    assert.match(creatorSelectSource, /role="listbox"/);
+    assert.match(querySource, /creatorCondition\(input\.creatorId\)/);
     assert.match(componentSource, /Тип записи/);
     assert.match(componentSource, /Учитывать дочерние серии/);
     assert.match(componentSource, /SearchableFranchiseSelect/);

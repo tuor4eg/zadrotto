@@ -12,7 +12,6 @@ export type ClassificationDecision = {
 export type ClassificationManifest = {
   version: 1;
   series: ClassificationDecision[];
-  creatorLinks: { creatorId: number; seriesId: number; targetSeriesId: number | null }[];
   pendingLinks: { mediaItemId: number; franchiseId: number; decision: "discard" }[];
   removalRequests: { mediaItemId: number; franchiseId: number; decision: "discard" }[];
 };
@@ -20,7 +19,8 @@ export type RawRow = Record<string, unknown>;
 export type ClassificationSnapshot = {
   franchises: RawRow[];
   media_item_franchises: RawRow[];
-  creator_series: RawRow[];
+  /** Present only in migration history written before the table was removed. */
+  creator_series?: RawRow[];
   media_item_franchise_removal_requests: RawRow[];
   genres: RawRow[];
   achievements: RawRow[];
@@ -41,6 +41,28 @@ export function classificationHash(value: unknown) {
   return createHash("sha256").update(JSON.stringify(canonical(value))).digest("hex");
 }
 
+export function currentClassificationSnapshot(snapshot: ClassificationSnapshot): ClassificationSnapshot {
+  if (!Object.hasOwn(snapshot, "creator_series")) return snapshot;
+  const current = { ...snapshot, foreignKeys: snapshot.foreignKeys.filter((key) => key.table_name !== "creator_series") };
+  delete current.creator_series;
+  return current;
+}
+
+/** Compare old journals using their own retired data. The rollback never restores the removed relation. */
+export function classificationRollbackHash(inventory: { state: ClassificationSnapshot; proof: unknown }, reference: ClassificationSnapshot) {
+  if (!Object.hasOwn(reference, "creator_series")) {
+    return classificationHash({ state: inventory.state, proof: inventory.proof });
+  }
+  const foreignKeys = [...inventory.state.foreignKeys];
+  reference.foreignKeys.forEach((key, index) => {
+    if (key.table_name === "creator_series") foreignKeys.splice(index, 0, key);
+  });
+  return classificationHash({
+    state: { ...inventory.state, creator_series: reference.creator_series, foreignKeys },
+    proof: inventory.proof,
+  });
+}
+
 function object(value: unknown): Record<string, unknown> {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Манифест должен содержать объекты.");
   return value as Record<string, unknown>;
@@ -58,7 +80,7 @@ function list(value: unknown): unknown[] {
 }
 export function parseClassificationManifest(value: unknown): ClassificationManifest {
   const input = object(value);
-  exact(input, ["version", "series", "creatorLinks", "pendingLinks", "removalRequests"]);
+  exact(input, ["version", "series", "pendingLinks", "removalRequests"]);
   if (input.version !== 1) throw new Error("Неизвестная версия манифеста.");
   const series = list(input.series).map((value): ClassificationDecision => {
     const row = object(value); exact(row, Object.hasOwn(row, "tagId") ? ["id", "group", "parentId", "tagId"] : ["id", "group", "parentId"]);
@@ -66,16 +88,12 @@ export function parseClassificationManifest(value: unknown): ClassificationManif
     if (row.tagId !== undefined && row.group !== "tag") throw new Error("Существующий тег можно выбрать только для группы tag.");
     return { id: id(row.id), group: row.group, parentId: row.parentId === null ? null : id(row.parentId), ...(row.tagId === undefined ? {} : { tagId: id(row.tagId) }) };
   });
-  const creatorLinks = list(input.creatorLinks).map(value => {
-    const row = object(value); exact(row, ["creatorId", "seriesId", "targetSeriesId"]);
-    return { creatorId: id(row.creatorId), seriesId: id(row.seriesId), targetSeriesId: row.targetSeriesId === null ? null : id(row.targetSeriesId) };
-  });
   const links = (value: unknown) => list(value).map(value => {
     const row = object(value); exact(row, ["mediaItemId", "franchiseId", "decision"]);
     if (row.decision !== "discard") throw new Error("Требуется явное решение discard для неопубликованной связи или заявки.");
     return { mediaItemId: id(row.mediaItemId), franchiseId: id(row.franchiseId), decision: "discard" as const };
   });
-  return { version: 1, series, creatorLinks, pendingLinks: links(input.pendingLinks), removalRequests: links(input.removalRequests) };
+  return { version: 1, series, pendingLinks: links(input.pendingLinks), removalRequests: links(input.removalRequests) };
 }
 
 /** Mirrors publishedSeriesBranchSql: an unpublished intermediate node blocks traversal. */
@@ -92,7 +110,7 @@ export function publishedMembership(snapshot: ClassificationSnapshot, rootId: nu
 }
 
 export function draftClassificationManifest(snapshot: ClassificationSnapshot): ClassificationManifest {
-  return { version: 1, series: snapshot.franchises.map(row => ({ id: Number(row.id), group: "ambiguous", parentId: row.parent_id === null ? null : Number(row.parent_id) })), creatorLinks: [], pendingLinks: [], removalRequests: [] };
+  return { version: 1, series: snapshot.franchises.map(row => ({ id: Number(row.id), group: "ambiguous", parentId: row.parent_id === null ? null : Number(row.parent_id) })), pendingLinks: [], removalRequests: [] };
 }
 
 export function classificationBlockers(snapshot: ClassificationSnapshot, manifest: ClassificationManifest): string[] {
@@ -137,8 +155,6 @@ export function classificationBlockers(snapshot: ClassificationSnapshot, manifes
     const received = new Set((decisions as RawRow[]).map(decisionKey));
     if (received.size !== decisions.length || expected.size !== received.size || [...expected].some(key => !received.has(key))) errors.push(`Требуются точные ручные решения: ${label}.`);
   };
-  requireDecisions(snapshot.creator_series.filter(row => themes.has(Number(row.series_id))), manifest.creatorLinks, row => `${row.creator_id}:${row.series_id}`, row => `${row.creatorId}:${row.seriesId}`, "создатели");
-  for (const row of manifest.creatorLinks) if (row.targetSeriesId !== null && byId.get(row.targetSeriesId)?.group !== "keep") errors.push("Создателя можно перенести только в оставляемую серию.");
   const linkKey = (row: RawRow) => `${row.media_item_id}:${row.franchise_id}`;
   const decisionKey = (row: RawRow) => `${row.mediaItemId}:${row.franchiseId}`;
   requireDecisions(snapshot.media_item_franchises.filter(row => themes.has(Number(row.franchise_id)) && row.publication_status !== "published"), manifest.pendingLinks, linkKey, decisionKey, "неопубликованные связи");
@@ -148,7 +164,7 @@ export function classificationBlockers(snapshot: ClassificationSnapshot, manifes
   const known = new Set([
     ["franchises", ["parent_id"], "franchises", ["id"], "r"],
     ["genres", ["replacement_franchise_id"], "franchises", ["id"], "n"],
-    ["creator_series", ["series_id"], "franchises", ["id"], "c"],
+    ["entry_sources", ["source_series_id"], "franchises", ["id"], "c"],
     ["media_item_franchises", ["franchise_id"], "franchises", ["id"], "c"],
     ["media_item_franchise_removal_requests", ["media_item_id", "franchise_id"], "media_item_franchises", ["media_item_id", "franchise_id"], "c"],
   ].map(row => JSON.stringify(row)));
